@@ -1,0 +1,233 @@
+schema_version: context.state-event-fixtures/v1alpha1
+generated_at: "2026-08-10T00:10:00+08:00"
+cases:
+  - case_id: correction-supersedes-byte-equivalent
+    initial_snapshot:
+      schema_version: context.typed-state/v1alpha1
+      project:
+        project_id: project-dedupe
+        revision: 14
+        governance_ref: artifact://governance/master@revision-16
+        active_work_ids: []
+        primary_work_id: null
+        current_decision_ids: []
+        active_constraint_ids: []
+        open_blocker_ids: [blocker-duplicate]
+        effect_high_watermark: 0
+        updated_at: "2026-08-09T11:00:00+08:00"
+      works:
+        - work_id: work-existing
+          kind: work
+          title: Add the shared registry
+          status: completed
+          parent_work_id: null
+          dependency_ids: []
+          owner_refs: [actor-first]
+          scope_refs:
+            - {scope_kind: file, scope_ref: src/registry.py}
+          overlap_candidate_ids: []
+          dedupe_status: clear
+          supersedes_work_id: null
+          evidence_ids: [evidence-done]
+          blocker_ids: []
+          revision: 5
+        - work_id: work-repeat
+          kind: work
+          title: Add another shared registry
+          status: proposed
+          parent_work_id: null
+          dependency_ids: []
+          owner_refs: [actor-second]
+          scope_refs:
+            - {scope_kind: file, scope_ref: src/registry.py}
+          overlap_candidate_ids: [work-existing]
+          dedupe_status: blocked
+          supersedes_work_id: null
+          evidence_ids: []
+          blocker_ids: [blocker-duplicate]
+          revision: 1
+      claims: []
+      ideas: []
+      decisions: []
+      constraints: []
+      evidence:
+        - evidence_id: evidence-done
+          kind: test
+          artifact_ref: artifact://fixture/completed-registry-test
+          content_sha256: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+          validity: verified
+          observed_at: "2026-08-09T10:30:00+08:00"
+          verified_at: "2026-08-09T10:31:00+08:00"
+      blockers:
+        - blocker_id: blocker-duplicate
+          status: open
+          reason: Proposed work overlaps a completed work item.
+          blocked_work_ids: [work-repeat]
+          evidence_ids: [evidence-done]
+          opened_at: "2026-08-09T10:59:00+08:00"
+          resolved_at: null
+          supersedes_blocker_id: null
+      effects: []
+    events:
+      - schema_version: context.state-event/v1alpha1
+        event_id: event-decision-old
+        event_type: state-transition
+        project_id: project-dedupe
+        sequence_no: 1
+        revision_before: 14
+        revision_after: 15
+        occurred_at: "2026-08-10T00:01:00+08:00"
+        actor_ref: actor-first
+        causation_ref: work:work-existing
+        correlation_ref: replay:m2-02
+        previous_event_sha256: null
+        supersedes_event_id: null
+        changes:
+          - collection: decisions
+            object_id: decision-old
+            value:
+              decision_id: decision-old
+              work_id: work-existing
+              status: accepted
+              statement: Use the first event interpretation.
+              decided_at: "2026-08-10T00:00:30+08:00"
+              supersedes_decision_id: null
+              evidence_ids: [evidence-done]
+        project_after:
+          project_id: project-dedupe
+          revision: 15
+          governance_ref: artifact://governance/master@revision-16
+          active_work_ids: []
+          primary_work_id: null
+          current_decision_ids: [decision-old]
+          active_constraint_ids: []
+          open_blocker_ids: [blocker-duplicate]
+          effect_high_watermark: 0
+          updated_at: "2026-08-10T00:01:00+08:00"
+        event_sha256: 088298403bc946071c39cbdf584dbf518f356d04d54a3dc70f8caa21add02437
+      - schema_version: context.state-event/v1alpha1
+        event_id: event-decision-current
+        event_type: correction
+        project_id: project-dedupe
+        sequence_no: 2
+        revision_before: 15
+        revision_after: 16
+        occurred_at: "2026-08-10T00:02:00+08:00"
+        actor_ref: actor-verifier
+        causation_ref: correction:decision-old
+        correlation_ref: replay:m2-02
+        previous_event_sha256: 088298403bc946071c39cbdf584dbf518f356d04d54a3dc70f8caa21add02437
+        supersedes_event_id: event-decision-old
+        changes:
+          - collection: decisions
+            object_id: decision-old
+            value:
+              decision_id: decision-old
+              work_id: work-existing
+              status: reverted
+              statement: Use the first event interpretation.
+              decided_at: "2026-08-10T00:00:30+08:00"
+              supersedes_decision_id: null
+              evidence_ids: [evidence-done]
+          - collection: decisions
+            object_id: decision-current
+            value:
+              decision_id: decision-current
+              work_id: work-existing
+              status: accepted
+              statement: Use deterministic event replay.
+              decided_at: "2026-08-10T00:01:30+08:00"
+              supersedes_decision_id: decision-old
+              evidence_ids: [evidence-done]
+        project_after:
+          project_id: project-dedupe
+          revision: 16
+          governance_ref: artifact://governance/master@revision-16
+          active_work_ids: []
+          primary_work_id: null
+          current_decision_ids: [decision-current]
+          active_constraint_ids: []
+          open_blocker_ids: [blocker-duplicate]
+          effect_high_watermark: 0
+          updated_at: "2026-08-10T00:02:00+08:00"
+        event_sha256: 0a72c9e84e8bbccb39b6c302dc44fb49b335761c23458bff8053ea76ef4a8bfe
+    expected_snapshot:
+      schema_version: context.typed-state/v1alpha1
+      project:
+        project_id: project-dedupe
+        revision: 16
+        governance_ref: artifact://governance/master@revision-16
+        active_work_ids: []
+        primary_work_id: null
+        current_decision_ids: [decision-current]
+        active_constraint_ids: []
+        open_blocker_ids: [blocker-duplicate]
+        effect_high_watermark: 0
+        updated_at: "2026-08-10T00:02:00+08:00"
+      works:
+        - work_id: work-existing
+          kind: work
+          title: Add the shared registry
+          status: completed
+          parent_work_id: null
+          dependency_ids: []
+          owner_refs: [actor-first]
+          scope_refs:
+            - {scope_kind: file, scope_ref: src/registry.py}
+          overlap_candidate_ids: []
+          dedupe_status: clear
+          supersedes_work_id: null
+          evidence_ids: [evidence-done]
+          blocker_ids: []
+          revision: 5
+        - work_id: work-repeat
+          kind: work
+          title: Add another shared registry
+          status: proposed
+          parent_work_id: null
+          dependency_ids: []
+          owner_refs: [actor-second]
+          scope_refs:
+            - {scope_kind: file, scope_ref: src/registry.py}
+          overlap_candidate_ids: [work-existing]
+          dedupe_status: blocked
+          supersedes_work_id: null
+          evidence_ids: []
+          blocker_ids: [blocker-duplicate]
+          revision: 1
+      claims: []
+      ideas: []
+      decisions:
+        - decision_id: decision-old
+          work_id: work-existing
+          status: reverted
+          statement: Use the first event interpretation.
+          decided_at: "2026-08-10T00:00:30+08:00"
+          supersedes_decision_id: null
+          evidence_ids: [evidence-done]
+        - decision_id: decision-current
+          work_id: work-existing
+          status: accepted
+          statement: Use deterministic event replay.
+          decided_at: "2026-08-10T00:01:30+08:00"
+          supersedes_decision_id: decision-old
+          evidence_ids: [evidence-done]
+      constraints: []
+      evidence:
+        - evidence_id: evidence-done
+          kind: test
+          artifact_ref: artifact://fixture/completed-registry-test
+          content_sha256: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+          validity: verified
+          observed_at: "2026-08-09T10:30:00+08:00"
+          verified_at: "2026-08-09T10:31:00+08:00"
+      blockers:
+        - blocker_id: blocker-duplicate
+          status: open
+          reason: Proposed work overlaps a completed work item.
+          blocked_work_ids: [work-repeat]
+          evidence_ids: [evidence-done]
+          opened_at: "2026-08-09T10:59:00+08:00"
+          resolved_at: null
+          supersedes_blocker_id: null
+      effects: []

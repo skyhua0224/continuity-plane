@@ -1,7 +1,7 @@
 # Context Control Plane MASTER
 
-版本：revision 17  
-日期：2026-08-09  
+版本：revision 18  
+日期：2026-08-10  
 状态：研究与 shadow pilot 准备阶段  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
 
@@ -243,8 +243,8 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
 |---|---|---|---|---|---|---|
 | M2-01 | ✅ | 定义 Project/Work/Claim/Idea/Decision/Constraint/Evidence/Blocker/Effect schema | 项目级 active work、共享 Work Ledger 和个人派生视图变成类型合同 | 无损恢复并阻止重复工作 | M0-07/M1-04/M1-05 | strict schema 注册；4/4 solo/multi-worker、active/completed overlap、claim/effect scope 和 supersedes fixture canonical round-trip；12/12 定向测试通过 |
-| M2-02 | 🟡 | 定义 append-only Event、supersedes 和 reducer | 历史可 replay | 旧决定复活率为 0 | M2-01 | replay 结果与 snapshot byte-equivalent |
-| M2-03 | ⏳ | PostgreSQL revision/CAS state store | 并发冲突显式返回 | 多协作者安全基础 | M2-02 | conflict test 100% 可见 |
+| M2-02 | ✅ | 定义 append-only Event、supersedes 和 reducer | 历史可 replay | 旧决定复活率为 0 | M2-01 | strict Event schema 注册；1/1 versioned replay fixture 与 snapshot byte-equivalent；14/14 定向测试通过；tamper、gap、断链、未知 supersedes、终态 Work/Decision 复活均被拒绝 |
+| M2-03 | 🟡 | PostgreSQL revision/CAS relational state store | 并发冲突显式返回 | 多协作者安全基础 | M2-02 | 两个 writer 使用相同 expected revision 时仅一个 commit 成功；conflict test 100% 可见；snapshot、Event 与 revision 在同一事务提交 |
 | M2-04 | ⏳ | content-addressed artifact store | 大日志和 diff 通过 artifact ref 引用 | 降 token 并保存证据 | M2-01 | checksum、range read、损坏检测通过 |
 | M2-05 | ⏳ | State MCP read/commit/claim/effect API | 各 agent/provider 使用统一协议 | provider-neutral | M2-03 | contract tests + auth boundary tests |
 | M2-06 | ⏳ | immutable checkpoint 与 canary manifest | 压缩和交接可验证 | 建立确定性恢复 | M2-04/M2-05 | 关键字段恢复 100% |
@@ -407,7 +407,7 @@ E1、E2、E4、E6、E8、E9 具有 veto 权限；平均得分、token 降幅和�
 
 ## 10. 当前执行路由
 
-M2-02 是当前 active leaf。M2-01 已完成 Project、Work、Claim、Idea、Decision、Constraint、Evidence、Blocker 和 Effect 的最小版本化 schema、semantic validator 与四组 canonical round-trip fixture，验收见 `docs/migrations/m2-01-typed-state-acceptance-2026-08-09.md`。M2-02 在该 snapshot 合同上定义 append-only Event、supersedes 和 deterministic reducer；Project Profile、Charter、WorkSource 和 topology adapter 继续由 M2-07 交付。
+M2-03 是当前 active leaf。M2-02 已完成 strict Event schema、hash chain、supersedes、deterministic reducer、终态对象防复活门和 versioned replay fixture，验收见 `docs/migrations/m2-02-state-event-acceptance-2026-08-10.md`。M2-03 将 M2-01 snapshot 与 M2-02 Event 合同映射到 PostgreSQL transaction 和 expected revision/CAS；向量索引不参与权威状态提交。Project Profile、Charter、WorkSource 和 topology adapter 继续由 M2-07 交付。
 
 M1-05 已完成 16 个 E0-E9 contract fixture，验收见 `docs/migrations/m1-05-fault-coverage-acceptance-2026-08-09.md`。Runtime fault evidence 仍由 M2/M5/M8 提供。M1-04 已完成 40 个 fixture admission，验收见 `docs/migrations/m1-04-replay-fixture-acceptance-2026-08-09.md`。受控 archive 继续采用流式、区间化读取；原始 JSONL 和 source namespace key material 禁止进入 Git。M1-06 archive retention/export/delete 的离线验收见 `docs/migrations/m1-06-archive-governance-acceptance-2026-08-09.md`。
 

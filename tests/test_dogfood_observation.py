@@ -52,25 +52,36 @@ class DogfoodObservationTests(unittest.TestCase):
     def test_summary_accounts_for_loaded_skill_bodies(self):
         summary = summarize_observations(self.document)
 
-        self.assertEqual(summary["skill_body_load_count"], 19)
-        self.assertEqual(summary["skill_body_load_bytes"], 212776)
-        self.assertEqual(summary["repeated_skill_body_load_bytes"], 101126)
+        self.assertEqual(summary["skill_body_load_count"], 22)
+        self.assertEqual(summary["skill_body_load_bytes"], 239992)
+        self.assertEqual(summary["repeated_skill_body_load_bytes"], 128342)
 
     def test_visible_compactions_remain_uncomparable_for_cost_metrics(self):
         summary = summarize_observations(self.document)
 
-        self.assertEqual(summary["compaction_events"], 7)
-        self.assertEqual(summary["input_routing_events"], 18)
+        self.assertEqual(summary["compaction_events"], 8)
+        self.assertEqual(summary["input_routing_events"], 19)
         self.assertEqual(summary["comparable_compaction_events"], 0)
 
     def test_post_compaction_interaction_reset_marks_trend_regressed(self):
         summary = summarize_observations(self.document)
 
         self.assertEqual(summary["compaction_recovery_rate"], 1.0)
-        self.assertEqual(summary["continuation_recovery_rate"], 0.5)
-        self.assertEqual(summary["already_acknowledged_items_replayed"], 1)
-        self.assertEqual(summary["first_post_restore_action_mismatches"], 1)
+        self.assertEqual(summary["continuation_recovery_rate"], 0.75)
+        self.assertEqual(summary["already_acknowledged_items_replayed"], 2)
+        self.assertEqual(summary["first_post_restore_action_mismatches"], 2)
         self.assertEqual(summary["trend_status"], "regressed")
+
+    def test_latest_compaction_detects_replayed_answer_before_continuation(self):
+        latest = next(
+            item
+            for item in self.document["observations"]
+            if item["observation_id"] == "dogfood-compaction-008"
+        )
+
+        self.assertEqual(latest["metrics"]["continuation_fields_recovered"], 4)
+        self.assertFalse(latest["metrics"]["first_post_restore_action_matched"])
+        self.assertEqual(latest["metrics"]["already_acknowledged_items_replayed"], 1)
 
     def test_delivery_speed_is_a_quality_gated_baseline(self):
         summary = summarize_observations(self.document)
