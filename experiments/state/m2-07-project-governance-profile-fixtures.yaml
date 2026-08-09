@@ -1,0 +1,133 @@
+schema_version: context.project-governance-profile-fixtures/v1alpha1
+cases:
+  - case_id: discovery-monolith-multi-worker
+    document:
+      schema_version: context.project-governance-profile/v1alpha1
+      profile:
+        profile_id: profile-example
+        project_id: project-example
+        revision: 7
+        direction_state: discovery
+        governance_owner_mode: single-owner
+        execution_worker_mode: multi-worker
+        repository_topology: monolith
+        requested_runtime_profile: local-embedded
+        task_sources:
+          - external-pm
+          - issue-backed
+          - master-workstream
+          - state-native
+        governance_ref: governance://master
+        updated_at: "2026-08-10T08:00:00+08:00"
+      charters:
+        - charter_id: charter-example
+          project_id: project-example
+          profile_id: profile-example
+          status: candidate
+          problem_space: Durable provider-neutral project context.
+          intended_users: [collaborator, developer]
+          confirmed_constraint_refs: [constraint://provider-neutral]
+          prohibited_side_effects: [unapproved-authority-change]
+          current_evidence_refs: [evidence://repository-current]
+          unknowns: [team-scale-latency]
+          assumptions: [local-embedded-default]
+          decision_owner_ref: actor://owner
+          discovery_campaign_id: work-discovery
+          attempt_budget: 3
+          expiry: "2026-09-10T00:00:00+08:00"
+          return_point_work_id: work-root
+          exit_criteria: [profile-contract-validated]
+          mainline_authority: false
+          revision: 1
+      work_sources:
+        - work_source_id: source-root
+          project_id: project-example
+          work_id: work-root
+          source_kind: state-native
+          source_ref: opaque://work/root
+          source_revision: revision-1
+          governance_parent_id: work-discovery
+          dependency_ids: []
+          readiness: active
+        - work_source_id: source-child
+          project_id: project-example
+          work_id: work-child
+          source_kind: issue-backed
+          source_ref: opaque://issue/child
+          source_revision: issue-revision-4
+          governance_parent_id: work-discovery
+          dependency_ids: [work-root]
+          readiness: ready
+      obligations:
+        - obligation_id: obligation-required
+          work_id: work-root
+          mode: required
+          condition_ref: null
+          authority:
+            kind: project-governance
+            ref: governance://master
+          automation_class: autonomous
+          verification_profile_ref: verification://default
+          evidence_refs: [evidence://repository-current]
+          expires_at: null
+          status: pending
+          revision: 1
+        - obligation_id: obligation-conditional
+          work_id: work-child
+          mode: conditional
+          condition_ref: condition://ci-enabled
+          authority:
+            kind: task-source
+            ref: opaque://issue/child
+          automation_class: approval-gated
+          verification_profile_ref: verification://default
+          evidence_refs: []
+          expires_at: "2026-09-10T00:00:00+08:00"
+          status: pending
+          revision: 1
+      adaptations:
+        - adaptation_id: adaptation-example-1
+          profile_id: profile-example
+          version: 1.0.0-alpha.1
+          proposal_revision: 7
+          content_sha256: 612316b4a1dbfb6f5cf7cf1870560400ef1632637e62359d34e092b5b006630b
+          scope: project
+          inputs: [correction-example-1, run-example-1]
+          applicability:
+            - kind: operation
+              ref: operation://code-change
+            - kind: project
+              ref: project-example
+          changes:
+            retrieval_order: [rg, lsp]
+            common_path_refs: [path://src]
+            common_command_refs: [command://test-unit]
+            verification_hint_refs: [verification://default]
+            skill_applicability: [skill://test-driven-development]
+            presentation_preferences:
+              response_density: compact
+          metrics_before:
+            bytes_read: 4096
+            bytes_emitted: 2048
+            repeated_read_bytes: 1024
+            verification_failures: 0
+          metrics_after:
+            bytes_read: 2048
+            bytes_emitted: 1024
+            repeated_read_bytes: 0
+            verification_failures: 0
+          safety_veto_results:
+            E1: true
+            E2: true
+            E4: true
+            E6: true
+            E8: true
+            E9: true
+          replay_receipts: []
+          expiry: "2026-09-10T00:00:00+08:00"
+          rollback_to: null
+          status: candidate
+          approval_round: 0
+          approval_ref: null
+          approved_at: null
+          activation_revision: null

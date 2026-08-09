@@ -1,4 +1,6 @@
 import copy
+import hashlib
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -8,12 +10,27 @@ from pathlib import Path
 import yaml
 
 from context_control_plane.checkpoint_benchmark import (
+    build_checkpoint_benchmark_receipt,
     run_checkpoint_benchmark,
     validate_checkpoint_benchmark_receipt,
 )
 
 
 class M206CheckpointBenchmarkTests(unittest.TestCase):
+    historical_receipt_sha256 = (
+        "0a793a1088bd38d77c083b745a6ec3444bf4354a9030144d3d1d705d2ec97224"
+    )
+    provenance_paths = (
+        "context_control_plane/checkpoint.py",
+        "context_control_plane/checkpoint_benchmark.py",
+        "tools/run_checkpoint_benchmark.py",
+        "experiments/state/m2-01-core-fixtures.yaml",
+        "schemas/registry.yaml",
+        "schemas/m2-06/checkpoint-manifest.schema.json",
+        "tests/test_m2_06_checkpoint_canary.py",
+        "tests/test_m2_06_checkpoint_benchmark.py",
+    )
+
     @classmethod
     def setUpClass(cls):
         cls.root = Path(__file__).parents[1]
@@ -151,12 +168,92 @@ class M206CheckpointBenchmarkTests(unittest.TestCase):
             with self.subTest(label=label), self.assertRaises(ValueError):
                 validate_checkpoint_benchmark_receipt(candidate, root=self.root)
 
-    def test_committed_forty_sample_receipt_has_current_provenance(self):
+    def test_receipt_ignores_unrelated_schema_registry_additions(self):
+        observed_at = "2026-08-10T08:30:00+08:00"
+        with tempfile.TemporaryDirectory() as benchmark_directory:
+            benchmark = run_checkpoint_benchmark(
+                Path(benchmark_directory),
+                copy.deepcopy(self.snapshot),
+                samples=1,
+            )
+        receipt = build_checkpoint_benchmark_receipt(
+            root=self.root,
+            benchmark=benchmark,
+            observed_at=observed_at,
+            arguments=["--samples", "1", "--observed-at", observed_at],
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            isolated_root = Path(directory)
+            for relative_path in self.provenance_paths:
+                destination = isolated_root / relative_path
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(self.root / relative_path, destination)
+            registry_path = isolated_root / "schemas" / "registry.yaml"
+            registry = yaml.safe_load(registry_path.read_text(encoding="utf-8"))
+            registry["schemas"].append(
+                {
+                    "schema_id": "context.unrelated",
+                    "current_semver": "1.0.0-alpha.1",
+                    "current_wire_version": "context.unrelated/v1alpha1",
+                    "supported_wire_versions": ["context.unrelated/v1alpha1"],
+                    "artifact_path": "schemas/unrelated.schema.json",
+                    "content_sha256": "a" * 64,
+                    "status": "current",
+                    "compatibility_mode": "strict-versioned",
+                    "migrations": [],
+                }
+            )
+            registry_path.write_text(
+                yaml.safe_dump(registry, sort_keys=False),
+                encoding="utf-8",
+            )
+
+            validate_checkpoint_benchmark_receipt(receipt, root=isolated_root)
+
+    def test_receipt_rejects_checkpoint_registry_entry_changes(self):
+        observed_at = "2026-08-10T08:31:00+08:00"
+        with tempfile.TemporaryDirectory() as benchmark_directory:
+            benchmark = run_checkpoint_benchmark(
+                Path(benchmark_directory),
+                copy.deepcopy(self.snapshot),
+                samples=1,
+            )
+        receipt = build_checkpoint_benchmark_receipt(
+            root=self.root,
+            benchmark=benchmark,
+            observed_at=observed_at,
+            arguments=["--samples", "1", "--observed-at", observed_at],
+        )
+
+        with tempfile.TemporaryDirectory() as directory:
+            isolated_root = Path(directory)
+            for relative_path in self.provenance_paths:
+                destination = isolated_root / relative_path
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(self.root / relative_path, destination)
+            registry_path = isolated_root / "schemas" / "registry.yaml"
+            registry = yaml.safe_load(registry_path.read_text(encoding="utf-8"))
+            checkpoint_entry = next(
+                entry
+                for entry in registry["schemas"]
+                if entry["schema_id"] == "context.checkpoint-manifest"
+            )
+            checkpoint_entry["status"] = "deprecated"
+            registry_path.write_text(
+                yaml.safe_dump(registry, sort_keys=False),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "provenance is stale"):
+                validate_checkpoint_benchmark_receipt(receipt, root=isolated_root)
+
+    def test_revalidated_forty_sample_receipt_has_current_provenance(self):
         receipt_path = (
             self.root
             / "experiments"
             / "state"
-            / "m2-06-checkpoint-canary-results.yaml"
+            / "m2-06-checkpoint-canary-revalidation-2026-08-10.yaml"
         )
         receipt = yaml.safe_load(receipt_path.read_text(encoding="utf-8"))
 
@@ -170,6 +267,58 @@ class M206CheckpointBenchmarkTests(unittest.TestCase):
         self.assertLess(receipt["measurement"]["restore_p95_ms"], 2_000)
         self.assertTrue(receipt["acceptance"]["restore_p95_under_2s"])
         self.assertTrue(receipt["acceptance"]["critical_projection_complete"])
+
+    def test_original_forty_sample_receipt_remains_immutable_historical_evidence(self):
+        receipt_path = (
+            self.root
+            / "experiments"
+            / "state"
+            / "m2-06-checkpoint-canary-results.yaml"
+        )
+        receipt = yaml.safe_load(receipt_path.read_text(encoding="utf-8"))
+        receipt_bytes = receipt_path.read_bytes()
+
+        self.assertEqual(receipt["observed_at"], "2026-08-10T08:00:00+08:00")
+        self.assertEqual(
+            receipt["measurement"]["checkpoint_ref"]["digest"],
+            "e2e1b95edca212758559a954525b22e138a77bbdc8596e92831214192381d69a",
+        )
+        self.assertEqual(receipt["measurement"]["restore_p95_ms"], 0.2378)
+        self.assertEqual(
+            hashlib.sha256(receipt_bytes).hexdigest(),
+            self.historical_receipt_sha256,
+        )
+        validate_checkpoint_benchmark_receipt(
+            receipt,
+            root=self.root,
+            historical_receipt_bytes=receipt_bytes,
+            expected_historical_sha256=self.historical_receipt_sha256,
+        )
+
+        forged = copy.deepcopy(receipt)
+        forged["provenance"] = {
+            field: "a" * 64 for field in forged["provenance"]
+        }
+        forged_bytes = yaml.safe_dump(forged, sort_keys=False).encode("utf-8")
+        with self.assertRaisesRegex(ValueError, "historical|digest|trust"):
+            validate_checkpoint_benchmark_receipt(
+                forged,
+                root=self.root,
+                historical_receipt_bytes=forged_bytes,
+                expected_historical_sha256=self.historical_receipt_sha256,
+            )
+
+    def test_revalidated_receipt_is_separate_from_the_original_measurement(self):
+        receipt_path = (
+            self.root
+            / "experiments"
+            / "state"
+            / "m2-06-checkpoint-canary-revalidation-2026-08-10.yaml"
+        )
+        self.assertTrue(receipt_path.exists())
+        receipt = yaml.safe_load(receipt_path.read_text(encoding="utf-8"))
+        validate_checkpoint_benchmark_receipt(receipt, root=self.root)
+        self.assertEqual(receipt["measurement"]["samples"], 40)
 
 
 if __name__ == "__main__":

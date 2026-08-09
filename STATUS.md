@@ -1,6 +1,6 @@
 # Context Control Plane Status
 
-版本：revision 27  
+版本：revision 28  
 日期：2026-08-10  
 canonical plan：`MASTER.md`
 
@@ -8,10 +8,10 @@ canonical plan：`MASTER.md`
 
 | 字段 | 值 |
 |---|---|
-| 当前 Campaign | M2 Typed State、Event 与 Checkpoint |
-| active work | M2-07：Project Profile、Project Charter、WorkSource 与 ProjectAdaptation typed schema（🟡） |
-| next action | 先写 obligation、authority、automation class、三个配置轴、repository topology 和 adaptation lifecycle 的 strict schema 失败测试 |
-| hard blocker | active leaf 无；M2-09 的 Windows/macOS 原生 live fixture 等待专用 runner |
+| 当前 Campaign | M4 Skill 控制面 |
+| active work | M4-01：Skill manifest/version/hash/applicability schema（🟡） |
+| next action | 写 Skill manifest、version、hash、applicability、dependency、conflict 和 expiry 的 strict schema 失败测试 |
+| hard blocker | active leaf 无；M3-01 仍等待 M2-09 的 Windows/macOS 原生 live fixture |
 | repository mode | research / shadow pilot |
 | production state | planned；M2 阶段实施 |
 
@@ -33,8 +33,9 @@ canonical plan：`MASTER.md`
 | M2-09 SQLite backend | 48/48 定向测试；Linux WAL/`BEGIN IMMEDIATE`、跨进程 CAS、append-only、SIGKILL、Unicode 路径、WAL/SHM 清理和非 header page 损坏检测通过；commit p95 `0.6500 ms`，restore p95 `0.2678 ms`；Windows/macOS 原生 fixture 待协作者；验收见 `docs/migrations/m2-09-sqlite-state-store-acceptance-2026-08-10.md` |
 | M2-04 artifact store | 20/20 定向测试；streamed SHA-256、atomic publication、并发去重、bounded range、损坏/symlink typed error 和 64 MiB benchmark 输入门通过；1 MiB 到 8 KiB context output bytes 下降 `99.2188%`；全库 303 tests、27 PostgreSQL skips；独立审查 High 0、Medium 0 |
 | M2-05 State MCP | 26/26 contract/auth tests；默认拒绝、trusted actor、revision/CAS、validator、concurrent request idempotency、strict receipt、PostgreSQL busy normalization、claim/effect provenance、malformed intent 和 torn-read detection 通过；四工具 SQLite/PostgreSQL live parity 1/1；验收见 `docs/migrations/m2-05-state-mcp-acceptance-2026-08-10.md` |
-| M2-06 checkpoint canary | 9/9 contract tests、4/4 benchmark/receipt tests；snapshot/manifest 双层 CAS、18 字段 deterministic restore、missing/tampered/stale/unknown/oversized fail-closed 和 SQLite 零服务链路通过；40 样本 restore p95 `0.2378 ms`；验收见 `docs/migrations/m2-06-checkpoint-canary-acceptance-2026-08-10.md` |
-| State portability | capability profile 只声明运行保证，不代表用户等级；统一产品默认 `local-embedded`，任何单人或团队均可启用 `forge-coordinated`、`local-coordinator` 或 `shared-strong`；StateStore SPI、SQLite Linux backend 和本地 artifact store 已验收，forge adapter 待 M8-08 |
+| M2-06 checkpoint canary | 9/9 contract tests、8/8 benchmark/receipt tests；snapshot/manifest 双层 CAS、18 字段 deterministic restore、missing/tampered/stale/unknown/oversized fail-closed 和 SQLite 零服务链路通过；原 40 样本 receipt 字节保持不变，current provenance 复验使用独立 receipt；验收见 `docs/migrations/m2-06-checkpoint-canary-acceptance-2026-08-10.md` |
+| M2-07 project governance profile | `context.project-governance-profile/v1alpha1` strict schema、runtime validator 和 versioned fixture 完成；35/35 定向测试覆盖 obligation 终态依据、requested runtime profile/manifest 权限边界、配置轴、topology、typed applicability、SemVer 2.0.0、trusted time、proposal/activation revision、active snapshot replay、rollback 和 approval；两名独立 Verifier 复审 High 0、Medium 0；验收见 `docs/migrations/m2-07-project-governance-profile-acceptance-2026-08-10.md` |
+| State portability | Project Profile 只声明 requested runtime profile；运行保证只来自已验证 StateStore capability manifest，不代表用户等级；统一产品默认 `local-embedded`，任何单人或团队均可请求 `forge-coordinated`、`local-coordinator` 或 `shared-strong`；StateStore SPI、SQLite Linux backend 和本地 artifact store 已验收，forge adapter 待 M8-08 |
 | Self-dogfood release order | Context Control Plane 自身是 M10-00 首个完整产品试点；AlkaidLab、Foundation Sunshine 和 ProjectCompute 等外部试点在其后执行 |
 | M1-06 | retention、deterministic export/import、tombstone 和 deletion proof 离线验收完成；production adapter 待 M2/M8/M10 |
 | M0-07 | schema registry/hash、semver transition、migration/replay/rollback 和 unknown-version quarantine 离线验收完成 |
@@ -49,9 +50,9 @@ canonical plan：`MASTER.md`
 | Git collaboration | branch/commit/PR/merge 和 staged admission 合同已落盘；公开 Gitea remote 为 `skyhua/context-control-plane`，默认分支 `main`；repo-local identity 已与托管账号核验 |
 | Continuous integration | 独立 Verifier 权威状态写权限为 0；M2-03 runs 1037/1038 暴露 service lifecycle 与 job-network 故障，run 1039 的两个 jobs 全绿；`main` 禁止 direct/force push、禁止 admin merge override，并要求 4 个 push/PR status contexts |
 | Reference catalog | 21 个候选来源；Codex/Claude harness 与 Yundi339 Docmost fork 均固定 URL、revision/tree hash、validity、refresh trigger 和 adoption status；active adoption 0 |
-| Project dogfood baseline | 18 次 compaction 的结构字段恢复 100%，Continuation Cursor 累计恢复 46/48；第 7/8 次首动作不匹配和已确认事项重播累计各 2 次，第 9-18 次精确续接，整体趋势仍为 regressed；23 次 input routing 无未授权切换；63 个 Skill body 共 679,008 bytes，其中重复 499,587 bytes；provider context/token/latency 不可见 |
+| Project dogfood baseline | 23 次 compaction 的结构字段恢复 100%，Continuation Cursor 累计恢复 66/68；第 7/8 次首动作不匹配和已确认事项重播累计各 2 次，第 9-23 次精确续接，整体趋势仍为 regressed；23 次 input routing 无未授权切换；80 个 Skill body 共 833,223 bytes，其中重复 653,802 bytes；provider context/token/latency 不可见 |
 | Autonomous progression | required/conditional/optional、bounded escalation、next-ready selector、unattended dispatcher 与 multi-Agent claim/lease/handoff 验收合同进入 revision 21；runtime 实现待 M2-M8；当前 provider-host multi-Agent 只计 shadow evidence |
-| Repository verification | 345 tests、0 failed、28 PostgreSQL live tests 因当前进程无 DSN 跳过；M2-06 定向 13/13；M2-05 的 330/330 PostgreSQL 18.4 live 基线保持有效；15 个 repository verifier 正反场景；Python compile、JSON/YAML、schema/projection、fixture privacy、documentation link/style、transcript admission 和 Gitea secret-scan checks 通过 |
+| Repository verification | 394 tests、0 failed、28 PostgreSQL live tests 因当前进程无 DSN 跳过；M2-07 定向 35/35；schema governance 9/9；M2-06 canary/benchmark 17/17；M2-05 的 330/330 PostgreSQL 18.4 live 基线保持有效；15 个 repository verifier 正反场景；Python compile、JSON/YAML、schema/projection、fixture privacy、documentation link/style、transcript admission 和 Gitea secret-scan checks 通过 |
 | Governance authority | `MASTER.md` |
 | Operational router | `STATUS.md` |
 

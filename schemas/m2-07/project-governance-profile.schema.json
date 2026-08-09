@@ -1,0 +1,500 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schemas/m2-07/project-governance-profile.schema.json",
+  "title": "Context Control Plane Project Governance Profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "profile",
+    "charters",
+    "work_sources",
+    "obligations",
+    "adaptations"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "context.project-governance-profile/v1alpha1"
+    },
+    "profile": {"$ref": "#/$defs/projectProfile"},
+    "charters": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/projectCharter"}
+    },
+    "work_sources": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/workSource"}
+    },
+    "obligations": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/workObligation"}
+    },
+    "adaptations": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/projectAdaptation"}
+    }
+  },
+  "$defs": {
+    "nonEmptyString": {"type": "string", "minLength": 1, "pattern": "\\S"},
+    "nullableString": {"type": ["string", "null"], "minLength": 1, "pattern": "\\S"},
+    "uint": {"type": "integer", "minimum": 0},
+    "positiveInteger": {"type": "integer", "minimum": 1},
+    "nullableUint": {
+      "oneOf": [{"type": "null"}, {"$ref": "#/$defs/uint"}]
+    },
+    "timestamp": {"type": "string", "format": "date-time"},
+    "nullableTimestamp": {
+      "oneOf": [{"type": "null"}, {"$ref": "#/$defs/timestamp"}]
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "semver": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"
+    },
+    "stringList": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/nonEmptyString"}
+    },
+    "projectProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile_id",
+        "project_id",
+        "revision",
+        "direction_state",
+        "governance_owner_mode",
+        "execution_worker_mode",
+        "repository_topology",
+        "requested_runtime_profile",
+        "task_sources",
+        "governance_ref",
+        "updated_at"
+      ],
+      "properties": {
+        "profile_id": {"$ref": "#/$defs/nonEmptyString"},
+        "project_id": {"$ref": "#/$defs/nonEmptyString"},
+        "revision": {"$ref": "#/$defs/uint"},
+        "direction_state": {
+          "enum": ["discovery", "governed", "operational"]
+        },
+        "governance_owner_mode": {
+          "enum": ["single-owner", "multi-owner"]
+        },
+        "execution_worker_mode": {
+          "enum": ["single-worker", "multi-worker"]
+        },
+        "repository_topology": {
+          "enum": ["modular", "monolith", "mixed"]
+        },
+        "requested_runtime_profile": {
+          "enum": [
+            "local-embedded",
+            "forge-coordinated",
+            "local-coordinator",
+            "shared-strong"
+          ]
+        },
+        "task_sources": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "master-workstream",
+              "issue-backed",
+              "state-native",
+              "external-pm"
+            ]
+          }
+        },
+        "governance_ref": {"$ref": "#/$defs/nonEmptyString"},
+        "updated_at": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "projectCharter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "charter_id",
+        "project_id",
+        "profile_id",
+        "status",
+        "problem_space",
+        "intended_users",
+        "confirmed_constraint_refs",
+        "prohibited_side_effects",
+        "current_evidence_refs",
+        "unknowns",
+        "assumptions",
+        "decision_owner_ref",
+        "discovery_campaign_id",
+        "attempt_budget",
+        "expiry",
+        "return_point_work_id",
+        "exit_criteria",
+        "mainline_authority",
+        "revision"
+      ],
+      "properties": {
+        "charter_id": {"$ref": "#/$defs/nonEmptyString"},
+        "project_id": {"$ref": "#/$defs/nonEmptyString"},
+        "profile_id": {"$ref": "#/$defs/nonEmptyString"},
+        "status": {"enum": ["candidate", "approved", "superseded"]},
+        "problem_space": {"$ref": "#/$defs/nonEmptyString"},
+        "intended_users": {
+          "allOf": [{"$ref": "#/$defs/stringList"}, {"minItems": 1}]
+        },
+        "confirmed_constraint_refs": {"$ref": "#/$defs/stringList"},
+        "prohibited_side_effects": {"$ref": "#/$defs/stringList"},
+        "current_evidence_refs": {"$ref": "#/$defs/stringList"},
+        "unknowns": {"$ref": "#/$defs/stringList"},
+        "assumptions": {"$ref": "#/$defs/stringList"},
+        "decision_owner_ref": {"$ref": "#/$defs/nonEmptyString"},
+        "discovery_campaign_id": {"$ref": "#/$defs/nonEmptyString"},
+        "attempt_budget": {"$ref": "#/$defs/positiveInteger"},
+        "expiry": {"$ref": "#/$defs/nullableTimestamp"},
+        "return_point_work_id": {"$ref": "#/$defs/nonEmptyString"},
+        "exit_criteria": {
+          "allOf": [{"$ref": "#/$defs/stringList"}, {"minItems": 1}]
+        },
+        "mainline_authority": {"type": "boolean"},
+        "revision": {"$ref": "#/$defs/uint"}
+      }
+    },
+    "workSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "work_source_id",
+        "project_id",
+        "work_id",
+        "source_kind",
+        "source_ref",
+        "source_revision",
+        "governance_parent_id",
+        "dependency_ids",
+        "readiness"
+      ],
+      "properties": {
+        "work_source_id": {"$ref": "#/$defs/nonEmptyString"},
+        "project_id": {"$ref": "#/$defs/nonEmptyString"},
+        "work_id": {"$ref": "#/$defs/nonEmptyString"},
+        "source_kind": {
+          "enum": [
+            "master-workstream",
+            "issue-backed",
+            "state-native",
+            "external-pm"
+          ]
+        },
+        "source_ref": {
+          "type": "string",
+          "pattern": "^opaque://[^\\s]+$"
+        },
+        "source_revision": {"$ref": "#/$defs/nonEmptyString"},
+        "governance_parent_id": {"$ref": "#/$defs/nonEmptyString"},
+        "dependency_ids": {"$ref": "#/$defs/stringList"},
+        "readiness": {
+          "enum": [
+            "proposed",
+            "blocked",
+            "ready",
+            "active",
+            "verifying",
+            "completed",
+            "rejected",
+            "superseded"
+          ]
+        }
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "ref"],
+      "properties": {
+        "kind": {"enum": ["project-governance", "task-source"]},
+        "ref": {"$ref": "#/$defs/nonEmptyString"}
+      }
+    },
+    "workObligation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "obligation_id",
+        "work_id",
+        "mode",
+        "condition_ref",
+        "authority",
+        "automation_class",
+        "verification_profile_ref",
+        "evidence_refs",
+        "expires_at",
+        "status",
+        "revision"
+      ],
+      "properties": {
+        "obligation_id": {"$ref": "#/$defs/nonEmptyString"},
+        "work_id": {"$ref": "#/$defs/nonEmptyString"},
+        "mode": {"enum": ["required", "conditional", "optional"]},
+        "condition_ref": {"$ref": "#/$defs/nullableString"},
+        "authority": {"$ref": "#/$defs/authority"},
+        "automation_class": {
+          "enum": ["autonomous", "approval-gated", "manual"]
+        },
+        "verification_profile_ref": {"$ref": "#/$defs/nonEmptyString"},
+        "evidence_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^(?:evidence|approval)://[^\\s]+$"
+          }
+        },
+        "expires_at": {"$ref": "#/$defs/nullableTimestamp"},
+        "status": {"enum": ["pending", "satisfied", "waived", "expired"]},
+        "revision": {"$ref": "#/$defs/uint"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"const": "satisfied"}}},
+          "then": {
+            "properties": {
+              "evidence_refs": {
+                "minItems": 1,
+                "contains": {"pattern": "^evidence://[^\\s]+$"}
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"status": {"const": "waived"}}},
+          "then": {
+            "properties": {
+              "evidence_refs": {
+                "minItems": 1,
+                "contains": {"pattern": "^approval://[^\\s]+$"}
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"status": {"const": "expired"}}},
+          "then": {"properties": {"expires_at": {"$ref": "#/$defs/timestamp"}}}
+        }
+      ]
+    },
+    "applicability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "ref"],
+      "properties": {
+        "kind": {
+          "enum": ["project", "user", "repo", "path", "operation", "provider"]
+        },
+        "ref": {"$ref": "#/$defs/nonEmptyString"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"kind": {"const": "user"}}},
+          "then": {"properties": {"ref": {"pattern": "^user://[^\\s]+$"}}}
+        },
+        {
+          "if": {"properties": {"kind": {"const": "provider"}}},
+          "then": {"properties": {"ref": {"pattern": "^provider://[^\\s]+$"}}}
+        },
+        {
+          "if": {"properties": {"kind": {"const": "repo"}}},
+          "then": {"properties": {"ref": {"pattern": "^repo://[^\\s]+$"}}}
+        },
+        {
+          "if": {"properties": {"kind": {"const": "path"}}},
+          "then": {"properties": {"ref": {"pattern": "^path://[^\\s]+$"}}}
+        },
+        {
+          "if": {"properties": {"kind": {"const": "operation"}}},
+          "then": {"properties": {"ref": {"pattern": "^operation://[^\\s]+$"}}}
+        }
+      ]
+    },
+    "adaptationChanges": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "retrieval_order",
+        "common_path_refs",
+        "common_command_refs",
+        "verification_hint_refs",
+        "skill_applicability",
+        "presentation_preferences"
+      ],
+      "properties": {
+        "retrieval_order": {"$ref": "#/$defs/stringList"},
+        "common_path_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^path://[^\\s]+$"
+          }
+        },
+        "common_command_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^command://[^\\s]+$"
+          }
+        },
+        "verification_hint_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^verification://[^\\s]+$"
+          }
+        },
+        "skill_applicability": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^skill://[^\\s]+$"
+          }
+        },
+        "presentation_preferences": {
+          "type": "object",
+          "propertyNames": {
+            "enum": [
+              "language",
+              "progress_reporting",
+              "response_density",
+              "response_format",
+              "verbosity"
+            ]
+          },
+          "additionalProperties": {"$ref": "#/$defs/nonEmptyString"}
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bytes_read",
+        "bytes_emitted",
+        "repeated_read_bytes",
+        "verification_failures"
+      ],
+      "properties": {
+        "bytes_read": {"$ref": "#/$defs/uint"},
+        "bytes_emitted": {"$ref": "#/$defs/uint"},
+        "repeated_read_bytes": {"$ref": "#/$defs/uint"},
+        "verification_failures": {"$ref": "#/$defs/uint"}
+      }
+    },
+    "safetyVetoResults": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["E1", "E2", "E4", "E6", "E8", "E9"],
+      "properties": {
+        "E1": {"type": "boolean"},
+        "E2": {"type": "boolean"},
+        "E4": {"type": "boolean"},
+        "E6": {"type": "boolean"},
+        "E8": {"type": "boolean"},
+        "E9": {"type": "boolean"}
+      }
+    },
+    "projectAdaptation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adaptation_id",
+        "profile_id",
+        "version",
+        "proposal_revision",
+        "content_sha256",
+        "scope",
+        "inputs",
+        "applicability",
+        "changes",
+        "metrics_before",
+        "metrics_after",
+        "safety_veto_results",
+        "replay_receipts",
+        "expiry",
+        "rollback_to",
+        "status",
+        "approval_round",
+        "approval_ref",
+        "approved_at",
+        "activation_revision"
+      ],
+      "properties": {
+        "adaptation_id": {"$ref": "#/$defs/nonEmptyString"},
+        "profile_id": {"$ref": "#/$defs/nonEmptyString"},
+        "version": {"$ref": "#/$defs/semver"},
+        "proposal_revision": {"$ref": "#/$defs/positiveInteger"},
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "scope": {"enum": ["project", "user", "provider-adapter"]},
+        "inputs": {
+          "allOf": [{"$ref": "#/$defs/stringList"}, {"minItems": 1}]
+        },
+        "applicability": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/applicability"}
+        },
+        "changes": {"$ref": "#/$defs/adaptationChanges"},
+        "metrics_before": {"$ref": "#/$defs/metrics"},
+        "metrics_after": {"$ref": "#/$defs/metrics"},
+        "safety_veto_results": {"$ref": "#/$defs/safetyVetoResults"},
+        "replay_receipts": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^artifact://sha256/[0-9a-f]{64}$"
+          }
+        },
+        "expiry": {"$ref": "#/$defs/nullableTimestamp"},
+        "rollback_to": {
+          "oneOf": [{"type": "null"}, {"$ref": "#/$defs/semver"}]
+        },
+        "status": {
+          "enum": [
+            "candidate",
+            "shadow",
+            "approved",
+            "active",
+            "quarantined",
+            "rejected",
+            "superseded"
+          ]
+        },
+        "approval_round": {"$ref": "#/$defs/uint"},
+        "approval_ref": {
+          "oneOf": [
+            {"type": "null"},
+            {"type": "string", "pattern": "^approval://[^\\s]+$"}
+          ]
+        },
+        "approved_at": {"$ref": "#/$defs/nullableTimestamp"},
+        "activation_revision": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "#/$defs/positiveInteger"}
+          ]
+        }
+      }
+    }
+  }
+}

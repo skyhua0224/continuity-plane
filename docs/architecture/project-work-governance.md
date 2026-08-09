@@ -1,16 +1,16 @@
 # Project Work Governance
 
-版本：1  
+版本：2  
 日期：2026-08-09  
 状态：current architecture contract
 
 ```yaml
 document_id: context.project-work-governance
-document_revision: 1
-change_type: decision
-authority_ref: explicit-user-collaboration-governance-2026-08-09
-supersedes: null
-affected_tasks: [M1-05, M2-01, M2-07, M3-04, M8-02, M9-02, M10-01]
+document_revision: 2
+change_type: schema
+authority_ref: M2-07-project-governance-profile-acceptance
+supersedes: 1
+affected_tasks: [M1-05, M2-01, M2-07, M3-04, M8-02, M8-07, M9-02, M10-01]
 next_review: null
 ```
 
@@ -39,6 +39,7 @@ governance_owner_mode: single-owner | multi-owner
 execution_worker_mode: single-worker | multi-worker
 repository_topology: modular | monolith | mixed
 task_sources: [master-workstream | issue-backed | state-native | external-pm]
+requested_runtime_profile: local-embedded | forge-coordinated | local-coordinator | shared-strong
 ```
 
 `governance_owner_mode` 决定 MASTER、promotion 和高风险决定的批准策略。`execution_worker_mode` 决定 claim、lease、path ownership 和并发冲突门。两个字段独立：单人治理项目可以同时运行多个 AI 或临时协作者；多人治理项目也可以在某个阶段只允许一个执行 worker。
@@ -46,6 +47,10 @@ task_sources: [master-workstream | issue-backed | state-native | external-pm]
 `repository_topology` 只选择 scope resolver，不改变协作协议或权限。模块化仓库可以优先使用 module 与 capability ownership；非模块化或混合仓库使用 repo、directory、file、symbol、capability 与 effect scope。模块边界不构成准入条件。初始化器从当前目录、build graph、符号索引和项目 Profile 生成候选 scope，owner 批准后才能进入 claim。
 
 单人到团队的迁移保持同一 Project、Work、Event、Claim 和 Evidence schema。迁移只增加 owner、approval、lease、tenant/project isolation 和 task-source adapter 配置。
+
+`requested_runtime_profile` 只声明部署意图，不授予一致性、共享、claim、lease 或离线写保证。实际运行保证只能来自 M2-08 StateStore capability manifest，并由 State MCP receipt 暴露；M10-09 在 profile 激活时校验请求模式与 adapter manifest。默认值为 `local-embedded`；Git forge、PostgreSQL 和本地协调器按项目条件显式启用，不改变 Project、Work、Event 或 Evidence 的 core schema。
+
+Project Profile、Project Charter 和 Work obligation 的 `revision` 分别属于各对象的 monotonic revision domain，不构成父子全局序号。只有字段合同显式引用 `profile.revision` 的 proposal、activation、CAS 或 claim 才与 Profile revision 比较。跨对象一致性由 State MCP expected revision、Event 和 validator 提交门建立。
 
 ## Direction Lifecycle
 
@@ -78,6 +83,18 @@ readiness: proposed | blocked | ready | active | verifying | completed | rejecte
 Issue provider 负责同步 Issue 标题、正文、标签、外部状态和 source revision。Typed State 负责 active、claim、lease、path owner、effect authorization、verification 和 completion。禁止把完整 Issue backlog 复制进 MASTER；MASTER 只引用相关 Workstream、治理决定和完成门。
 
 外部来源更新使用 expected source revision。Issue 关闭、PR merge 或 commit 出现只形成 completion candidate；项目 Verification Profile 和 evidence gate 通过后才能提交 completed state。
+
+Work obligation 的 terminal status 必须保留裁决依据：`satisfied` 至少引用一个 `evidence://`，`waived` 至少引用一个 `approval://`，`expired` 绑定已到期的 `expires_at`。Typed State 或 Event 中缺少这些依据时，unattended dispatcher 不能把 Work 判定为完成。
+
+## Project Adaptation
+
+ProjectAdaptation 保存项目、用户或 provider adapter 范围的候选优化。可变生命周期字段与内容字段分离；内容 hash 绑定 profile、SemVer 2.0.0 version、proposal revision、scope、inputs、applicability 和 changes。path、repo、operation、user 与 provider applicability 使用对应 typed ref；候选只能修改 retrieval order、typed path/command/verification refs、Skill applicability 和允许的 presentation preference。authority、active task、claim、gate、retention 和副作用权限不在适应范围内。
+
+`proposal_revision` 记录候选产生时已存在的 profile revision。`activation_revision` 记录 promotion 提交生效的 profile revision；active 和 superseded snapshot 必须满足 `proposal_revision < activation_revision <= profile.revision`。后续 profile revision 不改变已激活对象的 activation provenance。
+
+`rollback_to` 引用同一 normalized scope/applicability lane 中更早且曾激活的 SemVer。该引用只提供历史内容来源，不直接授予激活权限。每次 rollback 都生成新的 candidate，并重新执行 replay receipt、current safety veto、approval、expiry 和 activation revision gate。过期或已 quarantine 的历史版本不能绕过新 candidate 的 current gates。
+
+Liveness validator 使用调用方注入的 `observed_at` 检查 profile、charter、obligation、approval 和 adaptation expiry。只有 State MCP 或授权 host adapter 提供的受信时钟可形成完成门证据；provider、Skill、聊天输入和 ProjectAdaptation 自带时间的直接调用结果保持 candidate，状态提交权限为 0。
 
 ## 并行激活
 

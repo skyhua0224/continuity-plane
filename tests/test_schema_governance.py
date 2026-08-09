@@ -70,6 +70,40 @@ class SchemaGovernanceTests(unittest.TestCase):
             replay_passed=True,
         )
 
+    def test_semver_rejects_invalid_numeric_and_empty_prerelease_identifiers(self):
+        for invalid in ("1.0.0-01", "1.0.0-a..b", "1.0.0-.a"):
+            with self.subTest(version=invalid), self.assertRaises(
+                SchemaGovernanceError
+            ):
+                validate_version_transition(
+                    invalid,
+                    "1.0.0",
+                    change_kind="metadata",
+                    replay_passed=True,
+                )
+
+    def test_prerelease_transitions_follow_semver_precedence(self):
+        for previous, current in (
+            ("1.0.0-alpha.1", "1.0.0-alpha.2"),
+            ("1.0.0-alpha.2", "1.0.0-beta.1"),
+            ("1.0.0-beta.1", "1.0.0"),
+        ):
+            with self.subTest(previous=previous, current=current):
+                validate_version_transition(
+                    previous,
+                    current,
+                    change_kind="metadata",
+                    replay_passed=True,
+                )
+
+        with self.assertRaises(SchemaGovernanceError):
+            validate_version_transition(
+                "1.0.0-beta.1",
+                "1.0.0-alpha.2",
+                change_kind="metadata",
+                replay_passed=True,
+            )
+
     def test_breaking_change_requires_migration_rollback_and_replay(self):
         requirements = {
             "change_kind": "breaking",
