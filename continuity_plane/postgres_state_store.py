@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +16,7 @@ from psycopg.types.json import Jsonb
 
 from .state_store import (
     StateStoreCapabilityManifest,
+    StateStoreBusy,
     StateStoreConflict,
     StateStoreError,
     StateStoreIntegrityError,
@@ -42,6 +44,10 @@ class PostgresStateConflict(PostgresStateStoreError, StateStoreConflict):
 
 class PostgresStateNotFound(PostgresStateStoreError, StateStoreNotFound):
     """Raised when a project does not exist."""
+
+
+class PostgresStateBusy(PostgresStateStoreError, StateStoreBusy):
+    """Raised when PostgreSQL is temporarily unreachable or unavailable."""
 
 
 class PostgresStateIntegrityError(PostgresStateStoreError, StateStoreIntegrityError):
@@ -99,8 +105,13 @@ class PostgresStateStore:
             raise ValueError("dsn must be a non-empty string")
         self._dsn = dsn
 
-    def _connect(self) -> psycopg.Connection:
-        return psycopg.connect(self._dsn, row_factory=dict_row)
+    @contextmanager
+    def _connect(self):
+        try:
+            with psycopg.connect(self._dsn, row_factory=dict_row) as connection:
+                yield connection
+        except psycopg.OperationalError as exc:
+            raise PostgresStateBusy("PostgreSQL state store is unavailable") from exc
 
     def initialize(self) -> None:
         migration = _MIGRATION_PATH.read_text(encoding="utf-8")
