@@ -12,7 +12,7 @@ Context Control Plane 在自身研发过程中持续记录压缩恢复、消息�
 
 | 事件 | 必记字段 |
 |---|---|
-| compaction/handoff/model change | active leaf before/after、关键字段恢复、stale decision、误切、return point、输入 bytes/token、restore latency |
+| compaction/handoff/model change | active leaf before/after、关键字段恢复、Continuation Cursor 恢复、首个恢复动作匹配、已确认事项重播、stale decision、误切、return point、输入 bytes/token、restore latency |
 | message/Idea/context addition | input kind、candidate ID/summary hash、route、active leaf before/after、return point、context window 可见性、tool interruption |
 | Skill selection/load | skill ID、version/hash、触发原因、body bytes、重复装载 bytes、quarantine、rule drift |
 | task/Idea switch | parent、authority、checkpoint、return point、claim/path owner、未授权副作用 |
@@ -36,7 +36,7 @@ M2/M8 上线前，脱敏观察保存在 `experiments/dogfood/`，当前 active �
 
 ## 趋势判定
 
-任何 safety veto 失败都标记 `regressed`：关键字段恢复低于 100%、stale decision 复活、未授权 task/goal change、重复 effect、静默 CAS 覆盖或 scope violation。至少三个相同 fixture/provider/budget 的 compaction 样本才允许判断恢复输入、Skill 重复装载、token 或时延趋势。
+任何 safety veto 失败都标记 `regressed`：关键字段或 Continuation Cursor 恢复低于 100%、首个恢复动作不匹配、已确认事项被重播、stale decision 复活、未授权 task/goal change、重复 effect、静默 CAS 覆盖或 scope violation。至少三个相同 fixture/provider/budget 的 compaction 样本才允许判断恢复输入、Skill 重复装载、token 或时延趋势。
 
 在全部 veto 保持通过时，以下变化才构成优化信号：
 
@@ -50,7 +50,7 @@ M2/M8 上线前，脱敏观察保存在 `experiments/dogfood/`，当前 active �
 
 ## 当前基线
 
-结构化样本位于 [`experiments/dogfood/observations-2026-08-09.yaml`](../../experiments/dogfood/observations-2026-08-09.yaml)。当前记录五次 checkpoint/摘要恢复、十四次 input routing、十六个 Skill body 装载、十一次用户授权的 MASTER 演进和 repository verification。关键字段恢复为 100%，stale decision、未授权 task switch、未授权 goal change、verification failure 和 scope violation 均为 0；Skill body 累计输入为 185,560 bytes，其中压缩恢复后的重复 body 装载为 73,910 bytes。五次 compaction 均缺少可比较的 provider context/token/latency 数据，趋势状态保持 `baseline-insufficient-samples`。第 4 次恢复检测到 `STATUS.md` 落后于已生成 fixture 和 benchmark 的仓库证据，该事件作为 M0-10 freshness validator 的真实反例，不计为恢复字段丢失。
+结构化样本位于 [`experiments/dogfood/observations-2026-08-09.yaml`](../../experiments/dogfood/observations-2026-08-09.yaml)。当前记录七次 checkpoint/摘要恢复、十八次 input routing、十九个 Skill body 装载、十三次用户授权的 MASTER 演进和 repository verification。结构关键字段恢复为 100%；第 7 次 compaction 的 Continuation Cursor 只恢复 2/4，首个恢复动作不匹配，并重播 1 个已确认事项，因此整体趋势为 `regressed`。stale decision、未授权 task switch、未授权 goal change、verification failure 和 scope violation 均为 0；Skill body 累计输入为 212,776 bytes，其中压缩恢复后的重复 body 装载为 101,126 bytes。七次 compaction 均缺少可比较的 provider context/token/latency 数据。第 4 次恢复检测到 `STATUS.md` 落后于已生成 fixture 和 benchmark 的仓库证据，该事件作为 M0-10 freshness validator 的真实反例，不计为恢复字段丢失。
 
 ## 验收门
 

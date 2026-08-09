@@ -3,7 +3,7 @@
 版本：1  
 日期：2026-08-09  
 状态：current architecture contract  
-governance authority：`MASTER.md` revision 16
+governance authority：`MASTER.md` revision 17
 
 ## 三文档默认投影
 
@@ -23,13 +23,13 @@ Context Control Plane 安装到个人项目、协作项目或公开大型项目�
 
 | Slot | Module | 权限与功能 | Backend | 交付阶段 |
 |---|---|---|---|---|
-| `context.state` | `typed-state-store` | Task、Idea、Decision、Evidence、Blocker、Effect、Checkpoint 权威机器状态 | PostgreSQL | M2 |
+| `context.state` | `typed-state-store` | Project、Work、Claim、Idea、Decision、Constraint、Evidence、Blocker、Effect 与 Checkpoint 权威机器状态 | PostgreSQL | M2 |
 | `context.events` | `hash-chained-event-log` | 追加式事件、revision、supersedes、replay high watermark | PostgreSQL + artifact manifest | M2 |
 | `context.work-coordination` | `shared-work-ledger` | 项目级 active work set、claim/lease、repo/path/symbol/capability/effect ownership、重复工作检测和冲突恢复；支持 modular、monolith 与 mixed topology | Typed State + State MCP + source adapters | M2/M3/M8 |
 | `context.task-routing` | `sticky-task-router` | 识别 continue、child、interrupt、switch、correction；副作用受 active/claim/path-owner 一致性门控制 | deterministic rules + bounded classifier | M3 |
 | `context.workflow` | `durable-execution` | checkpoint、重试、幂等、lease、长流程恢复 | DBOS；团队阶段 Temporal | M8 |
 | `context.skill-resolution` | `versioned-skill-registry` | Skill manifest、rule IDs、hash、依赖、冲突、失效和 quarantine | Git + PostgreSQL metadata | M4 |
-| `context.composition` | `execution-packet-composer` | 组装当前任务、当前 Skill 和当前 evidence 的有界执行包 | State MCP + artifact store | M5 |
+| `context.composition` | `execution-packet-composer` | 组装当前任务、当前 Skill、当前 evidence 与 Continuation Cursor 的有界执行包 | State MCP + artifact store | M5 |
 | `context.replay` | `checkpoint-canary-validator` | 压缩、切任务、换模型、崩溃后的确定性恢复门 | deterministic validator | M1/M5 |
 | `context.evidence` | `assertion-resolver` | 当前代码、标准、OS/软件官方文档的 version、validity 和 provenance | Git metadata、artifact store、`rg`、LSP、SCIP、RTFM | M6/M7 |
 | `context.code-intelligence` | `bounded-code-retrieval` | 精确搜索、受影响图、跨仓线索和 index freshness | `rg`、Zoekt、LSP、SCIP、CodeGraph | M6 |

@@ -1,0 +1,331 @@
+schema_version: context.typed-state-fixtures/v1alpha1
+generated_at: "2026-08-09T23:30:00+08:00"
+cases:
+  - case_id: solo-active-work
+    document:
+      schema_version: context.typed-state/v1alpha1
+      project:
+        project_id: project-solo
+        revision: 7
+        governance_ref: artifact://governance/master@revision-16
+        active_work_ids: [work-solo]
+        primary_work_id: work-solo
+        current_decision_ids: [decision-solo]
+        active_constraint_ids: [constraint-solo]
+        open_blocker_ids: []
+        effect_high_watermark: 0
+        updated_at: "2026-08-09T09:15:00+08:00"
+      works:
+        - work_id: work-solo
+          kind: work
+          title: Implement the typed state contract
+          status: active
+          parent_work_id: null
+          dependency_ids: []
+          owner_refs: [actor-owner]
+          scope_refs:
+            - {scope_kind: file, scope_ref: src/core.py}
+          overlap_candidate_ids: []
+          dedupe_status: clear
+          supersedes_work_id: null
+          evidence_ids: [evidence-solo]
+          blocker_ids: []
+          revision: 3
+      claims:
+        - claim_id: claim-solo
+          work_id: work-solo
+          actor_ref: actor-owner
+          status: active
+          expected_project_revision: 7
+          claimed_at: "2026-08-09T09:00:00+08:00"
+          lease_expires_at: "2026-08-09T11:00:00+08:00"
+          released_at: null
+          scope_owners:
+            - {scope_kind: file, scope_ref: src/core.py}
+      ideas:
+        - idea_id: idea-later
+          parent_work_id: work-solo
+          source_ref: opaque://input/idea-later
+          summary: Add a future presentation adapter.
+          status: parked
+          return_work_id: work-solo
+          expiry: null
+          attempt_budget: null
+          promotion_target: M9
+          evidence_ids: []
+      decisions:
+        - decision_id: decision-solo
+          work_id: work-solo
+          status: accepted
+          statement: Typed state remains provider-neutral.
+          decided_at: "2026-08-09T08:50:00+08:00"
+          supersedes_decision_id: null
+          evidence_ids: [evidence-solo]
+      constraints:
+        - constraint_id: constraint-solo
+          status: active
+          statement: Provider session identifiers cannot become state authority.
+          scope_work_ids: [work-solo]
+          expires_at: null
+          supersedes_constraint_id: null
+          evidence_ids: [evidence-solo]
+      evidence:
+        - evidence_id: evidence-solo
+          kind: user-decision
+          artifact_ref: artifact://fixture/solo-governance
+          content_sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          validity: verified
+          observed_at: "2026-08-09T08:45:00+08:00"
+          verified_at: "2026-08-09T08:50:00+08:00"
+      blockers: []
+      effects:
+        - effect_id: effect-solo
+          effect_key: effect-key-solo
+          work_id: work-solo
+          claim_id: claim-solo
+          status: authorized
+          operation: write-state-schema
+          scope_ref: {scope_kind: file, scope_ref: src/core.py}
+          expected_project_revision: 7
+          sequence_no: 1
+          evidence_ids: [evidence-solo]
+          result_ref: null
+          requested_at: "2026-08-09T09:10:00+08:00"
+          completed_at: null
+
+  - case_id: multi-worker-disjoint-scopes
+    document:
+      schema_version: context.typed-state/v1alpha1
+      project:
+        project_id: project-team
+        revision: 11
+        governance_ref: artifact://governance/master@revision-16
+        active_work_ids: [work-network, work-ui]
+        primary_work_id: work-network
+        current_decision_ids: []
+        active_constraint_ids: []
+        open_blocker_ids: []
+        effect_high_watermark: 0
+        updated_at: "2026-08-09T10:00:00+08:00"
+      works:
+        - work_id: work-network
+          kind: work
+          title: Implement network contract
+          status: active
+          parent_work_id: null
+          dependency_ids: []
+          owner_refs: [actor-network]
+          scope_refs:
+            - {scope_kind: directory, scope_ref: src/network}
+          overlap_candidate_ids: []
+          dedupe_status: clear
+          supersedes_work_id: null
+          evidence_ids: []
+          blocker_ids: []
+          revision: 1
+        - work_id: work-ui
+          kind: work
+          title: Implement console projection
+          status: active
+          parent_work_id: null
+          dependency_ids: []
+          owner_refs: [actor-ui]
+          scope_refs:
+            - {scope_kind: directory, scope_ref: src/ui}
+          overlap_candidate_ids: []
+          dedupe_status: clear
+          supersedes_work_id: null
+          evidence_ids: []
+          blocker_ids: []
+          revision: 1
+      claims:
+        - claim_id: claim-network
+          work_id: work-network
+          actor_ref: actor-network
+          status: active
+          expected_project_revision: 11
+          claimed_at: "2026-08-09T09:30:00+08:00"
+          lease_expires_at: "2026-08-09T12:30:00+08:00"
+          released_at: null
+          scope_owners:
+            - {scope_kind: directory, scope_ref: src/network}
+        - claim_id: claim-ui
+          work_id: work-ui
+          actor_ref: actor-ui
+          status: active
+          expected_project_revision: 11
+          claimed_at: "2026-08-09T09:31:00+08:00"
+          lease_expires_at: "2026-08-09T12:31:00+08:00"
+          released_at: null
+          scope_owners:
+            - {scope_kind: directory, scope_ref: src/ui}
+      ideas: []
+      decisions: []
+      constraints: []
+      evidence: []
+      blockers: []
+      effects: []
+
+  - case_id: completed-work-overlap-blocked
+    document:
+      schema_version: context.typed-state/v1alpha1
+      project:
+        project_id: project-dedupe
+        revision: 14
+        governance_ref: artifact://governance/master@revision-16
+        active_work_ids: []
+        primary_work_id: null
+        current_decision_ids: []
+        active_constraint_ids: []
+        open_blocker_ids: [blocker-duplicate]
+        effect_high_watermark: 0
+        updated_at: "2026-08-09T11:00:00+08:00"
+      works:
+        - work_id: work-existing
+          kind: work
+          title: Add the shared registry
+          status: completed
+          parent_work_id: null
+          dependency_ids: []
+          owner_refs: [actor-first]
+          scope_refs:
+            - {scope_kind: file, scope_ref: src/registry.py}
+          overlap_candidate_ids: []
+          dedupe_status: clear
+          supersedes_work_id: null
+          evidence_ids: [evidence-done]
+          blocker_ids: []
+          revision: 5
+        - work_id: work-repeat
+          kind: work
+          title: Add another shared registry
+          status: proposed
+          parent_work_id: null
+          dependency_ids: []
+          owner_refs: [actor-second]
+          scope_refs:
+            - {scope_kind: file, scope_ref: src/registry.py}
+          overlap_candidate_ids: [work-existing]
+          dedupe_status: blocked
+          supersedes_work_id: null
+          evidence_ids: []
+          blocker_ids: [blocker-duplicate]
+          revision: 1
+      claims: []
+      ideas: []
+      decisions: []
+      constraints: []
+      evidence:
+        - evidence_id: evidence-done
+          kind: test
+          artifact_ref: artifact://fixture/completed-registry-test
+          content_sha256: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+          validity: verified
+          observed_at: "2026-08-09T10:30:00+08:00"
+          verified_at: "2026-08-09T10:31:00+08:00"
+      blockers:
+        - blocker_id: blocker-duplicate
+          status: open
+          reason: Proposed work overlaps a completed work item.
+          blocked_work_ids: [work-repeat]
+          evidence_ids: [evidence-done]
+          opened_at: "2026-08-09T10:59:00+08:00"
+          resolved_at: null
+          supersedes_blocker_id: null
+      effects: []
+
+  - case_id: superseded-decision-and-constraint
+    document:
+      schema_version: context.typed-state/v1alpha1
+      project:
+        project_id: project-supersedes
+        revision: 22
+        governance_ref: artifact://governance/master@revision-16
+        active_work_ids: [work-current]
+        primary_work_id: work-current
+        current_decision_ids: [decision-current]
+        active_constraint_ids: [constraint-current]
+        open_blocker_ids: []
+        effect_high_watermark: 1
+        updated_at: "2026-08-09T12:00:00+08:00"
+      works:
+        - work_id: work-current
+          kind: work
+          title: Preserve current authority after correction
+          status: active
+          parent_work_id: null
+          dependency_ids: []
+          owner_refs: [actor-current]
+          scope_refs:
+            - {scope_kind: capability, scope_ref: typed-state}
+          overlap_candidate_ids: []
+          dedupe_status: clear
+          supersedes_work_id: null
+          evidence_ids: [evidence-current]
+          blocker_ids: []
+          revision: 4
+      claims:
+        - claim_id: claim-current
+          work_id: work-current
+          actor_ref: actor-current
+          status: active
+          expected_project_revision: 22
+          claimed_at: "2026-08-09T11:00:00+08:00"
+          lease_expires_at: "2026-08-09T14:00:00+08:00"
+          released_at: null
+          scope_owners:
+            - {scope_kind: capability, scope_ref: typed-state}
+      ideas: []
+      decisions:
+        - decision_id: decision-old
+          work_id: work-current
+          status: reverted
+          statement: Provider-local task state is authoritative.
+          decided_at: "2026-08-09T10:00:00+08:00"
+          supersedes_decision_id: null
+          evidence_ids: [evidence-current]
+        - decision_id: decision-current
+          work_id: work-current
+          status: accepted
+          statement: Revisioned typed state is authoritative.
+          decided_at: "2026-08-09T10:30:00+08:00"
+          supersedes_decision_id: decision-old
+          evidence_ids: [evidence-current]
+      constraints:
+        - constraint_id: constraint-old
+          status: superseded
+          statement: A module boundary is required for collaboration.
+          scope_work_ids: [work-current]
+          expires_at: null
+          supersedes_constraint_id: null
+          evidence_ids: [evidence-current]
+        - constraint_id: constraint-current
+          status: active
+          statement: Repository topology cannot change the core protocol.
+          scope_work_ids: [work-current]
+          expires_at: null
+          supersedes_constraint_id: constraint-old
+          evidence_ids: [evidence-current]
+      evidence:
+        - evidence_id: evidence-current
+          kind: user-decision
+          artifact_ref: artifact://fixture/current-governance
+          content_sha256: cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+          validity: verified
+          observed_at: "2026-08-09T10:25:00+08:00"
+          verified_at: "2026-08-09T10:30:00+08:00"
+      blockers: []
+      effects:
+        - effect_id: effect-complete
+          effect_key: effect-key-complete
+          work_id: work-current
+          claim_id: claim-current
+          status: succeeded
+          operation: record-correction
+          scope_ref: {scope_kind: capability, scope_ref: typed-state}
+          expected_project_revision: 21
+          sequence_no: 1
+          evidence_ids: [evidence-current]
+          result_ref: artifact://fixture/correction-result
+          requested_at: "2026-08-09T10:29:00+08:00"
+          completed_at: "2026-08-09T10:30:00+08:00"
