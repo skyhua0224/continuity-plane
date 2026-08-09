@@ -89,6 +89,25 @@ class RepositoryVerificationCliTests(unittest.TestCase):
             commands,
         )
 
+    def test_ci_provisions_pinned_postgres_for_m2_03_integration(self):
+        root = Path(__file__).parents[1]
+        workflow = yaml.safe_load(
+            (root / ".gitea" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        )
+        job = workflow["jobs"]["repository-verification"]
+        service = job["services"]["postgres"]
+
+        self.assertEqual(
+            service["image"],
+            "postgres:18.4-alpine@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15",
+        )
+        self.assertEqual(service["env"]["POSTGRES_HOST_AUTH_METHOD"], "trust")
+        self.assertEqual(service["ports"], ["5432:5432"])
+        self.assertEqual(
+            job["env"]["CONTEXT_TEST_POSTGRES_DSN"],
+            "postgresql://context_test@127.0.0.1:5432/context_test",
+        )
+
     def test_clean_repository_passes_all_gates(self):
         script = Path(__file__).parents[1] / "tools" / "verify_repository.py"
         with tempfile.TemporaryDirectory() as directory:

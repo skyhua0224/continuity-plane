@@ -9,6 +9,22 @@ on:
 jobs:
   repository-verification:
     runs-on: ubuntu-latest
+    env:
+      CONTEXT_TEST_POSTGRES_DSN: postgresql://context_test@127.0.0.1:5432/context_test
+    services:
+      postgres:
+        image: postgres:18.4-alpine@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_USER: context_test
+          POSTGRES_DB: context_test
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd "pg_isready -U context_test -d context_test"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 15
     steps:
       - uses: actions/checkout@v4
       - name: Set up isolated Python
