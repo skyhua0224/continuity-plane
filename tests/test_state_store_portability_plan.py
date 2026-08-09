@@ -71,7 +71,7 @@ class StateStorePortabilityPlanTests(unittest.TestCase):
         m209 = next(line for line in self.master.splitlines() if "| M2-09 |" in line)
         self.assertIn("✅", m203)
         self.assertIn("✅", m208)
-        self.assertIn("🟡", m209)
+        self.assertIn("🧑‍💻", m209)
 
     def test_profiles_are_not_user_editions_and_self_dogfood_is_primary(self):
         self.assertIn("capability profiles are not user editions", self.target_state)
@@ -79,25 +79,36 @@ class StateStorePortabilityPlanTests(unittest.TestCase):
         self.assertIn("| M10-00 |", self.master)
         self.assertIn("Context Control Plane self-dogfood", self.master)
 
-    def test_m2_08_independent_review_authorizes_sqlite_activation(self):
-        acceptance_path = (
+    def test_m2_09_linux_acceptance_routes_to_m2_04_and_preserves_platform_gates(self):
+        spi_acceptance_path = (
             self.root
             / "docs"
             / "migrations"
             / "m2-08-state-store-spi-acceptance-2026-08-10.md"
         )
+        sqlite_acceptance_path = (
+            self.root
+            / "docs"
+            / "migrations"
+            / "m2-09-sqlite-state-store-acceptance-2026-08-10.md"
+        )
+        m204 = next(line for line in self.master.splitlines() if "| M2-04 |" in line)
         m208 = next(line for line in self.master.splitlines() if "| M2-08 |" in line)
         m209 = next(line for line in self.master.splitlines() if "| M2-09 |" in line)
 
-        self.assertTrue(acceptance_path.exists())
-        acceptance = acceptance_path.read_text(encoding="utf-8")
+        self.assertTrue(spi_acceptance_path.exists())
+        self.assertTrue(sqlite_acceptance_path.exists())
+        spi_acceptance = spi_acceptance_path.read_text(encoding="utf-8")
+        sqlite_acceptance = sqlite_acceptance_path.read_text(encoding="utf-8")
+        self.assertIn("🟡", m204)
         self.assertIn("✅", m208)
-        self.assertIn("🟡", m209)
-        self.assertIn("High 0, Medium 0", acceptance)
-        self.assertIn("版本：revision 23", self.master)
-        self.assertIn("版本：revision 23", self.status)
-        self.assertIn("active work | M2-09", self.status)
-        self.assertIn("governance authority：`MASTER.md` revision 23", self.target_state)
+        self.assertIn("🧑‍💻", m209)
+        self.assertIn("High 0, Medium 0", spi_acceptance)
+        self.assertIn("Windows and macOS remain blocked", sqlite_acceptance)
+        self.assertIn("版本：revision 24", self.master)
+        self.assertIn("版本：revision 24", self.status)
+        self.assertIn("active work | M2-04", self.status)
+        self.assertIn("governance authority：`MASTER.md` revision 24", self.target_state)
 
 
 if __name__ == "__main__":

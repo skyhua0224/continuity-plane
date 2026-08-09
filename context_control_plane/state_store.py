@@ -37,6 +37,10 @@ class StateStoreIntegrityError(StateStoreError):
     """Raised when persisted or proposed state violates integrity rules."""
 
 
+class StateStoreBusy(StateStoreError):
+    """Raised when a transient backend lock prevents an operation."""
+
+
 @dataclass(frozen=True)
 class StateStoreCapabilityManifest:
     """Versioned guarantees declared by one state-store adapter."""
