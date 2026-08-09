@@ -52,14 +52,14 @@ class DogfoodObservationTests(unittest.TestCase):
     def test_summary_accounts_for_loaded_skill_bodies(self):
         summary = summarize_observations(self.document)
 
-        self.assertEqual(summary["skill_body_load_count"], 57)
-        self.assertEqual(summary["skill_body_load_bytes"], 624576)
-        self.assertEqual(summary["repeated_skill_body_load_bytes"], 445155)
+        self.assertEqual(summary["skill_body_load_count"], 63)
+        self.assertEqual(summary["skill_body_load_bytes"], 679008)
+        self.assertEqual(summary["repeated_skill_body_load_bytes"], 499587)
 
     def test_visible_compactions_remain_uncomparable_for_cost_metrics(self):
         summary = summarize_observations(self.document)
 
-        self.assertEqual(summary["compaction_events"], 16)
+        self.assertEqual(summary["compaction_events"], 18)
         self.assertEqual(summary["input_routing_events"], 23)
         self.assertEqual(summary["comparable_compaction_events"], 0)
 
@@ -67,7 +67,7 @@ class DogfoodObservationTests(unittest.TestCase):
         summary = summarize_observations(self.document)
 
         self.assertEqual(summary["compaction_recovery_rate"], 1.0)
-        self.assertEqual(summary["continuation_recovery_rate"], 38 / 40)
+        self.assertEqual(summary["continuation_recovery_rate"], 46 / 48)
         self.assertEqual(summary["already_acknowledged_items_replayed"], 2)
         self.assertEqual(summary["first_post_restore_action_mismatches"], 2)
         self.assertEqual(summary["trend_status"], "regressed")
@@ -181,6 +181,40 @@ class DogfoodObservationTests(unittest.TestCase):
         self.assertTrue(latest["metrics"]["first_post_restore_action_matched"])
         self.assertEqual(latest["metrics"]["already_acknowledged_items_replayed"], 0)
         self.assertEqual(latest["metrics"]["continuation_fields_recovered"], 4)
+
+    def test_m2_06_compaction_resumes_from_the_m2_05_pr_cursor(self):
+        latest = next(
+            item
+            for item in self.document["observations"]
+            if item["observation_id"] == "dogfood-compaction-017"
+        )
+
+        self.assertEqual(latest["active_leaf_before"], "M2-06")
+        self.assertEqual(latest["active_leaf_after"], "M2-06")
+        self.assertTrue(latest["metrics"]["first_post_restore_action_matched"])
+        self.assertEqual(latest["metrics"]["already_acknowledged_items_replayed"], 0)
+        self.assertEqual(latest["metrics"]["continuation_fields_recovered"], 4)
+        self.assertIn(
+            "M2-05 PR status",
+            "\n".join(latest["evidence"]),
+        )
+
+    def test_m2_06_review_compaction_resumes_the_governance_ref_red_test(self):
+        latest = next(
+            item
+            for item in self.document["observations"]
+            if item["observation_id"] == "dogfood-compaction-018"
+        )
+
+        self.assertEqual(latest["active_leaf_before"], "M2-06")
+        self.assertEqual(latest["active_leaf_after"], "M2-06")
+        self.assertTrue(latest["metrics"]["first_post_restore_action_matched"])
+        self.assertEqual(latest["metrics"]["already_acknowledged_items_replayed"], 0)
+        self.assertEqual(latest["metrics"]["continuation_fields_recovered"], 4)
+        self.assertIn(
+            "governance-ref red test",
+            "\n".join(latest["evidence"]),
+        )
 
     def test_loaded_database_skill_digest_drift_is_quarantined(self):
         skill_load = next(
