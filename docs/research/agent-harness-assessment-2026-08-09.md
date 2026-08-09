@@ -1,0 +1,155 @@
+# Agent Harness Assessment
+
+版本：1  
+日期：2026-08-09  
+状态：research / adoption candidates  
+范围：OpenAI Codex、Anthropic Claude Code/Agent SDK、长任务、Skill、工具、checkpoint、协作、验证与可观察性
+
+## 结论
+
+Agent harness 是包围模型的运行、状态、工具、反馈和治理系统。它至少包含任务入口、上下文组装、Skill/工具选择、权限与隔离、checkpoint/replay、副作用处理、验证反馈、多 Agent 编排、可观察性和人类治理。模型与 provider host 属于可替换执行组件；Harness Run 必须绑定同一份 revisioned Typed State、Execution Packet、evidence 和 effect ledger。
+
+OpenAI 与 Anthropic 的公开实践共同支持以下方向：长任务应拆成有完成门的增量叶；仓库需要短入口和渐进披露；应用、日志、指标和测试必须对 Agent 可读；压缩摘要和自由 progress file 无法独立承担权威恢复；宿主 checkpoint、session resume、goal、Skill matching 和多 Agent 功能需要经过 provider adapter 接入控制面。
+
+## 研究来源与快照
+
+结构化来源元数据、检索 hash 和 refresh trigger 位于 [`profiles/reference-catalog.example.yaml`](../../profiles/reference-catalog.example.yaml)。Git 只保存本评估的释义和来源元数据，不复制外部全文。
+
+| 来源 | 当前证据 | 采用边界 |
+|---|---|---|
+| [Codex Manual](https://developers.openai.com/codex/codex-manual.md) | 2026-08-09 官方 direct snapshot；含 long-running goal、AGENTS、Skills、MCP、hooks、subagents、SDK/App Server 和非交互运行 | Provider capability contract；运行时权威仍归 State MCP |
+| [Harness engineering](https://openai.com/index/harness-engineering/) | canonical OpenAI URL；当前 direct fetch 返回 403，研究文本经 proxy-render 获取并保持 candidate | 工程模式参考；承重产品事实需 Codex Manual、当前源码或实验补证 |
+| [Effective harnesses for long-running agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents) | 2026-08-09 官方 HTML direct snapshot | 增量任务、初始化、progress 和端到端验证模式；不能直接升级为权威状态设计 |
+| [Claude Code documentation index](https://code.claude.com/docs/llms.txt) | 2026-08-09 官方 direct snapshot | Claude provider adapter 的当前发现入口 |
+| [Claude Code best practices](https://code.claude.com/docs/en/best-practices.md) | context、verification、subagent、checkpoint、resume 和自动化 | Host 工作方式与项目 Verification Profile 对照 |
+| [Claude Code checkpointing](https://code.claude.com/docs/en/checkpointing.md) | file edit rewind、conversation summarize 及 Bash/remote/subagent 边界 | 仅 host recovery candidate；外部 effect 由控制面幂等与 checkpoint 管理 |
+| [Claude Code goal](https://code.claude.com/docs/en/goal.md) | 可重复 evaluator、resume 与 non-interactive goal | Goal adapter；完成状态必须由项目 evidence gate 裁决 |
+| [Claude Code workflows](https://code.claude.com/docs/en/workflows.md) | 动态 subagent fan-out、pause/resume、saved workflow | M8 编排参考；claim/lease/CAS/path owner 仍由控制面管理 |
+| [Agent SDK hosting](https://code.claude.com/docs/en/agent-sdk/hosting.md) | subprocess/local state、session pattern、tenant isolation、OTel 和生产边界 | Provider runtime adapter 与 isolation fixture |
+| [Agent SDK session storage](https://code.claude.com/docs/en/agent-sdk/session-storage.md) | transcript mirror、best-effort write、post-compaction chain 和 retention | Transcript continuity；不能作为 typed state/event log |
+| [Agent SDK tool search](https://code.claude.com/docs/en/agent-sdk/tool-search.md) | 大工具集按需发现、上下文与准确率边界 | M4/M6 resolver 对照；工具授权独立校验 |
+| [Agent SDK observability](https://code.claude.com/docs/en/agent-sdk/observability.md) | model/tool/hook OTel、token/cost 与 trace propagation | 映射到 `context.*` trace；beta 字段需 provider version 约束 |
+| [Agent SDK permissions](https://code.claude.com/docs/en/agent-sdk/permissions.md) | allow/deny、mode 与 hook 权限判定 | Provider permission adapter；不能放宽 State MCP authorization |
+
+## Harness 能力模型
+
+| 能力 | 输入 | 输出 | 本项目权威对象 |
+|---|---|---|---|
+| Intent 与 task routing | 用户消息、active task、Idea、blocker | continue/child/interrupt/switch/correction proposal | Task/Idea/Event revision |
+| Context composition | task、decision、constraint、evidence、Skill refs | 有界 Execution Packet | Packet hash + Checkpoint |
+| Skill 与工具 resolution | operation、role、provider、path、claim | 最小 S0-S2 rule/tool set | Skill manifest、rule IDs、authorization |
+| Execution 与 isolation | packet、workspace、credentials、sandbox | tool calls、diff、artifacts | Harness Run + path owner |
+| Durable workflow | checkpoint、lease、retry、effect key | replayable step/result | Event Log、Effect、DBOS/Temporal |
+| Verification feedback | completion gate、fixture、build/test/live profile | pass/fail、evidence、review findings | Evidence/Assertion/Verification Gate |
+| Collaboration | DAG、claim、lease、owner、revision | handoff、conflict、promotion | Typed State + CAS |
+| Observability | model/tool/hook/workflow events | token、latency、cost、failure、rework trace | OTel `context.*` + state revision |
+| Human governance | MASTER、approval、correction、promotion | governance decision | Git governance + controlled State MCP action |
+
+完整 harness 是上述能力的组合，不对应单一 SDK、聊天会话、Skill 集合或 workflow engine。Codex、Claude Code、Claude Agent SDK、未来 provider 与本地模型通过 adapter 提供模型调用、host tool 和 session 能力。
+
+## OpenAI 实践映射
+
+OpenAI Harness Engineering 的候选结论包括：
+
+- 短 `AGENTS.md` 作为导航入口，结构化 `docs/`、执行计划、质量文档和代码提供渐进披露；
+- UI、DOM、截图、日志、指标和 trace 对 Agent 可访问，使验证条件可以由 Agent 直接执行；
+- 架构依赖、日志、命名、文件大小和平台规则通过 lint/structural test 机械执行；
+- review feedback、失败与人类判断持续转化为文档、工具或可执行门；
+- recurring documentation/quality maintenance 检测知识和代码漂移；
+- Agent 运行可以持续数小时，但其可靠性依赖仓库结构、反馈回路和可验证环境。
+
+Context Control Plane 采用短入口、知识索引、可执行计划、机械门、应用可观察性和持续 freshness review。该实践中以 repository knowledge 作为系统记录的表述在本项目中需要权限拆分：MASTER 与 versioned docs 具有治理权威，Typed State/Event/Checkpoint 具有运行时机器权威，外部文档和 memory 提供 evidence/candidate。
+
+Codex Manual 的当前 host 能力进一步支持：
+
+- Goal 由 outcome、constraints 和 verification 构成，可在同一 task 中持续 steering；
+- 并行 task 应隔离上下文与写入目录，避免多个会话修改同一来源；
+- AGENTS、Skill、Plugin、MCP、Hook、SDK/App Server 和非交互运行具有不同作用域；
+- Skill 和工具的渐进发现降低初始上下文成本；
+- Subagent 可隔离研究上下文，但仍继承宿主权限和沙箱边界。
+
+这些能力通过 Codex adapter 使用。Goal 和聊天连续性不能替代 Task revision；host Skill 触发不能替代 M4 resolver；subagent 状态不能替代共享 claim/lease；host approval 不能替代 effect authorization。
+
+## Anthropic 实践映射
+
+Anthropic 的 long-running harness 实验观察到压缩仍可能导致中途实现和早停。其 initializer/coding-agent 方法采用结构化 feature list、单 feature 增量工作、progress file、Git 历史、启动脚本和端到端浏览器验证。Context Control Plane 保留这些可复用属性，并做以下转换：
+
+| Anthropic 实验对象 | 控制面转换 |
+|---|---|
+| feature list JSON | Campaign/Goal/Work DAG + project Verification Profile |
+| progress text | Typed State + append-only events + current STATUS projection |
+| Git commit recovery | immutable checkpoint + artifact hash + effect ledger；Git 仍保存代码边界 |
+| initializer prompt | Project Profile bootstrap + source/Skill proposal + S0 canary |
+| one feature per session | claimed active leaf + attempt budget + completion gate |
+| browser self-test | project-specific live/golden/loopback evidence |
+| next agent reads logs/progress | state-only restore + bounded artifact expansion |
+
+Claude Code 当前文档暴露了关键限制：context compaction 可能丢失早期详细指令；file checkpoint 不覆盖 Bash、远端 API、数据库、部署、外部修改和部分 subagent edit；Agent SDK SessionStore 采用 local-first transcript mirror，失败重试后可以丢弃 batch 并继续运行；返回链以 post-compaction transcript 为主。这些限制支持本项目的独立 typed state、append-only effect、PreCompact/PostCompact canary 和 503/SIGKILL 故障注入。
+
+Claude 的 goal、hooks、dynamic workflows、tool search、permissions 与 OTel 可以分别映射到 task adapter、lifecycle hook、M8 orchestration、M4/M6 resolver、authorization adapter 和 `context.*` trace。Provider beta 字段、model threshold 和 host default 必须带版本并可 quarantine。
+
+## Adopt、Adapt 与 Quarantine
+
+| 状态 | 模式 | 理由 |
+|---|---|---|
+| adopt | 可验证完成门、单叶增量、短导航入口、渐进披露、应用/日志/指标可读 | 与 E0-E9 和 Project Profile 一致 |
+| adopt | 独立 reviewer、隔离 workspace、结构化输出、OTel trace、持续 doc/quality freshness | 可形成机械证据和恢复数据 |
+| adapt | progress file、Git log、provider goal、session resume、host checkpoint | 转换为 Typed State/Event/Checkpoint 后使用 |
+| adapt | host implicit Skill/tool search 和 subagent workflow | 由 applicability、authorization、claim、hash 和 CAS 包裹 |
+| quarantine | mutable URL runtime loading、auto memory 当前事实、未经审查的 marketplace Skill/MCP | provenance、漂移和权限风险未通过 |
+| reject | compaction summary 作为唯一 handoff、多个 Agent 共享写目录、无 effect key 的 retry | 无法满足 E1/E8/E9 veto 门 |
+| reject | 仅凭 PR/分支/progress text 判断 owner、active task 和完成状态 | 无共享 revision、lease 和 evidence gate |
+
+## Provider-neutral Harness Run
+
+每次执行至少绑定：
+
+```yaml
+run_id: stable-id
+project_id: stable-id
+task_id: stable-id
+task_revision: uint64
+claim_id: stable-id
+provider: codex | claude | other
+provider_contract_version: string
+execution_packet_sha256: sha256
+skill_set_digest: sha256
+tool_grants: [capability-id]
+checkpoint_id: stable-id
+effect_high_watermark: uint64
+verification_profile_id: stable-id
+reference_validity_watermark: uint64
+trace_id: otel-trace-id
+status: proposed | running | waiting | verifying | completed | failed | quarantined
+```
+
+Run 只能读取与 active claim 匹配的 packet，并在 expected revision 下提交 event/effect。Provider session ID、transcript 和 host checkpoint 保留为 provenance；它们不拥有 task completion、latest decision 或 side-effect authority。
+
+## 对持续工作与突发 Idea 的影响
+
+持续工作由 goal/task completion condition 驱动，每个回合都从同一 active leaf、checkpoint 和唯一 next action 恢复。用户新输入先按 [`idea-continuity.md`](../architecture/idea-continuity.md) 分类：普通 Idea capture-and-continue；correction 触发 supersedes 与写保护；明确 interrupt 先 checkpoint 再切换。参考资料扫描和新框架发现使用相同规则，默认形成 research/adoption candidate，不抢占 active task。
+
+压缩后恢复顺序固定为：验证 MASTER digest 与 task revision、恢复 active leaf/return point/effect watermark、验证 current evidence 和 Skill digest、运行 canary、开放副作用、最后展开相关 Idea 或新参考候选。历史 memory 和 provider summary 只辅助定位来源。
+
+## 计划映射与实验
+
+| 计划 | Harness 交付 |
+|---|---|
+| M0-07/M0-08 | schema/version governance、reference lifecycle 和候选 catalog |
+| M2 | Task/Idea/Event/Effect/Checkpoint/Harness Run typed schema 与 State MCP |
+| M3/M5 | sticky routing、Idea return、Execution Packet 和 compaction canary |
+| M4/M6 | Skill/MCP/tool resolver、provider adapter 和 bounded discovery |
+| M7 | assertion validity、Verification Profile、同预算 A/B 与 freshness watcher |
+| M8 | DBOS/Temporal、claim/lease、provider-neutral Harness Run 和 OTel |
+| M9 | Project Graph、Evidence Matrix、Context/Reference/Harness Health 与治理入口 |
+| M10 | AlkaidLab 与第二项目的 Codex/Claude shadow pilot |
+
+Harness 评估使用 E0-E9 veto 门。新增对照至少覆盖：no-harness/free-summary、provider-native-only、control-plane packet、control-plane + provider host optimizations。指标包括关键状态恢复、旧决定复活、return point、重复 effect、CAS conflict、reference freshness、Skill/tool 输入、token、restore p95、build/test/mutation、scope violation 和返工。
+
+## 当前缺口与下一步
+
+1. 完成 M0-07 schema/version/release governance，为 Reference、Idea、Checkpoint、Skill 和 Harness Run 提供兼容与 migration 规则。
+2. M1-04 受控 archive 可用后提取真实长任务、压缩、Idea interrupt 和错误完成 fixture；合成数据不能替代该步骤。
+3. 在 M2 定义 typed objects 与 append-only reducer，并实现 CAS/effect authorization。
+4. 在 M4/M5 建立双 provider packet/replay；provider-native Skill、goal、hook、workflow 和 checkpoint 只通过 adapter 进入。
+5. 在 M7/M8 运行真实 provider tokenizer/live A/B、SIGKILL/503、session-store 丢 batch、checkpoint 损坏和并发写故障注入。
