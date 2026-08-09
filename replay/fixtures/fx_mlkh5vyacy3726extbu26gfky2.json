@@ -1,0 +1,66 @@
+{
+  "evidence_refs": [
+    "artifact://sha256/5f610c8f4d05a86bc2e0a08e4fe5364b7249caf9a9479262d74409043bef3e9a#section-2.3"
+  ],
+  "expected_gate": "veto",
+  "expected_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": "Current paired runs, wire rate, and environment controls are missing.",
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Current evidence and an independent validator are required before admission."
+    ],
+    "latest_decision": "Historical performance values are candidate evidence until current code or a new measurement profile verifies them.",
+    "next_action": "Run a controlled current profile before attributing the gap.",
+    "rejected_decisions": [
+      "A single 9200 Mbps result defines the remaining 10 Gbps gap."
+    ],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "extraction": {
+    "content_end": 59,
+    "content_sha256": "b918f5134a14fc2132ff5b99d1962175b3f77961779e33d11d22ff9c184a204e",
+    "content_start": 0,
+    "findings_by_category": {},
+    "normalized_event_sha256": "b918f5134a14fc2132ff5b99d1962175b3f77961779e33d11d22ff9c184a204e",
+    "selection_version": "anchored-contiguous-fragment/v1",
+    "source_fragment_sha256": "b918f5134a14fc2132ff5b99d1962175b3f77961779e33d11d22ff9c184a204e"
+  },
+  "fixture_id": "fx_mlkh5vyacy3726extbu26gfky2",
+  "fixture_sha256": "52c1b0695091c1fe7950961c240d97c829d47c82d615112a5971e3a256d4f953",
+  "initial_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": null,
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Historical archive content is candidate evidence."
+    ],
+    "latest_decision": "A single 9200 Mbps result defines the remaining 10 Gbps gap.",
+    "next_action": "Resolve the event from free-form historical context.",
+    "rejected_decisions": [],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "input_event": {
+    "content": "帮我再去找找，我需要最优最安全最好性能最强方案，并确保我们最终的 10Gbps 跑满计划而不是当前的 9200Mbps",
+    "content_sha256": "b918f5134a14fc2132ff5b99d1962175b3f77961779e33d11d22ff9c184a204e",
+    "event_kind": "user_message"
+  },
+  "project_id": "alkaidlab-shadow",
+  "sanitization": {
+    "content_sha256": "b918f5134a14fc2132ff5b99d1962175b3f77961779e33d11d22ff9c184a204e",
+    "sanitizer_version": "m1-03.v1",
+    "status": "clean"
+  },
+  "scenario_class": "scope-drift",
+  "schema_version": "context.replay-fixture/v1alpha1",
+  "source": {
+    "archive_sha256": "efbfb793b571b55848b8af8df6151448b030b35557df3864832e81f411df74f0",
+    "byte_end": 5256887,
+    "byte_start": 5256219,
+    "extractor_version": "claude-code-jsonl-observed/v1alpha1",
+    "provider": "claude",
+    "range_sha256": "24c1c42833882014257939cdd32bb4c7de97d2c7d6e849ebe9effd879dd81625",
+    "source_range_ref": "rng_mopyjyjxvzra6waacrwvgmrx7r",
+    "source_thread_ref": "thr_onhhec6rkcmavj7eizicm2njrt"
+  }
+}

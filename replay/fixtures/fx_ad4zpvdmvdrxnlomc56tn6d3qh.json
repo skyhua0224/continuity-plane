@@ -1,0 +1,66 @@
+{
+  "evidence_refs": [
+    "artifact://sha256/5f610c8f4d05a86bc2e0a08e4fe5364b7249caf9a9479262d74409043bef3e9a#section-2.3"
+  ],
+  "expected_gate": "veto",
+  "expected_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": "Multi-size and duration-controlled current measurements are missing.",
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Current evidence and an independent validator are required before admission."
+    ],
+    "latest_decision": "Historical performance values are candidate evidence until current code or a new measurement profile verifies them.",
+    "next_action": "Run the approved Verification Profile before accepting throughput claims.",
+    "rejected_decisions": [
+      "One file size is enough to prove link saturation."
+    ],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "extraction": {
+    "content_end": 25,
+    "content_sha256": "24308ac03cde71eb918bd8b4e0d0ab24ec9126e06a32266119bd74338e08562f",
+    "content_start": 0,
+    "findings_by_category": {},
+    "normalized_event_sha256": "24308ac03cde71eb918bd8b4e0d0ab24ec9126e06a32266119bd74338e08562f",
+    "selection_version": "anchored-contiguous-fragment/v1",
+    "source_fragment_sha256": "24308ac03cde71eb918bd8b4e0d0ab24ec9126e06a32266119bd74338e08562f"
+  },
+  "fixture_id": "fx_ad4zpvdmvdrxnlomc56tn6d3qh",
+  "fixture_sha256": "957039db6cbd8bed84b761adf6bdb9a75c3a83a67330c02c477aa488e1d43717",
+  "initial_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": null,
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Historical archive content is candidate evidence."
+    ],
+    "latest_decision": "One file size is enough to prove link saturation.",
+    "next_action": "Resolve the event from free-form historical context.",
+    "rejected_decisions": [],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "input_event": {
+    "content": "之后测试的时候更大的文件也要测，甚至 1G 10G",
+    "content_sha256": "24308ac03cde71eb918bd8b4e0d0ab24ec9126e06a32266119bd74338e08562f",
+    "event_kind": "user_message"
+  },
+  "project_id": "alkaidlab-shadow",
+  "sanitization": {
+    "content_sha256": "24308ac03cde71eb918bd8b4e0d0ab24ec9126e06a32266119bd74338e08562f",
+    "sanitizer_version": "m1-03.v1",
+    "status": "clean"
+  },
+  "scenario_class": "scope-drift",
+  "schema_version": "context.replay-fixture/v1alpha1",
+  "source": {
+    "archive_sha256": "bf1ca962ff3f27d4041533350ecad6666db0e7bef66c43081365b8250cd56d19",
+    "byte_end": 19365909,
+    "byte_start": 19365286,
+    "extractor_version": "claude-code-jsonl-observed/v1alpha1",
+    "provider": "claude",
+    "range_sha256": "368813391af695b51a21b6b4cb4428b1e347078bd55e085deb73cc78fb17dde2",
+    "source_range_ref": "rng_5gl3ltrvnvpbgqshejsvgp6czp",
+    "source_thread_ref": "thr_glcph3ufafhomasdrd7pe3fhod"
+  }
+}

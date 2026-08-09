@@ -1,0 +1,66 @@
+{
+  "evidence_refs": [
+    "artifact://sha256/5f610c8f4d05a86bc2e0a08e4fe5364b7249caf9a9479262d74409043bef3e9a#section-2.3"
+  ],
+  "expected_gate": "veto",
+  "expected_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": "A current multi-sample measurement receipt is missing.",
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Current evidence and an independent validator are required before admission."
+    ],
+    "latest_decision": "A single ping cannot establish a physical floor; current repeated measurements are required.",
+    "next_action": "Reject the residual-bug hypothesis until repeated measurements support it.",
+    "rejected_decisions": [
+      "A single 190 microsecond ping establishes the physical floor."
+    ],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "extraction": {
+    "content_end": 12337,
+    "content_sha256": "642f1969f5904f0ae6ea10fe4dfb1bf37a01a7b140ced415ae8c769d2a9d6d42",
+    "content_start": 9841,
+    "findings_by_category": {},
+    "normalized_event_sha256": "7d88c8e523fdc587d2eb2b8b4358b1d110da01539a2070694260266503ffe6b5",
+    "selection_version": "anchored-contiguous-fragment/v1",
+    "source_fragment_sha256": "642f1969f5904f0ae6ea10fe4dfb1bf37a01a7b140ced415ae8c769d2a9d6d42"
+  },
+  "fixture_id": "fx_qikpqakznlwgr5mwn6vde7pl6t",
+  "fixture_sha256": "6fa86682fe250b1b61ef296a832ae519c25ac7896d57be612e36abac23bd5aa5",
+  "initial_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": null,
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Historical archive content is candidate evidence."
+    ],
+    "latest_decision": "A single 190 microsecond ping establishes the physical floor.",
+    "next_action": "Resolve the event from free-form historical context.",
+    "rejected_decisions": [],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "input_event": {
+    "content": "- **Claimed SkyServer unreachable** — user: \"连得上啊，你为啥会说连不上？\" Cause: `ssh skyserver` used a ssh_config Host entry resolving elsewhere; .220 was always up. Owned it.\n   - **Measured the wrong direction** — MASTER's 6844/7054 figures were Direction B (Skyinux→SkyServer); I measured Direction A (M1 sends, capped ~3.8 Gbps) and concluded \"regression\". User: \"昨天晚上我睡前最高能跑到7300Mbps…你越提升越低？\" Corrected by measuring Direction B: 7928/7620/7356.\n   - **`--out /dev/null` hung the test loop** — filecopy writes `<out>.altpart` first; can't create in `/dev/`. My test design error.\n   - **`pkill -f 'socat.*5202'` killed my own ssh session (exit 255)** — the remote command line matched the pattern. Fixed with `pkill -x`.\n   - **zsh no-match globs aborted whole commands** (`*.altpart`, `vendor*`) — cleanup silently didn't run.\n   - **zsh treats `inf` as floating infinity** — `$((inf/1024))` printed `InfKB`; labels wrong, data valid.\n   - **Accidentally launched concurrent transfers twice** (stray `&` line) — would have contaminated measurements; caught and killed both times.\n   - **Broken PATH in one background shell** — `ssh`/`sleep`/`tr` not found; fixed with absolute paths.\n   - **Skyinux rebooted twice**, clearing tmpfs and flipping the route to `eno1` (2.5G); post-reboot runs invalid until user ran `sudo ip route add 192.168.100.220/32 dev enp6s0`.\n   - **sudoers drop-in named `10-alkaid-tc` didn't take effect** — `10-installer` contains `(ALL) ALL` and sorts after it; sudo uses last match. Renamed to `99-alkaid-tc`.\n   - **Committed BLAKE3 default without measuring throughput** — caused a 30% regression. Reverted. Root cause found: receiver-side, architecture-inverted.\n   - **Nine of my own hypotheses refuted by measurement**: max_bw underestimated; \"two RTT corrections subtract additively\"; \"+69%\" (n=2, actual +58.7% at n=4); \"190µs is the physical floor\" (ping's own min spans 92–181µs — and I had dispatched an agent to hunt this non-existent residual, ~212K tokens); main-thread QoS; disk/APFS; transfer size; shrink-the-window-to-go-faster; probe distortion.\n   - **Dispatched thinkers with instructions to write files — thinkers have no Write tool.** Happened 3–4 times (product-thinker, tsbpd-thinker, netem-thinker, digest-thinker). Fix: they send full text in messages, I write the file.\n   - **quicfix-exec proceeded past three explicit stop instructions.** Told it that scope exploding by an order of magnitude is a signal to stop and align, not an execution detail.",
+    "content_sha256": "642f1969f5904f0ae6ea10fe4dfb1bf37a01a7b140ced415ae8c769d2a9d6d42",
+    "event_kind": "compaction_checkpoint"
+  },
+  "project_id": "alkaidlab-shadow",
+  "sanitization": {
+    "content_sha256": "642f1969f5904f0ae6ea10fe4dfb1bf37a01a7b140ced415ae8c769d2a9d6d42",
+    "sanitizer_version": "m1-03.v1",
+    "status": "clean"
+  },
+  "scenario_class": "evidence-gap",
+  "schema_version": "context.replay-fixture/v1alpha1",
+  "source": {
+    "archive_sha256": "efbfb793b571b55848b8af8df6151448b030b35557df3864832e81f411df74f0",
+    "byte_end": 5722045,
+    "byte_start": 5696899,
+    "extractor_version": "claude-code-jsonl-observed/v1alpha1",
+    "provider": "claude",
+    "range_sha256": "3cdb6b57e919766715d7d3262da010df01bc38aaec3a6ff294a4a478a69c96ba",
+    "source_range_ref": "rng_etsqjllkwwfs4z5c7tlgsnakib",
+    "source_thread_ref": "thr_onhhec6rkcmavj7eizicm2njrt"
+  }
+}

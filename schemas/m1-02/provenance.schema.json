@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "context-control-plane/m1-02/provenance.schema.json",
+  "title": "M1-02 Provenance",
+  "x-schema-version": "m1-02.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "source_provider",
+    "source_thread_ref",
+    "source_range_ref",
+    "project_id",
+    "extracted_at",
+    "extractor_version",
+    "content_sha256",
+    "classification",
+    "validity",
+    "verified_against",
+    "contains_sensitive_data",
+    "retention_class"
+  ],
+  "properties": {
+    "schema_version": {"const": "m1-02.v1"},
+    "source_provider": {"enum": ["codex", "claude", "cursor", "other"]},
+    "source_thread_ref": {"pattern": "^thr_[a-z2-7]{26}$"},
+    "source_range_ref": {"pattern": "^rng_[a-z2-7]{26}$"},
+    "project_id": {"type": "string", "minLength": 1},
+    "extracted_at": {"type": "string", "format": "date-time"},
+    "extractor_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$"},
+    "content_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "classification": {"enum": ["decision", "evidence", "constraint", "work", "preference", "replay"]},
+    "validity": {"enum": ["candidate", "verified", "stale", "rejected"]},
+    "verified_against": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^(artifact://|assertion:)"}
+    },
+    "contains_sensitive_data": {"type": "boolean"},
+    "retention_class": {"enum": ["ephemeral", "project", "audit"]}
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "opaque_key_id": "source-key-2026-08",
+  "records": [
+    {
+      "project_id": "alkaidlab-shadow",
+      "retention_class": "audit",
+      "source_kind": "raw_transcript",
+      "source_provider": "claude",
+      "source_thread_ref": "thr_glcph3ufafhomasdrd7pe3fhod"
+    },
+    {
+      "project_id": "alkaidlab-shadow",
+      "retention_class": "audit",
+      "source_kind": "raw_transcript",
+      "source_provider": "claude",
+      "source_thread_ref": "thr_onhhec6rkcmavj7eizicm2njrt"
+    },
+    {
+      "project_id": "alkaidlab-shadow",
+      "retention_class": "audit",
+      "source_kind": "raw_transcript",
+      "source_provider": "codex",
+      "source_thread_ref": "thr_qu4nvpjyppxalya6k3gmuvk2fu"
+    }
+  ],
+  "schema_version": "m1-02.v1"
+}

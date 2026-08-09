@@ -1,0 +1,66 @@
+{
+  "evidence_refs": [
+    "artifact://sha256/5f610c8f4d05a86bc2e0a08e4fe5364b7249caf9a9479262d74409043bef3e9a#section-2.3"
+  ],
+  "expected_gate": "veto",
+  "expected_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": "Transfer-wide RTT evidence is missing.",
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Current evidence and an independent validator are required before admission."
+    ],
+    "latest_decision": "Final srtt cannot summarize a transfer; current avg_rtt and profile evidence are required.",
+    "next_action": "Measure the full transfer and keep final srtt as one point sample.",
+    "rejected_decisions": [
+      "The final srtt value summarizes the entire transfer."
+    ],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "extraction": {
+    "content_end": 1396,
+    "content_sha256": "72ce6c4b76d7b9dd6dd1b190eb4a1b659d90d7956159c709e933281c2d8f4af2",
+    "content_start": 0,
+    "findings_by_category": {},
+    "normalized_event_sha256": "72ce6c4b76d7b9dd6dd1b190eb4a1b659d90d7956159c709e933281c2d8f4af2",
+    "selection_version": "anchored-contiguous-fragment/v1",
+    "source_fragment_sha256": "72ce6c4b76d7b9dd6dd1b190eb4a1b659d90d7956159c709e933281c2d8f4af2"
+  },
+  "fixture_id": "fx_krjg3p7tumzghs5a23z53bgg53",
+  "fixture_sha256": "8855bbd13b610254e0a28d99ed2e4b69f859eef05f6f287da6f4a9d5e81d69da",
+  "initial_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": null,
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Historical archive content is candidate evidence."
+    ],
+    "latest_decision": "The final srtt value summarizes the entire transfer.",
+    "next_action": "Resolve the event from free-form historical context.",
+    "rejected_decisions": [],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "input_event": {
+    "content": "│ 1   │ 引擎观测性:暴露 lost/retx/PTO/spurious 计数 +    │ 没有它:①\"丢包→NewReno 腰斩\"只是嫌疑不是实证;②将来 BBR 上了也没法 A/B                        │\n│     │ 传输末日志                                       │ 证明收益。便宜(引擎已有这些状态,只差导出)                                                   │\n├─────┼──────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────┤\n│ 2   │ 判决实验:跨机正向传输读双端计数                  │ 若实测丢包显著→BBR 对症,开刀;若零丢包→正向缺口是供帧/ACK 节奏,BBR 白做——这一步决定 BBR      │\n│     │                                                  │ 是不是下一刀                                                                                │\n├─────┼──────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────┤\n│ 3   │ ACK 频率检查:收端现在每轮循环只生成一个          │ ACK 稀疏=发端窗口回收粒度粗,可能是 in-flight 只 50/192 帧的另一半原因;RFC 9002 建议每 2     │\n│     │ coalesced ACK                                    │ 包或 max_ack_delay 内必 ACK——对照检查便宜                                                   │\n├─────┼──────────────────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────────┤\n│ 4   │ 正向 pipeline<inline 之谜(2703 vs 3172)+ srtt    │ 观测性数据到位后这两个应该自解(重传期 EWMA 污染/batch 与丢包互动)                           │\n│     │ 13× 摆动之谜                                     │",
+    "content_sha256": "72ce6c4b76d7b9dd6dd1b190eb4a1b659d90d7956159c709e933281c2d8f4af2",
+    "event_kind": "user_message"
+  },
+  "project_id": "alkaidlab-shadow",
+  "sanitization": {
+    "content_sha256": "72ce6c4b76d7b9dd6dd1b190eb4a1b659d90d7956159c709e933281c2d8f4af2",
+    "sanitizer_version": "m1-03.v1",
+    "status": "clean"
+  },
+  "scenario_class": "stale-decision",
+  "schema_version": "context.replay-fixture/v1alpha1",
+  "source": {
+    "archive_sha256": "bf1ca962ff3f27d4041533350ecad6666db0e7bef66c43081365b8250cd56d19",
+    "byte_end": 22710838,
+    "byte_start": 22707492,
+    "extractor_version": "claude-code-jsonl-observed/v1alpha1",
+    "provider": "claude",
+    "range_sha256": "3dd2f49b8c63d0178dfe83847181f9c61eb3dbf9e793270df8cf75494e4e1ce2",
+    "source_range_ref": "rng_k5lvijorssc7iywookmskn32m5",
+    "source_thread_ref": "thr_glcph3ufafhomasdrd7pe3fhod"
+  }
+}

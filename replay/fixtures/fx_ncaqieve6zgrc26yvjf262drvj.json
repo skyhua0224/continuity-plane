@@ -1,0 +1,66 @@
+{
+  "evidence_refs": [
+    "artifact://sha256/5f610c8f4d05a86bc2e0a08e4fe5364b7249caf9a9479262d74409043bef3e9a#section-3.4"
+  ],
+  "expected_gate": "veto",
+  "expected_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": "The requested module table and evidence refs are missing.",
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Current evidence and an independent validator are required before admission."
+    ],
+    "latest_decision": "Architecture adoption requires current code plus standard and official-source evidence.",
+    "next_action": "Produce the bounded evidence request and preserve the current task.",
+    "rejected_decisions": [
+      "A preferred architecture can be recorded before the requested evidence table exists."
+    ],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "extraction": {
+    "content_end": 156,
+    "content_sha256": "728ce571ca0d89f1558017b437395db56105eba5862362c43388a44a87c75e52",
+    "content_start": 0,
+    "findings_by_category": {},
+    "normalized_event_sha256": "728ce571ca0d89f1558017b437395db56105eba5862362c43388a44a87c75e52",
+    "selection_version": "anchored-contiguous-fragment/v1",
+    "source_fragment_sha256": "728ce571ca0d89f1558017b437395db56105eba5862362c43388a44a87c75e52"
+  },
+  "fixture_id": "fx_ncaqieve6zgrc26yvjf262drvj",
+  "fixture_sha256": "63ff0008ddd2dc4665986fcb635cc509abd8357b65ad48784b91f4cebd3bed3a",
+  "initial_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": null,
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Historical archive content is candidate evidence."
+    ],
+    "latest_decision": "A preferred architecture can be recorded before the requested evidence table exists.",
+    "next_action": "Resolve the event from free-form historical context.",
+    "rejected_decisions": [],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "input_event": {
+    "content": "确认走自研 altp-core，退役 ENet。但先不写进去，我让你把 ALTP bundle 所有 slot 和对应模块列出来让我看你也没给我看啊，一个 slot 至少要列出两个模块以上。altp 要纳入 QUIC WebRTC BBR 等除了我说的最新最优最好方案行业标准文档，操作系统官方文档，软件官方文档",
+    "content_sha256": "728ce571ca0d89f1558017b437395db56105eba5862362c43388a44a87c75e52",
+    "event_kind": "user_message"
+  },
+  "project_id": "alkaidlab-shadow",
+  "sanitization": {
+    "content_sha256": "728ce571ca0d89f1558017b437395db56105eba5862362c43388a44a87c75e52",
+    "sanitizer_version": "m1-03.v1",
+    "status": "clean"
+  },
+  "scenario_class": "evidence-gap",
+  "schema_version": "context.replay-fixture/v1alpha1",
+  "source": {
+    "archive_sha256": "bf1ca962ff3f27d4041533350ecad6666db0e7bef66c43081365b8250cd56d19",
+    "byte_end": 7682777,
+    "byte_start": 7681872,
+    "extractor_version": "claude-code-jsonl-observed/v1alpha1",
+    "provider": "claude",
+    "range_sha256": "cafaf3175751604f2e1f51493d3c094194aba54a03065343d73c7f444eeac6da",
+    "source_range_ref": "rng_yuw4u6ahlhdfqqvsckir23k2uw",
+    "source_thread_ref": "thr_glcph3ufafhomasdrd7pe3fhod"
+  }
+}

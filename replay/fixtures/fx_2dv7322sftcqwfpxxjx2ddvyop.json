@@ -1,0 +1,68 @@
+{
+  "evidence_refs": [
+    "artifact://sha256/5f610c8f4d05a86bc2e0a08e4fe5364b7249caf9a9479262d74409043bef3e9a#section-2.3"
+  ],
+  "expected_gate": "veto",
+  "expected_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": "Time-weighted in-flight evidence is missing.",
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Current evidence and an independent validator are required before admission."
+    ],
+    "latest_decision": "Derived RTT/throughput relationships remain hypotheses until direct current instrumentation verifies them.",
+    "next_action": "Instrument the claimed variable before dispatching an optimization.",
+    "rejected_decisions": [
+      "A derived in-flight estimate proves the next bottleneck."
+    ],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "extraction": {
+    "content_end": 11721,
+    "content_sha256": "aca7b3540b2211cf111d7b2a9ecc6583863146a3681b00927003e92e322135ab",
+    "content_start": 11572,
+    "findings_by_category": {
+      "machine": 1
+    },
+    "normalized_event_sha256": "77d69a4d6be14570f668748c19c491675b41f087959d7a064856167c508fd5fb",
+    "selection_version": "anchored-contiguous-fragment/v1",
+    "source_fragment_sha256": "07444ca39dee68449eac0b2e029e7126934b7366623beb531d713b225f46b344"
+  },
+  "fixture_id": "fx_2dv7322sftcqwfpxxjx2ddvyop",
+  "fixture_sha256": "a285afcd6c42ddad24e8e10e9c6f35ab021f203e32f069af2dd4737819df538a",
+  "initial_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": null,
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Historical archive content is candidate evidence."
+    ],
+    "latest_decision": "A derived in-flight estimate proves the next bottleneck.",
+    "next_action": "Resolve the event from free-form historical context.",
+    "rejected_decisions": [],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "input_event": {
+    "content": "**Reverted:** BdpCeiling blade (srtt 7596→1639 µs but throughput 858→553). Patch saved at `[REDACTED:machine]",
+    "content_sha256": "aca7b3540b2211cf111d7b2a9ecc6583863146a3681b00927003e92e322135ab",
+    "event_kind": "compaction_checkpoint"
+  },
+  "project_id": "alkaidlab-shadow",
+  "sanitization": {
+    "content_sha256": "aca7b3540b2211cf111d7b2a9ecc6583863146a3681b00927003e92e322135ab",
+    "sanitizer_version": "m1-03.v1",
+    "status": "clean"
+  },
+  "scenario_class": "stale-decision",
+  "schema_version": "context.replay-fixture/v1alpha1",
+  "source": {
+    "archive_sha256": "bf1ca962ff3f27d4041533350ecad6666db0e7bef66c43081365b8250cd56d19",
+    "byte_end": 30386602,
+    "byte_start": 30362971,
+    "extractor_version": "claude-code-jsonl-observed/v1alpha1",
+    "provider": "claude",
+    "range_sha256": "5293d1ff4584b66b460992e15ef9c5a97a2e1bee3640a038b0eb610706387af2",
+    "source_range_ref": "rng_6qyesisjw6uhde7ylpmhyetstl",
+    "source_thread_ref": "thr_glcph3ufafhomasdrd7pe3fhod"
+  }
+}

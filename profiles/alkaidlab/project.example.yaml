@@ -1,0 +1,45 @@
+schema_version: context.project/v1alpha1
+project_id: alkaidlab
+display_name: AlkaidLab Ecosystem
+
+repositories:
+  project-notes:
+    root_env: ALKAIDLAB_PROJECT_NOTES_ROOT
+  platform:
+    root_env: ALKAIDLAB_PLATFORM_ROOT
+  moonlight:
+    root_env: MOONLIGHT_MACOS_ROOT
+  sunshine:
+    root_env: FOUNDATION_SUNSHINE_ROOT
+
+canonical_documents:
+  master:
+    repository: project-notes
+    path: moonlight-sunshine/goals/goal-MASTER.md
+  target_architecture:
+    repository: project-notes
+    path: moonlight-sunshine/goals/platform-target-architecture-2026-07-20.md
+  full_inventory:
+    repository: project-notes
+    path: moonlight-sunshine/goals/platform-full-inventory-2026-07-20.md
+
+evidence_policy:
+  authority_order:
+    - current-code-and-fresh-reproduction
+    - industry-standard
+    - operating-system-official
+    - software-official
+    - reviewed-local-reference
+    - historical-memory-candidate
+  require_version_and_digest: true
+
+verification_profiles:
+  - static
+  - tdd
+  - build
+  - contract-and-golden
+  - offline-loopback
+  - lan-performance
+  - weak-network
+  - live-device
+  - collaboration-fault-recovery

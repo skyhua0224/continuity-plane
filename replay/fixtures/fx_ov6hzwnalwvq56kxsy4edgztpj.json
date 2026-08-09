@@ -1,0 +1,66 @@
+{
+  "evidence_refs": [
+    "artifact://sha256/5f610c8f4d05a86bc2e0a08e4fe5364b7249caf9a9479262d74409043bef3e9a#section-2.3"
+  ],
+  "expected_gate": "veto",
+  "expected_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": "Cross-regime evidence is missing.",
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Current evidence and an independent validator are required before admission."
+    ],
+    "latest_decision": "Each device and network regime requires its own current Verification Profile evidence.",
+    "next_action": "Split the hypothesis into bounded profiles and retain the mainline return point.",
+    "rejected_decisions": [
+      "Fixing one srtt fluctuation proves low latency on weak devices and weak networks."
+    ],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "extraction": {
+    "content_end": 61,
+    "content_sha256": "3d500aa80970ec0377a57e3f1d4832161c7637b42ede255cb034b27d3cb8d2fe",
+    "content_start": 0,
+    "findings_by_category": {},
+    "normalized_event_sha256": "3d500aa80970ec0377a57e3f1d4832161c7637b42ede255cb034b27d3cb8d2fe",
+    "selection_version": "anchored-contiguous-fragment/v1",
+    "source_fragment_sha256": "3d500aa80970ec0377a57e3f1d4832161c7637b42ede255cb034b27d3cb8d2fe"
+  },
+  "fixture_id": "fx_ov6hzwnalwvq56kxsy4edgztpj",
+  "fixture_sha256": "6da2bce454ed82825e4cbb2a7369117ed6ff4a436175d301054936ce4d604e4d",
+  "initial_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": null,
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Historical archive content is candidate evidence."
+    ],
+    "latest_decision": "Fixing one srtt fluctuation proves low latency on weak devices and weak networks.",
+    "next_action": "Resolve the event from free-form historical context.",
+    "rejected_decisions": [],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "input_event": {
+    "content": "查 srtt 震荡的根因，我希望超低延迟超高带宽极佳性能，之后需要确保在双端任意或全部弱性能机和弱网下都能保持低延迟高性能",
+    "content_sha256": "3d500aa80970ec0377a57e3f1d4832161c7637b42ede255cb034b27d3cb8d2fe",
+    "event_kind": "user_message"
+  },
+  "project_id": "alkaidlab-shadow",
+  "sanitization": {
+    "content_sha256": "3d500aa80970ec0377a57e3f1d4832161c7637b42ede255cb034b27d3cb8d2fe",
+    "sanitizer_version": "m1-03.v1",
+    "status": "clean"
+  },
+  "scenario_class": "scope-drift",
+  "schema_version": "context.replay-fixture/v1alpha1",
+  "source": {
+    "archive_sha256": "efbfb793b571b55848b8af8df6151448b030b35557df3864832e81f411df74f0",
+    "byte_end": 5434357,
+    "byte_start": 5433661,
+    "extractor_version": "claude-code-jsonl-observed/v1alpha1",
+    "provider": "claude",
+    "range_sha256": "e1a94fc50ce0c7670b7a3d5b8549430af5c78702091379571c155b58e7e0368f",
+    "source_range_ref": "rng_irlwr256nb7ptbks4pdayomfx6",
+    "source_thread_ref": "thr_onhhec6rkcmavj7eizicm2njrt"
+  }
+}

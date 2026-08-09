@@ -1,0 +1,171 @@
+schema_version: context.skill-catalog/v1alpha1
+generated_at: "2026-08-09T00:00:00Z"
+status: candidate-catalog
+
+# Metadata-only references. Admission requires a pinned revision, content hash,
+# license/provenance scan and replay evidence before an entry can become active.
+entries:
+  - catalog_entry_id: openai-superpowers-verification
+    source_kind: external
+    trust_tier: official
+    publisher: openai-and-obra
+    source_url: https://github.com/openai/plugins/tree/main/plugins/superpowers/skills/verification-before-completion
+    source_revision: 11c74d6ba24d3a6d48f54a194cd00ef3beea18f9
+    license_ref: MIT
+    capabilities: [read, write, subprocess]
+    applicability:
+      projects: [context-control-plane, alkaidlab]
+      operations: [verify, completion-gate]
+      roles: [executor, verifier]
+    verification_status: metadata-only
+    status: candidate
+
+  - catalog_entry_id: openai-superpowers-systematic-debugging
+    source_kind: external
+    trust_tier: official
+    publisher: openai-and-obra
+    source_url: https://github.com/openai/plugins/tree/main/plugins/superpowers/skills/systematic-debugging
+    source_revision: 11c74d6ba24d3a6d48f54a194cd00ef3beea18f9
+    license_ref: MIT
+    capabilities: [read, write, subprocess]
+    applicability:
+      projects: [context-control-plane, alkaidlab]
+      operations: [debug, test-failure]
+      roles: [executor, verifier]
+    verification_status: metadata-only
+    status: candidate
+
+  - catalog_entry_id: github-agent-supply-chain
+    source_kind: external
+    trust_tier: verified-org
+    publisher: github
+    source_url: https://github.com/github/awesome-copilot/tree/main/skills/agent-supply-chain
+    source_revision: ab7544d03d4c49fdd07f5958e1888ad39c4118e2
+    license_ref: MIT
+    capabilities: [read, subprocess]
+    applicability:
+      projects: [context-control-plane]
+      operations: [skill-admission, integrity-check]
+      roles: [verifier, reviewer]
+    verification_status: metadata-only
+    status: candidate
+
+  - catalog_entry_id: github-build-evidence-map
+    source_kind: external
+    trust_tier: verified-org
+    publisher: github
+    source_url: https://github.com/github/awesome-copilot/tree/main/skills/build-evidence-map
+    source_revision: ab7544d03d4c49fdd07f5958e1888ad39c4118e2
+    license_ref: MIT
+    capabilities: [read]
+    applicability:
+      projects: [context-control-plane, alkaidlab]
+      operations: [evidence-map, research]
+      roles: [thinker, verifier, reviewer]
+    verification_status: metadata-only
+    status: candidate
+
+  - catalog_entry_id: github-codebase-memory-mcp
+    source_kind: external
+    trust_tier: verified-org
+    publisher: github
+    source_url: https://github.com/github/awesome-copilot/tree/main/skills/codebase-memory-mcp
+    source_revision: ab7544d03d4c49fdd07f5958e1888ad39c4118e2
+    license_ref: MIT
+    capabilities: [read, mcp]
+    applicability:
+      projects: [context-control-plane, alkaidlab]
+      operations: [code-discovery, impact-analysis]
+      roles: [thinker, reviewer]
+    verification_status: metadata-only
+    status: candidate
+
+  - catalog_entry_id: openai-node-link-layout
+    source_kind: external
+    trust_tier: official
+    publisher: openai
+    source_url: https://github.com/openai/plugins/tree/main/plugins/build-web-data-visualization/skills/node-link-and-diagram-layout
+    source_revision: 11c74d6ba24d3a6d48f54a194cd00ef3beea18f9
+    license_ref: MIT
+    capabilities: [read, write]
+    applicability:
+      projects: [context-control-plane]
+      operations: [docmost-force-directed-view, graph-layout]
+      roles: [executor, verifier]
+    verification_status: metadata-only
+    status: candidate
+
+  - catalog_entry_id: openai-build-macos-apps
+    source_kind: external
+    trust_tier: official
+    publisher: openai
+    source_url: https://github.com/openai/plugins/tree/main/plugins/build-macos-apps
+    source_revision: 11c74d6ba24d3a6d48f54a194cd00ef3beea18f9
+    license_ref: MIT
+    capabilities: [read, write, subprocess]
+    applicability:
+      projects: [alkaidlab]
+      operations: [swift-macos, build, debug]
+      roles: [executor, verifier]
+    verification_status: metadata-only
+    status: candidate
+
+  - catalog_entry_id: anthropic-skill-creator
+    source_kind: external
+    trust_tier: official
+    publisher: anthropic
+    source_url: https://github.com/anthropics/skills/tree/main/skills/skill-creator
+    source_revision: f17010c9bb483898c1d9c9f42dde2b3a98889434
+    license_ref: Apache-2.0
+    capabilities: [read, write]
+    applicability:
+      projects: [context-control-plane]
+      operations: [skill-proposal, skill-authoring]
+      roles: [thinker, verifier]
+    verification_status: metadata-only
+    status: candidate
+
+  - catalog_entry_id: anthropic-mcp-builder
+    source_kind: external
+    trust_tier: official
+    publisher: anthropic
+    source_url: https://github.com/anthropics/skills/tree/main/skills/mcp-builder
+    source_revision: f17010c9bb483898c1d9c9f42dde2b3a98889434
+    license_ref: Apache-2.0
+    capabilities: [read, write, mcp]
+    applicability:
+      projects: [context-control-plane]
+      operations: [state-mcp, mcp-admission]
+      roles: [executor, verifier]
+    verification_status: metadata-only
+    status: candidate
+
+  - catalog_entry_id: skills-sh-market-discovery
+    source_kind: external
+    trust_tier: marketplace
+    publisher: vercel-labs
+    source_url: https://skills.sh/
+    source_revision: dynamic-index
+    license_ref: per-entry
+    capabilities: [read]
+    applicability:
+      projects: [context-control-plane, alkaidlab]
+      operations: [candidate-discovery]
+      roles: [thinker, reviewer]
+    verification_status: metadata-only
+    status: candidate
+
+  - catalog_entry_id: openai-codex-security
+    source_kind: external
+    trust_tier: official
+    publisher: openai
+    source_url: https://github.com/openai/plugins/tree/main/plugins/codex-security
+    source_revision: 11c74d6ba24d3a6d48f54a194cd00ef3beea18f9
+    license_ref: Proprietary
+    capabilities: [read, write, subprocess]
+    applicability:
+      projects: [context-control-plane, alkaidlab]
+      operations: [security-review]
+      roles: [verifier, reviewer]
+    verification_status: license-and-entitlement-required
+    status: quarantined

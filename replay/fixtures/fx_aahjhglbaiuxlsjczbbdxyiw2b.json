@@ -1,0 +1,66 @@
+{
+  "evidence_refs": [
+    "artifact://sha256/5f610c8f4d05a86bc2e0a08e4fe5364b7249caf9a9479262d74409043bef3e9a#section-4.1"
+  ],
+  "expected_gate": "veto",
+  "expected_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": "Typed state and PostCompact canary are not yet available.",
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Current evidence and an independent validator are required before admission."
+    ],
+    "latest_decision": "The active leaf, latest decision, blocker, and return point come from checkpointed state.",
+    "next_action": "Restore the checkpoint and veto side effects on any task mismatch.",
+    "rejected_decisions": [
+      "A compressed conversation summary may select the next task."
+    ],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "extraction": {
+    "content_end": 383,
+    "content_sha256": "d438b84380d8c0773c7a4f3f3d044e35bee3a6fc88319ffbb550203b1ab3bc37",
+    "content_start": 0,
+    "findings_by_category": {},
+    "normalized_event_sha256": "f8f9e7d2701f39aacceabf0f8f4805bc8a7015abf0aa838078cf639dcc502a97",
+    "selection_version": "anchored-contiguous-fragment/v1",
+    "source_fragment_sha256": "d438b84380d8c0773c7a4f3f3d044e35bee3a6fc88319ffbb550203b1ab3bc37"
+  },
+  "fixture_id": "fx_aahjhglbaiuxlsjczbbdxyiw2b",
+  "fixture_sha256": "7610b88621c09688758253079d3183bd06c79a69a297d7bf0b718f479c68dfd6",
+  "initial_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": null,
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Historical archive content is candidate evidence."
+    ],
+    "latest_decision": "A compressed conversation summary may select the next task.",
+    "next_action": "Resolve the event from free-form historical context.",
+    "rejected_decisions": [],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "input_event": {
+    "content": "我的项目一直在演进，但时间久了项目自己就不知道在做啥了，你可以看看 Claude（同时我迁移到 Codex 了） 记录，近期我在 Claude 上做了 ALTP 与 ECN 和弱网相关，以及在本机和SkyServer 尝试跑到满带宽 10Gbps，我们的任务执行的很好，但是有很多次返工，或者臆测，或者说偏离主线，MASTER 因为最近 ALTP 在类 LocalSend实验性Product偏离，所以也需要看看如何优化这样的体验，可能上次压缩想要执行 A，结果压缩一下变成 B 了，使用子 Agent 倒是可以一定程度上避免上下文，但不是长久之计，因为我这是大型项目，未来还会有协作者加入协作。比如现在你的上下文就快满了，你一压缩也会忘记你之前想的，因为 Codex 或者 Claude 的机制，你会一直在看我说的这句话，导致上下文错乱。可能我说一句你要压缩几十次",
+    "content_sha256": "d438b84380d8c0773c7a4f3f3d044e35bee3a6fc88319ffbb550203b1ab3bc37",
+    "event_kind": "user_message"
+  },
+  "project_id": "alkaidlab-shadow",
+  "sanitization": {
+    "content_sha256": "d438b84380d8c0773c7a4f3f3d044e35bee3a6fc88319ffbb550203b1ab3bc37",
+    "sanitizer_version": "m1-03.v1",
+    "status": "clean"
+  },
+  "scenario_class": "compaction-recovery",
+  "schema_version": "context.replay-fixture/v1alpha1",
+  "source": {
+    "archive_sha256": "53de3c9faa46ba13c1e74de0f585e0085b31d4ded546229607f382b2d62aa425",
+    "byte_end": 24328144,
+    "byte_start": 24326974,
+    "extractor_version": "codex-rollout-observed/v1alpha1",
+    "provider": "codex",
+    "range_sha256": "bf2a07e6cf7e0302fcc4b4df7e0c439c361f8b9018affd6bc45c184ca142e328",
+    "source_range_ref": "rng_ah47d7zwino56tc2dr7azlyv7e",
+    "source_thread_ref": "thr_qu4nvpjyppxalya6k3gmuvk2fu"
+  }
+}

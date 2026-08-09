@@ -1,0 +1,66 @@
+{
+  "evidence_refs": [
+    "artifact://sha256/5f610c8f4d05a86bc2e0a08e4fe5364b7249caf9a9479262d74409043bef3e9a#section-2.3"
+  ],
+  "expected_gate": "veto",
+  "expected_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": "Current code, environment digest, and measurement profile are missing.",
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Current evidence and an independent validator are required before admission."
+    ],
+    "latest_decision": "Historical performance values are candidate evidence until current code or a new measurement profile verifies them.",
+    "next_action": "Request current evidence before changing the Product or protocol.",
+    "rejected_decisions": [
+      "A historical throughput result is sufficient to choose the next optimization."
+    ],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "extraction": {
+    "content_end": 781,
+    "content_sha256": "11206de7984c4d14b1af571c67b94649c75c89c6987825448da9b5135c524c9c",
+    "content_start": 204,
+    "findings_by_category": {},
+    "normalized_event_sha256": "c716b3fe77ebbac986e63f1f1267789d66af6881890f6ae4fbc3bf927cc1bda5",
+    "selection_version": "anchored-contiguous-fragment/v1",
+    "source_fragment_sha256": "11206de7984c4d14b1af571c67b94649c75c89c6987825448da9b5135c524c9c"
+  },
+  "fixture_id": "fx_kdegcgjmskh4gi3rcprawj3fgs",
+  "fixture_sha256": "ce6c8f826cdfa34ce72acef8b42b35ddb4cc924dd64b55c8848103c3fe1807fc",
+  "initial_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": null,
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Historical archive content is candidate evidence."
+    ],
+    "latest_decision": "A historical throughput result is sufficient to choose the next optimization.",
+    "next_action": "Resolve the event from free-form historical context.",
+    "rejected_decisions": [],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "input_event": {
+    "content": "## My request for Codex:\n你看比如说，本来我说的是我的项目一直在演进，但时间久了项目自己就不知道在做啥了，你可以看看 Claude（同时我迁移到 Codex 了） 记录，近期我在 Claude 上做了 ALTP 与 ECN 和弱网相关，以及在本机和SkyServer 尝试跑到满带宽 10Gbps，我们的任务执行的很好，但是有很多次返工，或者臆测，或者说偏离主线，MASTER 因为最近 ALTP 在类 LocalSend实验性Product偏离，所以也需要看看如何优化这样的体验，可能上次压缩想要执行 A，结果压缩一下变成 B 了，使用子 Agent 倒是可以一定程度上避免上下文，但不是长久之计，因为我这是大型项目，未来还会有协作者加入协作。比如现在你的上下文就快满了，你一压缩也会忘记你之前想的，因为 Codex 或者 Claude 的机制，你会一直在看我说的这句话，导致上下文错乱。可能我说一句你要压缩几十次\n现在你压缩完，先我会按 AlkaidLab 的现有规范来核查：先读取项目记忆与两个核心 skill，再对照 MASTER、报告体系、目标态架构和全表，重点找出哪些内容在压缩后会丢失、哪些事实已经漂移，以及怎样把它们拆成可恢复的机器状态。随后我会给出对当前体系的实测结论和可落地的改造优先级。之前你在做的放在文本里",
+    "content_sha256": "11206de7984c4d14b1af571c67b94649c75c89c6987825448da9b5135c524c9c",
+    "event_kind": "user_message"
+  },
+  "project_id": "alkaidlab-shadow",
+  "sanitization": {
+    "content_sha256": "11206de7984c4d14b1af571c67b94649c75c89c6987825448da9b5135c524c9c",
+    "sanitizer_version": "m1-03.v1",
+    "status": "clean"
+  },
+  "scenario_class": "evidence-gap",
+  "schema_version": "context.replay-fixture/v1alpha1",
+  "source": {
+    "archive_sha256": "53de3c9faa46ba13c1e74de0f585e0085b31d4ded546229607f382b2d62aa425",
+    "byte_end": 24460654,
+    "byte_start": 24458739,
+    "extractor_version": "codex-rollout-observed/v1alpha1",
+    "provider": "codex",
+    "range_sha256": "d5c9e2781e688e3924e9e0dc67c76b6f7c68a0ba34f6daee76bdf6047b86ec3b",
+    "source_range_ref": "rng_53qswzta3nb56boqkvowzre2np",
+    "source_thread_ref": "thr_qu4nvpjyppxalya6k3gmuvk2fu"
+  }
+}

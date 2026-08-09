@@ -1,0 +1,66 @@
+{
+  "evidence_refs": [
+    "artifact://sha256/5f610c8f4d05a86bc2e0a08e4fe5364b7249caf9a9479262d74409043bef3e9a#section-2.3"
+  ],
+  "expected_gate": "veto",
+  "expected_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": "A matched current A/B receipt is missing.",
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Current evidence and an independent validator are required before admission."
+    ],
+    "latest_decision": "Controller comparisons require matched pacing, direction, workload, and current measurement conditions.",
+    "next_action": "Rebuild the comparison matrix before selecting a controller optimization.",
+    "rejected_decisions": [
+      "NewReno and BBR results can be compared without matching pacing conditions."
+    ],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "extraction": {
+    "content_end": 8892,
+    "content_sha256": "0657dfa0b64d60089bff3a1e3638cb787915d76b098fd9e301c9156eb6b5851e",
+    "content_start": 7864,
+    "findings_by_category": {},
+    "normalized_event_sha256": "953279a8fffc5c8068803ebf8a752011ac3f2c83d07d29b6f7d1f8609db6ac6f",
+    "selection_version": "anchored-contiguous-fragment/v1",
+    "source_fragment_sha256": "0657dfa0b64d60089bff3a1e3638cb787915d76b098fd9e301c9156eb6b5851e"
+  },
+  "fixture_id": "fx_4vrxmcuwgzzf2tdvfvsupkna7r",
+  "fixture_sha256": "259318107fec69c267e1b28936438b263b61119259f9ce4466240b51d155408a",
+  "initial_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": null,
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Historical archive content is candidate evidence."
+    ],
+    "latest_decision": "NewReno and BBR results can be compared without matching pacing conditions.",
+    "next_action": "Resolve the event from free-form historical context.",
+    "rejected_decisions": [],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "input_event": {
+    "content": "**Seven same-shape errors** — used a query with a blind spot, then treated \"I didn't see it\" as \"it doesn't exist\":\n1. **\"三个 backend 全没接\"** (actually 2/3; macos-render-sync was already wired at `if(APPLE)` further down the file) — corrected by clocksync-exec\n2. **\"BBR 从来没追上过 NewReno\"** — only read a grep fragment; full `d710a1e8` message says \"8239 Mbps with pacing off, 8730 for NewReno\". **The USER corrected me** (\"我觉得你肯定是记错了\")\n3. **\"问题在 pacer 不在模型\"** — refuted by my own later measurement (unpaced spread 78% > paced 16%)\n4. **\"S-B 的先例指望不上\"** — misread which precedent bbr-thinker cited (STARTUP `full_loss_cnt`, not `bw_probe_samples`)\n5. **\"PQ-KEM 生产零调用\"** — grepped `alk_pq_kem` (nonexistent prefix); real prefix `alk_hybrid_kem_` has **31 production call sites**. Corrected by pin-thinker\n6. **\"全表没有 filetransfer\"** — grepped `filetransfer|filecopy`; table says `data.file-transfer` (hyphenated)\n7. **\"mps-exec 功能半没做\"** — `git status --short | grep -v \"^??\"` filtered out its untracked new files. Corrected by mtu-exec",
+    "content_sha256": "0657dfa0b64d60089bff3a1e3638cb787915d76b098fd9e301c9156eb6b5851e",
+    "event_kind": "compaction_checkpoint"
+  },
+  "project_id": "alkaidlab-shadow",
+  "sanitization": {
+    "content_sha256": "0657dfa0b64d60089bff3a1e3638cb787915d76b098fd9e301c9156eb6b5851e",
+    "sanitizer_version": "m1-03.v1",
+    "status": "clean"
+  },
+  "scenario_class": "evidence-gap",
+  "schema_version": "context.replay-fixture/v1alpha1",
+  "source": {
+    "archive_sha256": "efbfb793b571b55848b8af8df6151448b030b35557df3864832e81f411df74f0",
+    "byte_end": 11885984,
+    "byte_start": 11860656,
+    "extractor_version": "claude-code-jsonl-observed/v1alpha1",
+    "provider": "claude",
+    "range_sha256": "ec3e8d00452809b1f8a3916ff5c176c863a0b2558eb6cc2bd0621e1a8ba08681",
+    "source_range_ref": "rng_khawsahgkklfkdnh6f5ztx5fyj",
+    "source_thread_ref": "thr_onhhec6rkcmavj7eizicm2njrt"
+  }
+}

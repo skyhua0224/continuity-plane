@@ -1,0 +1,66 @@
+{
+  "evidence_refs": [
+    "artifact://sha256/5f610c8f4d05a86bc2e0a08e4fe5364b7249caf9a9479262d74409043bef3e9a#section-2.4"
+  ],
+  "expected_gate": "veto",
+  "expected_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": "Promotion status is not approved.",
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Current evidence and an independent validator are required before admission."
+    ],
+    "latest_decision": "altp-filecopy remains an experimental Product and technical validation vehicle with mainline_authority=false until a promotion gate is approved.",
+    "next_action": "Return to the MASTER leaf after recording the experiment result.",
+    "rejected_decisions": [
+      "The technical validation Product is an independent mainline."
+    ],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "extraction": {
+    "content_end": 503,
+    "content_sha256": "c447643053068c6bf8a2627fae01ec50738ec4e32f54fb7974c995ec83174fc0",
+    "content_start": 0,
+    "findings_by_category": {},
+    "normalized_event_sha256": "418128f03b7b29f3f9e92d42fd893a46cb0850077a57db43e47ee472daff40d9",
+    "selection_version": "anchored-contiguous-fragment/v1",
+    "source_fragment_sha256": "c447643053068c6bf8a2627fae01ec50738ec4e32f54fb7974c995ec83174fc0"
+  },
+  "fixture_id": "fx_5hqxcf6msnfo7uhd2rga4u44ak",
+  "fixture_sha256": "7517054e68d592bf5d5578fadcc122bfae08b299d014df94092d318511e8c78d",
+  "initial_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": null,
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Historical archive content is candidate evidence."
+    ],
+    "latest_decision": "The technical validation Product is an independent mainline.",
+    "next_action": "Resolve the event from free-form historical context.",
+    "rejected_decisions": [],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "input_event": {
+    "content": "对于这个记忆系统，它应该作为alkaidlab-platform 这个平台项目的 slot 和模块，依托其 Core，还是另外的一个记忆仓库，放入各种记忆模块？以及如果有新技术如何迭代替换，我觉得评估文档总体还是不错的，能够有一个较为清晰的解析。比如说现在的 ALTP 实验性项目 altp-filecopy，实际是为了通过类 Localsend 的方式因为它除了核心是传输文件外其余大多数功能和串流很像，所以我做了这个 Product 作为技术验证减少视频音频流的影响，但本质还是为了 MASTER 工作。docmost 我们已经进行了魔改[https://mydoc.procriva.com:23000/](https://mydoc.procriva.com:23000/) [https://github.com/Yundi339/docmost/tree/feat/native-database-fusion.](https://github.com/Yundi339/docmost/tree/feat/native-database-fusion.) 如果对于记忆系统有需要可以进一步魔改",
+    "content_sha256": "c447643053068c6bf8a2627fae01ec50738ec4e32f54fb7974c995ec83174fc0",
+    "event_kind": "user_message"
+  },
+  "project_id": "alkaidlab-shadow",
+  "sanitization": {
+    "content_sha256": "c447643053068c6bf8a2627fae01ec50738ec4e32f54fb7974c995ec83174fc0",
+    "sanitizer_version": "m1-03.v1",
+    "status": "clean"
+  },
+  "scenario_class": "compaction-recovery",
+  "schema_version": "context.replay-fixture/v1alpha1",
+  "source": {
+    "archive_sha256": "53de3c9faa46ba13c1e74de0f585e0085b31d4ded546229607f382b2d62aa425",
+    "byte_end": 25215485,
+    "byte_start": 25214339,
+    "extractor_version": "codex-rollout-observed/v1alpha1",
+    "provider": "codex",
+    "range_sha256": "d143f4638437cacc6f56d63678f78d9a42e898eb3a3f1f35162c32631bb5401b",
+    "source_range_ref": "rng_fesmbkt2zwubj4v6hoo3clwnz3",
+    "source_thread_ref": "thr_qu4nvpjyppxalya6k3gmuvk2fu"
+  }
+}

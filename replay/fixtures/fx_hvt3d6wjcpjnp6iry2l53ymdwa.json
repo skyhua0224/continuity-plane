@@ -1,0 +1,66 @@
+{
+  "evidence_refs": [
+    "artifact://sha256/5f610c8f4d05a86bc2e0a08e4fe5364b7249caf9a9479262d74409043bef3e9a#section-4.1"
+  ],
+  "expected_gate": "veto",
+  "expected_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": "Typed state is not yet implemented.",
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Current evidence and an independent validator are required before admission."
+    ],
+    "latest_decision": "MASTER keeps governance intent; active execution state requires a revisioned task record.",
+    "next_action": "Capture the plan proposal without changing the active leaf.",
+    "rejected_decisions": [
+      "A generated plan document may become the current execution state."
+    ],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "extraction": {
+    "content_end": 173,
+    "content_sha256": "25291b83d025838eeb95a78b56f231322076acec6ded70b55d9b48952e63d33c",
+    "content_start": 0,
+    "findings_by_category": {},
+    "normalized_event_sha256": "25291b83d025838eeb95a78b56f231322076acec6ded70b55d9b48952e63d33c",
+    "selection_version": "anchored-contiguous-fragment/v1",
+    "source_fragment_sha256": "25291b83d025838eeb95a78b56f231322076acec6ded70b55d9b48952e63d33c"
+  },
+  "fixture_id": "fx_hvt3d6wjcpjnp6iry2l53ymdwa",
+  "fixture_sha256": "690ea376c1d4e2b963f5ac733708ec42287b71aa4e672af6a4bcdc10c9195bf1",
+  "initial_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": null,
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Historical archive content is candidate evidence."
+    ],
+    "latest_decision": "A generated plan document may become the current execution state.",
+    "next_action": "Resolve the event from free-form historical context.",
+    "rejected_decisions": [],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "input_event": {
+    "content": "文档按照Platform 目标态架构全表格式给我，然后给我一份类 MASTER 任务清单。不一定是 Localsend，只是 localsend 正好有配对之类的功能，我们也可以参考行业标准文档，操作系统官方文档，软件官方文档做一份基于 Platform Core 和 Runtime 的传输软件，证明核心通用且强大，我需要足够多的数据支撑做这个",
+    "content_sha256": "25291b83d025838eeb95a78b56f231322076acec6ded70b55d9b48952e63d33c",
+    "event_kind": "user_message"
+  },
+  "project_id": "alkaidlab-shadow",
+  "sanitization": {
+    "content_sha256": "25291b83d025838eeb95a78b56f231322076acec6ded70b55d9b48952e63d33c",
+    "sanitizer_version": "m1-03.v1",
+    "status": "clean"
+  },
+  "scenario_class": "scope-drift",
+  "schema_version": "context.replay-fixture/v1alpha1",
+  "source": {
+    "archive_sha256": "bf1ca962ff3f27d4041533350ecad6666db0e7bef66c43081365b8250cd56d19",
+    "byte_end": 13927787,
+    "byte_start": 13926831,
+    "extractor_version": "claude-code-jsonl-observed/v1alpha1",
+    "provider": "claude",
+    "range_sha256": "66b8ad06d034914bbece4f8cb7a2f0451dd14a122f2aa4becf10f6a0bf869c27",
+    "source_range_ref": "rng_wkmxbojexj7oymdjtqcxipnti2",
+    "source_thread_ref": "thr_glcph3ufafhomasdrd7pe3fhod"
+  }
+}

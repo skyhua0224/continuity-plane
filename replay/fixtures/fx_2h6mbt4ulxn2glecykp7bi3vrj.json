@@ -1,0 +1,66 @@
+{
+  "evidence_refs": [
+    "artifact://sha256/5f610c8f4d05a86bc2e0a08e4fe5364b7249caf9a9479262d74409043bef3e9a#section-3.2"
+  ],
+  "expected_gate": "veto",
+  "expected_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": "N-67 current evidence gate is unresolved.",
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Current evidence and an independent validator are required before admission."
+    ],
+    "latest_decision": "N-42 remains blocked by N-67; completion of N-43 does not open the gate.",
+    "next_action": "Verify N-67 with current evidence before dispatching N-42.",
+    "rejected_decisions": [
+      "N-42 may continue because N-43 is complete."
+    ],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "extraction": {
+    "content_end": 2475,
+    "content_sha256": "c503b3b30c77334238542506c4bd7cfa79f485e53f22b6540efa78b24d1850b8",
+    "content_start": 2344,
+    "findings_by_category": {},
+    "normalized_event_sha256": "31ce88e325ca76e5fc8cfe030278b86cb275511277e8b19778bda4b9cd17324f",
+    "selection_version": "anchored-contiguous-fragment/v1",
+    "source_fragment_sha256": "c503b3b30c77334238542506c4bd7cfa79f485e53f22b6540efa78b24d1850b8"
+  },
+  "fixture_id": "fx_2h6mbt4ulxn2glecykp7bi3vrj",
+  "fixture_sha256": "ea5431ce1efaae12642b43d509af5f43d4b5885e7f82ebcbfc37965498abc957",
+  "initial_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": null,
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Historical archive content is candidate evidence."
+    ],
+    "latest_decision": "N-42 may continue because N-43 is complete.",
+    "next_action": "Resolve the event from free-form historical context.",
+    "rejected_decisions": [],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "input_event": {
+    "content": "- `N-42` 仍出现，但与“N-67 是硬门”的关系消失。\n- `N-68` 的“改动已回滚”语义消失。\n- Product LOC 不得增加的铁律消失。\n- `platform-contract v0.3` 消失。\n- 8 层结构被错误压成残缺的数字序列。",
+    "content_sha256": "c503b3b30c77334238542506c4bd7cfa79f485e53f22b6540efa78b24d1850b8",
+    "event_kind": "compaction_checkpoint"
+  },
+  "project_id": "alkaidlab-shadow",
+  "sanitization": {
+    "content_sha256": "c503b3b30c77334238542506c4bd7cfa79f485e53f22b6540efa78b24d1850b8",
+    "sanitizer_version": "m1-03.v1",
+    "status": "clean"
+  },
+  "scenario_class": "compaction-recovery",
+  "schema_version": "context.replay-fixture/v1alpha1",
+  "source": {
+    "archive_sha256": "53de3c9faa46ba13c1e74de0f585e0085b31d4ded546229607f382b2d62aa425",
+    "byte_end": 24263776,
+    "byte_start": 24204989,
+    "extractor_version": "codex-rollout-observed/v1alpha1",
+    "provider": "codex",
+    "range_sha256": "cd142018935bbac702555f24ce43aa90f803a9eac579579b9969c0e33e7c45e6",
+    "source_range_ref": "rng_rzsf5uik3xb4ctcgornpexpjon",
+    "source_thread_ref": "thr_qu4nvpjyppxalya6k3gmuvk2fu"
+  }
+}

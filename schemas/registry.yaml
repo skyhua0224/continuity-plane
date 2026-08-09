@@ -1,0 +1,77 @@
+registry_version: context.schema-registry/v1alpha1
+generated_at: "2026-08-09T00:00:00Z"
+release_channel: shadow-pilot
+compatibility_window: current-plus-verified-legacy
+
+# This registry is metadata-only. Migration entries require replay and
+# rollback evidence before a legacy wire version can be accepted.
+schemas:
+  - schema_id: context.source-registry
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: m1-02.v1
+    supported_wire_versions: [m1-02.v1]
+    artifact_path: schemas/m1-02/source-registry.schema.json
+    content_sha256: 4eacef9e78d16d7cf14cb978ed5793fba41274172d6e4e5311a621f68b470d1e
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.provenance
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: m1-02.v1
+    supported_wire_versions: [m1-02.v1]
+    artifact_path: schemas/m1-02/provenance.schema.json
+    content_sha256: e2f795d4d672ab83e82b7733cc39601a8a3b203fe76c0023b5fb837a267f27ff
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.project-profile
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.project/v1alpha1
+    supported_wire_versions: [context.project/v1alpha1]
+    artifact_path: profiles/alkaidlab/project.example.yaml
+    content_sha256: 51575119d5db0ec1ed56c9640ee34ff71e483e92a577eac7cdc396ddcc407b4e
+    status: current
+    compatibility_mode: profile-contract
+    migrations: []
+
+  - schema_id: context.skill-catalog
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.skill-catalog/v1alpha1
+    supported_wire_versions: [context.skill-catalog/v1alpha1]
+    artifact_path: profiles/skill-catalog.example.yaml
+    content_sha256: cd550a0411f3416410aa756d2e4d288caf50263ecb1da05fd58f1357ba9566c8
+    status: current
+    compatibility_mode: profile-contract
+    migrations: []
+
+  - schema_id: context.reference-catalog
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.reference-catalog/v1alpha1
+    supported_wire_versions: [context.reference-catalog/v1alpha1]
+    artifact_path: profiles/reference-catalog.example.yaml
+    content_sha256: 87ee55a67d8342e4b0aafc629bcfcfeb380a80e8bb348053649d3a33a05d2d1c
+    status: current
+    compatibility_mode: profile-contract
+    migrations: []
+
+  - schema_id: context.archive-governance
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: m1-06.v1
+    supported_wire_versions: [m1-06.v1]
+    artifact_path: schemas/m1-06/archive-governance.schema.json
+    content_sha256: 6ae3237f74ca04379d4769fce8c13bef48d2d2d1e8bc770a1d1fe3cadbed9b01
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.dogfood-observation
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.dogfood-observation/v1alpha1
+    supported_wire_versions: [context.dogfood-observation/v1alpha1]
+    artifact_path: experiments/dogfood/observations-2026-08-09.yaml
+    content_sha256: f6e3a5045747961c7557220a66c7643e7e0333c6c434c23a22c32842284b54f6
+    status: current
+    compatibility_mode: profile-contract
+    migrations: []

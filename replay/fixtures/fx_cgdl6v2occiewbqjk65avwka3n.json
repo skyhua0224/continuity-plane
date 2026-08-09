@@ -1,0 +1,66 @@
+{
+  "evidence_refs": [
+    "artifact://sha256/5f610c8f4d05a86bc2e0a08e4fe5364b7249caf9a9479262d74409043bef3e9a#section-2.3"
+  ],
+  "expected_gate": "veto",
+  "expected_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": "Windows live evidence is missing.",
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Current evidence and an independent validator are required before admission."
+    ],
+    "latest_decision": "The run remains partial until the project Verification Profile covers the required platforms.",
+    "next_action": "Preserve the open verification gap after the run completes.",
+    "rejected_decisions": [
+      "One srtt run can close the cross-platform transport task."
+    ],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "extraction": {
+    "content_end": 61,
+    "content_sha256": "5a24d69f113dc9e9ed8df229a74b955dc504bf9db866e0c43f4bf563e0b525ce",
+    "content_start": 0,
+    "findings_by_category": {},
+    "normalized_event_sha256": "5a24d69f113dc9e9ed8df229a74b955dc504bf9db866e0c43f4bf563e0b525ce",
+    "selection_version": "anchored-contiguous-fragment/v1",
+    "source_fragment_sha256": "5a24d69f113dc9e9ed8df229a74b955dc504bf9db866e0c43f4bf563e0b525ce"
+  },
+  "fixture_id": "fx_cgdl6v2occiewbqjk65avwka3n",
+  "fixture_sha256": "68f2be51d7dc16b2747f7f315f82580855f43c31b7b9988131f5cfb7cdad28f7",
+  "initial_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": null,
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Historical archive content is candidate evidence."
+    ],
+    "latest_decision": "One srtt run can close the cross-platform transport task.",
+    "next_action": "Resolve the event from free-form historical context.",
+    "rejected_decisions": [],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "input_event": {
+    "content": "虚拟机释放了，先跑 srtt 那一跑，全部跑完记得清理内存，别占满内存到时候我虚拟机也开不了，我们还没测过 Windows",
+    "content_sha256": "5a24d69f113dc9e9ed8df229a74b955dc504bf9db866e0c43f4bf563e0b525ce",
+    "event_kind": "user_message"
+  },
+  "project_id": "alkaidlab-shadow",
+  "sanitization": {
+    "content_sha256": "5a24d69f113dc9e9ed8df229a74b955dc504bf9db866e0c43f4bf563e0b525ce",
+    "sanitizer_version": "m1-03.v1",
+    "status": "clean"
+  },
+  "scenario_class": "evidence-gap",
+  "schema_version": "context.replay-fixture/v1alpha1",
+  "source": {
+    "archive_sha256": "efbfb793b571b55848b8af8df6151448b030b35557df3864832e81f411df74f0",
+    "byte_end": 4914783,
+    "byte_start": 4914103,
+    "extractor_version": "claude-code-jsonl-observed/v1alpha1",
+    "provider": "claude",
+    "range_sha256": "e795f8d53487cb97d0fcf34a8a2a229d3d66eb82c6f3f882e823f78215680c98",
+    "source_range_ref": "rng_a6qux6atdlb63b4dimsaha7tvm",
+    "source_thread_ref": "thr_onhhec6rkcmavj7eizicm2njrt"
+  }
+}

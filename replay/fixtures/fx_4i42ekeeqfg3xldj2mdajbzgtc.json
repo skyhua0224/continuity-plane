@@ -1,0 +1,66 @@
+{
+  "evidence_refs": [
+    "artifact://sha256/5f610c8f4d05a86bc2e0a08e4fe5364b7249caf9a9479262d74409043bef3e9a#section-2.3"
+  ],
+  "expected_gate": "veto",
+  "expected_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": "Streaming, directory, resume, and weak-network profiles are not measured.",
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Current evidence and an independent validator are required before admission."
+    ],
+    "latest_decision": "Historical performance values are candidate evidence until current code or a new measurement profile verifies them.",
+    "next_action": "Keep each workload as a separate evidence request and test profile.",
+    "rejected_decisions": [
+      "A saturation benchmark also proves streaming and weak-network behavior."
+    ],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "extraction": {
+    "content_end": 201,
+    "content_sha256": "d49c271bcd554296a9d61903420f7391e1b03496511770ae61735026eacf64c7",
+    "content_start": 0,
+    "findings_by_category": {},
+    "normalized_event_sha256": "d49c271bcd554296a9d61903420f7391e1b03496511770ae61735026eacf64c7",
+    "selection_version": "anchored-contiguous-fragment/v1",
+    "source_fragment_sha256": "d49c271bcd554296a9d61903420f7391e1b03496511770ae61735026eacf64c7"
+  },
+  "fixture_id": "fx_4i42ekeeqfg3xldj2mdajbzgtc",
+  "fixture_sha256": "9f101a4f8af42ba61c0eb8c7044a112ff1c2aacb3223f70ccc88b55124d90012",
+  "initial_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": null,
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Historical archive content is candidate evidence."
+    ],
+    "latest_decision": "A saturation benchmark also proves streaming and weak-network behavior.",
+    "next_action": "Resolve the event from free-form historical context.",
+    "rejected_decisions": [],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "input_event": {
+    "content": "还有就是测一测串流的时候可能会有的持续流传输大小，比如 4K150Hz 8Bit 是 126Mbps，10Bit 是 258Mbps，以及之后的多文件散文件多小文件等多文件甚至文件夹目录传输，另外需要一个 thinker 去思考串流近似值的测试。还有就是测试极限带宽，我希望是能跑满带宽的（特别是单文件，多文件如果能做到那就更好了），无论是本机自测，还是局域网测试。之后还要补充断点续传，模拟弱网环境等",
+    "content_sha256": "d49c271bcd554296a9d61903420f7391e1b03496511770ae61735026eacf64c7",
+    "event_kind": "user_message"
+  },
+  "project_id": "alkaidlab-shadow",
+  "sanitization": {
+    "content_sha256": "d49c271bcd554296a9d61903420f7391e1b03496511770ae61735026eacf64c7",
+    "sanitizer_version": "m1-03.v1",
+    "status": "clean"
+  },
+  "scenario_class": "evidence-gap",
+  "schema_version": "context.replay-fixture/v1alpha1",
+  "source": {
+    "archive_sha256": "bf1ca962ff3f27d4041533350ecad6666db0e7bef66c43081365b8250cd56d19",
+    "byte_end": 19410177,
+    "byte_start": 19409103,
+    "extractor_version": "claude-code-jsonl-observed/v1alpha1",
+    "provider": "claude",
+    "range_sha256": "024552cfc480fc2c9b93b0612303ccc5f62e9ff83f07cd027011ecd7398dc060",
+    "source_range_ref": "rng_owarggkg664cwtpwym7jgabtft",
+    "source_thread_ref": "thr_glcph3ufafhomasdrd7pe3fhod"
+  }
+}

@@ -1,0 +1,822 @@
+schema_version: context.dogfood-observation/v1alpha1
+generated_at: "2026-08-09T22:03:15+08:00"
+status: baseline
+measurement_limitations:
+  - provider token accounting was unavailable for this resumed segment
+  - restore wall-clock and p95 were not emitted by a State MCP or OTel trace
+  - four visible compactions still did not expose comparable provider context-window usage, input/cache tokens, or restore latency
+
+observations:
+  - observation_id: dogfood-compaction-001
+    event_type: compaction
+    observed_at: "2026-08-09T17:20:00+08:00"
+    authority: checkpoint-and-current-repository
+    active_leaf_before: M1-04
+    active_leaf_after: M1-04
+    metrics:
+      critical_fields_total: 6
+      critical_fields_recovered: 6
+      stale_decisions_revived: 0
+      unauthorized_task_switches: 0
+      comparable_context_input_bytes: null
+    evidence:
+      - checkpoint summary and STATUS revision 4 agreed on M1-04
+      - current repository files were re-read before governance changes
+
+  - observation_id: dogfood-skill-load-001
+    event_type: skill-load
+    observed_at: "2026-08-09T17:45:00+08:00"
+    authority: task-trigger-and-announced-skill-use
+    active_leaf_before: M1-04
+    active_leaf_after: M0-07
+    metrics:
+      body_load_count: 5
+      total_body_bytes: 59448
+      repeated_body_load_bytes: 0
+      skills:
+        - skill_id: skill-creator
+          content_sha256: da44c88f6b3845a8fa8c60792ec9a722110a55a9793c279757b48fefb11f819c
+          body_bytes: 22047
+          body_lines: 416
+          reason: project and user Skill proposal design
+        - skill_id: skill-installer
+          content_sha256: d68b77e5bbb34dedab89d134da52855f140fc4b4299b80104f534e3b9e98f8ee
+          body_bytes: 3367
+          body_lines: 58
+          reason: external Skill distribution and source URL handling
+        - skill_id: openai-docs
+          content_sha256: 9914a79e6e1bd70d780b777e9019677af0eba60bbdfac3b7fe9b0407f16b5cc4
+          body_bytes: 22806
+          body_lines: 183
+          reason: current Codex harness and Skill facts
+        - skill_id: session-memory-hygiene
+          content_sha256: e7814b9010db3d5dd83d978f93d80515cee2f5388761f5fb20f7a406fdc856f0
+          body_bytes: 1361
+          body_lines: 34
+          reason: stale context and compaction recovery boundaries
+        - skill_id: test-driven-development
+          content_sha256: 7dee67b4af6bdccc7a914ca34533184d64592d0f5b23aeae631538168db14994
+          body_bytes: 9867
+          body_lines: 371
+          reason: M0-07 and dogfood metric implementation
+
+  - observation_id: dogfood-plan-revision-001
+    event_type: plan-revision
+    observed_at: "2026-08-09T17:52:00+08:00"
+    authority: explicit-user-harness-and-continuity-request
+    authorized: true
+    active_leaf_before: M1-04
+    active_leaf_after: M0-07
+    metrics:
+      master_revision_before: 4
+      master_revision_after: 5
+      unauthorized_goal_changes: 0
+      project_mission_changed: false
+      return_point_preserved: true
+      tasks_added: [M0-08, M3-07, M7-06, M8-06]
+
+  - observation_id: dogfood-plan-revision-002
+    event_type: plan-revision
+    observed_at: "2026-08-09T18:02:53+08:00"
+    authority: explicit-user-dogfood-observation-request
+    authorized: true
+    active_leaf_before: M0-07
+    active_leaf_after: M0-07
+    metrics:
+      master_revision_before: 5
+      master_revision_after: 6
+      unauthorized_goal_changes: 0
+      project_mission_changed: false
+      return_point_preserved: true
+      tasks_added: [M0-09, M5-07]
+
+  - observation_id: dogfood-verification-001
+    event_type: verification
+    observed_at: "2026-08-09T18:05:00+08:00"
+    authority: repository-test-evidence
+    active_leaf_before: M0-07
+    active_leaf_after: M1-06
+    evidence_refs:
+      - unittest:discover-tests-2026-08-09
+      - check:python-compileall-2026-08-09
+      - check:json-yaml-style-admission-2026-08-09
+    metrics:
+      tests_run: 42
+      tests_failed: 0
+      checks_failed: 0
+      scope_violations: 0
+
+  - observation_id: dogfood-verification-002
+    event_type: verification
+    observed_at: "2026-08-09T18:10:51+08:00"
+    authority: repository-test-evidence
+    active_leaf_before: M1-06
+    active_leaf_after: M1-06
+    evidence_refs:
+      - unittest:discover-tests-43-2026-08-09
+      - check:schema-registry-valid-2026-08-09
+      - check:python-compileall-2026-08-09
+    metrics:
+      tests_run: 43
+      tests_failed: 0
+      checks_failed: 0
+      scope_violations: 0
+
+  - observation_id: dogfood-compaction-002
+    event_type: compaction
+    observed_at: "2026-08-09T18:23:37+08:00"
+    authority: checkpoint-and-current-repository
+    active_leaf_before: M1-06
+    active_leaf_after: M1-06
+    metrics:
+      critical_fields_total: 6
+      critical_fields_recovered: 6
+      stale_decisions_revived: 0
+      unauthorized_task_switches: 0
+      comparable_context_input_bytes: null
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      restore_latency_ms: null
+      provider_compaction_signal_available: true
+      messages_after_recovery_before_observation_commit: 2
+    evidence:
+      - checkpoint summary, STATUS revision 6, and MASTER current routing agreed on M1-06
+      - M1-04 remained parked on controlled byte-range access and independent validation
+      - registry hash mismatch named by the checkpoint was reproduced before repair
+
+  - observation_id: dogfood-skill-load-002
+    event_type: skill-load
+    observed_at: "2026-08-09T18:23:37+08:00"
+    authority: task-trigger-and-announced-skill-use
+    active_leaf_before: M1-06
+    active_leaf_after: M1-06
+    metrics:
+      body_load_count: 3
+      total_body_bytes: 27216
+      repeated_body_load_bytes: 11228
+      skills:
+        - skill_id: session-memory-hygiene
+          content_sha256: e7814b9010db3d5dd83d978f93d80515cee2f5388761f5fb20f7a406fdc856f0
+          body_bytes: 1361
+          body_lines: 34
+          reason: post-compaction stale-context and current-evidence recovery boundary
+        - skill_id: test-driven-development
+          content_sha256: 7dee67b4af6bdccc7a914ca34533184d64592d0f5b23aeae631538168db14994
+          body_bytes: 9867
+          body_lines: 371
+          reason: M1-06 archive lifecycle and input-routing implementation
+        - skill_id: human-first-writing
+          content_sha256: 0f3754759a185b43e6932864703cca58543a8ef58ed80a57469f680f0eaf5832
+          body_bytes: 15988
+          body_lines: 427
+          reason: active global response and documentation contract
+
+  - observation_id: dogfood-input-routing-001
+    event_type: input-routing
+    observed_at: "2026-08-09T18:23:37+08:00"
+    authority: explicit-user-observability-requirement
+    active_leaf_before: M1-06
+    active_leaf_after: M1-06
+    input_kind: context-addition
+    route: capture-and-continue
+    candidate_id: requirement-dogfood-continuity-001
+    candidate_summary: Observe message, Idea, interruption, compaction, Skill loads, goal revision, and unavailable provider context metrics without changing the active leaf.
+    candidate_summary_sha256: 306836d9b9a27c93eda39a2f849adc20fc9f1591ba0cfac59e1187cda266b263
+    metrics:
+      messages_observed: 1
+      ideas_captured: 0
+      unauthorized_task_switches: 0
+      return_point_preserved: true
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      provider_compaction_signal_available: true
+      tool_interruption_observed: false
+
+  - observation_id: dogfood-input-routing-002
+    event_type: input-routing
+    observed_at: "2026-08-09T18:23:37+08:00"
+    authority: explicit-user-idea-label
+    active_leaf_before: M1-06
+    active_leaf_after: M1-06
+    input_kind: idea
+    route: capture-and-continue
+    candidate_id: idea-provider-neutral-adapters-001
+    candidate_summary: Keep a provider-neutral core; support Codex, Claude Code, OpenCode, Kimi Code, Pi/Pai through adapters; plan installation, usage, and heterogeneous-device performance.
+    candidate_summary_sha256: 8a40975156b5c533fee0e691298f9551b584b55ad5d2ca723e8883d822dab062
+    metrics:
+      messages_observed: 1
+      ideas_captured: 1
+      unauthorized_task_switches: 0
+      return_point_preserved: true
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      provider_compaction_signal_available: true
+      tool_interruption_observed: false
+
+  - observation_id: dogfood-plan-revision-003
+    event_type: plan-revision
+    observed_at: "2026-08-09T18:23:37+08:00"
+    authority: explicit-user-context-and-interruption-observability-request
+    authorized: true
+    active_leaf_before: M1-06
+    active_leaf_after: M1-06
+    metrics:
+      master_revision_before: 6
+      master_revision_after: 7
+      unauthorized_goal_changes: 0
+      project_mission_changed: false
+      return_point_preserved: true
+      tasks_added: []
+      tasks_refined: [M5-07]
+
+  - observation_id: dogfood-plan-revision-004
+    event_type: plan-revision
+    observed_at: "2026-08-09T18:29:25+08:00"
+    authority: explicit-user-start-and-acceptance-request
+    authorized: true
+    active_leaf_before: M1-06
+    active_leaf_after: M1-04
+    metrics:
+      master_revision_before: 7
+      master_revision_after: 8
+      unauthorized_goal_changes: 0
+      project_mission_changed: false
+      return_point_preserved: true
+      tasks_added: []
+      tasks_completed: [M1-06]
+      active_frontier: [M1-04]
+
+  - observation_id: dogfood-verification-003
+    event_type: verification
+    observed_at: "2026-08-09T18:29:25+08:00"
+    authority: repository-test-evidence
+    active_leaf_before: M1-04
+    active_leaf_after: M1-04
+    evidence_refs:
+      - unittest:m1-06-archive-governance-9-2026-08-09
+      - unittest:discover-tests-55-2026-08-09
+      - check:schema-registry-json-yaml-compile-style-admission-2026-08-09
+    metrics:
+      tests_run: 55
+      tests_failed: 0
+      checks_failed: 0
+      scope_violations: 0
+
+  - observation_id: dogfood-input-routing-003
+    event_type: input-routing
+    observed_at: "2026-08-09T19:29:16+08:00"
+    authority: explicit-user-interruption-observation
+    active_leaf_before: M1-04
+    active_leaf_after: M1-04
+    input_kind: interrupt
+    route: continue
+    candidate_id: requirement-interruption-continue-001
+    candidate_summary: User continuation message arrived during M1-04 implementation; preserve active leaf and resume the pending batch-hash test.
+    candidate_summary_sha256: a7e9a44149a022bf6de1a44f4bf7b4a602053104fefd64ec2b439228b62970a4
+    metrics:
+      messages_observed: 1
+      ideas_captured: 0
+      unauthorized_task_switches: 0
+      return_point_preserved: true
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      provider_compaction_signal_available: false
+      tool_interruption_observed: true
+
+  - observation_id: dogfood-compaction-003
+    event_type: compaction
+    observed_at: "2026-08-09T19:58:41+08:00"
+    authority: system-handoff-and-current-repository
+    active_leaf_before: M1-04
+    active_leaf_after: M1-04
+    metrics:
+      critical_fields_total: 6
+      critical_fields_recovered: 6
+      stale_decisions_revived: 0
+      unauthorized_task_switches: 0
+      comparable_context_input_bytes: null
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      restore_latency_ms: null
+      provider_compaction_signal_available: true
+      messages_after_recovery_before_observation_commit: 2
+    evidence:
+      - system handoff identified the recovery boundary and preserved M1-04, implemented extraction adapters, pending fixture admission, and provider telemetry limitations
+      - STATUS revision 8 and MASTER revision 8 were re-read before governance changes
+      - no authority was observed for a task switch or fixture admission
+
+  - observation_id: dogfood-skill-load-003
+    event_type: skill-load
+    observed_at: "2026-08-09T20:09:35+08:00"
+    authority: task-trigger-and-announced-skill-use
+    active_leaf_before: M1-04
+    active_leaf_after: M1-04
+    metrics:
+      body_load_count: 2
+      total_body_bytes: 17349
+      repeated_body_load_bytes: 17349
+      skills:
+        - skill_id: session-memory-hygiene
+          content_sha256: e7814b9010db3d5dd83d978f93d80515cee2f5388761f5fb20f7a406fdc856f0
+          body_bytes: 1361
+          body_lines: 34
+          reason: post-compaction current-evidence recovery boundary
+        - skill_id: human-first-writing
+          content_sha256: 0f3754759a185b43e6932864703cca58543a8ef58ed80a57469f680f0eaf5832
+          body_bytes: 15988
+          body_lines: 427
+          reason: active response and normative-document writing contract
+
+  - observation_id: dogfood-input-routing-004
+    event_type: input-routing
+    observed_at: "2026-08-09T20:09:35+08:00"
+    authority: explicit-user-self-evolution-idea
+    active_leaf_before: M1-04
+    active_leaf_after: M1-04
+    input_kind: idea
+    route: capture-and-continue
+    candidate_id: idea-project-adaptation-001
+    candidate_summary: Generate versioned project and user adaptation proposals from verified runs, explicit corrections, and failure fixtures; require shadow A/B, approval, expiry, rollback, and reset.
+    candidate_summary_sha256: 3deb7fd6968928c2abbb6b34ef0ce2ff3d10610d6c45e01d267edb40e0e30b1c
+    metrics:
+      messages_observed: 1
+      ideas_captured: 1
+      unauthorized_task_switches: 0
+      return_point_preserved: true
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      provider_compaction_signal_available: true
+      tool_interruption_observed: false
+
+  - observation_id: dogfood-input-routing-005
+    event_type: input-routing
+    observed_at: "2026-08-09T20:09:35+08:00"
+    authority: explicit-user-bounded-information-idea
+    active_leaf_before: M1-04
+    active_leaf_after: M1-04
+    input_kind: idea
+    route: capture-and-continue
+    candidate_id: idea-bounded-information-access-001
+    candidate_summary: Reduce direct context reads through typed state, artifact ranges, current code/reference indexes, and candidate recall with retrieval receipts and current-evidence verification.
+    candidate_summary_sha256: 812aa7c4fe2a157aaf408bbd93ee06458c6a016e8f8b04edce99fd7a355c3e4c
+    metrics:
+      messages_observed: 1
+      ideas_captured: 1
+      unauthorized_task_switches: 0
+      return_point_preserved: true
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      provider_compaction_signal_available: true
+      tool_interruption_observed: false
+
+  - observation_id: dogfood-input-routing-006
+    event_type: input-routing
+    observed_at: "2026-08-09T20:09:35+08:00"
+    authority: explicit-user-document-lifecycle-idea
+    active_leaf_before: M1-04
+    active_leaf_after: M1-04
+    input_kind: idea
+    route: capture-and-continue
+    candidate_id: idea-document-lifecycle-001
+    candidate_summary: Give MASTER, STATUS, policy, architecture, research, acceptance, and projections distinct update triggers, authority, capacity budgets, supersedes, and archive rules.
+    candidate_summary_sha256: e077f450f863b2dad83cff8864c4fe2b6c7505b6cf60bead4c4b9bdf189fe2c5
+    metrics:
+      messages_observed: 1
+      ideas_captured: 1
+      unauthorized_task_switches: 0
+      return_point_preserved: true
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      provider_compaction_signal_available: true
+      tool_interruption_observed: false
+
+  - observation_id: dogfood-plan-revision-005
+    event_type: plan-revision
+    observed_at: "2026-08-09T20:09:35+08:00"
+    authority: explicit-user-self-evolution-bounded-access-and-document-lifecycle-ideas
+    authorized: true
+    active_leaf_before: M1-04
+    active_leaf_after: M1-04
+    metrics:
+      master_revision_before: 8
+      master_revision_after: 9
+      unauthorized_goal_changes: 0
+      project_mission_changed: false
+      return_point_preserved: true
+      tasks_added: [M0-10, M2-07, M6-07, M8-07, M10-06]
+      tasks_refined: []
+
+  - observation_id: dogfood-verification-004
+    event_type: verification
+    observed_at: "2026-08-09T20:17:00+08:00"
+    authority: repository-test-evidence
+    active_leaf_before: M1-04
+    active_leaf_after: M1-04
+    evidence_refs:
+      - unittest:discover-tests-80-2026-08-09
+      - unittest:source-registry-15-2026-08-09
+      - unittest:fragment-extraction-3-2026-08-09
+    metrics:
+      tests_run: 80
+      tests_failed: 0
+      checks_failed: 0
+      scope_violations: 0
+
+  - observation_id: dogfood-compaction-004
+    event_type: compaction
+    observed_at: "2026-08-09T20:41:35+08:00"
+    authority: system-compaction-summary-and-current-repository
+    active_leaf_before: M1-04
+    active_leaf_after: M1-04
+    metrics:
+      critical_fields_total: 6
+      critical_fields_recovered: 6
+      stale_decisions_revived: 0
+      unauthorized_task_switches: 0
+      comparable_context_input_bytes: null
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      restore_latency_ms: null
+      provider_compaction_signal_available: true
+      messages_after_recovery_before_observation_commit: 1
+    evidence:
+      - the system compaction summary preserved M1-04, the admitted fixture corpus, the pending acceptance work, and provider telemetry limitations
+      - current STATUS revision 9, the M1-04 MASTER section, fixture receipts, and benchmark output were re-read before state promotion
+      - STATUS was detected as stale against current repository evidence; no authority was inferred for a task switch before M1-04 acceptance
+
+  - observation_id: dogfood-skill-load-004
+    event_type: skill-load
+    observed_at: "2026-08-09T20:41:35+08:00"
+    authority: task-trigger-and-announced-skill-use
+    active_leaf_before: M1-04
+    active_leaf_after: M1-04
+    metrics:
+      body_load_count: 1
+      total_body_bytes: 1361
+      repeated_body_load_bytes: 1361
+      skills:
+        - skill_id: session-memory-hygiene
+          content_sha256: e7814b9010db3d5dd83d978f93d80515cee2f5388761f5fb20f7a406fdc856f0
+          body_bytes: 1361
+          body_lines: 34
+          reason: post-compaction recovery and stale routing evidence check
+
+  - observation_id: dogfood-input-routing-007
+    event_type: input-routing
+    observed_at: "2026-08-09T20:42:00+08:00"
+    authority: explicit-user-document-lifecycle-refinement
+    active_leaf_before: M1-04
+    active_leaf_after: M1-04
+    input_kind: context-addition
+    route: capture-and-continue
+    candidate_id: idea-document-lifecycle-001
+    candidate_summary: The documentation-lifecycle reminder matches idea-document-lifecycle-001; strengthen M0-10 with stale-route detection and bounded-growth acceptance without changing M1-04.
+    candidate_summary_sha256: 45a45db49fe322e7e911410f796f3435de503ce33dc965498fed2f6b2d3dbfa5
+    metrics:
+      messages_observed: 1
+      ideas_captured: 0
+      unauthorized_task_switches: 0
+      return_point_preserved: true
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      provider_compaction_signal_available: true
+      tool_interruption_observed: false
+
+  - observation_id: dogfood-plan-revision-006
+    event_type: plan-revision
+    observed_at: "2026-08-09T20:45:00+08:00"
+    authority: explicit-user-continue-with-acceptance-and-document-lifecycle-refinement
+    authorized: true
+    active_leaf_before: M1-04
+    active_leaf_after: M1-05
+    metrics:
+      master_revision_before: 9
+      master_revision_after: 10
+      unauthorized_goal_changes: 0
+      project_mission_changed: false
+      return_point_preserved: true
+      tasks_added: []
+      tasks_refined: [M0-10, M1-04, M1-07]
+
+  - observation_id: dogfood-verification-005
+    event_type: verification
+    observed_at: "2026-08-09T20:46:06+08:00"
+    authority: repository-test-evidence
+    active_leaf_before: M1-05
+    active_leaf_after: M1-05
+    evidence_refs:
+      - unittest:discover-tests-88-2026-08-09
+      - check:real-replay-benchmark-byte-equivalent-2026-08-09
+      - check:schema-routing-privacy-style-admission-2026-08-09
+    metrics:
+      tests_run: 88
+      tests_failed: 0
+      checks_failed: 0
+      scope_violations: 0
+
+  - observation_id: dogfood-skill-load-005
+    event_type: skill-load
+    observed_at: "2026-08-09T20:55:00+08:00"
+    authority: task-trigger-and-announced-skill-use
+    active_leaf_before: M1-05
+    active_leaf_after: M1-05
+    metrics:
+      body_load_count: 1
+      total_body_bytes: 18117
+      repeated_body_load_bytes: 0
+      skills:
+        - skill_id: git
+          content_sha256: c13013bb735a6ca5e13596c126136bffa18fdba6d573dc781e0e3978ebb24b17
+          body_bytes: 18117
+          body_lines: 386
+          reason: commit message, PR body, atomic change, and regular merge policy
+
+  - observation_id: dogfood-input-routing-008
+    event_type: input-routing
+    observed_at: "2026-08-09T20:59:53+08:00"
+    authority: explicit-user-git-collaboration-request
+    active_leaf_before: M1-05
+    active_leaf_after: M1-05
+    input_kind: context-addition
+    route: capture-and-continue
+    candidate_id: idea-git-collaboration-contract-001
+    candidate_summary: Define provider-neutral branch, commit, PR, merge, frequency, and staged-admission contracts using Platform and ProjectCompute as Git-boundary references while preserving M1-05.
+    candidate_summary_sha256: 8eb137321c97064b4691e36e2eea71d579c23b6f2b17c230b093812ce84919cc
+    metrics:
+      messages_observed: 1
+      ideas_captured: 0
+      unauthorized_task_switches: 0
+      return_point_preserved: true
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      provider_compaction_signal_available: false
+      tool_interruption_observed: false
+
+  - observation_id: dogfood-plan-revision-007
+    event_type: plan-revision
+    observed_at: "2026-08-09T20:59:53+08:00"
+    authority: explicit-user-git-collaboration-request
+    authorized: true
+    active_leaf_before: M1-05
+    active_leaf_after: M1-05
+    metrics:
+      master_revision_before: 10
+      master_revision_after: 11
+      unauthorized_goal_changes: 0
+      project_mission_changed: false
+      return_point_preserved: true
+      tasks_added: [M0-11]
+      tasks_refined: []
+
+  - observation_id: dogfood-verification-006
+    event_type: verification
+    observed_at: "2026-08-09T21:01:16+08:00"
+    authority: repository-test-evidence
+    active_leaf_before: M1-05
+    active_leaf_after: M1-05
+    evidence_refs:
+      - unittest:discover-tests-88-revision-11-2026-08-09
+      - check:compile-data-schema-routing-revision-11-2026-08-09
+      - check:documentation-links-style-transcript-admission-2026-08-09
+    metrics:
+      tests_run: 88
+      tests_failed: 0
+      checks_failed: 0
+      scope_violations: 0
+
+  - observation_id: dogfood-skill-load-006
+    event_type: skill-load
+    observed_at: "2026-08-09T21:35:00+08:00"
+    authority: task-trigger-and-announced-skill-use
+    active_leaf_before: M1-05
+    active_leaf_after: M1-05
+    metrics:
+      body_load_count: 1
+      total_body_bytes: 18097
+      repeated_body_load_bytes: 0
+      skills:
+        - skill_id: git
+          content_sha256: b7ea7fd612e3f658ef1182b173ba349ee8ad48b8affb0c601d5c1a5c80642081
+          body_bytes: 18097
+          body_lines: 386
+          reason: authorized first commit, Gitea publication, and public-project Git boundary
+
+  - observation_id: dogfood-input-routing-009
+    event_type: input-routing
+    observed_at: "2026-08-09T21:41:06+08:00"
+    authority: explicit-user-default-projection-and-commit-request
+    active_leaf_before: M1-05
+    active_leaf_after: M1-05
+    input_kind: context-addition
+    route: capture-and-continue
+    candidate_id: idea-default-project-projections-001
+    candidate_summary: Install MASTER, STATUS, and the target-state architecture table as the default human-and-Agent project projections; keep public-project Markdown bounded to adopted governance, architecture, policy, and sanitized evidence.
+    candidate_summary_sha256: e69ffb40a450f75e6d9b50d3357bd44e71b48eb27816abdf0a48d2be8ad5003b
+    metrics:
+      messages_observed: 1
+      ideas_captured: 0
+      unauthorized_task_switches: 0
+      return_point_preserved: true
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      provider_compaction_signal_available: false
+      tool_interruption_observed: false
+
+  - observation_id: dogfood-plan-revision-008
+    event_type: plan-revision
+    observed_at: "2026-08-09T21:41:06+08:00"
+    authority: explicit-user-default-projection-and-commit-request
+    authorized: true
+    active_leaf_before: M1-05
+    active_leaf_after: M1-05
+    metrics:
+      master_revision_before: 11
+      master_revision_after: 12
+      unauthorized_goal_changes: 0
+      project_mission_changed: false
+      return_point_preserved: true
+      tasks_added: [M10-07]
+      tasks_refined: [M0-10]
+
+  - observation_id: dogfood-verification-007
+    event_type: verification
+    observed_at: "2026-08-09T21:44:57+08:00"
+    authority: repository-test-evidence
+    active_leaf_before: M1-05
+    active_leaf_after: M1-05
+    evidence_refs:
+      - unittest:discover-tests-88-revision-12-2026-08-09
+      - check:compile-data-schema-routing-revision-12-2026-08-09
+      - check:modified-document-links-style-2026-08-09
+    metrics:
+      tests_run: 88
+      tests_failed: 0
+      checks_failed: 0
+      scope_violations: 0
+
+  - observation_id: dogfood-compaction-005
+    event_type: compaction
+    observed_at: "2026-08-09T22:03:15+08:00"
+    authority: system-compaction-summary-and-current-repository
+    active_leaf_before: M1-05
+    active_leaf_after: M1-05
+    metrics:
+      critical_fields_total: 6
+      critical_fields_recovered: 6
+      stale_decisions_revived: 0
+      unauthorized_task_switches: 0
+      comparable_context_input_bytes: null
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      restore_latency_ms: null
+      provider_compaction_signal_available: true
+      messages_after_recovery_before_observation_commit: 4
+    evidence:
+      - the system compaction summary preserved M1-05, the CI verifier RED point, Git identity, staged-index warning, and private Gitea publication plan
+      - STATUS revision 12, the active MASTER section, current tests, policies, ProjectCompute CI evidence, and Git state were re-read before governance changes
+      - no authority was inferred for a task switch; CI remained a cross-cutting pre-commit verification task
+
+  - observation_id: dogfood-skill-load-007
+    event_type: skill-load
+    observed_at: "2026-08-09T22:03:15+08:00"
+    authority: task-trigger-and-announced-skill-use
+    active_leaf_before: M1-05
+    active_leaf_after: M1-05
+    metrics:
+      body_load_count: 3
+      total_body_bytes: 43972
+      repeated_body_load_bytes: 43972
+      skills:
+        - skill_id: test-driven-development
+          content_sha256: 7dee67b4af6bdccc7a914ca34533184d64592d0f5b23aeae631538168db14994
+          body_bytes: 9867
+          body_lines: 371
+          reason: repository verifier behavior and regression gates
+        - skill_id: git
+          content_sha256: c13013bb735a6ca5e13596c126136bffa18fdba6d573dc781e0e3978ebb24b17
+          body_bytes: 18117
+          body_lines: 386
+          reason: authorized atomic commits and private Gitea publication
+        - skill_id: human-first-writing
+          content_sha256: 0f3754759a185b43e6932864703cca58543a8ef58ed80a57469f680f0eaf5832
+          body_bytes: 15988
+          body_lines: 427
+          reason: active response and normative-document writing contract
+
+  - observation_id: dogfood-input-routing-010
+    event_type: input-routing
+    observed_at: "2026-08-09T22:03:15+08:00"
+    authority: explicit-user-ci-idea
+    active_leaf_before: M1-05
+    active_leaf_after: M1-05
+    input_kind: idea
+    route: capture-and-continue
+    candidate_id: idea-ci-verifier-001
+    candidate_summary: Treat CI as an independent Verifier for push and pull-request test, compile, structured-data, schema, projection, privacy, benchmark, and secret gates while preserving M1-05.
+    candidate_summary_sha256: 607422001f375a19025c2698185200a725e3c81e02e5afac266dde93f983e5da
+    metrics:
+      messages_observed: 1
+      ideas_captured: 1
+      unauthorized_task_switches: 0
+      return_point_preserved: true
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      provider_compaction_signal_available: true
+      tool_interruption_observed: false
+
+  - observation_id: dogfood-input-routing-011
+    event_type: input-routing
+    observed_at: "2026-08-09T22:03:15+08:00"
+    authority: explicit-user-compaction-status-query
+    active_leaf_before: M1-05
+    active_leaf_after: M1-05
+    input_kind: status-query
+    route: continue
+    candidate_id: query-context-window-duration-001
+    candidate_summary: Report whether recent compactions improved single-window duration and work time without claiming unavailable provider metrics.
+    candidate_summary_sha256: 078c5ddff0eb216398d35436eb27bc925e6a1c2efdc774ac59dd7ed35ddde475
+    metrics:
+      messages_observed: 1
+      ideas_captured: 0
+      unauthorized_task_switches: 0
+      return_point_preserved: true
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      provider_compaction_signal_available: true
+      tool_interruption_observed: true
+
+  - observation_id: dogfood-input-routing-012
+    event_type: input-routing
+    observed_at: "2026-08-09T22:03:15+08:00"
+    authority: explicit-user-compaction-quality-query
+    active_leaf_before: M1-05
+    active_leaf_after: M1-05
+    input_kind: status-query
+    route: continue
+    candidate_id: query-compaction-quality-001
+    candidate_summary: Distinguish compaction recovery correctness from remaining bounded rereads and from the future M2/M5/M6/M8 experience.
+    candidate_summary_sha256: 950f4fbf36d6e8817021b341a9673c107de2ef7cdac1343b6a38596d41ccae99
+    metrics:
+      messages_observed: 1
+      ideas_captured: 0
+      unauthorized_task_switches: 0
+      return_point_preserved: true
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      provider_compaction_signal_available: true
+      tool_interruption_observed: true
+
+  - observation_id: dogfood-input-routing-013
+    event_type: input-routing
+    observed_at: "2026-08-09T22:03:15+08:00"
+    authority: explicit-user-compaction-quality-continuation
+    active_leaf_before: M1-05
+    active_leaf_after: M1-05
+    input_kind: context-addition
+    route: continue
+    candidate_id: requirement-post-compact-read-volume-001
+    candidate_summary: Continue the compression-quality question by measuring pre/post stability and post-restore read volume without changing M1-05.
+    candidate_summary_sha256: 4c2d86155d78f426071657fb4d028cdab094c6b63b4c03c53de3c23947714b2f
+    metrics:
+      messages_observed: 1
+      ideas_captured: 0
+      unauthorized_task_switches: 0
+      return_point_preserved: true
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      provider_compaction_signal_available: true
+      tool_interruption_observed: true
+
+  - observation_id: dogfood-plan-revision-009
+    event_type: plan-revision
+    observed_at: "2026-08-09T22:03:15+08:00"
+    authority: explicit-user-ci-idea-and-initial-publication-request
+    authorized: true
+    active_leaf_before: M1-05
+    active_leaf_after: M1-05
+    metrics:
+      master_revision_before: 12
+      master_revision_after: 13
+      unauthorized_goal_changes: 0
+      project_mission_changed: false
+      return_point_preserved: true
+      tasks_added: [M0-12]
+      tasks_refined: []
+
+  - observation_id: dogfood-verification-008
+    event_type: verification
+    observed_at: "2026-08-09T22:03:15+08:00"
+    authority: repository-test-and-local-ci-evidence
+    active_leaf_before: M1-05
+    active_leaf_after: M1-05
+    evidence_refs:
+      - unittest:discover-tests-100-revision-13-2026-08-09
+      - check:repository-verifier-12-cases-revision-13-2026-08-09
+      - check:compile-data-schema-projection-privacy-links-style-2026-08-09
+      - check:gitleaks-8.30.1-directory-scan-0-findings-2026-08-09
+      - limitation:tmpfs-full-local-gitleaks-cache-relocated-2026-08-09
+    metrics:
+      tests_run: 100
+      tests_failed: 0
+      checks_failed: 0
+      scope_violations: 0

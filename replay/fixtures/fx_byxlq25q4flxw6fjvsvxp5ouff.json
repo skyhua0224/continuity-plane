@@ -1,0 +1,69 @@
+{
+  "evidence_refs": [
+    "artifact://sha256/5f610c8f4d05a86bc2e0a08e4fe5364b7249caf9a9479262d74409043bef3e9a#section-3.2"
+  ],
+  "expected_gate": "veto",
+  "expected_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": "No new approved experiment supersedes the rollback.",
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Current evidence and an independent validator are required before admission."
+    ],
+    "latest_decision": "N-68 remains reverted because its pre-registered PTO rollback gate fired.",
+    "next_action": "Keep N-68 out of the executable queue until a new proposal is approved.",
+    "rejected_decisions": [
+      "The 1 ms ACK-delay change is an active optimization."
+    ],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "extraction": {
+    "content_end": 3705,
+    "content_sha256": "6700c4038c63080addc1e6d80acd4ba4b946dd3e4c8dd796003ec0d590484aea",
+    "content_start": 2344,
+    "findings_by_category": {
+      "machine": 3,
+      "pii": 4
+    },
+    "normalized_event_sha256": "31ce88e325ca76e5fc8cfe030278b86cb275511277e8b19778bda4b9cd17324f",
+    "selection_version": "anchored-contiguous-fragment/v1",
+    "source_fragment_sha256": "d40bd87271ed73b6c4ef9a5812624c6ece84c32141159be6d72b74b5d641ca6b"
+  },
+  "fixture_id": "fx_byxlq25q4flxw6fjvsvxp5ouff",
+  "fixture_sha256": "edb9dc3f482494305eac60a543a03b8b0f52ec7fd354d4f2e431108c8b2ff123",
+  "initial_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": null,
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Historical archive content is candidate evidence."
+    ],
+    "latest_decision": "The 1 ms ACK-delay change is an active optimization.",
+    "next_action": "Resolve the event from free-form historical context.",
+    "rejected_decisions": [],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "input_event": {
+    "content": "- `N-42` 仍出现，但与“N-67 是硬门”的关系消失。\n- `N-68` 的“改动已回滚”语义消失。\n- Product LOC 不得增加的铁律消失。\n- `platform-contract v0.3` 消失。\n- 8 层结构被错误压成残缺的数字序列。\n\n这直接复现了用户说的“压缩后重新思考、重复实现、旧问题复活”。\n\n## Alkaid 当前事实\n\n当前三仓：\n\n- Platform：`main`，HEAD `d50bfe6f22efcad528134baa8b8d612ea07ec147`\n- Moonlight：`product-zero`，HEAD `7e1b0c8bb7518757f40596a52a911ccc7a9622fd`\n- Sunshine：`product-zero`，HEAD `334816d090f1721bc39a624ea60d6dd0a8f32ecc`\n\n项目状态笔记：\n\n- [goal-MASTER.md]([REDACTED:machine]\n  - 566,077 bytes\n  - 994 行\n  - 38,387 words\n  - 329 `⏳`\n  - 314 `✅`\n  - 27 `🟡`\n  - 26 `🧑‍💻`\n  - 约 462 个工作项/叶 ID\n  - 当前 SHA-256：`250aa0cdd4167b871ba8106207a4bf1c8a3b6cee887beb448ff4a4732947da4a`\n- [platform-target-architecture-[REDACTED:pii].md]([REDACTED:machine]\n  - 616 行，70,544 bytes\n  - 目标态约 72 个 Slot\n  - Core 约 18 件\n  - Runtime 约 45 单元\n  - Adapter 6 家族\n  - SDK 33 域\n  - Product 四种形态\n- [platform-full-inventory-[REDACTED:pii].md]([REDACTED:machine]\n  - 262 行，41,323 bytes\n  - 160 个 manifest 全表\n\n关键当前工作：\n\n- EX-12：✅\n- EX-13：⏳\n- EX-18：⏳\n- N-43：✅\n- N-42：⏳，已不再被 N-43 阻塞，但必须等待 N-67\n- N-67：⏳，BBR `max_bw` 超过物理链路上限，是 N-42 的硬门\n- N-68：✅，将 `ALTP_MAX_ACK_DELAY` 从 25000 改为 1000 的实验因 PTO 增加而回滚，不能再次当作已完成优化",
+    "content_sha256": "6700c4038c63080addc1e6d80acd4ba4b946dd3e4c8dd796003ec0d590484aea",
+    "event_kind": "compaction_checkpoint"
+  },
+  "project_id": "alkaidlab-shadow",
+  "sanitization": {
+    "content_sha256": "6700c4038c63080addc1e6d80acd4ba4b946dd3e4c8dd796003ec0d590484aea",
+    "sanitizer_version": "m1-03.v1",
+    "status": "clean"
+  },
+  "scenario_class": "stale-decision",
+  "schema_version": "context.replay-fixture/v1alpha1",
+  "source": {
+    "archive_sha256": "53de3c9faa46ba13c1e74de0f585e0085b31d4ded546229607f382b2d62aa425",
+    "byte_end": 24263776,
+    "byte_start": 24204989,
+    "extractor_version": "codex-rollout-observed/v1alpha1",
+    "provider": "codex",
+    "range_sha256": "cd142018935bbac702555f24ce43aa90f803a9eac579579b9969c0e33e7c45e6",
+    "source_range_ref": "rng_rzsf5uik3xb4ctcgornpexpjon",
+    "source_thread_ref": "thr_qu4nvpjyppxalya6k3gmuvk2fu"
+  }
+}

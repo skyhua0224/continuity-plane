@@ -1,0 +1,66 @@
+{
+  "evidence_refs": [
+    "artifact://sha256/5f610c8f4d05a86bc2e0a08e4fe5364b7249caf9a9479262d74409043bef3e9a#section-2.4"
+  ],
+  "expected_gate": "veto",
+  "expected_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": "Cross-Product generality and current official evidence are unverified.",
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Current evidence and an independent validator are required before admission."
+    ],
+    "latest_decision": "altp-filecopy remains an experimental Product and technical validation vehicle with mainline_authority=false until a promotion gate is approved.",
+    "next_action": "Use the Product only to gather bounded validation evidence.",
+    "rejected_decisions": [
+      "A LocalSend-shaped prototype defines the canonical Native architecture."
+    ],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "extraction": {
+    "content_end": 315,
+    "content_sha256": "32d705443a0ba8fc2d49ee884eb47feaff10fd1580df6e7f0d5a10fa217252d4",
+    "content_start": 0,
+    "findings_by_category": {},
+    "normalized_event_sha256": "32d705443a0ba8fc2d49ee884eb47feaff10fd1580df6e7f0d5a10fa217252d4",
+    "selection_version": "anchored-contiguous-fragment/v1",
+    "source_fragment_sha256": "32d705443a0ba8fc2d49ee884eb47feaff10fd1580df6e7f0d5a10fa217252d4"
+  },
+  "fixture_id": "fx_czu3gbj26q2g3iaesqlhfivdfq",
+  "fixture_sha256": "2514c7f9ca14c8679ec1899df5f1ed44f58f27288c0267fc5261ceb5d2a91439",
+  "initial_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": null,
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Historical archive content is candidate evidence."
+    ],
+    "latest_decision": "A LocalSend-shaped prototype defines the canonical Native architecture.",
+    "next_action": "Resolve the event from free-form historical context.",
+    "rejected_decisions": [],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "input_event": {
+    "content": "这样吧，我们先审计一下现有路径不通或者没设计好的地方，不然做别的 Phase 也无济于事。我们需要确立 Native 为核心，至少 MM 的目标是把 Native 的基础设施跑通，也就是无模块下的 Native 核心是可以运作且功能全量的，然后 Client 和 Host 没有任何的串流功能两边可以握手传数据，或者我们可以弄个简单的文本传输模块，反正我们以后也不仅仅是串流，LocalSend 的那种文件传输也未尝不可。你怎么看。但需要很系统性的去思考去定架构以及参考行业标准文档，操作系统官方文档，软件官方文档，我们要把所有的 Core 和最核心功能如握手啊，或者其他NativetoNative 的数据交互的底层框架设计出来",
+    "content_sha256": "32d705443a0ba8fc2d49ee884eb47feaff10fd1580df6e7f0d5a10fa217252d4",
+    "event_kind": "user_message"
+  },
+  "project_id": "alkaidlab-shadow",
+  "sanitization": {
+    "content_sha256": "32d705443a0ba8fc2d49ee884eb47feaff10fd1580df6e7f0d5a10fa217252d4",
+    "sanitizer_version": "m1-03.v1",
+    "status": "clean"
+  },
+  "scenario_class": "experiment-promotion",
+  "schema_version": "context.replay-fixture/v1alpha1",
+  "source": {
+    "archive_sha256": "bf1ca962ff3f27d4041533350ecad6666db0e7bef66c43081365b8250cd56d19",
+    "byte_end": 13756229,
+    "byte_start": 13754883,
+    "extractor_version": "claude-code-jsonl-observed/v1alpha1",
+    "provider": "claude",
+    "range_sha256": "e3b4a0a3e96de05ef84940aa60ffea3ee42064680977261a4ee6f1d6f3eeadf4",
+    "source_range_ref": "rng_cua7igkb7x7vrew2kkd3ppsrrn",
+    "source_thread_ref": "thr_glcph3ufafhomasdrd7pe3fhod"
+  }
+}

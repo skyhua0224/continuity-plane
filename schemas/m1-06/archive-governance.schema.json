@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "context-control-plane/m1-06/archive-governance.schema.json",
+  "x-schema-version": "m1-06.v1",
+  "title": "Context Control Plane Archive Governance",
+  "oneOf": [
+    {"$ref": "#/$defs/archiveRecord"},
+    {"$ref": "#/$defs/exportBundle"},
+    {"$ref": "#/$defs/tombstone"}
+  ],
+  "$defs": {
+    "archiveRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "project_id",
+        "source_thread_ref",
+        "object_ref",
+        "content_sha256",
+        "size_bytes",
+        "retention_class",
+        "created_at",
+        "expires_at",
+        "legal_hold"
+      ],
+      "properties": {
+        "schema_version": {"const": "context.archive-record/v1alpha1"},
+        "project_id": {"type": "string", "minLength": 1},
+        "source_thread_ref": {"type": "string", "pattern": "^thr_[a-z2-7]{26}$"},
+        "object_ref": {"type": "string", "pattern": "^obj_[a-z2-7]{26}$"},
+        "content_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "size_bytes": {"type": "integer", "minimum": 1},
+        "retention_class": {"enum": ["ephemeral", "project", "audit"]},
+        "created_at": {"type": "string", "format": "date-time"},
+        "expires_at": {
+          "oneOf": [
+            {"type": "string", "format": "date-time"},
+            {"type": "null"}
+          ]
+        },
+        "legal_hold": {"type": "boolean"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"retention_class": {"const": "ephemeral"}}},
+          "then": {"properties": {"expires_at": {"type": "string", "format": "date-time"}}}
+        }
+      ]
+    },
+    "exportBundle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["manifest", "objects", "bundle_sha256"],
+      "properties": {
+        "manifest": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "schema_version",
+            "project_id",
+            "exported_at",
+            "content_protection",
+            "record_count",
+            "tombstone_count",
+            "records",
+            "tombstones",
+            "manifest_sha256"
+          ],
+          "properties": {
+            "schema_version": {"const": "context.archive-export/v1alpha1"},
+            "project_id": {"type": "string", "minLength": 1},
+            "exported_at": {"type": "string", "format": "date-time"},
+            "content_protection": {"const": "sealed-by-archive-adapter"},
+            "record_count": {"type": "integer", "minimum": 0},
+            "tombstone_count": {"type": "integer", "minimum": 0},
+            "records": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/archiveRecord"}
+            },
+            "tombstones": {
+              "type": "array",
+              "items": {"$ref": "#/$defs/tombstone"}
+            },
+            "manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+          }
+        },
+        "objects": {
+          "type": "object",
+          "propertyNames": {"pattern": "^obj_[a-z2-7]{26}$"},
+          "additionalProperties": {"type": "string", "contentEncoding": "base64"}
+        },
+        "bundle_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    },
+    "tombstone": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "tombstone_id",
+        "project_id",
+        "source_thread_ref",
+        "object_ref",
+        "retention_class",
+        "deleted_content_sha256",
+        "deleted_size_bytes",
+        "deleted_at",
+        "deletion_request_ref",
+        "authorization_ref",
+        "deletion_scope",
+        "absence_verified",
+        "proof_sha256"
+      ],
+      "properties": {
+        "schema_version": {"const": "context.archive-tombstone/v1alpha1"},
+        "tombstone_id": {"type": "string", "pattern": "^tmb_[a-z2-7]{26}$"},
+        "project_id": {"type": "string", "minLength": 1},
+        "source_thread_ref": {"type": "string", "pattern": "^thr_[a-z2-7]{26}$"},
+        "object_ref": {"type": "string", "pattern": "^obj_[a-z2-7]{26}$"},
+        "retention_class": {"enum": ["ephemeral", "project", "audit"]},
+        "deleted_content_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "deleted_size_bytes": {"type": "integer", "minimum": 0},
+        "deleted_at": {"type": "string", "format": "date-time"},
+        "deletion_request_ref": {"type": "string", "pattern": "^req_[a-z2-7]{26}$"},
+        "authorization_ref": {"type": "string", "pattern": "^auth_[a-z2-7]{26}$"},
+        "deletion_scope": {
+          "const": ["archive-record", "sealed-payload"]
+        },
+        "absence_verified": {"const": true},
+        "proof_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    }
+  }
+}

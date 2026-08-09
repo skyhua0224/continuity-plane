@@ -1,0 +1,66 @@
+{
+  "evidence_refs": [
+    "artifact://sha256/5f610c8f4d05a86bc2e0a08e4fe5364b7249caf9a9479262d74409043bef3e9a#section-2.4"
+  ],
+  "expected_gate": "veto",
+  "expected_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": "Promotion approval and mainline impact evidence are missing.",
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Current evidence and an independent validator are required before admission."
+    ],
+    "latest_decision": "altp-filecopy remains an experimental Product and technical validation vehicle with mainline_authority=false until a promotion gate is approved.",
+    "next_action": "Capture the finding as an experiment candidate and continue the claimed leaf.",
+    "rejected_decisions": [
+      "altp-filecopy findings may directly reprioritize the streaming mainline."
+    ],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "extraction": {
+    "content_end": 2357,
+    "content_sha256": "6cff5257affe8c56bd997e13360e4cff1cdfa403d10fd12fb3cb4cc0dba7eb16",
+    "content_start": 2274,
+    "findings_by_category": {},
+    "normalized_event_sha256": "1465a3f71f4bd5dd4a8737d9b7e072435eba4f5024f51353502b2fc8d1472709",
+    "selection_version": "anchored-contiguous-fragment/v1",
+    "source_fragment_sha256": "6cff5257affe8c56bd997e13360e4cff1cdfa403d10fd12fb3cb4cc0dba7eb16"
+  },
+  "fixture_id": "fx_hrrnjv3jx4mjzepmtmmbdw4l5d",
+  "fixture_sha256": "09ddf9a4c8f3b45f2925d022ccbcff821a302c0c2d16423ccf61ecd5e110d078",
+  "initial_state": {
+    "active_task": "M1-04-real-replay",
+    "blocker": null,
+    "constraints": [
+      "Raw transcript Git admission remains closed.",
+      "Historical archive content is candidate evidence."
+    ],
+    "latest_decision": "altp-filecopy findings may directly reprioritize the streaming mainline.",
+    "next_action": "Resolve the event from free-form historical context.",
+    "rejected_decisions": [],
+    "return_point": "M1-04:fixture-admission"
+  },
+  "input_event": {
+    "content": "## altp-filecopy 定位\n\n用户明确纠偏：`altp-filecopy` 不是偏航项目，而是 MASTER 下的 Validation Product。",
+    "content_sha256": "6cff5257affe8c56bd997e13360e4cff1cdfa403d10fd12fb3cb4cc0dba7eb16",
+    "event_kind": "compaction_checkpoint"
+  },
+  "project_id": "alkaidlab-shadow",
+  "sanitization": {
+    "content_sha256": "6cff5257affe8c56bd997e13360e4cff1cdfa403d10fd12fb3cb4cc0dba7eb16",
+    "sanitizer_version": "m1-03.v1",
+    "status": "clean"
+  },
+  "scenario_class": "scope-drift",
+  "schema_version": "context.replay-fixture/v1alpha1",
+  "source": {
+    "archive_sha256": "53de3c9faa46ba13c1e74de0f585e0085b31d4ded546229607f382b2d62aa425",
+    "byte_end": 25514713,
+    "byte_start": 25485486,
+    "extractor_version": "codex-rollout-observed/v1alpha1",
+    "provider": "codex",
+    "range_sha256": "3e535eb15ecfbc05ac99d50800764799af19da89905062149cbc8ec3d588b11a",
+    "source_range_ref": "rng_q3x4c4eliemxkivlfvfrz3ia2p",
+    "source_thread_ref": "thr_qu4nvpjyppxalya6k3gmuvk2fu"
+  }
+}
