@@ -2,7 +2,7 @@
 
 版本：1  
 日期：2026-08-09  
-状态：implemented locally / live Gitea verification pending
+状态：implemented
 
 ## 权限边界
 

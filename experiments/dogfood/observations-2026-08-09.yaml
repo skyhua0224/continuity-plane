@@ -1,5 +1,5 @@
 schema_version: context.dogfood-observation/v1alpha1
-generated_at: "2026-08-09T22:03:15+08:00"
+generated_at: "2026-08-09T22:19:21+08:00"
 status: baseline
 measurement_limitations:
   - provider token accounting was unavailable for this resumed segment
@@ -817,6 +817,62 @@ observations:
       - limitation:tmpfs-full-local-gitleaks-cache-relocated-2026-08-09
     metrics:
       tests_run: 100
+      tests_failed: 0
+      checks_failed: 0
+      scope_violations: 0
+
+  - observation_id: dogfood-input-routing-014
+    event_type: input-routing
+    observed_at: "2026-08-09T22:19:21+08:00"
+    authority: explicit-user-public-repository-correction
+    active_leaf_before: M1-05
+    active_leaf_after: M1-05
+    input_kind: correction
+    route: correction-write-protect
+    candidate_id: correction-public-gitea-repository-001
+    candidate_summary: Publish the Gitea repository while preserving all public Git admission gates and without adding a license implicitly.
+    candidate_summary_sha256: 8bb86c04ab788eb7eb850004dde034ebfac8b1feb72ce37354cb938d453a70ea
+    metrics:
+      messages_observed: 1
+      ideas_captured: 0
+      unauthorized_task_switches: 0
+      return_point_preserved: true
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      provider_compaction_signal_available: true
+      tool_interruption_observed: true
+
+  - observation_id: dogfood-plan-revision-010
+    event_type: plan-revision
+    observed_at: "2026-08-09T22:19:21+08:00"
+    authority: explicit-user-public-repository-and-ci-live-acceptance
+    authorized: true
+    active_leaf_before: M1-05
+    active_leaf_after: M1-05
+    metrics:
+      master_revision_before: 13
+      master_revision_after: 14
+      unauthorized_goal_changes: 0
+      project_mission_changed: false
+      return_point_preserved: true
+      tasks_added: []
+      tasks_refined: [M0-12]
+
+  - observation_id: dogfood-verification-009
+    event_type: verification
+    observed_at: "2026-08-09T22:19:21+08:00"
+    authority: local-and-gitea-actions-evidence
+    active_leaf_before: M1-05
+    active_leaf_after: M1-05
+    evidence_refs:
+      - gitea:run-1011-fail-closed-on-unbound-pip-cache
+      - gitea:run-1012-fail-closed-on-unsupported-cachyos-toolcache
+      - gitea:run-1013-success-repository-verification-and-secret-scan
+      - gitea:repository-private-false-default-branch-main
+      - unittest:discover-tests-102-python-3.12.3-aarch64-2026-08-09
+      - check:compile-repository-verifier-gitleaks-live-2026-08-09
+    metrics:
+      tests_run: 102
       tests_failed: 0
       checks_failed: 0
       scope_violations: 0

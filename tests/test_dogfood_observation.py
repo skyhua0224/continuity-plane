@@ -53,7 +53,7 @@ class DogfoodObservationTests(unittest.TestCase):
         summary = summarize_observations(self.document)
 
         self.assertEqual(summary["compaction_events"], 5)
-        self.assertEqual(summary["input_routing_events"], 13)
+        self.assertEqual(summary["input_routing_events"], 14)
         self.assertEqual(summary["trend_status"], "baseline-insufficient-samples")
 
     def test_recovery_loss_marks_trend_as_regressed(self):
