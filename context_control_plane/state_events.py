@@ -263,17 +263,28 @@ def _put_change(state: dict[str, Any], change: dict[str, Any]) -> None:
 
 
 def replay_state_events(
-    initial_state: dict[str, Any], events: list[dict[str, Any]]
+    initial_state: dict[str, Any],
+    events: list[dict[str, Any]],
+    *,
+    starting_sequence_no: int = 1,
+    previous_event_sha256: str | None = None,
 ) -> dict[str, Any]:
-    """Replay a complete event stream from an M2-01 snapshot."""
+    """Replay a contiguous event segment from an M2-01 snapshot."""
     if not isinstance(events, list):
         raise StateEventError("events must be a list")
     state = copy.deepcopy(initial_state)
     validate_typed_state(state)
     project_id = state["project"]["project_id"]
     expected_revision = state["project"]["revision"]
-    expected_sequence = 1
-    previous_event_sha256: str | None = None
+    expected_sequence = _positive_integer(
+        starting_sequence_no,
+        "starting_sequence_no",
+    )
+    previous_event_sha256 = _sha256(
+        previous_event_sha256,
+        "previous_event_sha256",
+        optional=True,
+    )
     seen_event_ids: set[str] = set()
 
     for event in events:

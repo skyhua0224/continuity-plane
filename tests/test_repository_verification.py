@@ -89,6 +89,32 @@ class RepositoryVerificationCliTests(unittest.TestCase):
             commands,
         )
 
+    def test_ci_attaches_pinned_postgres_to_job_container_network(self):
+        root = Path(__file__).parents[1]
+        workflow = yaml.safe_load(
+            (root / ".gitea" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        )
+        job = workflow["jobs"]["repository-verification"]
+        steps = job["steps"]
+        start = next(step for step in steps if step.get("name") == "Start isolated PostgreSQL")
+        cleanup = next(step for step in steps if step.get("name") == "Stop isolated PostgreSQL")
+
+        self.assertNotIn("services", job)
+        self.assertIn(
+            "postgres:18.4-alpine@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15",
+            start["run"],
+        )
+        self.assertIn("docker run --rm -d", start["run"])
+        self.assertIn('docker inspect "${HOSTNAME}"', start["run"])
+        self.assertIn('--network "${JOB_NETWORK}"', start["run"])
+        self.assertIn('${POSTGRES_CONTAINER}:5432/context_test', start["run"])
+        self.assertNotIn("127.0.0.1::5432", start["run"])
+        self.assertIn("CONTEXT_TEST_POSTGRES_DSN", start["run"])
+        self.assertIn("GITHUB_ENV", start["run"])
+        self.assertIn("pg_isready", start["run"])
+        self.assertEqual(cleanup["if"], "always()")
+        self.assertIn("docker stop", cleanup["run"])
+
     def test_clean_repository_passes_all_gates(self):
         script = Path(__file__).parents[1] / "tools" / "verify_repository.py"
         with tempfile.TemporaryDirectory() as directory:

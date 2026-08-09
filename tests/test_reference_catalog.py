@@ -71,6 +71,21 @@ class ReferenceCatalogTests(unittest.TestCase):
                 self.assertEqual(entries[reference_id]["validity"], "verified-current")
                 self.assertEqual(entries[reference_id]["adoption_status"], "candidate")
 
+    def test_catalog_tracks_the_selected_docmost_fork_branch_as_candidate(self):
+        entries = {entry["reference_id"]: entry for entry in self.catalog["entries"]}
+
+        docmost = entries["yundi339-docmost-native-database-fusion"]
+        self.assertEqual(
+            docmost["canonical_url"], "https://github.com/Yundi339/docmost"
+        )
+        self.assertEqual(
+            docmost["source_revision"],
+            "dcf85124087a11ccb24daad5c4801e528208db9d",
+        )
+        self.assertEqual(docmost["source_branch"], "feat/native-database-fusion")
+        self.assertEqual(docmost["validity"], "candidate")
+        self.assertEqual(docmost["adoption_status"], "candidate")
+
 
 if __name__ == "__main__":
     unittest.main()

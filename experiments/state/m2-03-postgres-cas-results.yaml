@@ -1,0 +1,59 @@
+schema_version: context.postgres-cas-results/v1alpha1
+observed_at: "2026-08-10T01:20:00+08:00"
+environment:
+  postgresql_version: "18.4"
+  psycopg_version: "3.3.4"
+  image: postgres:18.4-alpine
+  image_digest: sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15
+  endpoint_class: localhost-container
+  connection_strategy: one-new-connection-per-operation
+  fixture: completed-work-overlap-blocked
+conflict_injection:
+  attempts: 8
+  successful_commits: 8
+  explicit_conflicts: 8
+  silent_overwrites: 0
+  final_revision_advances_per_attempt: 1
+  final_events_per_attempt: 1
+latency_ms:
+  samples: 40
+  commit_p50: 19.5525
+  commit_p95: 22.0199
+  commit_max: 23.8032
+  read_p50: 9.8665
+  read_p95: 12.7360
+  read_max: 13.4560
+  includes:
+    - new database connection
+    - typed state validation
+    - event validation and replay
+    - row lock and expected revision check
+    - JSONB event insert and snapshot update
+    - transaction commit
+authority_boundary:
+  relational_state_authority: true
+  append_only_event_authority: true
+  vector_index_authority: false
+  pgvector_installed: false
+limitations:
+  - localhost latency does not represent remote, replicated, or durable production storage
+  - latency samples use one process and one PostgreSQL container on the current workstation
+  - conflict injection uses two concurrent clients per project and does not cover multi-node failover
+  - provider token, context window, and State MCP latency are outside M2-03
+references:
+  - source_id: postgresql-18-explicit-locking
+    url: https://www.postgresql.org/docs/18/explicit-locking.html
+    retrieved_at: "2026-08-10T00:45:00+08:00"
+    content_sha256: 75f5cf9dc6a8e2da05a5df1f29d8808427e5018ff6dc1bca97f04a3436f05d48
+  - source_id: postgresql-18-transaction-isolation
+    url: https://www.postgresql.org/docs/18/transaction-iso.html
+    retrieved_at: "2026-08-10T00:45:00+08:00"
+    content_sha256: 9368fe2c416b7994b6a05beb3ba6b20abc988f9106a94132b11af14f44a7534d
+  - source_id: postgresql-18-json-types
+    url: https://www.postgresql.org/docs/18/datatype-json.html
+    retrieved_at: "2026-08-10T00:45:00+08:00"
+    content_sha256: 159c813c024813dd77d04189b620a80264e492d64e3c657dcc1c7771f76b79fb
+  - source_id: psycopg-3-transactions
+    url: https://www.psycopg.org/psycopg3/docs/basic/transactions.html
+    retrieved_at: "2026-08-10T00:45:00+08:00"
+    content_sha256: 4a74b74057a58b964d6e0c396a5ad3689a1785d932ebd435e34b74b8e89be772

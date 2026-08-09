@@ -16,6 +16,7 @@ Context Control Plane 在自身研发过程中持续记录压缩恢复、消息�
 | message/Idea/context addition | input kind、candidate ID/summary hash、route、active leaf before/after、return point、context window 可见性、tool interruption |
 | Skill selection/load | skill ID、version/hash、触发原因、body bytes、重复装载 bytes、quarantine、rule drift |
 | task/Idea switch | parent、authority、checkpoint、return point、claim/path owner、未授权副作用 |
+| multi-Agent dispatch/handoff | parent/child run、worker、role、claim/lease/scope/revision、checkpoint、first action、fan-in result、conflict/revoke/expiry |
 | MASTER revision | before/after、用户/治理来源、任务 diff、mission 是否变化、return point |
 | verification | test/build/mutation/live 结果、scope violation、返工和 evidence refs |
 
@@ -25,9 +26,10 @@ Provider 未提供实时 context window、input/cache token、自动压缩信号
 
 ## 触发时点
 
-- PreCompact 前和 PostCompact canary 后；
+- 每个 visible compaction 的 PreCompact 前和 PostCompact canary 后；
 - 用户消息、Idea、correction、status query 或 interrupt 完成路由后；
 - task、model、provider、collaborator 或 active claim 变化时；
+- multi-Agent dispatch、handoff、fan-in、worker loss、revoke 或 orphan reclaim 时；
 - Skill/AGENTS/provider contract hash 或选择结果变化时；
 - MASTER、STATUS、schema registry 或 Verification Profile revision 变化时；
 - release、rollback、SIGKILL、503、checkpoint 损坏和 CAS conflict 实验后。
@@ -50,13 +52,14 @@ M2/M8 上线前，脱敏观察保存在 `experiments/dogfood/`，当前 active �
 
 ## 当前基线
 
-结构化样本位于 [`experiments/dogfood/observations-2026-08-09.yaml`](../../experiments/dogfood/observations-2026-08-09.yaml)。当前记录八次 checkpoint/摘要恢复、十九次 input routing、二十二个 Skill body 装载、十四次用户授权的 MASTER 演进和十三次 repository verification。结构关键字段恢复为 100%，Continuation Cursor 累计恢复 6/8；第 7/8 次 compaction 均出现首个恢复动作不匹配和 1 个已确认事项重播，因此整体趋势为 `regressed`。stale decision、未授权 task switch、未授权 goal change、verification failure 和 scope violation 均为 0；Skill body 累计输入为 239,992 bytes，其中压缩恢复后的重复 body 装载为 128,342 bytes。八次 compaction 均缺少可比较的 provider context/token/latency 数据。第 4 次恢复检测到 `STATUS.md` 落后于已生成 fixture 和 benchmark 的仓库证据，该事件作为 M0-10 freshness validator 的真实反例，不计为恢复字段丢失。
+结构化样本位于 [`experiments/dogfood/observations-2026-08-09.yaml`](../../experiments/dogfood/observations-2026-08-09.yaml)。当前记录十次 checkpoint/摘要恢复、二十二次 input routing、三十一个 Skill body 装载、十七次用户授权的 MASTER 演进和十五次 repository verification。结构关键字段恢复为 100%，已观测 Continuation Cursor 字段累计恢复 14/16；第 7/8 次 compaction 均出现首个恢复动作不匹配和 1 个已确认事项重播，第 9/10 次分别精确续接 M2-03 CI 与 revision 21 治理红测，因此整体趋势仍为 `regressed`。stale decision、未授权 task switch、未授权 goal change、verification failure 和 scope violation 均为 0；Skill body 累计输入为 366,178 bytes，其中压缩恢复后的重复 body 装载为 200,891 bytes。数据库设计 Skill 的已装载 digest 与当前路径 digest 不一致，当前记录为 quarantined。十次 compaction 均缺少可比较的 provider context/token/latency 数据。第 4 次恢复检测到 `STATUS.md` 落后于已生成 fixture 和 benchmark 的仓库证据，该事件作为 M0-10 freshness validator 的真实反例，不计为恢复字段丢失。
 
 ## 验收门
 
 - observation schema、ID、时间、hash、计数和 event-specific fields 校验通过；
 - Skill body 总量与各条目 hash/bytes 可复核；
 - message/Idea route 的最小摘要与 hash 一致；`capture-and-continue` 保持 active leaf 和 return point；
+- visible compaction、interrupt、Idea 和 multi-Agent dispatch/handoff 具有可审计触发分母；遗漏事件为 veto failure；
 - provider 未暴露的 context/token/cache/latency 字段保持 `null`；
 - 无 authority 的 MASTER revision 被拒绝；
 - 少于三个可比较样本时趋势保持 `baseline-insufficient-samples`；

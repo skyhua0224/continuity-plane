@@ -1,0 +1,44 @@
+schema_version: context.postgres-shadow-dogfood-receipt/v1alpha1
+observed_at: "2026-08-10T01:16:09+08:00"
+authority: shadow-only
+production_state_authority: false
+store_profile: shared-strong-shadow
+backend:
+  engine: PostgreSQL
+  version: "18.4"
+  dsn_scope: localhost-isolated-test
+project_id: project-context-control-plane-shadow-1039
+active_work_ids: [M2-03]
+current_decision_ids: [decision-local-first-r19]
+active_constraint_ids: [constraint-default-zero-services-r19]
+open_blockers: []
+initial_revision: 18
+final_revision: 22
+event_count: 4
+event_ids:
+  - event-gitea-1037-failure
+  - event-gitea-1038-failure
+  - event-gitea-1039-success
+  - event-plan-revision-19
+initial_snapshot_sha256: f9a245c4a2c11ce67e5a719cca8e945c8ecd24cb25223ec19f8bd5f8cf1483c3
+final_snapshot_sha256: d033e065c7f3d2f8c5e86893c452f57a4a720afe8544ab9a8da2c02d43dd0515
+event_head_sha256: dfae94b0352777ca46558f86834b8f5669ebf1e6a10d98816a85c5d35711dfc6
+read_equals_replay: true
+default_profile_requires_postgresql: false
+evidence:
+  - ref: gitea://run/1037/repository-verification
+    outcome: failure
+    finding: declarative service was not provisioned
+  - ref: gitea://run/1038/repository-verification
+    outcome: failure
+    finding: job-container localhost could not reach the host-published port
+  - ref: gitea://run/1039/repository-verification-and-secret-scan
+    outcome: success
+    finding: job and PostgreSQL joined the same Docker network
+  - ref: git://MASTER@revision-19
+    outcome: accepted
+    finding: local embedded and forge collaboration are defaults; PostgreSQL is optional
+limitations:
+  - the PostgreSQL container is a disposable local test instance
+  - State MCP authorization and production state takeover remain unimplemented
+  - the receipt proves deterministic shadow persistence and replay for this event sequence

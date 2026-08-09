@@ -344,3 +344,22 @@ entries:
     refresh_cadence_days: 30
     refresh_triggers: [before-bearing-use, upstream-release, hash-change, conflict, scheduled]
     supports: [M8-05, M8-06]
+
+  - reference_id: yundi339-docmost-native-database-fusion
+    title: Yundi339 Docmost native database fusion branch
+    publisher: Yundi339
+    authority_class: community-fork
+    canonical_url: https://github.com/Yundi339/docmost
+    retrieval_url: https://github.com/Yundi339/docmost.git
+    retrieved_at: "2026-08-10T01:37:00+08:00"
+    source_revision: dcf85124087a11ccb24daad5c4801e528208db9d
+    source_branch: feat/native-database-fusion
+    content_sha256: 7d96c2e499faeba703cd4d3c4c6c1926cbe8ab6222baddd563ba05ec4eee7777
+    snapshot_basis: sha256-git-ls-tree
+    acquisition: git-clone
+    license_ref: AGPL-3.0-only
+    validity: candidate
+    adoption_status: candidate
+    refresh_cadence_days: 14
+    refresh_triggers: [before-bearing-use, upstream-release, hash-change, conflict, scheduled]
+    supports: [M9-01, M9-02, M9-03, M9-04, M9-05, M9-07]
