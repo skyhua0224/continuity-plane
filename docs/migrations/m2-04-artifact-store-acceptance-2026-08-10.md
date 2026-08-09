@@ -25,12 +25,12 @@ M2-04 提供默认零服务的本地 content-addressed artifact store。`Artifac
 | 门 | 结果 |
 |---|---|
 | ArtifactRef strict schema | `schemas/registry.yaml` 注册、artifact SHA-256 与 schema 文件匹配 |
-| 定向测试 | 19/19 passed |
+| 定向测试 | 20/20 passed |
 | streamed put / deduplication | 短读流、空对象、并发 writer 和单对象复读通过 |
 | bounded range | offset/length 边界、最大范围和零长度读取通过 |
 | integrity faults | 缺失、截断、bit flip、对象 symlink、断开的 root/shard symlink 和部分写入均返回 typed error |
 | external services | 0 |
-| full repository tests | 301 passed，27 个 PostgreSQL tests 因当前进程无 DSN 跳过 |
+| full repository tests | 302 passed，27 个 PostgreSQL tests 因当前进程无 DSN 跳过 |
 | Python compile / repository verifier | 通过 |
 
 ## 量化结果
@@ -42,12 +42,12 @@ M2-04 提供默认零服务的本地 content-addressed artifact store。`Artifac
 ```text
 .venv/bin/python tools/run_artifact_benchmark.py \
   --payload-bytes 1048576 --range-bytes 8192 \
-  --observed-at 2026-08-10T04:36:27+08:00 \
+  --observed-at 2026-08-10T04:39:25+08:00 \
   --output experiments/state/m2-04-artifact-store-results.yaml
 ```
 
 ## 边界与后续
 
-对象的存储和范围读取已经具备本地证据引用所需的完整性门。State MCP 对 artifact ref 的授权提交、immutable checkpoint/canary、Execution Packet 的 bounded expansion，以及远端或共享 artifact backend 分别属于 M2-05、M2-06、M5-04 和后续可选 adapter；本验收不将本地对象存储误报为共享状态服务。
+对象的存储和范围读取已经具备本地证据引用所需的完整性门。Benchmark runner 与 committed receipt validator 在 payload 分配前执行 64 MiB 上限检查，避免数据损坏或恶意 receipt 触发无界内存分配。State MCP 对 artifact ref 的授权提交、immutable checkpoint/canary、Execution Packet 的 bounded expansion，以及远端或共享 artifact backend 分别属于 M2-05、M2-06、M5-04 和后续可选 adapter；本验收不将本地对象存储误报为共享状态服务。
 
 完成门要求的 checksum、range read 和损坏检测均已通过，active queue 可推进至 M2-05。

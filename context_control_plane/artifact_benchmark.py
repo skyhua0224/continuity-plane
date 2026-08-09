@@ -16,6 +16,7 @@ from .artifact_store import ArtifactRef, LocalArtifactStore
 
 
 _SCHEMA_VERSION = "context.artifact-store-results/v1alpha1"
+MAX_ARTIFACT_BENCHMARK_PAYLOAD_BYTES = 64 * 1024 * 1024
 _RECEIPT_FIELDS = frozenset(
     {
         "schema_version",
@@ -125,6 +126,8 @@ def validate_artifact_benchmark_receipt(
     )
     if any(type(measurement[field]) is not int for field in integer_fields):
         raise ValueError("artifact benchmark byte measurements are invalid")
+    if measurement["payload_bytes"] > MAX_ARTIFACT_BENCHMARK_PAYLOAD_BYTES:
+        raise ValueError("artifact benchmark payload exceeds maximum size")
     if (
         measurement["payload_bytes"] <= 0
         or measurement["full_read_bytes"] != measurement["payload_bytes"]
@@ -225,6 +228,8 @@ def run_artifact_benchmark(
     """Measure full versus bounded reads through the validated local store."""
     if type(payload_bytes) is not int or payload_bytes <= 0:
         raise ValueError("payload_bytes must be a positive integer")
+    if payload_bytes > MAX_ARTIFACT_BENCHMARK_PAYLOAD_BYTES:
+        raise ValueError("payload_bytes exceeds benchmark maximum")
     if type(range_bytes) is not int or range_bytes <= 0 or range_bytes > payload_bytes:
         raise ValueError("range_bytes must be positive and fit within payload_bytes")
     root = Path(root)

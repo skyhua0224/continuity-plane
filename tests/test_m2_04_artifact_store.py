@@ -9,6 +9,7 @@ import tempfile
 import unittest
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from unittest import mock
 
 import json
 import yaml
@@ -243,7 +244,15 @@ class M204ArtifactBenchmarkTests(unittest.TestCase):
         self.assertEqual(result["range_output_sha256"], result["range_sha256"])
 
     def test_benchmark_rejects_invalid_sizes(self):
-        from context_control_plane.artifact_benchmark import run_artifact_benchmark
+        import context_control_plane.artifact_benchmark as benchmark_contracts
+
+        run_artifact_benchmark = benchmark_contracts.run_artifact_benchmark
+        maximum = getattr(
+            benchmark_contracts,
+            "MAX_ARTIFACT_BENCHMARK_PAYLOAD_BYTES",
+            None,
+        )
+        self.assertIsNotNone(maximum)
 
         with tempfile.TemporaryDirectory() as temporary_directory:
             with self.assertRaisesRegex(ValueError, "payload_bytes"):
@@ -258,6 +267,16 @@ class M204ArtifactBenchmarkTests(unittest.TestCase):
                     payload_bytes=1,
                     range_bytes=2,
                 )
+            with mock.patch(
+                "context_control_plane.artifact_benchmark._payload",
+                side_effect=AssertionError("payload was allocated"),
+            ):
+                with self.assertRaisesRegex(ValueError, "maximum"):
+                    run_artifact_benchmark(
+                        Path(temporary_directory) / "artifact-store-3",
+                        payload_bytes=maximum + 1,
+                        range_bytes=1,
+                    )
 
     def test_cli_quotes_space_containing_output_path_in_provenance(self):
         root = Path(__file__).parents[1]
@@ -355,6 +374,48 @@ class M204ArtifactBenchmarkTests(unittest.TestCase):
             with self.subTest(digest=case["measurement"]["full_read_sha256"]):
                 with self.assertRaises(ValueError):
                     validate_artifact_benchmark_receipt(case, root=root)
+
+    def test_receipt_validator_rejects_oversized_payload_before_allocation(self):
+        import context_control_plane.artifact_benchmark as benchmark_contracts
+
+        validate_artifact_benchmark_receipt = (
+            benchmark_contracts.validate_artifact_benchmark_receipt
+        )
+        maximum = getattr(
+            benchmark_contracts,
+            "MAX_ARTIFACT_BENCHMARK_PAYLOAD_BYTES",
+            None,
+        )
+        self.assertIsNotNone(maximum)
+
+        root = Path(__file__).parents[1]
+        receipt = yaml.safe_load(
+            (
+                root
+                / "experiments"
+                / "state"
+                / "m2-04-artifact-store-results.yaml"
+            ).read_text(encoding="utf-8")
+        )
+        oversized = maximum + 1
+        receipt["measurement"]["payload_bytes"] = oversized
+        receipt["measurement"]["full_read_bytes"] = oversized
+        receipt["measurement"]["artifact_ref"]["size_bytes"] = oversized
+        receipt["generation"]["arguments"][1] = str(oversized)
+        receipt["generation"]["command"] = shlex.join(
+            [
+                ".venv/bin/python",
+                "tools/run_artifact_benchmark.py",
+                *receipt["generation"]["arguments"],
+            ]
+        )
+
+        with mock.patch(
+            "context_control_plane.artifact_benchmark._payload",
+            side_effect=AssertionError("payload was allocated"),
+        ):
+            with self.assertRaisesRegex(ValueError, "maximum"):
+                validate_artifact_benchmark_receipt(receipt, root=root)
 
 
 if __name__ == "__main__":
