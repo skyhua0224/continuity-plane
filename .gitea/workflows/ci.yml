@@ -16,19 +16,34 @@ jobs:
           set -eu
           POSTGRES_IMAGE="postgres:18.4-alpine@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15"
           POSTGRES_CONTAINER="ccp-m203-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}"
-          JOB_NETWORK="$(docker inspect "${HOSTNAME}" \
-            --format '{{range $name, $_ := .NetworkSettings.Networks}}{{println $name}}{{end}}' \
-            | head -n 1)"
-          test -n "${JOB_NETWORK}"
           printf 'CONTEXT_TEST_POSTGRES_CONTAINER=%s\n' "${POSTGRES_CONTAINER}" >> "${GITHUB_ENV}"
+          DOCKER_NETWORK_ARGS=()
+          if docker inspect "${HOSTNAME}" >/dev/null 2>&1; then
+            JOB_NETWORK="$(docker inspect "${HOSTNAME}" \
+              --format '{{range $name, $_ := .NetworkSettings.Networks}}{{println $name}}{{end}}' \
+              | head -n 1)"
+            test -n "${JOB_NETWORK}"
+            DOCKER_NETWORK_ARGS=(--network "${JOB_NETWORK}")
+            POSTGRES_HOST="${POSTGRES_CONTAINER}"
+            POSTGRES_PORT="5432"
+          else
+            DOCKER_NETWORK_ARGS=(--publish "127.0.0.1::5432")
+            POSTGRES_HOST="127.0.0.1"
+            POSTGRES_PORT=""
+          fi
           docker run --rm -d \
             --name "${POSTGRES_CONTAINER}" \
-            --network "${JOB_NETWORK}" \
+            "${DOCKER_NETWORK_ARGS[@]}" \
             --env POSTGRES_HOST_AUTH_METHOD=trust \
             --env POSTGRES_USER=context_test \
             --env POSTGRES_DB=context_test \
             "${POSTGRES_IMAGE}"
-          CONTEXT_TEST_POSTGRES_DSN="postgresql://context_test@${POSTGRES_CONTAINER}:5432/context_test"
+          if [ -z "${POSTGRES_PORT}" ]; then
+            POSTGRES_PORT="$(docker port "${POSTGRES_CONTAINER}" 5432/tcp \
+              | awk -F: 'NR == 1 {print $NF}')"
+            test -n "${POSTGRES_PORT}"
+          fi
+          CONTEXT_TEST_POSTGRES_DSN="postgresql://context_test@${POSTGRES_HOST}:${POSTGRES_PORT}/context_test"
           printf 'CONTEXT_TEST_POSTGRES_DSN=%s\n' "${CONTEXT_TEST_POSTGRES_DSN}" >> "${GITHUB_ENV}"
           ready=0
           for attempt in $(seq 1 30); do
@@ -56,7 +71,10 @@ jobs:
         run: .venv/bin/python tools/verify_repository.py --root .
       - name: Stop isolated PostgreSQL
         if: always()
-        run: docker stop "${CONTEXT_TEST_POSTGRES_CONTAINER}"
+        run: |
+          if [ -n "${CONTEXT_TEST_POSTGRES_CONTAINER:-}" ]; then
+            docker stop "${CONTEXT_TEST_POSTGRES_CONTAINER}" || true
+          fi
 
   secret-scan:
     runs-on: ubuntu-latest

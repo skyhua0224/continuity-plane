@@ -89,7 +89,7 @@ class RepositoryVerificationCliTests(unittest.TestCase):
             commands,
         )
 
-    def test_ci_attaches_pinned_postgres_to_job_container_network(self):
+    def test_ci_supports_container_and_host_runner_postgres_networking(self):
         root = Path(__file__).parents[1]
         workflow = yaml.safe_load(
             (root / ".gitea" / "workflows" / "ci.yml").read_text(encoding="utf-8")
@@ -107,12 +107,16 @@ class RepositoryVerificationCliTests(unittest.TestCase):
         self.assertIn("docker run --rm -d", start["run"])
         self.assertIn('docker inspect "${HOSTNAME}"', start["run"])
         self.assertIn('--network "${JOB_NETWORK}"', start["run"])
-        self.assertIn('${POSTGRES_CONTAINER}:5432/context_test', start["run"])
-        self.assertNotIn("127.0.0.1::5432", start["run"])
+        self.assertIn('--publish "127.0.0.1::5432"', start["run"])
+        self.assertIn('POSTGRES_HOST="${POSTGRES_CONTAINER}"', start["run"])
+        self.assertIn('POSTGRES_HOST="127.0.0.1"', start["run"])
+        self.assertIn('docker port "${POSTGRES_CONTAINER}" 5432/tcp', start["run"])
+        self.assertIn('${POSTGRES_HOST}:${POSTGRES_PORT}/context_test', start["run"])
         self.assertIn("CONTEXT_TEST_POSTGRES_DSN", start["run"])
         self.assertIn("GITHUB_ENV", start["run"])
         self.assertIn("pg_isready", start["run"])
         self.assertEqual(cleanup["if"], "always()")
+        self.assertIn('${CONTEXT_TEST_POSTGRES_CONTAINER:-}', cleanup["run"])
         self.assertIn("docker stop", cleanup["run"])
 
     def test_clean_repository_passes_all_gates(self):

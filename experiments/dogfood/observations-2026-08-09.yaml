@@ -1760,3 +1760,37 @@ observations:
           body_bytes: 4250
           body_lines: 200
           reason: verified branch completion and integration boundary
+
+  - observation_id: dogfood-verification-018
+    event_type: verification
+    observed_at: "2026-08-10T03:13:45+08:00"
+    authority: gitea-actions-logs-and-local-host-fallback-reproduction
+    active_leaf_before: M2-09
+    active_leaf_after: M2-09
+    evidence_refs:
+      - gitea:run-1068-repository-verification-host-runner-network-failure
+      - gitea:run-1069-repository-verification-host-runner-network-failure
+      - gitea:runs-1065-1066-container-runner-network-success
+      - local:host-runner-loopback-postgresql-select-1
+    metrics:
+      tests_run: 0
+      tests_failed: 0
+      checks_failed: 2
+      scope_violations: 0
+
+  - observation_id: dogfood-skill-load-016
+    event_type: skill-load
+    observed_at: "2026-08-10T03:13:45+08:00"
+    authority: ci-failure-task-trigger-current-path-digest
+    active_leaf_before: M2-09
+    active_leaf_after: M2-09
+    metrics:
+      body_load_count: 1
+      total_body_bytes: 9884
+      repeated_body_load_bytes: 0
+      skills:
+        - skill_id: systematic-debugging
+          content_sha256: 4999cb851360485eca5074e727bbdd62ef20549c5d5b01216fcbf5831badb473
+          body_bytes: 9884
+          body_lines: 296
+          reason: dual-run host/container CI network root-cause analysis

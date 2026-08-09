@@ -45,7 +45,7 @@ canonical plan：`MASTER.md`
 | Git collaboration | branch/commit/PR/merge 和 staged admission 合同已落盘；公开 Gitea remote 为 `skyhua/context-control-plane`，默认分支 `main`；repo-local identity 已与托管账号核验 |
 | Continuous integration | 独立 Verifier 权威状态写权限为 0；M2-03 runs 1037/1038 暴露 service lifecycle 与 job-network 故障，run 1039 的两个 jobs 全绿；`main` 禁止 direct/force push、禁止 admin merge override，并要求 4 个 push/PR status contexts |
 | Reference catalog | 21 个候选来源；Codex/Claude harness 与 Yundi339 Docmost fork 均固定 URL、revision/tree hash、validity、refresh trigger 和 adoption status；active adoption 0 |
-| Project dogfood baseline | 12 次 compaction 的结构字段恢复 100%，Continuation Cursor 累计恢复 22/24；第 7/8 次首动作不匹配和已确认事项重播累计各 2 次，第 9/10/11/12 次精确续接，整体趋势仍为 regressed；22 次 input routing 无未授权切换；40 个 Skill body 共 461,094 bytes，其中重复 291,557 bytes；provider context/token/latency 不可见 |
+| Project dogfood baseline | 12 次 compaction 的结构字段恢复 100%，Continuation Cursor 累计恢复 22/24；第 7/8 次首动作不匹配和已确认事项重播累计各 2 次，第 9/10/11/12 次精确续接，整体趋势仍为 regressed；22 次 input routing 无未授权切换；41 个 Skill body 共 470,978 bytes，其中重复 291,557 bytes；provider context/token/latency 不可见 |
 | Autonomous progression | required/conditional/optional、bounded escalation、next-ready selector、unattended dispatcher 与 multi-Agent claim/lease/handoff 验收合同进入 revision 21；runtime 实现待 M2-M8；当前 provider-host multi-Agent 只计 shadow evidence |
 | Repository verification | 232/232 tests，包含 11 个 PostgreSQL regression tests 与 34 个 Memory/PostgreSQL StateStore conformance tests；15 个 repository verifier 正反场景；M2-01 4/4 snapshot 与 M2-02 1/1 replay fixture byte-equivalent；Python compile、JSON/YAML、schema/projection、fixture privacy、documentation link/style、transcript admission 和 Gitea secret-scan checks 通过 |
 | Governance authority | `MASTER.md` |

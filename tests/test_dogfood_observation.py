@@ -46,14 +46,14 @@ class DogfoodObservationTests(unittest.TestCase):
         self.assertEqual(summary["stale_decisions_revived"], 0)
         self.assertEqual(summary["unauthorized_task_switches"], 0)
         self.assertEqual(summary["unauthorized_goal_changes"], 0)
-        self.assertEqual(summary["verification_failures"], 5)
+        self.assertEqual(summary["verification_failures"], 7)
         self.assertEqual(summary["scope_violations"], 0)
 
     def test_summary_accounts_for_loaded_skill_bodies(self):
         summary = summarize_observations(self.document)
 
-        self.assertEqual(summary["skill_body_load_count"], 40)
-        self.assertEqual(summary["skill_body_load_bytes"], 461094)
+        self.assertEqual(summary["skill_body_load_count"], 41)
+        self.assertEqual(summary["skill_body_load_bytes"], 470978)
         self.assertEqual(summary["repeated_skill_body_load_bytes"], 291557)
 
     def test_visible_compactions_remain_uncomparable_for_cost_metrics(self):
