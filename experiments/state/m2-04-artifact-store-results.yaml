@@ -1,9 +1,9 @@
 schema_version: context.artifact-store-results/v1alpha1
-observed_at: '2026-08-10T12:15:00+08:00'
+observed_at: '2026-08-10T04:36:27+08:00'
 provenance:
   implementation_sha256: eb90916a5366ec34026803a464ad49c38bb2851c14e79fe46ed8a3244d7f4d5b
-  benchmark_sha256: 17d54a577477b13e399e82572925b82588fde0dfdbf45a03d0e097c08fe301e5
-  runner_sha256: ec32cb9c4785041fc3b8a6a04e61246e2dfc4e28cbb019e7366da485e19fe6f8
+  benchmark_sha256: d08c535cddd4af7f161c3919c7723ed94bd9a4b64c994001bd04525b44e604ef
+  runner_sha256: e0389cf095cd35affde3a1a22da9e913bec7b8b76aa7f5b71db01fb4bf851509
 environment:
   python_version: 3.14.6
   platform: linux
@@ -18,9 +18,9 @@ measurement:
     digest: 3bbdefbae994ab4257bd889bf4f2d8629773f28e849dc79835411e75b334165e
     size_bytes: 1048576
     artifact_uri: artifact://sha256/3bbdefbae994ab4257bd889bf4f2d8629773f28e849dc79835411e75b334165e
-  put_ms: 0.7769
-  full_read_ms: 1.4243
-  range_read_ms: 0.7865
+  put_ms: 0.7486
+  full_read_ms: 1.3475
+  range_read_ms: 0.7362
   full_read_bytes: 1048576
   range_bytes: 8192
   range_offset: 520192
@@ -35,5 +35,14 @@ acceptance:
   external_services: 0
 generation:
   command: .venv/bin/python tools/run_artifact_benchmark.py --payload-bytes 1048576
-    --range-bytes 8192 --observed-at 2026-08-10T12:15:00+08:00 --output experiments/state/m2-04-artifact-store-results.yaml
+    --range-bytes 8192 --observed-at 2026-08-10T04:36:27+08:00 --output experiments/state/m2-04-artifact-store-results.yaml
+  arguments:
+  - --payload-bytes
+  - '1048576'
+  - --range-bytes
+  - '8192'
+  - --observed-at
+  - '2026-08-10T04:36:27+08:00'
+  - --output
+  - experiments/state/m2-04-artifact-store-results.yaml
   writes_runtime_state_to_repository: false

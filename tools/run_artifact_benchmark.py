@@ -7,6 +7,7 @@ import argparse
 import datetime
 import hashlib
 import os
+import shlex
 import sys
 import tempfile
 from pathlib import Path
@@ -42,12 +43,13 @@ def _atomic_write(path: Path, payload: str) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    raw_arguments = list(sys.argv[1:] if argv is None else argv)
     parser = argparse.ArgumentParser(description="benchmark the local artifact store")
     parser.add_argument("--payload-bytes", type=int, default=1024 * 1024)
     parser.add_argument("--range-bytes", type=int, default=8192)
     parser.add_argument("--observed-at")
     parser.add_argument("--output", type=Path)
-    args = parser.parse_args(argv)
+    args = parser.parse_args(raw_arguments)
 
     with tempfile.TemporaryDirectory(prefix="context-artifact-benchmark-") as directory:
         result = run_artifact_benchmark(
@@ -79,17 +81,14 @@ def main(argv: list[str] | None = None) -> int:
             "external_services": result.get("external_services", 0),
         },
         "generation": {
-            "command": " ".join(
+            "command": shlex.join(
                 [
                     ".venv/bin/python",
                     "tools/run_artifact_benchmark.py",
-                    *(
-                        sys.argv[1:]
-                        if argv is None
-                        else argv
-                    ),
+                    *raw_arguments,
                 ]
             ),
+            "arguments": raw_arguments,
             "writes_runtime_state_to_repository": False,
         },
     }

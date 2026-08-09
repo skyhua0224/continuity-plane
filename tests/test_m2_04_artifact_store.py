@@ -1,6 +1,10 @@
+import copy
 import hashlib
 import io
 import os
+import shlex
+import subprocess
+import sys
 import tempfile
 import unittest
 from concurrent.futures import ThreadPoolExecutor
@@ -254,6 +258,103 @@ class M204ArtifactBenchmarkTests(unittest.TestCase):
                     payload_bytes=1,
                     range_bytes=2,
                 )
+
+    def test_cli_quotes_space_containing_output_path_in_provenance(self):
+        root = Path(__file__).parents[1]
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            output = Path(temporary_directory) / "receipt with spaces.yaml"
+            arguments = [
+                "--payload-bytes",
+                "4096",
+                "--range-bytes",
+                "512",
+                "--observed-at",
+                "2026-08-10T04:32:22+08:00",
+                "--output",
+                str(output),
+            ]
+            subprocess.run(
+                [sys.executable, str(root / "tools/run_artifact_benchmark.py"), *arguments],
+                cwd=root,
+                check=True,
+            )
+            receipt = yaml.safe_load(output.read_text(encoding="utf-8"))
+
+        self.assertEqual(
+            shlex.split(receipt["generation"]["command"]),
+            [
+                ".venv/bin/python",
+                "tools/run_artifact_benchmark.py",
+                *arguments,
+            ],
+        )
+
+    def test_committed_receipt_is_strict_and_has_current_provenance(self):
+        import context_control_plane.artifact_benchmark as benchmark_contracts
+
+        root = Path(__file__).parents[1]
+        receipt = yaml.safe_load(
+            (
+                root
+                / "experiments"
+                / "state"
+                / "m2-04-artifact-store-results.yaml"
+            ).read_text(encoding="utf-8")
+        )
+        validator = getattr(
+            benchmark_contracts,
+            "validate_artifact_benchmark_receipt",
+            None,
+        )
+
+        self.assertIsNotNone(validator)
+        self.assertEqual(
+            set(receipt),
+            {
+                "schema_version",
+                "observed_at",
+                "provenance",
+                "environment",
+                "measurement",
+                "acceptance",
+                "generation",
+            },
+        )
+        self.assertEqual(
+            set(receipt["generation"]),
+            {"command", "arguments", "writes_runtime_state_to_repository"},
+        )
+        validator(receipt, root=root)
+
+    def test_receipt_validator_rejects_consistently_forged_digests(self):
+        from context_control_plane.artifact_benchmark import (
+            validate_artifact_benchmark_receipt,
+        )
+
+        root = Path(__file__).parents[1]
+        receipt = yaml.safe_load(
+            (
+                root
+                / "experiments"
+                / "state"
+                / "m2-04-artifact-store-results.yaml"
+            ).read_text(encoding="utf-8")
+        )
+        forged_full = copy.deepcopy(receipt)
+        forged_full["measurement"]["artifact_ref"]["digest"] = "a" * 64
+        forged_full["measurement"]["artifact_ref"]["artifact_uri"] = (
+            f"artifact://sha256/{'a' * 64}"
+        )
+        forged_full["measurement"]["full_read_sha256"] = "a" * 64
+
+        forged_range = copy.deepcopy(receipt)
+        forged_range["measurement"]["range_sha256"] = "b" * 64
+        forged_range["measurement"]["range_output_sha256"] = "b" * 64
+
+        for case in (forged_full, forged_range):
+            with self.subTest(digest=case["measurement"]["full_read_sha256"]):
+                with self.assertRaises(ValueError):
+                    validate_artifact_benchmark_receipt(case, root=root)
 
 
 if __name__ == "__main__":

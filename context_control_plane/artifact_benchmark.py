@@ -5,15 +5,209 @@ from __future__ import annotations
 import hashlib
 import io
 import platform
+import shlex
 import sys
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from .artifact_store import LocalArtifactStore
+from .artifact_store import ArtifactRef, LocalArtifactStore
 
 
 _SCHEMA_VERSION = "context.artifact-store-results/v1alpha1"
+_RECEIPT_FIELDS = frozenset(
+    {
+        "schema_version",
+        "observed_at",
+        "provenance",
+        "environment",
+        "measurement",
+        "acceptance",
+        "generation",
+    }
+)
+_PROVENANCE_FIELDS = frozenset(
+    {"implementation_sha256", "benchmark_sha256", "runner_sha256"}
+)
+_ENVIRONMENT_FIELDS = frozenset(
+    {"python_version", "platform", "machine", "external_services"}
+)
+_MEASUREMENT_FIELDS = frozenset(
+    {
+        "external_services",
+        "payload_bytes",
+        "artifact_ref",
+        "put_ms",
+        "full_read_ms",
+        "range_read_ms",
+        "full_read_bytes",
+        "range_bytes",
+        "range_offset",
+        "full_read_sha256",
+        "range_sha256",
+        "range_output_sha256",
+        "context_bytes_reduction_percent",
+        "integrity",
+    }
+)
+_ACCEPTANCE_FIELDS = frozenset(
+    {"checksum_verified", "bounded_range_read", "external_services"}
+)
+_GENERATION_FIELDS = frozenset(
+    {"command", "arguments", "writes_runtime_state_to_repository"}
+)
+
+
+def _require_exact_fields(
+    value: Any,
+    expected: frozenset[str],
+    field_name: str,
+) -> dict[str, Any]:
+    if not isinstance(value, dict) or frozenset(value) != expected:
+        raise ValueError(f"artifact benchmark {field_name} fields are invalid")
+    return value
+
+
+def _file_sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def validate_artifact_benchmark_receipt(
+    receipt: dict[str, Any],
+    *,
+    root: str | Path,
+) -> None:
+    """Fail closed when a committed benchmark receipt or its inputs drift."""
+    receipt = _require_exact_fields(receipt, _RECEIPT_FIELDS, "receipt")
+    if receipt["schema_version"] != _SCHEMA_VERSION:
+        raise ValueError("artifact benchmark schema_version is unsupported")
+    try:
+        observed_at = datetime.fromisoformat(receipt["observed_at"])
+    except (TypeError, ValueError) as exc:
+        raise ValueError("artifact benchmark observed_at is invalid") from exc
+    if observed_at.utcoffset() is None:
+        raise ValueError("artifact benchmark observed_at requires an offset")
+
+    root = Path(root)
+    provenance = _require_exact_fields(
+        receipt["provenance"], _PROVENANCE_FIELDS, "provenance"
+    )
+    expected_hashes = {
+        "implementation_sha256": _file_sha256(
+            root / "context_control_plane/artifact_store.py"
+        ),
+        "benchmark_sha256": _file_sha256(
+            root / "context_control_plane/artifact_benchmark.py"
+        ),
+        "runner_sha256": _file_sha256(root / "tools/run_artifact_benchmark.py"),
+    }
+    if provenance != expected_hashes:
+        raise ValueError("artifact benchmark provenance hash mismatch")
+
+    environment = _require_exact_fields(
+        receipt["environment"], _ENVIRONMENT_FIELDS, "environment"
+    )
+    if environment["external_services"] != 0:
+        raise ValueError("artifact benchmark must use zero external services")
+    for field_name in ("python_version", "platform", "machine"):
+        if not isinstance(environment[field_name], str):
+            raise ValueError(f"artifact benchmark {field_name} is invalid")
+
+    measurement = _require_exact_fields(
+        receipt["measurement"], _MEASUREMENT_FIELDS, "measurement"
+    )
+    integer_fields = (
+        "payload_bytes",
+        "full_read_bytes",
+        "range_bytes",
+        "range_offset",
+    )
+    if any(type(measurement[field]) is not int for field in integer_fields):
+        raise ValueError("artifact benchmark byte measurements are invalid")
+    if (
+        measurement["payload_bytes"] <= 0
+        or measurement["full_read_bytes"] != measurement["payload_bytes"]
+        or measurement["range_bytes"] <= 0
+        or measurement["range_bytes"] > measurement["full_read_bytes"]
+        or measurement["range_offset"] < 0
+        or measurement["range_offset"] + measurement["range_bytes"]
+        > measurement["full_read_bytes"]
+    ):
+        raise ValueError("artifact benchmark byte range is invalid")
+    ref = ArtifactRef.from_document(measurement["artifact_ref"])
+    expected_payload = _payload(measurement["payload_bytes"])
+    expected_full_digest = hashlib.sha256(expected_payload).hexdigest()
+    expected_range_digest = hashlib.sha256(
+        expected_payload[
+            measurement["range_offset"] : measurement["range_offset"]
+            + measurement["range_bytes"]
+        ]
+    ).hexdigest()
+    if (
+        ref.size_bytes != measurement["payload_bytes"]
+        or ref.digest != measurement["full_read_sha256"]
+        or ref.digest != expected_full_digest
+        or measurement["range_sha256"] != measurement["range_output_sha256"]
+        or measurement["range_sha256"] != expected_range_digest
+    ):
+        raise ValueError("artifact benchmark digest evidence is inconsistent")
+    for field_name in ("range_sha256", "range_output_sha256"):
+        digest = measurement[field_name]
+        if not isinstance(digest, str) or len(digest) != 64:
+            raise ValueError("artifact benchmark range digest is invalid")
+        try:
+            int(digest, 16)
+        except ValueError as exc:
+            raise ValueError("artifact benchmark range digest is invalid") from exc
+    for field_name in ("put_ms", "full_read_ms", "range_read_ms"):
+        value = measurement[field_name]
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0:
+            raise ValueError("artifact benchmark latency is invalid")
+    expected_reduction = round(
+        (measurement["full_read_bytes"] - measurement["range_bytes"])
+        / measurement["full_read_bytes"]
+        * 100,
+        4,
+    )
+    if measurement["context_bytes_reduction_percent"] != expected_reduction:
+        raise ValueError("artifact benchmark context byte reduction is invalid")
+    if measurement["external_services"] != 0 or measurement["integrity"] != "passed":
+        raise ValueError("artifact benchmark acceptance evidence is invalid")
+
+    acceptance = _require_exact_fields(
+        receipt["acceptance"], _ACCEPTANCE_FIELDS, "acceptance"
+    )
+    if acceptance != {
+        "checksum_verified": True,
+        "bounded_range_read": True,
+        "external_services": 0,
+    }:
+        raise ValueError("artifact benchmark acceptance flags are invalid")
+
+    generation = _require_exact_fields(
+        receipt["generation"], _GENERATION_FIELDS, "generation"
+    )
+    expected_arguments = [
+        "--payload-bytes",
+        str(measurement["payload_bytes"]),
+        "--range-bytes",
+        str(measurement["range_bytes"]),
+        "--observed-at",
+        receipt["observed_at"],
+        "--output",
+        "experiments/state/m2-04-artifact-store-results.yaml",
+    ]
+    if generation["arguments"] != expected_arguments:
+        raise ValueError("artifact benchmark generation arguments are invalid")
+    if generation["writes_runtime_state_to_repository"] is not False:
+        raise ValueError("artifact benchmark must not write runtime state to Git")
+    if shlex.split(generation["command"]) != [
+        ".venv/bin/python",
+        "tools/run_artifact_benchmark.py",
+        *expected_arguments,
+    ]:
+        raise ValueError("artifact benchmark generation command is invalid")
 
 
 def _payload(size: int) -> bytes:
