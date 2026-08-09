@@ -10,13 +10,13 @@ document_revision: 1
 change_type: evidence
 authority_ref: postgresql-18-psycopg-3-official-docs-and-local-fault-injection
 supersedes: null
-affected_tasks: [M2-03, M2-05, M6-03, M8-02]
-next_review: M2-05
+affected_tasks: [M2-03, M2-05, M2-08, M2-09, M6-03, M8-02]
+next_review: M2-08
 ```
 
 ## 采用范围
 
-M2-03 使用 PostgreSQL 保存关系型权威状态：`context_control.projects` 保存当前 typed snapshot、revision 和 Event head，`context_control.state_events` 保存完整 canonical Event envelope。Event 表的 project/sequence、project/event ID、project/revision 和 project/event hash 具有唯一约束；trigger 拒绝 UPDATE 与 DELETE。
+M2-03 使用 PostgreSQL 保存 `shared-strong` profile 的关系型权威状态：`context_control.projects` 保存当前 typed snapshot、revision 和 Event head，`context_control.state_events` 保存完整 canonical Event envelope。Event 表的 project/sequence、project/event ID、project/revision 和 project/event hash 具有唯一约束；trigger 拒绝 UPDATE 与 DELETE。默认 `local-embedded` profile 由 M2-08/M2-09 的 StateStore SPI 与 SQLite backend 交付，不依赖 PostgreSQL。
 
 每次提交在一个事务中执行以下顺序：
 

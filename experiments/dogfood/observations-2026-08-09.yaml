@@ -1,10 +1,10 @@
 schema_version: context.dogfood-observation/v1alpha1
-generated_at: "2026-08-10T00:30:00+08:00"
+generated_at: "2026-08-10T01:23:25+08:00"
 status: baseline
 measurement_limitations:
   - provider token accounting was unavailable for this resumed segment
   - restore wall-clock and p95 were not emitted by a State MCP or OTel trace
-  - seven visible compactions still did not expose comparable provider context-window usage, input/cache tokens, or restore latency
+  - nine visible compactions still did not expose comparable provider context-window usage, input/cache tokens, or restore latency
   - delivery lead time currently uses Git activation and merge timestamps; active, blocked, and rework wall time are not yet emitted by State MCP or OTel
 
 observations:
@@ -1271,6 +1271,164 @@ observations:
       - check:gitleaks-git-and-directory-zero-findings-2026-08-10
     metrics:
       tests_run: 153
+      tests_failed: 0
+      checks_failed: 0
+      scope_violations: 0
+
+  - observation_id: dogfood-compaction-009
+    event_type: compaction
+    observed_at: "2026-08-10T00:52:00+08:00"
+    authority: system-handoff-and-current-repository
+    active_leaf_before: M2-03
+    active_leaf_after: M2-03
+    metrics:
+      critical_fields_total: 8
+      critical_fields_recovered: 8
+      stale_decisions_revived: 0
+      unauthorized_task_switches: 0
+      comparable_context_input_bytes: null
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      restore_latency_ms: null
+      provider_compaction_signal_available: true
+      continuation_fields_total: 4
+      continuation_fields_recovered: 4
+      already_acknowledged_items_replayed: 0
+      first_post_restore_action_matched: true
+    evidence:
+      - handoff preserved branch work/M2-03/postgres-cas, commits, running PostgreSQL fixture, the modified CI regression test, and Gitea run 1037 failure
+      - first repository action reproduced the exact missing Start isolated PostgreSQL step failure
+      - M2-02 implementation and the already answered PostgreSQL vector boundary were not replayed
+      - one successful continuation sample does not clear the dogfood-compaction-007 and dogfood-compaction-008 veto failures
+
+  - observation_id: dogfood-input-routing-020
+    event_type: input-routing
+    observed_at: "2026-08-10T01:00:00+08:00"
+    authority: explicit-user-continuity-correction
+    active_leaf_before: M2-03
+    active_leaf_after: M2-03
+    input_kind: correction
+    route: correction-write-protect
+    candidate_id: correction-post-compaction-replay-remains-open-001
+    candidate_summary: Post-compaction continuity remains unresolved; preserve M2-03 and require the next recovery to resume the exact CI correction without replaying acknowledged PostgreSQL or M2-02 explanations.
+    candidate_summary_sha256: 4b5f266b2900a96dd8eb962a6b2b12f4c101cba170316847f3b2417a08b54d13
+    metrics:
+      messages_observed: 1
+      ideas_captured: 0
+      unauthorized_task_switches: 0
+      return_point_preserved: true
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      provider_compaction_signal_available: true
+      tool_interruption_observed: false
+
+  - observation_id: dogfood-skill-load-010
+    event_type: skill-load
+    observed_at: "2026-08-10T01:11:10+08:00"
+    authority: task-trigger-current-path-digest-and-visible-handoff
+    active_leaf_before: M2-03
+    active_leaf_after: M2-03
+    metrics:
+      body_load_count: 5
+      total_body_bytes: 80853
+      repeated_body_load_bytes: 27216
+      skills:
+        - skill_id: session-memory-hygiene
+          content_sha256: e7814b9010db3d5dd83d978f93d80515cee2f5388761f5fb20f7a406fdc856f0
+          body_bytes: 1361
+          body_lines: 34
+          reason: post-compaction continuation verification
+        - skill_id: test-driven-development
+          content_sha256: 7dee67b4af6bdccc7a914ca34533184d64592d0f5b23aeae631538168db14994
+          body_bytes: 9867
+          body_lines: 371
+          reason: CI correction and portability contract regression tests
+        - skill_id: human-first-writing
+          content_sha256: 0f3754759a185b43e6932864703cca58543a8ef58ed80a57469f680f0eaf5832
+          body_bytes: 15988
+          body_lines: 427
+          reason: active response and normative-document writing contract
+        - skill_id: git
+          content_sha256: c13013bb735a6ca5e13596c126136bffa18fdba6d573dc781e0e3978ebb24b17
+          body_bytes: 18117
+          body_lines: 386
+          reason: M2-03 atomic commit and push contract
+        - skill_id: database-schema-design
+          content_sha256: 2294458c7afeaa18ab628e8933bbabf5005b6412a77f345b3afaadffa2dab9e8
+          current_content_sha256: 1e9857f30251de887cb9b9e675b05531de8f387613ee8f5e642e0ff78757c502
+          body_bytes: 35520
+          body_lines: 1353
+          quarantined: true
+          reason: pre-compaction database design load no longer matches the current path digest and cannot provide active rules
+
+  - observation_id: dogfood-input-routing-021
+    event_type: input-routing
+    observed_at: "2026-08-10T01:14:00+08:00"
+    authority: explicit-user-local-first-and-forge-collaboration-correction
+    active_leaf_before: M2-03
+    active_leaf_after: M2-03
+    input_kind: correction
+    route: correction-write-protect
+    candidate_id: correction-local-first-runtime-profiles-001
+    candidate_summary: Default collaboration must prioritize local SQLite and existing GitHub/Gitea/GitLab Issue, PR, branch, assignee, review, and CI adapters; PostgreSQL, Temporal, Docmost, and OTel are opt-in team or enterprise extensions.
+    candidate_summary_sha256: 89d52bc548cd136717547e7e10035f99efc3d10ea397814db8efb076862ae40d
+    metrics:
+      messages_observed: 1
+      ideas_captured: 0
+      unauthorized_task_switches: 0
+      return_point_preserved: true
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      provider_compaction_signal_available: true
+      tool_interruption_observed: true
+
+  - observation_id: dogfood-plan-revision-015
+    event_type: plan-revision
+    observed_at: "2026-08-10T01:16:09+08:00"
+    authority: explicit-user-local-first-feature-tier-and-forge-collaboration-requirement
+    authorized: true
+    active_leaf_before: M2-03
+    active_leaf_after: M2-03
+    metrics:
+      master_revision_before: 18
+      master_revision_after: 19
+      unauthorized_goal_changes: 0
+      project_mission_changed: false
+      return_point_preserved: true
+      tasks_added: [M2-08, M2-09, M8-08, M10-09]
+      tasks_refined: [M2-03, M2-05, M3-01, M9, M10-03, M10-07]
+
+  - observation_id: dogfood-plan-revision-016
+    event_type: plan-revision
+    observed_at: "2026-08-10T01:23:25+08:00"
+    authority: M2-03-completion-gates-explicit-user-local-first-requirement-and-repository-evidence
+    authorized: true
+    active_leaf_before: M2-03
+    active_leaf_after: M2-08
+    metrics:
+      master_revision_before: 19
+      master_revision_after: 20
+      unauthorized_goal_changes: 0
+      project_mission_changed: false
+      return_point_preserved: true
+      tasks_completed: [M2-03]
+      tasks_activated: [M2-08]
+
+  - observation_id: dogfood-verification-014
+    event_type: verification
+    observed_at: "2026-08-10T01:23:25+08:00"
+    authority: local-repository-gitea-ci-and-shadow-replay-evidence
+    active_leaf_before: M2-08
+    active_leaf_after: M2-08
+    evidence_refs:
+      - unittest:m2-03-postgres-state-store-11-revision-20-2026-08-10
+      - unittest:discover-tests-171-revision-20-2026-08-10
+      - check:python-compile-revision-20-2026-08-10
+      - check:repository-verifier-revision-20-2026-08-10
+      - gitea:run-1039-repository-verification-and-secret-scan-success
+      - receipt:m2-03-shadow-dogfood-revision-18-to-22
+    metrics:
+      tests_run: 171
       tests_failed: 0
       checks_failed: 0
       scope_violations: 0

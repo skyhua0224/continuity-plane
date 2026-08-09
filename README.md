@@ -9,7 +9,7 @@ Current status: research and shadow-pilot scaffolding. No production state servi
 ## Repository Boundary
 
 - This repository owns schemas, state-service code, task routing, Skill resolution, context composition, replay validators, provider adapters, project profiles, and human-console integrations.
-- PostgreSQL and the artifact store own live state, events, checkpoints, and large outputs.
+- The selected StateStore profile and artifact store own live state, events, checkpoints, and large outputs. SQLite is the default embedded backend; PostgreSQL is an optional shared backend.
 - Provider archives retain raw chat transcripts outside Git.
 - Project repositories contain only small integration manifests and project-owned canonical documents.
 - AlkaidLab Platform, Moonlight, Sunshine, and other products retain independent build and runtime lifecycles.

@@ -1,6 +1,6 @@
 # Context Control Plane MASTER
 
-版本：revision 18  
+版本：revision 20  
 日期：2026-08-10  
 状态：研究与 shadow pilot 准备阶段  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
@@ -10,7 +10,7 @@
 | 属性 | 定义 |
 |---|---|
 | 仓库职责 | Provider-neutral 开发协作上下文控制面 |
-| 部署形态 | 独立服务与工具链 |
+| 部署形态 | 默认本地内嵌工具链；现有 Git forge 协作 adapter；可选团队服务与企业扩展 |
 | 项目集成 | Project Profile、State MCP、CLI 和受控检索接口 |
 | 当前阶段 | 研究与 shadow pilot 准备 |
 | Canonical 治理计划 | `MASTER.md` |
@@ -34,6 +34,7 @@
 最终系统必须同时做到：
 
 - 权威状态由 Typed State、Event Log 和 revision/CAS 管理；
+- 默认安装在本地提供内嵌状态、checkpoint、Skill 和检索能力，不要求 Docker、PostgreSQL 或新增远端服务；
 - 重复输入和重复检索 token 达到量化降幅，代码质量与规则遵循保持基线或提升；
 - 通过有界信息访问、artifact range、代码/参考索引和候选 recall 减少直接读取量，同时保留承重 provenance 与 current-evidence verification；
 - 历史记忆提供候选召回，执行权限由 validity、supersedes 和当前证据决定；
@@ -41,7 +42,7 @@
 - 外部参考和 harness 实践通过可刷新 catalog、snapshot hash、validity 与 adoption decision 持续进入研究证据；
 - MASTER 分支任务形成可计算 DAG，具备依赖、阻塞、回流、promotion、attempt budget 和完成证据；
 - 共享 Work Ledger、claim/lease、scope ownership 和 current evidence 在第二个认领或副作用前发现重复工作；
-- Docmost 提供持续的人类观察、审批、任务图、证据矩阵和上下文健康度；
+- Docmost 可作为企业或团队可选控制台，提供人类观察、审批、任务图、证据矩阵和上下文健康度；
 - 同一套服务能够接入 AlkaidLab、ProjectCompute 以及未来任意项目和协作者。
 
 ## 2. 范围与权限边界
@@ -68,9 +69,9 @@
 | 对象 | 权限 | 保存位置 | 恢复规则 |
 |---|---|---|---|
 | MASTER | 人类主线意图和治理计划 | Git | 变更经过治理流程 |
-| Typed State | 当前任务、依赖、决定、门禁和 owner | PostgreSQL | expected revision/CAS |
-| Event Log | 所有状态变化和 supersedes 历史 | PostgreSQL | append-only + hash chain |
-| Checkpoint | 压缩、切换、交接的不可变恢复点 | PostgreSQL + artifact store | checksum + canary |
+| Typed State | 当前任务、依赖、决定、门禁和 owner | StateStore profile；SQLite 默认本地，PostgreSQL 可选共享 | expected revision/CAS |
+| Event Log | 所有状态变化和 supersedes 历史 | StateStore profile + artifact manifest | append-only + hash chain |
+| Checkpoint | 压缩、切换、交接的不可变恢复点 | 本地 StateStore + artifact store；共享 profile 可同步 | checksum + canary |
 | Evidence/Assertion | 当前代码与权威来源的承重证据 | Git/RTFM/artifact store | authority、version、hash、validity |
 | ReferenceSource/Snapshot | 外部来源、检索 revision/hash、freshness 和采用决定 | Git metadata + artifact store | change detection + supersedes review |
 | Skill | 稳定协议、方法、词汇、门禁 | Git + compiled packet | version、hash、rule IDs、quarantine |
@@ -130,8 +131,9 @@ flowchart LR
     M5 --> M6["M6 检索与 Recall Providers"]
     M5 --> M7["M7 幻觉与代码质量"]
     M7 --> M8["M8 多协作者与耐久工作流"]
-    M8 --> M9["M9 Docmost 人类控制台"]
-    M9 --> M10["M10 跨项目生产发布"]
+    M8 --> M10["M10 跨项目生产发布"]
+    M8 --> M9["M9 可选 Docmost 人类控制台"]
+    M9 -. optional extension .-> M10
 ```
 
 分支规则：任何新分支必须有 `parent_id`、scope、return point、exit criteria、attempt budget、expiry 和 promotion target。实验分支默认 `mainline_authority: false`；canonical queue 变更须通过 promotion gate。
@@ -244,17 +246,19 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 |---|---|---|---|---|---|---|
 | M2-01 | ✅ | 定义 Project/Work/Claim/Idea/Decision/Constraint/Evidence/Blocker/Effect schema | 项目级 active work、共享 Work Ledger 和个人派生视图变成类型合同 | 无损恢复并阻止重复工作 | M0-07/M1-04/M1-05 | strict schema 注册；4/4 solo/multi-worker、active/completed overlap、claim/effect scope 和 supersedes fixture canonical round-trip；12/12 定向测试通过 |
 | M2-02 | ✅ | 定义 append-only Event、supersedes 和 reducer | 历史可 replay | 旧决定复活率为 0 | M2-01 | strict Event schema 注册；1/1 versioned replay fixture 与 snapshot byte-equivalent；14/14 定向测试通过；tamper、gap、断链、未知 supersedes、终态 Work/Decision 复活均被拒绝 |
-| M2-03 | 🟡 | PostgreSQL revision/CAS relational state store | 并发冲突显式返回 | 多协作者安全基础 | M2-02 | 两个 writer 使用相同 expected revision 时仅一个 commit 成功；conflict test 100% 可见；snapshot、Event 与 revision 在同一事务提交 |
+| M2-03 | ✅ | PostgreSQL optional shared backend 的 revision/CAS relational state store | 并发冲突显式返回 | 提供强一致团队与企业扩展 | M2-02 | 11/11 定向测试；8/8 显式并发 conflict；silent overwrite 0；run 1039 通过；4 Event shadow replay 与数据库读回一致；默认安装依赖 PostgreSQL 为 0 |
 | M2-04 | ⏳ | content-addressed artifact store | 大日志和 diff 通过 artifact ref 引用 | 降 token 并保存证据 | M2-01 | checksum、range read、损坏检测通过 |
-| M2-05 | ⏳ | State MCP read/commit/claim/effect API | 各 agent/provider 使用统一协议 | provider-neutral | M2-03 | contract tests + auth boundary tests |
+| M2-05 | ⏳ | State MCP read/commit/claim/effect API | 各 agent/provider 使用统一协议 | provider-neutral | M2-08/M2-09 | contract tests + auth boundary tests；SQLite 与 PostgreSQL adapter 行为一致 |
 | M2-06 | ⏳ | immutable checkpoint 与 canary manifest | 压缩和交接可验证 | 建立确定性恢复 | M2-04/M2-05 | 关键字段恢复 100% |
 | M2-07 | ⏳ | Project Profile、Project Charter、WorkSource 与 ProjectAdaptation typed schema | 项目接入、方向探索、task source、repository topology 和自适应候选可版本化、可回放 | 支持个人/团队、模块化/非模块化项目并降低重复读取 | M2-01/M0-09 | 三个独立配置轴、modular/monolith/mixed scope、proposal、输入证据、hash、expiry、rollback 和 approval round-trip 100% |
+| M2-08 | 🟡 | backend-neutral StateStore SPI 与 capability manifest | core 根据一致性、共享、离线和资源能力选择 adapter | 去除 PostgreSQL 对普通路径的隐式依赖 | M2-02/M2-03 | PostgreSQL、SQLite、forge projection 和 test adapter 使用同一 conformance suite；未声明 capability 的 adapter 被拒绝 |
+| M2-09 | ⏳ | SQLite embedded local state/event/checkpoint backend | 单人和本机多 Agent 获得零独立服务的持久恢复 | 建立默认轻量运行路径 | M2-08 | WAL/BEGIN IMMEDIATE、CAS、append-only、崩溃恢复和损坏检测通过；默认用户管理 daemon/Docker/PostgreSQL 均为 0；Windows/macOS/Linux fixture 通过 |
 
 ### M3 任务图与智能切换
 
 | ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
 |---|---|---|---|---|---|---|
-| M3-01 | ⏳ | 建立 Campaign/Goal/Work/Experiment DAG | 分支、阻塞、回流可计算 | 将发散与停滞转化为可检测状态 | M2-03 | 无环、无孤儿、无无回流分支 |
+| M3-01 | ⏳ | 建立 Campaign/Goal/Work/Experiment DAG | 分支、阻塞、回流可计算 | 将发散与停滞转化为可检测状态 | M2-08/M2-09 | 无环、无孤儿、无无回流分支 |
 | M3-02 | ⏳ | sticky task router | 默认保持当前 active leaf | 保持压缩前后任务一致 | M3-01 | E2 classification 达标 |
 | M3-03 | ⏳ | continue/child/interrupt/switch/correction 事件 | 切换可审计、可恢复 | 以信号和事件驱动任务切换 | M3-02 | return point 恢复 100% |
 | M3-04 | ⏳ | active/claim/scope-owner 副作用门 | repo/path/symbol/capability/effect binding 冲突时授予只读权限 | 将副作用绑定至权威任务 | M3-03 | 误切写入/提交/部署为 0；第二个未协调 claim/effect 为 0 |
@@ -324,8 +328,9 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | M8-05 | ⏳ | 权限、审计、tenant/project 隔离 | 协作者访问范围与授权一致 | 安全共享 | M2-05/M8-02 | 越权测试 100% 拒绝 |
 | M8-06 | ⏳ | Provider-neutral Harness Run 与 feedback-loop contract | model、packet、工具、权限、checkpoint、evidence、effect 和 trace 绑定同一 revision | 使 Codex/Claude host 能力可替换和可回放 | M2-05/M4-05/M5-03/M8-04 | 双 provider replay 一致；run/effect/evidence trace 100%；host 故障不改变权威状态 |
 | M8-07 | ⏳ | ProjectAdaptation observe/propose/shadow/approve/rollback loop | 项目和用户习惯可在安全边界内持续优化 | 使安装后的控制面随实测使用演进 | M5-07/M6-07/M7-04 | 未批准 proposal 激活率 0；相同 fixture/provider/budget 三次 A/B；回滚后 veto 指标恢复 |
+| M8-08 | ⏳ | GitHub/Gitea/GitLab forge collaboration adapter 与显式降级一致性 | 复用 Issue、PR、branch、assignee、review 和 CI 形成共享 Work 投影 | 普通开源团队零新增服务协作 | M2-07/M2-08/M8-02 | 至少 GitHub/Gitea 双 adapter replay；可见 Work/claim/evidence 映射 100%；remote ref 使用显式 expected value CAS；offline/unpublished work 不宣称唯一 claim |
 
-### M9 Docmost 与人类观察
+### M9 可选 Docmost 与人类观察
 
 | ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
 |---|---|---|---|---|---|---|
@@ -343,12 +348,13 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 |---|---|---|---|---|---|---|
 | M10-01 | ⏳ | AlkaidLab 三仓 shadow pilot | 用真实超大型项目验证 | 取得生产证据 | M7-05/M8-04 | E0-E9 全门通过 |
 | M10-02 | ⏳ | 第二个跨领域项目接入 | 验证核心协议的项目中立性 | 验证可移植性 | M10-01 | 核心代码 fork 数为 0 |
-| M10-03 | ⏳ | 多协作者 pilot | 验证 claim、lease、权限和交接 | 支持未来团队 | M8-05/M9-05 | 静默覆盖 0，handoff 100% |
+| M10-03 | ⏳ | 多协作者 pilot | 验证 forge 与 shared-strong profile 的 claim、权限和交接 | 支持不同投入等级的团队 | M8-05/M8-08 | shared-strong 静默覆盖 0；forge profile 对已发布 Work 的冲突可见率 100%；handoff 100% |
 | M10-04 | ⏳ | backup/export/import/disaster recovery | 状态可迁移和恢复 | 长期可持续 | M8-03 | 新实例完整 replay 且 hash 一致 |
 | M10-05 | ⏳ | 版本化发布、升级和回滚 | 新技术通过兼容层与迁移协议接入 | 可持续演进 | M0-07/M10-04 | N-1 compatibility + rollback 通过 |
 | M10-06 | ⏳ | 跨项目 adaptation/profile migration | 项目升级和 provider 变化保留已验证的个性化配置 | 长期可移植演进 | M2-07/M8-07/M10-02 | 两个项目 profile replay；迁移/回滚 hash 一致；opt-out/reset 可验证 |
-| M10-07 | ⏳ | 默认生成 MASTER、STATUS、目标态架构全表和最小 Project Profile | 人类与不同 Agent 使用一致的项目入口 | 让个人、协作和公开项目开箱获得完整治理投影 | M0-10/M2-07/M9-01/M10-02 | 两类项目初始化/升级/卸载 replay；三文档字段恢复 100%；公开 Git admission 泄漏 0 |
+| M10-07 | ⏳ | 默认生成 MASTER、STATUS、目标态架构全表和最小 Project Profile | 人类与不同 Agent 使用一致的项目入口 | 让个人、协作和公开项目开箱获得完整治理投影 | M0-10/M2-07/M10-02 | 两类项目初始化/升级/卸载 replay；三文档字段恢复 100%；公开 Git admission 泄漏 0 |
 | M10-08 | ⏳ | 编译 release-neutral 产品表面与公开历史 | 通用产品 MASTER、最小 Profile 和中性脱敏 example 进入公开发行 | 隔离试点名称、私有项目分类和开发期叙事 | M10-05/M10-07 | 工作树、Git 历史、fixture、schema example、package metadata、生成文档、链接、截图、Issue/PR export 和 release artifact 扫描通过；未放行试点标识为 0；clean history 或 sanitized mirror 决策可复现 |
+| M10-09 | ⏳ | runtime profile 探测、跨平台安装、迁移与卸载 | 默认本地模式无需管理员、容器或数据库运维；增强能力按需启用 | 降低 Windows、低性能设备和开源团队采用成本 | M2-09/M8-08/M10-04/M10-05 | Windows/macOS/Linux clean-machine matrix；`local-embedded` 默认；检测 Git remote 后仅 proposal `forge-coordinated`；PostgreSQL/Docmost opt-in；profile export/import/rollback hash 一致 |
 
 ## 8. E0-E9 实验链路
 
@@ -362,10 +368,10 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | E5 | bounded retrieval 是否省 token 且不漏证据 | 承重引用 100%，重复检索下降 >=30% |
 | E6 | 旧 memory、伪路径、回滚优化是否会造成幻觉 | stale decision、伪路径、无证据完成声明均为 0 |
 | E7 | 代码质量是否真实提高 | build/test/mutation 不退化，scope violation 0，返工低于 E0 |
-| E8 | 多协作者是否会静默覆盖 | CAS 冲突可见，静默丢写 0 |
+| E8 | 多协作者是否会静默覆盖 | `shared-strong` CAS 冲突可见且静默丢写 0；`forge-coordinated` 对已发布 Work 的同步冲突可见率 100% |
 | E9 | 崩溃、503、checkpoint 损坏能否恢复 | 重复副作用 0，损坏漏检 0，restore p95 达标 |
 
-E1、E2、E4、E6、E8、E9 具有 veto 权限；平均得分、token 降幅和主观体验属于辅助指标。
+E1、E2、E4、E6、E8、E9 具有 veto 权限；平均得分、token 降幅和主观体验属于辅助指标。每次运行必须声明 capability profile。离线、未发布或拒绝使用共享渠道的协作者无法获得唯一 claim 保证，对应运行不得标记为 `shared-strong`。
 
 合成 canary 证据见 [`docs/research/context-compression-benchmark-2026-08-09.md`](docs/research/context-compression-benchmark-2026-08-09.md)：4 个脱敏场景在 768 字符预算下由 E1 Execution Packet 达到关键状态恢复 100%、旧决定复活 0、Skill 输入下降 75%、token proxy 下降 20.7031%。真实 replay 证据见 [`docs/research/context-compression-real-replay-benchmark-2026-08-09.md`](docs/research/context-compression-real-replay-benchmark-2026-08-09.md)：40 个场景在 768 字符预算下恢复 100%、旧决定复活 0、Skill 输入下降 74.7903%、token proxy 下降 12.6042%；512 字符触发 capacity veto。provider tokenizer、live compaction telemetry 和双 provider 同模型同预算 A/B 仍待 M4、M5、M7 和 M8。
 
@@ -395,6 +401,9 @@ E1、E2、E4、E6、E8、E9 具有 veto 权限；平均得分、token 降幅和�
 | 承重断言 current provenance | 100% |
 | PreCompact 增量提交 p95 | < 500 ms |
 | state-only restore p95 | < 2 s |
+| 默认安装的用户管理数据库/daemon 数 | 0 |
+| 默认安装的 Docker/PostgreSQL/Docmost 依赖 | 0 |
+| StateStore adapter capability 声明与 conformance | 100% |
 | 重复 Skill 输入 | 相对 E0 下降 >=60% |
 | 重复检索 token | 相对 E0 下降 >=30% |
 | 直接读取 bytes | 相对 E0 下降 >=30%，承重 bytes 通过 receipt 可追溯 |
@@ -407,10 +416,10 @@ E1、E2、E4、E6、E8、E9 具有 veto 权限；平均得分、token 降幅和�
 
 ## 10. 当前执行路由
 
-M2-03 是当前 active leaf。M2-02 已完成 strict Event schema、hash chain、supersedes、deterministic reducer、终态对象防复活门和 versioned replay fixture，验收见 `docs/migrations/m2-02-state-event-acceptance-2026-08-10.md`。M2-03 将 M2-01 snapshot 与 M2-02 Event 合同映射到 PostgreSQL transaction 和 expected revision/CAS；向量索引不参与权威状态提交。Project Profile、Charter、WorkSource 和 topology adapter 继续由 M2-07 交付。
+M2-08 是当前 active leaf。M2-03 已将 M2-01 snapshot 与 M2-02 Event 合同映射到 optional shared PostgreSQL transaction 和 expected revision/CAS，验收见 [`m2-03-postgresql-state-store-acceptance-2026-08-10.md`](docs/migrations/m2-03-postgresql-state-store-acceptance-2026-08-10.md)。M2-08 定义 backend-neutral SPI 与 capability manifest，并让 PostgreSQL adapter 通过通用 conformance suite；M2-09 随后实现默认 SQLite embedded profile。Project Profile、Charter、WorkSource 和 topology adapter 继续由 M2-07 交付。
 
 M1-05 已完成 16 个 E0-E9 contract fixture，验收见 `docs/migrations/m1-05-fault-coverage-acceptance-2026-08-09.md`。Runtime fault evidence 仍由 M2/M5/M8 提供。M1-04 已完成 40 个 fixture admission，验收见 `docs/migrations/m1-04-replay-fixture-acceptance-2026-08-09.md`。受控 archive 继续采用流式、区间化读取；原始 JSONL 和 source namespace key material 禁止进入 Git。M1-06 archive retention/export/delete 的离线验收见 `docs/migrations/m1-06-archive-governance-acceptance-2026-08-09.md`。
 
 ## 11. 完成后的最终效果
 
-受支持项目通过统一的 Execution Packet 向 Codex、Claude、其他 agent 和协作者提供工作入口。验收状态包括：active leaf 恢复率 100%，reverted decision 复活率 0，重复副作用 0，承重证据 provenance 100%，任务依赖与回流关系可视化，直接读取 bytes 和重复检索量相对基线下降，ProjectAdaptation 可回放、可审批、可回滚，治理文档保持可定位和可收敛。恢复成本以当前任务规模和有界信息访问范围为主要变量。
+受支持项目通过统一的 Execution Packet 向 Codex、Claude、其他 agent 和协作者提供工作入口。默认 `local-embedded` profile 不要求新增服务；普通开源协作复用 Git forge；PostgreSQL、Temporal、Docmost 和 OTel 按团队能力与治理需求选择。验收状态包括：active leaf 恢复率 100%，reverted decision 复活率 0，重复副作用 0，承重证据 provenance 100%，任务依赖与回流关系可视化，直接读取 bytes 和重复检索量相对基线下降，ProjectAdaptation 可回放、可审批、可回滚，治理文档保持可定位和可收敛。恢复成本以当前任务规模和有界信息访问范围为主要变量。

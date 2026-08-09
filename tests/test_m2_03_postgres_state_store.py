@@ -307,5 +307,39 @@ class M203PostgresStateStoreTests(unittest.TestCase):
         self.assertFalse(evidence["authority_boundary"]["vector_index_authority"])
 
 
+class M203ShadowDogfoodReceiptTests(unittest.TestCase):
+    def test_receipt_replays_ci_failures_correction_and_plan_without_authority(self):
+        receipt_path = (
+            Path(__file__).parents[1]
+            / "experiments"
+            / "state"
+            / "m2-03-shadow-dogfood-receipt.yaml"
+        )
+        receipt = yaml.safe_load(receipt_path.read_text(encoding="utf-8"))
+
+        self.assertEqual(
+            receipt["schema_version"],
+            "context.postgres-shadow-dogfood-receipt/v1alpha1",
+        )
+        self.assertEqual(receipt["authority"], "shadow-only")
+        self.assertFalse(receipt["production_state_authority"])
+        self.assertEqual(receipt["initial_revision"], 18)
+        self.assertEqual(receipt["final_revision"], 22)
+        self.assertEqual(receipt["event_count"], 4)
+        self.assertEqual(
+            receipt["event_ids"],
+            [
+                "event-gitea-1037-failure",
+                "event-gitea-1038-failure",
+                "event-gitea-1039-success",
+                "event-plan-revision-19",
+            ],
+        )
+        self.assertTrue(receipt["read_equals_replay"])
+        self.assertEqual(receipt["open_blockers"], [])
+        self.assertEqual(receipt["active_work_ids"], ["M2-03"])
+        self.assertFalse(receipt["default_profile_requires_postgresql"])
+
+
 if __name__ == "__main__":
     unittest.main()

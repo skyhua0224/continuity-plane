@@ -50,7 +50,7 @@ M2/M8 上线前，脱敏观察保存在 `experiments/dogfood/`，当前 active �
 
 ## 当前基线
 
-结构化样本位于 [`experiments/dogfood/observations-2026-08-09.yaml`](../../experiments/dogfood/observations-2026-08-09.yaml)。当前记录八次 checkpoint/摘要恢复、十九次 input routing、二十二个 Skill body 装载、十四次用户授权的 MASTER 演进和十三次 repository verification。结构关键字段恢复为 100%，Continuation Cursor 累计恢复 6/8；第 7/8 次 compaction 均出现首个恢复动作不匹配和 1 个已确认事项重播，因此整体趋势为 `regressed`。stale decision、未授权 task switch、未授权 goal change、verification failure 和 scope violation 均为 0；Skill body 累计输入为 239,992 bytes，其中压缩恢复后的重复 body 装载为 128,342 bytes。八次 compaction 均缺少可比较的 provider context/token/latency 数据。第 4 次恢复检测到 `STATUS.md` 落后于已生成 fixture 和 benchmark 的仓库证据，该事件作为 M0-10 freshness validator 的真实反例，不计为恢复字段丢失。
+结构化样本位于 [`experiments/dogfood/observations-2026-08-09.yaml`](../../experiments/dogfood/observations-2026-08-09.yaml)。当前记录九次 checkpoint/摘要恢复、二十一次 input routing、二十七个 Skill body 装载、十六次用户授权的 MASTER 演进和十四次 repository verification。结构关键字段恢复为 100%，已观测 Continuation Cursor 字段累计恢复 10/12；第 7/8 次 compaction 均出现首个恢复动作不匹配和 1 个已确认事项重播，第 9 次精确续接 M2-03 CI 红测，因此整体趋势仍为 `regressed`。stale decision、未授权 task switch、未授权 goal change、verification failure 和 scope violation 均为 0；Skill body 累计输入为 320,845 bytes，其中压缩恢复后的重复 body 装载为 155,558 bytes。数据库设计 Skill 的已装载 digest 与当前路径 digest 不一致，当前记录为 quarantined。九次 compaction 均缺少可比较的 provider context/token/latency 数据。第 4 次恢复检测到 `STATUS.md` 落后于已生成 fixture 和 benchmark 的仓库证据，该事件作为 M0-10 freshness validator 的真实反例，不计为恢复字段丢失。
 
 ## 验收门
 
