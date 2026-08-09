@@ -1,0 +1,113 @@
+schema_version: context.sqlite-state-store-results/v1alpha1
+observed_at: '2026-08-10T04:08:35+08:00'
+provenance:
+  implementation_sha256: 44a9649ff1ae49dab2694deb548855751afb7fa766df5f9b67ee85ea95d45eb5
+  benchmark_sha256: 8764425ee2e628fc0e5d3aadf676a27aaa45fd6fc88cec24c2824ad7568079bf
+  runner_sha256: 3c627e540fa833e9681a04c4edc1ec8d2eb0e4b995c0255a266383a13a59b8ce
+  fixture_sha256: 9be7887519cfed4466436ea6714d48e399d7023281729b3bd8c78cb3a086beab
+  postgres_evidence_sha256: cf2ed16496a183e8f42b22696073910801ea07aad1648b836d7aee1ab4f077cd
+  fault_evidence_sha256: 182bdde3a41c9b52a08642739826239252d0b1e8779f1b93d2cb285e9bc63c05
+environment:
+  python_version: 3.14.6
+  python_implementation: CPython
+  platform: linux
+  machine: x86_64
+  sqlite_version: 3.53.4
+  fixture: completed-work-overlap-blocked
+  connection_strategy: one-new-connection-per-operation
+  journal_mode: wal
+  synchronous: full
+  external_services: 0
+latency_ms:
+  samples: 40
+  commit_p50: 0.55
+  commit_p95: 0.65
+  commit_max: 0.7949
+  read_p50: 0.2404
+  read_p95: 0.2678
+  read_max: 0.2906
+  state_only_restore_p95: 0.2678
+footprint_bytes:
+  database: 274432
+  wal: 0
+  shared_memory: 0
+stream_scaling:
+  schema_version: context.sqlite-stream-results/v1alpha1
+  events: 1000
+  initial_revision: 14
+  final_revision: 1014
+  latency_ms:
+    commit_p50: 18.4738
+    commit_p95: 34.9701
+    commit_max: 50.1664
+    total_commit: 18735.9483
+    total_wall: 19539.0875
+    final_restore: 21.7868
+  milestones:
+    '1':
+      last_commit_ms: 0.5541
+      cumulative_commit_ms: 0.5541
+    '100':
+      last_commit_ms: 5.1818
+      cumulative_commit_ms: 248.0145
+    '1000':
+      last_commit_ms: 36.1012
+      cumulative_commit_ms: 18735.9483
+  footprint_bytes:
+    database: 2932736
+live_platform_gates:
+  linux: passed
+  windows: blocked
+  macos: blocked
+authority_boundary:
+  typed_state_authority: true
+  append_only_event_authority: true
+  shared_authority: false
+  vector_index_authority: false
+  unique_claim_authority: false
+  checkpoint_canary_authority: false
+  cross_backend_migration_authority: false
+comparison_to_postgresql:
+  postgres_evidence: experiments/state/m2-03-postgres-cas-results.yaml
+  same_fixture: true
+  same_samples: true
+  postgres_samples: 40
+  commit_p95_reduction_percent: 97.0481
+  read_p95_reduction_percent: 97.8973
+limitations:
+- Results describe one host and do not predict other devices.
+- Native platform gates require one receipt from each operating system.
+- The PostgreSQL comparison uses one Event per project.
+- The stream benchmark has no PostgreSQL counterpart.
+- SQLite local authority does not provide shared claims or leases.
+- Checkpoint canary and cross-backend migration remain separate work.
+references:
+- source_id: sqlite-wal
+  url: https://www.sqlite.org/wal.html
+  retrieved_at: '2026-08-10T03:35:16+08:00'
+  content_sha256: 29315aaa998c5e2acf29e3ac161e9e8bf786d0c82a85ac83eb4f4091234acb7b
+- source_id: sqlite-transactions
+  url: https://www.sqlite.org/lang_transaction.html
+  retrieved_at: '2026-08-10T03:35:16+08:00'
+  content_sha256: b65dc308fd9e0ce471844c97366a4f5ad3a1f42833a3b19486ad7d6555a8e24e
+- source_id: sqlite-pragmas
+  url: https://www.sqlite.org/pragma.html
+  retrieved_at: '2026-08-10T03:35:16+08:00'
+  content_sha256: b9bcb335ae818497f3fa05114a10492f64f35503f275da2264f2d5d436db3f5d
+- source_id: sqlite-corruption
+  url: https://www.sqlite.org/howtocorrupt.html
+  retrieved_at: '2026-08-10T03:35:16+08:00'
+  content_sha256: e00709e3f37e95332d8e6df243510665e9cab1d7938d4fd85cbf5f47648a50bf
+generation:
+  command: .venv/bin/python tools/run_sqlite_benchmark.py --samples 40 --stream-events
+    1000 --observed-at 2026-08-10T04:08:35+08:00 --output experiments/state/m2-09-sqlite-state-store-results.yaml
+  arguments:
+  - --samples
+  - '40'
+  - --stream-events
+  - '1000'
+  - --observed-at
+  - '2026-08-10T04:08:35+08:00'
+  - --output
+  - experiments/state/m2-09-sqlite-state-store-results.yaml
+  writes_runtime_state_to_repository: false
