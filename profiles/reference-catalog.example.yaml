@@ -175,6 +175,91 @@ entries:
     refresh_triggers: [before-bearing-use, upstream-release, hash-change, conflict, scheduled]
     supports: [M8-02, M8-06]
 
+  - reference_id: anthropic-claude-code-agents
+    title: Run agents in parallel
+    publisher: Anthropic
+    authority_class: software-official
+    canonical_url: https://code.claude.com/docs/en/agents.md
+    retrieval_url: https://code.claude.com/docs/en/agents.md
+    retrieved_at: "2026-08-09T00:00:00Z"
+    source_revision: retrieved-2026-08-09
+    content_sha256: ae17a0b90a1b7944030191b31f5d254d8f74d8794faee620f94d9314d2e002bb
+    acquisition: direct-official
+    license_ref: source-terms
+    validity: verified-current
+    adoption_status: candidate
+    refresh_cadence_days: 30
+    refresh_triggers: [before-bearing-use, upstream-release, hash-change, conflict, scheduled]
+    supports: [M3-03, M8-02, M8-06]
+
+  - reference_id: anthropic-claude-code-agent-teams
+    title: Orchestrate teams of Claude Code sessions
+    publisher: Anthropic
+    authority_class: software-official
+    canonical_url: https://code.claude.com/docs/en/agent-teams.md
+    retrieval_url: https://code.claude.com/docs/en/agent-teams.md
+    retrieved_at: "2026-08-09T00:00:00Z"
+    source_revision: retrieved-2026-08-09
+    content_sha256: c079ade28c18a4f2a48c4e9d47d7e58c09dab1354edc7e16919db40340094449
+    acquisition: direct-official
+    license_ref: source-terms
+    validity: verified-current
+    adoption_status: candidate
+    refresh_cadence_days: 30
+    refresh_triggers: [before-bearing-use, upstream-release, hash-change, conflict, scheduled]
+    supports: [M3-01, M8-02, M8-06, M9-02]
+
+  - reference_id: anthropic-claude-code-subagents
+    title: Create custom subagents
+    publisher: Anthropic
+    authority_class: software-official
+    canonical_url: https://code.claude.com/docs/en/sub-agents.md
+    retrieval_url: https://code.claude.com/docs/en/sub-agents.md
+    retrieved_at: "2026-08-09T00:00:00Z"
+    source_revision: retrieved-2026-08-09
+    content_sha256: 2f08d529620dba34468ea6a0b660843f4b7bbe17f50874f11294c1ba6e45c5f8
+    acquisition: direct-official
+    license_ref: source-terms
+    validity: verified-current
+    adoption_status: candidate
+    refresh_cadence_days: 30
+    refresh_triggers: [before-bearing-use, upstream-release, hash-change, conflict, scheduled]
+    supports: [M4-09, M8-02, M8-06]
+
+  - reference_id: anthropic-claude-code-advisor
+    title: Escalate hard decisions with the advisor tool
+    publisher: Anthropic
+    authority_class: software-official
+    canonical_url: https://code.claude.com/docs/en/advisor.md
+    retrieval_url: https://code.claude.com/docs/en/advisor.md
+    retrieved_at: "2026-08-09T00:00:00Z"
+    source_revision: retrieved-2026-08-09
+    content_sha256: 14b381a1728b52eeca7445c089cd649a5ca05f20feb95ee8c8708c7971ebdc71
+    acquisition: direct-official
+    license_ref: source-terms
+    validity: verified-current
+    adoption_status: candidate
+    refresh_cadence_days: 30
+    refresh_triggers: [before-bearing-use, upstream-release, hash-change, conflict, scheduled]
+    supports: [M6-05, M7-02, M8-06]
+
+  - reference_id: anthropic-claude-code-worktrees
+    title: Run parallel sessions with worktrees
+    publisher: Anthropic
+    authority_class: software-official
+    canonical_url: https://code.claude.com/docs/en/worktrees.md
+    retrieval_url: https://code.claude.com/docs/en/worktrees.md
+    retrieved_at: "2026-08-09T00:00:00Z"
+    source_revision: retrieved-2026-08-09
+    content_sha256: c5a85623acef35889ca086313de4ddd3383c9b6ab4b04ff7e0dcfa583c41075d
+    acquisition: direct-official
+    license_ref: source-terms
+    validity: verified-current
+    adoption_status: candidate
+    refresh_cadence_days: 30
+    refresh_triggers: [before-bearing-use, upstream-release, hash-change, conflict, scheduled]
+    supports: [M8-02, M8-05, M8-06]
+
   - reference_id: anthropic-agent-sdk-hosting
     title: Hosting the Claude Agent SDK
     publisher: Anthropic

@@ -1,0 +1,206 @@
+schema_version: context.fault-coverage/v1alpha1
+generated_at: "2026-08-09T23:05:00+08:00"
+status: contract-verified-runtime-deferred
+evidence_refs:
+  - artifact://context-control-plane/MASTER.md@revision-16
+  - artifact://sha256/1746514721b768a499757eb4738c8f9e9e6c50173a8d9cec8f98e2729e700990
+  - assertion:m1-05-runtime-evidence-deferred-to-m2-m5-m8
+
+fixtures:
+  - fixture_id: fault-e0-baseline-observation
+    experiment_id: E0
+    scenario: baseline-observation
+    source_kind: admitted-replay
+    phase: contract
+    initial: {active_tasks: [M1-05], state_revision: 15, effect_watermark: 0, claims: []}
+    injection: {kind: none, target: dogfood-observation, boundary: before-optimization}
+    expected: {gate: allow, active_tasks: [M1-05], state_revision: 15, effect_watermark: 0, duplicate_effects: 0, unauthorized_effects: 0, stale_decisions_revived: 0, completion_claim: pending}
+    runtime_dependencies: [M5, M8]
+    evidence_refs: [artifact://sha256/1746514721b768a499757eb4738c8f9e9e6c50173a8d9cec8f98e2729e700990]
+
+  - fixture_id: fault-e1-typed-state-recovery
+    experiment_id: E1
+    scenario: typed-state-recovery
+    source_kind: admitted-replay
+    phase: contract
+    initial: {active_tasks: [M1-05], state_revision: 15, effect_watermark: 0, claims: []}
+    injection: {kind: compaction, target: execution-packet, boundary: post-compact-canary}
+    expected: {gate: allow, active_tasks: [M1-05], state_revision: 15, effect_watermark: 0, duplicate_effects: 0, unauthorized_effects: 0, stale_decisions_revived: 0, completion_claim: pending}
+    runtime_dependencies: [M2, M5]
+    evidence_refs: [artifact://sha256/1746514721b768a499757eb4738c8f9e9e6c50173a8d9cec8f98e2729e700990]
+
+  - fixture_id: fault-e2-switch-without-checkpoint
+    experiment_id: E2
+    scenario: task-switch-without-checkpoint
+    source_kind: synthetic-contract
+    phase: contract
+    initial: {active_tasks: [work-current], state_revision: 20, effect_watermark: 4, claims: []}
+    injection: {kind: task-switch, target: work-later, boundary: before-checkpoint}
+    expected: {gate: block, active_tasks: [work-current], state_revision: 20, effect_watermark: 4, duplicate_effects: 0, unauthorized_effects: 0, stale_decisions_revived: 0, completion_claim: pending}
+    runtime_dependencies: [M3, M5]
+    evidence_refs: [artifact://context-control-plane/MASTER.md@revision-16]
+
+  - fixture_id: fault-e2-parallel-ready-work
+    experiment_id: E2
+    scenario: parallel-ready-work
+    source_kind: synthetic-contract
+    phase: contract
+    initial:
+      active_tasks: [work-network, work-ui]
+      state_revision: 21
+      effect_watermark: 4
+      claims:
+        - {task_id: work-network, claim_ref: claim-network-a1, owner_ref: actor-a1, paths: [modules/network]}
+        - {task_id: work-ui, claim_ref: claim-ui-b2, owner_ref: actor-b2, paths: [ui/console]}
+    injection: {kind: parallel-claim, target: ready-work-set, boundary: after-dependency-resolution}
+    expected: {gate: allow, active_tasks: [work-network, work-ui], state_revision: 21, effect_watermark: 4, duplicate_effects: 0, unauthorized_effects: 0, stale_decisions_revived: 0, completion_claim: pending}
+    runtime_dependencies: [M2, M3, M8]
+    evidence_refs: [artifact://context-control-plane/MASTER.md@revision-16]
+
+  - fixture_id: fault-e2-parallel-path-conflict
+    experiment_id: E2
+    scenario: parallel-path-owner-conflict
+    source_kind: synthetic-contract
+    phase: contract
+    initial:
+      active_tasks: [work-schema-a, work-schema-b]
+      state_revision: 22
+      effect_watermark: 4
+      claims:
+        - {task_id: work-schema-a, claim_ref: claim-schema-a1, owner_ref: actor-a1, paths: [schemas/shared]}
+        - {task_id: work-schema-b, claim_ref: claim-schema-b2, owner_ref: actor-b2, paths: [schemas/shared]}
+    injection: {kind: path-conflict, target: schemas/shared, boundary: before-write}
+    expected: {gate: block, active_tasks: [work-schema-a, work-schema-b], state_revision: 22, effect_watermark: 4, duplicate_effects: 0, unauthorized_effects: 0, stale_decisions_revived: 0, completion_claim: pending}
+    runtime_dependencies: [M2, M3, M8]
+    evidence_refs: [artifact://context-control-plane/MASTER.md@revision-16]
+
+  - fixture_id: fault-e2-issue-backed-ready-work
+    experiment_id: E2
+    scenario: issue-backed-ready-work
+    source_kind: synthetic-contract
+    phase: contract
+    initial:
+      active_tasks: [issue-work-42]
+      state_revision: 23
+      effect_watermark: 4
+      claims:
+        - {task_id: issue-work-42, claim_ref: claim-issue-42-a1, owner_ref: actor-a1, paths: [modules/approved-feature]}
+    injection: {kind: parallel-claim, target: issue-provider-revision, boundary: after-dependency-resolution}
+    expected: {gate: allow, active_tasks: [issue-work-42], state_revision: 23, effect_watermark: 4, duplicate_effects: 0, unauthorized_effects: 0, stale_decisions_revived: 0, completion_claim: pending}
+    runtime_dependencies: [M2, M3, M8]
+    evidence_refs: [artifact://context-control-plane/MASTER.md@revision-16]
+
+  - fixture_id: fault-e8-duplicate-work-detection
+    experiment_id: E8
+    scenario: duplicate-work-detection
+    source_kind: synthetic-contract
+    phase: contract
+    initial:
+      active_tasks: [work-module-a]
+      state_revision: 61
+      effect_watermark: 2
+      claims:
+        - {task_id: work-module-a, claim_ref: claim-module-a1, owner_ref: actor-a1, paths: [modules/approved-feature]}
+    injection: {kind: parallel-claim, target: capability-and-path-overlap, boundary: before-second-claim}
+    expected: {gate: block, active_tasks: [work-module-a], state_revision: 61, effect_watermark: 2, duplicate_effects: 0, unauthorized_effects: 0, stale_decisions_revived: 0, completion_claim: pending}
+    runtime_dependencies: [M3, M6, M8]
+    evidence_refs: [artifact://context-control-plane/MASTER.md@revision-16]
+
+  - fixture_id: fault-e3-layered-skill-input
+    experiment_id: E3
+    scenario: layered-skill-input
+    source_kind: synthetic-contract
+    phase: contract
+    initial: {active_tasks: [work-skill], state_revision: 30, effect_watermark: 0, claims: []}
+    injection: {kind: skill-load, target: compiled-rule-packet, boundary: post-compact-restore}
+    expected: {gate: allow, active_tasks: [work-skill], state_revision: 30, effect_watermark: 0, duplicate_effects: 0, unauthorized_effects: 0, stale_decisions_revived: 0, completion_claim: pending}
+    runtime_dependencies: [M4, M5]
+    evidence_refs: [artifact://context-control-plane/MASTER.md@revision-16]
+
+  - fixture_id: fault-e4-stale-skill-digest
+    experiment_id: E4
+    scenario: stale-skill-digest
+    source_kind: synthetic-contract
+    phase: contract
+    initial: {active_tasks: [work-skill], state_revision: 31, effect_watermark: 0, claims: []}
+    injection: {kind: skill-drift, target: locked-rule-set, boundary: before-tool-use}
+    expected: {gate: quarantine, active_tasks: [work-skill], state_revision: 31, effect_watermark: 0, duplicate_effects: 0, unauthorized_effects: 0, stale_decisions_revived: 0, completion_claim: pending}
+    runtime_dependencies: [M4]
+    evidence_refs: [artifact://context-control-plane/MASTER.md@revision-16]
+
+  - fixture_id: fault-e5-bounded-retrieval
+    experiment_id: E5
+    scenario: bounded-retrieval-stale-index
+    source_kind: synthetic-contract
+    phase: contract
+    initial: {active_tasks: [work-retrieval], state_revision: 40, effect_watermark: 0, claims: []}
+    injection: {kind: retrieval-stale, target: code-index, boundary: before-bearing-assertion}
+    expected: {gate: read-only, active_tasks: [work-retrieval], state_revision: 40, effect_watermark: 0, duplicate_effects: 0, unauthorized_effects: 0, stale_decisions_revived: 0, completion_claim: pending}
+    runtime_dependencies: [M6, M7]
+    evidence_refs: [artifact://context-control-plane/MASTER.md@revision-16]
+
+  - fixture_id: fault-e6-stale-memory-path
+    experiment_id: E6
+    scenario: stale-memory-path
+    source_kind: synthetic-contract
+    phase: contract
+    initial: {active_tasks: [work-evidence], state_revision: 41, effect_watermark: 0, claims: []}
+    injection: {kind: memory-stale, target: candidate-path, boundary: before-completion-claim}
+    expected: {gate: block, active_tasks: [work-evidence], state_revision: 41, effect_watermark: 0, duplicate_effects: 0, unauthorized_effects: 0, stale_decisions_revived: 0, completion_claim: rejected}
+    runtime_dependencies: [M6, M7]
+    evidence_refs: [artifact://context-control-plane/MASTER.md@revision-16]
+
+  - fixture_id: fault-e7-verification-gap
+    experiment_id: E7
+    scenario: incomplete-verification-profile
+    source_kind: synthetic-contract
+    phase: contract
+    initial: {active_tasks: [work-quality], state_revision: 50, effect_watermark: 0, claims: []}
+    injection: {kind: verification-gap, target: affected-test-selection, boundary: before-completion-claim}
+    expected: {gate: block, active_tasks: [work-quality], state_revision: 50, effect_watermark: 0, duplicate_effects: 0, unauthorized_effects: 0, stale_decisions_revived: 0, completion_claim: rejected}
+    runtime_dependencies: [M7]
+    evidence_refs: [artifact://context-control-plane/MASTER.md@revision-16]
+
+  - fixture_id: fault-e8-concurrent-cas
+    experiment_id: E8
+    scenario: concurrent-cas
+    source_kind: synthetic-contract
+    phase: contract
+    initial: {active_tasks: [work-cas-a, work-cas-b], state_revision: 60, effect_watermark: 2, claims: []}
+    injection: {kind: cas-conflict, target: state-revision-60, boundary: concurrent-commit}
+    expected: {gate: block, active_tasks: [work-cas-a, work-cas-b], state_revision: 60, effect_watermark: 2, duplicate_effects: 0, unauthorized_effects: 0, stale_decisions_revived: 0, completion_claim: pending}
+    runtime_dependencies: [M2, M8]
+    evidence_refs: [assertion:m1-05-runtime-evidence-deferred-to-m2-m5-m8]
+
+  - fixture_id: fault-e9-sigkill-boundary
+    experiment_id: E9
+    scenario: sigkill-commit-boundary
+    source_kind: synthetic-contract
+    phase: contract
+    initial: {active_tasks: [work-effect], state_revision: 70, effect_watermark: 8, claims: []}
+    injection: {kind: sigkill, target: durable-workflow, boundary: after-effect-before-state-commit}
+    expected: {gate: retry, active_tasks: [work-effect], state_revision: 70, effect_watermark: 8, duplicate_effects: 0, unauthorized_effects: 0, stale_decisions_revived: 0, completion_claim: pending}
+    runtime_dependencies: [M2, M5, M8]
+    evidence_refs: [assertion:m1-05-runtime-evidence-deferred-to-m2-m5-m8]
+
+  - fixture_id: fault-e9-provider-503
+    experiment_id: E9
+    scenario: provider-503
+    source_kind: synthetic-contract
+    phase: contract
+    initial: {active_tasks: [work-recall], state_revision: 71, effect_watermark: 8, claims: []}
+    injection: {kind: provider-503, target: candidate-memory-provider, boundary: candidate-write}
+    expected: {gate: retry, active_tasks: [work-recall], state_revision: 71, effect_watermark: 8, duplicate_effects: 0, unauthorized_effects: 0, stale_decisions_revived: 0, completion_claim: pending}
+    runtime_dependencies: [M6, M8]
+    evidence_refs: [assertion:m1-05-runtime-evidence-deferred-to-m2-m5-m8]
+
+  - fixture_id: fault-e9-checkpoint-corruption
+    experiment_id: E9
+    scenario: checkpoint-corruption
+    source_kind: synthetic-contract
+    phase: contract
+    initial: {active_tasks: [work-restore], state_revision: 72, effect_watermark: 8, claims: []}
+    injection: {kind: checkpoint-corruption, target: checkpoint-manifest, boundary: pre-restore-canary}
+    expected: {gate: block, active_tasks: [work-restore], state_revision: 72, effect_watermark: 8, duplicate_effects: 0, unauthorized_effects: 0, stale_decisions_revived: 0, completion_claim: pending}
+    runtime_dependencies: [M2, M5, M8]
+    evidence_refs: [assertion:m1-05-runtime-evidence-deferred-to-m2-m5-m8]

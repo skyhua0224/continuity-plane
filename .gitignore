@@ -25,3 +25,9 @@ coverage/
 __pycache__/
 *.pyc
 *.log
+
+# Personal projections and provider workspaces are local-only.
+STATUS.local.md
+MY_WORK.md
+.context-control-plane/local/
+.claude/worktrees/

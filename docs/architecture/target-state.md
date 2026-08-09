@@ -3,7 +3,7 @@
 版本：1  
 日期：2026-08-09  
 状态：current architecture contract  
-governance authority：`MASTER.md` revision 15
+governance authority：`MASTER.md` revision 16
 
 ## 三文档默认投影
 
@@ -25,6 +25,7 @@ Context Control Plane 安装到个人项目、协作项目或公开大型项目�
 |---|---|---|---|---|
 | `context.state` | `typed-state-store` | Task、Idea、Decision、Evidence、Blocker、Effect、Checkpoint 权威机器状态 | PostgreSQL | M2 |
 | `context.events` | `hash-chained-event-log` | 追加式事件、revision、supersedes、replay high watermark | PostgreSQL + artifact manifest | M2 |
+| `context.work-coordination` | `shared-work-ledger` | 项目级 active work set、claim/lease、repo/path/symbol/capability/effect ownership、重复工作检测和冲突恢复；支持 modular、monolith 与 mixed topology | Typed State + State MCP + source adapters | M2/M3/M8 |
 | `context.task-routing` | `sticky-task-router` | 识别 continue、child、interrupt、switch、correction；副作用受 active/claim/path-owner 一致性门控制 | deterministic rules + bounded classifier | M3 |
 | `context.workflow` | `durable-execution` | checkpoint、重试、幂等、lease、长流程恢复 | DBOS；团队阶段 Temporal | M8 |
 | `context.skill-resolution` | `versioned-skill-registry` | Skill manifest、rule IDs、hash、依赖、冲突、失效和 quarantine | Git + PostgreSQL metadata | M4 |
@@ -53,7 +54,9 @@ flowchart TD
     Projects -. provider adapter and Project Profile .-> Control
 ```
 
-Skill 编排见 [`skill-orchestration.md`](skill-orchestration.md)。Agent harness 见 [`../research/agent-harness-assessment-2026-08-09.md`](../research/agent-harness-assessment-2026-08-09.md)。`context.skill-resolution` 只负责版本化规则资产的发现、适用性判定、冲突处理和有界装载；Task、owner、claim、revision、checkpoint 和当前 evidence 由 Typed State、Event Log 和 State MCP 管理。
+项目级与个人工作边界见 [`project-work-governance.md`](project-work-governance.md)。Skill 编排见 [`skill-orchestration.md`](skill-orchestration.md)。Agent harness 见 [`../research/agent-harness-assessment-2026-08-09.md`](../research/agent-harness-assessment-2026-08-09.md)。`context.skill-resolution` 只负责版本化规则资产的发现、适用性判定、冲突处理和有界装载；Task、owner、claim、revision、checkpoint 和当前 evidence 由 Typed State、Event Log 和 State MCP 管理。
+
+Project Profile 分别声明 direction state、governance owner mode、execution worker mode、repository topology 和 task sources。模块化、非模块化与混合仓库使用同一 Work/Claim/Event core schema，只切换 scope resolver。Foundation Sunshine 在 Platform 完工前按 monolith profile 协作；未来模块化 Platform 与收敛后的 Product 继续使用同一控制面协议。
 
 ## 公开项目 Markdown 准入
 

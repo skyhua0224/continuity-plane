@@ -1,6 +1,6 @@
 # Context Control Plane MASTER
 
-版本：revision 15  
+版本：revision 16  
 日期：2026-08-09  
 状态：研究与 shadow pilot 准备阶段  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
@@ -40,6 +40,7 @@
 - 行业标准、OS 官方文档、软件官方文档和当前源码都能形成带版本与 provenance 的 assertion；
 - 外部参考和 harness 实践通过可刷新 catalog、snapshot hash、validity 与 adoption decision 持续进入研究证据；
 - MASTER 分支任务形成可计算 DAG，具备依赖、阻塞、回流、promotion、attempt budget 和完成证据；
+- 共享 Work Ledger、claim/lease、scope ownership 和 current evidence 在第二个认领或副作用前发现重复工作；
 - Docmost 提供持续的人类观察、审批、任务图、证据矩阵和上下文健康度；
 - 同一套服务能够接入 AlkaidLab、ProjectCompute 以及未来任意项目和协作者。
 
@@ -219,8 +220,8 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | M0-05 | ✅ | 建立短小 `STATUS.md` 路由器 | 日常恢复通过定向引用完成 | 控制 MASTER 装载成本 | M0-02 | 当前任务、阻塞、next action 和文档引用可在小文件恢复 |
 | M0-06 | ✅ | 建立正式文档语言规范 | 规范使用稳定属性、权限和验收指标 | 保持长期文档一致性 | M0-02 | style policy 与文档审计通过 |
 | M0-07 | 🧑‍💻 | 建立 schema/version/release governance | 所有协议可演进和回放 | 保障 checkpoint 兼容性 | M0-02 | registry/hash、transition、migration/replay/rollback 和 quarantine 离线验收完成；runtime State MCP migration 待 M2 |
-| M0-08 | 🧑‍💻 | 建立 ReferenceSource/Snapshot lifecycle、candidate catalog 与 harness 采用评估 | 外部资料可持续发现、固定、刷新、失效和复用 | 让研究证据进入后续 schema、adapter 与实验 | M0-03/M0-06 | Codex/Claude 官方来源带 URL/hash/refresh/adoption；4 个 catalog tests 通过；State/Watcher live integration 待后续阶段 |
-| M0-09 | 🧑‍💻 | 建立项目 self-dogfood observation protocol 与首个 baseline | 研发过程记录 compaction、Skill 装载和 MASTER 演进 | 以项目自身数据验证逐步优化 | M0-05/M0-07 | compaction、Skill load、plan revision 和 verification 可复核；10 个正反测试通过；自动 trace 待 M5/M8 |
+| M0-08 | 🧑‍💻 | 建立 ReferenceSource/Snapshot lifecycle、candidate catalog 与 harness 采用评估 | 外部资料可持续发现、固定、刷新、失效和复用 | 让研究证据进入后续 schema、adapter 与实验 | M0-03/M0-06 | Codex/Claude 官方来源带 URL/hash/refresh/adoption；5 个 catalog tests 通过；State/Watcher live integration 待后续阶段 |
+| M0-09 | 🧑‍💻 | 建立项目 self-dogfood observation protocol 与首个 baseline | 研发过程记录 compaction、Skill 装载、计划演进和质量门后的交付速度 | 以项目自身数据验证逐步优化 | M0-05/M0-07 | compaction、input routing、Skill load、plan revision、verification 和 delivery 可复核；首个 accepted work 基线 1,577 秒；自动 trace 待 M5/M8 |
 | M0-10 | ⏳ | 建立文档分类、更新触发、容量预算、supersedes 和生成投影生命周期 | MASTER、STATUS、细分文档和投影保持可定位、可更新、可收敛 | 防止长期陈旧与无界扩展 | M0-05/M0-06/M0-07 | policy validator、STATUS 与 evidence 漂移、重复全文、过期引用、容量超限和权限故障测试通过；拆分后恢复字段 100% |
 | M0-11 | ⏳ | 建立 Git branch/commit/PR/merge 与 staged admission 合同 | Git 集成边界可回放且不冒充权威状态 | 让单人、多 AI 和多人协作具有一致的审计与发布节奏 | M0-02/M0-03/M0-09 | policy、message/PR packet validator、staged transcript/secret admission、regular-merge replay 和 first-commit audit 通过 |
 | M0-12 | ✅ | 建立 provider-neutral CI Verification Profile、统一 verifier 与 Gitea required jobs | push/PR 自动执行 test、compile、data/schema/projection、privacy、benchmark 和 secret gates | 让本地开发、协作者与托管平台使用同一可复现验收边界 | M0-03/M0-07/M0-09 | 14 个 verifier 正反测试、102/102 repository tests、compile 和 Gitleaks 本地通过；push runs 1016/1017 与 pull_request run 1018 通过；`main` 禁止 direct/force push 并要求 4 个实测 status contexts |
@@ -233,7 +234,7 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | M1-02 | 🧑‍💻 | 建立 source registry 和 opaque thread IDs | 来源可追溯；本机路径与 provider ID 受隔离 | 支持跨机器迁移 | M1-01 | 同一来源稳定映射，公开输出无原 ID；15 个 TDD/边界测试通过 |
 | M1-03 | 🧑‍💻 | 建立 secret/PII/license sanitizer | fixture/state admission 由 sanitizer 门控制 | 支持共享与未来开源 | M1-02 | secret、PII、machine path、SPDX license 注入测试通过；有 findings 或无 provenance 时 admission 为 0 |
 | M1-04 | ✅ | 从 ALTP/ECN/弱网/10Gbps 抽取首批 40 个 fixtures | 真实返工形成回归集 | 提供真实项目评估样本 | M1-03 | 40/40 包含输入、期望状态、来源/range/content hash、脱敏证明和 current evidence；独立复验与 corpus hash 通过 |
-| M1-05 | 🟡 | 覆盖 task switch、stale Skill、SIGKILL、503、并发 CAS | 正常与故障路径均可重复 | 建立完整 replay 覆盖 | M1-04 | E0-E9 各有最小 fixture |
+| M1-05 | ✅ | 覆盖 task switch、并行工作、重复工作、stale Skill、SIGKILL、503、checkpoint 损坏和并发 CAS | 16 个 contract fixture 覆盖 E0-E9；runtime evidence 边界显式保留 | 建立完整 replay 覆盖 | M1-04 | E0-E9 10/10；required scenarios 10/10；contract coverage 100%；runtime coverage 0% 且未产生越权完成声明 |
 | M1-06 | 🧑‍💻 | 建立 archive retention/export/delete | 可移植、可撤销、可审计 | 满足长期协作与隐私治理 | M1-02 | 9 个 retention/export/import/tombstone/deletion-proof 合同测试通过；production adapter 与 backend receipt 待 M2/M8/M10 |
 | M1-07 | 🧑‍💻 | E0/E1 context compression 与 Execution Packet benchmark | 量化恢复率、旧决定复活、Skill 输入和 token proxy | 建立可复现实验基线 | M1-03/M1-04 | 合成 4 场景与真实 40 场景可重复；真实 corpus 在 768 字符时 E1 恢复 100%、旧决定复活 0；live tokenizer/A-B 待 M5/M7 |
 
@@ -241,13 +242,13 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 
 | ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
 |---|---|---|---|---|---|---|
-| M2-01 | ⏳ | 定义 Project/Task/Idea/Decision/Evidence/Blocker/Effect schema | 自然语言状态变成类型合同 | 无损恢复 | M1-04 | schema fixtures round-trip 100% |
+| M2-01 | 🟡 | 定义 Project/Work/Claim/Idea/Decision/Evidence/Blocker/Effect schema | 项目级 active work、共享 Work Ledger 和个人派生视图变成类型合同 | 无损恢复并阻止重复工作 | M0-07/M1-04/M1-05 | solo/multi-worker、active/completed overlap、claim/effect scope 和 supersedes fixtures round-trip 100% |
 | M2-02 | ⏳ | 定义 append-only Event、supersedes 和 reducer | 历史可 replay | 旧决定复活率为 0 | M2-01 | replay 结果与 snapshot byte-equivalent |
 | M2-03 | ⏳ | PostgreSQL revision/CAS state store | 并发冲突显式返回 | 多协作者安全基础 | M2-02 | conflict test 100% 可见 |
 | M2-04 | ⏳ | content-addressed artifact store | 大日志和 diff 通过 artifact ref 引用 | 降 token 并保存证据 | M2-01 | checksum、range read、损坏检测通过 |
 | M2-05 | ⏳ | State MCP read/commit/claim/effect API | 各 agent/provider 使用统一协议 | provider-neutral | M2-03 | contract tests + auth boundary tests |
 | M2-06 | ⏳ | immutable checkpoint 与 canary manifest | 压缩和交接可验证 | 建立确定性恢复 | M2-04/M2-05 | 关键字段恢复 100% |
-| M2-07 | ⏳ | Project Profile 与 ProjectAdaptation typed schema | 项目接入和自适应候选可版本化、可回放 | 降低重复读取并贴合项目使用 | M2-01/M0-09 | proposal、输入证据、scope、hash、expiry、rollback 和 approval round-trip 100% |
+| M2-07 | ⏳ | Project Profile、Project Charter、WorkSource 与 ProjectAdaptation typed schema | 项目接入、方向探索、task source、repository topology 和自适应候选可版本化、可回放 | 支持个人/团队、模块化/非模块化项目并降低重复读取 | M2-01/M0-09 | 三个独立配置轴、modular/monolith/mixed scope、proposal、输入证据、hash、expiry、rollback 和 approval round-trip 100% |
 
 ### M3 任务图与智能切换
 
@@ -256,7 +257,7 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | M3-01 | ⏳ | 建立 Campaign/Goal/Work/Experiment DAG | 分支、阻塞、回流可计算 | 将发散与停滞转化为可检测状态 | M2-03 | 无环、无孤儿、无无回流分支 |
 | M3-02 | ⏳ | sticky task router | 默认保持当前 active leaf | 保持压缩前后任务一致 | M3-01 | E2 classification 达标 |
 | M3-03 | ⏳ | continue/child/interrupt/switch/correction 事件 | 切换可审计、可恢复 | 以信号和事件驱动任务切换 | M3-02 | return point 恢复 100% |
-| M3-04 | ⏳ | active/claim/path-owner 副作用门 | task binding 冲突时授予只读权限 | 将副作用绑定至权威任务 | M3-03 | 误切写入/提交/部署为 0 |
+| M3-04 | ⏳ | active/claim/scope-owner 副作用门 | repo/path/symbol/capability/effect binding 冲突时授予只读权限 | 将副作用绑定至权威任务 | M3-03 | 误切写入/提交/部署为 0；第二个未协调 claim/effect 为 0 |
 | M3-05 | ⏳ | attempt budget、expiry、promotion gate | 实验按预算和期限运行 | 实验发现有序回流 MASTER | M3-01 | 无预算分支和未授权 promotion 为 0 |
 | M3-06 | ⏳ | Idea candidate、parking、capture-and-continue 与 switch proposal | 新想法不污染当前 active leaf | 保留价值并控制上下文切换 | M3-03/M3-05 | Idea 有 parent/return point/expiry；未授权 Idea 不改变 active state |
 | M3-07 | ⏳ | Idea relationship、dedupe、correction、urgency 与 impact review | 重复或跨域想法形成有界候选队列 | 支持持续输入并避免 prompt/主线污染 | M3-06/M6-02 | 去重确定；correction 写保护；expired/parked Idea 不进入执行权限 |
@@ -286,7 +287,7 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | M5-04 | ⏳ | artifact ref 与 bounded expansion | 大输出按需展开 | 降低 token 和注意力污染 | M2-04 | prompt 保存摘要、引用和必要片段 |
 | M5-05 | ⏳ | token/cache/retrieval accounting | 形成成本与时延明细 | 以实测数据确定优化优先级 | M5-01 | provider 账单/trace 可对账 |
 | M5-06 | ⏳ | Idea-aware checkpoint 与 context return packet | 压缩、切换后可回到原任务 | 保留 return point、相关 Idea refs 和禁止副作用 | M3-06/M5-03 | 原任务恢复 100%；Idea 正文不复制进 packet；candidate Idea 不获得执行权限 |
-| M5-07 | ⏳ | Project dogfood compaction/input-routing/Skill/plan observation emitter | 每次恢复、消息或 Idea 路由、Skill 选择和计划演进产生可比较事件 | 持续验证控制面是否真实优化自身研发 | M0-09/M4-04/M5-05/M8-04 | active leaf/return point/路由/中断/Skill/目标 revision 事件覆盖率 100%；provider 未暴露指标保持 null；至少 3 个可比较样本后才输出趋势；任一 veto 失败标记 regressed |
+| M5-07 | ⏳ | Project dogfood compaction/input-routing/Skill/plan/delivery observation emitter | 每次恢复、消息或 Idea 路由、Skill 选择、计划演进和 accepted delivery 产生可比较事件 | 持续验证控制面是否真实优化自身研发与交付速度 | M0-09/M4-04/M5-05/M8-04 | active leaf/return point/路由/中断/Skill/目标 revision/delivery 事件覆盖率 100%；provider 未暴露指标保持 null；相同 task class/source 至少 3 个样本后才输出趋势；任一 veto 失败标记 regressed |
 
 ### M6 检索、代码图与 Recall Providers
 
@@ -316,7 +317,7 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
 |---|---|---|---|---|---|---|
 | M8-01 | ⏳ | DBOS checkpoint/effect workflow | 本地崩溃恢复和幂等 | 单机可靠运行 | M5-03 | SIGKILL/retry 重复副作用 0 |
-| M8-02 | ⏳ | lease、claim、ownership、expiry | 工作叶具备唯一有效 claim | 团队协作 | M3-04/M8-01 | 并发静默覆盖 0 |
+| M8-02 | ⏳ | 共享 Work Ledger、lease、claim、scope ownership 和 expiry | 所有协作者看到同 revision active/completed work，工作叶具备唯一有效 claim | 团队协作并避免无感重复开发 | M3-04/M8-01 | 并发静默覆盖 0；重复 Work 在第二个 claim/effect 前拦截 100% |
 | M8-03 | ⏳ | Temporal 长流程与 Continue-As-New | 跨服务、长周期工作可 replay | 大型团队生产化 | M8-02 | replay/patch/versioning tests 通过 |
 | M8-04 | ⏳ | OTel `context.*` trace | 切换、压缩、检索、返工可观察 | 持续优化而非凭感觉 | M5-05 | trace 与 state revision 可关联 |
 | M8-05 | ⏳ | 权限、审计、tenant/project 隔离 | 协作者访问范围与授权一致 | 安全共享 | M2-05/M8-02 | 越权测试 100% 拒绝 |
@@ -328,7 +329,7 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
 |---|---|---|---|---|---|---|
 | M9-01 | ⏳ | 外部 State MCP provider | Docmost 读取同一权威状态 | 保持单一状态源 | M2-05 | 同 revision 视图一致 |
-| M9-02 | ⏳ | MASTER Project Graph | 主任务、分支、阻塞、回流可视化 | 检测范围扩张与长期阻塞 | M3-05/M9-01 | 环/孤儿/过期分支可见 |
+| M9-02 | ⏳ | MASTER Project Graph、active work set 与 Work Ledger | 主任务、并行认领、owner、分支、阻塞、重复候选和回流可视化 | 检测范围扩张、重复工作与长期阻塞 | M3-05/M8-02/M9-01 | 环/孤儿/过期分支/ownership overlap 可见；同 revision active work 完整率 100% |
 | M9-03 | ⏳ | Decision Timeline 与 Evidence Matrix | 看到为何做、何时推翻、证据在哪 | 降低重复争论和臆测 | M7-01/M9-01 | supersedes 与 provenance 可追溯 |
 | M9-04 | ⏳ | Context、Reference 与 Harness Health、Replay 页面 | 人类看到压缩、Skill、reference freshness、run、token 和误切风险 | 持续监管自动化 | M7-06/M8-04/M9-01 | SLO、stale assertion 与失败 fixture 可下钻 |
 | M9-05 | ⏳ | 审批、promotion、纠偏和审计入口 | 人类保留主线治理权 | 自动化方向始终一致 | M3-05/M8-05 | 未批准 promotion 无法生效 |
@@ -377,6 +378,8 @@ E1、E2、E4、E6、E8、E9 具有 veto 权限；平均得分、token 降幅和�
 | 误切导致写入/提交/部署 | 0 |
 | 重复外部副作用 | 0 |
 | 并发静默丢写 | 0 |
+| 重复 Work 通过第二个未协调 claim/effect | 0 |
+| 项目级 active/completed Work 对已授权协作者可见 | 100% |
 | stale Skill rule 激活 | 0 |
 | 未批准或越权 Skill proposal 激活 | 0 |
 | Skill 选择可追溯（manifest hash、rule IDs、适用信号） | 100% |
@@ -384,6 +387,7 @@ E1、E2、E4、E6、E8、E9 具有 veto 权限；平均得分、token 降幅和�
 | Harness Run 与 task/effect/evidence/trace 关联 | 100% |
 | 承重 ReferenceSource freshness/validity | 100% |
 | Project dogfood compaction/input-routing/Skill/plan event coverage | 100% |
+| accepted delivery speed | 相同 task class/source 至少 3 个样本；lead/cycle time 趋势改善且 safety veto 为 0 |
 | Execution Packet capacity canary | 关键字段恢复 100%；不足预算具有 veto 权限 |
 | checkpoint/artifact 损坏漏检 | 0 |
 | 承重断言 current provenance | 100% |
@@ -401,9 +405,9 @@ E1、E2、E4、E6、E8、E9 具有 veto 权限；平均得分、token 降幅和�
 
 ## 10. 当前执行路由
 
-M1-05 是当前 active leaf。先建立 E0-E9 fixture coverage matrix，复用 M1-04 的最小事件、opaque provenance、sanitizer 和独立 validator 合同，补齐 task switch、stale Skill、SIGKILL/commit boundary、503、checkpoint corruption 和 concurrent CAS 场景。故障 fixture 可以先定义 expected state/effect/gate；runtime 注入证据仍由 M2/M5/M8 对应实现提供。
+M2-01 是当前 active leaf。先定义 Project、Work、Claim、Idea、Decision、Evidence、Blocker 和 Effect 的最小版本化 schema，覆盖单 worker、多 worker、active/completed overlap、scope ownership、第二个 claim/effect veto 与 supersedes round-trip。Project Profile、Charter、WorkSource 和 topology adapter 在 M2-07 展开，不进入 M2-01 的动态执行状态。
 
-M1-04 已完成 40 个 fixture admission，验收见 `docs/migrations/m1-04-replay-fixture-acceptance-2026-08-09.md`。受控 archive 继续采用流式、区间化读取；原始 JSONL 和 source namespace key material 禁止进入 Git。M1-06 archive retention/export/delete 的离线验收见 `docs/migrations/m1-06-archive-governance-acceptance-2026-08-09.md`。
+M1-05 已完成 16 个 E0-E9 contract fixture，验收见 `docs/migrations/m1-05-fault-coverage-acceptance-2026-08-09.md`。Runtime fault evidence 仍由 M2/M5/M8 提供。M1-04 已完成 40 个 fixture admission，验收见 `docs/migrations/m1-04-replay-fixture-acceptance-2026-08-09.md`。受控 archive 继续采用流式、区间化读取；原始 JSONL 和 source namespace key material 禁止进入 Git。M1-06 archive retention/export/delete 的离线验收见 `docs/migrations/m1-06-archive-governance-acceptance-2026-08-09.md`。
 
 ## 11. 完成后的最终效果
 

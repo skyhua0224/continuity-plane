@@ -1,9 +1,19 @@
 # Agent Harness Assessment
 
-版本：1  
+版本：2  
 日期：2026-08-09  
 状态：research / adoption candidates  
 范围：OpenAI Codex、Anthropic Claude Code/Agent SDK、长任务、Skill、工具、checkpoint、协作、验证与可观察性
+
+```yaml
+document_id: context.agent-harness-assessment
+document_revision: 2
+change_type: evidence
+authority_ref: current-source-and-software-official-snapshots-2026-08-09
+supersedes: context.agent-harness-assessment@1
+affected_tasks: [M0-08, M1-05, M2-01, M8-06]
+next_review: null
+```
 
 ## 结论
 
@@ -25,6 +35,11 @@ OpenAI 与 Anthropic 的公开实践共同支持以下方向：长任务应拆�
 | [Claude Code checkpointing](https://code.claude.com/docs/en/checkpointing.md) | file edit rewind、conversation summarize 及 Bash/remote/subagent 边界 | 仅 host recovery candidate；外部 effect 由控制面幂等与 checkpoint 管理 |
 | [Claude Code goal](https://code.claude.com/docs/en/goal.md) | 可重复 evaluator、resume 与 non-interactive goal | Goal adapter；完成状态必须由项目 evidence gate 裁决 |
 | [Claude Code workflows](https://code.claude.com/docs/en/workflows.md) | 动态 subagent fan-out、pause/resume、saved workflow | M8 编排参考；claim/lease/CAS/path owner 仍由控制面管理 |
+| [Claude Code agents](https://code.claude.com/docs/en/agents.md) | 并行 session、subagent、agent team 与 worktree 选择边界 | Provider worker/isolation adapter；项目级 active set 仍归 Typed State |
+| [Claude Code agent teams](https://code.claude.com/docs/en/agent-teams.md) | 共享 task list、依赖、self-claim、文件锁、mailbox、plan approval 和本地持久化 | M8 协作 adapter；无项目级 team config，不能替代跨 provider Work Ledger |
+| [Claude Code subagents](https://code.claude.com/docs/en/sub-agents.md) | 独立 context、tool/permission 限制、可选 worktree isolation | Thinker/Verifier 与有界研究 adapter；状态提交权限保持 0 |
+| [Claude Code advisor](https://code.claude.com/docs/en/advisor.md) | 决策点调用第二模型；每次读取完整 conversation | bounded reviewer candidate；调用时机模型驱动且上下文成本高 |
+| [Claude Code worktrees](https://code.claude.com/docs/en/worktrees.md) | session/subagent 文件隔离、resume 与 cleanup | workspace adapter；Git 隔离不能替代 claim、effect 和 completion gate |
 | [Agent SDK hosting](https://code.claude.com/docs/en/agent-sdk/hosting.md) | subprocess/local state、session pattern、tenant isolation、OTel 和生产边界 | Provider runtime adapter 与 isolation fixture |
 | [Agent SDK session storage](https://code.claude.com/docs/en/agent-sdk/session-storage.md) | transcript mirror、best-effort write、post-compaction chain 和 retention | Transcript continuity；不能作为 typed state/event log |
 | [Agent SDK tool search](https://code.claude.com/docs/en/agent-sdk/tool-search.md) | 大工具集按需发现、上下文与准确率边界 | M4/M6 resolver 对照；工具授权独立校验 |
@@ -88,6 +103,22 @@ Claude Code 当前文档暴露了关键限制：context compaction 可能丢失�
 
 Claude 的 goal、hooks、dynamic workflows、tool search、permissions 与 OTel 可以分别映射到 task adapter、lifecycle hook、M8 orchestration、M4/M6 resolver、authorization adapter 和 `context.*` trace。Provider beta 字段、model threshold 和 host default 必须带版本并可 quarantine。
 
+Claude agent teams 的共享 task list 支持 pending/in-progress/completed、依赖、自领任务与文件锁，mailbox 支持 Agent 间消息；task list 在本机保留以供 resume。当前官方文档同时明确：不存在项目级 team config，teammate 不继承 lead conversation，队友默认继承 lead 权限，plan approval 可由 lead 自主授予，同文件编辑仍可能覆盖。Agent teams 因此只提供单个 provider host 内的协作候选状态。控制面 adapter 必须把 provider task 映射到项目级 `active_work[]`、Work Ledger、claim/lease、scope owner、expected revision、effect key 和 evidence gate；未成功映射的 host task 没有副作用权限。
+
+Subagent 适合把检索、日志和复核隔离在独立 context，并通过 tool allowlist、permission mode 和可选 worktree 约束动作。Advisor 适合高风险决策点复核，但每次调用重新读取完整 conversation，调用时机由模型决定。两者均不得直接提交决定、完成状态或 promotion。
+
+## 当前项目角色实证
+
+AlkaidLab Platform 当前 `HEAD` 为 `d50bfe6f22efcad528134baa8b8d612ea07ec147`；`docs/authority/network/weak-network-injection.md` blob 为 `b7d0b7ceaafb67b1e30c690458d5258d61b74347`。该文件第 3 行记录 `netem-thinker` 为 read-only、无写权限，由主控落盘。此证据证明项目内已经使用 Thinker 只产出候选、主控承担写入与验证的角色分权。
+
+该先例通过 Harness Role adapter 复用：Thinker、Executor、Verifier 是 tool grant、claim 和提交权限的组合。Thinker 保持只读；Executor 需要 valid claim 与 scope owner；Verifier 检查 evidence 与 completion gate且权威状态写权限为 0。单个仓库文件中的角色说明不构成跨项目或跨 provider 的共享状态协议。
+
+## 项目级协作与交付速度
+
+项目级 `active_work[]` 是同一 state revision 下所有 active claim 的集合。Provider task list、Issue、PR、分支、个人 `My Work` 和聊天摘要都是 source/projection；它们不能单独证明某项工作无人认领、已经完成或可以产生副作用。新 claim 前必须查询 proposed、active、verifying、completed、rejected、reverted 和 superseded Work，避免协作者因看不到他人状态而重复实现。
+
+并行 worker 数量不等于交付速度。Agent teams 的 token 成本随活跃 teammate 增加，同文件和强依赖任务会增加协调与返工。控制面仅统计通过 completion gates 且 safety veto 为 0 的 accepted work，按相同 task class 与 measurement source 比较 lead time、cycle time、blocked time、rework、time-to-first-durable-artifact 和 accepted throughput。少于三个可比较样本时保持 baseline，不声明改善。
+
 ## Adopt、Adapt 与 Quarantine
 
 | 状态 | 模式 | 理由 |
@@ -146,10 +177,11 @@ Run 只能读取与 active claim 匹配的 packet，并在 expected revision 下
 
 Harness 评估使用 E0-E9 veto 门。新增对照至少覆盖：no-harness/free-summary、provider-native-only、control-plane packet、control-plane + provider host optimizations。指标包括关键状态恢复、旧决定复活、return point、重复 effect、CAS conflict、reference freshness、Skill/tool 输入、token、restore p95、build/test/mutation、scope violation 和返工。
 
-## 当前缺口与下一步
+## 当前采用边界与下一验证
 
-1. 完成 M0-07 schema/version/release governance，为 Reference、Idea、Checkpoint、Skill 和 Harness Run 提供兼容与 migration 规则。
-2. M1-04 受控 archive 可用后提取真实长任务、压缩、Idea interrupt 和错误完成 fixture；合成数据不能替代该步骤。
-3. 在 M2 定义 typed objects 与 append-only reducer，并实现 CAS/effect authorization。
-4. 在 M4/M5 建立双 provider packet/replay；provider-native Skill、goal、hook、workflow 和 checkpoint 只通过 adapter 进入。
-5. 在 M7/M8 运行真实 provider tokenizer/live A/B、SIGKILL/503、session-store 丢 batch、checkpoint 损坏和并发写故障注入。
+M0-07 schema governance、M1-04 真实 replay corpus 和 M1-05 E0-E9 contract coverage 已提供离线前置证据。Runtime State MCP、provider adapter 与故障注入仍未实现。
+
+1. M2 定义 Project、Work、Claim、Idea、Decision、Evidence、Blocker、Effect、Checkpoint 和 append-only Event，并实现后续 CAS/effect authorization 所需合同。
+2. M4/M5 建立双 provider packet/replay；provider-native Skill、goal、hook、team task、workflow 和 checkpoint 只通过 adapter 进入。
+3. M7/M8 运行真实 provider tokenizer/live A/B、accepted delivery speed、SIGKILL/503、session-store 丢 batch、checkpoint 损坏和并发写故障注入。
+4. M8/M9 验证项目级 `active_work[]`、Work Ledger、provider task mapping、冲突恢复和同 revision 人类视图。
