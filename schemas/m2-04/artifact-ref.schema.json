@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schemas/m2-04/artifact-ref.schema.json",
+  "title": "Context Control Plane Artifact Reference",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "digest_algorithm",
+    "digest",
+    "size_bytes",
+    "artifact_uri"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "context.artifact-ref/v1alpha1"
+    },
+    "digest_algorithm": {
+      "const": "sha-256"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "size_bytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "artifact_uri": {
+      "type": "string",
+      "pattern": "^artifact://sha256/[0-9a-f]{64}$"
+    }
+  }
+}

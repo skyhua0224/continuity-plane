@@ -1,0 +1,39 @@
+schema_version: context.artifact-store-results/v1alpha1
+observed_at: '2026-08-10T12:15:00+08:00'
+provenance:
+  implementation_sha256: eb90916a5366ec34026803a464ad49c38bb2851c14e79fe46ed8a3244d7f4d5b
+  benchmark_sha256: 17d54a577477b13e399e82572925b82588fde0dfdbf45a03d0e097c08fe301e5
+  runner_sha256: ec32cb9c4785041fc3b8a6a04e61246e2dfc4e28cbb019e7366da485e19fe6f8
+environment:
+  python_version: 3.14.6
+  platform: linux
+  machine: x86_64
+  external_services: 0
+measurement:
+  external_services: 0
+  payload_bytes: 1048576
+  artifact_ref:
+    schema_version: context.artifact-ref/v1alpha1
+    digest_algorithm: sha-256
+    digest: 3bbdefbae994ab4257bd889bf4f2d8629773f28e849dc79835411e75b334165e
+    size_bytes: 1048576
+    artifact_uri: artifact://sha256/3bbdefbae994ab4257bd889bf4f2d8629773f28e849dc79835411e75b334165e
+  put_ms: 0.7769
+  full_read_ms: 1.4243
+  range_read_ms: 0.7865
+  full_read_bytes: 1048576
+  range_bytes: 8192
+  range_offset: 520192
+  full_read_sha256: 3bbdefbae994ab4257bd889bf4f2d8629773f28e849dc79835411e75b334165e
+  range_sha256: 371ce1645649cc81e85bb19a3141b1b0b8626eb1e7b7d948e4f4fc260704f39d
+  range_output_sha256: 371ce1645649cc81e85bb19a3141b1b0b8626eb1e7b7d948e4f4fc260704f39d
+  context_bytes_reduction_percent: 99.2188
+  integrity: passed
+acceptance:
+  checksum_verified: true
+  bounded_range_read: true
+  external_services: 0
+generation:
+  command: .venv/bin/python tools/run_artifact_benchmark.py --payload-bytes 1048576
+    --range-bytes 8192 --observed-at 2026-08-10T12:15:00+08:00 --output experiments/state/m2-04-artifact-store-results.yaml
+  writes_runtime_state_to_repository: false
