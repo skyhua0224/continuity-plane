@@ -1,10 +1,10 @@
 schema_version: context.dogfood-observation/v1alpha1
-generated_at: "2026-08-09T23:17:49+08:00"
+generated_at: "2026-08-09T23:49:27+08:00"
 status: baseline
 measurement_limitations:
   - provider token accounting was unavailable for this resumed segment
   - restore wall-clock and p95 were not emitted by a State MCP or OTel trace
-  - six visible compactions still did not expose comparable provider context-window usage, input/cache tokens, or restore latency
+  - seven visible compactions still did not expose comparable provider context-window usage, input/cache tokens, or restore latency
   - delivery lead time currently uses Git activation and merge timestamps; active, blocked, and rework wall time are not yet emitted by State MCP or OTel
 
 observations:
@@ -1031,6 +1031,137 @@ observations:
       - check:gitleaks-git-eight-commits-zero-findings-2026-08-09
     metrics:
       tests_run: 125
+      tests_failed: 0
+      checks_failed: 0
+      scope_violations: 0
+
+  - observation_id: dogfood-compaction-007
+    event_type: compaction
+    observed_at: "2026-08-09T23:37:40+08:00"
+    authority: system-handoff-and-current-repository
+    active_leaf_before: M2-01
+    active_leaf_after: M2-01
+    metrics:
+      critical_fields_total: 8
+      critical_fields_recovered: 8
+      stale_decisions_revived: 0
+      unauthorized_task_switches: 0
+      comparable_context_input_bytes: null
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      restore_latency_ms: null
+      provider_compaction_signal_available: true
+      continuation_fields_total: 4
+      continuation_fields_recovered: 2
+      already_acknowledged_items_replayed: 1
+      first_post_restore_action_matched: false
+    evidence:
+      - system handoff preserved branch work/M2-01/typed-core-schema, base main 5aa7f22, active leaf M2-01, uncommitted typed-state files, and the missing schema-registry step
+      - STATUS revision 16, MASTER M2 section, current worktree, targeted tests, and Gitea Issue 3 were independently re-read before governance changes
+      - release-neutral publication remained parked under M10 with return point M2-01.schema-contract
+      - the first post-compaction response replayed an already acknowledged M10 boundary and recovery narration instead of resuming the pending M2-01 targeted test
+      - explicit user correction classified the experience as forgetting the immediately preceding work despite structural state recovery
+
+  - observation_id: dogfood-skill-load-008
+    event_type: skill-load
+    observed_at: "2026-08-09T23:37:40+08:00"
+    authority: task-trigger-and-announced-skill-use
+    active_leaf_before: M2-01
+    active_leaf_after: M2-01
+    metrics:
+      body_load_count: 3
+      total_body_bytes: 27216
+      repeated_body_load_bytes: 27216
+      skills:
+        - skill_id: session-memory-hygiene
+          content_sha256: e7814b9010db3d5dd83d978f93d80515cee2f5388761f5fb20f7a406fdc856f0
+          body_bytes: 1361
+          body_lines: 34
+          reason: post-compaction current-evidence recovery boundary
+        - skill_id: human-first-writing
+          content_sha256: 0f3754759a185b43e6932864703cca58543a8ef58ed80a57469f680f0eaf5832
+          body_bytes: 15988
+          body_lines: 427
+          reason: active response and normative-document writing contract
+        - skill_id: test-driven-development
+          content_sha256: 7dee67b4af6bdccc7a914ca34533184d64592d0f5b23aeae631538168db14994
+          body_bytes: 9867
+          body_lines: 371
+          reason: M2-01 schema and semantic validator implementation
+
+  - observation_id: dogfood-input-routing-017
+    event_type: input-routing
+    observed_at: "2026-08-09T23:37:40+08:00"
+    authority: explicit-user-release-neutralization-correction
+    active_leaf_before: M2-01
+    active_leaf_after: M2-01
+    input_kind: correction
+    route: correction-write-protect
+    candidate_id: requirement-release-neutral-product-surface-001
+    candidate_summary: Publish a generic product MASTER and neutral sanitized examples; exclude pilot names and development narratives from the GitHub surface, history, fixtures, generated assets, and release artifacts while retaining internal evidence in a controlled archive.
+    candidate_summary_sha256: ae62ab2e5e66f0307f61ed1c25cec5c075142546efb886cdda28109a05b1b093
+    metrics:
+      messages_observed: 1
+      ideas_captured: 0
+      unauthorized_task_switches: 0
+      return_point_preserved: true
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      provider_compaction_signal_available: true
+      tool_interruption_observed: true
+
+  - observation_id: dogfood-plan-revision-013
+    event_type: plan-revision
+    observed_at: "2026-08-09T23:37:40+08:00"
+    authority: explicit-user-release-neutralization-continuity-correction-and-continue-requirements
+    authorized: true
+    active_leaf_before: M2-01
+    active_leaf_after: M2-02
+    metrics:
+      master_revision_before: 16
+      master_revision_after: 17
+      unauthorized_goal_changes: 0
+      project_mission_changed: false
+      return_point_preserved: true
+      tasks_completed: [M2-01]
+      tasks_activated: [M2-02]
+      tasks_added: [M5-08, M10-08]
+
+  - observation_id: dogfood-input-routing-018
+    event_type: input-routing
+    observed_at: "2026-08-09T23:43:15+08:00"
+    authority: explicit-user-post-compaction-continuity-correction
+    active_leaf_before: M2-02
+    active_leaf_after: M2-02
+    input_kind: correction
+    route: correction-write-protect
+    candidate_id: correction-post-compaction-interaction-reset-001
+    candidate_summary: "The post-compaction handoff recovered the active leaf but lost interaction continuity: it replayed an already acknowledged release idea and restarted recovery narration instead of resuming the in-flight M2-01 action."
+    candidate_summary_sha256: f818573d9c7ca92075d2f6a007d76225c4b0c4f8bd412aa426c5666713ee4739
+    metrics:
+      messages_observed: 1
+      ideas_captured: 0
+      unauthorized_task_switches: 0
+      return_point_preserved: true
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      provider_compaction_signal_available: true
+      tool_interruption_observed: true
+
+  - observation_id: dogfood-verification-012
+    event_type: verification
+    observed_at: "2026-08-09T23:49:27+08:00"
+    authority: local-repository-verification-evidence
+    active_leaf_before: M2-02
+    active_leaf_after: M2-02
+    evidence_refs:
+      - unittest:m2-01-typed-state-12-revision-17-2026-08-09
+      - unittest:discover-tests-138-revision-17-2026-08-09
+      - check:python-compile-revision-17-2026-08-09
+      - check:repository-verifier-revision-17-2026-08-09
+      - check:gitleaks-git-and-directory-zero-findings-2026-08-09
+    metrics:
+      tests_run: 138
       tests_failed: 0
       checks_failed: 0
       scope_violations: 0

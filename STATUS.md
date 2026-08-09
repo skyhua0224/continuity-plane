@@ -1,6 +1,6 @@
 # Context Control Plane Status
 
-版本：revision 16  
+版本：revision 17  
 日期：2026-08-09  
 canonical plan：`MASTER.md`
 
@@ -9,9 +9,9 @@ canonical plan：`MASTER.md`
 | 字段 | 值 |
 |---|---|
 | 当前 Campaign | M2 Typed State、Event 与 Checkpoint |
-| active work | M2-01：Project/Work/Claim/Idea/Decision/Evidence/Blocker/Effect schema（🟡） |
-| next action | 建立 M2-01 最小版本化 schema 与 round-trip fixtures；先覆盖 solo/multi-worker、active/completed overlap、scope ownership、第二个 claim/effect veto 和 supersedes |
-| hard blocker | 当前 schema 合同无 blocker；PostgreSQL CAS、State MCP 与 runtime effect authorization 分属 M2-03/M2-05 |
+| active work | M2-02：append-only Event、supersedes 和 deterministic reducer（🟡） |
+| next action | 先写 snapshot replay byte-equivalence 与 stale Decision 不复活测试，再定义最小 Event envelope、revision transition 和 reducer |
+| hard blocker | 当前 reducer 合同无 blocker；PostgreSQL CAS、State MCP 与 runtime effect authorization 分属 M2-03/M2-05 |
 | repository mode | research / shadow pilot |
 | production state | planned；M2 阶段实施 |
 
@@ -26,6 +26,7 @@ canonical plan：`MASTER.md`
 | M1-02/M1-03 | source registry、provenance、sanitizer 和 admission guard 离线验收完成；256-bit base64url secret boundary 与公开 key ID 验证通过 |
 | M1-04 extraction | 三个受控 Codex/Claude 来源生成 40 个真实脱敏 fixture；40/40 从磁盘独立复验通过；corpus hash `1746514721b768a499757eb4738c8f9e9e6c50173a8d9cec8f98e2729e700990` |
 | M1-05 fault coverage | 16 个 contract fixture 覆盖 E0-E9 10/10 与 required scenarios 10/10；contract coverage 100%；runtime coverage 0%，依赖 M2/M5/M8 |
+| M2-01 typed state | 9 类核心对象 strict schema 与 semantic validator 完成；4/4 canonical round-trip fixture、12/12 定向测试、schema registry/hash gate 通过 |
 | M1-06 | retention、deterministic export/import、tombstone 和 deletion proof 离线验收完成；production adapter 待 M2/M8/M10 |
 | M0-07 | schema registry/hash、semver transition、migration/replay/rollback 和 unknown-version quarantine 离线验收完成 |
 | E0/E1 synthetic canary | 4 场景；768 字符时 E1 恢复 100%、旧决定复活 0、Skill 输入下降 75%、token proxy 下降 20.7031% |
@@ -39,8 +40,8 @@ canonical plan：`MASTER.md`
 | Git collaboration | branch/commit/PR/merge 和 staged admission 合同已落盘；公开 Gitea remote 为 `skyhua/context-control-plane`，默认分支 `main`；repo-local identity 已与托管账号核验 |
 | Continuous integration | 独立 Verifier 权威状态写权限为 0；main/branch push runs 1016/1017 与 pull_request run 1018 全部通过；`main` 禁止 direct/force push、禁止 admin merge override，并要求 4 个 push/PR status contexts |
 | Reference catalog | 15 个 Codex/Claude harness 来源；URL、retrieval hash、validity、refresh trigger 和 adoption status 离线校验通过 |
-| Project dogfood baseline | 6 次 compaction 恢复 100%；16 次 input routing 无未授权切换；stale/未授权 goal change 为 0；16 个 Skill body 共 185,560 bytes，其中重复 73,910 bytes；首个 accepted delivery 基线 1,577 秒；provider context/token/latency 不可见，趋势样本不足 |
-| Repository verification | 125/125 tests；14 个 repository verifier 正反场景；real benchmark byte-equivalent；Python compile、JSON/YAML、schema/projection、fixture privacy、documentation link/style、transcript admission 和 Gitleaks checks 通过 |
+| Project dogfood baseline | 7 次 compaction 的结构字段恢复 100%；第 7 次 Continuation Cursor 恢复 2/4、首个恢复动作不匹配、已确认事项重播 1 次，趋势为 regressed；18 次 input routing 无未授权切换；19 个 Skill body 共 212,776 bytes，其中重复 101,126 bytes；provider context/token/latency 不可见 |
+| Repository verification | 138/138 tests；14 个 repository verifier 正反场景；M2-01 4/4 canonical round-trip；real benchmark byte-equivalent；Python compile、JSON/YAML、schema/projection、fixture privacy、documentation link/style、transcript admission 和 Gitleaks checks 通过 |
 | Governance authority | `MASTER.md` |
 | Operational router | `STATUS.md` |
 

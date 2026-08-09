@@ -102,6 +102,25 @@ def validate_observation_document(document: dict[str, Any]) -> None:
             context_bytes = metrics.get("comparable_context_input_bytes")
             if context_bytes is not None:
                 _non_negative_int(context_bytes, "comparable_context_input_bytes")
+            continuation_total = metrics.get("continuation_fields_total")
+            continuation_recovered = metrics.get("continuation_fields_recovered")
+            if continuation_total is not None or continuation_recovered is not None:
+                total = _non_negative_int(continuation_total, "continuation_fields_total")
+                recovered = _non_negative_int(
+                    continuation_recovered, "continuation_fields_recovered"
+                )
+                if total == 0 or recovered > total:
+                    raise DogfoodObservationError("continuation field counts are invalid")
+            acknowledged_replays = metrics.get("already_acknowledged_items_replayed")
+            if acknowledged_replays is not None:
+                _non_negative_int(
+                    acknowledged_replays, "already_acknowledged_items_replayed"
+                )
+            first_action_matched = metrics.get("first_post_restore_action_matched")
+            if first_action_matched is not None and not isinstance(first_action_matched, bool):
+                raise DogfoodObservationError(
+                    "first_post_restore_action_matched must be boolean or null"
+                )
         elif event_type == "input-routing":
             if observation.get("authority") in {None, "", "none"}:
                 raise DogfoodObservationError("input routing requires authority")
@@ -251,6 +270,20 @@ def summarize_observations(document: dict[str, Any]) -> dict[str, Any]:
     critical_recovered = sum(
         item["metrics"]["critical_fields_recovered"] for item in compactions
     )
+    continuation_total = sum(
+        item["metrics"].get("continuation_fields_total", 0) for item in compactions
+    )
+    continuation_recovered = sum(
+        item["metrics"].get("continuation_fields_recovered", 0) for item in compactions
+    )
+    acknowledged_replays = sum(
+        item["metrics"].get("already_acknowledged_items_replayed", 0)
+        for item in compactions
+    )
+    first_action_mismatches = sum(
+        item["metrics"].get("first_post_restore_action_matched") is False
+        for item in compactions
+    )
     stale = sum(item["metrics"]["stale_decisions_revived"] for item in compactions)
     unauthorized_switches = sum(
         item["metrics"]["unauthorized_task_switches"] for item in compactions
@@ -309,6 +342,9 @@ def summarize_observations(document: dict[str, Any]) -> dict[str, Any]:
         delivery_trend_status = "stable"
 
     recovery_rate = critical_recovered / critical_total if critical_total else 0.0
+    continuation_recovery_rate = (
+        continuation_recovered / continuation_total if continuation_total else None
+    )
     comparable = [
         item["metrics"]["comparable_context_input_bytes"]
         for item in compactions
@@ -316,6 +352,12 @@ def summarize_observations(document: dict[str, Any]) -> dict[str, Any]:
     ]
     if (
         recovery_rate < 1.0
+        or (
+            continuation_recovery_rate is not None
+            and continuation_recovery_rate < 1.0
+        )
+        or acknowledged_replays
+        or first_action_mismatches
         or stale
         or unauthorized_switches
         or unauthorized_goal_changes
@@ -334,6 +376,10 @@ def summarize_observations(document: dict[str, Any]) -> dict[str, Any]:
     return {
         "compaction_events": len(compactions),
         "compaction_recovery_rate": recovery_rate,
+        "continuation_recovery_rate": continuation_recovery_rate,
+        "already_acknowledged_items_replayed": acknowledged_replays,
+        "first_post_restore_action_mismatches": first_action_mismatches,
+        "comparable_compaction_events": len(comparable),
         "stale_decisions_revived": stale,
         "unauthorized_task_switches": unauthorized_switches,
         "unauthorized_goal_changes": unauthorized_goal_changes,

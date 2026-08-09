@@ -1,6 +1,6 @@
 # Context Control Plane MASTER
 
-版本：revision 16  
+版本：revision 17  
 日期：2026-08-09  
 状态：研究与 shadow pilot 准备阶段  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
@@ -242,8 +242,8 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 
 | ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
 |---|---|---|---|---|---|---|
-| M2-01 | 🟡 | 定义 Project/Work/Claim/Idea/Decision/Evidence/Blocker/Effect schema | 项目级 active work、共享 Work Ledger 和个人派生视图变成类型合同 | 无损恢复并阻止重复工作 | M0-07/M1-04/M1-05 | solo/multi-worker、active/completed overlap、claim/effect scope 和 supersedes fixtures round-trip 100% |
-| M2-02 | ⏳ | 定义 append-only Event、supersedes 和 reducer | 历史可 replay | 旧决定复活率为 0 | M2-01 | replay 结果与 snapshot byte-equivalent |
+| M2-01 | ✅ | 定义 Project/Work/Claim/Idea/Decision/Constraint/Evidence/Blocker/Effect schema | 项目级 active work、共享 Work Ledger 和个人派生视图变成类型合同 | 无损恢复并阻止重复工作 | M0-07/M1-04/M1-05 | strict schema 注册；4/4 solo/multi-worker、active/completed overlap、claim/effect scope 和 supersedes fixture canonical round-trip；12/12 定向测试通过 |
+| M2-02 | 🟡 | 定义 append-only Event、supersedes 和 reducer | 历史可 replay | 旧决定复活率为 0 | M2-01 | replay 结果与 snapshot byte-equivalent |
 | M2-03 | ⏳ | PostgreSQL revision/CAS state store | 并发冲突显式返回 | 多协作者安全基础 | M2-02 | conflict test 100% 可见 |
 | M2-04 | ⏳ | content-addressed artifact store | 大日志和 diff 通过 artifact ref 引用 | 降 token 并保存证据 | M2-01 | checksum、range read、损坏检测通过 |
 | M2-05 | ⏳ | State MCP read/commit/claim/effect API | 各 agent/provider 使用统一协议 | provider-neutral | M2-03 | contract tests + auth boundary tests |
@@ -288,6 +288,7 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | M5-05 | ⏳ | token/cache/retrieval accounting | 形成成本与时延明细 | 以实测数据确定优化优先级 | M5-01 | provider 账单/trace 可对账 |
 | M5-06 | ⏳ | Idea-aware checkpoint 与 context return packet | 压缩、切换后可回到原任务 | 保留 return point、相关 Idea refs 和禁止副作用 | M3-06/M5-03 | 原任务恢复 100%；Idea 正文不复制进 packet；candidate Idea 不获得执行权限 |
 | M5-07 | ⏳ | Project dogfood compaction/input-routing/Skill/plan/delivery observation emitter | 每次恢复、消息或 Idea 路由、Skill 选择、计划演进和 accepted delivery 产生可比较事件 | 持续验证控制面是否真实优化自身研发与交付速度 | M0-09/M4-04/M5-05/M8-04 | active leaf/return point/路由/中断/Skill/目标 revision/delivery 事件覆盖率 100%；provider 未暴露指标保持 null；相同 task class/source 至少 3 个样本后才输出趋势；任一 veto 失败标记 regressed |
+| M5-08 | ⏳ | Continuation Cursor 与 anti-reset canary | 保存 last durable action、in-flight phase、已确认输入和恢复响应模式 | 压缩后从原子执行点继续并避免重复解释 | M2-02/M2-06/M5-01 | 首个 post-restore action 匹配率 100%；已确认事项重播 0；continuation fields 恢复 100%；恢复读取量有 receipt |
 
 ### M6 检索、代码图与 Recall Providers
 
@@ -347,6 +348,7 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | M10-05 | ⏳ | 版本化发布、升级和回滚 | 新技术通过兼容层与迁移协议接入 | 可持续演进 | M0-07/M10-04 | N-1 compatibility + rollback 通过 |
 | M10-06 | ⏳ | 跨项目 adaptation/profile migration | 项目升级和 provider 变化保留已验证的个性化配置 | 长期可移植演进 | M2-07/M8-07/M10-02 | 两个项目 profile replay；迁移/回滚 hash 一致；opt-out/reset 可验证 |
 | M10-07 | ⏳ | 默认生成 MASTER、STATUS、目标态架构全表和最小 Project Profile | 人类与不同 Agent 使用一致的项目入口 | 让个人、协作和公开项目开箱获得完整治理投影 | M0-10/M2-07/M9-01/M10-02 | 两类项目初始化/升级/卸载 replay；三文档字段恢复 100%；公开 Git admission 泄漏 0 |
+| M10-08 | ⏳ | 编译 release-neutral 产品表面与公开历史 | 通用产品 MASTER、最小 Profile 和中性脱敏 example 进入公开发行 | 隔离试点名称、私有项目分类和开发期叙事 | M10-05/M10-07 | 工作树、Git 历史、fixture、schema example、package metadata、生成文档、链接、截图、Issue/PR export 和 release artifact 扫描通过；未放行试点标识为 0；clean history 或 sanitized mirror 决策可复现 |
 
 ## 8. E0-E9 实验链路
 
@@ -405,7 +407,7 @@ E1、E2、E4、E6、E8、E9 具有 veto 权限；平均得分、token 降幅和�
 
 ## 10. 当前执行路由
 
-M2-01 是当前 active leaf。先定义 Project、Work、Claim、Idea、Decision、Evidence、Blocker 和 Effect 的最小版本化 schema，覆盖单 worker、多 worker、active/completed overlap、scope ownership、第二个 claim/effect veto 与 supersedes round-trip。Project Profile、Charter、WorkSource 和 topology adapter 在 M2-07 展开，不进入 M2-01 的动态执行状态。
+M2-02 是当前 active leaf。M2-01 已完成 Project、Work、Claim、Idea、Decision、Constraint、Evidence、Blocker 和 Effect 的最小版本化 schema、semantic validator 与四组 canonical round-trip fixture，验收见 `docs/migrations/m2-01-typed-state-acceptance-2026-08-09.md`。M2-02 在该 snapshot 合同上定义 append-only Event、supersedes 和 deterministic reducer；Project Profile、Charter、WorkSource 和 topology adapter 继续由 M2-07 交付。
 
 M1-05 已完成 16 个 E0-E9 contract fixture，验收见 `docs/migrations/m1-05-fault-coverage-acceptance-2026-08-09.md`。Runtime fault evidence 仍由 M2/M5/M8 提供。M1-04 已完成 40 个 fixture admission，验收见 `docs/migrations/m1-04-replay-fixture-acceptance-2026-08-09.md`。受控 archive 继续采用流式、区间化读取；原始 JSONL 和 source namespace key material 禁止进入 Git。M1-06 archive retention/export/delete 的离线验收见 `docs/migrations/m1-06-archive-governance-acceptance-2026-08-09.md`。
 
