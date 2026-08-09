@@ -89,7 +89,7 @@ class RepositoryVerificationCliTests(unittest.TestCase):
             commands,
         )
 
-    def test_ci_provisions_pinned_postgres_for_m2_03_integration(self):
+    def test_ci_attaches_pinned_postgres_to_job_container_network(self):
         root = Path(__file__).parents[1]
         workflow = yaml.safe_load(
             (root / ".gitea" / "workflows" / "ci.yml").read_text(encoding="utf-8")
@@ -105,8 +105,10 @@ class RepositoryVerificationCliTests(unittest.TestCase):
             start["run"],
         )
         self.assertIn("docker run --rm -d", start["run"])
-        self.assertIn("127.0.0.1::5432", start["run"])
-        self.assertIn("docker port", start["run"])
+        self.assertIn('docker inspect "${HOSTNAME}"', start["run"])
+        self.assertIn('--network "${JOB_NETWORK}"', start["run"])
+        self.assertIn('${POSTGRES_CONTAINER}:5432/context_test', start["run"])
+        self.assertNotIn("127.0.0.1::5432", start["run"])
         self.assertIn("CONTEXT_TEST_POSTGRES_DSN", start["run"])
         self.assertIn("GITHUB_ENV", start["run"])
         self.assertIn("pg_isready", start["run"])

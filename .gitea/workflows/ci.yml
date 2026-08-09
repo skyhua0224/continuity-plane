@@ -16,18 +16,20 @@ jobs:
           set -eu
           POSTGRES_IMAGE="postgres:18.4-alpine@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15"
           POSTGRES_CONTAINER="ccp-m203-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}"
+          JOB_NETWORK="$(docker inspect "${HOSTNAME}" \
+            --format '{{range $name, $_ := .NetworkSettings.Networks}}{{println $name}}{{end}}' \
+            | head -n 1)"
+          test -n "${JOB_NETWORK}"
           printf 'CONTEXT_TEST_POSTGRES_CONTAINER=%s\n' "${POSTGRES_CONTAINER}" >> "${GITHUB_ENV}"
           docker run --rm -d \
             --name "${POSTGRES_CONTAINER}" \
+            --network "${JOB_NETWORK}" \
             --env POSTGRES_HOST_AUTH_METHOD=trust \
             --env POSTGRES_USER=context_test \
             --env POSTGRES_DB=context_test \
-            --publish 127.0.0.1::5432 \
             "${POSTGRES_IMAGE}"
-          POSTGRES_PORT="$(docker port "${POSTGRES_CONTAINER}" 5432/tcp | sed -n 's/.*://p' | head -n 1)"
-          test -n "${POSTGRES_PORT}"
-          printf 'CONTEXT_TEST_POSTGRES_DSN=postgresql://context_test@127.0.0.1:%s/context_test\n' \
-            "${POSTGRES_PORT}" >> "${GITHUB_ENV}"
+          CONTEXT_TEST_POSTGRES_DSN="postgresql://context_test@${POSTGRES_CONTAINER}:5432/context_test"
+          printf 'CONTEXT_TEST_POSTGRES_DSN=%s\n' "${CONTEXT_TEST_POSTGRES_DSN}" >> "${GITHUB_ENV}"
           ready=0
           for attempt in $(seq 1 30); do
             if docker exec "${POSTGRES_CONTAINER}" pg_isready \
