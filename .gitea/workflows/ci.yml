@@ -9,24 +9,38 @@ on:
 jobs:
   repository-verification:
     runs-on: ubuntu-latest
-    env:
-      CONTEXT_TEST_POSTGRES_DSN: postgresql://context_test@127.0.0.1:5432/context_test
-    services:
-      postgres:
-        image: postgres:18.4-alpine@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15
-        env:
-          POSTGRES_HOST_AUTH_METHOD: trust
-          POSTGRES_USER: context_test
-          POSTGRES_DB: context_test
-        ports:
-          - "5432:5432"
-        options: >-
-          --health-cmd "pg_isready -U context_test -d context_test"
-          --health-interval 2s
-          --health-timeout 5s
-          --health-retries 15
     steps:
       - uses: actions/checkout@v4
+      - name: Start isolated PostgreSQL
+        run: |
+          set -eu
+          POSTGRES_IMAGE="postgres:18.4-alpine@sha256:9a8afca54e7861fd90fab5fdf4c42477a6b1cb7d293595148e674e0a3181de15"
+          POSTGRES_CONTAINER="ccp-m203-${GITHUB_RUN_ID:-local}-${GITHUB_RUN_ATTEMPT:-1}"
+          printf 'CONTEXT_TEST_POSTGRES_CONTAINER=%s\n' "${POSTGRES_CONTAINER}" >> "${GITHUB_ENV}"
+          docker run --rm -d \
+            --name "${POSTGRES_CONTAINER}" \
+            --env POSTGRES_HOST_AUTH_METHOD=trust \
+            --env POSTGRES_USER=context_test \
+            --env POSTGRES_DB=context_test \
+            --publish 127.0.0.1::5432 \
+            "${POSTGRES_IMAGE}"
+          POSTGRES_PORT="$(docker port "${POSTGRES_CONTAINER}" 5432/tcp | sed -n 's/.*://p' | head -n 1)"
+          test -n "${POSTGRES_PORT}"
+          printf 'CONTEXT_TEST_POSTGRES_DSN=postgresql://context_test@127.0.0.1:%s/context_test\n' \
+            "${POSTGRES_PORT}" >> "${GITHUB_ENV}"
+          ready=0
+          for attempt in $(seq 1 30); do
+            if docker exec "${POSTGRES_CONTAINER}" pg_isready \
+              --username context_test --dbname context_test; then
+              ready=1
+              break
+            fi
+            sleep 1
+          done
+          if [ "${ready}" -ne 1 ]; then
+            docker logs "${POSTGRES_CONTAINER}"
+            exit 1
+          fi
       - name: Set up isolated Python
         run: |
           python3 --version
@@ -38,6 +52,9 @@ jobs:
         run: .venv/bin/python -m compileall -q context_control_plane tests tools
       - name: Governance, schema, data, admission, link, and style gates
         run: .venv/bin/python tools/verify_repository.py --root .
+      - name: Stop isolated PostgreSQL
+        if: always()
+        run: docker stop "${CONTEXT_TEST_POSTGRES_CONTAINER}"
 
   secret-scan:
     runs-on: ubuntu-latest
