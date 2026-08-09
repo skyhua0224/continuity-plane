@@ -29,7 +29,14 @@ class DogfoodObservationTests(unittest.TestCase):
 
         self.assertEqual(
             event_types,
-            {"compaction", "input-routing", "skill-load", "plan-revision", "verification"},
+            {
+                "compaction",
+                "input-routing",
+                "skill-load",
+                "plan-revision",
+                "verification",
+                "delivery",
+            },
         )
 
     def test_summary_preserves_safety_veto_metrics(self):
@@ -52,9 +59,19 @@ class DogfoodObservationTests(unittest.TestCase):
     def test_compactions_without_comparable_bytes_are_only_a_baseline(self):
         summary = summarize_observations(self.document)
 
-        self.assertEqual(summary["compaction_events"], 5)
-        self.assertEqual(summary["input_routing_events"], 14)
+        self.assertEqual(summary["compaction_events"], 6)
+        self.assertEqual(summary["input_routing_events"], 16)
         self.assertEqual(summary["trend_status"], "baseline-insufficient-samples")
+
+    def test_delivery_speed_is_a_quality_gated_baseline(self):
+        summary = summarize_observations(self.document)
+
+        self.assertEqual(summary["delivery_events"], 1)
+        self.assertEqual(summary["accepted_work_items"], 1)
+        self.assertEqual(summary["delivery_lead_time_p50_seconds"], 1577)
+        self.assertEqual(summary["delivery_lead_time_p95_seconds"], 1577)
+        self.assertEqual(summary["delivery_safety_veto_failures"], 0)
+        self.assertEqual(summary["delivery_trend_status"], "baseline-insufficient-samples")
 
     def test_recovery_loss_marks_trend_as_regressed(self):
         broken = copy.deepcopy(self.document)

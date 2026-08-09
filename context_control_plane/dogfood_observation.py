@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import math
 import re
 from datetime import datetime
 from typing import Any
@@ -19,6 +20,7 @@ _EVENT_TYPES = {
     "skill-load",
     "plan-revision",
     "verification",
+    "delivery",
 }
 _INPUT_KINDS = {"idea", "context-addition", "correction", "status-query", "interrupt"}
 _INPUT_ROUTES = {
@@ -44,6 +46,18 @@ def _validate_timestamp(value: Any) -> None:
         raise DogfoodObservationError("observed_at must be RFC3339") from exc
     if parsed.tzinfo is None:
         raise DogfoodObservationError("observed_at must include timezone")
+
+
+def _parse_timestamp(value: Any, field: str) -> datetime:
+    if not isinstance(value, str):
+        raise DogfoodObservationError(f"{field} must be RFC3339")
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise DogfoodObservationError(f"{field} must be RFC3339") from exc
+    if parsed.tzinfo is None:
+        raise DogfoodObservationError(f"{field} must include timezone")
+    return parsed
 
 
 def validate_observation_document(document: dict[str, Any]) -> None:
@@ -157,7 +171,7 @@ def validate_observation_document(document: dict[str, Any]) -> None:
             _non_negative_int(
                 metrics.get("unauthorized_goal_changes"), "unauthorized_goal_changes"
             )
-        else:
+        elif event_type == "verification":
             tests_run = _non_negative_int(metrics.get("tests_run"), "tests_run")
             tests_failed = _non_negative_int(metrics.get("tests_failed"), "tests_failed")
             if tests_failed > tests_run:
@@ -167,6 +181,48 @@ def validate_observation_document(document: dict[str, Any]) -> None:
             refs = observation.get("evidence_refs")
             if not isinstance(refs, list) or not all(isinstance(ref, str) and ref for ref in refs):
                 raise DogfoodObservationError("verification requires evidence_refs")
+        else:
+            for field in ("work_id", "task_class"):
+                if not isinstance(observation.get(field), str) or not observation[field]:
+                    raise DogfoodObservationError(f"delivery requires {field}")
+            if observation.get("measurement_source") not in {
+                "state-events",
+                "otel",
+                "git-merge-proxy",
+            }:
+                raise DogfoodObservationError("unsupported delivery measurement_source")
+            started = _parse_timestamp(observation.get("started_at"), "started_at")
+            completed = _parse_timestamp(observation.get("completed_at"), "completed_at")
+            elapsed_seconds = int((completed - started).total_seconds())
+            if elapsed_seconds < 0:
+                raise DogfoodObservationError("delivery completion precedes start")
+            lead_time = _non_negative_int(metrics.get("lead_time_seconds"), "lead_time_seconds")
+            if lead_time != elapsed_seconds:
+                raise DogfoodObservationError("delivery lead time does not match timestamps")
+            cycle_time = _non_negative_int(metrics.get("cycle_time_seconds"), "cycle_time_seconds")
+            blocked = _non_negative_int(metrics.get("blocked_seconds"), "blocked_seconds")
+            rework = _non_negative_int(metrics.get("rework_seconds"), "rework_seconds")
+            first_artifact = _non_negative_int(
+                metrics.get("time_to_first_durable_artifact_seconds"),
+                "time_to_first_durable_artifact_seconds",
+            )
+            if any(value > lead_time for value in (cycle_time, blocked, rework, first_artifact)):
+                raise DogfoodObservationError("delivery duration component exceeds lead time")
+            for field in ("rework_events", "accepted_artifacts", "safety_veto_failures"):
+                _non_negative_int(metrics.get(field), field)
+            gates_total = _non_negative_int(
+                metrics.get("completion_gates_total"), "completion_gates_total"
+            )
+            gates_passed = _non_negative_int(
+                metrics.get("completion_gates_passed"), "completion_gates_passed"
+            )
+            if gates_total == 0 or gates_passed > gates_total:
+                raise DogfoodObservationError("delivery completion gate counts are invalid")
+            refs = observation.get("evidence_refs")
+            if not isinstance(refs, list) or not refs or not all(
+                isinstance(ref, str) and ref for ref in refs
+            ):
+                raise DogfoodObservationError("delivery requires evidence_refs")
 
 
 def summarize_observations(document: dict[str, Any]) -> dict[str, Any]:
@@ -186,6 +242,9 @@ def summarize_observations(document: dict[str, Any]) -> dict[str, Any]:
     ]
     verifications = [
         item for item in document["observations"] if item["event_type"] == "verification"
+    ]
+    deliveries = [
+        item for item in document["observations"] if item["event_type"] == "delivery"
     ]
 
     critical_total = sum(item["metrics"]["critical_fields_total"] for item in compactions)
@@ -210,6 +269,44 @@ def summarize_observations(document: dict[str, Any]) -> dict[str, Any]:
         for item in verifications
     )
     scope_violations = sum(item["metrics"]["scope_violations"] for item in verifications)
+    delivery_veto_failures = sum(
+        item["metrics"]["safety_veto_failures"] for item in deliveries
+    )
+    accepted_deliveries = [
+        item
+        for item in deliveries
+        if item["metrics"]["completion_gates_passed"]
+        == item["metrics"]["completion_gates_total"]
+        and item["metrics"]["safety_veto_failures"] == 0
+    ]
+    lead_times = sorted(item["metrics"]["lead_time_seconds"] for item in accepted_deliveries)
+
+    def nearest_rank(values: list[int], percentile: float) -> int | None:
+        if not values:
+            return None
+        index = max(0, math.ceil(percentile * len(values)) - 1)
+        return values[index]
+
+    incomplete_delivery = len(accepted_deliveries) != len(deliveries)
+    comparable_groups: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for item in accepted_deliveries:
+        key = (item["task_class"], item["measurement_source"])
+        comparable_groups.setdefault(key, []).append(item)
+    comparable_groups = {
+        key: items for key, items in comparable_groups.items() if len(items) >= 3
+    }
+    if delivery_veto_failures or incomplete_delivery:
+        delivery_trend_status = "regressed"
+    elif not comparable_groups:
+        delivery_trend_status = "baseline-insufficient-samples"
+    elif all(
+        items[-1]["metrics"]["lead_time_seconds"]
+        < items[0]["metrics"]["lead_time_seconds"]
+        for items in comparable_groups.values()
+    ):
+        delivery_trend_status = "improving"
+    else:
+        delivery_trend_status = "stable"
 
     recovery_rate = critical_recovered / critical_total if critical_total else 0.0
     comparable = [
@@ -224,6 +321,7 @@ def summarize_observations(document: dict[str, Any]) -> dict[str, Any]:
         or unauthorized_goal_changes
         or verification_failures
         or scope_violations
+        or delivery_veto_failures
     ):
         trend_status = "regressed"
     elif len(comparable) < 3:
@@ -248,5 +346,11 @@ def summarize_observations(document: dict[str, Any]) -> dict[str, Any]:
         "verification_events": len(verifications),
         "verification_failures": verification_failures,
         "scope_violations": scope_violations,
+        "delivery_events": len(deliveries),
+        "accepted_work_items": len(accepted_deliveries),
+        "delivery_lead_time_p50_seconds": nearest_rank(lead_times, 0.50),
+        "delivery_lead_time_p95_seconds": nearest_rank(lead_times, 0.95),
+        "delivery_safety_veto_failures": delivery_veto_failures,
+        "delivery_trend_status": delivery_trend_status,
         "trend_status": trend_status,
     }

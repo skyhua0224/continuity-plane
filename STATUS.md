@@ -1,6 +1,6 @@
 # Context Control Plane Status
 
-版本：revision 15  
+版本：revision 16  
 日期：2026-08-09  
 canonical plan：`MASTER.md`
 
@@ -8,10 +8,10 @@ canonical plan：`MASTER.md`
 
 | 字段 | 值 |
 |---|---|
-| 当前 Campaign | M1 replay corpus；M1-04 真实 corpus admitted |
-| active work | M1-05：E0-E9 fault coverage（🟡） |
-| next action | 建立 E0-E9 coverage matrix；先补 task switch、stale Skill、SIGKILL/commit boundary、503、checkpoint corruption 和 concurrent CAS fixture contracts |
-| hard blocker | 当前 fixture contract 设计无 blocker；runtime fault injection evidence 依赖 M2/M5/M8 |
+| 当前 Campaign | M2 Typed State、Event 与 Checkpoint |
+| active work | M2-01：Project/Work/Claim/Idea/Decision/Evidence/Blocker/Effect schema（🟡） |
+| next action | 建立 M2-01 最小版本化 schema 与 round-trip fixtures；先覆盖 solo/multi-worker、active/completed overlap、scope ownership、第二个 claim/effect veto 和 supersedes |
+| hard blocker | 当前 schema 合同无 blocker；PostgreSQL CAS、State MCP 与 runtime effect authorization 分属 M2-03/M2-05 |
 | repository mode | research / shadow pilot |
 | production state | planned；M2 阶段实施 |
 
@@ -25,12 +25,13 @@ canonical plan：`MASTER.md`
 | Imported research | 上下文可靠性评估、来源规模清单 |
 | M1-02/M1-03 | source registry、provenance、sanitizer 和 admission guard 离线验收完成；256-bit base64url secret boundary 与公开 key ID 验证通过 |
 | M1-04 extraction | 三个受控 Codex/Claude 来源生成 40 个真实脱敏 fixture；40/40 从磁盘独立复验通过；corpus hash `1746514721b768a499757eb4738c8f9e9e6c50173a8d9cec8f98e2729e700990` |
+| M1-05 fault coverage | 16 个 contract fixture 覆盖 E0-E9 10/10 与 required scenarios 10/10；contract coverage 100%；runtime coverage 0%，依赖 M2/M5/M8 |
 | M1-06 | retention、deterministic export/import、tombstone 和 deletion proof 离线验收完成；production adapter 待 M2/M8/M10 |
 | M0-07 | schema registry/hash、semver transition、migration/replay/rollback 和 unknown-version quarantine 离线验收完成 |
 | E0/E1 synthetic canary | 4 场景；768 字符时 E1 恢复 100%、旧决定复活 0、Skill 输入下降 75%、token proxy 下降 20.7031% |
 | E0/E1 real replay | 40 场景；768 字符时 E1 恢复 100%、旧决定复活 0、Skill 输入下降 74.7903%、token proxy 下降 12.6042%；512 字符 capacity veto |
 | External Skill catalog | OpenAI/Anthropic/GitHub/Agent Skills/MCP/Skills.sh metadata-only；active 0 |
-| Harness research | OpenAI/Codex、Anthropic/Claude Code/Agent SDK reference catalog 与 adoption matrix 已落盘；provider-native state authority 为 0 |
+| Harness research | OpenAI/Codex、Anthropic/Claude Code/Agent SDK、agent teams/subagents/advisor/worktree reference catalog 与 adoption matrix 已落盘；provider-native state authority 为 0 |
 | Idea continuity | capture-and-continue、correction 写保护、checkpoint/switch/context return 架构合同已落盘；typed implementation 待 M2-M5 |
 | Adaptive information | bounded retrieval receipt、ProjectAdaptation proposal/shadow/approval/rollback 合同已落盘；实现待 M2/M6/M8/M10 |
 | Documentation lifecycle | 文档分类、更新触发、容量预算、supersedes 和投影规则已落盘；第 4 次恢复发现 STATUS/evidence 漂移并登记为 M0-10 validator 反例 |
@@ -38,8 +39,8 @@ canonical plan：`MASTER.md`
 | Git collaboration | branch/commit/PR/merge 和 staged admission 合同已落盘；公开 Gitea remote 为 `skyhua/context-control-plane`，默认分支 `main`；repo-local identity 已与托管账号核验 |
 | Continuous integration | 独立 Verifier 权威状态写权限为 0；main/branch push runs 1016/1017 与 pull_request run 1018 全部通过；`main` 禁止 direct/force push、禁止 admin merge override，并要求 4 个 push/PR status contexts |
 | Reference catalog | 15 个 Codex/Claude harness 来源；URL、retrieval hash、validity、refresh trigger 和 adoption status 离线校验通过 |
-| Project dogfood baseline | 5 次 compaction 恢复 100%；14 次 input routing 无未授权切换；stale/未授权 goal change 为 0；16 个 Skill body 共 185,560 bytes，其中重复 73,910 bytes；provider context/token/latency 不可见，趋势样本不足 |
-| Repository verification | 102/102 tests；14 个 repository verifier 正反场景；real benchmark byte-equivalent；Python compile、JSON/YAML、schema/projection、fixture privacy、documentation link/style、transcript admission 和 Gitleaks checks 通过 |
+| Project dogfood baseline | 6 次 compaction 恢复 100%；16 次 input routing 无未授权切换；stale/未授权 goal change 为 0；16 个 Skill body 共 185,560 bytes，其中重复 73,910 bytes；首个 accepted delivery 基线 1,577 秒；provider context/token/latency 不可见，趋势样本不足 |
+| Repository verification | 125/125 tests；14 个 repository verifier 正反场景；real benchmark byte-equivalent；Python compile、JSON/YAML、schema/projection、fixture privacy、documentation link/style、transcript admission 和 Gitleaks checks 通过 |
 | Governance authority | `MASTER.md` |
 | Operational router | `STATUS.md` |
 
@@ -65,3 +66,4 @@ canonical plan：`MASTER.md`
 | External Skill activation | 需固定 revision/hash、license/provenance、权限检查、审批和 replay；当前 active 0 |
 | Reference adoption | 发现器只写 candidate/stale signal；承重 assertion 必须 current provenance 与 validator |
 | Platform boundary | Context Control Plane 通过外部 Project Profile 与 API 集成 |
+| Repository topology | modular、monolith、mixed 使用同一 core；Foundation Sunshine 当前按 monolith Profile 协作，模块边界不构成准入条件 |

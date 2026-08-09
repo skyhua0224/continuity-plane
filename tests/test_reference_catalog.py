@@ -53,6 +53,24 @@ class ReferenceCatalogTests(unittest.TestCase):
         self.assertIn("anthropic.com/engineering/effective-harnesses", urls)
         self.assertIn("code.claude.com/docs", urls)
 
+    def test_catalog_covers_current_claude_parallel_agent_surfaces(self):
+        expected = {
+            "anthropic-claude-code-agents": "ae17a0b90a1b7944030191b31f5d254d8f74d8794faee620f94d9314d2e002bb",
+            "anthropic-claude-code-agent-teams": "c079ade28c18a4f2a48c4e9d47d7e58c09dab1354edc7e16919db40340094449",
+            "anthropic-claude-code-subagents": "2f08d529620dba34468ea6a0b660843f4b7bbe17f50874f11294c1ba6e45c5f8",
+            "anthropic-claude-code-advisor": "14b381a1728b52eeca7445c089cd649a5ca05f20feb95ee8c8708c7971ebdc71",
+            "anthropic-claude-code-worktrees": "c5a85623acef35889ca086313de4ddd3383c9b6ab4b04ff7e0dcfa583c41075d",
+        }
+        entries = {entry["reference_id"]: entry for entry in self.catalog["entries"]}
+
+        for reference_id, content_sha256 in expected.items():
+            with self.subTest(reference_id=reference_id):
+                self.assertIn(reference_id, entries)
+                self.assertEqual(entries[reference_id]["content_sha256"], content_sha256)
+                self.assertEqual(entries[reference_id]["acquisition"], "direct-official")
+                self.assertEqual(entries[reference_id]["validity"], "verified-current")
+                self.assertEqual(entries[reference_id]["adoption_status"], "candidate")
+
 
 if __name__ == "__main__":
     unittest.main()

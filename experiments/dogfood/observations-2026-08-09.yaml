@@ -1,10 +1,11 @@
 schema_version: context.dogfood-observation/v1alpha1
-generated_at: "2026-08-09T22:33:34+08:00"
+generated_at: "2026-08-09T23:17:49+08:00"
 status: baseline
 measurement_limitations:
   - provider token accounting was unavailable for this resumed segment
   - restore wall-clock and p95 were not emitted by a State MCP or OTel trace
-  - four visible compactions still did not expose comparable provider context-window usage, input/cache tokens, or restore latency
+  - six visible compactions still did not expose comparable provider context-window usage, input/cache tokens, or restore latency
+  - delivery lead time currently uses Git activation and merge timestamps; active, blocked, and rework wall time are not yet emitted by State MCP or OTel
 
 observations:
   - observation_id: dogfood-compaction-001
@@ -908,6 +909,128 @@ observations:
       - gitea:main-protection-no-direct-or-force-push-no-admin-merge-override
     metrics:
       tests_run: 102
+      tests_failed: 0
+      checks_failed: 0
+      scope_violations: 0
+
+  - observation_id: dogfood-delivery-001
+    event_type: delivery
+    observed_at: "2026-08-09T22:35:20+08:00"
+    authority: git-merge-and-required-ci-evidence
+    active_leaf_before: M1-05
+    active_leaf_after: M1-05
+    work_id: M0-12
+    task_class: governance-ci
+    measurement_source: git-merge-proxy
+    started_at: "2026-08-09T22:09:03+08:00"
+    completed_at: "2026-08-09T22:35:20+08:00"
+    evidence_refs:
+      - git:b578663197780d170201778b7c4412360494fe2b
+      - git:48485aff9dc752064154f24d36a7be60be1dc06f
+      - gitea:run-1021-repository-verification-and-secret-scan-success
+    metrics:
+      lead_time_seconds: 1577
+      cycle_time_seconds: 1577
+      blocked_seconds: 0
+      rework_seconds: 0
+      time_to_first_durable_artifact_seconds: 0
+      rework_events: 2
+      accepted_artifacts: 1
+      completion_gates_total: 4
+      completion_gates_passed: 4
+      safety_veto_failures: 0
+
+  - observation_id: dogfood-compaction-006
+    event_type: compaction
+    observed_at: "2026-08-09T23:08:16+08:00"
+    authority: system-compaction-summary-and-current-repository
+    active_leaf_before: M1-05
+    active_leaf_after: M1-05
+    metrics:
+      critical_fields_total: 7
+      critical_fields_recovered: 7
+      stale_decisions_revived: 0
+      unauthorized_task_switches: 0
+      comparable_context_input_bytes: null
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      restore_latency_ms: null
+      provider_compaction_signal_available: true
+
+  - observation_id: dogfood-input-routing-015
+    event_type: input-routing
+    observed_at: "2026-08-09T23:08:16+08:00"
+    authority: explicit-user-shared-memory-requirement
+    active_leaf_before: M1-05
+    active_leaf_after: M1-05
+    input_kind: context-addition
+    route: capture-and-continue
+    candidate_id: requirement-shared-work-ledger-001
+    candidate_summary: Shared Work Ledger must expose proposed, active, completed, rejected, reverted, and superseded work with owner and evidence so a collaborator cannot unknowingly repeat completed or active work; preserve M1-05.
+    candidate_summary_sha256: 13fb57c65c867b67186924b802ca86b4ffea7b102ca010f454fb65dc208f285c
+    metrics:
+      messages_observed: 1
+      ideas_captured: 0
+      unauthorized_task_switches: 0
+      return_point_preserved: true
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      provider_compaction_signal_available: true
+      tool_interruption_observed: true
+
+  - observation_id: dogfood-input-routing-016
+    event_type: input-routing
+    observed_at: "2026-08-09T23:09:00+08:00"
+    authority: explicit-user-foundation-sunshine-topology-correction
+    active_leaf_before: M1-05
+    active_leaf_after: M1-05
+    input_kind: correction
+    route: correction-write-protect
+    candidate_id: correction-foundation-sunshine-topology-001
+    candidate_summary: "Keep the collaboration core repository-topology-neutral: Foundation Sunshine is currently non-modular and must use repo/directory/file/symbol/capability/effect scopes until it converges into a Product under the future modular Platform."
+    candidate_summary_sha256: 3ac06530f853067faaaa593a9662f23d9bf0227426a5eb7d118fb0897e5b902a
+    metrics:
+      messages_observed: 1
+      ideas_captured: 0
+      unauthorized_task_switches: 0
+      return_point_preserved: true
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      provider_compaction_signal_available: true
+      tool_interruption_observed: true
+
+  - observation_id: dogfood-plan-revision-012
+    event_type: plan-revision
+    observed_at: "2026-08-09T23:17:49+08:00"
+    authority: explicit-user-shared-memory-and-topology-neutral-collaboration-requirements
+    authorized: true
+    active_leaf_before: M1-05
+    active_leaf_after: M2-01
+    metrics:
+      master_revision_before: 15
+      master_revision_after: 16
+      unauthorized_goal_changes: 0
+      project_mission_changed: false
+      return_point_preserved: true
+      tasks_completed: [M1-05]
+      tasks_activated: [M2-01]
+      tasks_refined: [M2-07, M3-04, M5-07, M8-02, M9-02]
+
+  - observation_id: dogfood-verification-011
+    event_type: verification
+    observed_at: "2026-08-09T23:17:49+08:00"
+    authority: local-repository-verification-evidence
+    active_leaf_before: M2-01
+    active_leaf_after: M2-01
+    evidence_refs:
+      - unittest:discover-tests-125-revision-16-2026-08-09
+      - unittest:m1-05-fault-coverage-11-2026-08-09
+      - unittest:project-work-governance-7-2026-08-09
+      - check:python-compile-revision-16-2026-08-09
+      - check:repository-verifier-revision-16-2026-08-09
+      - check:gitleaks-git-eight-commits-zero-findings-2026-08-09
+    metrics:
+      tests_run: 125
       tests_failed: 0
       checks_failed: 0
       scope_violations: 0
