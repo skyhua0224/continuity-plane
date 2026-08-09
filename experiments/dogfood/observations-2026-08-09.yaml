@@ -1547,3 +1547,216 @@ observations:
       tests_failed: 0
       checks_failed: 0
       scope_violations: 0
+
+  - observation_id: dogfood-compaction-011
+    event_type: compaction
+    observed_at: "2026-08-10T02:01:16+08:00"
+    authority: system-handoff-and-current-repository
+    active_leaf_before: M2-08
+    active_leaf_after: M2-08
+    metrics:
+      critical_fields_total: 8
+      critical_fields_recovered: 8
+      stale_decisions_revived: 0
+      unauthorized_task_switches: 0
+      comparable_context_input_bytes: null
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      restore_latency_ms: null
+      provider_compaction_signal_available: true
+      continuation_fields_total: 4
+      continuation_fields_recovered: 4
+      already_acknowledged_items_replayed: 0
+      first_post_restore_action_matched: true
+    evidence:
+      - handoff preserved branch work/M2-08/state-store-spi, active leaf M2-08, revision 21, all eight uncommitted M2-08 paths, and the exact next conformance action
+      - first repository action verified the current branch and files, then ran the exact M2-08 PostgreSQL and memory conformance suites
+      - previously answered PostgreSQL role, project mission, and revision 21 governance decisions were not replayed
+      - user input remained a continuity and unattended-execution requirement without displacing M2-08
+
+  - observation_id: dogfood-skill-load-012
+    event_type: skill-load
+    observed_at: "2026-08-10T02:01:16+08:00"
+    authority: task-trigger-current-path-digest-and-visible-handoff
+    active_leaf_before: M2-08
+    active_leaf_after: M2-08
+    metrics:
+      body_load_count: 3
+      total_body_bytes: 27216
+      repeated_body_load_bytes: 27216
+      skills:
+        - skill_id: session-memory-hygiene
+          content_sha256: e7814b9010db3d5dd83d978f93d80515cee2f5388761f5fb20f7a406fdc856f0
+          body_bytes: 1361
+          body_lines: 34
+          reason: visible compaction continuation verification
+        - skill_id: test-driven-development
+          content_sha256: 7dee67b4af6bdccc7a914ca34533184d64592d0f5b23aeae631538168db14994
+          body_bytes: 9867
+          body_lines: 371
+          reason: M2-08 conformance coverage and dogfood observation red test
+        - skill_id: human-first-writing
+          content_sha256: 0f3754759a185b43e6932864703cca58543a8ef58ed80a57469f680f0eaf5832
+          body_bytes: 15988
+          body_lines: 427
+          reason: active response and normative-document writing contract
+
+  - observation_id: dogfood-plan-revision-018
+    event_type: plan-revision
+    observed_at: "2026-08-10T02:05:23+08:00"
+    authority: M2-08-independent-review-and-current-repository-evidence
+    authorized: true
+    active_leaf_before: M2-08
+    active_leaf_after: M2-08
+    metrics:
+      master_revision_before: 21
+      master_revision_after: 22
+      unauthorized_goal_changes: 0
+      project_mission_changed: false
+      return_point_preserved: true
+      tasks_refined: [M2-08]
+
+  - observation_id: dogfood-verification-016
+    event_type: verification
+    observed_at: "2026-08-10T02:07:37+08:00"
+    authority: local-repository-postgresql-and-gitea-merge-evidence
+    active_leaf_before: M2-08
+    active_leaf_after: M2-08
+    evidence_refs:
+      - unittest:m2-08-state-store-capability-and-conformance-23-revision-22-2026-08-10
+      - unittest:m2-03-postgresql-regression-11-revision-22-2026-08-10
+      - unittest:discover-tests-202-revision-22-2026-08-10
+      - check:python-compile-revision-22-2026-08-10
+      - check:repository-verifier-revision-22-2026-08-10
+      - gitea:pr-6-regular-merge-0b3eebf
+      - shadow-agent:m2-08-independent-review-2-high-3-medium
+    metrics:
+      tests_run: 202
+      tests_failed: 0
+      checks_failed: 5
+      scope_violations: 0
+
+  - observation_id: dogfood-skill-load-013
+    event_type: skill-load
+    observed_at: "2026-08-10T02:07:37+08:00"
+    authority: commit-and-pull-request-task-trigger-current-path-digest
+    active_leaf_before: M2-08
+    active_leaf_after: M2-08
+    metrics:
+      body_load_count: 1
+      total_body_bytes: 18117
+      repeated_body_load_bytes: 18117
+      skills:
+        - skill_id: git
+          content_sha256: c13013bb735a6ca5e13596c126136bffa18fdba6d573dc781e0e3978ebb24b17
+          body_bytes: 18117
+          body_lines: 386
+          reason: atomic commit, PR description and regular merge contract
+
+  - observation_id: dogfood-compaction-012
+    event_type: compaction
+    observed_at: "2026-08-10T02:33:06+08:00"
+    authority: system-handoff-and-current-repository
+    active_leaf_before: M2-08
+    active_leaf_after: M2-08
+    metrics:
+      critical_fields_total: 8
+      critical_fields_recovered: 8
+      stale_decisions_revived: 0
+      unauthorized_task_switches: 0
+      comparable_context_input_bytes: null
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      restore_latency_ms: null
+      provider_compaction_signal_available: true
+      continuation_fields_total: 4
+      continuation_fields_recovered: 4
+      already_acknowledged_items_replayed: 0
+      first_post_restore_action_matched: true
+    evidence:
+      - handoff preserved branch work/M2-08/state-store-spi, active leaf M2-08, revision 22, uncommitted paths, the remaining Medium finding and its exact red-test action
+      - first implementation action added and ran the malformed operations regression before changing the validator
+      - previously answered PostgreSQL, Docmost and unattended-progression boundaries were not replayed
+      - user requirements remained governing constraints without displacing M2-08
+
+  - observation_id: dogfood-skill-load-014
+    event_type: skill-load
+    observed_at: "2026-08-10T02:33:06+08:00"
+    authority: task-trigger-current-path-digest-and-visible-handoff
+    active_leaf_before: M2-08
+    active_leaf_after: M2-08
+    metrics:
+      body_load_count: 3
+      total_body_bytes: 27216
+      repeated_body_load_bytes: 27216
+      skills:
+        - skill_id: session-memory-hygiene
+          content_sha256: e7814b9010db3d5dd83d978f93d80515cee2f5388761f5fb20f7a406fdc856f0
+          body_bytes: 1361
+          body_lines: 34
+          reason: visible compaction continuation verification
+        - skill_id: test-driven-development
+          content_sha256: 7dee67b4af6bdccc7a914ca34533184d64592d0f5b23aeae631538168db14994
+          body_bytes: 9867
+          body_lines: 371
+          reason: malformed capability regression and validator fix
+        - skill_id: human-first-writing
+          content_sha256: 0f3754759a185b43e6932864703cca58543a8ef58ed80a57469f680f0eaf5832
+          body_bytes: 15988
+          body_lines: 427
+          reason: active response and normative-document writing contract
+
+  - observation_id: dogfood-verification-017
+    event_type: verification
+    observed_at: "2026-08-10T02:33:06+08:00"
+    authority: local-repository-postgresql-and-independent-review-evidence
+    active_leaf_before: M2-08
+    active_leaf_after: M2-08
+    evidence_refs:
+      - unittest:m2-02-m2-03-m2-08-77-revision-23-2026-08-10
+      - unittest:m2-08-state-store-capability-and-conformance-52-revision-23-2026-08-10
+      - unittest:discover-tests-232-revision-23-2026-08-10
+      - check:python-compile-and-diff-revision-23-2026-08-10
+      - shadow-agent:m2-08-independent-review-high-0-medium-0
+    metrics:
+      tests_run: 232
+      tests_failed: 0
+      checks_failed: 0
+      scope_violations: 0
+
+  - observation_id: dogfood-plan-revision-019
+    event_type: plan-revision
+    observed_at: "2026-08-10T02:33:06+08:00"
+    authority: M2-08-completion-gate-and-user-unattended-progression-directive
+    authorized: true
+    active_leaf_before: M2-08
+    active_leaf_after: M2-09
+    metrics:
+      master_revision_before: 22
+      master_revision_after: 23
+      unauthorized_goal_changes: 0
+      project_mission_changed: false
+      return_point_preserved: true
+      tasks_refined: [M2-08, M2-09]
+
+  - observation_id: dogfood-skill-load-015
+    event_type: skill-load
+    observed_at: "2026-08-10T02:40:22+08:00"
+    authority: commit-and-pull-request-task-trigger-current-path-digest
+    active_leaf_before: M2-09
+    active_leaf_after: M2-09
+    metrics:
+      body_load_count: 2
+      total_body_bytes: 22367
+      repeated_body_load_bytes: 18117
+      skills:
+        - skill_id: git
+          content_sha256: c13013bb735a6ca5e13596c126136bffa18fdba6d573dc781e0e3978ebb24b17
+          body_bytes: 18117
+          body_lines: 386
+          reason: atomic commit, PR description and regular merge contract
+        - skill_id: finishing-a-development-branch
+          content_sha256: dd2f82c6dc8582b621f9eb57fcb65f557f88eadf872727ac81d0840ae12c504e
+          body_bytes: 4250
+          body_lines: 200
+          reason: verified branch completion and integration boundary

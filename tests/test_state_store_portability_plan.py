@@ -7,6 +7,7 @@ class StateStorePortabilityPlanTests(unittest.TestCase):
     def setUpClass(cls):
         cls.root = Path(__file__).parents[1]
         cls.master = (cls.root / "MASTER.md").read_text(encoding="utf-8")
+        cls.status = (cls.root / "STATUS.md").read_text(encoding="utf-8")
         cls.target_state = (
             cls.root / "docs" / "architecture" / "target-state.md"
         ).read_text(encoding="utf-8")
@@ -67,14 +68,36 @@ class StateStorePortabilityPlanTests(unittest.TestCase):
         self.assertTrue(acceptance_path.exists())
         m203 = next(line for line in self.master.splitlines() if "| M2-03 |" in line)
         m208 = next(line for line in self.master.splitlines() if "| M2-08 |" in line)
+        m209 = next(line for line in self.master.splitlines() if "| M2-09 |" in line)
         self.assertIn("✅", m203)
-        self.assertIn("🟡", m208)
+        self.assertIn("✅", m208)
+        self.assertIn("🟡", m209)
 
     def test_profiles_are_not_user_editions_and_self_dogfood_is_primary(self):
         self.assertIn("capability profiles are not user editions", self.target_state)
         self.assertIn("cohesive monolith", self.target_state)
         self.assertIn("| M10-00 |", self.master)
         self.assertIn("Context Control Plane self-dogfood", self.master)
+
+    def test_m2_08_independent_review_authorizes_sqlite_activation(self):
+        acceptance_path = (
+            self.root
+            / "docs"
+            / "migrations"
+            / "m2-08-state-store-spi-acceptance-2026-08-10.md"
+        )
+        m208 = next(line for line in self.master.splitlines() if "| M2-08 |" in line)
+        m209 = next(line for line in self.master.splitlines() if "| M2-09 |" in line)
+
+        self.assertTrue(acceptance_path.exists())
+        acceptance = acceptance_path.read_text(encoding="utf-8")
+        self.assertIn("✅", m208)
+        self.assertIn("🟡", m209)
+        self.assertIn("High 0, Medium 0", acceptance)
+        self.assertIn("版本：revision 23", self.master)
+        self.assertIn("版本：revision 23", self.status)
+        self.assertIn("active work | M2-09", self.status)
+        self.assertIn("governance authority：`MASTER.md` revision 23", self.target_state)
 
 
 if __name__ == "__main__":
