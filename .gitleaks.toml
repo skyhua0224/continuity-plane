@@ -1,0 +1,9 @@
+# Keep the default rules and allow only reviewed synthetic test vectors.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Reviewed synthetic sanitizer test vectors"
+regexes = [
+  '''eyJhbGciOiJIUzI1NiJ9\.eyJzdWIiOiJwcml2YXRlLXVzZXIifQ\.signature123'''
+]

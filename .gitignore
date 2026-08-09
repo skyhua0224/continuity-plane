@@ -1,0 +1,26 @@
+.env
+.env.*
+!.env.example
+
+# Runtime state and credentials never belong in Git.
+data/
+artifacts/
+secrets/
+*.sqlite
+*.sqlite3
+*.db
+
+# Provider transcripts stay in controlled archives. Replay fixtures use JSON.
+*.jsonl
+*.jsonl.zst
+*.rollout
+raw-conversations/
+
+# Local build and tool output.
+.cache/
+build/
+dist/
+coverage/
+__pycache__/
+*.pyc
+*.log
