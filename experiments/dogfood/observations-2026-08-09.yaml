@@ -1,10 +1,10 @@
 schema_version: context.dogfood-observation/v1alpha1
-generated_at: "2026-08-10T01:23:25+08:00"
+generated_at: "2026-08-10T04:50:42+08:00"
 status: baseline
 measurement_limitations:
   - provider token accounting was unavailable for this resumed segment
   - restore wall-clock and p95 were not emitted by a State MCP or OTel trace
-  - nine visible compactions still did not expose comparable provider context-window usage, input/cache tokens, or restore latency
+  - fifteen visible compactions still did not expose comparable provider context-window usage, input/cache tokens, or restore latency
   - delivery lead time currently uses Git activation and merge timestamps; active, blocked, and rework wall time are not yet emitted by State MCP or OTel
 
 observations:
@@ -1972,6 +1972,115 @@ observations:
       - shadow-agent:m2-09-independent-review-high-0-medium-0-after-fixes
     metrics:
       tests_run: 282
+      tests_failed: 0
+      checks_failed: 0
+      scope_violations: 0
+
+  - observation_id: dogfood-compaction-015
+    event_type: compaction
+    observed_at: "2026-08-10T04:46:39+08:00"
+    authority: system-handoff-and-current-repository
+    active_leaf_before: M2-04
+    active_leaf_after: M2-04
+    metrics:
+      critical_fields_total: 8
+      critical_fields_recovered: 8
+      stale_decisions_revived: 0
+      unauthorized_task_switches: 0
+      comparable_context_input_bytes: null
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      restore_latency_ms: null
+      provider_compaction_signal_available: true
+      continuation_fields_total: 4
+      continuation_fields_recovered: 4
+      already_acknowledged_items_replayed: 0
+      first_post_restore_action_matched: true
+    evidence:
+      - handoff preserved work/M2-04/artifact-store, active leaf M2-04, revision 24, clean worktrees, PR 9 CI wait state and the exact governance red-test action
+      - first post-restore repository action checked both worktrees and STATUS before changing the governance test
+      - previously answered PostgreSQL, project mission, Docmost and collaboration boundaries were not replayed
+      - a stale multi-Agent handoff proposed revisiting completed M2-09 work; current repository state prevented duplicate execution
+
+  - observation_id: dogfood-skill-load-020
+    event_type: skill-load
+    observed_at: "2026-08-10T04:46:39+08:00"
+    authority: task-trigger-current-path-digest-and-visible-handoff
+    active_leaf_before: M2-04
+    active_leaf_after: M2-04
+    metrics:
+      body_load_count: 3
+      total_body_bytes: 27216
+      repeated_body_load_bytes: 27216
+      skills:
+        - skill_id: session-memory-hygiene
+          content_sha256: e7814b9010db3d5dd83d978f93d80515cee2f5388761f5fb20f7a406fdc856f0
+          body_bytes: 1361
+          body_lines: 34
+          reason: visible M2-04 compaction continuation verification
+        - skill_id: test-driven-development
+          content_sha256: 7dee67b4af6bdccc7a914ca34533184d64592d0f5b23aeae631538168db14994
+          body_bytes: 9867
+          body_lines: 371
+          reason: revision 25 governance red-green cycle and M2-05 implementation preparation
+        - skill_id: human-first-writing
+          content_sha256: 0f3754759a185b43e6932864703cca58543a8ef58ed80a57469f680f0eaf5832
+          body_bytes: 15988
+          body_lines: 427
+          reason: active response and normative-document writing contract
+
+  - observation_id: dogfood-plan-revision-021
+    event_type: plan-revision
+    observed_at: "2026-08-10T04:46:39+08:00"
+    authority: M2-04-completion-gate-and-user-unattended-progression-directive
+    authorized: true
+    active_leaf_before: M2-04
+    active_leaf_after: M2-05
+    metrics:
+      master_revision_before: 24
+      master_revision_after: 25
+      unauthorized_goal_changes: 0
+      project_mission_changed: false
+      return_point_preserved: true
+      tasks_refined: [M2-04, M2-05]
+
+  - observation_id: dogfood-skill-load-021
+    event_type: skill-load
+    observed_at: "2026-08-10T04:50:42+08:00"
+    authority: commit-and-pull-request-task-trigger-current-path-digest
+    active_leaf_before: M2-05
+    active_leaf_after: M2-05
+    metrics:
+      body_load_count: 2
+      total_body_bytes: 22367
+      repeated_body_load_bytes: 22367
+      skills:
+        - skill_id: git
+          content_sha256: c13013bb735a6ca5e13596c126136bffa18fdba6d573dc781e0e3978ebb24b17
+          body_bytes: 18117
+          body_lines: 386
+          reason: atomic governance commit, PR update and regular merge contract
+        - skill_id: finishing-a-development-branch
+          content_sha256: dd2f82c6dc8582b621f9eb57fcb65f557f88eadf872727ac81d0840ae12c504e
+          body_bytes: 4250
+          body_lines: 200
+          reason: verified branch completion and PR integration boundary
+
+  - observation_id: dogfood-verification-021
+    event_type: verification
+    observed_at: "2026-08-10T04:50:42+08:00"
+    authority: local-repository-artifact-acceptance-and-governance-evidence
+    active_leaf_before: M2-05
+    active_leaf_after: M2-05
+    evidence_refs:
+      - unittest:m2-04-artifact-store-20-revision-25-2026-08-10
+      - unittest:discover-tests-303-revision-25-2026-08-10
+      - check:python-compile-revision-25-2026-08-10
+      - check:repository-verifier-revision-25-2026-08-10
+      - benchmark:artifact-1mib-to-8kib-context-output-99.2188-percent-2026-08-10
+      - shadow-agent:m2-04-independent-review-high-0-medium-0
+    metrics:
+      tests_run: 303
       tests_failed: 0
       checks_failed: 0
       scope_violations: 0
