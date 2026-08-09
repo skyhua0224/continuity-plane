@@ -52,22 +52,22 @@ class DogfoodObservationTests(unittest.TestCase):
     def test_summary_accounts_for_loaded_skill_bodies(self):
         summary = summarize_observations(self.document)
 
-        self.assertEqual(summary["skill_body_load_count"], 27)
-        self.assertEqual(summary["skill_body_load_bytes"], 320845)
-        self.assertEqual(summary["repeated_skill_body_load_bytes"], 155558)
+        self.assertEqual(summary["skill_body_load_count"], 31)
+        self.assertEqual(summary["skill_body_load_bytes"], 366178)
+        self.assertEqual(summary["repeated_skill_body_load_bytes"], 200891)
 
     def test_visible_compactions_remain_uncomparable_for_cost_metrics(self):
         summary = summarize_observations(self.document)
 
-        self.assertEqual(summary["compaction_events"], 9)
-        self.assertEqual(summary["input_routing_events"], 21)
+        self.assertEqual(summary["compaction_events"], 10)
+        self.assertEqual(summary["input_routing_events"], 22)
         self.assertEqual(summary["comparable_compaction_events"], 0)
 
     def test_post_compaction_interaction_reset_marks_trend_regressed(self):
         summary = summarize_observations(self.document)
 
         self.assertEqual(summary["compaction_recovery_rate"], 1.0)
-        self.assertEqual(summary["continuation_recovery_rate"], 10 / 12)
+        self.assertEqual(summary["continuation_recovery_rate"], 14 / 16)
         self.assertEqual(summary["already_acknowledged_items_replayed"], 2)
         self.assertEqual(summary["first_post_restore_action_mismatches"], 2)
         self.assertEqual(summary["trend_status"], "regressed")
@@ -77,6 +77,17 @@ class DogfoodObservationTests(unittest.TestCase):
             item
             for item in self.document["observations"]
             if item["observation_id"] == "dogfood-compaction-009"
+        )
+
+        self.assertTrue(latest["metrics"]["first_post_restore_action_matched"])
+        self.assertEqual(latest["metrics"]["already_acknowledged_items_replayed"], 0)
+        self.assertEqual(latest["metrics"]["continuation_fields_recovered"], 4)
+
+    def test_latest_compaction_resumes_the_exact_governance_red_test(self):
+        latest = next(
+            item
+            for item in self.document["observations"]
+            if item["observation_id"] == "dogfood-compaction-010"
         )
 
         self.assertTrue(latest["metrics"]["first_post_restore_action_matched"])

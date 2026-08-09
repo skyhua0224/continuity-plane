@@ -1432,3 +1432,118 @@ observations:
       tests_failed: 0
       checks_failed: 0
       scope_violations: 0
+
+  - observation_id: dogfood-compaction-010
+    event_type: compaction
+    observed_at: "2026-08-10T01:32:00+08:00"
+    authority: system-handoff-and-current-repository
+    active_leaf_before: M2-08
+    active_leaf_after: M2-08
+    metrics:
+      critical_fields_total: 8
+      critical_fields_recovered: 8
+      stale_decisions_revived: 0
+      unauthorized_task_switches: 0
+      comparable_context_input_bytes: null
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      restore_latency_ms: null
+      provider_compaction_signal_available: true
+      continuation_fields_total: 4
+      continuation_fields_recovered: 4
+      already_acknowledged_items_replayed: 0
+      first_post_restore_action_matched: true
+    evidence:
+      - handoff preserved branch work/M2-03/postgres-cas, active leaf M2-08, revision 20, the uncommitted portability contract test, and the exact next red-test action
+      - first repository action ran the exact capability-profile and self-dogfood governance red test before changing documents
+      - previously answered PostgreSQL vector, Windows deployment, and collaboration questions were not replayed
+      - current success does not clear the dogfood-compaction-007 and dogfood-compaction-008 veto failures
+
+  - observation_id: dogfood-input-routing-022
+    event_type: input-routing
+    observed_at: "2026-08-10T01:36:00+08:00"
+    authority: explicit-user-unattended-self-dogfood-and-multi-agent-requirement
+    active_leaf_before: M2-08
+    active_leaf_after: M2-08
+    input_kind: correction
+    route: correction-write-protect
+    candidate_id: correction-unattended-self-dogfood-001
+    candidate_summary: Keep M2-08 active while unattended orchestration advances all automatable required work; route non-blocking input without task displacement, use bounded multi-Agent delegation, record every visible compaction/interruption/Idea, and retain Yundi339 Docmost as M9 reference evidence.
+    candidate_summary_sha256: 46bca6b2762afd10e83f390fd9c559529b9132a3ed4ac85eb590961b2557706b
+    metrics:
+      messages_observed: 1
+      ideas_captured: 0
+      unauthorized_task_switches: 0
+      return_point_preserved: true
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      provider_compaction_signal_available: true
+      tool_interruption_observed: true
+
+  - observation_id: dogfood-skill-load-011
+    event_type: skill-load
+    observed_at: "2026-08-10T01:37:31+08:00"
+    authority: task-trigger-current-path-digest-and-visible-handoff
+    active_leaf_before: M2-08
+    active_leaf_after: M2-08
+    metrics:
+      body_load_count: 4
+      total_body_bytes: 45333
+      repeated_body_load_bytes: 45333
+      skills:
+        - skill_id: session-memory-hygiene
+          content_sha256: e7814b9010db3d5dd83d978f93d80515cee2f5388761f5fb20f7a406fdc856f0
+          body_bytes: 1361
+          body_lines: 34
+          reason: visible compaction continuation verification
+        - skill_id: test-driven-development
+          content_sha256: 7dee67b4af6bdccc7a914ca34533184d64592d0f5b23aeae631538168db14994
+          body_bytes: 9867
+          body_lines: 371
+          reason: revision 21 and M2-08 contract tests
+        - skill_id: human-first-writing
+          content_sha256: 0f3754759a185b43e6932864703cca58543a8ef58ed80a57469f680f0eaf5832
+          body_bytes: 15988
+          body_lines: 427
+          reason: active response and normative-document writing contract
+        - skill_id: git
+          content_sha256: c13013bb735a6ca5e13596c126136bffa18fdba6d573dc781e0e3978ebb24b17
+          body_bytes: 18117
+          body_lines: 386
+          reason: atomic commit, push, CI and merge contract
+
+  - observation_id: dogfood-plan-revision-017
+    event_type: plan-revision
+    observed_at: "2026-08-10T01:42:45+08:00"
+    authority: explicit-user-self-first-unattended-multi-agent-and-capability-profile-requirement
+    authorized: true
+    active_leaf_before: M2-08
+    active_leaf_after: M2-08
+    metrics:
+      master_revision_before: 20
+      master_revision_after: 21
+      unauthorized_goal_changes: 0
+      project_mission_changed: false
+      return_point_preserved: true
+      tasks_added: [M3-08, M8-09, M10-00]
+      tasks_refined: [M2-03, M2-07, M2-08, M5-07, M8-02, M8-06, M10-01]
+
+  - observation_id: dogfood-verification-015
+    event_type: verification
+    observed_at: "2026-08-10T01:46:26+08:00"
+    authority: local-repository-postgresql-and-provider-host-shadow-evidence
+    active_leaf_before: M2-08
+    active_leaf_after: M2-08
+    evidence_refs:
+      - unittest:discover-tests-177-revision-21-2026-08-10
+      - integration:postgresql-tests-11-revision-21-2026-08-10
+      - check:python-compile-revision-21-2026-08-10
+      - check:repository-verifier-revision-21-2026-08-10
+      - reference:yundi339-docmost-dcf85124-tree-manifest
+      - shadow-agent:docmost-reference-checkout-without-state-claim
+      - shadow-agent:m2-08-and-autonomy-contract-review-without-state-claim
+    metrics:
+      tests_run: 177
+      tests_failed: 0
+      checks_failed: 0
+      scope_violations: 0

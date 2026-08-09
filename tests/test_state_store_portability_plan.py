@@ -70,6 +70,12 @@ class StateStorePortabilityPlanTests(unittest.TestCase):
         self.assertIn("✅", m203)
         self.assertIn("🟡", m208)
 
+    def test_profiles_are_not_user_editions_and_self_dogfood_is_primary(self):
+        self.assertIn("capability profiles are not user editions", self.target_state)
+        self.assertIn("cohesive monolith", self.target_state)
+        self.assertIn("| M10-00 |", self.master)
+        self.assertIn("Context Control Plane self-dogfood", self.master)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -6,7 +6,7 @@
 
 ```yaml
 document_id: context.state-store-portability-assessment
-document_revision: 1
+document_revision: 2
 change_type: decision
 authority_ref: explicit-user-local-first-and-forge-collaboration-requirement
 supersedes: null
@@ -16,9 +16,9 @@ next_review: M2-08
 
 ## Decision
 
-The product default is `local-embedded`: SQLite and a local artifact store run inside the control-plane application with zero user-managed database services. `forge-coordinated` reuses an existing GitHub, Gitea, or GitLab remote for project-level Work, claim, branch, review, and CI projections. PostgreSQL remains an optional shared backend for teams that require online multi-writer transactions, leases, tenant isolation, audit, or durable long workflows.
+The product default is `local-embedded`: SQLite and a local artifact store run inside the control-plane application with zero user-managed database services. `forge-coordinated` reuses an existing GitHub, Gitea, or GitLab remote for project-level Work, claim, branch, review, and CI projections. PostgreSQL remains an optional shared backend when an installation requires online multi-writer transactions, leases, tenant isolation, audit, or durable long workflows.
 
-Docmost, Temporal, PostgreSQL, and OTel are opt-in modules. Core recovery, checkpoint, Skill resolution, local retrieval, personal state, and generated project projections cannot depend on those modules. A Windows, macOS, or Linux user must be able to install the default profile without Docker, a database installer, administrator access, or network configuration.
+Capability profiles are runtime configurations rather than user editions. A single developer or a team may enable any profile according to the guarantees and operating cost it needs. Context Control Plane remains one cohesive product with one installation and lifecycle entry point; Docmost, Temporal, PostgreSQL, and OTel are opt-in capabilities within that product. Core recovery, checkpoint, Skill resolution, local retrieval, personal state, and generated project projections cannot depend on those capabilities. A Windows, macOS, or Linux user must be able to install the default profile without Docker, a database installer, administrator access, or network configuration.
 
 ## Capability Boundary
 
@@ -27,7 +27,7 @@ Docmost, Temporal, PostgreSQL, and OTel are opt-in modules. Core recovery, check
 | `local-embedded` | none | local transaction, revision/CAS, append-only event chain, checkpoint recovery | no cross-device visibility or unique claim |
 | `forge-coordinated` | existing forge | conflict visibility for published Issue/PR/branch/assignee state; explicit remote ref expectation | offline and unpublished work can conflict after synchronization |
 | `local-coordinator` | member-hosted State MCP | online shared claim/CAS with SQLite and no separate database service | coordinator availability bounds shared authority |
-| `shared-strong` | State MCP service | PostgreSQL transaction/CAS, multi-writer lease, tenant and audit extensions | deployment and operations are team responsibilities |
+| `shared-strong` | State MCP service | PostgreSQL transaction/CAS, multi-writer lease, tenant and audit extensions | the selected operator owns deployment and operations |
 
 Two disconnected collaborators have no communication channel from which either side can learn the other's unpublished work. The control plane records this as a capability limitation. It does not issue a unique claim or E8 strong-consistency receipt for that interval. Reconnection converts divergent work into an explicit conflict, review, or promotion flow.
 

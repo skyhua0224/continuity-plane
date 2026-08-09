@@ -3,7 +3,7 @@
 版本：1  
 日期：2026-08-09  
 状态：current architecture contract  
-governance authority：`MASTER.md` revision 20
+governance authority：`MASTER.md` revision 21
 
 ## 三文档默认投影
 
@@ -27,8 +27,8 @@ Context Control Plane 安装到个人项目、协作项目或公开大型项目�
 | `context.events` | `hash-chained-event-log` | 追加式事件、revision、supersedes、replay high watermark | StateStore SPI + artifact manifest | M2 |
 | `context.work-coordination` | `shared-work-ledger` | 项目级 active work set、claim/lease、repo/path/symbol/capability/effect ownership、重复工作检测和冲突恢复；支持 modular、monolith 与 mixed topology | local State MCP + Git forge adapter；optional shared service | M2/M3/M8 |
 | `context.forge-coordination` | `forge-work-adapter` | 将 Issue、PR、branch、assignee、review 和 CI 映射为共享 Work/claim/evidence projection；声明离线与未发布工作的保证缺口 | GitHub / Gitea / GitLab adapters | M8 |
-| `context.task-routing` | `sticky-task-router` | 识别 continue、child、interrupt、switch、correction；副作用受 active/claim/path-owner 一致性门控制 | deterministic rules + bounded classifier | M3 |
-| `context.workflow` | `durable-execution` | checkpoint、重试、幂等、lease、长流程恢复 | DBOS；团队阶段 Temporal | M8 |
+| `context.task-routing` | `sticky-task-router` | 识别 continue、child、interrupt、switch、correction、discussion 和 blocking decision；选择 next-ready required leaf；副作用受 active/claim/path-owner 一致性门控制 | deterministic rules + bounded classifier | M3 |
+| `context.workflow` | `durable-execution` | checkpoint、重试、幂等、lease、unattended required-work loop、multi-Agent fan-out/fan-in 和长流程恢复 | DBOS；Temporal 按需启用 | M8 |
 | `context.skill-resolution` | `versioned-skill-registry` | Skill manifest、rule IDs、hash、依赖、冲突、失效和 quarantine | Git + selected StateStore metadata | M4 |
 | `context.composition` | `execution-packet-composer` | 组装当前任务、当前 Skill、当前 evidence 与 Continuation Cursor 的有界执行包 | State MCP + artifact store | M5 |
 | `context.replay` | `checkpoint-canary-validator` | 压缩、切任务、换模型、崩溃后的确定性恢复门 | deterministic validator | M1/M5 |
@@ -39,17 +39,21 @@ Context Control Plane 安装到个人项目、协作项目或公开大型项目�
 | `context.adaptation` | `project-adaptation-loop` | 从已验证运行和明确纠正生成可审批、可回滚的 profile candidate | Typed State、OTel、A/B harness | M8/M10 |
 | `context.review` | `independent-reviewer` | 冲突检查、阶段 handoff 和承重证据复核；权威提交权限为 0 | 本地或外置模型 | M6/M7 |
 | `context.verification` | `continuous-integration-verifier` | push/PR 执行 test、compile、schema、projection、privacy、benchmark 和 secret gates；权威状态写权限为 0 | local verifier + Gitea Actions + Gitleaks | M0/M7/M8 |
-| `context.observability` | `context-otel` | token、Skill 装载、检索、恢复、误切、返工和质量指标 | OTel Collector + 可替换后端 | M8 |
+| `context.observability` | `context-otel` | token、Skill 装载、检索、恢复、输入路由、Agent dispatch/handoff、误切、返工和质量指标 | OTel Collector + 可替换后端 | M8 |
 | `context.presentation` | `docmost-project-graph` | 可选 Project Graph、Decision Timeline、Evidence Matrix、Context Health 和受控审批 | optional Docmost + State MCP provider；Obsidian 只读生成 | M9 |
 
 ## Runtime Capability Profiles
+
+Runtime capability profiles are not user editions. Profile 只声明运行时保证、资源需求和失效边界；单人、多人、私有项目和公开项目均可启用任意 profile。
+
+Context Control Plane 作为一个 cohesive monolith 交付，使用统一安装、升级、迁移和卸载入口。State、Event、Checkpoint、Skill、检索、验证、adapter 与可选控制台属于同一产品的组合能力；启用 PostgreSQL、Docmost、Temporal 或 OTel 不会形成独立产品或用户等级。
 
 | Profile | 默认状态 | 状态与协作位置 | 新增用户管理服务 | 一致性与权限边界 |
 |---|---|---|---:|---|
 | `local-embedded` | 默认 | 本机 SQLite + 本地 artifact store | 0 | 单机 revision/CAS；本机多 Agent 经同一 local State MCP；无跨设备唯一 claim |
 | `forge-coordinated` | 检测到 remote 后 proposal | 每人本机 SQLite；GitHub/Gitea/GitLab 提供共享 Work projection | 0 | 对已发布 Issue/PR/branch/assignee 状态执行 expected revision/ref 检查；offline 与 unpublished Work 只在同步后显式冲突 |
 | `local-coordinator` | opt-in | 一台成员设备运行 State MCP + SQLite，其他客户端连接 | 1 个控制面进程，数据库服务 0 | coordinator 可达期间提供共享 CAS/claim；失联客户端降级为 candidate/read-only |
-| `shared-strong` | opt-in | State MCP + PostgreSQL；Temporal、Docmost、OTel 按需启用 | 由团队运维 | 多 writer transaction/CAS、lease、tenant、audit 和长期 workflow |
+| `shared-strong` | opt-in | State MCP + PostgreSQL；Temporal、Docmost、OTel 按需启用 | 由运行者管理 | 多 writer transaction/CAS、lease、tenant、audit 和长期 workflow |
 
 Profile capability manifest 必须声明 `shared_authority`、`offline_write`、`unique_claim`、`multi_writer`、`lease_clock`、`artifact_scope`、`expected_revision`、`migration_source` 和 `migration_target`。调用方只能使用 manifest 明确提供的保证。安装器默认选择 `local-embedded`；发现 Git remote 只生成 `forge-coordinated` proposal，不静默上传本地 checkpoint、Skill、个人偏好或历史记忆。
 
