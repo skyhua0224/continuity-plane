@@ -30,12 +30,12 @@ M2-04 提供默认零服务的本地 content-addressed artifact store。`Artifac
 | bounded range | offset/length 边界、最大范围和零长度读取通过 |
 | integrity faults | 缺失、截断、bit flip、对象 symlink、断开的 root/shard symlink 和部分写入均返回 typed error |
 | external services | 0 |
-| full repository tests | 302 passed，27 个 PostgreSQL tests 因当前进程无 DSN 跳过 |
+| full repository tests | 303 passed，27 个 PostgreSQL tests 因当前进程无 DSN 跳过 |
 | Python compile / repository verifier | 通过 |
 
 ## 量化结果
 
-[`m2-04-artifact-store-results.yaml`](../../experiments/state/m2-04-artifact-store-results.yaml) 是由 [`tools/run_artifact_benchmark.py`](../../tools/run_artifact_benchmark.py) 生成的本地 receipt。基准使用 1 MiB 对象和 8 KiB 区间：完整读取返回 1,048,576 bytes，bounded read 返回 8,192 bytes，进入上下文的输出 bytes 下降 `99.2188%`；完整对象和区间输出的 SHA-256 均通过校验。`read_range` 为检测对象 bit flip 仍扫描完整 1 MiB，当前结果不代表底层存储 I/O 下降。该结果描述当前 Linux 主机，不代表其他设备的性能。
+[`m2-04-artifact-store-results.yaml`](../../experiments/state/m2-04-artifact-store-results.yaml) 是由 [`tools/run_artifact_benchmark.py`](../../tools/run_artifact_benchmark.py) 生成的本地 receipt。基准使用 1 MiB 对象和 8 KiB 区间：完整读取返回 1,048,576 bytes，bounded read 返回 8,192 bytes，receipt 字段 `context_bytes_reduction_percent` 为 `99.2188`；完整对象和区间输出的 SHA-256 均通过校验。`read_range` 为检测对象 bit flip 仍扫描完整 1 MiB，当前结果不代表底层存储 I/O 下降。该结果描述当前 Linux 主机，不代表其他设备的性能。
 
 基准复验命令：
 

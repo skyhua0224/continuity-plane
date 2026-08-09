@@ -1,6 +1,6 @@
 # Context Control Plane MASTER
 
-版本：revision 24  
+版本：revision 25  
 日期：2026-08-10  
 状态：研究与 shadow pilot 准备阶段  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
@@ -248,8 +248,8 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | M2-01 | ✅ | 定义 Project/Work/Claim/Idea/Decision/Constraint/Evidence/Blocker/Effect schema | 项目级 active work、共享 Work Ledger 和个人派生视图变成类型合同 | 无损恢复并阻止重复工作 | M0-07/M1-04/M1-05 | strict schema 注册；4/4 solo/multi-worker、active/completed overlap、claim/effect scope 和 supersedes fixture canonical round-trip；12/12 定向测试通过 |
 | M2-02 | ✅ | 定义 append-only Event、supersedes 和 reducer | 历史可 replay | 旧决定复活率为 0 | M2-01 | strict Event schema 注册；1/1 versioned replay fixture 与 snapshot byte-equivalent；14/14 定向测试通过；tamper、gap、断链、未知 supersedes、终态 Work/Decision 复活均被拒绝 |
 | M2-03 | ✅ | PostgreSQL optional shared backend 的 revision/CAS relational state store | 并发冲突显式返回 | 提供按需启用的强一致多 writer 能力 | M2-02 | 11/11 定向测试；8/8 显式并发 conflict；silent overwrite 0；run 1039 通过；4 Event shadow replay 与数据库读回一致；默认安装依赖 PostgreSQL 为 0 |
-| M2-04 | 🟡 | content-addressed artifact store | 大日志和 diff 通过 artifact ref 引用 | 降 token 并保存证据 | M2-01 | checksum、range read、损坏检测通过 |
-| M2-05 | ⏳ | State MCP read/commit/claim/effect API | 各 agent/provider 使用统一协议 | provider-neutral | M2-08/M2-09 | contract tests + auth boundary tests；SQLite 与 PostgreSQL adapter 行为一致 |
+| M2-04 | ✅ | content-addressed artifact store | 大日志和 diff 通过 artifact ref 引用 | 降 token 并保存证据 | M2-01 | ArtifactRef strict schema；20/20 定向测试；streamed SHA-256、atomic publication、并发去重、bounded range 和损坏检测通过；1 MiB 到 8 KiB context output bytes 下降 99.2188%；默认外部服务 0 |
+| M2-05 | 🟡 | State MCP read/commit/claim/effect API | 各 agent/provider 使用统一协议 | provider-neutral | M2-08/M2-09 | contract tests + auth boundary tests；SQLite 与 PostgreSQL adapter 行为一致 |
 | M2-06 | ⏳ | immutable checkpoint 与 canary manifest | 压缩和交接可验证 | 建立确定性恢复 | M2-04/M2-05 | 关键字段恢复 100% |
 | M2-07 | ⏳ | Project Profile、Project Charter、WorkSource 与 ProjectAdaptation typed schema | 项目接入、方向探索、task source、repository topology、Work obligation 和自适应候选可版本化、可回放 | 支持个人/团队、模块化/非模块化项目并降低重复读取 | M2-01/M0-09 | obligation `required/conditional/optional`、condition ref、authority、automation class、三个独立配置轴、modular/monolith/mixed scope、proposal、hash、expiry、rollback 和 approval round-trip 100% |
 | M2-08 | ✅ | backend-neutral StateStore SPI 与 capability manifest | core 根据一致性、共享、离线和资源能力选择 adapter | 去除 PostgreSQL 对普通路径的隐式依赖 | M2-02/M2-03 | authoritative/projection Protocol 与 runtime 一致；schema/document/runtime round-trip 等价；通用 conformance 覆盖 defensive copy、unknown project、replay mismatch、duplicate identity、sequence/hash-head、second Event 和 atomic rollback；独立审查无 High/Medium finding |
@@ -424,7 +424,7 @@ E1、E2、E4、E6、E8、E9 具有 veto 权限；平均得分、token 降幅和�
 
 ## 10. 当前执行路由
 
-M2-04 是当前 active leaf。M2-09 已交付默认 SQLite embedded backend；Linux 上的 WAL、`BEGIN IMMEDIATE`、CAS、append-only、崩溃恢复、损坏检测和零服务运行已通过，Windows 与 macOS 原生 runner 证据仍为 collaborator-required。1,000 Event 流暴露的累计 commit O(N²) 限制由 M2-06/M5 的增量 verified-head 路径处理。验收见 [`m2-09-sqlite-state-store-acceptance-2026-08-10.md`](docs/migrations/m2-09-sqlite-state-store-acceptance-2026-08-10.md)。M2-04 建立 streamed SHA-256、immutable atomic publication、bounded range read 和 integrity detection 的本地 content-addressed artifact store。
+M2-05 是当前 active leaf。M2-04 已交付默认零服务的本地 content-addressed artifact store；ArtifactRef strict schema、streamed SHA-256、immutable atomic publication、并发去重、bounded range、损坏检测和 64 MiB benchmark 输入上限已通过，1 MiB 对象的 8 KiB range 将 context output bytes 降低 99.2188%。验收见 [`m2-04-artifact-store-acceptance-2026-08-10.md`](docs/migrations/m2-04-artifact-store-acceptance-2026-08-10.md)。M2-05 从 State MCP contract、authorization、expected revision/CAS 和 validator boundary 的失败测试开始。
 
 M1-05 已完成 16 个 E0-E9 contract fixture，验收见 `docs/migrations/m1-05-fault-coverage-acceptance-2026-08-09.md`。Runtime fault evidence 仍由 M2/M5/M8 提供。M1-04 已完成 40 个 fixture admission，验收见 `docs/migrations/m1-04-replay-fixture-acceptance-2026-08-09.md`。受控 archive 继续采用流式、区间化读取；原始 JSONL 和 source namespace key material 禁止进入 Git。M1-06 archive retention/export/delete 的离线验收见 `docs/migrations/m1-06-archive-governance-acceptance-2026-08-09.md`。
 

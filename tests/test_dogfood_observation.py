@@ -52,14 +52,14 @@ class DogfoodObservationTests(unittest.TestCase):
     def test_summary_accounts_for_loaded_skill_bodies(self):
         summary = summarize_observations(self.document)
 
-        self.assertEqual(summary["skill_body_load_count"], 49)
-        self.assertEqual(summary["skill_body_load_bytes"], 547777)
-        self.assertEqual(summary["repeated_skill_body_load_bytes"], 368356)
+        self.assertEqual(summary["skill_body_load_count"], 54)
+        self.assertEqual(summary["skill_body_load_bytes"], 597360)
+        self.assertEqual(summary["repeated_skill_body_load_bytes"], 417939)
 
     def test_visible_compactions_remain_uncomparable_for_cost_metrics(self):
         summary = summarize_observations(self.document)
 
-        self.assertEqual(summary["compaction_events"], 14)
+        self.assertEqual(summary["compaction_events"], 15)
         self.assertEqual(summary["input_routing_events"], 22)
         self.assertEqual(summary["comparable_compaction_events"], 0)
 
@@ -67,7 +67,7 @@ class DogfoodObservationTests(unittest.TestCase):
         summary = summarize_observations(self.document)
 
         self.assertEqual(summary["compaction_recovery_rate"], 1.0)
-        self.assertEqual(summary["continuation_recovery_rate"], 30 / 32)
+        self.assertEqual(summary["continuation_recovery_rate"], 34 / 36)
         self.assertEqual(summary["already_acknowledged_items_replayed"], 2)
         self.assertEqual(summary["first_post_restore_action_mismatches"], 2)
         self.assertEqual(summary["trend_status"], "regressed")
@@ -147,6 +147,27 @@ class DogfoodObservationTests(unittest.TestCase):
         self.assertTrue(latest["metrics"]["first_post_restore_action_matched"])
         self.assertEqual(latest["metrics"]["already_acknowledged_items_replayed"], 0)
         self.assertEqual(latest["metrics"]["continuation_fields_recovered"], 4)
+
+    def test_m2_04_compaction_resumes_governance_red_test_and_rejects_stale_handoff(self):
+        latest = next(
+            (
+                item
+                for item in self.document["observations"]
+                if item["observation_id"] == "dogfood-compaction-015"
+            ),
+            None,
+        )
+
+        self.assertIsNotNone(latest)
+        self.assertEqual(latest["active_leaf_before"], "M2-04")
+        self.assertEqual(latest["active_leaf_after"], "M2-04")
+        self.assertTrue(latest["metrics"]["first_post_restore_action_matched"])
+        self.assertEqual(latest["metrics"]["already_acknowledged_items_replayed"], 0)
+        self.assertEqual(latest["metrics"]["continuation_fields_recovered"], 4)
+        self.assertIn(
+            "stale multi-Agent handoff",
+            "\n".join(latest["evidence"]),
+        )
 
     def test_loaded_database_skill_digest_drift_is_quarantined(self):
         skill_load = next(
