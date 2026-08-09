@@ -71,7 +71,7 @@ schemas:
     current_wire_version: context.dogfood-observation/v1alpha1
     supported_wire_versions: [context.dogfood-observation/v1alpha1]
     artifact_path: experiments/dogfood/observations-2026-08-09.yaml
-    content_sha256: b3f85f3b473386c3d21ec7417445c51bd9f342f40ff7e0bdf5bb73502e20c842
+    content_sha256: e21698cd4f5ffcbbec4ec9e46b5c584a0e193e57b61877844382c4da397aa5d6
     status: current
     compatibility_mode: profile-contract
     migrations: []

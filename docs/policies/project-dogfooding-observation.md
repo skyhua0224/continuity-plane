@@ -50,7 +50,7 @@ M2/M8 上线前，脱敏观察保存在 `experiments/dogfood/`，当前 active �
 
 ## 当前基线
 
-结构化样本位于 [`experiments/dogfood/observations-2026-08-09.yaml`](../../experiments/dogfood/observations-2026-08-09.yaml)。当前记录五次 checkpoint/摘要恢复、十四次 input routing、十六个 Skill body 装载、十次用户授权的 MASTER 演进和 repository verification。关键字段恢复为 100%，stale decision、未授权 task switch、未授权 goal change、verification failure 和 scope violation 均为 0；Skill body 累计输入为 185,560 bytes，其中压缩恢复后的重复 body 装载为 73,910 bytes。五次 compaction 均缺少可比较的 provider context/token/latency 数据，趋势状态保持 `baseline-insufficient-samples`。第 4 次恢复检测到 `STATUS.md` 落后于已生成 fixture 和 benchmark 的仓库证据，该事件作为 M0-10 freshness validator 的真实反例，不计为恢复字段丢失。
+结构化样本位于 [`experiments/dogfood/observations-2026-08-09.yaml`](../../experiments/dogfood/observations-2026-08-09.yaml)。当前记录五次 checkpoint/摘要恢复、十四次 input routing、十六个 Skill body 装载、十一次用户授权的 MASTER 演进和 repository verification。关键字段恢复为 100%，stale decision、未授权 task switch、未授权 goal change、verification failure 和 scope violation 均为 0；Skill body 累计输入为 185,560 bytes，其中压缩恢复后的重复 body 装载为 73,910 bytes。五次 compaction 均缺少可比较的 provider context/token/latency 数据，趋势状态保持 `baseline-insufficient-samples`。第 4 次恢复检测到 `STATUS.md` 落后于已生成 fixture 和 benchmark 的仓库证据，该事件作为 M0-10 freshness validator 的真实反例，不计为恢复字段丢失。
 
 ## 验收门
 
