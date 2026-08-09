@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m2-08/state-store-capabilities.schema.json",
+  "title": "State Store Capability Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "adapter_id",
+    "adapter_version",
+    "authority_mode",
+    "operations",
+    "shared_authority",
+    "offline_write",
+    "unique_claim",
+    "multi_writer",
+    "lease_clock",
+    "artifact_scope",
+    "expected_revision",
+    "migration_source",
+    "migration_target"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "context.state-store-capabilities/v1alpha1"
+    },
+    "adapter_id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9]*(?:[._-][a-z0-9]+)*$"
+    },
+    "adapter_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?$"
+    },
+    "authority_mode": {
+      "enum": ["local", "shared", "projection"]
+    },
+    "operations": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": ["create_project", "read_project", "read_events", "commit_event"]
+      }
+    },
+    "shared_authority": {"type": "boolean"},
+    "offline_write": {"type": "boolean"},
+    "unique_claim": {"type": "boolean"},
+    "multi_writer": {"type": "boolean"},
+    "lease_clock": {
+      "enum": ["none", "process", "backend"]
+    },
+    "artifact_scope": {
+      "enum": ["none", "local", "shared"]
+    },
+    "expected_revision": {"type": "boolean"},
+    "migration_source": {"type": "boolean"},
+    "migration_target": {"type": "boolean"}
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"authority_mode": {"const": "shared"}}
+      },
+      "then": {
+        "properties": {"shared_authority": {"const": true}}
+      },
+      "else": {
+        "properties": {"shared_authority": {"const": false}}
+      }
+    },
+    {
+      "if": {
+        "properties": {"authority_mode": {"const": "projection"}}
+      },
+      "then": {
+        "properties": {
+          "operations": {
+            "not": {"contains": {"const": "commit_event"}}
+          },
+          "multi_writer": {"const": false},
+          "unique_claim": {"const": false}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"unique_claim": {"const": true}}
+      },
+      "then": {
+        "properties": {
+          "shared_authority": {"const": true},
+          "lease_clock": {"enum": ["process", "backend"]}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operations": {"contains": {"const": "commit_event"}}
+        }
+      },
+      "then": {
+        "properties": {"expected_revision": {"const": true}}
+      }
+    },
+    {
+      "if": {
+        "properties": {"multi_writer": {"const": true}}
+      },
+      "then": {
+        "properties": {"expected_revision": {"const": true}}
+      }
+    }
+  ]
+}

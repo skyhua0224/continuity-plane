@@ -81,7 +81,7 @@ schemas:
     current_wire_version: context.dogfood-observation/v1alpha1
     supported_wire_versions: [context.dogfood-observation/v1alpha1]
     artifact_path: experiments/dogfood/observations-2026-08-09.yaml
-    content_sha256: f21d5a1963bb7abd3c801ebba4a33dd948d654d373f9d0c9f9287e898e939319
+    content_sha256: 75ecea779a20f282ed75097b508c035eea884d53d073d1f8dabdce1f0a9a021e
     status: current
     compatibility_mode: profile-contract
     migrations: []
@@ -102,6 +102,16 @@ schemas:
     supported_wire_versions: [context.state-event/v1alpha1]
     artifact_path: schemas/m2-02/state-event.schema.json
     content_sha256: 6a6f968e8d1049aa0c016418d700969840722f5e27fa0ac85d0a7d2345ce511c
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.state-store-capabilities
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.state-store-capabilities/v1alpha1
+    supported_wire_versions: [context.state-store-capabilities/v1alpha1]
+    artifact_path: schemas/m2-08/state-store-capabilities.schema.json
+    content_sha256: 4a618077febbdb91c6f38def657ad65bd883a32df37e701f653900a8b26fff6d
     status: current
     compatibility_mode: strict-versioned
     migrations: []

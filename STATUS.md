@@ -1,6 +1,6 @@
 # Context Control Plane Status
 
-版本：revision 21  
+版本：revision 23  
 日期：2026-08-10  
 canonical plan：`MASTER.md`
 
@@ -9,8 +9,8 @@ canonical plan：`MASTER.md`
 | 字段 | 值 |
 |---|---|
 | 当前 Campaign | M2 Typed State、Event 与 Checkpoint |
-| active work | M2-08：backend-neutral StateStore SPI 与 capability manifest（🟡） |
-| next action | 先写未声明 capability 的 adapter 被拒绝、PostgreSQL adapter 通过通用 create/read/commit/events conformance 的失败测试 |
+| active work | M2-09：SQLite embedded local state/event/checkpoint backend（🟡） |
+| next action | 先写 SQLite manifest、WAL/`BEGIN IMMEDIATE`、create/read/commit、跨连接 CAS 和 append-only 的失败测试，再复用 StateStore conformance harness |
 | hard blocker | 无；State MCP 与 runtime effect authorization 分属 M2-05/M8 |
 | repository mode | research / shadow pilot |
 | production state | planned；M2 阶段实施 |
@@ -29,7 +29,8 @@ canonical plan：`MASTER.md`
 | M2-01 typed state | 9 类核心对象 strict schema 与 semantic validator 完成；4/4 canonical round-trip fixture、12/12 定向测试、schema registry/hash gate 通过 |
 | M2-02 state events | strict Event schema、连续 sequence/revision、SHA-256 chain、supersedes 和 deterministic reducer 完成；1/1 versioned replay fixture byte-equivalent；14/14 定向测试通过；验收见 `docs/migrations/m2-02-state-event-acceptance-2026-08-10.md` |
 | M2-03 PostgreSQL backend | optional shared backend 11/11 定向测试；8/8 并发冲突显式、silent overwrite 0；Gitea run 1039 两个 jobs 通过；4 Event shadow 读回与 replay 一致；验收见 `docs/migrations/m2-03-postgresql-state-store-acceptance-2026-08-10.md` |
-| State portability | capability profile 只声明运行保证，不代表用户等级；统一产品默认 `local-embedded`，任何单人或团队均可启用 `forge-coordinated`、`local-coordinator` 或 `shared-strong`；SQLite/SPI/forge adapter 实现待 M2-08/M2-09/M8-08 |
+| M2-08 StateStore SPI | 52/52 capability 与双 adapter conformance 通过；M2-02/M2-03/M2-08 77/77；第三轮独立审查 High 0、Medium 0；验收见 `docs/migrations/m2-08-state-store-spi-acceptance-2026-08-10.md` |
+| State portability | capability profile 只声明运行保证，不代表用户等级；统一产品默认 `local-embedded`，任何单人或团队均可启用 `forge-coordinated`、`local-coordinator` 或 `shared-strong`；StateStore SPI 已验收，SQLite 实现进入 M2-09，forge adapter 待 M8-08 |
 | Self-dogfood release order | Context Control Plane 自身是 M10-00 首个完整产品试点；AlkaidLab、Foundation Sunshine 和 ProjectCompute 等外部试点在其后执行 |
 | M1-06 | retention、deterministic export/import、tombstone 和 deletion proof 离线验收完成；production adapter 待 M2/M8/M10 |
 | M0-07 | schema registry/hash、semver transition、migration/replay/rollback 和 unknown-version quarantine 离线验收完成 |
@@ -44,9 +45,9 @@ canonical plan：`MASTER.md`
 | Git collaboration | branch/commit/PR/merge 和 staged admission 合同已落盘；公开 Gitea remote 为 `skyhua/context-control-plane`，默认分支 `main`；repo-local identity 已与托管账号核验 |
 | Continuous integration | 独立 Verifier 权威状态写权限为 0；M2-03 runs 1037/1038 暴露 service lifecycle 与 job-network 故障，run 1039 的两个 jobs 全绿；`main` 禁止 direct/force push、禁止 admin merge override，并要求 4 个 push/PR status contexts |
 | Reference catalog | 21 个候选来源；Codex/Claude harness 与 Yundi339 Docmost fork 均固定 URL、revision/tree hash、validity、refresh trigger 和 adoption status；active adoption 0 |
-| Project dogfood baseline | 10 次 compaction 的结构字段恢复 100%，Continuation Cursor 累计恢复 14/16；第 7/8 次首动作不匹配和已确认事项重播累计各 2 次，第 9/10 次精确续接，整体趋势仍为 regressed；22 次 input routing 无未授权切换；31 个 Skill body 共 366,178 bytes，其中重复 200,891 bytes；provider context/token/latency 不可见 |
+| Project dogfood baseline | 12 次 compaction 的结构字段恢复 100%，Continuation Cursor 累计恢复 22/24；第 7/8 次首动作不匹配和已确认事项重播累计各 2 次，第 9/10/11/12 次精确续接，整体趋势仍为 regressed；22 次 input routing 无未授权切换；41 个 Skill body 共 470,978 bytes，其中重复 291,557 bytes；provider context/token/latency 不可见 |
 | Autonomous progression | required/conditional/optional、bounded escalation、next-ready selector、unattended dispatcher 与 multi-Agent claim/lease/handoff 验收合同进入 revision 21；runtime 实现待 M2-M8；当前 provider-host multi-Agent 只计 shadow evidence |
-| Repository verification | 177/177 tests，包含 11 个 PostgreSQL integration tests；14 个 repository verifier 正反场景；M2-01 4/4 snapshot 与 M2-02 1/1 replay fixture byte-equivalent；Python compile、JSON/YAML、schema/projection、fixture privacy、documentation link/style、transcript admission 和 Gitea secret-scan checks 通过 |
+| Repository verification | 232/232 tests，包含 11 个 PostgreSQL regression tests 与 34 个 Memory/PostgreSQL StateStore conformance tests；15 个 repository verifier 正反场景；M2-01 4/4 snapshot 与 M2-02 1/1 replay fixture byte-equivalent；Python compile、JSON/YAML、schema/projection、fixture privacy、documentation link/style、transcript admission 和 Gitea secret-scan checks 通过 |
 | Governance authority | `MASTER.md` |
 | Operational router | `STATUS.md` |
 

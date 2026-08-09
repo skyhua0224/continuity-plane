@@ -1,6 +1,6 @@
 # Context Control Plane MASTER
 
-版本：revision 21  
+版本：revision 23  
 日期：2026-08-10  
 状态：研究与 shadow pilot 准备阶段  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
@@ -252,8 +252,8 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | M2-05 | ⏳ | State MCP read/commit/claim/effect API | 各 agent/provider 使用统一协议 | provider-neutral | M2-08/M2-09 | contract tests + auth boundary tests；SQLite 与 PostgreSQL adapter 行为一致 |
 | M2-06 | ⏳ | immutable checkpoint 与 canary manifest | 压缩和交接可验证 | 建立确定性恢复 | M2-04/M2-05 | 关键字段恢复 100% |
 | M2-07 | ⏳ | Project Profile、Project Charter、WorkSource 与 ProjectAdaptation typed schema | 项目接入、方向探索、task source、repository topology、Work obligation 和自适应候选可版本化、可回放 | 支持个人/团队、模块化/非模块化项目并降低重复读取 | M2-01/M0-09 | obligation `required/conditional/optional`、condition ref、authority、automation class、三个独立配置轴、modular/monolith/mixed scope、proposal、hash、expiry、rollback 和 approval round-trip 100% |
-| M2-08 | 🟡 | backend-neutral StateStore SPI 与 capability manifest | core 根据一致性、共享、离线和资源能力选择 adapter | 去除 PostgreSQL 对普通路径的隐式依赖 | M2-02/M2-03 | 通用 conformance harness 发布；PostgreSQL 与 test adapter 当前通过；M2-09/M8-08 分别复用同一 harness；未声明或矛盾 capability 的 adapter 在调用前被拒绝 |
-| M2-09 | ⏳ | SQLite embedded local state/event/checkpoint backend | 单人和本机多 Agent 获得零独立服务的持久恢复 | 建立默认轻量运行路径 | M2-08 | WAL/BEGIN IMMEDIATE、CAS、append-only、崩溃恢复和损坏检测通过；默认用户管理 daemon/Docker/PostgreSQL 均为 0；Windows/macOS/Linux fixture 通过 |
+| M2-08 | ✅ | backend-neutral StateStore SPI 与 capability manifest | core 根据一致性、共享、离线和资源能力选择 adapter | 去除 PostgreSQL 对普通路径的隐式依赖 | M2-02/M2-03 | authoritative/projection Protocol 与 runtime 一致；schema/document/runtime round-trip 等价；通用 conformance 覆盖 defensive copy、unknown project、replay mismatch、duplicate identity、sequence/hash-head、second Event 和 atomic rollback；独立审查无 High/Medium finding |
+| M2-09 | 🟡 | SQLite embedded local state/event/checkpoint backend | 单人和本机多 Agent 获得零独立服务的持久恢复 | 建立默认轻量运行路径 | M2-08 | WAL/BEGIN IMMEDIATE、CAS、append-only、崩溃恢复和损坏检测通过；默认用户管理 daemon/Docker/PostgreSQL 均为 0；Windows/macOS/Linux fixture 通过 |
 
 ### M3 任务图与智能切换
 
@@ -424,7 +424,7 @@ E1、E2、E4、E6、E8、E9 具有 veto 权限；平均得分、token 降幅和�
 
 ## 10. 当前执行路由
 
-M2-08 是当前 active leaf。M2-03 已将 M2-01 snapshot 与 M2-02 Event 合同映射到 optional shared PostgreSQL transaction 和 expected revision/CAS，验收见 [`m2-03-postgresql-state-store-acceptance-2026-08-10.md`](docs/migrations/m2-03-postgresql-state-store-acceptance-2026-08-10.md)。M2-08 定义 backend-neutral SPI 与 capability manifest，并让 PostgreSQL adapter 通过通用 conformance suite；M2-09 随后实现默认 SQLite embedded profile。Project Profile、Charter、WorkSource 和 topology adapter 继续由 M2-07 交付。
+M2-09 是当前 active leaf。M2-08 已发布 backend-neutral StateStore SPI、strict capability manifest 和 17 项通用 adapter conformance，Memory 与 PostgreSQL adapter 均通过；第三轮独立审查结果为 High 0、Medium 0，验收见 [`m2-08-state-store-spi-acceptance-2026-08-10.md`](docs/migrations/m2-08-state-store-spi-acceptance-2026-08-10.md)。M2-09 使用同一 SPI 与 conformance harness 实现默认 SQLite embedded backend，并验证 WAL、`BEGIN IMMEDIATE`、CAS、append-only、崩溃恢复、损坏检测和跨平台零服务运行。
 
 M1-05 已完成 16 个 E0-E9 contract fixture，验收见 `docs/migrations/m1-05-fault-coverage-acceptance-2026-08-09.md`。Runtime fault evidence 仍由 M2/M5/M8 提供。M1-04 已完成 40 个 fixture admission，验收见 `docs/migrations/m1-04-replay-fixture-acceptance-2026-08-09.md`。受控 archive 继续采用流式、区间化读取；原始 JSONL 和 source namespace key material 禁止进入 Git。M1-06 archive retention/export/delete 的离线验收见 `docs/migrations/m1-06-archive-governance-acceptance-2026-08-09.md`。
 
