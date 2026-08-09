@@ -1,5 +1,5 @@
 schema_version: context.dogfood-observation/v1alpha1
-generated_at: "2026-08-09T23:49:27+08:00"
+generated_at: "2026-08-10T00:30:00+08:00"
 status: baseline
 measurement_limitations:
   - provider token accounting was unavailable for this resumed segment
@@ -1162,6 +1162,115 @@ observations:
       - check:gitleaks-git-and-directory-zero-findings-2026-08-09
     metrics:
       tests_run: 138
+      tests_failed: 0
+      checks_failed: 0
+      scope_violations: 0
+
+  - observation_id: dogfood-compaction-008
+    event_type: compaction
+    observed_at: "2026-08-10T00:12:00+08:00"
+    authority: system-handoff-and-current-repository
+    active_leaf_before: M2-02
+    active_leaf_after: M2-02
+    metrics:
+      critical_fields_total: 8
+      critical_fields_recovered: 8
+      stale_decisions_revived: 0
+      unauthorized_task_switches: 0
+      comparable_context_input_bytes: null
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      restore_latency_ms: null
+      provider_compaction_signal_available: true
+      continuation_fields_total: 4
+      continuation_fields_recovered: 4
+      already_acknowledged_items_replayed: 1
+      first_post_restore_action_matched: false
+    evidence:
+      - checkpoint preserved the active M2-02 Work revival test, expected red failure, branch, and uncommitted files
+      - the first post-compaction response repeated the already answered M2-03 PostgreSQL boundary
+      - the response restarted Skill and repository context loading before continuing the pending test
+      - the pending Work revival test was eventually run and observed its expected failure
+      - structural continuation fields survived while interaction continuity failed
+
+  - observation_id: dogfood-skill-load-009
+    event_type: skill-load
+    observed_at: "2026-08-10T00:12:00+08:00"
+    authority: task-trigger-and-announced-skill-use
+    active_leaf_before: M2-02
+    active_leaf_after: M2-02
+    metrics:
+      body_load_count: 3
+      total_body_bytes: 27216
+      repeated_body_load_bytes: 27216
+      skills:
+        - skill_id: session-memory-hygiene
+          content_sha256: e7814b9010db3d5dd83d978f93d80515cee2f5388761f5fb20f7a406fdc856f0
+          body_bytes: 1361
+          body_lines: 34
+          reason: post-compaction current-evidence recovery boundary
+        - skill_id: human-first-writing
+          content_sha256: 0f3754759a185b43e6932864703cca58543a8ef58ed80a57469f680f0eaf5832
+          body_bytes: 15988
+          body_lines: 427
+          reason: active response and normative-document writing contract
+        - skill_id: test-driven-development
+          content_sha256: 7dee67b4af6bdccc7a914ca34533184d64592d0f5b23aeae631538168db14994
+          body_bytes: 9867
+          body_lines: 371
+          reason: M2-02 reducer behavior implementation
+
+  - observation_id: dogfood-input-routing-019
+    event_type: input-routing
+    observed_at: "2026-08-10T00:13:00+08:00"
+    authority: explicit-user-post-compaction-replay-correction
+    active_leaf_before: M2-02
+    active_leaf_after: M2-02
+    input_kind: correction
+    route: correction-write-protect
+    candidate_id: correction-post-compaction-replay-classification-001
+    candidate_summary: "Treat the visible post-compaction timeline as a failed continuity test: the assistant repeated an already answered M2-03 question and restarted context loading instead of immediately continuing the in-flight M2-02 Work terminal test."
+    candidate_summary_sha256: 0ca97806a4304d99ecf2b498ddf59532e3f4a40b4f3f70cf5f5d5c00d1b1546e
+    metrics:
+      messages_observed: 1
+      ideas_captured: 0
+      unauthorized_task_switches: 0
+      return_point_preserved: true
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      provider_compaction_signal_available: true
+      tool_interruption_observed: true
+
+  - observation_id: dogfood-plan-revision-014
+    event_type: plan-revision
+    observed_at: "2026-08-10T00:30:00+08:00"
+    authority: repository-M2-02-completion-gates-and-explicit-user-continue
+    authorized: true
+    active_leaf_before: M2-02
+    active_leaf_after: M2-03
+    metrics:
+      master_revision_before: 17
+      master_revision_after: 18
+      unauthorized_goal_changes: 0
+      project_mission_changed: false
+      return_point_preserved: true
+      tasks_completed: [M2-02]
+      tasks_activated: [M2-03]
+
+  - observation_id: dogfood-verification-013
+    event_type: verification
+    observed_at: "2026-08-10T00:30:00+08:00"
+    authority: local-repository-verification-evidence
+    active_leaf_before: M2-03
+    active_leaf_after: M2-03
+    evidence_refs:
+      - unittest:m2-02-state-events-14-revision-18-2026-08-10
+      - unittest:discover-tests-153-revision-18-2026-08-10
+      - check:python-compile-revision-18-2026-08-10
+      - check:repository-verifier-revision-18-2026-08-10
+      - check:gitleaks-git-and-directory-zero-findings-2026-08-10
+    metrics:
+      tests_run: 153
       tests_failed: 0
       checks_failed: 0
       scope_violations: 0
