@@ -5,6 +5,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import yaml
+
 
 class RepositoryVerificationCliTests(unittest.TestCase):
     def _write_valid_repository(self, root: Path) -> None:
@@ -47,6 +49,21 @@ class RepositoryVerificationCliTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("verify repository governance and admission gates", result.stdout)
+
+    def test_ci_pip_cache_tracks_dev_requirements(self):
+        root = Path(__file__).parents[1]
+        workflow = yaml.safe_load(
+            (root / ".gitea" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        )
+        steps = workflow["jobs"]["repository-verification"]["steps"]
+        setup_python = next(
+            step for step in steps if step.get("uses") == "actions/setup-python@v5"
+        )
+
+        self.assertEqual(
+            setup_python["with"].get("cache-dependency-path"),
+            "requirements-dev.txt",
+        )
 
     def test_clean_repository_passes_all_gates(self):
         script = Path(__file__).parents[1] / "tools" / "verify_repository.py"
