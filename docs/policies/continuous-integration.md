@@ -24,17 +24,20 @@ Gitleaks 使用开源 CLI，不使用依赖 GitHub API 的 action wrapper。版�
 ## 本地等价入口
 
 ```bash
-python3 -m pip install --requirement requirements-dev.txt
-python3 -m unittest discover -s tests -p "test_*.py"
-python3 -m compileall -q context_control_plane tests tools
-python3 tools/verify_repository.py --root .
+python3 --version
+python3 -m venv .venv
+.venv/bin/python -m pip install --requirement requirements-dev.txt
+.venv/bin/python -m unittest discover -s tests -p "test_*.py"
+.venv/bin/python -m compileall -q context_control_plane tests tools
+.venv/bin/python tools/verify_repository.py --root .
 ```
 
 本地 Gitleaks 使用同一 version、archive checksum 和 `.gitleaks.toml`。本地通过不能替代 Gitea checkout、push 和 pull-request execution evidence；Gitea 失败也不能由本地结果覆盖。
 
 ## 可复现性与资源边界
 
-- Python minor version 固定为 3.12，直接依赖使用精确版本；依赖升级单独通过兼容与 replay 验证。
+- runner 提供 `python3`，workflow 记录实际版本并在项目 `.venv` 中隔离依赖；最低 Python 版本和多版本矩阵必须由后续兼容 fixture 确定，不从 runner label 推导。
+- 直接依赖使用精确版本；Python 或依赖升级单独通过兼容与 replay 验证。
 - benchmark 使用确定性 fixture、固定 budget 和 byte-equivalent result；provider live A/B 由后续阶段独立运行。
 - 大型日志不写入 Git 或 PR；CI 只输出失败摘要和 artifact reference。
 - job 不写生产数据库、不调用 State MCP commit、不部署 Product、不使用项目运行时 secret。

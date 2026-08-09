@@ -17,6 +17,7 @@ secrets/
 raw-conversations/
 
 # Local build and tool output.
+.venv/
 .cache/
 build/
 dist/
