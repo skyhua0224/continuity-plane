@@ -1,6 +1,6 @@
 # Context Control Plane Status
 
-版本：revision 14  
+版本：revision 15  
 日期：2026-08-09  
 canonical plan：`MASTER.md`
 
@@ -36,7 +36,7 @@ canonical plan：`MASTER.md`
 | Documentation lifecycle | 文档分类、更新触发、容量预算、supersedes 和投影规则已落盘；第 4 次恢复发现 STATUS/evidence 漂移并登记为 M0-10 validator 反例 |
 | Default project projections | MASTER、STATUS、目标态架构全表为人类/Agent 默认安装方案；公开项目只接收三文档、最小 Profile、已采用 policy 和脱敏证据 |
 | Git collaboration | branch/commit/PR/merge 和 staged admission 合同已落盘；公开 Gitea remote 为 `skyhua/context-control-plane`，默认分支 `main`；repo-local identity 已与托管账号核验 |
-| Continuous integration | 独立 Verifier 权威状态写权限为 0；最新 main push run 1016 的两个 job 均通过；`main` 已禁止 direct/force push 并要求两个 push status contexts；PR event live evidence 正在验收 |
+| Continuous integration | 独立 Verifier 权威状态写权限为 0；main/branch push runs 1016/1017 与 pull_request run 1018 全部通过；`main` 禁止 direct/force push、禁止 admin merge override，并要求 4 个 push/PR status contexts |
 | Reference catalog | 15 个 Codex/Claude harness 来源；URL、retrieval hash、validity、refresh trigger 和 adoption status 离线校验通过 |
 | Project dogfood baseline | 5 次 compaction 恢复 100%；14 次 input routing 无未授权切换；stale/未授权 goal change 为 0；16 个 Skill body 共 185,560 bytes，其中重复 73,910 bytes；provider context/token/latency 不可见，趋势样本不足 |
 | Repository verification | 102/102 tests；14 个 repository verifier 正反场景；real benchmark byte-equivalent；Python compile、JSON/YAML、schema/projection、fixture privacy、documentation link/style、transcript admission 和 Gitleaks checks 通过 |

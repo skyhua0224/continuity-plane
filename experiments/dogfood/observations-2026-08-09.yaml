@@ -1,5 +1,5 @@
 schema_version: context.dogfood-observation/v1alpha1
-generated_at: "2026-08-09T22:19:21+08:00"
+generated_at: "2026-08-09T22:33:34+08:00"
 status: baseline
 measurement_limitations:
   - provider token accounting was unavailable for this resumed segment
@@ -871,6 +871,41 @@ observations:
       - gitea:repository-private-false-default-branch-main
       - unittest:discover-tests-102-python-3.12.3-aarch64-2026-08-09
       - check:compile-repository-verifier-gitleaks-live-2026-08-09
+    metrics:
+      tests_run: 102
+      tests_failed: 0
+      checks_failed: 0
+      scope_violations: 0
+
+  - observation_id: dogfood-plan-revision-011
+    event_type: plan-revision
+    observed_at: "2026-08-09T22:33:34+08:00"
+    authority: explicit-user-ci-requirement-and-live-pr-acceptance
+    authorized: true
+    active_leaf_before: M1-05
+    active_leaf_after: M1-05
+    metrics:
+      master_revision_before: 14
+      master_revision_after: 15
+      unauthorized_goal_changes: 0
+      project_mission_changed: false
+      return_point_preserved: true
+      tasks_added: []
+      tasks_completed: [M0-12]
+      tasks_refined: []
+
+  - observation_id: dogfood-verification-010
+    event_type: verification
+    observed_at: "2026-08-09T22:33:34+08:00"
+    authority: protected-gitea-push-and-pull-request-evidence
+    active_leaf_before: M1-05
+    active_leaf_after: M1-05
+    evidence_refs:
+      - gitea:run-1016-main-push-success
+      - gitea:run-1017-branch-push-success
+      - gitea:run-1018-pull-request-success
+      - gitea:pull-request-1-four-green-status-contexts
+      - gitea:main-protection-no-direct-or-force-push-no-admin-merge-override
     metrics:
       tests_run: 102
       tests_failed: 0
