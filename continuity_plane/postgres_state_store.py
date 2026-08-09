@@ -13,8 +13,15 @@ from psycopg.errors import UniqueViolation
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
-from .state_events import replay_state_events, validate_state_event
-from .typed_state import canonical_state_bytes, validate_typed_state
+from .state_store import (
+    StateStoreCapabilityManifest,
+    StateStoreConflict,
+    StateStoreError,
+    StateStoreIntegrityError,
+    StateStoreNotFound,
+)
+from .state_events import StateEventError, replay_state_events, validate_state_event
+from .typed_state import TypedStateError, canonical_state_bytes, validate_typed_state
 
 
 _MIGRATION_PATH = (
@@ -25,24 +32,42 @@ _MIGRATION_PATH = (
 )
 
 
-class PostgresStateStoreError(RuntimeError):
+class PostgresStateStoreError(StateStoreError):
     """Base error for the M2-03 PostgreSQL state store."""
 
 
-class PostgresStateConflict(PostgresStateStoreError):
+class PostgresStateConflict(PostgresStateStoreError, StateStoreConflict):
     """Raised when expected revision or append position is stale."""
 
 
-class PostgresStateNotFound(PostgresStateStoreError):
+class PostgresStateNotFound(PostgresStateStoreError, StateStoreNotFound):
     """Raised when a project does not exist."""
 
 
-class PostgresStateIntegrityError(PostgresStateStoreError):
+class PostgresStateIntegrityError(PostgresStateStoreError, StateStoreIntegrityError):
     """Raised when persisted or proposed state fails integrity checks."""
 
 
+def _validate_snapshot(snapshot: dict[str, Any]) -> None:
+    try:
+        validate_typed_state(snapshot)
+    except TypedStateError as exc:
+        raise PostgresStateIntegrityError("typed state validation failed") from exc
+
+
+def _validate_event(event: dict[str, Any]) -> None:
+    try:
+        validate_state_event(event)
+    except StateEventError as exc:
+        raise PostgresStateIntegrityError("state Event validation failed") from exc
+
+
 def _snapshot_sha256(snapshot: dict[str, Any]) -> str:
-    return hashlib.sha256(canonical_state_bytes(snapshot)).hexdigest()
+    try:
+        canonical = canonical_state_bytes(snapshot)
+    except TypedStateError as exc:
+        raise PostgresStateIntegrityError("typed state validation failed") from exc
+    return hashlib.sha256(canonical).hexdigest()
 
 
 def _json_value(value: dict[str, Any]) -> dict[str, Any]:
@@ -51,6 +76,23 @@ def _json_value(value: dict[str, Any]) -> dict[str, Any]:
 
 class PostgresStateStore:
     """Store typed state with append-only events and transactional CAS."""
+
+    capability_manifest = StateStoreCapabilityManifest(
+        schema_version="context.state-store-capabilities/v1alpha1",
+        adapter_id="context.postgresql",
+        adapter_version="1.0.0-alpha.1",
+        authority_mode="shared",
+        operations=("create_project", "read_project", "read_events", "commit_event"),
+        shared_authority=True,
+        offline_write=False,
+        unique_claim=False,
+        multi_writer=True,
+        lease_clock="none",
+        artifact_scope="none",
+        expected_revision=True,
+        migration_source=False,
+        migration_target=False,
+    )
 
     def __init__(self, dsn: str):
         if not isinstance(dsn, str) or not dsn.strip():
@@ -67,7 +109,7 @@ class PostgresStateStore:
 
     def create_project(self, snapshot: dict[str, Any]) -> None:
         snapshot = copy.deepcopy(snapshot)
-        validate_typed_state(snapshot)
+        _validate_snapshot(snapshot)
         project = snapshot["project"]
         try:
             with self._connect() as connection:
@@ -107,7 +149,7 @@ class PostgresStateStore:
         if row is None:
             raise PostgresStateNotFound(f"project does not exist: {project_id}")
         snapshot = copy.deepcopy(row["snapshot"])
-        validate_typed_state(snapshot)
+        _validate_snapshot(snapshot)
         if snapshot["project"]["revision"] != row["revision"]:
             raise PostgresStateIntegrityError("persisted row revision mismatch")
         if _snapshot_sha256(snapshot) != row["snapshot_sha256"].strip():
@@ -127,7 +169,7 @@ class PostgresStateStore:
             ).fetchall()
         events = [copy.deepcopy(row["envelope"]) for row in rows]
         for event in events:
-            validate_state_event(event)
+            _validate_event(event)
         return events
 
     def commit_event(
@@ -140,8 +182,8 @@ class PostgresStateStore:
     ) -> None:
         event = copy.deepcopy(event)
         expected_snapshot = copy.deepcopy(expected_snapshot)
-        validate_state_event(event)
-        validate_typed_state(expected_snapshot)
+        _validate_event(event)
+        _validate_snapshot(expected_snapshot)
         if event["project_id"] != project_id:
             raise PostgresStateIntegrityError("event project_id mismatch")
         if expected_snapshot["project"]["project_id"] != project_id:
@@ -188,12 +230,40 @@ class PostgresStateStore:
             if event["previous_event_sha256"] != previous_event_sha256:
                 raise PostgresStateConflict("event hash chain does not match current head")
 
-            restored = replay_state_events(
-                current_snapshot,
-                [event],
-                starting_sequence_no=expected_sequence,
-                previous_event_sha256=previous_event_sha256,
-            )
+            duplicate = connection.execute(
+                """
+                SELECT 1
+                FROM context_control.state_events
+                WHERE project_id = %s AND event_id = %s
+                """,
+                (project_id, event["event_id"]),
+            ).fetchone()
+            if duplicate is not None:
+                raise PostgresStateConflict("event identity already exists")
+
+            known_event_ids: set[str] = set()
+            supersedes_event_id = event["supersedes_event_id"]
+            if supersedes_event_id is not None:
+                supersedes = connection.execute(
+                    """
+                    SELECT event_id
+                    FROM context_control.state_events
+                    WHERE project_id = %s AND event_id = %s
+                    """,
+                    (project_id, supersedes_event_id),
+                ).fetchone()
+                if supersedes is not None:
+                    known_event_ids.add(supersedes["event_id"])
+            try:
+                restored = replay_state_events(
+                    current_snapshot,
+                    [event],
+                    starting_sequence_no=expected_sequence,
+                    previous_event_sha256=previous_event_sha256,
+                    known_event_ids=known_event_ids,
+                )
+            except (StateEventError, TypedStateError) as exc:
+                raise PostgresStateIntegrityError("state Event replay failed") from exc
             if canonical_state_bytes(restored) != canonical_state_bytes(expected_snapshot):
                 raise PostgresStateIntegrityError(
                     "event replay does not produce expected snapshot"

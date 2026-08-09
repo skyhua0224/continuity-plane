@@ -268,6 +268,7 @@ def replay_state_events(
     *,
     starting_sequence_no: int = 1,
     previous_event_sha256: str | None = None,
+    known_event_ids: set[str] | None = None,
 ) -> dict[str, Any]:
     """Replay a contiguous event segment from an M2-01 snapshot."""
     if not isinstance(events, list):
@@ -285,7 +286,15 @@ def replay_state_events(
         "previous_event_sha256",
         optional=True,
     )
-    seen_event_ids: set[str] = set()
+    if known_event_ids is None:
+        seen_event_ids: set[str] = set()
+    elif not isinstance(known_event_ids, set) or any(
+        not isinstance(event_id, str) or not event_id.strip()
+        for event_id in known_event_ids
+    ):
+        raise StateEventError("known_event_ids must be a set of non-empty strings")
+    else:
+        seen_event_ids = set(known_event_ids)
 
     for event in events:
         validate_state_event(event)
