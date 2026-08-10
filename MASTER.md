@@ -1,6 +1,6 @@
 # Context Control Plane MASTER
 
-版本：revision 26  
+版本：revision 27  
 日期：2026-08-10  
 状态：研究与 shadow pilot 准备阶段  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
@@ -250,8 +250,8 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | M2-03 | ✅ | PostgreSQL optional shared backend 的 revision/CAS relational state store | 并发冲突显式返回 | 提供按需启用的强一致多 writer 能力 | M2-02 | 11/11 定向测试；8/8 显式并发 conflict；silent overwrite 0；run 1039 通过；4 Event shadow replay 与数据库读回一致；默认安装依赖 PostgreSQL 为 0 |
 | M2-04 | ✅ | content-addressed artifact store | 大日志和 diff 通过 artifact ref 引用 | 降 token 并保存证据 | M2-01 | ArtifactRef strict schema；20/20 定向测试；streamed SHA-256、atomic publication、并发去重、bounded range 和损坏检测通过；1 MiB 到 8 KiB context output bytes 下降 99.2188%；默认外部服务 0 |
 | M2-05 | ✅ | State MCP read/commit/claim/effect API | 各 agent/provider 使用统一协议 | provider-neutral | M2-08/M2-09 | 26/26 contract/auth tests；默认拒绝、trusted actor、CAS、validator、concurrent idempotency、strict receipt、backend busy、claim/effect provenance 和 torn-read detection 通过；四工具 SQLite/PostgreSQL live parity 1/1 |
-| M2-06 | 🟡 | immutable checkpoint 与 canary manifest | 压缩和交接可验证 | 建立确定性恢复 | M2-04/M2-05 | 关键字段恢复 100% |
-| M2-07 | ⏳ | Project Profile、Project Charter、WorkSource 与 ProjectAdaptation typed schema | 项目接入、方向探索、task source、repository topology、Work obligation 和自适应候选可版本化、可回放 | 支持个人/团队、模块化/非模块化项目并降低重复读取 | M2-01/M0-09 | obligation `required/conditional/optional`、condition ref、authority、automation class、三个独立配置轴、modular/monolith/mixed scope、proposal、hash、expiry、rollback 和 approval round-trip 100% |
+| M2-06 | ✅ | immutable checkpoint 与 canary manifest | 压缩和交接可验证 | 建立确定性恢复 | M2-04/M2-05 | strict manifest 注册；snapshot/manifest 双层 CAS；18 个关键字段恢复 100%；missing/tampered/stale/unknown/oversized 全部 fail-closed；SQLite 零服务 restore p95 <2s |
+| M2-07 | 🟡 | Project Profile、Project Charter、WorkSource 与 ProjectAdaptation typed schema | 项目接入、方向探索、task source、repository topology、Work obligation 和自适应候选可版本化、可回放 | 支持个人/团队、模块化/非模块化项目并降低重复读取 | M2-01/M0-09 | obligation `required/conditional/optional`、condition ref、authority、automation class、三个独立配置轴、modular/monolith/mixed scope、proposal、hash、expiry、rollback 和 approval round-trip 100% |
 | M2-08 | ✅ | backend-neutral StateStore SPI 与 capability manifest | core 根据一致性、共享、离线和资源能力选择 adapter | 去除 PostgreSQL 对普通路径的隐式依赖 | M2-02/M2-03 | authoritative/projection Protocol 与 runtime 一致；schema/document/runtime round-trip 等价；通用 conformance 覆盖 defensive copy、unknown project、replay mismatch、duplicate identity、sequence/hash-head、second Event 和 atomic rollback；独立审查无 High/Medium finding |
 | M2-09 | 🧑‍💻 | SQLite embedded local state/event/checkpoint backend | 单人和本机多 Agent 获得零独立服务的持久恢复 | 建立默认轻量运行路径 | M2-08 | WAL/BEGIN IMMEDIATE、CAS、append-only、崩溃恢复和损坏检测通过；默认用户管理 daemon/Docker/PostgreSQL 均为 0；Windows/macOS/Linux fixture 通过 |
 
@@ -424,7 +424,7 @@ E1、E2、E4、E6、E8、E9 具有 veto 权限；平均得分、token 降幅和�
 
 ## 10. 当前执行路由
 
-M2-06 是当前 active leaf。M2-05 已交付 provider-neutral `read/commit/claim/effect` 合同、默认拒绝授权、trusted actor 注入、revision/CAS、validator、request idempotency、claim/effect scope 和稳定错误分类；SQLite 与 PostgreSQL 对同一 State MCP 流程的 receipt、snapshot 和 Event stream 完全一致。验收见 [`m2-05-state-mcp-acceptance-2026-08-10.md`](docs/migrations/m2-05-state-mcp-acceptance-2026-08-10.md)。M2-06 从 immutable checkpoint manifest、artifact binding、tamper canary 和 deterministic restore 的失败测试开始。
+M2-07 是当前 active leaf。M2-06 已交付 immutable checkpoint manifest、snapshot/manifest 双层 ArtifactRef、18 字段 deterministic canary、bounded restore 和 stale authority 拒绝；默认路径使用 SQLite 与本地 artifact store，外部服务为 0。验收见 [`m2-06-checkpoint-canary-acceptance-2026-08-10.md`](docs/migrations/m2-06-checkpoint-canary-acceptance-2026-08-10.md)。M2-07 从 Project Profile、Project Charter、WorkSource、Work obligation 和 ProjectAdaptation 的 strict schema 失败测试开始。
 
 M1-05 已完成 16 个 E0-E9 contract fixture，验收见 `docs/migrations/m1-05-fault-coverage-acceptance-2026-08-09.md`。Runtime fault evidence 仍由 M2/M5/M8 提供。M1-04 已完成 40 个 fixture admission，验收见 `docs/migrations/m1-04-replay-fixture-acceptance-2026-08-09.md`。受控 archive 继续采用流式、区间化读取；原始 JSONL 和 source namespace key material 禁止进入 Git。M1-06 archive retention/export/delete 的离线验收见 `docs/migrations/m1-06-archive-governance-acceptance-2026-08-09.md`。
 

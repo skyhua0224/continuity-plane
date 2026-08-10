@@ -2193,3 +2193,125 @@ observations:
       tests_failed: 0
       checks_failed: 0
       scope_violations: 0
+
+  - observation_id: dogfood-compaction-017
+    event_type: compaction
+    observed_at: "2026-08-10T05:40:41+08:00"
+    authority: system-handoff-and-current-repository
+    active_leaf_before: M2-06
+    active_leaf_after: M2-06
+    metrics:
+      critical_fields_total: 8
+      critical_fields_recovered: 8
+      stale_decisions_revived: 0
+      unauthorized_task_switches: 0
+      comparable_context_input_bytes: null
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      restore_latency_ms: null
+      provider_compaction_signal_available: true
+      continuation_fields_total: 4
+      continuation_fields_recovered: 4
+      already_acknowledged_items_replayed: 0
+      first_post_restore_action_matched: true
+    evidence:
+      - handoff preserved work/M2-05/state-mcp, M2-05 completion evidence, pending stacked PR creation and the M2-06 checkpoint-canary next action
+      - first post-restore action checked current worktrees and M2-05 PR status before opening the M2-06 implementation branch
+      - the stale root worktree STATUS was rejected in favor of revision 26 in the active M2-05 worktree
+      - previously answered PostgreSQL, project mission and Docmost questions were not replayed
+
+  - observation_id: dogfood-skill-load-023
+    event_type: skill-load
+    observed_at: "2026-08-10T05:40:41+08:00"
+    authority: task-trigger-current-path-digest-and-visible-handoff
+    active_leaf_before: M2-06
+    active_leaf_after: M2-06
+    metrics:
+      body_load_count: 3
+      total_body_bytes: 27216
+      repeated_body_load_bytes: 27216
+      skills:
+        - skill_id: session-memory-hygiene
+          content_sha256: e7814b9010db3d5dd83d978f93d80515cee2f5388761f5fb20f7a406fdc856f0
+          body_bytes: 1361
+          body_lines: 34
+          reason: visible M2-06 compaction continuation verification
+        - skill_id: test-driven-development
+          content_sha256: 7dee67b4af6bdccc7a914ca34533184d64592d0f5b23aeae631538168db14994
+          body_bytes: 9867
+          body_lines: 371
+          reason: M2-06 immutable checkpoint and restore canary implementation
+        - skill_id: human-first-writing
+          content_sha256: 0f3754759a185b43e6932864703cca58543a8ef58ed80a57469f680f0eaf5832
+          body_bytes: 15988
+          body_lines: 427
+          reason: active response and evidence-document writing contract
+
+  - observation_id: dogfood-plan-revision-023
+    event_type: plan-revision
+    observed_at: "2026-08-10T05:58:09+08:00"
+    authority: M2-06-completion-gate-and-user-unattended-progression-directive
+    authorized: true
+    active_leaf_before: M2-06
+    active_leaf_after: M2-07
+    metrics:
+      master_revision_before: 26
+      master_revision_after: 27
+      unauthorized_goal_changes: 0
+      project_mission_changed: false
+      return_point_preserved: true
+      tasks_completed: [M2-06]
+      tasks_activated: [M2-07]
+
+  - observation_id: dogfood-compaction-018
+    event_type: compaction
+    observed_at: "2026-08-10T07:30:00+08:00"
+    authority: system-handoff-current-worktree-and-failing-test
+    active_leaf_before: M2-06
+    active_leaf_after: M2-06
+    metrics:
+      critical_fields_total: 8
+      critical_fields_recovered: 8
+      stale_decisions_revived: 0
+      unauthorized_task_switches: 0
+      comparable_context_input_bytes: null
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      restore_latency_ms: null
+      provider_compaction_signal_available: true
+      continuation_fields_total: 4
+      continuation_fields_recovered: 4
+      already_acknowledged_items_replayed: 0
+      first_post_restore_action_matched: true
+    evidence:
+      - handoff preserved the M2-06 worktree, the expected governance-ref red test, the receipt provenance refresh requirement and the M2-07 next leaf
+      - first post-restore action inspected the active worktree and current M2-06 tests before changing production code
+      - previously answered PostgreSQL and project-purpose questions were not replayed
+      - the root worktree was identified as a different M2-09 branch and was not used for M2-06 edits
+
+  - observation_id: dogfood-skill-load-024
+    event_type: skill-load
+    observed_at: "2026-08-10T07:30:00+08:00"
+    authority: task-trigger-current-path-digest-and-visible-handoff
+    active_leaf_before: M2-06
+    active_leaf_after: M2-06
+    metrics:
+      body_load_count: 3
+      total_body_bytes: 27216
+      repeated_body_load_bytes: 27216
+      skills:
+        - skill_id: session-memory-hygiene
+          content_sha256: e7814b9010db3d5dd83d978f93d80515cee2f5388761f5fb20f7a406fdc856f0
+          body_bytes: 1361
+          body_lines: 34
+          reason: compaction recovery verification
+        - skill_id: test-driven-development
+          content_sha256: 7dee67b4af6bdccc7a914ca34533184d64592d0f5b23aeae631538168db14994
+          body_bytes: 9867
+          body_lines: 371
+          reason: M2-06 governance authority and receipt validation fix
+        - skill_id: human-first-writing
+          content_sha256: 0f3754759a185b43e6932864703cca58543a8ef58ed80a57469f680f0eaf5832
+          body_bytes: 15988
+          body_lines: 427
+          reason: current evidence and acceptance documentation

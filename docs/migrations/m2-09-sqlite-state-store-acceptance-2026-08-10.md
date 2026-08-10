@@ -44,7 +44,7 @@ The 40-sample benchmark used the same completed-work fixture, operation boundary
 
 ## Scaling Boundary
 
-The 1,000-Event stream completed with final restore latency `21.7868 ms` and database size `2932736 bytes`. Commit p95 was `34.9701 ms`; cumulative commit time was `18735.9483 ms`. Revalidating the complete Event history on every commit creates observed quadratic cumulative commit growth. M2-06 and M5 must add an incremental verified-head path while retaining explicit full-chain restore and audit verification. Current performance evidence applies to one Linux x86_64 workstation.
+The 1,000-Event stream completed with final restore latency `21.7868 ms` and database size `2932736 bytes`. Commit p95 was `34.9701 ms`; cumulative commit time was `18735.9483 ms`. Revalidating the complete Event history on every commit creates observed quadratic cumulative commit growth. M2-06 records the verified Event head in an immutable checkpoint; M5 remains responsible for incremental checkpoint and restore paths while retaining explicit full-chain audit verification. Current performance evidence applies to one Linux x86_64 workstation.
 
 ## Authority Boundary
 

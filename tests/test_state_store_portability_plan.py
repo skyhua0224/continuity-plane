@@ -117,12 +117,13 @@ class StateStorePortabilityPlanTests(unittest.TestCase):
         self.assertIn("Windows and macOS remain blocked", sqlite_acceptance)
         self.assertIn("20/20 passed", artifact_acceptance)
         self.assertIn("context_bytes_reduction_percent", artifact_acceptance)
-        self.assertIn("版本：revision 26", self.master)
-        self.assertIn("版本：revision 26", self.status)
+        self.assertIn("版本：revision 27", self.master)
+        self.assertIn("版本：revision 27", self.status)
         self.assertIn("| M2-05 | ✅ |", self.master)
-        self.assertIn("| M2-06 | 🟡 |", self.master)
-        self.assertIn("active work | M2-06", self.status)
-        self.assertIn("governance authority：`MASTER.md` revision 26", self.target_state)
+        self.assertIn("| M2-06 | ✅ |", self.master)
+        self.assertIn("| M2-07 | 🟡 |", self.master)
+        self.assertIn("active work | M2-07", self.status)
+        self.assertIn("governance authority：`MASTER.md` revision 27", self.target_state)
 
 
 if __name__ == "__main__":

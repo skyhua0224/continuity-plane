@@ -38,7 +38,7 @@ M2-05 提供 transport-neutral `context.state.read`、`context.state.commit`、`
 
 ## 权限与部署边界
 
-默认 `local-embedded` profile 使用 SQLite 和本地 artifact store，不要求独立数据库、daemon、Docker 或网络。PostgreSQL 只在 `shared-strong` 等 opt-in profile 和 live CI 中启用。State MCP service receipt 当前保存在单个服务生命周期内；跨进程 durable request dedupe、lease clock、path hierarchy overlap、tenant isolation、network transport 和 production authentication 分别由 M2-06、M3、M8 和 deployment adapter 交付。
+默认 `local-embedded` profile 使用 SQLite 和本地 artifact store，不要求独立数据库、daemon、Docker 或网络。PostgreSQL 只在 `shared-strong` 等 opt-in profile 和 live CI 中启用。State MCP service receipt 当前保存在单个服务生命周期内。跨进程 durable request dedupe 与 effect retry 由 M8-01/M8-02 交付；lease/expiry 和 path hierarchy overlap 由 M3/M8 交付；tenant isolation 由 M8-05 交付；network transport 与 production authentication 由 deployment adapter 和 M8-05 交付。
 
 M2-05 不授予 recall provider、Docmost、Skill、模型或 provider adapter 直接修改权威状态的权限。所有后续写入仍须经过 authorization、expected revision/CAS、validator 和专用 claim/effect 边界。
 
