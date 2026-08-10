@@ -1,0 +1,80 @@
+schema_version: context.checkpoint-results/v1alpha1
+observed_at: '2026-08-10T07:24:11+08:00'
+provenance:
+  implementation_sha256: 691a9d48e3463eef3180508a589cd4b534f54eaf705d675ba437a67e1c209fcf
+  benchmark_sha256: 3120de8dc752f8a7a248ec25b7b8a21f5f8c218a3adcb246c378d1b0faa1c351
+  runner_sha256: e36ca8d27e1e1a786dd1b15676637224c7c5b3b9a71bce50f08762eee81060a2
+  fixture_sha256: 9be7887519cfed4466436ea6714d48e399d7023281729b3bd8c78cb3a086beab
+  schema_sha256: 2e137087ab2f0c6f973117a950168927a11d655d45ea229b4a5c294122fb0aa7
+  contract_test_sha256: 07d73dcf39dfef9eb918623e7830fbf12c52339bd2c82a846b1f57836ad42cd6
+  benchmark_test_sha256: c8b0386569db774245dde4a9905b30ffb7e2295c792a1350ed2d05e7a26effd1
+  registry_sha256: 93fd2c206e7ba4b3058250192297f87d3a9310dc537e9572c91fbb8195cfdf87
+environment:
+  python_version: 3.14.6
+  python_implementation: CPython
+  platform: linux
+  machine: x86_64
+  fixture: solo-active-work
+  artifact_store: local-content-addressed
+  external_services: 0
+  state_backend: context.sqlite
+  artifact_backend: local-content-addressed
+measurement:
+  samples: 40
+  measured_operation: restore_checkpoint_only
+  checkpoint_ref:
+    schema_version: context.artifact-ref/v1alpha1
+    digest_algorithm: sha-256
+    digest: e78f431653a43a92b518a6568888cc4e6253026b4bbcac7e8864fc503655b31a
+    size_bytes: 1137
+    artifact_uri: artifact://sha256/e78f431653a43a92b518a6568888cc4e6253026b4bbcac7e8864fc503655b31a
+  snapshot_ref:
+    schema_version: context.artifact-ref/v1alpha1
+    digest_algorithm: sha-256
+    digest: 677cc7eef6330e6f80f142884e3fe0b02acf2a35de741f85f787519ebaaed3dc
+    size_bytes: 2583
+    artifact_uri: artifact://sha256/677cc7eef6330e6f80f142884e3fe0b02acf2a35de741f85f787519ebaaed3dc
+  restore_p50_ms: 0.191
+  restore_p95_ms: 0.2109
+  restore_max_ms: 0.216
+  restore_p95_limit_ms: 2000.0
+  critical_fields_total: 18
+  critical_fields_recovered: 18
+  critical_field_recovery_percent: 100.0
+  deterministic_same_ref: true
+  manifest_bytes: 1137
+  snapshot_bytes: 2583
+  unique_checkpoint_refs: 1
+  integrity_failures: 0
+  critical_fields_verified: 18
+acceptance:
+  restore_p95_gate_passed: true
+  critical_field_gate_passed: true
+  missing_or_tampered_artifact_gate: covered-by-contract-tests
+  stale_authority_gate: covered-by-contract-tests
+  external_services: 0
+  restore_p95_under_2s: true
+  critical_projection_complete: true
+authority_boundary:
+  trusted_checkpoint_ref_required: true
+  arbitrary_self_consistent_ref_authority: false
+  precompact_implemented: false
+  execution_packet_implemented: false
+  postcompact_write_gate_implemented: false
+limitations:
+- Results describe one host and do not predict every device.
+- The timed operation restores an existing checkpoint and excludes StateStore reads
+  and publication.
+- The checkpoint ref must come from trusted state or an authorized caller.
+- PreCompact, Execution Packet and the PostCompact write gate remain M5 work.
+generation:
+  command: .venv/bin/python tools/run_checkpoint_benchmark.py --samples 40 --observed-at
+    2026-08-10T07:24:11+08:00 --output experiments/state/m2-06-checkpoint-canary-revalidation-2026-08-10.yaml
+  arguments:
+  - --samples
+  - '40'
+  - --observed-at
+  - '2026-08-10T07:24:11+08:00'
+  - --output
+  - experiments/state/m2-06-checkpoint-canary-revalidation-2026-08-10.yaml
+  writes_runtime_state_to_repository: false

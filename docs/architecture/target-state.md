@@ -3,7 +3,7 @@
 版本：1  
 日期：2026-08-09  
 状态：current architecture contract  
-governance authority：`MASTER.md` revision 27
+governance authority：`MASTER.md` revision 28
 
 ## 三文档默认投影
 
@@ -44,7 +44,7 @@ Context Control Plane 安装到个人项目、协作项目或公开大型项目�
 
 ## Runtime Capability Profiles
 
-Runtime capability profiles are not user editions. Profile 只声明运行时保证、资源需求和失效边界；单人、多人、私有项目和公开项目均可启用任意 profile。
+Runtime profiles are not user editions. 下表定义可请求的部署模式、资源需求和预期失效边界；它本身不证明当前 adapter 提供对应保证。单人、多人、私有项目和公开项目均可请求任意 profile，激活仍受 capability conformance gate 约束。
 
 Context Control Plane 作为一个 cohesive monolith 交付，使用统一安装、升级、迁移和卸载入口。State、Event、Checkpoint、Skill、检索、验证、adapter 与可选控制台属于同一产品的组合能力；启用 PostgreSQL、Docmost、Temporal 或 OTel 不会形成独立产品或用户等级。
 
@@ -55,7 +55,7 @@ Context Control Plane 作为一个 cohesive monolith 交付，使用统一安装
 | `local-coordinator` | opt-in | 一台成员设备运行 State MCP + SQLite，其他客户端连接 | 1 个控制面进程，数据库服务 0 | coordinator 可达期间提供共享 CAS/claim；失联客户端降级为 candidate/read-only |
 | `shared-strong` | opt-in | State MCP + PostgreSQL；Temporal、Docmost、OTel 按需启用 | 由运行者管理 | 多 writer transaction/CAS、lease、tenant、audit 和长期 workflow |
 
-Profile capability manifest 必须声明 `shared_authority`、`offline_write`、`unique_claim`、`multi_writer`、`lease_clock`、`artifact_scope`、`expected_revision`、`migration_source` 和 `migration_target`。调用方只能使用 manifest 明确提供的保证。安装器默认选择 `local-embedded`；发现 Git remote 只生成 `forge-coordinated` proposal，不静默上传本地 checkpoint、Skill、个人偏好或历史记忆。
+StateStore capability manifest 必须声明 `shared_authority`、`offline_write`、`unique_claim`、`multi_writer`、`lease_clock`、`artifact_scope`、`expected_revision`、`migration_source` 和 `migration_target`。调用方只能使用 manifest 明确提供的保证。Project Profile 的 `requested_runtime_profile` 只表达部署意图；M10-09 激活门必须将其与已验证 manifest 对账。安装器默认选择 `local-embedded`；发现 Git remote 只生成 `forge-coordinated` proposal，不静默上传本地 checkpoint、Skill、个人偏好或历史记忆。
 
 运行成本、SQLite transaction 边界、forge CAS 候选和跨平台验收见 [`state-store-portability-assessment-2026-08-10.md`](../research/state-store-portability-assessment-2026-08-10.md)。
 
@@ -76,7 +76,7 @@ flowchart TD
 
 项目级与个人工作边界见 [`project-work-governance.md`](project-work-governance.md)。Skill 编排见 [`skill-orchestration.md`](skill-orchestration.md)。Agent harness 见 [`../research/agent-harness-assessment-2026-08-09.md`](../research/agent-harness-assessment-2026-08-09.md)。`context.skill-resolution` 只负责版本化规则资产的发现、适用性判定、冲突处理和有界装载；Task、owner、claim、revision、checkpoint 和当前 evidence 由 Typed State、Event Log 和 State MCP 管理。
 
-Project Profile 分别声明 direction state、governance owner mode、execution worker mode、repository topology、task sources 和 runtime capability profile。模块化、非模块化与混合仓库使用同一 Work/Claim/Event core schema，只切换 scope resolver。Foundation Sunshine 在 Platform 完工前按 monolith profile 协作；未来模块化 Platform 与收敛后的 Product 继续使用同一控制面协议。
+Project Profile 分别声明 direction state、governance owner mode、execution worker mode、repository topology、task sources 和 `requested_runtime_profile`。模块化、非模块化与混合仓库使用同一 Work/Claim/Event core schema，只切换 scope resolver。Foundation Sunshine 在 Platform 完工前按 monolith profile 协作；未来模块化 Platform 与收敛后的 Product 继续使用同一控制面协议。
 
 ## 公开项目 Markdown 准入
 

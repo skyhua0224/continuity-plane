@@ -4,13 +4,17 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import json
 import math
 import platform
+import re
 import shlex
 import sys
 import time
 from pathlib import Path
 from typing import Any
+
+import yaml
 
 from .artifact_store import ArtifactRef, LocalArtifactStore
 from .checkpoint import publish_checkpoint, restore_checkpoint
@@ -38,7 +42,6 @@ _PROVENANCE_PATHS = {
     "benchmark_sha256": "context_control_plane/checkpoint_benchmark.py",
     "runner_sha256": "tools/run_checkpoint_benchmark.py",
     "fixture_sha256": "experiments/state/m2-01-core-fixtures.yaml",
-    "registry_sha256": "schemas/registry.yaml",
     "schema_sha256": "schemas/m2-06/checkpoint-manifest.schema.json",
     "contract_test_sha256": "tests/test_m2_06_checkpoint_canary.py",
     "benchmark_test_sha256": "tests/test_m2_06_checkpoint_benchmark.py",
@@ -115,11 +118,33 @@ def _file_sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _checkpoint_registry_entry_sha256(path: Path) -> str:
+    registry = yaml.safe_load(path.read_text(encoding="utf-8"))
+    entries = [
+        entry
+        for entry in registry.get("schemas", [])
+        if entry.get("schema_id") == "context.checkpoint-manifest"
+    ]
+    if len(entries) != 1:
+        raise ValueError("checkpoint schema registry entry is missing or duplicated")
+    canonical = json.dumps(
+        entries[0],
+        ensure_ascii=True,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("ascii")
+    return hashlib.sha256(canonical).hexdigest()
+
+
 def _provenance(root: Path) -> dict[str, str]:
-    return {
+    provenance = {
         field: _file_sha256(root / relative_path)
         for field, relative_path in _PROVENANCE_PATHS.items()
     }
+    provenance["registry_sha256"] = _checkpoint_registry_entry_sha256(
+        root / "schemas" / "registry.yaml"
+    )
+    return provenance
 
 
 def _percentile(values: list[float], percentile: float) -> float:
@@ -367,13 +392,47 @@ def validate_checkpoint_benchmark_receipt(
     receipt: dict[str, Any],
     *,
     root: Path,
+    historical_receipt_bytes: bytes | None = None,
+    expected_historical_sha256: str | None = None,
 ) -> None:
-    """Reject stale evidence, failed gates, or broadened authority claims."""
+    """Reject malformed, stale, failed, or broadened benchmark evidence."""
     if not isinstance(receipt, dict) or set(receipt) != _RECEIPT_FIELDS:
         raise ValueError("checkpoint benchmark receipt fields are invalid")
     if receipt["schema_version"] != RECEIPT_SCHEMA_VERSION:
         raise ValueError("checkpoint benchmark receipt schema is unsupported")
-    if receipt["provenance"] != _provenance(root):
+    historical_mode = historical_receipt_bytes is not None
+    if historical_mode != (expected_historical_sha256 is not None):
+        raise ValueError("historical receipt validation requires bytes and trust digest")
+    if historical_mode:
+        if not isinstance(historical_receipt_bytes, bytes) or not historical_receipt_bytes:
+            raise ValueError("historical receipt bytes are invalid")
+        if not isinstance(expected_historical_sha256, str) or not re.fullmatch(
+            r"[0-9a-f]{64}", expected_historical_sha256
+        ):
+            raise ValueError("historical receipt trust digest is invalid")
+        if hashlib.sha256(historical_receipt_bytes).hexdigest() != expected_historical_sha256:
+            raise ValueError("historical receipt digest does not match trust anchor")
+        try:
+            historical_document = yaml.safe_load(
+                historical_receipt_bytes.decode("utf-8")
+            )
+        except (UnicodeDecodeError, yaml.YAMLError) as exc:
+            raise ValueError("historical receipt bytes are malformed") from exc
+        if historical_document != receipt:
+            raise ValueError("historical receipt bytes do not match parsed receipt")
+    provenance = receipt["provenance"]
+    expected_provenance_fields = set(_PROVENANCE_PATHS) | {"registry_sha256"}
+    if (
+        not isinstance(provenance, dict)
+        or set(provenance) != expected_provenance_fields
+        or any(
+            not isinstance(value, str)
+            or not re.fullmatch(r"[0-9a-f]{64}", value)
+            for value in provenance.values()
+        )
+    ):
+        raise ValueError("checkpoint benchmark provenance is malformed")
+    if not historical_mode and provenance != _provenance(root):
         raise ValueError("checkpoint benchmark provenance is stale")
     environment = receipt["environment"]
     measurement = receipt["measurement"]

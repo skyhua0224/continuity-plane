@@ -24,8 +24,9 @@ _SEMVER_RE = re.compile(
     r"^(?P<major>0|[1-9][0-9]*)\."
     r"(?P<minor>0|[1-9][0-9]*)\."
     r"(?P<patch>0|[1-9][0-9]*)"
-    r"(?:-(?P<pre>[0-9A-Za-z.-]+))?"
-    r"(?:\+[0-9A-Za-z.-]+)?$"
+    r"(?:-(?P<pre>(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)"
+    r"(?:\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*))?"
+    r"(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$"
 )
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _RELEASE_STATES = {"current", "deprecated"}
@@ -57,13 +58,24 @@ class SemanticVersion:
     def core(self) -> tuple[int, int, int]:
         return self.major, self.minor, self.patch
 
+    @property
+    def prerelease_key(self) -> tuple[tuple[int, int | str], ...]:
+        if self.prerelease is None:
+            return ()
+        return tuple(
+            (0, int(identifier)) if identifier.isdigit() else (1, identifier)
+            for identifier in self.prerelease.split(".")
+        )
+
 
 def _is_newer(previous: SemanticVersion, current: SemanticVersion) -> bool:
-    return current.core > previous.core or (
-        current.core == previous.core
-        and previous.prerelease is not None
-        and current.prerelease is None
-    )
+    if current.core != previous.core:
+        return current.core > previous.core
+    if previous.prerelease is None:
+        return False
+    if current.prerelease is None:
+        return True
+    return current.prerelease_key > previous.prerelease_key
 
 
 def registry_digest(registry: dict[str, Any]) -> str:

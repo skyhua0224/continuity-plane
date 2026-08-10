@@ -11,6 +11,12 @@ class StateStorePortabilityPlanTests(unittest.TestCase):
         cls.target_state = (
             cls.root / "docs" / "architecture" / "target-state.md"
         ).read_text(encoding="utf-8")
+        cls.m207_acceptance = (
+            cls.root
+            / "docs"
+            / "migrations"
+            / "m2-07-project-governance-profile-acceptance-2026-08-10.md"
+        ).read_text(encoding="utf-8")
         assessment_path = (
             cls.root
             / "docs"
@@ -74,12 +80,21 @@ class StateStorePortabilityPlanTests(unittest.TestCase):
         self.assertIn("🧑‍💻", m209)
 
     def test_profiles_are_not_user_editions_and_self_dogfood_is_primary(self):
-        self.assertIn("capability profiles are not user editions", self.target_state)
+        self.assertIn("Runtime profiles are not user editions", self.target_state)
         self.assertIn("cohesive monolith", self.target_state)
         self.assertIn("| M10-00 |", self.master)
         self.assertIn("Context Control Plane self-dogfood", self.master)
 
-    def test_m2_04_acceptance_routes_to_m2_05_and_preserves_platform_gates(self):
+    def test_requested_runtime_profile_never_claims_adapter_guarantees(self):
+        self.assertIn("requested_runtime_profile", self.target_state)
+        self.assertIn("StateStore capability manifest", self.target_state)
+        self.assertNotIn("Profile 只声明运行时保证", self.target_state)
+        self.assertNotIn("runtime capability profile", self.target_state)
+        self.assertIn("requested_runtime_profile", self.m207_acceptance)
+        self.assertIn("StateStore capability manifest", self.m207_acceptance)
+        self.assertNotIn("声明 adapter 能力", self.m207_acceptance)
+
+    def test_m2_07_acceptance_routes_to_m4_01_and_preserves_platform_gates(self):
         spi_acceptance_path = (
             self.root
             / "docs"
@@ -117,13 +132,14 @@ class StateStorePortabilityPlanTests(unittest.TestCase):
         self.assertIn("Windows and macOS remain blocked", sqlite_acceptance)
         self.assertIn("20/20 passed", artifact_acceptance)
         self.assertIn("context_bytes_reduction_percent", artifact_acceptance)
-        self.assertIn("版本：revision 27", self.master)
-        self.assertIn("版本：revision 27", self.status)
+        self.assertIn("版本：revision 28", self.master)
+        self.assertIn("版本：revision 28", self.status)
         self.assertIn("| M2-05 | ✅ |", self.master)
         self.assertIn("| M2-06 | ✅ |", self.master)
-        self.assertIn("| M2-07 | 🟡 |", self.master)
-        self.assertIn("active work | M2-07", self.status)
-        self.assertIn("governance authority：`MASTER.md` revision 27", self.target_state)
+        self.assertIn("| M2-07 | ✅ |", self.master)
+        self.assertIn("| M4-01 | 🟡 |", self.master)
+        self.assertIn("active work | M4-01", self.status)
+        self.assertIn("governance authority：`MASTER.md` revision 28", self.target_state)
 
 
 if __name__ == "__main__":
