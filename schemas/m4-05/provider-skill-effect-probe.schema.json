@@ -1,0 +1,388 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m4-05/provider-skill-effect-probe.schema.json",
+  "title": "Context Control Plane Provider Skill Effect Probe Receipt",
+  "$comment": "Strict receipt shape. Runtime validation replays all effects, recomputes digests, latencies, counts, provenance and acceptance gates.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "observed_at",
+    "provenance",
+    "environment",
+    "workload",
+    "measurement",
+    "acceptance",
+    "authority_boundary",
+    "limitations",
+    "generation"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.provider-skill-effect-probe/v1alpha1"},
+    "observed_at": {"type": "string", "minLength": 20, "maxLength": 64},
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "adapter_sha256",
+        "probe_sha256",
+        "runner_sha256",
+        "adapter_schema_sha256",
+        "probe_schema_sha256",
+        "adapter_test_sha256",
+        "probe_test_sha256",
+        "compiler_sha256",
+        "loader_sha256",
+        "plan_sha256",
+        "drift_validator_sha256",
+        "manifest_fixture_sha256",
+        "adapter_effect_registry_entry_sha256",
+        "probe_receipt_registry_entry_sha256"
+      ],
+      "properties": {
+        "adapter_sha256": {"$ref": "#/$defs/sha256"},
+        "probe_sha256": {"$ref": "#/$defs/sha256"},
+        "runner_sha256": {"$ref": "#/$defs/sha256"},
+        "adapter_schema_sha256": {"$ref": "#/$defs/sha256"},
+        "probe_schema_sha256": {"$ref": "#/$defs/sha256"},
+        "adapter_test_sha256": {"$ref": "#/$defs/sha256"},
+        "probe_test_sha256": {"$ref": "#/$defs/sha256"},
+        "compiler_sha256": {"$ref": "#/$defs/sha256"},
+        "loader_sha256": {"$ref": "#/$defs/sha256"},
+        "plan_sha256": {"$ref": "#/$defs/sha256"},
+        "drift_validator_sha256": {"$ref": "#/$defs/sha256"},
+        "manifest_fixture_sha256": {"$ref": "#/$defs/sha256"},
+        "adapter_effect_registry_entry_sha256": {"$ref": "#/$defs/sha256"},
+        "probe_receipt_registry_entry_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["python_version", "python_implementation", "platform", "machine", "external_services"],
+      "properties": {
+        "python_version": {"$ref": "#/$defs/nonempty"},
+        "python_implementation": {"$ref": "#/$defs/nonempty"},
+        "platform": {"$ref": "#/$defs/nonempty"},
+        "machine": {"$ref": "#/$defs/nonempty"},
+        "external_services": {"const": 0}
+      }
+    },
+    "workload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fixture", "providers", "distinct_synthetic_compositions", "coverage_scope", "scenario_ids", "requested_layers", "layer_content_bytes"],
+      "properties": {
+        "fixture": {"const": "m4-05-two-provider-distinct-synthetic-compositions"},
+        "providers": {"const": ["codex", "claude"]},
+        "distinct_synthetic_compositions": {"const": 40},
+        "coverage_scope": {"const": "byte-distinct-synthetic-compositions"},
+        "scenario_ids": {
+          "type": "array",
+          "minItems": 40,
+          "maxItems": 40,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/nonempty"}
+        },
+        "requested_layers": {"const": ["S0", "S2"]},
+        "layer_content_bytes": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["S0", "S1", "S2", "S3"],
+          "properties": {
+            "S0": {"const": 1024},
+            "S1": {"const": 4096},
+            "S2": {"const": 4096},
+            "S3": {"const": 16384}
+          }
+        }
+      }
+    },
+    "measurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "samples_per_provider",
+        "warmup_samples_per_scenario_provider",
+        "total_effects",
+        "total_compose_calls",
+        "validated_effects",
+        "measured_operation",
+        "compose_call_order",
+        "latency_samples_ms",
+        "adapter_p50_ms",
+        "adapter_p95_ms",
+        "adapter_max_ms",
+        "adapter_p95_limit_ms",
+        "effects_by_provider",
+        "effect_digests_by_provider",
+        "neutral_effect_digests_by_provider",
+        "unique_effect_digests_by_provider",
+        "unique_neutral_effect_digests",
+        "cross_provider_neutral_mismatches",
+        "provider_replay_mismatches",
+        "effects_declaring_state_write",
+        "composition_body_bytes_per_effect",
+        "composition_body_bytes_total",
+        "provider_payload_bytes_by_provider",
+        "effect_bytes_by_provider"
+      ],
+      "properties": {
+        "samples_per_provider": {"const": 40},
+        "warmup_samples_per_scenario_provider": {"const": 1},
+        "total_effects": {"const": 80},
+        "total_compose_calls": {"const": 240},
+        "validated_effects": {"const": 80},
+        "measured_operation": {"const": "local_provider_delivery_plan_compose_and_validate"},
+        "compose_call_order": {
+          "type": "array",
+          "minItems": 240,
+          "maxItems": 240,
+          "items": {"$ref": "#/$defs/compose_call"}
+        },
+        "latency_samples_ms": {"$ref": "#/$defs/provider_number_samples"},
+        "adapter_p50_ms": {"$ref": "#/$defs/provider_numbers"},
+        "adapter_p95_ms": {"$ref": "#/$defs/provider_numbers"},
+        "adapter_max_ms": {"$ref": "#/$defs/provider_numbers"},
+        "adapter_p95_limit_ms": {"const": 10.0},
+        "effects_by_provider": {"$ref": "#/$defs/provider_effect_samples"},
+        "effect_digests_by_provider": {"$ref": "#/$defs/provider_digest_samples"},
+        "neutral_effect_digests_by_provider": {"$ref": "#/$defs/provider_digest_samples"},
+        "unique_effect_digests_by_provider": {"$ref": "#/$defs/provider_forty"},
+        "unique_neutral_effect_digests": {"const": 40},
+        "cross_provider_neutral_mismatches": {"const": 0},
+        "provider_replay_mismatches": {"const": 0},
+        "effects_declaring_state_write": {"const": 0},
+        "composition_body_bytes_per_effect": {"const": 5120},
+        "composition_body_bytes_total": {"const": 409600},
+        "provider_payload_bytes_by_provider": {"$ref": "#/$defs/provider_integer_samples"},
+        "effect_bytes_by_provider": {"$ref": "#/$defs/provider_integer_samples"}
+      }
+    },
+    "acceptance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["two_provider_gate_passed", "distinct_composition_gate_passed", "effect_validation_gate_passed", "neutral_replay_gate_passed", "provider_replay_gate_passed", "state_write_declaration_gate_passed", "composition_integrity_gate_passed", "adapter_p95_gate_passed", "zero_external_services_gate_passed"],
+      "properties": {
+        "two_provider_gate_passed": {"const": true},
+        "distinct_composition_gate_passed": {"const": true},
+        "effect_validation_gate_passed": {"const": true},
+        "neutral_replay_gate_passed": {"const": true},
+        "provider_replay_gate_passed": {"const": true},
+        "state_write_declaration_gate_passed": {"const": true},
+        "composition_integrity_gate_passed": {"const": true},
+        "adapter_p95_gate_passed": {"const": true},
+        "zero_external_services_gate_passed": {"const": true}
+      }
+    },
+    "authority_boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["local_adapter_delivery_plan_measured", "m4_04_verified_composition_measured", "provider_process_invoked", "provider_network_invoked", "provider_input_tokens_measured", "provider_prompt_cache_measured", "provider_rule_following_measured", "provider_compaction_measured", "state_port_calls_measured", "synthetic_plan_authorizer", "frozen_clock", "state_revision_authorization_measured", "state_write_authority", "timing_cryptographically_attested"],
+      "properties": {
+        "local_adapter_delivery_plan_measured": {"const": true},
+        "m4_04_verified_composition_measured": {"const": true},
+        "provider_process_invoked": {"const": false},
+        "provider_network_invoked": {"const": false},
+        "provider_input_tokens_measured": {"const": false},
+        "provider_prompt_cache_measured": {"const": false},
+        "provider_rule_following_measured": {"const": false},
+        "provider_compaction_measured": {"const": false},
+        "state_port_calls_measured": {"const": false},
+        "synthetic_plan_authorizer": {"const": true},
+        "frozen_clock": {"const": true},
+        "state_revision_authorization_measured": {"const": false},
+        "state_write_authority": {"const": false},
+        "timing_cryptographically_attested": {"const": false}
+      }
+    },
+    "limitations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/nonempty"}
+    },
+    "generation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "arguments", "writes_runtime_state_to_repository"],
+      "properties": {
+        "command": {"$ref": "#/$defs/nonempty"},
+        "arguments": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "writes_runtime_state_to_repository": {"const": false}
+      }
+    }
+  },
+  "$defs": {
+    "nonempty": {"type": "string", "minLength": 1, "maxLength": 512},
+    "sha256": {"type": "string", "minLength": 64, "maxLength": 64, "pattern": "^[0-9a-f]{64}$"},
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[a-z0-9][a-z0-9._-]*(/[a-z0-9][a-z0-9._-]*)*$"
+    },
+    "compose_call": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scenario_id", "provider_id", "phase"],
+      "properties": {
+        "scenario_id": {"$ref": "#/$defs/nonempty"},
+        "provider_id": {"enum": ["codex", "claude"]},
+        "phase": {"enum": ["warmup", "measured", "replay"]}
+      }
+    },
+    "effect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "provider_id", "adapter_version", "adapter_surface_contract", "packet_sha256", "layer_plan_sha256", "load_receipt_sha256", "selected_skill_ids", "selected_rule_ids", "composition_sha256", "composition_sections", "composition_body_bytes", "provider_payload_sha256", "provider_payload_bytes", "writes_runtime_state", "state_revision"],
+      "properties": {
+        "schema_version": {"const": "context.provider-skill-adapter-effect/v1alpha1"},
+        "provider_id": {"enum": ["codex", "claude"]},
+        "adapter_version": {"const": "context.provider-skill-adapter/v1alpha1"},
+        "adapter_surface_contract": {
+          "enum": [
+            "context.adapter-surface/codex-app-server-skill-input/v1alpha1",
+            "context.adapter-surface/claude-agent-sdk-filesystem-skill/v1alpha1"
+          ]
+        },
+        "packet_sha256": {"$ref": "#/$defs/sha256"},
+        "layer_plan_sha256": {"$ref": "#/$defs/sha256"},
+        "load_receipt_sha256": {"$ref": "#/$defs/sha256"},
+        "selected_skill_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1024,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/identifier"}
+        },
+        "selected_rule_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 65536,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/identifier"}
+        },
+        "composition_sha256": {"$ref": "#/$defs/sha256"},
+        "composition_sections": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1024,
+          "items": {"$ref": "#/$defs/section"}
+        },
+        "composition_body_bytes": {"type": "integer", "minimum": 1, "maximum": 8388608},
+        "provider_payload_sha256": {"$ref": "#/$defs/sha256"},
+        "provider_payload_bytes": {"type": "integer", "minimum": 1, "maximum": 16777216},
+        "writes_runtime_state": {"const": false},
+        "state_revision": {"type": "null"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"provider_id": {"const": "codex"}}},
+          "then": {
+            "properties": {
+              "adapter_surface_contract": {
+                "const": "context.adapter-surface/codex-app-server-skill-input/v1alpha1"
+              }
+            }
+          }
+        },
+        {
+          "if": {"properties": {"provider_id": {"const": "claude"}}},
+          "then": {
+            "properties": {
+              "adapter_surface_contract": {
+                "const": "context.adapter-surface/claude-agent-sdk-filesystem-skill/v1alpha1"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "section": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "skill_id",
+        "layer",
+        "rule_ids",
+        "content_sha256",
+        "content_bytes",
+        "content_b64"
+      ],
+      "properties": {
+        "skill_id": {"$ref": "#/$defs/identifier"},
+        "layer": {"enum": ["S0", "S1", "S2", "S3"]},
+        "rule_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 65536,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/identifier"}
+        },
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "content_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8388608
+        },
+        "content_b64": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 11184812,
+          "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$"
+        }
+      }
+    },
+    "provider_number_samples": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["codex", "claude"],
+      "properties": {
+        "codex": {"type": "array", "minItems": 40, "maxItems": 40, "items": {"type": "number", "exclusiveMinimum": 0}},
+        "claude": {"type": "array", "minItems": 40, "maxItems": 40, "items": {"type": "number", "exclusiveMinimum": 0}}
+      }
+    },
+    "provider_numbers": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["codex", "claude"],
+      "properties": {
+        "codex": {"type": "number", "exclusiveMinimum": 0},
+        "claude": {"type": "number", "exclusiveMinimum": 0}
+      }
+    },
+    "provider_forty": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["codex", "claude"],
+      "properties": {"codex": {"const": 40}, "claude": {"const": 40}}
+    },
+    "provider_effect_samples": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["codex", "claude"],
+      "properties": {
+        "codex": {"type": "array", "minItems": 40, "maxItems": 40, "items": {"$ref": "#/$defs/effect"}},
+        "claude": {"type": "array", "minItems": 40, "maxItems": 40, "items": {"$ref": "#/$defs/effect"}}
+      }
+    },
+    "provider_digest_samples": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["codex", "claude"],
+      "properties": {
+        "codex": {"type": "array", "minItems": 40, "maxItems": 40, "items": {"$ref": "#/$defs/sha256"}},
+        "claude": {"type": "array", "minItems": 40, "maxItems": 40, "items": {"$ref": "#/$defs/sha256"}}
+      }
+    },
+    "provider_integer_samples": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["codex", "claude"],
+      "properties": {
+        "codex": {"type": "array", "minItems": 40, "maxItems": 40, "items": {"type": "integer", "minimum": 1}, "uniqueItems": false},
+        "claude": {"type": "array", "minItems": 40, "maxItems": 40, "items": {"type": "integer", "minimum": 1}, "uniqueItems": false}
+      }
+    }
+  }
+}

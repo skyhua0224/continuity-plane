@@ -1,17 +1,17 @@
 # Agent Harness Assessment
 
-版本：2  
-日期：2026-08-09  
+版本：3  
+日期：2026-08-11  
 状态：research / adoption candidates  
 范围：OpenAI Codex、Anthropic Claude Code/Agent SDK、长任务、Skill、工具、checkpoint、协作、验证与可观察性
 
 ```yaml
 document_id: context.agent-harness-assessment
-document_revision: 2
+document_revision: 3
 change_type: evidence
-authority_ref: current-source-and-software-official-snapshots-2026-08-09
-supersedes: context.agent-harness-assessment@1
-affected_tasks: [M0-08, M1-05, M2-01, M8-06]
+authority_ref: current-source-and-software-official-snapshots-2026-08-11
+supersedes: context.agent-harness-assessment@2
+affected_tasks: [M0-08, M1-05, M2-01, M4-05, M8-06]
 next_review: null
 ```
 
@@ -27,10 +27,11 @@ OpenAI 与 Anthropic 的公开实践共同支持以下方向：长任务应拆�
 
 | 来源 | 当前证据 | 采用边界 |
 |---|---|---|
-| [Codex Manual](https://developers.openai.com/codex/codex-manual.md) | 2026-08-09 官方 direct snapshot；含 long-running goal、AGENTS、Skills、MCP、hooks、subagents、SDK/App Server 和非交互运行 | Provider capability contract；运行时权威仍归 State MCP |
+| [Codex Manual](https://developers.openai.com/codex/codex-manual.md) | 2026-08-11 官方 direct snapshot；SHA-256 `633d406edbe14526cb7d1e113db188a7ec3bee188e2b28e4290912d15d214989`；含 long-running goal、AGENTS、Skills、MCP、hooks、subagents、SDK/App Server 和非交互运行 | Provider capability contract；运行时权威仍归 State MCP |
 | [Harness engineering](https://openai.com/index/harness-engineering/) | canonical OpenAI URL；当前 direct fetch 返回 403，研究文本经 proxy-render 获取并保持 candidate | 工程模式参考；承重产品事实需 Codex Manual、当前源码或实验补证 |
 | [Effective harnesses for long-running agents](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents) | 2026-08-09 官方 HTML direct snapshot | 增量任务、初始化、progress 和端到端验证模式；不能直接升级为权威状态设计 |
-| [Claude Code documentation index](https://code.claude.com/docs/llms.txt) | 2026-08-09 官方 direct snapshot | Claude provider adapter 的当前发现入口 |
+| [Claude Code documentation index](https://code.claude.com/docs/llms.txt) | 2026-08-11 官方 direct snapshot；SHA-256 `d8174cb72c55130d0200c4448c96d8dcbcd008b93e63ca9655de9206a3471d29` | Claude provider adapter 的当前发现入口 |
+| [Agent Skills in the SDK](https://code.claude.com/docs/en/agent-sdk/skills.md) | 2026-08-11 官方 direct snapshot；SHA-256 `81dd0e86f05cca1d91e758ccf0d5b26b1a72efd5eb6646c9a9f163e60723dcb7`；filesystem `SKILL.md`、`settingSources`/`setting_sources`、`skills` 过滤和 init 回执 | Claude adapter surface evidence；官方没有运行时注册 Skill API |
 | [Claude Code best practices](https://code.claude.com/docs/en/best-practices.md) | context、verification、subagent、checkpoint、resume 和自动化 | Host 工作方式与项目 Verification Profile 对照 |
 | [Claude Code checkpointing](https://code.claude.com/docs/en/checkpointing.md) | file edit rewind、conversation summarize 及 Bash/remote/subagent 边界 | 仅 host recovery candidate；外部 effect 由控制面幂等与 checkpoint 管理 |
 | [Claude Code goal](https://code.claude.com/docs/en/goal.md) | 可重复 evaluator、resume 与 non-interactive goal | Goal adapter；完成状态必须由项目 evidence gate 裁决 |
@@ -179,9 +180,9 @@ Harness 评估使用 E0-E9 veto 门。新增对照至少覆盖：no-harness/free
 
 ## 当前采用边界与下一验证
 
-M0-07 schema governance、M1-04 真实 replay corpus 和 M1-05 E0-E9 contract coverage 已提供离线前置证据。Runtime State MCP、provider adapter 与故障注入仍未实现。
+M0-07 schema governance、M1-04 replay corpus、M1-05 E0-E9 contract coverage、M2 State MCP/StateStore 和 M4-05 本地双 provider delivery-plan replay 已提供版本化证据。真实 provider 进程、token/cache、规则遵循、压缩恢复以及 M8 workflow 故障注入仍未实现。
 
-1. M2 定义 Project、Work、Claim、Idea、Decision、Evidence、Blocker、Effect、Checkpoint 和 append-only Event，并实现后续 CAS/effect authorization 所需合同。
-2. M4/M5 建立双 provider packet/replay；provider-native Skill、goal、hook、team task、workflow 和 checkpoint 只通过 adapter 进入。
+1. M3/M5 建立 sticky routing、Execution Packet、PreCompact/PostCompact canary 和 context return。
+2. M4-06/M4-09 建立进行中 rule-set 兼容锁、变更 replay 与 role/operation-aware Skill resolver。
 3. M7/M8 运行真实 provider tokenizer/live A/B、accepted delivery speed、SIGKILL/503、session-store 丢 batch、checkpoint 损坏和并发写故障注入。
 4. M8/M9 验证项目级 `active_work[]`、Work Ledger、provider task mapping、冲突恢复和同 revision 人类视图。

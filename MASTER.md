@@ -1,6 +1,6 @@
 # Context Control Plane MASTER
 
-版本：revision 32  
+版本：revision 33  
 日期：2026-08-11  
 状态：研究与 shadow pilot 准备阶段  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
@@ -276,8 +276,8 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | M4-02 | ✅ | 稳定 rule IDs 与 compiled packet | 当前任务规则形成有界 packet | 降低重复 token | M4-01 | `context.compiled-skill-packet/v1alpha1` strict schema、dependency closure、rule binding coverage、source digest verification、canonical fixture、registry hash；17/17 定向测试；static metadata proxy 72.666%；独立审查 High 0/Medium 0 通过 |
 | M4-03 | ✅ | missing path/digest/version/expiry validator | 漂移 Skill 自动 quarantine | stale rule 激活率为 0 | M4-01 | 33/33 显式负变体拦截；26/26 定向测试；High/Medium 复审为 0 |
 | M4-04 | ✅ | S0-S3 分层加载 | 恢复装载 1-2 KB bootstrap 与 2-6 KB packet | 缩短恢复热路径 | M4-02/M4-03 | strict plan/load schema、M4-03 allow gate、host-owned authorizer 和 canonical fixture 通过；35/35 定向测试；loader p95 `<10 ms`；向 composition 转发的 Skill 正文字节相对 all-layer control 下降 `>=60%`；provider token/真实压缩由 M4-05/M5 验收 |
-| M4-05 | 🟡 | Codex/Claude/其他 provider Skill adapter | 同一规则合同跨工具使用 | 可移植协作 | M4-04 | 两种以上 provider replay 一致 |
-| M4-06 | ⏳ | Skill 变更 replay 与兼容锁 | 进行中任务固定使用已记录 rule set | 可持续迭代替换 | M4-03 | breaking change 被拒或显式迁移 |
+| M4-05 | ✅ | Codex/Claude/其他 provider Skill adapter | 同一规则合同跨工具使用 | 可移植协作 | M4-04 | strict effect/probe schema 与官方 Codex/Claude Skill surface 通过；24/24 定向测试；40 组 byte-distinct compositions 生成 80/80 validated effects 与 240 次 compose；neutral mismatch `0/40`、provider replay mismatch `0/80`、state-write declaration `0/80`；本地 adapter p95 `<10 ms`；独立复核 High 0/Medium 0；provider process/token/cache/规则遵循/真实压缩未在本阶段声明 |
+| M4-06 | 🟡 | Skill 变更 replay 与兼容锁 | 进行中任务固定使用已记录 rule set | 可持续迭代替换 | M4-03 | breaking change 被拒或显式迁移 |
 | M4-07 | ⏳ | Built-in、External、Project、User、Workflow Skill catalog | 来源、license、provenance 和权限边界可审计 | 管理可复用与项目专属规则 | M4-01/M0-07 | 五类来源均有 manifest、准入和 quarantine 测试 |
 | M4-08 | ⏳ | 项目初始化与用户习惯 Skill proposal | 从仓库、验证配置和显式偏好生成可审查候选 | 缩短接入并保持用户控制 | M4-07/M7-03 | proposal 可重现；未经批准不得 active |
 | M4-09 | ⏳ | role/operation-aware Skill resolver | Thinker、Executor、Verifier 和 provider 获得最小规则集 | 控制动作权限与上下文成本 | M3-04/M4-04/M4-07 | 选择优先级、冲突、expiry、replay fixture 全部通过 |
@@ -424,7 +424,7 @@ E1、E2、E4、E6、E8、E9 具有 veto 权限；平均得分、token 降幅和�
 
 ## 10. 当前执行路由
 
-M4-05 是当前 active leaf。M4-04 已完成 packet-bound layered load plan、host-owned authorizer、M4-03 allow gate、S0-S3 deterministic loader、canonical receipt 和固定 corpus benchmark；S0+S2 向 composition 转发的 Skill 正文从 25,600 bytes 降至 5,120 bytes，loader p95 低于 10 ms；provider token、真实压缩和 State revision authorization 未在本阶段声明，验收见 [`m4-04-layered-skill-loading-acceptance-2026-08-11.md`](docs/migrations/m4-04-layered-skill-loading-acceptance-2026-08-11.md)。M4-03 已完成 bytes-only resolver、missing path、content/manifest/version digest、expiry、source status、malformed input 和 allow evidence gate；验收见 [`m4-03-skill-drift-quarantine-acceptance-2026-08-11.md`](docs/migrations/m4-03-skill-drift-quarantine-acceptance-2026-08-11.md)。M3-01 的内容依赖仍由 M2-09 的 Windows/macOS 原生 fixture 阻塞。
+M4-06 是当前 active leaf。M4-05 已完成 Codex/Claude 独立 Skill materializer、同一 neutral effect、M4-03/M4-04 identity chain、严格 replay 和 2×40 本地 probe；neutral mismatch `0/40`、provider replay mismatch `0/80`、state-write declaration `0/80`，验收见 [`m4-05-provider-skill-adapter-acceptance-2026-08-11.md`](docs/migrations/m4-05-provider-skill-adapter-acceptance-2026-08-11.md)。真实 provider 进程、token/cache、规则遵循、context-window 和压缩恢复仍由 M5/M8 验收。M3-01 的内容依赖仍由 M2-09 的 Windows/macOS 原生 fixture 阻塞。
 
 M1-05 已完成 16 个 E0-E9 contract fixture，验收见 `docs/migrations/m1-05-fault-coverage-acceptance-2026-08-09.md`。Runtime fault evidence 仍由 M2/M5/M8 提供。M1-04 已完成 40 个 fixture admission，验收见 `docs/migrations/m1-04-replay-fixture-acceptance-2026-08-09.md`。受控 archive 继续采用流式、区间化读取；原始 JSONL 和 source namespace key material 禁止进入 Git。M1-06 archive retention/export/delete 的离线验收见 `docs/migrations/m1-06-archive-governance-acceptance-2026-08-09.md`。
 
