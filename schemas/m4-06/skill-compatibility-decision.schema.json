@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m4-06/skill-compatibility-decision.schema.json",
+  "title": "Context Control Plane Skill Compatibility Decision",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "task_id", "operation_id", "lock_sha256", "candidate_lock_sha256", "candidate_manifest_set_sha256", "candidate_packet_sha256", "provider_contract_refs", "classification", "reason_codes", "delivery_allowed_without_migration"],
+  "properties": {
+    "schema_version": {"const": "context.skill-compatibility-decision/v1alpha1"},
+    "task_id": {"$ref": "#/$defs/identifier"},
+    "operation_id": {"type": "string", "pattern": "^operation://[a-z0-9][a-z0-9._-]*$"},
+    "lock_sha256": {"$ref": "#/$defs/sha256"},
+    "candidate_lock_sha256": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/sha256"}]},
+    "candidate_manifest_set_sha256": {"$ref": "#/$defs/sha256"},
+    "candidate_packet_sha256": {"$ref": "#/$defs/sha256"},
+    "provider_contract_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^provider://[a-z0-9][a-z0-9._-]*/v[a-z0-9._-]+$"}},
+    "classification": {"enum": ["unchanged", "compatible", "migration_required", "rejected"]},
+    "reason_codes": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/identifier"}},
+    "delivery_allowed_without_migration": {"type": "boolean"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"classification": {"const": "unchanged"}}, "required": ["classification"]},
+      "then": {
+        "properties": {
+          "reason_codes": {"maxItems": 0},
+          "delivery_allowed_without_migration": {"const": true}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"classification": {"const": "compatible"}}, "required": ["classification"]},
+      "then": {
+        "properties": {
+          "reason_codes": {"const": ["unselected-manifest-metadata-changed"]},
+          "delivery_allowed_without_migration": {"const": true}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"classification": {"const": "migration_required"}}, "required": ["classification"]},
+      "then": {
+        "properties": {
+          "reason_codes": {
+            "minItems": 1,
+            "items": {"enum": ["compiled-packet-changed", "compiled-rule-set-changed", "provider-contract-changed", "selected-skill-identity-changed", "selected-skill-manifest-changed"]}
+          },
+          "delivery_allowed_without_migration": {"const": false}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"classification": {"enum": ["migration_required", "rejected"]}}, "required": ["classification"]},
+      "then": {
+        "properties": {
+          "reason_codes": {"minItems": 1},
+          "delivery_allowed_without_migration": {"const": false}
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "minLength": 64, "maxLength": 64, "pattern": "^[0-9a-f]{64}$"},
+    "identifier": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[a-z0-9][a-z0-9._-]*(/[a-z0-9][a-z0-9._-]*)*$"}
+  }
+}

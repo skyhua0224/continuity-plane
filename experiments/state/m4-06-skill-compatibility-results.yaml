@@ -1,0 +1,441 @@
+schema_version: context.skill-compatibility-probe/v1alpha1
+observed_at: '2026-08-11T16:30:00+08:00'
+provenance:
+  implementation_sha256: 9921449c3d6fd93135ead8c96d0de1b21495a548b6c8e633266f318feb345a3f
+  probe_sha256: f6c2013da5518f7f81b0bc24b2b78ac1a37e53718abeb1652a05463592c8a0ee
+  runner_sha256: 559f3026d87fa352955eff9173e9e0e3efebffd9190d275be293a1c7f30259a5
+  probe_schema_sha256: 4c5088c90d1520aa8553f126c21e602d0e528479ccb2e65742cd9a43970fadb3
+  lock_schema_sha256: 31f27020405cf88956c84e6ea3927057b4040db516b6858cbcfdcab36153d841
+  decision_schema_sha256: 1286bd3353558cce63f1bfcac4ff1929f91cf233259e60746ad54455edc9a94d
+  migration_schema_sha256: 889ff8ce064e36d15538d6f072c263681d74b9f3be218600803cfad930f66b39
+  manifest_fixture_sha256: 1bc8cc830b4fabd29f5de79a4d52f7eaca8ca249134fa20bb4c833f6f25701c4
+  compiled_packet_implementation_sha256: 3d6403cb538c230ba4d3920185e11490d7c0b6d0c5914be06542248e006ce3ae
+  manifest_validator_implementation_sha256: 0cb6828c23d2d6a220cad0ca72daba2b3ae3ea93312fb7e6bfffc448c096fdbf
+  provider_adapter_implementation_sha256: 6f21c4edcc06ed2d0ce36ea4002bcaffae6950c19da6c7dd2643bc7340400690
+  compatibility_test_sha256: 025ac65af2ccd04331e714c7c875bea69100882e39d1e06ac1329d042677f005
+  probe_test_sha256: ef8ceef3ed78dc1e7003ba8490bbfb577361dfbd972a624c7c84e1dff6e38a9a
+  lock_registry_entry_sha256: c797abe40652a66d488c7b313eeb22bf41f7730de2d21b3165b3919ac6f98e4b
+  decision_registry_entry_sha256: fc610e99b021b6f350d6153ea624501824f29388ccb757fab59676e0c55481ea
+  migration_registry_entry_sha256: c16823dcdff6783e31b60e8a6ab7ea6b8bba8d433aa5364d5414947c6822d6f7
+  probe_registry_entry_sha256: 836e63b18c9af369706b6d063dfeb5f76a1db163c450aa6af01e7e3e8089f87f
+environment:
+  python_version: 3.14.6
+  python_implementation: CPython
+  platform: Linux-7.1.6-1-cachyos-x86_64-with-glibc2.44
+  machine: x86_64
+  external_services: 0
+workload:
+  fixture: m4-06-active-task-skill-change-matrix
+  samples: 40
+  change_kinds:
+  - unselected-metadata
+  - selected-version
+  - selected-content
+  - selected-rules
+  - provider-contract
+  samples_per_change_kind: 8
+measurement:
+  samples: 40
+  compatible_samples: 8
+  breaking_samples: 32
+  classification_counts:
+    unchanged: 0
+    compatible: 8
+    migration_required: 32
+    rejected: 0
+  unauthorized_deliveries: 0
+  blocked_provider_compose_calls: 0
+  compatible_provider_compose_calls: 8
+  evidence_missing_migrations_allowed: 0
+  valid_migrations_allowed: 4
+  migration_replay_mismatches: 0
+  rollback_mismatches: 0
+  wrong_binding_migrations_allowed: 0
+  latency_samples_ms:
+  - 0.4954
+  - 0.4562
+  - 0.4655
+  - 0.5379
+  - 0.5477
+  - 0.5312
+  - 0.4907
+  - 0.4485
+  - 0.6939
+  - 0.7008
+  - 0.836
+  - 0.7087
+  - 0.685
+  - 0.7153
+  - 0.6739
+  - 0.6791
+  - 0.6669
+  - 0.6779
+  - 0.6771
+  - 0.8281
+  - 0.6869
+  - 0.6585
+  - 0.7405
+  - 0.6696
+  - 0.6805
+  - 0.6943
+  - 0.7049
+  - 0.7026
+  - 0.8409
+  - 0.722
+  - 0.6787
+  - 0.7171
+  - 0.832
+  - 0.7037
+  - 0.6759
+  - 0.6911
+  - 0.6932
+  - 0.6907
+  - 0.6869
+  - 0.6724
+  assessment_p50_ms: 0.685
+  assessment_p95_ms: 0.832
+  assessment_max_ms: 0.8409
+  assessment_p95_limit_ms: 10.0
+  results:
+  - scenario_id: m4-06-01
+    change_kind: unselected-metadata
+    classification: compatible
+    delivery_allowed_without_migration: true
+    provider_compose_calls: 1
+    blocked: false
+    decision_sha256: bfd12d365ad815faed35b2e1a519a8e049249ef3398c093ca9d1355a633d9426
+  - scenario_id: m4-06-02
+    change_kind: unselected-metadata
+    classification: compatible
+    delivery_allowed_without_migration: true
+    provider_compose_calls: 1
+    blocked: false
+    decision_sha256: fda9f217230536e20d7bffb05e69dc49219b5ccf7315e072d34aff6ac352b1fb
+  - scenario_id: m4-06-03
+    change_kind: unselected-metadata
+    classification: compatible
+    delivery_allowed_without_migration: true
+    provider_compose_calls: 1
+    blocked: false
+    decision_sha256: e2aa91c8d464ea8f4f6a7ef627e7b2d41bca1be86b4e7ab9a4a302bf5f014fc6
+  - scenario_id: m4-06-04
+    change_kind: unselected-metadata
+    classification: compatible
+    delivery_allowed_without_migration: true
+    provider_compose_calls: 1
+    blocked: false
+    decision_sha256: e84424433b01dc7d2feb13618eac76e817eae8d683396bd90ab990fcd541e6b8
+  - scenario_id: m4-06-05
+    change_kind: unselected-metadata
+    classification: compatible
+    delivery_allowed_without_migration: true
+    provider_compose_calls: 1
+    blocked: false
+    decision_sha256: fde2a7f321819a8dd0fc76eec07476540d29cb9d05540257ab0b3560a33e4359
+  - scenario_id: m4-06-06
+    change_kind: unselected-metadata
+    classification: compatible
+    delivery_allowed_without_migration: true
+    provider_compose_calls: 1
+    blocked: false
+    decision_sha256: 6463a3000f611a776e8cb3ed5f3463a612d9fb00d453c0013735bbf242a1901d
+  - scenario_id: m4-06-07
+    change_kind: unselected-metadata
+    classification: compatible
+    delivery_allowed_without_migration: true
+    provider_compose_calls: 1
+    blocked: false
+    decision_sha256: 019d92b67b4665e4aa6536c6efb28b0f070e685fd2b7e41acbc4f988342be533
+  - scenario_id: m4-06-08
+    change_kind: unselected-metadata
+    classification: compatible
+    delivery_allowed_without_migration: true
+    provider_compose_calls: 1
+    blocked: false
+    decision_sha256: 030b22b4878b1cb2d25c1b5bf9dbc2a68f6a51777b0a608456ac663ca40c7f5c
+  - scenario_id: m4-06-09
+    change_kind: selected-version
+    classification: migration_required
+    delivery_allowed_without_migration: false
+    provider_compose_calls: 0
+    blocked: true
+    decision_sha256: 385a65e29154dfce4aa02c4aef8e78f8d1973287605611be6cd83ca627e1f5b8
+  - scenario_id: m4-06-10
+    change_kind: selected-version
+    classification: migration_required
+    delivery_allowed_without_migration: false
+    provider_compose_calls: 0
+    blocked: true
+    decision_sha256: 92278e59ad44be5584308d7288e23eb4adf40a6bb548cf58ceb38dbdb3a0b97c
+  - scenario_id: m4-06-11
+    change_kind: selected-version
+    classification: migration_required
+    delivery_allowed_without_migration: false
+    provider_compose_calls: 0
+    blocked: true
+    decision_sha256: 2d86f172ed61996593e67b3ed1d59b1aff5cd35718191c79502a47e374ad3c14
+  - scenario_id: m4-06-12
+    change_kind: selected-version
+    classification: migration_required
+    delivery_allowed_without_migration: false
+    provider_compose_calls: 0
+    blocked: true
+    decision_sha256: 2d40743da55c4f84cc4bb21fca9f657a392ead2ee4bed6d6ae95c76efccfeaaf
+  - scenario_id: m4-06-13
+    change_kind: selected-version
+    classification: migration_required
+    delivery_allowed_without_migration: false
+    provider_compose_calls: 0
+    blocked: true
+    decision_sha256: c9728bc8df2bfbc6de8458aaa28c21c8a7903e8bf402210de06199c0bfe8f6b6
+  - scenario_id: m4-06-14
+    change_kind: selected-version
+    classification: migration_required
+    delivery_allowed_without_migration: false
+    provider_compose_calls: 0
+    blocked: true
+    decision_sha256: 3d14e460ecb42642478d66cfacef7692dbbf08af6ccedfc7a6fec3bf8bbf1502
+  - scenario_id: m4-06-15
+    change_kind: selected-version
+    classification: migration_required
+    delivery_allowed_without_migration: false
+    provider_compose_calls: 0
+    blocked: true
+    decision_sha256: 440eee9b189636102144104f8127d767121839b8dc277d092ebb14870ecaccd9
+  - scenario_id: m4-06-16
+    change_kind: selected-version
+    classification: migration_required
+    delivery_allowed_without_migration: false
+    provider_compose_calls: 0
+    blocked: true
+    decision_sha256: 596f120f3880790f63e4dea0169d4e07e4bb9a859069b83f5d0eaf7add1b1f1f
+  - scenario_id: m4-06-17
+    change_kind: selected-content
+    classification: migration_required
+    delivery_allowed_without_migration: false
+    provider_compose_calls: 0
+    blocked: true
+    decision_sha256: a55696cec1861bc6ca1a013af67f354b2cd5ece039e0b9053804a338e859474b
+  - scenario_id: m4-06-18
+    change_kind: selected-content
+    classification: migration_required
+    delivery_allowed_without_migration: false
+    provider_compose_calls: 0
+    blocked: true
+    decision_sha256: 4152716139ccf8eba4bc312ae3fae891ba58026a8523ae7776d759c64bc637b8
+  - scenario_id: m4-06-19
+    change_kind: selected-content
+    classification: migration_required
+    delivery_allowed_without_migration: false
+    provider_compose_calls: 0
+    blocked: true
+    decision_sha256: 8095187f95a7aec88dc133da901cde983fdad538b218601c83c3a6c288a316c2
+  - scenario_id: m4-06-20
+    change_kind: selected-content
+    classification: migration_required
+    delivery_allowed_without_migration: false
+    provider_compose_calls: 0
+    blocked: true
+    decision_sha256: 3a5989fb540ff6d6e52320c60e36d05bd4fb0856d59c08e6f6f254f2983446a1
+  - scenario_id: m4-06-21
+    change_kind: selected-content
+    classification: migration_required
+    delivery_allowed_without_migration: false
+    provider_compose_calls: 0
+    blocked: true
+    decision_sha256: 8021bc0bf4403098aac546c43ca487139699e90ca995bfaf74457f29ab86948a
+  - scenario_id: m4-06-22
+    change_kind: selected-content
+    classification: migration_required
+    delivery_allowed_without_migration: false
+    provider_compose_calls: 0
+    blocked: true
+    decision_sha256: 9428f9c4c18727c85c5425917eca056562270511c047b84f85650061f9756f7e
+  - scenario_id: m4-06-23
+    change_kind: selected-content
+    classification: migration_required
+    delivery_allowed_without_migration: false
+    provider_compose_calls: 0
+    blocked: true
+    decision_sha256: cdc9e13db2cd5dea8ee0cf120654bb29b6a3300f5bf710b0b9744a569d4232c3
+  - scenario_id: m4-06-24
+    change_kind: selected-content
+    classification: migration_required
+    delivery_allowed_without_migration: false
+    provider_compose_calls: 0
+    blocked: true
+    decision_sha256: 635029317194fa61b870ef1efb4769a9f55fa2bf602389adc865931370542ff2
+  - scenario_id: m4-06-25
+    change_kind: selected-rules
+    classification: migration_required
+    delivery_allowed_without_migration: false
+    provider_compose_calls: 0
+    blocked: true
+    decision_sha256: e94e86b9adf9dd76f463ee65bfe7efb9adf56e2751a9284fde4e52a81785714b
+  - scenario_id: m4-06-26
+    change_kind: selected-rules
+    classification: migration_required
+    delivery_allowed_without_migration: false
+    provider_compose_calls: 0
+    blocked: true
+    decision_sha256: 63eb6c4b6ae605badaf190247dcdf653fba4cfcee4b9ecc9cba40e830bd765d9
+  - scenario_id: m4-06-27
+    change_kind: selected-rules
+    classification: migration_required
+    delivery_allowed_without_migration: false
+    provider_compose_calls: 0
+    blocked: true
+    decision_sha256: fa8d9802a431b8bbfdc5ba0d2761082ef2044fe34b4bae1d089fb6600df8f3aa
+  - scenario_id: m4-06-28
+    change_kind: selected-rules
+    classification: migration_required
+    delivery_allowed_without_migration: false
+    provider_compose_calls: 0
+    blocked: true
+    decision_sha256: 7abc8bccffea34a79942c51829d7225e83cb070c6488e6501ad94ab5aee7b25b
+  - scenario_id: m4-06-29
+    change_kind: selected-rules
+    classification: migration_required
+    delivery_allowed_without_migration: false
+    provider_compose_calls: 0
+    blocked: true
+    decision_sha256: 336a105d8d46738065170adac19300f900c6ba89c0f803135a402a038cf5534f
+  - scenario_id: m4-06-30
+    change_kind: selected-rules
+    classification: migration_required
+    delivery_allowed_without_migration: false
+    provider_compose_calls: 0
+    blocked: true
+    decision_sha256: a1c81a99446928d4c472228141370f27701e3e4c25f3b94dae9b935366e5f552
+  - scenario_id: m4-06-31
+    change_kind: selected-rules
+    classification: migration_required
+    delivery_allowed_without_migration: false
+    provider_compose_calls: 0
+    blocked: true
+    decision_sha256: 11dfa23e4250763bdb36ebc1a8424d21cc0e5675916c492acd837ed5212c97ed
+  - scenario_id: m4-06-32
+    change_kind: selected-rules
+    classification: migration_required
+    delivery_allowed_without_migration: false
+    provider_compose_calls: 0
+    blocked: true
+    decision_sha256: 96460c8790727148d4345247642563ab1af7298b0690081775de937c484de095
+  - scenario_id: m4-06-33
+    change_kind: provider-contract
+    classification: migration_required
+    delivery_allowed_without_migration: false
+    provider_compose_calls: 0
+    blocked: true
+    decision_sha256: 592d3229a72ab41b9d1ad2192922280678551d9eceed034e4b7a6ac3fff9ac0f
+  - scenario_id: m4-06-34
+    change_kind: provider-contract
+    classification: migration_required
+    delivery_allowed_without_migration: false
+    provider_compose_calls: 0
+    blocked: true
+    decision_sha256: 1d869b567403daeb98235c93ffc1541b7da20235e59589a980d6b3ee4215fc8b
+  - scenario_id: m4-06-35
+    change_kind: provider-contract
+    classification: migration_required
+    delivery_allowed_without_migration: false
+    provider_compose_calls: 0
+    blocked: true
+    decision_sha256: 789f38b467d5d7364e8d7c6344fedfb875f44cc012c0e106fa415183e6267893
+  - scenario_id: m4-06-36
+    change_kind: provider-contract
+    classification: migration_required
+    delivery_allowed_without_migration: false
+    provider_compose_calls: 0
+    blocked: true
+    decision_sha256: e6202edafdd83991c0ec58891654fea2c849357341babb3bb6310fe1b7cd00c3
+  - scenario_id: m4-06-37
+    change_kind: provider-contract
+    classification: migration_required
+    delivery_allowed_without_migration: false
+    provider_compose_calls: 0
+    blocked: true
+    decision_sha256: 2d5021be43034fd7ce21e1d984a15128239da2883b214c32a463ea5c738c6434
+  - scenario_id: m4-06-38
+    change_kind: provider-contract
+    classification: migration_required
+    delivery_allowed_without_migration: false
+    provider_compose_calls: 0
+    blocked: true
+    decision_sha256: e8f3c1116568ceab25566c9942e4a2c21e562f9ad9f9155c5c5f79891564261f
+  - scenario_id: m4-06-39
+    change_kind: provider-contract
+    classification: migration_required
+    delivery_allowed_without_migration: false
+    provider_compose_calls: 0
+    blocked: true
+    decision_sha256: c5a8fcc9ca984e62b5d98320c89b999486a8bf25883ea26e7dfcbf8fcdd1f41f
+  - scenario_id: m4-06-40
+    change_kind: provider-contract
+    classification: migration_required
+    delivery_allowed_without_migration: false
+    provider_compose_calls: 0
+    blocked: true
+    decision_sha256: ffac8032d10d15573b7fe2dd0241bf50eca8e434cda875d4521d72165ae1a59d
+  migration_results:
+  - change_kind: provider-contract
+    migration_allowed: true
+    missing_evidence_allowed: false
+    replay_match: true
+    rollback_match: true
+    wrong_binding_allowed: false
+    migration_sha256: 47692a5fea787b911459a16cfa6d9eb6682c231a9ecc4abdda880f0f2b7ce43c
+  - change_kind: selected-content
+    migration_allowed: true
+    missing_evidence_allowed: false
+    replay_match: true
+    rollback_match: true
+    wrong_binding_allowed: false
+    migration_sha256: 7b958c244d299fdd6232bfb43796cd4b152b4cf910efbe8b08f7d5fd645ccd8c
+  - change_kind: selected-rules
+    migration_allowed: true
+    missing_evidence_allowed: false
+    replay_match: true
+    rollback_match: true
+    wrong_binding_allowed: false
+    migration_sha256: e4b55549181ce19ba3564a66bc395f72c5567bb7b0d21b1e3ccef1f86fb74eff
+  - change_kind: selected-version
+    migration_allowed: true
+    missing_evidence_allowed: false
+    replay_match: true
+    rollback_match: true
+    wrong_binding_allowed: false
+    migration_sha256: 3e793d8c16ee764df520b1edd7d43cd00c15f2544cecd88dcb17f985b53632a6
+acceptance:
+  forty_sample_gate_passed: true
+  classification_gate_passed: true
+  unauthorized_delivery_gate_passed: true
+  pre_provider_gate_passed: true
+  migration_evidence_gate_passed: true
+  migration_replay_gate_passed: true
+  rollback_gate_passed: true
+  task_binding_gate_passed: true
+  assessment_p95_gate_passed: true
+  zero_external_services_gate_passed: true
+authority_boundary:
+  local_compatibility_gate_measured: true
+  synthetic_skill_sources: true
+  provider_adapter_test_double: true
+  synthetic_evidence_verifier: true
+  provider_process_invoked: false
+  provider_network_invoked: false
+  state_commit_invoked: false
+  state_write_authority: false
+limitations:
+- This probe measures the local compatibility gate, not a provider process.
+- M5 and M8 must bind this gate to checkpoint restore and authoritative task state.
+generation:
+  command: tools/run_skill_compatibility_probe.py
+  arguments:
+  - --samples
+  - '40'
+  - --observed-at
+  - '2026-08-11T16:30:00+08:00'
+  - --output
+  - experiments/state/m4-06-skill-compatibility-results.yaml
+  writes_runtime_state_to_repository: false
