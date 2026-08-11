@@ -29,6 +29,7 @@ _SEMVER_RE = re.compile(
     r"(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$"
 )
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+_MAX_SEMVER_LENGTH = 256
 _RELEASE_STATES = {"current", "deprecated"}
 _CHANGE_KINDS = {"metadata", "backward-compatible", "breaking"}
 
@@ -44,6 +45,8 @@ class SemanticVersion:
     def parse(cls, value: str) -> "SemanticVersion":
         if not isinstance(value, str):
             raise SchemaGovernanceError("version must be a string")
+        if len(value) > _MAX_SEMVER_LENGTH:
+            raise SchemaGovernanceError("semantic version exceeds 256 characters")
         match = _SEMVER_RE.fullmatch(value)
         if not match:
             raise SchemaGovernanceError(f"invalid semantic version: {value}")

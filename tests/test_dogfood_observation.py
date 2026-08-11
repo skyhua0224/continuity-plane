@@ -52,22 +52,22 @@ class DogfoodObservationTests(unittest.TestCase):
     def test_summary_accounts_for_loaded_skill_bodies(self):
         summary = summarize_observations(self.document)
 
-        self.assertEqual(summary["skill_body_load_count"], 80)
-        self.assertEqual(summary["skill_body_load_bytes"], 833223)
-        self.assertEqual(summary["repeated_skill_body_load_bytes"], 653802)
+        self.assertEqual(summary["skill_body_load_count"], 83)
+        self.assertEqual(summary["skill_body_load_bytes"], 860439)
+        self.assertEqual(summary["repeated_skill_body_load_bytes"], 681018)
 
     def test_visible_compactions_remain_uncomparable_for_cost_metrics(self):
         summary = summarize_observations(self.document)
 
-        self.assertEqual(summary["compaction_events"], 23)
-        self.assertEqual(summary["input_routing_events"], 23)
+        self.assertEqual(summary["compaction_events"], 24)
+        self.assertEqual(summary["input_routing_events"], 24)
         self.assertEqual(summary["comparable_compaction_events"], 0)
 
     def test_post_compaction_interaction_reset_marks_trend_regressed(self):
         summary = summarize_observations(self.document)
 
         self.assertEqual(summary["compaction_recovery_rate"], 1.0)
-        self.assertEqual(summary["continuation_recovery_rate"], 66 / 68)
+        self.assertEqual(summary["continuation_recovery_rate"], 70 / 72)
         self.assertEqual(summary["already_acknowledged_items_replayed"], 2)
         self.assertEqual(summary["first_post_restore_action_mismatches"], 2)
         self.assertEqual(summary["trend_status"], "regressed")
@@ -321,6 +321,40 @@ class DogfoodObservationTests(unittest.TestCase):
             delivery_skills["metrics"]["repeated_body_load_bytes"], 22367
         )
 
+    def test_m4_01_compaction_and_status_query_resume_the_exact_red_test_cursor(self):
+        observations = {
+            item["observation_id"]: item for item in self.document["observations"]
+        }
+        compaction = observations["dogfood-compaction-024"]
+
+        self.assertEqual(compaction["active_leaf_before"], "M4-01")
+        self.assertEqual(compaction["active_leaf_after"], "M4-01")
+        self.assertTrue(compaction["metrics"]["first_post_restore_action_matched"])
+        self.assertEqual(
+            compaction["metrics"]["already_acknowledged_items_replayed"],
+            0,
+        )
+        self.assertEqual(compaction["metrics"]["unauthorized_task_switches"], 0)
+        self.assertIn(
+            "M4-01 design correction test cursor",
+            "\n".join(compaction["evidence"]),
+        )
+
+        status_query = observations["dogfood-input-routing-024"]
+        self.assertEqual(status_query["input_kind"], "status-query")
+        self.assertEqual(status_query["route"], "continue")
+        self.assertEqual(status_query["active_leaf_after"], "M4-01")
+        self.assertEqual(
+            status_query["metrics"]["unauthorized_task_switches"],
+            0,
+        )
+
+        skill_load = observations["dogfood-skill-load-031"]
+        self.assertEqual(skill_load["active_leaf_before"], "M4-01")
+        self.assertEqual(skill_load["metrics"]["body_load_count"], 3)
+        self.assertEqual(skill_load["metrics"]["total_body_bytes"], 27216)
+        self.assertEqual(skill_load["metrics"]["repeated_body_load_bytes"], 27216)
+
     def test_m2_07_acceptance_advances_to_the_ready_skill_manifest_leaf(self):
         observations = {
             item["observation_id"]: item for item in self.document["observations"]
@@ -357,6 +391,30 @@ class DogfoodObservationTests(unittest.TestCase):
         self.assertEqual(verification["metrics"]["scope_violations"], 0)
         self.assertIn(
             "review:m2-07-high-0-medium-0-2026-08-10",
+            verification["evidence_refs"],
+        )
+
+    def test_m4_01_acceptance_advances_to_compiled_skill_packets(self):
+        observations = {
+            item["observation_id"]: item for item in self.document["observations"]
+        }
+        revision = observations["dogfood-plan-revision-025"]
+        verification = observations["dogfood-verification-025"]
+
+        self.assertEqual(revision["active_leaf_before"], "M4-01")
+        self.assertEqual(revision["active_leaf_after"], "M4-02")
+        self.assertEqual(revision["metrics"]["master_revision_before"], 28)
+        self.assertEqual(revision["metrics"]["master_revision_after"], 29)
+        self.assertEqual(revision["metrics"]["tasks_completed"], ["M4-01"])
+        self.assertEqual(revision["metrics"]["tasks_activated"], ["M4-02"])
+
+        self.assertEqual(verification["active_leaf_before"], "M4-01")
+        self.assertEqual(verification["active_leaf_after"], "M4-02")
+        self.assertEqual(verification["metrics"]["tests_run"], 430)
+        self.assertEqual(verification["metrics"]["tests_failed"], 0)
+        self.assertEqual(verification["metrics"]["checks_failed"], 0)
+        self.assertIn(
+            "review:m4-01-high-0-medium-0-2026-08-10",
             verification["evidence_refs"],
         )
 
