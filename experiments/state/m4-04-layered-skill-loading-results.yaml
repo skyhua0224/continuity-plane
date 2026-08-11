@@ -1,0 +1,187 @@
+schema_version: context.layered-skill-benchmark/v1alpha1
+observed_at: '2026-08-11T08:00:00+08:00'
+provenance:
+  implementation_sha256: b8be4ba19eb6068d83f2d5ed6d6c44a775f1b173ac5af621c3f317289bb08e1e
+  plan_implementation_sha256: 4e0addba7c0a515bcbefd62335c6763f21c9ae81427ae096946cab815ea8cd06
+  benchmark_sha256: b9bebdb5a5585eee8768f8f0d94340219583e22d389958594368599d2459de53
+  compiler_sha256: 3d6403cb538c230ba4d3920185e11490d7c0b6d0c5914be06542248e006ce3ae
+  drift_validator_sha256: b912456c8854f1a74d7b1d0aa54fdf7de6ec236a0200f06be1ec1f76fae664c9
+  runner_sha256: 60a86c16cdc69a81704040e95030a69a15ca3450f2ac2b9ae1445417030d5bcc
+  manifest_fixture_sha256: 1bc8cc830b4fabd29f5de79a4d52f7eaca8ca249134fa20bb4c833f6f25701c4
+  load_fixture_sha256: 2fc1b70322499745a13c8f4210fcb1831c12978897c2546a8501b52239c42cf5
+  plan_fixture_sha256: 61215ac6bf8eb0ae79c6e53c72dcfa5c8ade7dcf0c33c10576f66b8788044298
+  schema_sha256: a7e840bad03efdfd38c5cc54891fc14dc59e6e3a0fc3f3e2476e8cdbb8b6c970
+  plan_schema_sha256: ebaa6b091ab885bab13cd1b702c2f4d8cce99863e4a55081f272476497982020
+  contract_test_sha256: cac492796b448bd2e4480c548ff5be987341a13d07bdbfaf30d154bf375ebb0f
+  plan_contract_test_sha256: 453cc9cbf98d46c7895371e2cd448b833f0aa7c4f4f73cf4b525cc13de3489e5
+  benchmark_test_sha256: b99ef8685f1993f383e6c8f95bdd06a2a9dcb7242fead0eafe01d5231587b8de
+  registry_entries_sha256: a9b53d5674028e71af09493a4b50fdf67a6352dca0bf80f918cbc9d700ab3f53
+environment:
+  python_version: 3.13.14
+  python_implementation: CPython
+  platform: linux
+  machine: x86_64
+  external_services: 0
+workload:
+  fixture: m4-04-four-layer-synthetic-corpus
+  requested_layers:
+  - S0
+  - S2
+  layer_content_bytes:
+    S0: 1024
+    S1: 4096
+    S2: 4096
+    S3: 16384
+  bootstrap_content_range_bytes:
+  - 1024
+  - 2048
+  packet_content_range_bytes:
+  - 2048
+  - 6144
+measurement:
+  samples: 40
+  warmup_samples: 1
+  measured_operation: verified_in_memory_layered_skill_load
+  latency_samples_ms:
+  - 0.588684
+  - 0.579608
+  - 0.585485
+  - 0.578945
+  - 0.580363
+  - 0.580628
+  - 0.581509
+  - 0.585075
+  - 0.573548
+  - 0.581644
+  - 0.58476
+  - 0.582305
+  - 0.5833
+  - 0.571173
+  - 0.595217
+  - 0.573162
+  - 0.585245
+  - 0.580447
+  - 0.583683
+  - 0.585363
+  - 0.575644
+  - 0.576322
+  - 0.596665
+  - 0.477542
+  - 0.336099
+  - 0.318942
+  - 0.332831
+  - 0.325074
+  - 0.325144
+  - 0.325513
+  - 0.322217
+  - 0.32685
+  - 0.322754
+  - 0.318991
+  - 0.327549
+  - 0.318262
+  - 0.326365
+  - 0.323365
+  - 0.319821
+  - 0.328152
+  load_p50_ms: 0.5735
+  load_p95_ms: 0.5887
+  load_max_ms: 0.5967
+  load_p95_limit_ms: 10.0
+  available_skill_content_bytes: 25600
+  validated_skill_content_bytes: 25600
+  selected_skill_content_bytes: 5120
+  omitted_from_composition_bytes: 20480
+  content_reduction_basis_points: 8000
+  baseline_repeated_selected_bytes: 1024000
+  layered_repeated_selected_bytes: 204800
+  repeated_selected_bytes_avoided: 819200
+  repeated_reduction_basis_points: 8000
+  canonical_receipt_sha256: e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  receipt_digests:
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  - e1eaefd53130e21e542ebc7103118136ac3962f361e49a79a8b59a7cec7e9dd5
+  unique_receipt_digests: 1
+  all_layers_control_loaded_bytes: 25600
+acceptance:
+  load_p95_gate_passed: true
+  reduction_gate_passed: true
+  bootstrap_size_gate_passed: true
+  packet_size_gate_passed: true
+  deterministic_receipt_gate_passed: true
+  all_layers_content_gate_passed: true
+  zero_external_services_gate_passed: true
+authority_boundary:
+  skill_content_composition_bytes_measured: true
+  loader_validation_and_hashing_in_timed_boundary: true
+  plan_authorization_gate_measured: true
+  state_revision_authorization_measured: false
+  synthetic_plan_authorizer: true
+  frozen_clock: true
+  all_verified_assets_resident_in_memory: true
+  source_io_read_reduction_measured: false
+  provider_input_tokens_measured: false
+  provider_compaction_measured: false
+  timing_cryptographically_attested: false
+limitations:
+- Results describe one host and do not predict every device.
+- The timed boundary includes packet, drift, binding and content digest validation
+  plus in-memory Skill selection.
+- The benchmark uses a synthetic allow-list authorizer and frozen clock; State MCP
+  revision, actor, expiry and live-time authorization remain M4-09/M8 integration
+  work.
+- All verified Skill bytes are resident in memory; this result does not measure source
+  or filesystem read reduction.
+- Selected Skill content bytes are a composition proxy, not provider input tokens,
+  billable tokens or prompt-cache behavior.
+- Provider adapters, end-to-end restore and live compaction remain M4-05 and M5 work.
+- Latency samples are trusted local-runner evidence; cryptographic CI or OTel timing
+  attestation remains M8 work.
+generation:
+  command: .venv/bin/python tools/run_layered_skill_benchmark.py --samples 40 --observed-at
+    2026-08-11T08:00:00+08:00 --output experiments/state/m4-04-layered-skill-loading-results.yaml
+  arguments:
+  - --samples
+  - '40'
+  - --observed-at
+  - '2026-08-11T08:00:00+08:00'
+  - --output
+  - experiments/state/m4-04-layered-skill-loading-results.yaml
+  writes_runtime_state_to_repository: false

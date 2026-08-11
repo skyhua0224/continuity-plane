@@ -1,6 +1,6 @@
 # Context Control Plane Status
 
-版本：revision 31  
+版本：revision 32  
 日期：2026-08-11  
 canonical plan：`MASTER.md`
 
@@ -9,8 +9,8 @@ canonical plan：`MASTER.md`
 | 字段 | 值 |
 |---|---|
 | 当前 Campaign | M4 Skill 控制面 |
-| active work | M4-04：S0-S3 分层 Skill 加载与有界装载指标（🟡） |
-| next action | 先建立 bootstrap/packet 分层加载失败测试，绑定 M4-03 drift receipt，并测量输入 bytes、重复 Skill bytes 与加载 p95 |
+| active work | M4-05：Codex、Claude 与其他 provider Skill adapter（🟡） |
+| next action | 建立 provider-neutral adapter replay 失败测试，固定 Codex/Claude 输入输出合同，并形成可运行的 provider-facing effect probe |
 | hard blocker | active leaf 无；M3-01 仍等待 M2-09 的 Windows/macOS 原生 live fixture |
 | repository mode | research / shadow pilot |
 | production state | planned；M2 阶段实施 |
@@ -34,7 +34,7 @@ canonical plan：`MASTER.md`
 | M4-01 Skill manifest set | `context.skill-manifest-set/v1alpha1` strict schema、SPDX 3.28.0 snapshot、runtime validator、33/33 定向测试（含 26/26 原始合同）、registry hash 和 fixture canonical round-trip 通过；独立审查 High 0、Medium 0；验收见 `docs/migrations/m4-01-skill-manifest-set-acceptance-2026-08-10.md` |
 | M4-02 Compiled Skill packet | `context.compiled-skill-packet/v1alpha1` strict schema、dependency closure、rule binding coverage、source manifest-set digest verification、canonical fixture、registry hash 和 17/17 定向测试通过；static metadata proxy 从 2,967 bytes 降至 811 bytes（72.666%）；provider/live compaction 未宣称；验收见 `docs/migrations/m4-02-compiled-skill-packet-acceptance-2026-08-11.md` |
 | M4-03 Skill drift quarantine | `context.skill-drift-assessment/v1alpha1` strict schema、bytes-only resolver boundary、manifest/digest/version/expiry/source-status checks、allow evidence gate、runtime semantic uniqueness、canonical fixture 和 registry hash 通过；33/33 显式负变体拦截（100%）；26/26 定向测试；验收见 `docs/migrations/m4-03-skill-drift-quarantine-acceptance-2026-08-11.md` |
-| M4-04 layered Skill loading | planned；bootstrap/packet S0-S3 loader 与真实输入/加载指标待实施 |
+| M4-04 layered Skill loading | `context.layered-skill-load-plan/v1alpha1` 与 load receipt strict schema、host-owned authorizer、M4-03 allow gate、bytes-only deterministic loader 和 canonical fixture 通过；35/35 定向测试；固定 corpus S0+S2 从 25,600 降至 5,120 composition bytes（80% proxy）；40 样本 loader p95 `<10 ms`；provider token/真实压缩未宣称；验收见 `docs/migrations/m4-04-layered-skill-loading-acceptance-2026-08-11.md` |
 | M2-04 artifact store | 20/20 定向测试；streamed SHA-256、atomic publication、并发去重、bounded range、损坏/symlink typed error 和 64 MiB benchmark 输入门通过；1 MiB 到 8 KiB context output bytes 下降 `99.2188%`；全库 303 tests、27 PostgreSQL skips；独立审查 High 0、Medium 0 |
 | M2-05 State MCP | 26/26 contract/auth tests；默认拒绝、trusted actor、revision/CAS、validator、concurrent request idempotency、strict receipt、PostgreSQL busy normalization、claim/effect provenance、malformed intent 和 torn-read detection 通过；四工具 SQLite/PostgreSQL live parity 1/1；验收见 `docs/migrations/m2-05-state-mcp-acceptance-2026-08-10.md` |
 | M2-06 checkpoint canary | 9/9 contract tests、8/8 benchmark/receipt tests；snapshot/manifest 双层 CAS、18 字段 deterministic restore、missing/tampered/stale/unknown/oversized fail-closed 和 SQLite 零服务链路通过；原 40 样本 receipt 字节保持不变，current provenance 复验使用独立 receipt；验收见 `docs/migrations/m2-06-checkpoint-canary-acceptance-2026-08-10.md` |
@@ -54,10 +54,10 @@ canonical plan：`MASTER.md`
 | Git collaboration | branch/commit/PR/merge 和 staged admission 合同已落盘；公开 Gitea remote 为 `skyhua/context-control-plane`，默认分支 `main`；repo-local identity 已与托管账号核验 |
 | Continuous integration | 独立 Verifier 权威状态写权限为 0；M2-03 runs 1037/1038 暴露 service lifecycle 与 job-network 故障，run 1039 的两个 jobs 全绿；`main` 禁止 direct/force push、禁止 admin merge override，并要求 4 个 push/PR status contexts |
 | Reference catalog | 21 个候选来源；Codex/Claude harness 与 Yundi339 Docmost fork 均固定 URL、revision/tree hash、validity、refresh trigger 和 adoption status；active adoption 0 |
-| Project dogfood baseline | 25 次 compaction 的结构字段恢复 100%，Continuation Cursor 累计恢复 70/72；首动作不匹配和已确认事项重播累计各 2 次，后续未新增，整体趋势仍为 regressed；24 次 input routing 无未授权切换；83 个 Skill body 共 860,439 bytes，其中重复 681,018 bytes；provider context/token/latency 不可见 |
+| Project dogfood baseline | 27 次 compaction 的结构字段恢复 100%，Continuation Cursor 累计恢复 78/80；首动作不匹配和已确认事项重播累计各 2 次，后续未新增，整体趋势仍为 regressed；25 次 input routing 无未授权切换；92 个 Skill body 共 942,873 bytes，其中重复 763,452 bytes；provider context/token/latency 不可见 |
 | Autonomous progression | required/conditional/optional、bounded escalation、next-ready selector、unattended dispatcher 与 multi-Agent claim/lease/handoff 验收合同进入 revision 21；runtime 实现待 M2-M8；当前 provider-host multi-Agent 只计 shadow evidence |
-| Repository verification | 474 tests 通过；28 个无 DSN PostgreSQL live tests skipped；repository verifier、Python compile 和 diff check 通过；fixture privacy、documentation link/style、transcript admission 和 Gitea secret-scan checks 保持提交门 |
-| Governance authority | `MASTER.md` revision 31 |
+| Repository verification | 511 tests 通过；28 个无 DSN PostgreSQL live tests skipped；repository verifier、Python compile 和 diff check 通过；fixture privacy、documentation link/style、transcript admission 和 Gitea secret-scan checks 保持提交门 |
+| Governance authority | `MASTER.md` revision 32 |
 | Operational router | `STATUS.md` |
 
 ## 恢复入口

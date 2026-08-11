@@ -1,0 +1,154 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m4-04/layered-skill-load.schema.json",
+  "title": "Context Control Plane Layered Skill Load Receipt",
+  "$comment": "The runtime validator additionally enforces Skill ID uniqueness, exact S0-S3 summaries, loaded flags, byte totals, and reduction basis points.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "loader_version",
+    "packet_sha256",
+    "drift_assessment_sha256",
+    "layer_plan_sha256",
+    "layer_plan_authorization_ref",
+    "layer_bindings_sha256",
+    "assessment_observed_at",
+    "loaded_at",
+    "requested_layers",
+    "skills",
+    "layers",
+    "available_content_bytes",
+    "loaded_content_bytes",
+    "omitted_content_bytes",
+    "content_reduction_basis_points"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "context.layered-skill-load/v1alpha1"
+    },
+    "loader_version": {
+      "const": "context.layered-skill-loader/v1alpha1"
+    },
+    "packet_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "drift_assessment_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "layer_plan_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "layer_plan_authorization_ref": {
+      "$ref": "#/$defs/identifier"
+    },
+    "layer_bindings_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "assessment_observed_at": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "loaded_at": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "requested_layers": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4,
+      "uniqueItems": true,
+      "contains": {"const": "S0"},
+      "items": {"$ref": "#/$defs/layer"}
+    },
+    "skills": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "contains": {
+        "properties": {"layer": {"const": "S0"}},
+        "required": ["layer"]
+      },
+      "items": {"$ref": "#/$defs/skill"}
+    },
+    "layers": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/layer_summary"},
+      "allOf": [
+        {"contains": {"properties": {"layer": {"const": "S0"}}, "required": ["layer"]}},
+        {"contains": {"properties": {"layer": {"const": "S1"}}, "required": ["layer"]}},
+        {"contains": {"properties": {"layer": {"const": "S2"}}, "required": ["layer"]}},
+        {"contains": {"properties": {"layer": {"const": "S3"}}, "required": ["layer"]}}
+      ]
+    },
+    "available_content_bytes": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "loaded_content_bytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "omitted_content_bytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "content_reduction_basis_points": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 10000
+    }
+  },
+  "$defs": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "minLength": 20,
+      "maxLength": 64,
+      "pattern": "^(?!.*[\\r\\n])(?:(?!(?:0000)-)\\d{4}-(?:(?:01|03|05|07|08|10|12)-(?:0[1-9]|[12]\\d|3[01])|(?:04|06|09|11)-(?:0[1-9]|[12]\\d|30)|02-(?:0[1-9]|1\\d|2[0-8]))|(?!(?:0000)-)(?:[02468][048]00|[13579][26]00|[0-9]{2}(?:0[48]|[2468][048]|[13579][26]))-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|[+-](?:[01]\\d|2[0-3]):[0-5]\\d)$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^(?!.*[\\r\\n])[0-9a-f]{64}$"
+    },
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^(?!.*[\\r\\n])[a-z0-9][a-z0-9._-]*(/[a-z0-9][a-z0-9._-]*)*$"
+    },
+    "layer": {
+      "enum": ["S0", "S1", "S2", "S3"]
+    },
+    "skill": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "skill_id",
+        "layer",
+        "content_sha256",
+        "content_bytes",
+        "loaded"
+      ],
+      "properties": {
+        "skill_id": {"$ref": "#/$defs/identifier"},
+        "layer": {"$ref": "#/$defs/layer"},
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "content_bytes": {"type": "integer", "minimum": 1},
+        "loaded": {"type": "boolean"}
+      }
+    },
+    "layer_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["layer", "skill_count", "content_bytes", "loaded"],
+      "properties": {
+        "layer": {"$ref": "#/$defs/layer"},
+        "skill_count": {"type": "integer", "minimum": 0},
+        "content_bytes": {"type": "integer", "minimum": 0},
+        "loaded": {"type": "boolean"}
+      }
+    }
+  }
+}

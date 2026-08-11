@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m4-04/layered-skill-load-plan.schema.json",
+  "title": "Context Control Plane Layered Skill Load Plan",
+  "$comment": "The runtime validator additionally verifies packet identity, manifest-set identity, complete binding coverage, canonical order, and activation through a trusted plan authorizer.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "packet_sha256",
+    "manifest_set_sha256",
+    "observed_at",
+    "requested_layers",
+    "bindings"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "context.layered-skill-load-plan/v1alpha1"
+    },
+    "packet_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "manifest_set_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "observed_at": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "requested_layers": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4,
+      "uniqueItems": true,
+      "contains": {"const": "S0"},
+      "items": {"$ref": "#/$defs/layer"}
+    },
+    "bindings": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "contains": {
+        "properties": {"layer": {"const": "S0"}},
+        "required": ["layer"]
+      },
+      "items": {"$ref": "#/$defs/binding"}
+    }
+  },
+  "$defs": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "minLength": 20,
+      "maxLength": 64,
+      "pattern": "^(?!.*[\\r\\n])(?:(?!(?:0000)-)\\d{4}-(?:(?:01|03|05|07|08|10|12)-(?:0[1-9]|[12]\\d|3[01])|(?:04|06|09|11)-(?:0[1-9]|[12]\\d|30)|02-(?:0[1-9]|1\\d|2[0-8]))|(?!(?:0000)-)(?:[02468][048]00|[13579][26]00|[0-9]{2}(?:0[48]|[2468][048]|[13579][26]))-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|[+-](?:[01]\\d|2[0-3]):[0-5]\\d)$"
+    },
+    "sha256": {
+      "type": "string",
+      "minLength": 64,
+      "maxLength": 64,
+      "pattern": "^(?!.*[\\r\\n])[0-9a-f]{64}$"
+    },
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^(?!.*[\\r\\n])[a-z0-9][a-z0-9._-]*(/[a-z0-9][a-z0-9._-]*)*$"
+    },
+    "layer": {
+      "enum": ["S0", "S1", "S2", "S3"]
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["skill_id", "layer"],
+      "properties": {
+        "skill_id": {"$ref": "#/$defs/identifier"},
+        "layer": {"$ref": "#/$defs/layer"}
+      }
+    }
+  }
+}

@@ -46,28 +46,28 @@ class DogfoodObservationTests(unittest.TestCase):
         self.assertEqual(summary["stale_decisions_revived"], 0)
         self.assertEqual(summary["unauthorized_task_switches"], 0)
         self.assertEqual(summary["unauthorized_goal_changes"], 0)
-        self.assertEqual(summary["verification_failures"], 7)
+        self.assertEqual(summary["verification_failures"], 19)
         self.assertEqual(summary["scope_violations"], 0)
 
     def test_summary_accounts_for_loaded_skill_bodies(self):
         summary = summarize_observations(self.document)
 
-        self.assertEqual(summary["skill_body_load_count"], 83)
-        self.assertEqual(summary["skill_body_load_bytes"], 860439)
-        self.assertEqual(summary["repeated_skill_body_load_bytes"], 681018)
+        self.assertEqual(summary["skill_body_load_count"], 92)
+        self.assertEqual(summary["skill_body_load_bytes"], 942873)
+        self.assertEqual(summary["repeated_skill_body_load_bytes"], 763452)
 
     def test_visible_compactions_remain_uncomparable_for_cost_metrics(self):
         summary = summarize_observations(self.document)
 
-        self.assertEqual(summary["compaction_events"], 25)
-        self.assertEqual(summary["input_routing_events"], 24)
+        self.assertEqual(summary["compaction_events"], 27)
+        self.assertEqual(summary["input_routing_events"], 25)
         self.assertEqual(summary["comparable_compaction_events"], 0)
 
     def test_post_compaction_interaction_reset_marks_trend_regressed(self):
         summary = summarize_observations(self.document)
 
         self.assertEqual(summary["compaction_recovery_rate"], 1.0)
-        self.assertEqual(summary["continuation_recovery_rate"], 70 / 72)
+        self.assertEqual(summary["continuation_recovery_rate"], 78 / 80)
         self.assertEqual(summary["already_acknowledged_items_replayed"], 2)
         self.assertEqual(summary["first_post_restore_action_mismatches"], 2)
         self.assertEqual(summary["trend_status"], "regressed")
@@ -624,6 +624,67 @@ class DogfoodObservationTests(unittest.TestCase):
 
         with self.assertRaises(DogfoodObservationError):
             validate_observation_document(document)
+
+    def test_m4_04_handoff_and_acceptance_advance_to_provider_adapters(self):
+        observations = {
+            item["observation_id"]: item for item in self.document["observations"]
+        }
+        compaction = observations["dogfood-compaction-028"]
+        skill_load = observations["dogfood-skill-load-032"]
+        routing = observations["dogfood-input-routing-025"]
+        revision = observations["dogfood-plan-revision-028"]
+        verification = observations["dogfood-verification-028"]
+
+        self.assertEqual(compaction["active_leaf_before"], "M4-04")
+        self.assertEqual(compaction["active_leaf_after"], "M4-04")
+        self.assertTrue(compaction["metrics"]["first_post_restore_action_matched"])
+        self.assertEqual(
+            compaction["metrics"]["already_acknowledged_items_replayed"], 0
+        )
+        self.assertEqual(skill_load["metrics"]["body_load_count"], 3)
+        self.assertEqual(skill_load["metrics"]["total_body_bytes"], 27216)
+        self.assertEqual(skill_load["metrics"]["repeated_body_load_bytes"], 27216)
+        self.assertEqual(routing["route"], "continue")
+        self.assertEqual(routing["active_leaf_after"], "M4-04")
+        self.assertEqual(revision["metrics"]["master_revision_before"], 31)
+        self.assertEqual(revision["metrics"]["master_revision_after"], 32)
+        self.assertEqual(revision["metrics"]["tasks_completed"], ["M4-04"])
+        self.assertEqual(revision["metrics"]["tasks_activated"], ["M4-05"])
+        self.assertEqual(verification["metrics"]["tests_run"], 510)
+        self.assertEqual(verification["metrics"]["tests_failed"], 1)
+        self.assertEqual(verification["metrics"]["checks_failed"], 0)
+
+    def test_m4_05_handoff_preserves_the_provider_adapter_cursor(self):
+        observations = {
+            item["observation_id"]: item for item in self.document["observations"]
+        }
+        self.assertIn("dogfood-compaction-029", observations)
+        self.assertIn("dogfood-skill-load-033", observations)
+        self.assertIn("dogfood-verification-029", observations)
+        self.assertIn("dogfood-verification-030", observations)
+        compaction = observations["dogfood-compaction-029"]
+        skill_load = observations["dogfood-skill-load-033"]
+        environment_failure = observations["dogfood-verification-029"]
+        final_verification = observations["dogfood-verification-030"]
+
+        self.assertEqual(compaction["active_leaf_before"], "M4-05")
+        self.assertEqual(compaction["active_leaf_after"], "M4-05")
+        self.assertEqual(compaction["metrics"]["continuation_fields_total"], 4)
+        self.assertEqual(compaction["metrics"]["continuation_fields_recovered"], 4)
+        self.assertTrue(compaction["metrics"]["first_post_restore_action_matched"])
+        self.assertEqual(
+            compaction["metrics"]["already_acknowledged_items_replayed"], 0
+        )
+        self.assertIsNone(compaction["metrics"]["comparable_context_input_bytes"])
+        self.assertEqual(skill_load["metrics"]["body_load_count"], 6)
+        self.assertEqual(skill_load["metrics"]["total_body_bytes"], 55218)
+        self.assertEqual(skill_load["metrics"]["repeated_body_load_bytes"], 55218)
+        self.assertEqual(environment_failure["metrics"]["tests_run"], 287)
+        self.assertEqual(environment_failure["metrics"]["tests_failed"], 11)
+        self.assertEqual(environment_failure["metrics"]["checks_failed"], 0)
+        self.assertEqual(final_verification["metrics"]["tests_run"], 511)
+        self.assertEqual(final_verification["metrics"]["tests_failed"], 0)
+        self.assertEqual(final_verification["metrics"]["checks_failed"], 0)
 
 
 if __name__ == "__main__":
