@@ -1,6 +1,6 @@
 # Context Control Plane Status
 
-版本：revision 29  
+版本：revision 30  
 日期：2026-08-11  
 canonical plan：`MASTER.md`
 
@@ -9,8 +9,8 @@ canonical plan：`MASTER.md`
 | 字段 | 值 |
 |---|---|
 | 当前 Campaign | M4 Skill 控制面 |
-| active work | M4-02：稳定 rule IDs 与 compiled packet（🟡） |
-| next action | 先写 rule ID 稳定性、compiled packet 字段边界、动态状态隔离和确定性排序的失败测试 |
+| active work | M4-03：missing path/digest/version/expiry validator（🟡） |
+| next action | 先写 missing path、content digest、manifest version、expiry 漂移和 quarantine 的失败测试 |
 | hard blocker | active leaf 无；M3-01 仍等待 M2-09 的 Windows/macOS 原生 live fixture |
 | repository mode | research / shadow pilot |
 | production state | planned；M2 阶段实施 |
@@ -32,6 +32,7 @@ canonical plan：`MASTER.md`
 | M2-08 StateStore SPI | 52/52 capability 与双 adapter conformance 通过；M2-02/M2-03/M2-08 77/77；第三轮独立审查 High 0、Medium 0；验收见 `docs/migrations/m2-08-state-store-spi-acceptance-2026-08-10.md` |
 | M2-09 SQLite backend | 48/48 定向测试；Linux WAL/`BEGIN IMMEDIATE`、跨进程 CAS、append-only、SIGKILL、Unicode 路径、WAL/SHM 清理和非 header page 损坏检测通过；commit p95 `0.6500 ms`，restore p95 `0.2678 ms`；Windows/macOS 原生 fixture 待协作者；验收见 `docs/migrations/m2-09-sqlite-state-store-acceptance-2026-08-10.md` |
 | M4-01 Skill manifest set | `context.skill-manifest-set/v1alpha1` strict schema、SPDX 3.28.0 snapshot、runtime validator、33/33 定向测试（含 26/26 原始合同）、registry hash 和 fixture canonical round-trip 通过；独立审查 High 0、Medium 0；验收见 `docs/migrations/m4-01-skill-manifest-set-acceptance-2026-08-10.md` |
+| M4-02 Compiled Skill packet | `context.compiled-skill-packet/v1alpha1` strict schema、dependency closure、rule binding coverage、source manifest-set digest verification、canonical fixture、registry hash 和 17/17 定向测试通过；static metadata proxy 从 2,967 bytes 降至 811 bytes（72.666%）；provider/live compaction 未宣称；验收见 `docs/migrations/m4-02-compiled-skill-packet-acceptance-2026-08-11.md` |
 | M2-04 artifact store | 20/20 定向测试；streamed SHA-256、atomic publication、并发去重、bounded range、损坏/symlink typed error 和 64 MiB benchmark 输入门通过；1 MiB 到 8 KiB context output bytes 下降 `99.2188%`；全库 303 tests、27 PostgreSQL skips；独立审查 High 0、Medium 0 |
 | M2-05 State MCP | 26/26 contract/auth tests；默认拒绝、trusted actor、revision/CAS、validator、concurrent request idempotency、strict receipt、PostgreSQL busy normalization、claim/effect provenance、malformed intent 和 torn-read detection 通过；四工具 SQLite/PostgreSQL live parity 1/1；验收见 `docs/migrations/m2-05-state-mcp-acceptance-2026-08-10.md` |
 | M2-06 checkpoint canary | 9/9 contract tests、8/8 benchmark/receipt tests；snapshot/manifest 双层 CAS、18 字段 deterministic restore、missing/tampered/stale/unknown/oversized fail-closed 和 SQLite 零服务链路通过；原 40 样本 receipt 字节保持不变，current provenance 复验使用独立 receipt；验收见 `docs/migrations/m2-06-checkpoint-canary-acceptance-2026-08-10.md` |
@@ -53,8 +54,8 @@ canonical plan：`MASTER.md`
 | Reference catalog | 21 个候选来源；Codex/Claude harness 与 Yundi339 Docmost fork 均固定 URL、revision/tree hash、validity、refresh trigger 和 adoption status；active adoption 0 |
 | Project dogfood baseline | 23 次 compaction 的结构字段恢复 100%，Continuation Cursor 累计恢复 66/68；第 7/8 次首动作不匹配和已确认事项重播累计各 2 次，第 9-23 次精确续接，整体趋势仍为 regressed；23 次 input routing 无未授权切换；80 个 Skill body 共 833,223 bytes，其中重复 653,802 bytes；provider context/token/latency 不可见 |
 | Autonomous progression | required/conditional/optional、bounded escalation、next-ready selector、unattended dispatcher 与 multi-Agent claim/lease/handoff 验收合同进入 revision 21；runtime 实现待 M2-M8；当前 provider-host multi-Agent 只计 shadow evidence |
-| Repository verification | M4-01 收口前基线 394 tests；M4-01 acceptance 运行时记录全库结果；PostgreSQL live tests 无 DSN 时跳过；schema governance、fixture privacy、documentation link/style、transcript admission 和 Gitea secret-scan checks 继续作为提交门 |
-| Governance authority | `MASTER.md` revision 29 |
+| Repository verification | 448 tests 通过；28 个无 DSN PostgreSQL live tests skipped；repository verifier、Python compile 和 diff check 通过；fixture privacy、documentation link/style、transcript admission 和 Gitea secret-scan checks 保持提交门 |
+| Governance authority | `MASTER.md` revision 30 |
 | Operational router | `STATUS.md` |
 
 ## 恢复入口

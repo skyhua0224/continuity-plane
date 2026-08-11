@@ -418,6 +418,34 @@ class DogfoodObservationTests(unittest.TestCase):
             verification["evidence_refs"],
         )
 
+    def test_m4_02_acceptance_advances_to_skill_drift_quarantine(self):
+        observations = {
+            item["observation_id"]: item for item in self.document["observations"]
+        }
+        revision = observations["dogfood-plan-revision-026"]
+        verification = observations["dogfood-verification-026"]
+
+        self.assertEqual(revision["active_leaf_before"], "M4-02")
+        self.assertEqual(revision["active_leaf_after"], "M4-03")
+        self.assertEqual(revision["metrics"]["master_revision_before"], 29)
+        self.assertEqual(revision["metrics"]["master_revision_after"], 30)
+        self.assertEqual(revision["metrics"]["tasks_completed"], ["M4-02"])
+        self.assertEqual(revision["metrics"]["tasks_activated"], ["M4-03"])
+
+        self.assertEqual(verification["active_leaf_before"], "M4-02")
+        self.assertEqual(verification["active_leaf_after"], "M4-03")
+        self.assertEqual(verification["metrics"]["tests_run"], 448)
+        self.assertEqual(verification["metrics"]["tests_failed"], 0)
+        self.assertEqual(verification["metrics"]["checks_failed"], 0)
+        self.assertEqual(
+            verification["metrics"]["static_metadata_bytes_reduction_percent"],
+            72.666,
+        )
+        self.assertIn(
+            "review:m4-02-high-0-medium-0-2026-08-11",
+            verification["evidence_refs"],
+        )
+
     def test_loaded_database_skill_digest_drift_is_quarantined(self):
         skill_load = next(
             item
