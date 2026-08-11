@@ -8,9 +8,9 @@ import json
 import re
 from datetime import datetime
 from typing import Any
+from urllib.parse import urlsplit
 
 from context_control_plane import skill_compatibility, skill_manifest_set
-
 
 SCHEMA_VERSION = "context.skill-catalog/v1alpha1"
 
@@ -59,6 +59,7 @@ _MANIFEST_STATUS_FOR_CATALOG = {
 _ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]*(?:/[a-z0-9][a-z0-9._-]*)*$")
 _CAPABILITY_RE = re.compile(r"^[a-z0-9][a-z0-9._:-]*$")
 _ARTIFACT_RE = re.compile(r"^artifact://sha256/[0-9a-f]{64}$")
+_PINNED_REVISION_RE = re.compile(r"^[0-9a-f]{40}$")
 _RFC3339_RE = re.compile(
     r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$"
 )
@@ -100,18 +101,22 @@ def _artifact_refs(value: Any, field: str, *, required: bool) -> list[str]:
 
 def _source_url(value: Any, source_kind: str) -> str:
     value = _string(value, "entry.source_url")
+    if "\r" in value or "\n" in value:
+        raise SkillCatalogError("entry.source_url cannot contain newlines")
     if source_kind == "builtin" and not value.startswith("builtin://"):
         raise SkillCatalogError("builtin source_url must use builtin://")
     if source_kind == "workflow" and not value.startswith("workflow://"):
         raise SkillCatalogError("workflow source_url must use workflow://")
-    if source_kind in {"external", "project", "user"} and not value.startswith("https://"):
-        raise SkillCatalogError("external, project and user source_url must use https://")
+    if source_kind in {"external", "project", "user"}:
+        parsed = urlsplit(value)
+        if parsed.scheme != "https" or not parsed.hostname:
+            raise SkillCatalogError("external, project and user source_url must use https:// with a host")
     return value
 
 
 def _source_path(value: Any) -> str:
     value = _string(value, "entry.source_path")
-    if value.startswith("/") or ".." in value.split("/"):
+    if value.startswith(("/", "\\")) or "\\" in value or ".." in value.split("/"):
         raise SkillCatalogError("entry.source_path must be a relative path")
     return value
 
@@ -150,7 +155,9 @@ def _validate_entry(entry: Any, *, observed_at: str | None) -> dict[str, Any]:
     if source_revision == "dynamic-index" and status != "candidate":
         raise SkillCatalogError("dynamic source revisions are candidate-only")
     _source_path(entry["source_path"])
-    _string(entry["publisher"], "entry.publisher")
+    publisher = _string(entry["publisher"], "entry.publisher")
+    if "\r" in publisher or "\n" in publisher:
+        raise SkillCatalogError("entry.publisher cannot contain newlines")
     provenance_refs = _artifact_refs(entry["provenance_refs"], "entry.provenance_refs", required=True)
     if set(provenance_refs) != set(manifest["provenance_refs"]):
         raise SkillCatalogError("entry provenance must match manifest provenance")
@@ -176,6 +183,8 @@ def _validate_entry(entry: Any, *, observed_at: str | None) -> dict[str, Any]:
             raise SkillCatalogError("approved or active entries require verification evidence")
         if source_kind in {"external", "project", "user"} and source_revision == "dynamic-index":
             raise SkillCatalogError("approved or active entries require a pinned source revision")
+        if source_kind in {"external", "project", "user"} and not _PINNED_REVISION_RE.fullmatch(source_revision):
+            raise SkillCatalogError("approved or active entries require a 40-character commit revision")
     if source_kind == "builtin" and status == "candidate":
         raise SkillCatalogError("builtin core entries cannot be candidate")
     return entry
@@ -224,6 +233,15 @@ def canonical_skill_catalog_bytes(
         canonical["entries"], key=lambda item: item["catalog_entry_id"]
     )
     for entry in canonical["entries"]:
+        manifest_set = {
+            "schema_version": skill_manifest_set.SCHEMA_VERSION,
+            "manifests": [entry["manifest"]],
+        }
+        entry["manifest"] = json.loads(
+            skill_manifest_set.canonical_skill_manifest_set_bytes(
+                manifest_set, observed_at=observed_at
+            )
+        )["manifests"][0]
         for field in ("provenance_refs", "capabilities", "approval_refs", "verification_refs"):
             entry[field] = sorted(entry[field])
     return json.dumps(
@@ -270,6 +288,8 @@ def active_skill_manifest_set(
 def validate_catalog_lock_binding(entry: dict[str, Any], lock: dict[str, Any]) -> None:
     """Ensure an M4-06 lock still names the exact catalog manifest identity."""
     _validate_entry(entry, observed_at=None)
+    if entry["status"] not in {"approved", "active"}:
+        raise SkillCatalogError("compatibility lock can bind only an approved or active catalog entry")
     try:
         skill_compatibility.validate_skill_compatibility_lock(lock)
     except skill_compatibility.SkillCompatibilityError as exc:
@@ -279,6 +299,23 @@ def validate_catalog_lock_binding(entry: dict[str, Any], lock: dict[str, Any]) -
     if len(selected) != 1:
         raise SkillCatalogError("compatibility lock does not select catalog manifest")
     locked = selected[0]
+    manifest_set = {
+        "schema_version": skill_manifest_set.SCHEMA_VERSION,
+        "manifests": [manifest],
+    }
+    canonical_manifest = json.loads(
+        skill_manifest_set.canonical_skill_manifest_set_bytes(manifest_set)
+    )["manifests"][0]
+    manifest_digest = hashlib.sha256(
+        json.dumps(
+            canonical_manifest,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+    if locked["manifest_sha256"] != manifest_digest:
+        raise SkillCatalogError("compatibility lock manifest digest does not match catalog manifest")
     for field in ("version", "content_sha256", "rule_ids"):
         expected = sorted(manifest[field]) if field == "rule_ids" else manifest[field]
         actual = sorted(locked[field]) if field == "rule_ids" else locked[field]

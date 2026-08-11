@@ -7,7 +7,6 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
-
 SCHEMA_VERSION = "context.skill-catalog/v1alpha1"
 PROVENANCE_REF = "artifact://sha256/" + "b" * 64
 APPROVAL_REF = "artifact://sha256/" + "c" * 64
@@ -60,6 +59,12 @@ class M407SkillCatalogTests(unittest.TestCase):
         approval_refs=None,
         verification_refs=None,
     ):
+        if (
+            source_revision == "1.0.0"
+            and source_kind in {"external", "project", "user"}
+            and status in {"approved", "active"}
+        ):
+            source_revision = "a" * 40
         if manifest_status is None:
             manifest_status = {
                 "candidate": "proposed",
@@ -230,6 +235,90 @@ class M407SkillCatalogTests(unittest.TestCase):
         changed["manifest"]["content_sha256"] = "e" * 64
         with self.assertRaises(ValueError):
             api.validate_catalog_lock_binding(changed, lock)
+
+    def test_catalog_lock_rejects_manifest_metadata_and_candidate_status_drift(self):
+        api = self._require_api()
+        entry = self._entry("external.audit", "external", status="approved")
+        document = self._document([entry])
+        manifest_set = api.active_skill_manifest_set(document)
+        from context_control_plane import compiled_skill_packet, skill_compatibility
+
+        packet = compiled_skill_packet.compile_skill_packet(
+            manifest_set,
+            selected_skill_ids=["external.audit"],
+        )
+        lock = skill_compatibility.create_skill_compatibility_lock(
+            manifest_set,
+            packet,
+            task_id="task/catalog",
+            operation_id="operation://code-change",
+            provider_contract_refs=["provider://codex/v1"],
+        )
+        changed = copy.deepcopy(entry)
+        changed["license_ref"] = "artifact://sha256/" + "e" * 64
+        changed["manifest"]["license_ref"] = changed["license_ref"]
+        with self.assertRaises(ValueError):
+            api.validate_catalog_lock_binding(changed, lock)
+        candidate = copy.deepcopy(entry)
+        candidate["status"] = "candidate"
+        candidate["manifest"]["status"] = "proposed"
+        candidate["approval_refs"] = []
+        candidate["verification_refs"] = []
+        with self.assertRaises(ValueError):
+            api.validate_catalog_lock_binding(candidate, lock)
+
+    def test_schema_rejects_authority_permission_true(self):
+        schema = json.loads(self.schema_path.read_text(encoding="utf-8"))
+        candidate = self._document()
+        candidate["entries"][0]["permissions"]["state_write"] = True
+        errors = list(Draft202012Validator(schema).iter_errors(candidate))
+        self.assertTrue(errors)
+
+    def test_approved_external_rejects_unpinned_revision_aliases(self):
+        api = self._require_api()
+        for revision in ("latest", "HEAD", "main", "refs/heads/main", "1.0.1"):
+            with self.subTest(revision=revision), self.assertRaises(ValueError):
+                api.validate_skill_catalog(
+                    self._document([
+                        self._entry(
+                            "external.unpinned",
+                            "external",
+                            status="approved",
+                            source_revision=revision,
+                        )
+                    ])
+                )
+
+    def test_catalog_canonicalization_sorts_nested_manifest_arrays(self):
+        api = self._require_api()
+        document = self._document()
+        manifest = document["entries"][0]["manifest"]
+        manifest["rule_ids"] = ["rule.demo.core.z", "rule.demo.core.a"]
+        manifest["compatibility"]["schema_refs"] = [
+            "context.typed-state/v1alpha1",
+            "context.compiled-skill-packet/v1alpha1",
+        ]
+        manifest["compatibility"]["provider_contract_refs"] = [
+            "provider://claude/v1",
+            "provider://codex/v1",
+        ]
+        reversed_document = copy.deepcopy(document)
+        reversed_manifest = reversed_document["entries"][0]["manifest"]
+        reversed_manifest["rule_ids"].reverse()
+        reversed_manifest["compatibility"]["schema_refs"].reverse()
+        reversed_manifest["compatibility"]["provider_contract_refs"].reverse()
+        self.assertEqual(
+            api.canonical_skill_catalog_bytes(document),
+            api.canonical_skill_catalog_bytes(reversed_document),
+        )
+
+    def test_windows_style_source_paths_are_rejected(self):
+        api = self._require_api()
+        for source_path in (r"..\SKILL.md", r"\tmp\SKILL.md"):
+            with self.subTest(source_path=source_path), self.assertRaises(ValueError):
+                candidate = self._document()
+                candidate["entries"][0]["source_path"] = source_path
+                api.validate_skill_catalog(candidate)
 
     def test_duplicate_catalog_ids_are_rejected(self):
         api = self._require_api()

@@ -281,7 +281,7 @@ schemas:
     current_wire_version: context.skill-catalog/v1alpha1
     supported_wire_versions: [context.skill-catalog/v1alpha1]
     artifact_path: schemas/m4-07/skill-catalog.schema.json
-    content_sha256: 9dca5455197236d90b4a1240a7fdc55ebe184a1b3ee497e60c690e5e9ed407ca
+    content_sha256: 9e4067a3e81f6543600f85b71dc50b88712bfc79444f665d7104e305d5a23094
     status: current
     compatibility_mode: strict-versioned
     migrations: []

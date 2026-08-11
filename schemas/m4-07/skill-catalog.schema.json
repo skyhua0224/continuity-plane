@@ -54,7 +54,7 @@
         "capabilities": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._:-]*$"}},
         "approval_refs": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/artifact"}},
         "verification_refs": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/artifact"}},
-        "permissions": {"type": "object", "additionalProperties": false, "required": ["state_write", "task_switch", "claim", "effect", "promotion", "evidence_gate"], "properties": {"state_write": {"type": "boolean"}, "task_switch": {"type": "boolean"}, "claim": {"type": "boolean"}, "effect": {"type": "boolean"}, "promotion": {"type": "boolean"}, "evidence_gate": {"type": "boolean"}}},
+        "permissions": {"type": "object", "additionalProperties": false, "required": ["state_write", "task_switch", "claim", "effect", "promotion", "evidence_gate"], "properties": {"state_write": {"const": false}, "task_switch": {"const": false}, "claim": {"const": false}, "effect": {"const": false}, "promotion": {"const": false}, "evidence_gate": {"const": false}}},
         "status": {"enum": ["candidate", "approved", "active", "quarantined", "deprecated", "rejected"]}
       }
     }
