@@ -31,7 +31,7 @@ Codex materializer 生成 Agent Skills filesystem assets 和 `$alias`/Skill inpu
 | deterministic replay | 40 组 byte-distinct synthetic compositions、Codex/Claude 各 40 个 effect；neutral mismatch `0/40`，provider replay mismatch `0/80` |
 | authority boundary | 80/80 effect 通过 strict validation；runtime-state write declaration `0/80`；`provider_process_invoked: false`、`state_revision_authorization_measured: false` |
 | measured calls | 80 warmup、80 compose-and-validate、80 replay，共 240 次 compose；80 个 measured effect |
-| local latency | Linux x86_64、CPython 3.14.6；Codex p50 `0.7525 ms`、p95 `0.7693 ms`；Claude p50 `0.7403 ms`、p95 `0.7544 ms`；两者 p95 `<10 ms` |
+| local latency | Linux x86_64、CPython 3.14.6；Codex p50 `0.7601 ms`、p95 `0.7937 ms`；Claude p50 `0.7443 ms`、p95 `0.7750 ms`；两者 p95 `<10 ms` |
 | 定向测试 | adapter 16/16、probe 8/8，共 24/24 通过 |
 | repository gate | 全库 535 tests 通过；28 个无 DSN PostgreSQL live tests skipped；Python compile、repository verifier 和 `git diff --check` 通过 |
 | independent review | 三路复核 High 0、Medium 0；权限合同、计量语义、schema/runtime parity、registry provenance 与官方 surface 已复验 |
