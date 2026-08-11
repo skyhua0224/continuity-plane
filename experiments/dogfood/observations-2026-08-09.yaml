@@ -1,5 +1,5 @@
 schema_version: context.dogfood-observation/v1alpha1
-generated_at: "2026-08-10T05:21:00+08:00"
+generated_at: "2026-08-10T08:20:05+08:00"
 status: baseline
 measurement_limitations:
   - provider token accounting was unavailable for this resumed segment
@@ -2653,6 +2653,114 @@ observations:
       - review:m2-07-high-0-medium-0-2026-08-10
     metrics:
       tests_run: 394
+      tests_failed: 0
+      checks_failed: 0
+      scope_violations: 0
+
+  - observation_id: dogfood-compaction-024
+    event_type: compaction
+    observed_at: "2026-08-10T08:20:05+08:00"
+    authority: system-compaction-checkpoint-current-worktree-and-revision-28-status
+    active_leaf_before: M4-01
+    active_leaf_after: M4-01
+    metrics:
+      critical_fields_total: 8
+      critical_fields_recovered: 8
+      stale_decisions_revived: 0
+      unauthorized_task_switches: 0
+      comparable_context_input_bytes: null
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      restore_latency_ms: null
+      provider_compaction_signal_available: true
+      continuation_fields_total: 4
+      continuation_fields_recovered: 4
+      already_acknowledged_items_replayed: 0
+      first_post_restore_action_matched: true
+    evidence:
+      - checkpoint preserved work/M4-01/skill-manifest-schema, origin/main 8ce6864, three untracked M4-01 paths, the M4-01 design correction test cursor and the independent review gate
+      - first repository action checked revision 28 STATUS, branch, working tree and the exact design correction list before changing tests
+      - source_kind, license, conflict, expiry, registry and fixture corrections remained bounded to M4-01
+      - previously answered PostgreSQL, project mission, Docmost and collaboration questions were not replayed
+
+  - observation_id: dogfood-skill-load-031
+    event_type: skill-load
+    observed_at: "2026-08-10T08:20:05+08:00"
+    authority: task-trigger-current-path-digest-and-visible-compaction
+    active_leaf_before: M4-01
+    active_leaf_after: M4-01
+    metrics:
+      body_load_count: 3
+      total_body_bytes: 27216
+      repeated_body_load_bytes: 27216
+      skills:
+        - skill_id: session-memory-hygiene
+          content_sha256: e7814b9010db3d5dd83d978f93d80515cee2f5388761f5fb20f7a406fdc856f0
+          body_bytes: 1361
+          body_lines: 34
+          reason: visible M4-01 compaction continuation verification
+        - skill_id: test-driven-development
+          content_sha256: 7dee67b4af6bdccc7a914ca34533184d64592d0f5b23aeae631538168db14994
+          body_bytes: 9867
+          body_lines: 371
+          reason: M4-01 manifest schema correction and range red-green cycles
+        - skill_id: human-first-writing
+          content_sha256: 0f3754759a185b43e6932864703cca58543a8ef58ed80a57469f680f0eaf5832
+          body_bytes: 15988
+          body_lines: 427
+          reason: active response and acceptance documentation contract
+
+  - observation_id: dogfood-input-routing-024
+    event_type: input-routing
+    observed_at: "2026-08-10T08:20:05+08:00"
+    authority: explicit-user-current-progress-status-query
+    active_leaf_before: M4-01
+    active_leaf_after: M4-01
+    input_kind: status-query
+    route: continue
+    candidate_id: query-m4-01-current-progress-001
+    candidate_summary: "Report current M4-01 progress without changing the active leaf; resume the Skill manifest acceptance cursor afterward."
+    candidate_summary_sha256: 1507fae3d2b2387b599820a57f50958079f91cc86244d02af6e6727f1e0720c0
+    metrics:
+      messages_observed: 1
+      ideas_captured: 0
+      unauthorized_task_switches: 0
+      return_point_preserved: true
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      provider_compaction_signal_available: true
+      tool_interruption_observed: true
+
+  - observation_id: dogfood-plan-revision-025
+    event_type: plan-revision
+    observed_at: "2026-08-11T08:42:52+08:00"
+    authority: m4-01-completion-gates-and-next-ready-selector
+    authorized: true
+    active_leaf_before: M4-01
+    active_leaf_after: M4-02
+    metrics:
+      master_revision_before: 28
+      master_revision_after: 29
+      unauthorized_goal_changes: 0
+      project_mission_changed: false
+      return_point_preserved: true
+      tasks_completed: [M4-01]
+      tasks_activated: [M4-02]
+
+  - observation_id: dogfood-verification-025
+    event_type: verification
+    observed_at: "2026-08-11T08:42:52+08:00"
+    authority: m4-01-tests-registry-acceptance-and-independent-review
+    active_leaf_before: M4-01
+    active_leaf_after: M4-02
+    evidence_refs:
+      - unittest:m4-01-skill-manifest-set-28-2026-08-11
+      - unittest:schema-governance-registry-hash-2026-08-11
+      - unittest:dogfood-observation-2026-08-11
+      - check:compile-verifier-diff-receipt-2026-08-11
+      - review:m4-01-high-0-medium-0-2026-08-10
+    metrics:
+      tests_run: 430
       tests_failed: 0
       checks_failed: 0
       scope_violations: 0

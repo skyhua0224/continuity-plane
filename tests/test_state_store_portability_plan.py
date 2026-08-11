@@ -94,7 +94,7 @@ class StateStorePortabilityPlanTests(unittest.TestCase):
         self.assertIn("StateStore capability manifest", self.m207_acceptance)
         self.assertNotIn("声明 adapter 能力", self.m207_acceptance)
 
-    def test_m2_07_acceptance_routes_to_m4_01_and_preserves_platform_gates(self):
+    def test_m4_01_acceptance_routes_to_m4_02_and_preserves_platform_gates(self):
         spi_acceptance_path = (
             self.root
             / "docs"
@@ -113,6 +113,12 @@ class StateStorePortabilityPlanTests(unittest.TestCase):
             / "migrations"
             / "m2-04-artifact-store-acceptance-2026-08-10.md"
         )
+        skill_acceptance_path = (
+            self.root
+            / "docs"
+            / "migrations"
+            / "m4-01-skill-manifest-set-acceptance-2026-08-10.md"
+        )
         m204 = next(line for line in self.master.splitlines() if "| M2-04 |" in line)
         m205 = next(line for line in self.master.splitlines() if "| M2-05 |" in line)
         m208 = next(line for line in self.master.splitlines() if "| M2-08 |" in line)
@@ -121,9 +127,11 @@ class StateStorePortabilityPlanTests(unittest.TestCase):
         self.assertTrue(spi_acceptance_path.exists())
         self.assertTrue(sqlite_acceptance_path.exists())
         self.assertTrue(artifact_acceptance_path.exists())
+        self.assertTrue(skill_acceptance_path.exists())
         spi_acceptance = spi_acceptance_path.read_text(encoding="utf-8")
         sqlite_acceptance = sqlite_acceptance_path.read_text(encoding="utf-8")
         artifact_acceptance = artifact_acceptance_path.read_text(encoding="utf-8")
+        skill_acceptance = skill_acceptance_path.read_text(encoding="utf-8")
         self.assertIn("✅", m204)
         self.assertIn("✅", m205)
         self.assertIn("✅", m208)
@@ -132,14 +140,18 @@ class StateStorePortabilityPlanTests(unittest.TestCase):
         self.assertIn("Windows and macOS remain blocked", sqlite_acceptance)
         self.assertIn("20/20 passed", artifact_acceptance)
         self.assertIn("context_bytes_reduction_percent", artifact_acceptance)
-        self.assertIn("版本：revision 28", self.master)
-        self.assertIn("版本：revision 28", self.status)
+        self.assertIn("26/26", skill_acceptance)
+        self.assertIn("High 0", skill_acceptance)
+        self.assertIn("Medium 0", skill_acceptance)
+        self.assertIn("版本：revision 29", self.master)
+        self.assertIn("版本：revision 29", self.status)
         self.assertIn("| M2-05 | ✅ |", self.master)
         self.assertIn("| M2-06 | ✅ |", self.master)
         self.assertIn("| M2-07 | ✅ |", self.master)
-        self.assertIn("| M4-01 | 🟡 |", self.master)
-        self.assertIn("active work | M4-01", self.status)
-        self.assertIn("governance authority：`MASTER.md` revision 28", self.target_state)
+        self.assertIn("| M4-01 | ✅ |", self.master)
+        self.assertIn("| M4-02 | 🟡 |", self.master)
+        self.assertIn("active work | M4-02", self.status)
+        self.assertIn("governance authority：`MASTER.md` revision 29", self.target_state)
 
 
 if __name__ == "__main__":

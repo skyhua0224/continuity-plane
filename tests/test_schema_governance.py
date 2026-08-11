@@ -82,6 +82,21 @@ class SchemaGovernanceTests(unittest.TestCase):
                     replay_passed=True,
                 )
 
+    def test_semver_oversize_is_a_domain_error(self):
+        for oversized in (
+            "9" * 5000 + ".0.0",
+            "1.0.0-" + "9" * 5000,
+        ):
+            with self.subTest(length=len(oversized)), self.assertRaises(
+                SchemaGovernanceError
+            ):
+                validate_version_transition(
+                    oversized,
+                    "1.0.0",
+                    change_kind="metadata",
+                    replay_passed=True,
+                )
+
     def test_prerelease_transitions_follow_semver_precedence(self):
         for previous, current in (
             ("1.0.0-alpha.1", "1.0.0-alpha.2"),
