@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m4-07/skill-catalog.schema.json",
+  "title": "Context Control Plane Skill Catalog",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "catalog_id", "catalog_revision", "entries"],
+  "properties": {
+    "schema_version": {"const": "context.skill-catalog/v1alpha1"},
+    "catalog_id": {"$ref": "#/$defs/id"},
+    "catalog_revision": {"$ref": "#/$defs/timestamp"},
+    "entries": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/entry"}}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[a-z0-9][a-z0-9._-]*(/[a-z0-9][a-z0-9._-]*)*$"},
+    "sha256": {"type": "string", "minLength": 64, "maxLength": 64, "pattern": "^[0-9a-f]{64}$"},
+    "artifact": {"type": "string", "pattern": "^artifact://sha256/[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$"},
+    "sourceKind": {"enum": ["builtin", "external", "project", "user", "workflow"]},
+    "manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["skill_id", "version", "content_sha256", "source_kind", "license_ref", "applicability", "rule_ids", "dependencies", "conflicts", "expires_at", "compatibility", "provenance_refs", "status"],
+      "properties": {
+        "skill_id": {"$ref": "#/$defs/id"},
+        "version": {"type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"},
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "source_kind": {"$ref": "#/$defs/sourceKind"},
+        "license_ref": {"type": "string", "minLength": 1},
+        "applicability": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "object", "additionalProperties": false, "required": ["kind", "ref"], "properties": {"kind": {"type": "string"}, "ref": {"type": "string"}}}},
+        "rule_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+        "dependencies": {"type": "array", "uniqueItems": true, "items": {"type": "object"}},
+        "conflicts": {"type": "array", "uniqueItems": true, "items": {"type": "object"}},
+        "expires_at": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/timestamp"}]},
+        "compatibility": {"type": "object", "additionalProperties": false, "required": ["schema_refs", "provider_contract_refs"], "properties": {"schema_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}}, "provider_contract_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}}},
+        "provenance_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/artifact"}},
+        "status": {"enum": ["proposed", "approved", "active", "quarantined", "deprecated", "rejected"]}
+      }
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["catalog_entry_id", "source_kind", "manifest", "source_url", "source_revision", "source_path", "publisher", "license_ref", "provenance_refs", "capabilities", "approval_refs", "verification_refs", "permissions", "status"],
+      "properties": {
+        "catalog_entry_id": {"$ref": "#/$defs/id"},
+        "source_kind": {"$ref": "#/$defs/sourceKind"},
+        "manifest": {"$ref": "#/$defs/manifest"},
+        "source_url": {"type": "string", "minLength": 1},
+        "source_revision": {"type": "string", "minLength": 1},
+        "source_path": {"type": "string", "minLength": 1},
+        "publisher": {"type": "string", "minLength": 1},
+        "license_ref": {"type": "string", "minLength": 1},
+        "provenance_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/artifact"}},
+        "capabilities": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._:-]*$"}},
+        "approval_refs": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/artifact"}},
+        "verification_refs": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/artifact"}},
+        "permissions": {"type": "object", "additionalProperties": false, "required": ["state_write", "task_switch", "claim", "effect", "promotion", "evidence_gate"], "properties": {"state_write": {"type": "boolean"}, "task_switch": {"type": "boolean"}, "claim": {"type": "boolean"}, "effect": {"type": "boolean"}, "promotion": {"type": "boolean"}, "evidence_gate": {"type": "boolean"}}},
+        "status": {"enum": ["candidate", "approved", "active", "quarantined", "deprecated", "rejected"]}
+      }
+    }
+  }
+}

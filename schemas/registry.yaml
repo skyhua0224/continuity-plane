@@ -275,3 +275,13 @@ schemas:
     status: current
     compatibility_mode: strict-versioned
     migrations: []
+
+  - schema_id: context.skill-catalog-contract
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.skill-catalog/v1alpha1
+    supported_wire_versions: [context.skill-catalog/v1alpha1]
+    artifact_path: schemas/m4-07/skill-catalog.schema.json
+    content_sha256: 9dca5455197236d90b4a1240a7fdc55ebe184a1b3ee497e60c690e5e9ed407ca
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
