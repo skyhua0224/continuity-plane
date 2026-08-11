@@ -1,0 +1,186 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m4-03/skill-drift-assessment.schema.json",
+  "title": "Context Control Plane Skill Drift Assessment",
+  "$comment": "The runtime admission validator additionally requires skills[*].skill_id to be unique; Draft 2020-12 uniqueItems only compares complete array items.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "validator_version",
+    "observed_at",
+    "packet_sha256",
+    "manifest_set_sha256",
+    "gate",
+    "findings",
+    "skills"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "context.skill-drift-assessment/v1alpha1"
+    },
+    "validator_version": {
+      "const": "context.skill-drift-validator/v1alpha1"
+    },
+    "observed_at": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "packet_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "manifest_set_sha256": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/sha256"}
+      ]
+    },
+    "gate": {
+      "enum": ["allow", "quarantine"]
+    },
+    "findings": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/finding"
+      }
+    },
+    "skills": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/skill"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"gate": {"const": "allow"}},
+        "required": ["gate"]
+      },
+      "then": {
+        "properties": {
+          "manifest_set_sha256": {"$ref": "#/$defs/sha256"},
+          "findings": {"maxItems": 0},
+          "skills": {
+            "items": {
+              "properties": {
+                "status": {"const": "verified"},
+                "observed_content_sha256": {"$ref": "#/$defs/sha256"}
+              },
+              "required": ["status", "observed_content_sha256"]
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"gate": {"const": "quarantine"}},
+        "required": ["gate"]
+      },
+      "then": {
+        "anyOf": [
+          {"properties": {"findings": {"minItems": 1}}},
+          {
+            "properties": {
+              "skills": {
+                "contains": {
+                  "properties": {"status": {"const": "quarantined"}},
+                  "required": ["status"]
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "$defs": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "minLength": 20,
+      "maxLength": 64,
+      "pattern": "^(?!.*[\\r\\n])(?:(?!(?:0000)-)\\d{4}-(?:(?:01|03|05|07|08|10|12)-(?:0[1-9]|[12]\\d|3[01])|(?:04|06|09|11)-(?:0[1-9]|[12]\\d|30)|02-(?:0[1-9]|1\\d|2[0-8]))|(?!(?:0000)-)(?:[02468][048]00|[13579][26]00|[0-9]{2}(?:0[48]|[2468][048]|[13579][26]))-02-29)T(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|[+-](?:[01]\\d|2[0-3]):[0-5]\\d)$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^(?!.*[\\r\\n])[0-9a-f]{64}$"
+    },
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^(?!.*[\\r\\n])[a-z0-9][a-z0-9._-]*(/[a-z0-9][a-z0-9._-]*)*$"
+    },
+    "code": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^(?!.*[\\r\\n])[a-z0-9]+(-[a-z0-9]+)*$"
+    },
+    "finding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "code", "detail"],
+      "properties": {
+        "scope": {"$ref": "#/$defs/code"},
+        "code": {"$ref": "#/$defs/code"},
+        "detail": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024,
+          "pattern": "^(?!.*[\\r\\n])[^\\r\\n]+$"
+        }
+      }
+    },
+    "skill": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "skill_id",
+        "status",
+        "reason_codes",
+        "observed_content_sha256"
+      ],
+      "properties": {
+        "skill_id": {"$ref": "#/$defs/identifier"},
+        "status": {"enum": ["verified", "quarantined"]},
+        "observed_content_sha256": {
+          "oneOf": [
+            {"type": "null"},
+            {"$ref": "#/$defs/sha256"}
+          ]
+        },
+        "reason_codes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/code"}
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"status": {"const": "verified"}},
+            "required": ["status"]
+          },
+          "then": {
+            "properties": {
+              "reason_codes": {"maxItems": 0},
+              "observed_content_sha256": {"$ref": "#/$defs/sha256"}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {"status": {"const": "quarantined"}},
+            "required": ["status"]
+          },
+          "then": {"properties": {"reason_codes": {"minItems": 1}}}
+        }
+      ]
+    }
+  }
+}

@@ -59,7 +59,7 @@ class DogfoodObservationTests(unittest.TestCase):
     def test_visible_compactions_remain_uncomparable_for_cost_metrics(self):
         summary = summarize_observations(self.document)
 
-        self.assertEqual(summary["compaction_events"], 24)
+        self.assertEqual(summary["compaction_events"], 25)
         self.assertEqual(summary["input_routing_events"], 24)
         self.assertEqual(summary["comparable_compaction_events"], 0)
 
