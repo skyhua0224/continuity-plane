@@ -143,16 +143,17 @@ class StateStorePortabilityPlanTests(unittest.TestCase):
         self.assertIn("26/26", skill_acceptance)
         self.assertIn("High 0", skill_acceptance)
         self.assertIn("Medium 0", skill_acceptance)
-        self.assertIn("版本：revision 30", self.master)
-        self.assertIn("版本：revision 30", self.status)
+        self.assertIn("版本：revision 31", self.master)
+        self.assertIn("版本：revision 31", self.status)
         self.assertIn("| M2-05 | ✅ |", self.master)
         self.assertIn("| M2-06 | ✅ |", self.master)
         self.assertIn("| M2-07 | ✅ |", self.master)
         self.assertIn("| M4-01 | ✅ |", self.master)
         self.assertIn("| M4-02 | ✅ |", self.master)
-        self.assertIn("| M4-03 | 🟡 |", self.master)
-        self.assertIn("active work | M4-03", self.status)
-        self.assertIn("governance authority：`MASTER.md` revision 30", self.target_state)
+        self.assertIn("| M4-03 | ✅ |", self.master)
+        self.assertIn("| M4-04 | 🟡 |", self.master)
+        self.assertIn("active work | M4-04", self.status)
+        self.assertIn("governance authority：`MASTER.md` revision 31", self.target_state)
 
 
 if __name__ == "__main__":

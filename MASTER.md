@@ -1,6 +1,6 @@
 # Context Control Plane MASTER
 
-版本：revision 30  
+版本：revision 31  
 日期：2026-08-11  
 状态：研究与 shadow pilot 准备阶段  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
@@ -274,8 +274,8 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 |---|---|---|---|---|---|---|
 | M4-01 | ✅ | Skill manifest/version/hash/applicability schema | Skill 可选择、可锁定、可追溯 | 控制压缩恢复的规则装载范围 | M2-01 | `context.skill-manifest-set/v1alpha1` strict schema、SPDX snapshot、runtime validator；33/33 定向测试（含 26/26 原始合同）；registry hash、fixture canonical round-trip、独立审查 High 0/Medium 0 通过 |
 | M4-02 | ✅ | 稳定 rule IDs 与 compiled packet | 当前任务规则形成有界 packet | 降低重复 token | M4-01 | `context.compiled-skill-packet/v1alpha1` strict schema、dependency closure、rule binding coverage、source digest verification、canonical fixture、registry hash；17/17 定向测试；static metadata proxy 72.666%；独立审查 High 0/Medium 0 通过 |
-| M4-03 | 🟡 | missing path/digest/version/expiry validator | 漂移 Skill 自动 quarantine | stale rule 激活率为 0 | M4-01 | E4 故障 100% 拦截 |
-| M4-04 | ⏳ | S0-S3 分层加载 | 恢复装载 1-2 KB bootstrap 与 2-6 KB packet | 缩短恢复热路径 | M4-02/M4-03 | p95 和 token 门槛通过 |
+| M4-03 | ✅ | missing path/digest/version/expiry validator | 漂移 Skill 自动 quarantine | stale rule 激活率为 0 | M4-01 | 33/33 显式负变体拦截；26/26 定向测试；High/Medium 复审为 0 |
+| M4-04 | 🟡 | S0-S3 分层加载 | 恢复装载 1-2 KB bootstrap 与 2-6 KB packet | 缩短恢复热路径 | M4-02/M4-03 | p95 和 token 门槛通过 |
 | M4-05 | ⏳ | Codex/Claude/其他 provider Skill adapter | 同一规则合同跨工具使用 | 可移植协作 | M4-04 | 两种以上 provider replay 一致 |
 | M4-06 | ⏳ | Skill 变更 replay 与兼容锁 | 进行中任务固定使用已记录 rule set | 可持续迭代替换 | M4-03 | breaking change 被拒或显式迁移 |
 | M4-07 | ⏳ | Built-in、External、Project、User、Workflow Skill catalog | 来源、license、provenance 和权限边界可审计 | 管理可复用与项目专属规则 | M4-01/M0-07 | 五类来源均有 manifest、准入和 quarantine 测试 |
@@ -424,7 +424,7 @@ E1、E2、E4、E6、E8、E9 具有 veto 权限；平均得分、token 降幅和�
 
 ## 10. 当前执行路由
 
-M4-03 是当前 active leaf。M4-02 已完成稳定 rule IDs、dependency-closed compiled Skill packet、strict schema、rule binding coverage、source manifest-set digest verification、versioned fixture 和 registry hash gate；验收见 [`m4-02-compiled-skill-packet-acceptance-2026-08-11.md`](docs/migrations/m4-02-compiled-skill-packet-acceptance-2026-08-11.md)。M4-01 已完成 Skill manifest、version、hash、applicability、dependency、conflict、expiry 的 strict schema、SPDX snapshot、runtime validator、versioned fixture 和 registry hash gate；验收见 [`m4-01-skill-manifest-set-acceptance-2026-08-10.md`](docs/migrations/m4-01-skill-manifest-set-acceptance-2026-08-10.md)。M2-07 已交付 Project Profile、Project Charter、WorkSource、Work obligation 和 ProjectAdaptation 的 strict schema、semantic validator、versioned fixture 与 deterministic canonical round-trip；验收见 [`m2-07-project-governance-profile-acceptance-2026-08-10.md`](docs/migrations/m2-07-project-governance-profile-acceptance-2026-08-10.md)。M3-01 的内容依赖仍由 M2-09 的 Windows/macOS 原生 fixture 阻塞；M4-03 从 missing path、digest、version 和 expiry 的失败测试开始。
+M4-04 是当前 active leaf。M4-03 已完成 bytes-only resolver、missing path、content/manifest/version digest、expiry、source status、malformed input 和 allow evidence gate；验收见 [`m4-03-skill-drift-quarantine-acceptance-2026-08-11.md`](docs/migrations/m4-03-skill-drift-quarantine-acceptance-2026-08-11.md)。M4-02 已完成稳定 rule IDs、dependency-closed compiled Skill packet、strict schema、rule binding coverage、source manifest-set digest verification、versioned fixture 和 registry hash gate；验收见 [`m4-02-compiled-skill-packet-acceptance-2026-08-11.md`](docs/migrations/m4-02-compiled-skill-packet-acceptance-2026-08-11.md)。M4-01 已完成 Skill manifest、version、hash、applicability、dependency、conflict、expiry 的 strict schema、SPDX snapshot、runtime validator、versioned fixture 和 registry hash gate；验收见 [`m4-01-skill-manifest-set-acceptance-2026-08-10.md`](docs/migrations/m4-01-skill-manifest-set-acceptance-2026-08-10.md)。M2-07 已交付 Project Profile、Project Charter、WorkSource、Work obligation 和 ProjectAdaptation 的 strict schema、semantic validator、versioned fixture 与 deterministic canonical round-trip；验收见 [`m2-07-project-governance-profile-acceptance-2026-08-10.md`](docs/migrations/m2-07-project-governance-profile-acceptance-2026-08-10.md)。M3-01 的内容依赖仍由 M2-09 的 Windows/macOS 原生 fixture 阻塞。
 
 M1-05 已完成 16 个 E0-E9 contract fixture，验收见 `docs/migrations/m1-05-fault-coverage-acceptance-2026-08-09.md`。Runtime fault evidence 仍由 M2/M5/M8 提供。M1-04 已完成 40 个 fixture admission，验收见 `docs/migrations/m1-04-replay-fixture-acceptance-2026-08-09.md`。受控 archive 继续采用流式、区间化读取；原始 JSONL 和 source namespace key material 禁止进入 Git。M1-06 archive retention/export/delete 的离线验收见 `docs/migrations/m1-06-archive-governance-acceptance-2026-08-09.md`。
 
