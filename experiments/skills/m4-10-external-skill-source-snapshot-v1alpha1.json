@@ -1,0 +1,301 @@
+{
+  "fixture_kind": "synthetic-contract",
+  "observations": {
+    "agent-skills.specification": {
+      "acquisition": "https-get",
+      "declared_capabilities": [],
+      "expected_paths": [
+        "docs/specification.mdx"
+      ],
+      "files": [
+        {
+          "content": "# Contract fixture: agent-skills.specification\n",
+          "kind": "file",
+          "path": "docs/specification.mdx"
+        }
+      ],
+      "final_url": "https://raw.githubusercontent.com/agentskills/agentskills/2222222222222222222222222222222222222222/docs/specification.mdx",
+      "license_evidence": "synthetic license evidence for agent-skills.specification\n",
+      "license_ref": "CC-BY-4.0",
+      "publisher_evidence": "synthetic publisher evidence for agent-skills.specification\n",
+      "retrieved_at": "2026-08-12T00:00:01Z"
+    },
+    "github.agent-supply-chain": {
+      "acquisition": "https-get",
+      "declared_capabilities": [
+        "filesystem:read"
+      ],
+      "expected_paths": [
+        "skills/agent-supply-chain/SKILL.md"
+      ],
+      "files": [
+        {
+          "content": "# Contract fixture: github.agent-supply-chain\n",
+          "kind": "file",
+          "path": "skills/agent-supply-chain/SKILL.md"
+        }
+      ],
+      "final_url": "https://raw.githubusercontent.com/github/awesome-copilot/3333333333333333333333333333333333333333/skills/agent-supply-chain/SKILL.md",
+      "license_evidence": "synthetic license evidence for github.agent-supply-chain\n",
+      "license_ref": "MIT",
+      "publisher_evidence": "synthetic publisher evidence for github.agent-supply-chain\n",
+      "retrieved_at": "2026-08-12T00:00:01Z"
+    },
+    "openai.node-link-and-diagram-layout": {
+      "acquisition": "https-get",
+      "declared_capabilities": [
+        "filesystem:read"
+      ],
+      "expected_paths": [
+        "plugins/build-web-data-visualization/skills/node-link-and-diagram-layout/SKILL.md"
+      ],
+      "files": [
+        {
+          "content": "# Contract fixture: openai.node-link-and-diagram-layout\n",
+          "kind": "file",
+          "path": "plugins/build-web-data-visualization/skills/node-link-and-diagram-layout/SKILL.md"
+        }
+      ],
+      "final_url": "https://raw.githubusercontent.com/openai/plugins/1111111111111111111111111111111111111111/plugins/build-web-data-visualization/skills/node-link-and-diagram-layout/SKILL.md",
+      "license_evidence": "synthetic license evidence for openai.node-link-and-diagram-layout\n",
+      "license_ref": "MIT",
+      "publisher_evidence": "synthetic publisher evidence for openai.node-link-and-diagram-layout\n",
+      "retrieved_at": "2026-08-12T00:00:01Z"
+    },
+    "skills-sh.index": {
+      "acquisition": "https-get",
+      "declared_capabilities": [],
+      "expected_paths": [
+        "index.json"
+      ],
+      "files": [
+        {
+          "content": "# Contract fixture: skills-sh.index\n",
+          "kind": "file",
+          "path": "index.json"
+        }
+      ],
+      "final_url": "https://skills.sh/api/search?q=skills&limit=20",
+      "license_evidence": null,
+      "license_ref": null,
+      "publisher_evidence": null,
+      "retrieved_at": "2026-08-12T00:00:01Z"
+    }
+  },
+  "requests": [
+    {
+      "adapter_id": "adapter.openai-plugins-git",
+      "adapter_version": "1.0.0",
+      "resource_kind": "skill",
+      "retrieval_url": "https://raw.githubusercontent.com/openai/plugins/1111111111111111111111111111111111111111/plugins/build-web-data-visualization/skills/node-link-and-diagram-layout/SKILL.md",
+      "source_id": "openai.node-link-and-diagram-layout",
+      "source_path": "plugins/build-web-data-visualization/skills/node-link-and-diagram-layout/SKILL.md",
+      "source_revision": "1111111111111111111111111111111111111111"
+    },
+    {
+      "adapter_id": "adapter.agent-skills-standard-git",
+      "adapter_version": "1.0.0",
+      "resource_kind": "standard",
+      "retrieval_url": "https://raw.githubusercontent.com/agentskills/agentskills/2222222222222222222222222222222222222222/docs/specification.mdx",
+      "source_id": "agent-skills.specification",
+      "source_path": "docs/specification.mdx",
+      "source_revision": "2222222222222222222222222222222222222222"
+    },
+    {
+      "adapter_id": "adapter.github-awesome-copilot-git",
+      "adapter_version": "1.0.0",
+      "resource_kind": "skill",
+      "retrieval_url": "https://raw.githubusercontent.com/github/awesome-copilot/3333333333333333333333333333333333333333/skills/agent-supply-chain/SKILL.md",
+      "source_id": "github.agent-supply-chain",
+      "source_path": "skills/agent-supply-chain/SKILL.md",
+      "source_revision": "3333333333333333333333333333333333333333"
+    },
+    {
+      "adapter_id": "adapter.skills-sh-index",
+      "adapter_version": "1.0.0",
+      "resource_kind": "catalog-index",
+      "retrieval_url": "https://skills.sh/api/search?q=skills&limit=20",
+      "source_id": "skills-sh.index",
+      "source_path": "index.json",
+      "source_revision": "dynamic-index"
+    }
+  ],
+  "snapshot": {
+    "adapter_policy_sha256": "a6b3d6c1da73ceac16f2ec2db07ca260494a342c0569c1f870075f686b561776",
+    "generated_at": "2026-08-12T00:00:02Z",
+    "generator_version": "1.0.0",
+    "input_sha256": "5f2dec45f4704470f926fa0f3cf0e2fead08bc8c0b3301b7880e8635474a85d3",
+    "schema_version": "context.external-skill-source-snapshot/v1alpha1",
+    "snapshot_id": "external-skill-source-snapshot/05718cc5e8fb5370125f96c3622d97d0adc03ebf733fc7ab17e315b68c6579f6",
+    "sources": [
+      {
+        "acquisition": "https-get",
+        "adapter_id": "adapter.agent-skills-standard-git",
+        "adapter_version": "1.0.0",
+        "canonical_url": "https://github.com/agentskills/agentskills",
+        "content_artifact_ref": "artifact://sha256/9b8850dd12f4c65c630c4b8e8cd3296617f270000a9cbcc338555dc0a3376024",
+        "content_sha256": "9b8850dd12f4c65c630c4b8e8cd3296617f270000a9cbcc338555dc0a3376024",
+        "content_size_bytes": 47,
+        "declared_capabilities": [],
+        "final_url": "https://raw.githubusercontent.com/agentskills/agentskills/2222222222222222222222222222222222222222/docs/specification.mdx",
+        "license_evidence_refs": [
+          "artifact://sha256/e33e9949a9fdbef77f06392331d8eab196b6b34a3a4e846260bdf82455211917"
+        ],
+        "license_ref": "CC-BY-4.0",
+        "provenance_refs": [
+          "artifact://sha256/9b8850dd12f4c65c630c4b8e8cd3296617f270000a9cbcc338555dc0a3376024",
+          "artifact://sha256/df0c4e7872b23e7a9098b00847da771ff3b63395c806b0a7712b11e8cd2ff208",
+          "artifact://sha256/e33e9949a9fdbef77f06392331d8eab196b6b34a3a4e846260bdf82455211917",
+          "artifact://sha256/f99fe629637ad5be6472d13dbb32ac53d8b257a4e86b12df4243f54d9ead3291"
+        ],
+        "publisher_id": "agent-skills",
+        "publisher_verification_refs": [
+          "artifact://sha256/f99fe629637ad5be6472d13dbb32ac53d8b257a4e86b12df4243f54d9ead3291"
+        ],
+        "quarantine_reasons": [],
+        "resource_count": 1,
+        "resource_kind": "standard",
+        "resource_manifest_ref": "artifact://sha256/df0c4e7872b23e7a9098b00847da771ff3b63395c806b0a7712b11e8cd2ff208",
+        "resource_manifest_size_bytes": 976,
+        "resource_tree_sha256": "df0c4e7872b23e7a9098b00847da771ff3b63395c806b0a7712b11e8cd2ff208",
+        "retrieval_url": "https://raw.githubusercontent.com/agentskills/agentskills/2222222222222222222222222222222222222222/docs/specification.mdx",
+        "retrieved_at": "2026-08-12T00:00:01Z",
+        "revision_kind": "git-commit",
+        "source_class": "standard",
+        "source_id": "agent-skills.specification",
+        "source_path": "docs/specification.mdx",
+        "source_revision": "2222222222222222222222222222222222222222",
+        "status": "candidate",
+        "tree_evidence_ref": null,
+        "trust_tier": "standard"
+      },
+      {
+        "acquisition": "https-get",
+        "adapter_id": "adapter.github-awesome-copilot-git",
+        "adapter_version": "1.0.0",
+        "canonical_url": "https://github.com/github/awesome-copilot",
+        "content_artifact_ref": "artifact://sha256/94298172118c9621f608f59fecef994f7611b8693d783988053a6d41c6615488",
+        "content_sha256": "94298172118c9621f608f59fecef994f7611b8693d783988053a6d41c6615488",
+        "content_size_bytes": 46,
+        "declared_capabilities": [
+          "filesystem:read"
+        ],
+        "final_url": "https://raw.githubusercontent.com/github/awesome-copilot/3333333333333333333333333333333333333333/skills/agent-supply-chain/SKILL.md",
+        "license_evidence_refs": [
+          "artifact://sha256/e0d47310d249dea3cd8401fa287705acc22d49456c32ee521fc14b29a860dbf3"
+        ],
+        "license_ref": "MIT",
+        "provenance_refs": [
+          "artifact://sha256/36316c5d1ea3f66a6f3a43dd78af24476b8b2f2b1d0ce0dfe41f1126171e0047",
+          "artifact://sha256/48d93b3b991a2b84b23196372b0924ac2d188b7cd90b14c0887cc3ccc1d89d9e",
+          "artifact://sha256/94298172118c9621f608f59fecef994f7611b8693d783988053a6d41c6615488",
+          "artifact://sha256/e0d47310d249dea3cd8401fa287705acc22d49456c32ee521fc14b29a860dbf3",
+          "artifact://sha256/e2a9bc5af196a89c146fa969ed1d4b6792f9aaa5ac573eff5a96864e681a32ca"
+        ],
+        "publisher_id": "github-awesome-copilot-community",
+        "publisher_verification_refs": [
+          "artifact://sha256/e2a9bc5af196a89c146fa969ed1d4b6792f9aaa5ac573eff5a96864e681a32ca"
+        ],
+        "quarantine_reasons": [],
+        "resource_count": 1,
+        "resource_kind": "skill",
+        "resource_manifest_ref": "artifact://sha256/48d93b3b991a2b84b23196372b0924ac2d188b7cd90b14c0887cc3ccc1d89d9e",
+        "resource_manifest_size_bytes": 1101,
+        "resource_tree_sha256": "48d93b3b991a2b84b23196372b0924ac2d188b7cd90b14c0887cc3ccc1d89d9e",
+        "retrieval_url": "https://raw.githubusercontent.com/github/awesome-copilot/3333333333333333333333333333333333333333/skills/agent-supply-chain/SKILL.md",
+        "retrieved_at": "2026-08-12T00:00:01Z",
+        "revision_kind": "git-commit",
+        "source_class": "verified-organization",
+        "source_id": "github.agent-supply-chain",
+        "source_path": "skills/agent-supply-chain/SKILL.md",
+        "source_revision": "3333333333333333333333333333333333333333",
+        "status": "candidate",
+        "tree_evidence_ref": "artifact://sha256/36316c5d1ea3f66a6f3a43dd78af24476b8b2f2b1d0ce0dfe41f1126171e0047",
+        "trust_tier": "verified-organization"
+      },
+      {
+        "acquisition": "https-get",
+        "adapter_id": "adapter.openai-plugins-git",
+        "adapter_version": "1.0.0",
+        "canonical_url": "https://github.com/openai/plugins",
+        "content_artifact_ref": "artifact://sha256/5643a377a48f62f219db374e5fea52956d79384c2394861ee30dcaf171daf952",
+        "content_sha256": "5643a377a48f62f219db374e5fea52956d79384c2394861ee30dcaf171daf952",
+        "content_size_bytes": 56,
+        "declared_capabilities": [
+          "filesystem:read"
+        ],
+        "final_url": "https://raw.githubusercontent.com/openai/plugins/1111111111111111111111111111111111111111/plugins/build-web-data-visualization/skills/node-link-and-diagram-layout/SKILL.md",
+        "license_evidence_refs": [
+          "artifact://sha256/fc2119e161035f6c11a572b3fe493a191105b09859fe194891cb093a15a80bef"
+        ],
+        "license_ref": "MIT",
+        "provenance_refs": [
+          "artifact://sha256/042f87f36a57774ff3753352ca2cabffcc38d608063a7756ff6623d3ba645207",
+          "artifact://sha256/41a6b1e281e36ec706929e02307bde31e79e66d55fbf30b1f15e6cacb0551dba",
+          "artifact://sha256/5643a377a48f62f219db374e5fea52956d79384c2394861ee30dcaf171daf952",
+          "artifact://sha256/97659c12cb55a3df92db20f8e586c12d105fd5c57be510eb871bc10c4b646aaa",
+          "artifact://sha256/fc2119e161035f6c11a572b3fe493a191105b09859fe194891cb093a15a80bef"
+        ],
+        "publisher_id": "openai",
+        "publisher_verification_refs": [
+          "artifact://sha256/41a6b1e281e36ec706929e02307bde31e79e66d55fbf30b1f15e6cacb0551dba"
+        ],
+        "quarantine_reasons": [],
+        "resource_count": 1,
+        "resource_kind": "skill",
+        "resource_manifest_ref": "artifact://sha256/042f87f36a57774ff3753352ca2cabffcc38d608063a7756ff6623d3ba645207",
+        "resource_manifest_size_bytes": 1244,
+        "resource_tree_sha256": "042f87f36a57774ff3753352ca2cabffcc38d608063a7756ff6623d3ba645207",
+        "retrieval_url": "https://raw.githubusercontent.com/openai/plugins/1111111111111111111111111111111111111111/plugins/build-web-data-visualization/skills/node-link-and-diagram-layout/SKILL.md",
+        "retrieved_at": "2026-08-12T00:00:01Z",
+        "revision_kind": "git-commit",
+        "source_class": "official",
+        "source_id": "openai.node-link-and-diagram-layout",
+        "source_path": "plugins/build-web-data-visualization/skills/node-link-and-diagram-layout/SKILL.md",
+        "source_revision": "1111111111111111111111111111111111111111",
+        "status": "candidate",
+        "tree_evidence_ref": "artifact://sha256/97659c12cb55a3df92db20f8e586c12d105fd5c57be510eb871bc10c4b646aaa",
+        "trust_tier": "official"
+      },
+      {
+        "acquisition": "https-get",
+        "adapter_id": "adapter.skills-sh-index",
+        "adapter_version": "1.0.0",
+        "canonical_url": "https://skills.sh/",
+        "content_artifact_ref": "artifact://sha256/035130b9df74cbbac4d3046ffad0c3f922b3b7a25c73d2c9294b6b455e4a55f2",
+        "content_sha256": "035130b9df74cbbac4d3046ffad0c3f922b3b7a25c73d2c9294b6b455e4a55f2",
+        "content_size_bytes": 36,
+        "declared_capabilities": [],
+        "final_url": "https://skills.sh/api/search?q=skills&limit=20",
+        "license_evidence_refs": [],
+        "license_ref": null,
+        "provenance_refs": [
+          "artifact://sha256/035130b9df74cbbac4d3046ffad0c3f922b3b7a25c73d2c9294b6b455e4a55f2",
+          "artifact://sha256/32c3f532dd19c2dd0c85599c0095fafd4fa3d84128438809620d0cf3c038d30d"
+        ],
+        "publisher_id": "skills-sh",
+        "publisher_verification_refs": [],
+        "quarantine_reasons": [
+          "license-unverified",
+          "mutable-source-revision",
+          "publisher-unverified"
+        ],
+        "resource_count": 1,
+        "resource_kind": "catalog-index",
+        "resource_manifest_ref": "artifact://sha256/32c3f532dd19c2dd0c85599c0095fafd4fa3d84128438809620d0cf3c038d30d",
+        "resource_manifest_size_bytes": 664,
+        "resource_tree_sha256": "32c3f532dd19c2dd0c85599c0095fafd4fa3d84128438809620d0cf3c038d30d",
+        "retrieval_url": "https://skills.sh/api/search?q=skills&limit=20",
+        "retrieved_at": "2026-08-12T00:00:01Z",
+        "revision_kind": "dynamic-index",
+        "source_class": "marketplace-community",
+        "source_id": "skills-sh.index",
+        "source_path": "index.json",
+        "source_revision": "dynamic-index",
+        "status": "quarantined",
+        "tree_evidence_ref": null,
+        "trust_tier": "marketplace-community"
+      }
+    ]
+  }
+}
