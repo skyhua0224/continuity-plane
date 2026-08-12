@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from datetime import datetime, timezone
 from pathlib import Path
+from unittest import mock
 
 import yaml
 from jsonschema import Draft202012Validator
@@ -758,6 +759,46 @@ class M010DocumentLifecycleTests(unittest.TestCase):
 
             with self.assertRaisesRegex(DocumentLifecycleError, "manifest fields"):
                 self._validate(root, manifest)
+
+    def test_empty_documents_fail_before_committed_lineage_is_queried(self):
+        root = Path(__file__).parents[1]
+        manifest = yaml.safe_load(
+            (root / "profiles" / "document-control-manifest.yaml").read_text(
+                encoding="utf-8"
+            )
+        )
+        manifest["documents"] = []
+
+        with (
+            mock.patch(
+                "context_control_plane.document_lifecycle._validate_committed_lineage"
+            ) as validate_lineage,
+            self.assertRaisesRegex(
+                DocumentLifecycleError, "documents must be a non-empty array"
+            ),
+        ):
+            validate_document_control_manifest(root, manifest)
+
+        validate_lineage.assert_not_called()
+
+    def test_malformed_change_receipt_fails_before_committed_lineage_is_queried(self):
+        root = Path(__file__).parents[1]
+        manifest = yaml.safe_load(
+            (root / "profiles" / "document-control-manifest.yaml").read_text(
+                encoding="utf-8"
+            )
+        )
+        manifest["documents"][0]["change"] = {"change_type": "correction"}
+
+        with (
+            mock.patch(
+                "context_control_plane.document_lifecycle._validate_committed_lineage"
+            ) as validate_lineage,
+            self.assertRaisesRegex(DocumentLifecycleError, "change receipt fields"),
+        ):
+            validate_document_control_manifest(root, manifest)
+
+        validate_lineage.assert_not_called()
 
     def test_schema_is_registered_hashed_and_rejects_unknown_fields(self):
         root = Path(__file__).parents[1]

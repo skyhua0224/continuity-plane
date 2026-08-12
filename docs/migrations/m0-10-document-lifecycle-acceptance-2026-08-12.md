@@ -1,6 +1,6 @@
 # M0-10 Documentation Lifecycle Acceptance
 
-版本：3  
+版本：4  
 日期：2026-08-12  
 状态：verified
 
@@ -19,7 +19,8 @@
 - Markdown authority receipt 只验证声明合同，真实授权身份与 diff-aware admission 仍由 M0-11/M8-05 验收。
 - 53 份 managed document 当前 hash/metrics/evidence ref 一致；public validator has no provenance-bypass parameter。每次验收执行 one full provenance preflight plus 40 content-only samples；预检覆盖 Git lineage 与 supersedes provenance，计时样本只验证已预检 manifest 的内容合同；failures 为 0、p95 小于 100 ms；未认证的历史时延不写入 receipt；
 - benchmark baseline、样本数和 p95 门由 strict governance config 固定；baseline 必须是 `HEAD` 可达 commit，Git blob 读取受 2 秒和 8 MiB 上限约束；
-- 独立合同复审覆盖 authority、projection、strict schema、全仓 Markdown 发现、supersedes provenance、bounded Git read 和 benchmark receipt；最终结论为 High 0、Medium 0。后续可重复性修正固定 alternate baseline 选择，并将 Git lineage 预检移出每个 live 样本；完整 lineage 门保留在普通 repository validation，公开接口与私有内容校验均不存在调用方可传入的 provenance bypass。
+- 独立合同复审覆盖 authority、projection、strict schema、全仓 Markdown 发现、supersedes provenance、bounded Git read 和 benchmark receipt；最终结论为 High 0、Medium 0。后续可重复性修正固定 alternate baseline 选择，并将 Git lineage 预检移出每个 live 样本；完整 lineage 门保留在普通 repository validation，公开接口与私有内容校验均不存在调用方可传入的 provenance bypass；
+- revision 4 在公共入口将调用方 manifest 冻结为 ordinary built-in dict/list snapshot；同一快照依次经过本地结构门、Git lineage、内容合同与 supersedes provenance。cycling documents view、empty documents and malformed change receipts 均由回归测试拒绝；40 个内容样本复用已完成预检的同一快照。
 
 ## 验证命令
 

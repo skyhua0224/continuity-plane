@@ -14,6 +14,7 @@ from typing import Any
 import yaml
 
 from context_control_plane.document_lifecycle import (
+    _freeze_document_control_manifest,
     _second_level_sections,
     _validate_document_control_manifest_content,
     validate_document_control_manifest,
@@ -259,13 +260,14 @@ def measure_document_lifecycle_validator(
     if samples != BENCHMARK_SAMPLE_COUNT:
         raise DocumentLifecycleBenchmarkError("samples must be exactly 40")
     root = root.resolve()
-    _validate_document_lifecycle_preflight(root, manifest)
+    frozen_manifest = _freeze_document_control_manifest(manifest)
+    _validate_document_lifecycle_preflight(root, frozen_manifest)
     durations: list[float] = []
     failures = 0
     for _ in range(samples):
         started = time.perf_counter_ns()
         try:
-            _validate_document_lifecycle_content(root, manifest)
+            _validate_document_lifecycle_content(root, frozen_manifest)
         except ValueError:
             failures += 1
         durations.append(round((time.perf_counter_ns() - started) / 1_000_000, 4))

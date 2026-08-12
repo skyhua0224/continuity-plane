@@ -196,6 +196,41 @@ class M010DocumentLifecycleBenchmarkTests(unittest.TestCase):
         with self.assertRaisesRegex(DocumentLifecycleError, "supersedes provenance"):
             measure_document_lifecycle_validator(self.root, mutated, samples=40)
 
+    def test_public_validator_and_benchmark_reject_a_cycling_documents_view(self):
+        forged = copy.deepcopy(self.manifest)
+        acceptance = next(
+            document
+            for document in forged["documents"]
+            if document["document_id"]
+            == "docs-migrations-m0-10-document-lifecycle-acceptance-2026-08-12"
+        )
+        acceptance["change"]["supersedes_provenance"]["git_commit"] = "0" * 40
+
+        class CyclingDocuments(list):
+            def __init__(self, first: list[dict], later: list[dict]) -> None:
+                super().__init__(first)
+                self._views = (first, later)
+                self._reads = 0
+
+            def __iter__(self):
+                view = self._views[min(self._reads, len(self._views) - 1)]
+                self._reads += 1
+                return iter(view)
+
+        def cycling_manifest() -> dict:
+            cycling = copy.deepcopy(self.manifest)
+            cycling["documents"] = CyclingDocuments(
+                forged["documents"], self.manifest["documents"]
+            )
+            return cycling
+
+        with self.assertRaisesRegex(DocumentLifecycleError, "supersedes provenance"):
+            validate_document_control_manifest(self.root, cycling_manifest())
+        with self.assertRaisesRegex(DocumentLifecycleError, "supersedes provenance"):
+            measure_document_lifecycle_validator(
+                self.root, cycling_manifest(), samples=40
+            )
+
     def test_benchmark_config_rejects_unknown_fields(self):
         config_path = (
             self.root / "profiles" / "document-lifecycle-benchmark-config.yaml"
@@ -472,6 +507,9 @@ class M010DocumentLifecycleBenchmarkTests(unittest.TestCase):
         self.assertIn(
             "one full provenance preflight plus 40 content-only samples", acceptance
         )
+        self.assertIn("版本：4", acceptance)
+        self.assertIn("ordinary built-in dict/list snapshot", acceptance)
+        self.assertIn("empty documents and malformed change receipts", acceptance)
 
     def test_benchmark_config_is_strict_registered_and_current(self):
         registry = yaml.safe_load(

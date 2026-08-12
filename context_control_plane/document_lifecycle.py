@@ -842,31 +842,121 @@ def _managed_markdown_paths(root: Path) -> set[str]:
     return paths - _UNMANAGED_MARKDOWN_PATHS
 
 
-def _document_entries_for_git_lineage(
-    manifest: dict[str, Any],
-) -> list[dict[str, Any]] | None:
-    """Return safely shaped entries before lineage validation.
+def _freeze_document_control_value(value: Any) -> Any:
+    """Copy manifest containers before any validation observes their contents."""
+    if isinstance(value, dict):
+        return {
+            key: _freeze_document_control_value(child) for key, child in value.items()
+        }
+    if isinstance(value, list):
+        return [_freeze_document_control_value(child) for child in value]
+    return value
 
-    The content validator owns detailed structural errors. This guard preserves
-    the committed-lineage failure order for otherwise valid manifests.
-    """
-    entries = manifest.get("documents")
-    if not isinstance(entries, list) or not all(
-        isinstance(entry, dict) for entry in entries
+
+def _freeze_document_control_manifest(manifest: Any) -> Any:
+    """Return one ordinary dict/list snapshot of the caller-owned manifest."""
+    return _freeze_document_control_value(manifest)
+
+
+def _validate_document_control_manifest_structure(root: Path, manifest: Any) -> None:
+    """Reject local manifest/receipt shape defects before Git lineage lookup."""
+    if not isinstance(manifest, dict):
+        raise DocumentLifecycleError("document manifest must be an object")
+    if set(manifest) != {
+        "schema_version",
+        "generated_at",
+        "governance_revision",
+        "documents",
+    }:
+        raise DocumentLifecycleError("document manifest fields are invalid")
+    if manifest.get("schema_version") != "context.document-control-manifest/v1alpha1":
+        raise DocumentLifecycleError("unsupported document manifest schema_version")
+    _parse_timestamp(manifest.get("generated_at"), "generated_at")
+    governance_revision = manifest.get("governance_revision")
+    if (
+        not isinstance(governance_revision, int)
+        or isinstance(governance_revision, bool)
+        or governance_revision < 1
     ):
-        return None
+        raise DocumentLifecycleError("governance_revision must be a positive integer")
+    entries = manifest.get("documents")
+    if not isinstance(entries, list) or not entries:
+        raise DocumentLifecycleError("documents must be a non-empty array")
     for entry in entries:
-        revision = entry.get("document_revision")
-        if (
-            not isinstance(entry.get("document_id"), str)
-            or not isinstance(entry.get("path"), str)
-            or not isinstance(entry.get("content_sha256"), str)
-            or not isinstance(revision, int)
-            or isinstance(revision, bool)
-            or revision < 1
+        if not isinstance(entry, dict):
+            raise DocumentLifecycleError("document entry must be an object")
+        base_fields = {
+            "document_id",
+            "path",
+            "category",
+            "document_revision",
+            "content_sha256",
+            "metrics",
+            "authority",
+            "change",
+            "evidence_refs",
+        }
+        if not set(entry).issubset(
+            base_fields | {"projection_binding"}
+        ) or not base_fields.issubset(entry):
+            raise DocumentLifecycleError("document fields are invalid")
+        document_id = entry.get("document_id")
+        if not isinstance(document_id, str) or not _DOCUMENT_ID_RE.fullmatch(
+            document_id
         ):
-            return None
-    return entries
+            raise DocumentLifecycleError("document_id must be canonical and unique")
+        path_text, _ = _safe_relative_path(root, entry.get("path"), "document path")
+        category = entry.get("category")
+        if category not in _DOCUMENT_CATEGORIES:
+            raise DocumentLifecycleError(f"document category is invalid: {path_text}")
+        if category != _expected_category(path_text):
+            raise DocumentLifecycleError(
+                f"document category does not match path: {path_text} "
+                f"expected={_expected_category(path_text)}"
+            )
+        revision = entry.get("document_revision")
+        if not isinstance(revision, int) or isinstance(revision, bool) or revision < 1:
+            raise DocumentLifecycleError(f"document revision is invalid: {path_text}")
+        content_sha256 = entry.get("content_sha256")
+        if not isinstance(content_sha256, str) or not _SHA256_RE.fullmatch(
+            content_sha256
+        ):
+            raise DocumentLifecycleError(f"document digest is invalid: {path_text}")
+        metrics = entry.get("metrics")
+        if not isinstance(metrics, dict) or set(metrics) != {
+            "utf8_bytes",
+            "section_count",
+            "local_link_count",
+            "external_link_count",
+            "reference_depth",
+        }:
+            raise DocumentLifecycleError(f"document metrics are invalid: {path_text}")
+        if not isinstance(entry.get("authority"), dict):
+            raise DocumentLifecycleError(f"authority contract is missing: {path_text}")
+        change = entry.get("change")
+        base_change_fields = {
+            "change_type",
+            "authority_ref",
+            "supersedes",
+            "affected_tasks",
+            "next_review",
+        }
+        if not isinstance(change, dict):
+            raise DocumentLifecycleError(f"change receipt is missing: {document_id}")
+        if not set(change).issubset(
+            base_change_fields | {"supersedes_provenance"}
+        ) or not base_change_fields.issubset(change):
+            raise DocumentLifecycleError(
+                f"change receipt fields are invalid: {document_id}"
+            )
+        if revision > 1 and change["supersedes"] != (
+            f"context.document://{document_id}/revision/{revision - 1}"
+        ):
+            raise DocumentLifecycleError(
+                f"{document_id} revision {revision} must supersede revision {revision - 1}"
+            )
+        if not isinstance(entry.get("evidence_refs"), list):
+            raise DocumentLifecycleError("evidence_refs must be an array")
 
 
 def _validate_document_supersedes_history(
@@ -878,22 +968,6 @@ def _validate_document_supersedes_history(
         if revision > 1:
             _validate_supersedes_provenance(
                 root, entry, entry["document_id"], revision - 1
-            )
-
-
-def _validate_document_supersedes_contracts(entries: list[dict[str, Any]]) -> None:
-    """Reject revision gaps before committed lineage selects a prior revision."""
-    for entry in entries:
-        revision = entry["document_revision"]
-        if revision == 1:
-            continue
-        document_id = entry["document_id"]
-        expected = f"context.document://{document_id}/revision/{revision - 1}"
-        change = entry.get("change")
-        supersedes = change.get("supersedes") if isinstance(change, dict) else None
-        if supersedes != expected:
-            raise DocumentLifecycleError(
-                f"{document_id} revision {revision} must supersede revision {revision - 1}"
             )
 
 
@@ -1114,14 +1188,12 @@ def validate_document_control_manifest(
 ) -> dict[str, int]:
     """Validate managed documents with complete Git provenance checks."""
     root = root.resolve()
-    entries = (
-        _document_entries_for_git_lineage(manifest)
-        if isinstance(manifest, dict)
-        else None
+    frozen_manifest = _freeze_document_control_manifest(manifest)
+    _validate_document_control_manifest_structure(root, frozen_manifest)
+    entries = frozen_manifest["documents"]
+    _validate_committed_lineage(root, frozen_manifest, entries)
+    result = _validate_document_control_manifest_content(
+        root, frozen_manifest, as_of=as_of
     )
-    if entries is not None:
-        _validate_document_supersedes_contracts(entries)
-        _validate_committed_lineage(root, manifest, entries)
-    result = _validate_document_control_manifest_content(root, manifest, as_of=as_of)
-    _validate_document_supersedes_history(root, manifest["documents"])
+    _validate_document_supersedes_history(root, entries)
     return result
