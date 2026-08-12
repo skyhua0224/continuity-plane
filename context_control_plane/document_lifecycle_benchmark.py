@@ -15,7 +15,7 @@ import yaml
 
 from context_control_plane.document_lifecycle import (
     _second_level_sections,
-    prepare_document_lifecycle_validation_snapshot,
+    _validate_document_control_manifest_content,
     validate_document_control_manifest,
 )
 
@@ -251,7 +251,7 @@ def _provenance(
 def measure_document_lifecycle_validator(
     root: Path, manifest: dict[str, Any], *, samples: int
 ) -> dict[str, int | float]:
-    """Measure document validation against one immutable lineage snapshot."""
+    """Measure document validation after a single full provenance preflight."""
     if samples < BENCHMARK_SAMPLE_COUNT:
         raise DocumentLifecycleBenchmarkError(
             "samples must be at least 40 and exactly 40"
@@ -259,15 +259,13 @@ def measure_document_lifecycle_validator(
     if samples != BENCHMARK_SAMPLE_COUNT:
         raise DocumentLifecycleBenchmarkError("samples must be exactly 40")
     root = root.resolve()
-    snapshot = prepare_document_lifecycle_validation_snapshot(root, manifest)
+    _validate_document_lifecycle_preflight(root, manifest)
     durations: list[float] = []
     failures = 0
     for _ in range(samples):
         started = time.perf_counter_ns()
         try:
-            validate_document_control_manifest(
-                root, manifest, lineage_snapshot=snapshot
-            )
+            _validate_document_lifecycle_content(root, manifest)
         except ValueError:
             failures += 1
         durations.append(round((time.perf_counter_ns() - started) / 1_000_000, 4))
@@ -278,6 +276,18 @@ def measure_document_lifecycle_validator(
         "validator_p95_ms": _percentile(durations, 0.95),
         "validator_max_ms": max(durations),
     }
+
+
+def _validate_document_lifecycle_preflight(
+    root: Path, manifest: dict[str, Any]
+) -> None:
+    """Run the complete public validator once before benchmark timing."""
+    validate_document_control_manifest(root, manifest)
+
+
+def _validate_document_lifecycle_content(root: Path, manifest: dict[str, Any]) -> None:
+    """Validate the verified in-memory manifest without repeating Git history I/O."""
+    _validate_document_control_manifest_content(root, manifest)
 
 
 def benchmark_document_lifecycle(

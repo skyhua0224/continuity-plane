@@ -7,7 +7,6 @@ import json
 import re
 import subprocess
 from collections import defaultdict
-from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 from typing import Any
@@ -58,12 +57,6 @@ _UNMANAGED_MARKDOWN_PATHS = {"replay/fixtures/README.md"}
 _UNMANAGED_MARKDOWN_PARTS = {".git", ".ruff_cache", ".venv", "__pycache__"}
 _EXPANDABLE_REFERENCE_CATEGORIES = {"routing", "report", "projection"}
 _PROJECTION_TEMPLATE_VERSION = "context.document-projection/v1alpha1"
-
-
-@dataclass(frozen=True)
-class _DocumentLifecycleValidationSnapshot:
-    root: Path
-    manifest_sha256: str
 
 
 def _parse_timestamp(value: Any, field: str) -> datetime:
@@ -475,35 +468,6 @@ def _validate_committed_lineage(
             )
 
 
-def prepare_document_lifecycle_validation_snapshot(
-    root: Path, manifest: dict[str, Any]
-) -> _DocumentLifecycleValidationSnapshot:
-    """Verify immutable Git lineage and supersedes provenance once."""
-    root = root.resolve()
-    entries = manifest.get("documents") if isinstance(manifest, dict) else None
-    if not isinstance(entries, list):
-        raise DocumentLifecycleError("document manifest requires documents")
-    _validate_committed_lineage(root, manifest, entries)
-    for entry in entries:
-        if not isinstance(entry, dict):
-            raise DocumentLifecycleError("document entry must be an object")
-        revision = entry.get("document_revision")
-        document_id = entry.get("document_id")
-        if (
-            not isinstance(revision, int)
-            or isinstance(revision, bool)
-            or revision < 1
-            or not isinstance(document_id, str)
-        ):
-            raise DocumentLifecycleError("document snapshot metadata is invalid")
-        if revision > 1:
-            _validate_supersedes_provenance(root, entry, document_id, revision - 1)
-    return _DocumentLifecycleValidationSnapshot(
-        root=root,
-        manifest_sha256=_sha256_bytes(canonical_manifest_bytes(manifest)),
-    )
-
-
 def _validate_supersedes_provenance(
     root: Path,
     entry: dict[str, Any],
@@ -578,8 +542,6 @@ def _validate_change(
     category: str,
     document_id: str,
     governance_revision: int,
-    *,
-    validate_supersedes_provenance: bool = True,
 ) -> None:
     change = entry.get("change")
     if not isinstance(change, dict):
@@ -656,8 +618,6 @@ def _validate_change(
     )
     supersedes = change["supersedes"]
     if supersedes == expected_supersedes:
-        if revision > 1 and validate_supersedes_provenance:
-            _validate_supersedes_provenance(root, entry, document_id, revision - 1)
         return
     if revision == 1:
         raise DocumentLifecycleError(
@@ -882,14 +842,68 @@ def _managed_markdown_paths(root: Path) -> set[str]:
     return paths - _UNMANAGED_MARKDOWN_PATHS
 
 
-def validate_document_control_manifest(
+def _document_entries_for_git_lineage(
+    manifest: dict[str, Any],
+) -> list[dict[str, Any]] | None:
+    """Return safely shaped entries before lineage validation.
+
+    The content validator owns detailed structural errors. This guard preserves
+    the committed-lineage failure order for otherwise valid manifests.
+    """
+    entries = manifest.get("documents")
+    if not isinstance(entries, list) or not all(
+        isinstance(entry, dict) for entry in entries
+    ):
+        return None
+    for entry in entries:
+        revision = entry.get("document_revision")
+        if (
+            not isinstance(entry.get("document_id"), str)
+            or not isinstance(entry.get("path"), str)
+            or not isinstance(entry.get("content_sha256"), str)
+            or not isinstance(revision, int)
+            or isinstance(revision, bool)
+            or revision < 1
+        ):
+            return None
+    return entries
+
+
+def _validate_document_supersedes_history(
+    root: Path, entries: list[dict[str, Any]]
+) -> None:
+    """Validate provenance for every non-initial document revision."""
+    for entry in entries:
+        revision = entry["document_revision"]
+        if revision > 1:
+            _validate_supersedes_provenance(
+                root, entry, entry["document_id"], revision - 1
+            )
+
+
+def _validate_document_supersedes_contracts(entries: list[dict[str, Any]]) -> None:
+    """Reject revision gaps before committed lineage selects a prior revision."""
+    for entry in entries:
+        revision = entry["document_revision"]
+        if revision == 1:
+            continue
+        document_id = entry["document_id"]
+        expected = f"context.document://{document_id}/revision/{revision - 1}"
+        change = entry.get("change")
+        supersedes = change.get("supersedes") if isinstance(change, dict) else None
+        if supersedes != expected:
+            raise DocumentLifecycleError(
+                f"{document_id} revision {revision} must supersede revision {revision - 1}"
+            )
+
+
+def _validate_document_control_manifest_content(
     root: Path,
     manifest: dict[str, Any],
     *,
     as_of: datetime | None = None,
-    lineage_snapshot: _DocumentLifecycleValidationSnapshot | None = None,
 ) -> dict[str, int]:
-    """Validate managed documents and return independently recomputed metrics."""
+    """Validate current document content and local lifecycle contracts."""
     root = root.resolve()
     if not isinstance(manifest, dict):
         raise DocumentLifecycleError("document manifest must be an object")
@@ -1032,19 +1046,8 @@ def validate_document_control_manifest(
             category,
             document_id,
             governance_revision,
-            validate_supersedes_provenance=lineage_snapshot is None,
         )
         contents[path_text] = content
-
-    if lineage_snapshot is None:
-        _validate_committed_lineage(root, manifest, entries)
-    elif (
-        not isinstance(lineage_snapshot, _DocumentLifecycleValidationSnapshot)
-        or lineage_snapshot.root != root
-        or lineage_snapshot.manifest_sha256
-        != _sha256_bytes(canonical_manifest_bytes(manifest))
-    ):
-        raise DocumentLifecycleError("lineage snapshot manifest mismatch")
 
     required = {"MASTER.md", "STATUS.md", "docs/architecture/target-state.md"}
     missing = required - set(contents)
@@ -1101,3 +1104,24 @@ def validate_document_control_manifest(
         "recovery_fields_total": recovery_total,
         "recovery_fields_recovered": recovery_recovered,
     }
+
+
+def validate_document_control_manifest(
+    root: Path,
+    manifest: dict[str, Any],
+    *,
+    as_of: datetime | None = None,
+) -> dict[str, int]:
+    """Validate managed documents with complete Git provenance checks."""
+    root = root.resolve()
+    entries = (
+        _document_entries_for_git_lineage(manifest)
+        if isinstance(manifest, dict)
+        else None
+    )
+    if entries is not None:
+        _validate_document_supersedes_contracts(entries)
+        _validate_committed_lineage(root, manifest, entries)
+    result = _validate_document_control_manifest_content(root, manifest, as_of=as_of)
+    _validate_document_supersedes_history(root, manifest["documents"])
+    return result

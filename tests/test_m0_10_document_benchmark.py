@@ -1,5 +1,6 @@
 import copy
 import hashlib
+import inspect
 import subprocess
 import sys
 import tempfile
@@ -12,7 +13,7 @@ from jsonschema import Draft202012Validator
 
 from context_control_plane.document_lifecycle import (
     DocumentLifecycleError,
-    prepare_document_lifecycle_validation_snapshot,
+    _validate_document_control_manifest_content,
     validate_document_control_manifest,
 )
 from context_control_plane.document_lifecycle_benchmark import (
@@ -167,17 +168,33 @@ class M010DocumentLifecycleBenchmarkTests(unittest.TestCase):
         self.assertEqual(live["validator_failures"], 0)
         self.assertEqual(validate_supersedes.call_count, expected_supersedes_checks)
 
-    def test_preverified_snapshot_rejects_manifest_mutation(self):
-        snapshot = prepare_document_lifecycle_validation_snapshot(
-            self.root, self.manifest
-        )
-        mutated = copy.deepcopy(self.manifest)
-        mutated["generated_at"] = "2026-08-12T00:00:01Z"
-
-        with self.assertRaisesRegex(DocumentLifecycleError, "snapshot manifest"):
+    def test_public_validator_does_not_accept_a_lineage_snapshot_bypass(self):
+        with self.assertRaises(TypeError):
             validate_document_control_manifest(
-                self.root, mutated, lineage_snapshot=snapshot
+                self.root, self.manifest, lineage_snapshot=object()
             )
+
+    def test_content_validator_has_no_history_bypass_argument(self):
+        parameters = inspect.signature(
+            _validate_document_control_manifest_content
+        ).parameters
+
+        self.assertNotIn("skip_git_history", parameters)
+
+    def test_public_validator_and_preflight_reject_invalid_supersedes_provenance(self):
+        mutated = copy.deepcopy(self.manifest)
+        acceptance = next(
+            document
+            for document in mutated["documents"]
+            if document["document_id"]
+            == "docs-migrations-m0-10-document-lifecycle-acceptance-2026-08-12"
+        )
+        acceptance["change"]["supersedes_provenance"]["git_commit"] = "0" * 40
+
+        with self.assertRaisesRegex(DocumentLifecycleError, "supersedes provenance"):
+            validate_document_control_manifest(self.root, mutated)
+        with self.assertRaisesRegex(DocumentLifecycleError, "supersedes provenance"):
+            measure_document_lifecycle_validator(self.root, mutated, samples=40)
 
     def test_benchmark_config_rejects_unknown_fields(self):
         config_path = (
@@ -451,6 +468,10 @@ class M010DocumentLifecycleBenchmarkTests(unittest.TestCase):
         self.assertIn("状态：verified", acceptance)
         self.assertIn("High 0", acceptance)
         self.assertIn("Medium 0", acceptance)
+        self.assertIn("public validator has no provenance-bypass parameter", acceptance)
+        self.assertIn(
+            "one full provenance preflight plus 40 content-only samples", acceptance
+        )
 
     def test_benchmark_config_is_strict_registered_and_current(self):
         registry = yaml.safe_load(
