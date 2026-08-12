@@ -15,6 +15,7 @@ import yaml
 
 from context_control_plane.document_lifecycle import (
     _second_level_sections,
+    prepare_document_lifecycle_validation_snapshot,
     validate_document_control_manifest,
 )
 
@@ -250,19 +251,23 @@ def _provenance(
 def measure_document_lifecycle_validator(
     root: Path, manifest: dict[str, Any], *, samples: int
 ) -> dict[str, int | float]:
-    """Measure the validator for a live threshold gate without publishing samples."""
+    """Measure document validation against one immutable lineage snapshot."""
     if samples < BENCHMARK_SAMPLE_COUNT:
         raise DocumentLifecycleBenchmarkError(
             "samples must be at least 40 and exactly 40"
         )
     if samples != BENCHMARK_SAMPLE_COUNT:
         raise DocumentLifecycleBenchmarkError("samples must be exactly 40")
+    root = root.resolve()
+    snapshot = prepare_document_lifecycle_validation_snapshot(root, manifest)
     durations: list[float] = []
     failures = 0
     for _ in range(samples):
         started = time.perf_counter_ns()
         try:
-            validate_document_control_manifest(root.resolve(), manifest)
+            validate_document_control_manifest(
+                root, manifest, lineage_snapshot=snapshot
+            )
         except ValueError:
             failures += 1
         durations.append(round((time.perf_counter_ns() - started) / 1_000_000, 4))

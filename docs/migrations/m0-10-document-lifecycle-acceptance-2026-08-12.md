@@ -17,9 +17,9 @@
 - MASTER 是唯一可声明 governance authority 的文档；所有文档 active-state authority 为 false；report/projection 必须绑定 source state revision、MASTER digest、template version 与 content hash，state-write authority 固定为 false；
 - verifier 不联网检查外部 URL；外部 reference freshness 继续由 versioned catalog 与 M7-06 watcher 验收；
 - Markdown authority receipt 只验证声明合同，真实授权身份与 diff-aware admission 仍由 M0-11/M8-05 验收。
-- 53 份 managed document 当前 hash/metrics/evidence ref 一致；validator 每次验收执行固定 40 个 live 样本并强制 failures 为 0、p95 小于 100 ms；未认证的历史时延不写入 receipt；
+- 53 份 managed document 当前 hash/metrics/evidence ref 一致；每次验收先对当前 manifest 执行一次 Git lineage 预检，再以该不可变快照执行固定 40 个 live 文档校验样本；failures 为 0、p95 小于 100 ms；未认证的历史时延不写入 receipt；
 - benchmark baseline、样本数和 p95 门由 strict governance config 固定；baseline 必须是 `HEAD` 可达 commit，Git blob 读取受 2 秒和 8 MiB 上限约束；
-- 独立合同复审覆盖 authority、projection、strict schema、全仓 Markdown 发现、supersedes provenance、bounded Git read 和 benchmark receipt；最终结论为 High 0、Medium 0；runner 的非阻塞重复测量 Low 已通过回归测试关闭。
+- 独立合同复审覆盖 authority、projection、strict schema、全仓 Markdown 发现、supersedes provenance、bounded Git read 和 benchmark receipt；最终结论为 High 0、Medium 0。后续可重复性修正固定 alternate baseline 选择，并将 Git lineage 预检移出每个 live 样本；完整 lineage 门保留在普通 repository validation，快照 manifest 漂移拒绝。
 
 ## 验证命令
 

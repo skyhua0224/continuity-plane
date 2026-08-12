@@ -10,6 +10,11 @@ from unittest import mock
 import yaml
 from jsonschema import Draft202012Validator
 
+from context_control_plane.document_lifecycle import (
+    DocumentLifecycleError,
+    prepare_document_lifecycle_validation_snapshot,
+    validate_document_control_manifest,
+)
 from context_control_plane.document_lifecycle_benchmark import (
     DocumentLifecycleBenchmarkError,
     benchmark_document_lifecycle,
@@ -93,13 +98,16 @@ class M010DocumentLifecycleBenchmarkTests(unittest.TestCase):
             self._benchmark(samples=41)
 
     def test_benchmark_rejects_a_caller_selected_baseline(self):
-        alternate_ref = subprocess.run(
-            ["git", "rev-parse", "HEAD^"],
+        reachable_refs = subprocess.run(
+            ["git", "rev-list", "HEAD"],
             cwd=self.root,
             check=True,
             capture_output=True,
             text=True,
-        ).stdout.strip()
+        ).stdout.splitlines()
+        alternate_ref = next(
+            revision for revision in reachable_refs if revision != self.baseline_ref
+        )
         alternate_status = subprocess.run(
             ["git", "show", f"{alternate_ref}:STATUS.md"],
             cwd=self.root,
@@ -124,6 +132,51 @@ class M010DocumentLifecycleBenchmarkTests(unittest.TestCase):
                 baseline_master=alternate_master,
                 generated_at="2026-08-12T00:00:00Z",
                 samples=40,
+            )
+
+    def test_live_measurement_reuses_one_preverified_lineage_snapshot(self):
+        with mock.patch(
+            "context_control_plane.document_lifecycle._validate_committed_lineage",
+            wraps=__import__(
+                "context_control_plane.document_lifecycle", fromlist=["unused"]
+            )._validate_committed_lineage,
+        ) as validate_lineage:
+            live = measure_document_lifecycle_validator(
+                self.root, self.manifest, samples=40
+            )
+
+        self.assertEqual(live["validator_failures"], 0)
+        self.assertEqual(validate_lineage.call_count, 1)
+
+    def test_live_measurement_reuses_one_preverified_supersedes_snapshot(self):
+        expected_supersedes_checks = sum(
+            document["document_revision"] > 1 for document in self.manifest["documents"]
+        )
+        self.assertGreater(expected_supersedes_checks, 0)
+
+        with mock.patch(
+            "context_control_plane.document_lifecycle._validate_supersedes_provenance",
+            wraps=__import__(
+                "context_control_plane.document_lifecycle", fromlist=["unused"]
+            )._validate_supersedes_provenance,
+        ) as validate_supersedes:
+            live = measure_document_lifecycle_validator(
+                self.root, self.manifest, samples=40
+            )
+
+        self.assertEqual(live["validator_failures"], 0)
+        self.assertEqual(validate_supersedes.call_count, expected_supersedes_checks)
+
+    def test_preverified_snapshot_rejects_manifest_mutation(self):
+        snapshot = prepare_document_lifecycle_validation_snapshot(
+            self.root, self.manifest
+        )
+        mutated = copy.deepcopy(self.manifest)
+        mutated["generated_at"] = "2026-08-12T00:00:01Z"
+
+        with self.assertRaisesRegex(DocumentLifecycleError, "snapshot manifest"):
+            validate_document_control_manifest(
+                self.root, mutated, lineage_snapshot=snapshot
             )
 
     def test_benchmark_config_rejects_unknown_fields(self):
