@@ -25,9 +25,7 @@ class StateStorePortabilityPlanTests(unittest.TestCase):
         )
         cls.assessment_exists = assessment_path.exists()
         cls.assessment = (
-            assessment_path.read_text(encoding="utf-8")
-            if cls.assessment_exists
-            else ""
+            assessment_path.read_text(encoding="utf-8") if cls.assessment_exists else ""
         )
 
     def test_plan_separates_storage_contract_embedded_backend_and_forge_sync(self):
@@ -160,8 +158,8 @@ class StateStorePortabilityPlanTests(unittest.TestCase):
         provider_adapter_acceptance = provider_adapter_acceptance_path.read_text(
             encoding="utf-8"
         )
-        self.assertIn("版本：revision 38", self.master)
-        self.assertIn("版本：revision 38", self.status)
+        self.assertIn("版本：revision 40", self.master)
+        self.assertIn("版本：revision 40", self.status)
         self.assertIn("| M2-05 | ✅ |", self.master)
         self.assertIn("| M2-06 | ✅ |", self.master)
         self.assertIn("| M2-07 | ✅ |", self.master)
@@ -171,7 +169,7 @@ class StateStorePortabilityPlanTests(unittest.TestCase):
         self.assertIn("| M4-04 | ✅ |", self.master)
         self.assertIn("| M4-05 | ✅ |", self.master)
         self.assertIn("| M4-06 | ✅ |", self.master)
-        self.assertIn("active work | M0-10", self.status)
+        self.assertIn("active work | M0-11", self.status)
         self.assertIn("24/24", provider_adapter_acceptance)
         self.assertIn("80/80", provider_adapter_acceptance)
         self.assertIn("240", provider_adapter_acceptance)
@@ -180,7 +178,9 @@ class StateStorePortabilityPlanTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn("unauthorized gated composition `0/32`", compatibility_acceptance)
-        self.assertIn("governance authority：`MASTER.md` revision 38", self.target_state)
+        self.assertIn(
+            "governance authority：`MASTER.md` revision 40", self.target_state
+        )
 
 
 if __name__ == "__main__":

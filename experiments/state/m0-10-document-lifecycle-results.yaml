@@ -1,0 +1,22 @@
+schema_version: context.document-lifecycle-benchmark/v1alpha1
+generated_at: '2026-08-12T00:00:00Z'
+metrics:
+  baseline_status_utf8_bytes: 15884
+  current_status_utf8_bytes: 3196
+  status_bytes_reduction_percent: 79.8791
+  baseline_master_max_section_utf8_bytes: 28976
+  current_master_max_section_utf8_bytes: 8194
+  master_max_section_reduction_percent: 71.7214
+  recovery_fields_total: 5
+  recovery_fields_recovered: 5
+  managed_document_count: 53
+provenance:
+  baseline_git_ref: ed0873319b94f0a5cbac6b8a9815e9837f3ef2e1
+  baseline_status_path: STATUS.md
+  baseline_master_path: MASTER.md
+  current_status_sha256: 5d925f8a2620e59269065a8e0526b3adaf5d4310cf6c10a3b0ba8f05af0b5e56
+  current_master_sha256: f1f92d97c67bc46f9dc61222d3d3d497e98ecf85725a5c0e1d207f309315dcad
+  manifest_sha256: 68c77d1494067adf6877f0f27e3e377b7c358e083fa26939adcfaf0d1d11a57c
+  implementation_sha256: c2e256cb21afbd45b4201012ff21acc3b58d7ab06ef4858ec487f41658290a22
+  benchmark_implementation_sha256: b2d86accc31562ff20e0801a295aa64822a4256a789855162c190c3d4ff34e24
+  benchmark_config_sha256: bf7d78a7e313a71e47b6eb9a052bddcbfa02e0a56e7f5735505f562720b94bd6

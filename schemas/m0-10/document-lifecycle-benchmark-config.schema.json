@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m0-10/document-lifecycle-benchmark-config.schema.json",
+  "title": "Context Document Lifecycle Benchmark Config",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "baseline_git_ref",
+    "validator_samples",
+    "validator_p95_limit_ms"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "context.document-lifecycle-benchmark-config/v1alpha1"
+    },
+    "baseline_git_ref": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "validator_samples": {
+      "const": 40
+    },
+    "validator_p95_limit_ms": {
+      "const": 100
+    }
+  }
+}

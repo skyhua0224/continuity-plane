@@ -12,7 +12,23 @@ from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 import yaml
+from jsonschema import Draft202012Validator
 
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+if str(REPOSITORY_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPOSITORY_ROOT))
+
+from context_control_plane.document_lifecycle import (
+    DocumentLifecycleError,
+    build_document_control_manifest,
+    validate_document_control_manifest,
+)
+from context_control_plane.document_lifecycle_benchmark import (
+    DocumentLifecycleBenchmarkError,
+    load_document_lifecycle_benchmark_baseline,
+    load_document_lifecycle_benchmark_config,
+    validate_document_lifecycle_benchmark_receipt,
+)
 
 REVISION_PATTERN = re.compile(r"^版本：revision (\d+)\s*$", re.MULTILINE)
 ACTIVE_WORK_PATTERN = re.compile(r"^\| active work \| (M\d+-\d+)", re.MULTILINE)
@@ -34,6 +50,39 @@ def _document_revision(path: Path) -> int:
     return int(match.group(1))
 
 
+def validate_registered_instance(instance: object, schema: object, label: str) -> None:
+    """Reject instances that do not satisfy their registered strict schema."""
+    if not isinstance(schema, dict):
+        raise TypeError(f"strict schema is invalid: {label}")
+    errors = sorted(
+        Draft202012Validator(schema).iter_errors(instance),
+        key=lambda error: tuple(str(part) for part in error.absolute_path),
+    )
+    if errors:
+        first = errors[0]
+        location = "/".join(str(part) for part in first.absolute_path) or "$"
+        raise ValueError(
+            f"strict schema validation failed: {label} at {location}: {first.message}"
+        )
+
+
+def _registered_schema(root: Path, schema_entries: list[dict], schema_id: str) -> dict:
+    entry = next(
+        (
+            candidate
+            for candidate in schema_entries
+            if isinstance(candidate, dict) and candidate.get("schema_id") == schema_id
+        ),
+        None,
+    )
+    if entry is None:
+        raise ValueError(f"registered schema is missing: {schema_id}")
+    schema = json.loads((root / entry["artifact_path"]).read_text(encoding="utf-8"))
+    if not isinstance(schema, dict):
+        raise TypeError(f"registered schema is invalid: {schema_id}")
+    return schema
+
+
 def verify_repository(root: Path) -> list[str]:
     try:
         master_path = root / "MASTER.md"
@@ -49,8 +98,10 @@ def verify_repository(root: Path) -> list[str]:
 
     if master_revision != status_revision:
         return [
-            "MASTER/STATUS revision mismatch: "
-            f"MASTER={master_revision}, STATUS={status_revision}"
+            (
+                "MASTER/STATUS revision mismatch: "
+                f"MASTER={master_revision}, STATUS={status_revision}"
+            )
         ]
     target_state_match = TARGET_STATE_REVISION_PATTERN.search(target_state_text)
     if target_state_match is None:
@@ -58,8 +109,10 @@ def verify_repository(root: Path) -> list[str]:
     target_state_revision = int(target_state_match.group(1))
     if master_revision != target_state_revision:
         return [
-            "MASTER/target-state revision mismatch: "
-            f"MASTER={master_revision}, target-state={target_state_revision}"
+            (
+                "MASTER/target-state revision mismatch: "
+                f"MASTER={master_revision}, target-state={target_state_revision}"
+            )
         ]
     active_match = ACTIVE_WORK_PATTERN.search(status_text)
     if active_match is None:
@@ -73,6 +126,9 @@ def verify_repository(root: Path) -> list[str]:
     task_match = master_task_pattern.search(master_text)
     if "🟡" not in task_match.group(1):
         return [f"active leaf {active_work_id} must be 🟡 in MASTER"]
+    active_tasks = re.findall(r"^\| M\d+-\d+ \| 🟡 \|", master_text, re.MULTILINE)
+    if len(active_tasks) != 1:
+        return ["MASTER must contain exactly one 🟡 task"]
 
     registry_path = root / "schemas" / "registry.yaml"
     try:
@@ -90,9 +146,93 @@ def verify_repository(root: Path) -> list[str]:
             return [f"invalid schema registry entry: {error}"]
         if actual_hash != expected_hash:
             return [
-                "schema registry hash mismatch: "
-                f"{entry['artifact_path']} expected={expected_hash} actual={actual_hash}"
+                (
+                    "schema registry hash mismatch: "
+                    f"{entry['artifact_path']} expected={expected_hash} actual={actual_hash}"
+                )
             ]
+
+    document_config_path = root / "profiles" / "document-control-config.yaml"
+    document_manifest_path = root / "profiles" / "document-control-manifest.yaml"
+    lifecycle_registered = any(
+        isinstance(entry, dict)
+        and entry.get("schema_id") == "context.document-control-manifest"
+        for entry in schema_entries
+    )
+    if lifecycle_registered and (
+        not document_config_path.exists() or not document_manifest_path.exists()
+    ):
+        return ["document lifecycle config and manifest are required"]
+    if document_config_path.exists() != document_manifest_path.exists():
+        return ["document lifecycle config and manifest must exist together"]
+    if document_config_path.exists():
+        try:
+            document_config = yaml.safe_load(
+                document_config_path.read_text(encoding="utf-8")
+            )
+            document_manifest = yaml.safe_load(
+                document_manifest_path.read_text(encoding="utf-8")
+            )
+            regenerated_manifest = build_document_control_manifest(
+                root, document_config
+            )
+            if regenerated_manifest != document_manifest:
+                return [
+                    "document lifecycle verification failed: generated manifest drift"
+                ]
+            manifest_schema = _registered_schema(
+                root, schema_entries, "context.document-control-manifest"
+            )
+            validate_registered_instance(
+                document_manifest, manifest_schema, "document control manifest"
+            )
+            validate_document_control_manifest(root, document_manifest)
+
+            benchmark_schema = _registered_schema(
+                root, schema_entries, "context.document-lifecycle-benchmark"
+            )
+            benchmark_config_schema = _registered_schema(
+                root,
+                schema_entries,
+                "context.document-lifecycle-benchmark-config",
+            )
+            benchmark_config = load_document_lifecycle_benchmark_config(root)
+            validate_registered_instance(
+                benchmark_config,
+                benchmark_config_schema,
+                "document lifecycle benchmark config",
+            )
+            benchmark_path = (
+                root / "experiments" / "state" / "m0-10-document-lifecycle-results.yaml"
+            )
+            benchmark_receipt = yaml.safe_load(
+                benchmark_path.read_text(encoding="utf-8")
+            )
+            validate_registered_instance(
+                benchmark_receipt, benchmark_schema, "document lifecycle benchmark"
+            )
+            baseline_ref = benchmark_config["baseline_git_ref"]
+            baseline_status, baseline_master = (
+                load_document_lifecycle_benchmark_baseline(root, baseline_ref)
+            )
+            validate_document_lifecycle_benchmark_receipt(
+                root,
+                document_manifest,
+                benchmark_receipt,
+                baseline_ref=baseline_ref,
+                baseline_status=baseline_status,
+                baseline_master=baseline_master,
+            )
+        except (
+            OSError,
+            TypeError,
+            KeyError,
+            ValueError,
+            yaml.YAMLError,
+            DocumentLifecycleError,
+            DocumentLifecycleBenchmarkError,
+        ) as error:
+            return [f"document lifecycle verification failed: {error}"]
 
     for path in root.rglob("*"):
         relative_path = path.relative_to(root)
@@ -111,10 +251,7 @@ def verify_repository(root: Path) -> list[str]:
             else:
                 yaml.safe_load(content)
         except (OSError, UnicodeError, json.JSONDecodeError, yaml.YAMLError) as error:
-            return [
-                "invalid structured data: "
-                f"{relative_path.as_posix()}: {error}"
-            ]
+            return [(f"invalid structured data: {relative_path.as_posix()}: {error}")]
 
     for document_path in root.rglob("*.md"):
         if ".git" in document_path.relative_to(root).parts:
@@ -130,21 +267,16 @@ def verify_repository(root: Path) -> list[str]:
             target_path = document_path.parent / unquote(parsed_target.path)
             if not target_path.exists():
                 source = document_path.relative_to(root).as_posix()
-                return [
-                    f"broken local Markdown link: {source} -> {raw_target}"
-                ]
+                return [f"broken local Markdown link: {source} -> {raw_target}"]
 
         source = document_path.relative_to(root).as_posix()
         if source == "docs/policies/documentation-style.md":
             continue
         for line_number, line in enumerate(document_text.splitlines(), start=1):
             if any(
-                pattern.search(line)
-                for pattern in PROHIBITED_DOCUMENTATION_PATTERNS
+                pattern.search(line) for pattern in PROHIBITED_DOCUMENTATION_PATTERNS
             ):
-                return [
-                    f"documentation style violation: {source}:{line_number}"
-                ]
+                return [f"documentation style violation: {source}:{line_number}"]
 
     return []
 

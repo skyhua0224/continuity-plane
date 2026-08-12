@@ -3,7 +3,7 @@
 版本：1  
 日期：2026-08-09  
 状态：current architecture contract  
-governance authority：`MASTER.md` revision 38
+governance authority：`MASTER.md` revision 40
 
 ## 三文档默认投影
 
@@ -41,6 +41,7 @@ Context Control Plane 安装到个人项目、协作项目或公开大型项目�
 | `context.verification` | `continuous-integration-verifier` | push/PR 执行 test、compile、schema、projection、privacy、benchmark 和 secret gates；权威状态写权限为 0 | local verifier + Gitea Actions + Gitleaks | M0/M7/M8 |
 | `context.observability` | `context-otel` | token、Skill 装载、检索、恢复、输入路由、Agent dispatch/handoff、误切、返工和质量指标 | OTel Collector + 可替换后端 | M8 |
 | `context.presentation` | `docmost-project-graph` | 可选 Project Graph、Decision Timeline、Evidence Matrix、Context Health 和受控审批 | optional Docmost + State MCP provider；Obsidian 只读生成 | M9 |
+| `context.documentation` | `document-lifecycle-validator` | 生成并复验 document manifest、capacity、authority、change receipt、supersedes、evidence hash、duplicate prose 和 recovery fields | Git + repository verifier；外部 freshness 由 ReferenceWatcher | M0/M7 |
 
 ## Runtime Capability Profiles
 
@@ -94,5 +95,6 @@ Agent 恢复顺序为 `STATUS -> MASTER active leaf -> target-state referenced r
 - MASTER task 的组件引用在目标态全表中存在；
 - 每个承重完成声明具有 current evidence 和 Verification Profile；
 - 三文档 revision/digest 可关联，stale projection 在写操作前被 validator 拒绝；
+- STATUS 不超过 12 KiB，MASTER 单个二级章节不超过 24 KiB；文档 manifest 的 path/category/hash/metrics/authority/change receipt/evidence ref 从当前文件重算一致；
 - 三文档拆分后关键恢复字段保持 100%，直接读取 bytes 和重复检索量按 E5/M6-07 计量；
 - 公开项目的默认 Markdown 集不包含原始会话、私密身份、密钥或未脱敏运行数据。

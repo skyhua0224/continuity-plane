@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m0-10/document-lifecycle-benchmark.schema.json",
+  "title": "Context Document Lifecycle Benchmark Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "metrics", "provenance"],
+  "properties": {
+    "schema_version": {"const": "context.document-lifecycle-benchmark/v1alpha1"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["baseline_status_utf8_bytes", "current_status_utf8_bytes", "status_bytes_reduction_percent", "baseline_master_max_section_utf8_bytes", "current_master_max_section_utf8_bytes", "master_max_section_reduction_percent", "recovery_fields_total", "recovery_fields_recovered", "managed_document_count"],
+      "properties": {
+        "baseline_status_utf8_bytes": {"type": "integer", "minimum": 1},
+        "current_status_utf8_bytes": {"type": "integer", "minimum": 1, "maximum": 12288},
+        "status_bytes_reduction_percent": {"type": "number"},
+        "baseline_master_max_section_utf8_bytes": {"type": "integer", "minimum": 1},
+        "current_master_max_section_utf8_bytes": {"type": "integer", "minimum": 1, "maximum": 24576},
+        "master_max_section_reduction_percent": {"type": "number"},
+        "recovery_fields_total": {"type": "integer", "minimum": 1},
+        "recovery_fields_recovered": {"type": "integer", "minimum": 1},
+        "managed_document_count": {"type": "integer", "minimum": 3}
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["baseline_git_ref", "baseline_status_path", "baseline_master_path", "current_status_sha256", "current_master_sha256", "manifest_sha256", "implementation_sha256", "benchmark_implementation_sha256", "benchmark_config_sha256"],
+      "properties": {
+        "baseline_git_ref": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "baseline_status_path": {"const": "STATUS.md"},
+        "baseline_master_path": {"const": "MASTER.md"},
+        "current_status_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "current_master_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "manifest_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "implementation_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "benchmark_implementation_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "benchmark_config_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+      }
+    }
+  }
+}
