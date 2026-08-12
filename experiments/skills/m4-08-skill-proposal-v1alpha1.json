@@ -1,0 +1,123 @@
+{
+  "activation": {
+    "approved_revision": null,
+    "status": "not_active"
+  },
+  "candidates": [
+    {
+      "candidate_id": "proposal/project/demo-project",
+      "content": "# Project Verification Skill Candidate\n\nRepository: `demo-project`\nTopology: `monolith`\n\n## Languages\n\n- `\"python\"`\n\n## Build Commands\n\n- `\"python -m compileall context_control_plane\"`\n\n## Test Commands\n\n- `\"python -m unittest discover -s tests\"`\n\n## Required Gates\n\n- `\"compile\"`\n- `\"repository-verifier\"`\n- `\"test\"`\n\n## Provenance\n\n- `\"artifact://sha256/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"`\n- `\"artifact://sha256/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"`\n",
+      "manifest": {
+        "applicability": [
+          {
+            "kind": "repo",
+            "ref": "repo://demo-project"
+          }
+        ],
+        "compatibility": {
+          "provider_contract_refs": [
+            "provider://claude/v1",
+            "provider://codex/v1"
+          ],
+          "schema_refs": [
+            "context.compiled-skill-packet/v1alpha1"
+          ]
+        },
+        "conflicts": [],
+        "content_sha256": "bc41a9ff49f217cad72fb8258b69bd96d21fe0d1baddfed07e58584fc13b1d0e",
+        "dependencies": [],
+        "expires_at": null,
+        "license_ref": "MIT",
+        "provenance_refs": [
+          "artifact://sha256/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "artifact://sha256/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        ],
+        "rule_ids": [
+          "rule.project.demo-project.proposal"
+        ],
+        "skill_id": "proposal.project.demo-project",
+        "source_kind": "project",
+        "status": "proposed",
+        "version": "0.1.0"
+      },
+      "permissions": {
+        "claim": false,
+        "effect": false,
+        "evidence_gate": false,
+        "promotion": false,
+        "state_write": false,
+        "task_switch": false
+      },
+      "provenance_refs": [
+        "artifact://sha256/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifact://sha256/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      ],
+      "source_kind": "project",
+      "status": "candidate"
+    },
+    {
+      "candidate_id": "proposal/user/demo-project",
+      "content": "# User Preference Skill Candidate\n\nRepository: `demo-project`\nTopology: `monolith`\n\nApply these explicit preferences only when they do not conflict with project rules.\n\n## Preference IDs\n\n- `\"pref.concise-status\"`\n\n## Tool Preferences\n\n- `\"rg\"`\n- `\"unittest\"`\n\n## Style Preferences\n\n- `\"ascii-default\"`\n\n## Provenance\n\n- `\"artifact://sha256/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"`\n- `\"artifact://sha256/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"`\n- `\"artifact://sha256/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\"`\n",
+      "manifest": {
+        "applicability": [
+          {
+            "kind": "repo",
+            "ref": "repo://demo-project"
+          }
+        ],
+        "compatibility": {
+          "provider_contract_refs": [
+            "provider://claude/v1",
+            "provider://codex/v1"
+          ],
+          "schema_refs": [
+            "context.compiled-skill-packet/v1alpha1"
+          ]
+        },
+        "conflicts": [],
+        "content_sha256": "b3e91938c966557743f25314f10f97882c9abbe535ce335d470955ef4d20db5b",
+        "dependencies": [],
+        "expires_at": null,
+        "license_ref": "MIT",
+        "provenance_refs": [
+          "artifact://sha256/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "artifact://sha256/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "artifact://sha256/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        ],
+        "rule_ids": [
+          "rule.user.demo-project.proposal"
+        ],
+        "skill_id": "proposal.user.demo-project",
+        "source_kind": "user",
+        "status": "proposed",
+        "version": "0.1.0"
+      },
+      "permissions": {
+        "claim": false,
+        "effect": false,
+        "evidence_gate": false,
+        "promotion": false,
+        "state_write": false,
+        "task_switch": false
+      },
+      "provenance_refs": [
+        "artifact://sha256/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "artifact://sha256/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "artifact://sha256/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      ],
+      "source_kind": "user",
+      "status": "candidate"
+    }
+  ],
+  "generated_at": "2026-08-11T00:00:00Z",
+  "generator_version": "1.0.0",
+  "input_fingerprint": "ad5a37df96e81b3c7045afc94d17d9c936de4f837d47f6a0f65e87b43a844cdf",
+  "input_refs": [
+    "artifact://sha256/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "artifact://sha256/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "artifact://sha256/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  ],
+  "proposal_id": "skill-proposal/demo-project",
+  "schema_version": "context.skill-proposal/v1alpha1",
+  "status": "proposed"
+}
