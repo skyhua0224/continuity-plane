@@ -521,6 +521,8 @@ class GitAdmissionTests(unittest.TestCase):
             ["missing-why-label", "legacy-evidence-syntax"],
         )
         self.assertEqual(receipt["root_tree_admission"], "passed")
+        self.assertEqual(receipt["author_name"], "skyhua0224")
+        self.assertEqual(receipt["author_email"], "dev" + "@" + "sky-hua.xyz")
         self.assertFalse(receipt["runtime_state_authority"])
 
     def test_pre_contract_migration_rejects_a_mismatched_root_tree(self):

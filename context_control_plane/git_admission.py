@@ -681,8 +681,8 @@ def audit_first_commit(root: Path | str) -> dict[str, Any]:
         "admission_kind": "first-commit",
         "root_commit": root_commit,
         "commit_count_before_root": 0,
-        "author_name": author_name.decode("utf-8", errors="replace"),
-        "author_email": author_email.decode("utf-8", errors="replace"),
+        "author_name": author_name.decode("utf-8", errors="replace").strip(),
+        "author_email": author_email.decode("utf-8", errors="replace").strip(),
         "runtime_state_authority": False,
     }
     if migration is None:
