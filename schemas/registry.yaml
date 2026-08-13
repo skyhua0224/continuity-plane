@@ -106,12 +106,32 @@ schemas:
     compatibility_mode: strict-versioned
     migrations: []
 
+  - schema_id: context.provider-skill-adapter-effect
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.provider-skill-adapter-effect/v1alpha1
+    supported_wire_versions: [context.provider-skill-adapter-effect/v1alpha1]
+    artifact_path: schemas/m4-05/provider-skill-adapter-effect.schema.json
+    content_sha256: 7687a0b85a63d7e128918d18fdf12cf10b4b83b649b510efce8471fd856d53d1
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.provider-skill-effect-probe
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.provider-skill-effect-probe/v1alpha1
+    supported_wire_versions: [context.provider-skill-effect-probe/v1alpha1]
+    artifact_path: schemas/m4-05/provider-skill-effect-probe.schema.json
+    content_sha256: fbf86d482cff35c505ab62cd45f2adef530c0c6f93b11583d3e07d2c9fd79107
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
   - schema_id: context.reference-catalog
     current_semver: 1.0.0-alpha.1
     current_wire_version: context.reference-catalog/v1alpha1
     supported_wire_versions: [context.reference-catalog/v1alpha1]
     artifact_path: profiles/reference-catalog.example.yaml
-    content_sha256: a5761896f5a38a4dc5bb2b88c5ad3c6825f8dceab0f370a4e1e79573f9258824
+    content_sha256: 706f10cf2e56e6256e68a64f49335bb07b57e08d4258d447361e75e10443e3e3
     status: current
     compatibility_mode: profile-contract
     migrations: []

@@ -1,0 +1,157 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m4-05/provider-skill-adapter-effect.schema.json",
+  "title": "Context Control Plane Provider Skill Adapter Effect",
+  "$comment": "Runtime validation recomputes section, composition and provider delivery-plan digests. This contract describes CCP adapter surfaces; it is not a provider-owned wire protocol.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "provider_id",
+    "adapter_version",
+    "adapter_surface_contract",
+    "packet_sha256",
+    "layer_plan_sha256",
+    "load_receipt_sha256",
+    "selected_skill_ids",
+    "selected_rule_ids",
+    "composition_sha256",
+    "composition_sections",
+    "composition_body_bytes",
+    "provider_payload_sha256",
+    "provider_payload_bytes",
+    "writes_runtime_state",
+    "state_revision"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "context.provider-skill-adapter-effect/v1alpha1"
+    },
+    "provider_id": {
+      "enum": ["codex", "claude"]
+    },
+    "adapter_version": {
+      "const": "context.provider-skill-adapter/v1alpha1"
+    },
+    "adapter_surface_contract": {
+      "enum": [
+        "context.adapter-surface/codex-app-server-skill-input/v1alpha1",
+        "context.adapter-surface/claude-agent-sdk-filesystem-skill/v1alpha1"
+      ]
+    },
+    "packet_sha256": {"$ref": "#/$defs/sha256"},
+    "layer_plan_sha256": {"$ref": "#/$defs/sha256"},
+    "load_receipt_sha256": {"$ref": "#/$defs/sha256"},
+    "selected_skill_ids": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1024,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/identifier"}
+    },
+    "selected_rule_ids": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 65536,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/identifier"}
+    },
+    "composition_sha256": {"$ref": "#/$defs/sha256"},
+    "composition_sections": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1024,
+      "items": {"$ref": "#/$defs/section"}
+    },
+    "composition_body_bytes": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 8388608
+    },
+    "provider_payload_sha256": {"$ref": "#/$defs/sha256"},
+    "provider_payload_bytes": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 16777216
+    },
+    "writes_runtime_state": {
+      "const": false
+    },
+    "state_revision": {
+      "type": "null"
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"provider_id": {"const": "codex"}}},
+      "then": {
+        "properties": {
+          "adapter_surface_contract": {
+            "const": "context.adapter-surface/codex-app-server-skill-input/v1alpha1"
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"provider_id": {"const": "claude"}}},
+      "then": {
+        "properties": {
+          "adapter_surface_contract": {
+            "const": "context.adapter-surface/claude-agent-sdk-filesystem-skill/v1alpha1"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "minLength": 64,
+      "maxLength": 64,
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[a-z0-9][a-z0-9._-]*(/[a-z0-9][a-z0-9._-]*)*$"
+    },
+    "section": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "skill_id",
+        "layer",
+        "rule_ids",
+        "content_sha256",
+        "content_bytes",
+        "content_b64"
+      ],
+      "properties": {
+        "skill_id": {"$ref": "#/$defs/identifier"},
+        "layer": {
+          "enum": ["S0", "S1", "S2", "S3"]
+        },
+        "rule_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 65536,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/identifier"}
+        },
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "content_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8388608
+        },
+        "content_b64": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 11184812,
+          "pattern": "^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$"
+        }
+      }
+    }
+  }
+}

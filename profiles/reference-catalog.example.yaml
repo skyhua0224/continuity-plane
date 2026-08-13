@@ -1,5 +1,5 @@
 schema_version: context.reference-catalog/v1alpha1
-generated_at: "2026-08-09T00:00:00Z"
+generated_at: "2026-08-11T00:00:00Z"
 status: candidate-catalog
 
 # Metadata and hashes only. External full text remains at the canonical source
@@ -11,9 +11,9 @@ entries:
     authority_class: software-official
     canonical_url: https://developers.openai.com/codex/codex-manual.md
     retrieval_url: https://developers.openai.com/codex/codex-manual.md
-    retrieved_at: "2026-08-09T00:00:00Z"
-    source_revision: retrieved-2026-08-09
-    content_sha256: 41cbb0ee3c8bfc434546c13aa00fdbf7e7b30ecdbfd2a35231809ff8309b8cc7
+    retrieved_at: "2026-08-11T00:00:00Z"
+    source_revision: retrieved-2026-08-11
+    content_sha256: 633d406edbe14526cb7d1e113db188a7ec3bee188e2b28e4290912d15d214989
     acquisition: direct-official
     license_ref: source-terms
     validity: verified-current
@@ -62,9 +62,9 @@ entries:
     authority_class: software-official
     canonical_url: https://code.claude.com/docs/llms.txt
     retrieval_url: https://code.claude.com/docs/llms.txt
-    retrieved_at: "2026-08-09T00:00:00Z"
-    source_revision: retrieved-2026-08-09
-    content_sha256: 31b0e3c1f9a3a2f475b4735d51cb7bc1549a9296a93beefe484bb6a589eef425
+    retrieved_at: "2026-08-11T00:00:00Z"
+    source_revision: retrieved-2026-08-11
+    content_sha256: d8174cb72c55130d0200c4448c96d8dcbcd008b93e63ca9655de9206a3471d29
     acquisition: direct-official
     license_ref: source-terms
     validity: verified-current
@@ -259,6 +259,23 @@ entries:
     refresh_cadence_days: 30
     refresh_triggers: [before-bearing-use, upstream-release, hash-change, conflict, scheduled]
     supports: [M8-02, M8-05, M8-06]
+
+  - reference_id: anthropic-agent-sdk-skills
+    title: Agent Skills in the SDK
+    publisher: Anthropic
+    authority_class: software-official
+    canonical_url: https://code.claude.com/docs/en/agent-sdk/skills.md
+    retrieval_url: https://code.claude.com/docs/en/agent-sdk/skills.md
+    retrieved_at: "2026-08-11T00:00:00Z"
+    source_revision: retrieved-2026-08-11
+    content_sha256: 81dd0e86f05cca1d91e758ccf0d5b26b1a72efd5eb6646c9a9f163e60723dcb7
+    acquisition: direct-official
+    license_ref: source-terms
+    validity: verified-current
+    adoption_status: candidate
+    refresh_cadence_days: 30
+    refresh_triggers: [before-bearing-use, upstream-release, hash-change, conflict, scheduled]
+    supports: [M4-05, M4-07, M4-10, M8-06]
 
   - reference_id: anthropic-agent-sdk-hosting
     title: Hosting the Claude Agent SDK
