@@ -1,8 +1,8 @@
 # Git Collaboration Policy
 
-版本：1  
+版本：2  
 日期：2026-08-09  
-状态：proposed policy / local repository audit complete
+状态：implemented offline admission contract
 
 ## 目标
 
@@ -129,3 +129,7 @@ docs(governance): record git and lifecycle contracts
 - PR 的 why、scope、ownership、evidence、verification、rollback 和 promotion 字段完整率 100%；
 - regular merge 后 commit、PR、state revision、checkpoint 和 evidence refs 可回放；
 - branch/commit/PR 频率不改变 E1-E9 veto 门或权威状态权限。
+
+## 实施合同
+
+`context.git-collaboration-packet/v1alpha1` 与 `context.git-admission-receipt/v1alpha1` 已登记。离线审计读取 Git index、commit object 和 tree blob；审计 receipt 的 `runtime_state_authority` 固定为 `false`。staged replay fixture 必须与独立 validation receipt 同时进入 index，并在 admission 时重新验证。验收结果见 [`m0-11-git-admission-acceptance-2026-08-12.md`](../migrations/m0-11-git-admission-acceptance-2026-08-12.md)。

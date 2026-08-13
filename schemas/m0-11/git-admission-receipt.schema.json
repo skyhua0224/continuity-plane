@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m0-11/git-admission-receipt.schema.json",
+  "title": "Context Control Plane Git Admission Receipt",
+  "oneOf": [
+    {"$ref": "#/$defs/staged"},
+    {"$ref": "#/$defs/regular_merge"},
+    {"$ref": "#/$defs/first_commit"}
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "base": {
+      "type": "object",
+      "required": ["schema_version", "admission_kind", "runtime_state_authority"],
+      "properties": {
+        "schema_version": {"const": "context.git-admission-receipt/v1alpha1"},
+        "runtime_state_authority": {"const": false}
+      }
+    },
+    "staged": {
+      "allOf": [
+        {"$ref": "#/$defs/base"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["schema_version", "admission_kind", "admitted_paths", "staged_set_sha256", "runtime_state_authority"],
+          "properties": {
+            "schema_version": {"const": "context.git-admission-receipt/v1alpha1"},
+            "admission_kind": {"const": "staged"},
+            "admitted_paths": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+            "staged_set_sha256": {"$ref": "#/$defs/sha256"},
+            "runtime_state_authority": {"const": false}
+          }
+        }
+      ]
+    },
+    "regular_merge": {
+      "allOf": [
+        {"$ref": "#/$defs/base"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["schema_version", "admission_kind", "merge_commit", "target_parent", "source_parent", "runtime_state_authority"],
+          "properties": {
+            "schema_version": {"const": "context.git-admission-receipt/v1alpha1"},
+            "admission_kind": {"const": "regular-merge"},
+            "merge_commit": {"$ref": "#/$defs/commit"},
+            "target_parent": {"$ref": "#/$defs/commit"},
+            "source_parent": {"$ref": "#/$defs/commit"},
+            "runtime_state_authority": {"const": false}
+          }
+        }
+      ]
+    },
+    "first_commit": {
+      "allOf": [
+        {"$ref": "#/$defs/base"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["schema_version", "admission_kind", "root_commit", "commit_count_before_root", "author_name", "author_email", "runtime_state_authority"],
+          "properties": {
+            "schema_version": {"const": "context.git-admission-receipt/v1alpha1"},
+            "admission_kind": {"const": "first-commit"},
+            "root_commit": {"$ref": "#/$defs/commit"},
+            "commit_count_before_root": {"const": 0},
+            "author_name": {"type": "string", "minLength": 1},
+            "author_email": {"type": "string", "minLength": 3},
+            "runtime_state_authority": {"const": false}
+          }
+        }
+      ]
+    }
+  }
+}
