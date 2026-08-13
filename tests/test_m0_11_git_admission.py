@@ -125,6 +125,85 @@ class GitAdmissionTests(unittest.TestCase):
         )
         return root
 
+    def _pre_contract_repository(self, *, root_tree: str | None = None) -> Path:
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        root = Path(directory.name)
+        self._git(root, "init", "-q", "-b", "main")
+        self._git(root, "config", "user.name", "Git Admission Test")
+        self._git(root, "config", "user.email", self._test_email())
+        legacy_message = (
+            "chore(repo): establish provider-neutral repository boundary\n\n"
+            "Preserve an auditable repository boundary before the contract exists.\n\n"
+            "Task: M0-01\n"
+            "State-Revision: 1\n"
+            "Evidence: legacy-verifier-0-findings\n"
+            "Tests: python -m unittest"
+        )
+        root_commit = self._commit(root, legacy_message)
+        raw_commit = subprocess.run(
+            ["git", "cat-file", "commit", root_commit],
+            cwd=root,
+            check=True,
+            capture_output=True,
+        ).stdout
+        message = raw_commit.partition(b"\n\n")[2]
+        actual_tree = self._git(root, "rev-parse", f"{root_commit}^{{tree}}")
+
+        policy = root / "docs" / "policies" / "git-collaboration.md"
+        policy.parent.mkdir(parents=True)
+        policy.write_text("# Git Collaboration Policy\n", encoding="utf-8")
+        self._git(root, "add", policy.relative_to(root).as_posix())
+        contract_commit = self._git(
+            root,
+            "commit",
+            "-m",
+            "docs(governance): add Git collaboration contract\n\n"
+            "Why: Establish strict admission for future commits.\n\n"
+            "Task: M0-11\n"
+            "State-Revision: 2\n"
+            "Evidence: docs/policies/git-collaboration.md\n"
+            "Tests: python -m unittest",
+        )
+        contract_commit = self._git(root, "rev-parse", "HEAD")
+
+        profile = {
+            "schema_version": "context.git-pre-contract-migration-set/v1alpha1",
+            "migrations": [
+                {
+                    "migration_id": "fixture-root-v1",
+                    "root_commit": root_commit,
+                    "root_tree": root_tree or actual_tree,
+                    "message_sha256": hashlib.sha256(message).hexdigest(),
+                    "contract_introduction_commit": contract_commit,
+                    "allowed_deviations": [
+                        "missing-why-label",
+                        "legacy-evidence-syntax",
+                    ],
+                    "current_tree_admission_required": True,
+                    "runtime_state_authority": False,
+                }
+            ],
+        }
+        profile_path = root / "profiles" / "git-pre-contract-migrations.json"
+        profile_path.parent.mkdir()
+        profile_path.write_text(
+            json.dumps(profile, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        self._git(root, "add", profile_path.relative_to(root).as_posix())
+        self._git(
+            root,
+            "commit",
+            "-m",
+            "docs(governance): bind pre-contract root migration\n\n"
+            "Why: Audit immutable history without weakening the current contract.\n\n"
+            "Task: M0-11\n"
+            "State-Revision: 3\n"
+            "Evidence: profiles/git-pre-contract-migrations.json\n"
+            "Tests: python -m unittest",
+        )
+        return root
+
     def test_validates_a_provider_neutral_branch_commit_and_pr_packet(self):
         validate_git_collaboration_packet(self._packet())
 
@@ -383,6 +462,70 @@ class GitAdmissionTests(unittest.TestCase):
                     list(Draft202012Validator(schema).iter_errors(receipt)), []
                 )
 
+    def test_pre_contract_migration_schema_is_registered_and_accepts_profile(self):
+        registry = yaml.safe_load(
+            (self.root / "schemas" / "registry.yaml").read_text(encoding="utf-8")
+        )
+        entry = next(
+            item
+            for item in registry["schemas"]
+            if item["schema_id"] == "context.git-pre-contract-migration-set"
+        )
+        artifact = self.root / entry["artifact_path"]
+        self.assertEqual(
+            hashlib.sha256(artifact.read_bytes()).hexdigest(), entry["content_sha256"]
+        )
+        schema = json.loads(artifact.read_text(encoding="utf-8"))
+        profile = json.loads(
+            (self.root / "profiles" / "git-pre-contract-migrations.json").read_text(
+                encoding="utf-8"
+            )
+        )
+
+        self.assertEqual(list(Draft202012Validator(schema).iter_errors(profile)), [])
+
+    def test_real_repository_root_uses_hash_bound_pre_contract_migration(self):
+        receipt = audit_first_commit(self.root)
+
+        self.assertEqual(receipt["contract_mode"], "pre-contract-migration")
+        self.assertEqual(receipt["migration_ref"], "context-control-plane-root-v1")
+        self.assertEqual(
+            receipt["contract_introduction_commit"],
+            "b578663197780d170201778b7c4412360494fe2b",
+        )
+        self.assertEqual(
+            receipt["allowed_deviations"],
+            ["missing-why-label", "legacy-evidence-syntax"],
+        )
+        self.assertEqual(receipt["root_tree_admission"], "passed")
+        self.assertFalse(receipt["runtime_state_authority"])
+
+    def test_pre_contract_migration_rejects_a_mismatched_root_tree(self):
+        root = self._pre_contract_repository(root_tree="0" * 40)
+
+        with self.assertRaisesRegex(GitAdmissionError, "root tree"):
+            audit_first_commit(root)
+
+    def test_unregistered_pre_contract_root_remains_rejected(self):
+        root = self._pre_contract_repository()
+        profile_path = root / "profiles" / "git-pre-contract-migrations.json"
+        profile_path.unlink()
+        self._git(root, "add", "-u")
+        self._git(
+            root,
+            "commit",
+            "-m",
+            "docs(governance): remove migration registration\n\n"
+            "Why: Exercise fail-closed legacy admission.\n\n"
+            "Task: M0-11\n"
+            "State-Revision: 4\n"
+            "Evidence: docs/policies/git-collaboration.md\n"
+            "Tests: python -m unittest",
+        )
+
+        with self.assertRaisesRegex(GitAdmissionError, "pre-contract migration"):
+            audit_first_commit(root)
+
     def test_audits_regular_merge_with_both_parent_commits_preserved(self):
         root = self._repository()
         base = self._git(root, "rev-parse", "HEAD")
@@ -416,6 +559,10 @@ class GitAdmissionTests(unittest.TestCase):
         receipt = audit_first_commit(root)
 
         self.assertEqual(receipt["commit_count_before_root"], 0)
+        self.assertEqual(receipt["contract_mode"], "current")
+        self.assertIsNone(receipt["migration_ref"])
+        self.assertEqual(receipt["allowed_deviations"], [])
+        self.assertEqual(receipt["root_tree_admission"], "passed")
         self.assertEqual(receipt["runtime_state_authority"], False)
         self.assertEqual(receipt["root_commit"], self._git(root, "rev-list", "--max-parents=0", "HEAD"))
 
