@@ -1,0 +1,17 @@
+{
+  "admission_kind": "first-commit-pre-contract",
+  "allowed_deviations": [
+    "missing-why-label",
+    "legacy-evidence-syntax"
+  ],
+  "commit_count_before_root": 0,
+  "contract_introduction_commit": "b578663197780d170201778b7c4412360494fe2b",
+  "contract_mode": "pre-contract-migration",
+  "message_sha256": "b8109c78716d87a0dc43dd55cdef418d997b8a1fbdace114e6be08580d275055",
+  "migration_ref": "context-control-plane-root-v1",
+  "root_commit": "3ca68fa3b000eecc16ce34bd3a00eb23a13c364d",
+  "root_tree": "073a6101735c89c75400950cdbb5a737daf4eb80",
+  "root_tree_admission": "passed",
+  "runtime_state_authority": false,
+  "schema_version": "context.git-pre-contract-audit-receipt/v1alpha1"
+}

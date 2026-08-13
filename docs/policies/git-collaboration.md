@@ -1,7 +1,7 @@
 # Git Collaboration Policy
 
-版本：2  
-日期：2026-08-09  
+版本：3  
+日期：2026-08-13  
 状态：implemented offline admission contract
 
 ## 目标
@@ -130,6 +130,12 @@ docs(governance): record git and lifecycle contracts
 - regular merge 后 commit、PR、state revision、checkpoint 和 evidence refs 可回放；
 - branch/commit/PR 频率不改变 E1-E9 veto 门或权威状态权限。
 
+## Pre-Contract Root Migration
+
+仓库根提交早于本策略首次进入 Git 时，root audit 只接受版本化 migration profile。每条 migration 固定 root commit、root tree、原始 commit message SHA-256、合同引入 commit、精确历史偏差集合和当前 root-tree admission 要求。合同引入 commit 必须位于 root 与当前 `HEAD` 的 ancestry 上，并且必须首次加入本策略文件。
+
+pre-contract migration 只记录既有历史与当前合同之间的有限偏差。当前 commit validator 保持严格；调用方没有 legacy bypass。未登记 root、对象或 message hash 漂移、合同 ancestry 不匹配、偏差集合变化、当前 root tree admission 失败均拒绝。公开 receipt 通过 root commit object 绑定 author identity，不重复保存 author name、email 或可关联 identity digest；integrity metadata 仅接受显式字段白名单。migration 与 audit receipt 的 `runtime_state_authority` 固定为 `false`。
+
 ## 实施合同
 
-`context.git-collaboration-packet/v1alpha1` 与 `context.git-admission-receipt/v1alpha1` 已登记。离线审计读取 Git index、commit object 和 tree blob；审计 receipt 的 `runtime_state_authority` 固定为 `false`。staged replay fixture 必须与独立 validation receipt 同时进入 index，并在 admission 时重新验证。验收结果见 [`m0-11-git-admission-acceptance-2026-08-12.md`](../migrations/m0-11-git-admission-acceptance-2026-08-12.md)。
+`context.git-collaboration-packet/v1alpha1`、`context.git-admission-receipt/v1alpha1`、`context.git-pre-contract-migration-set/v1alpha1` 与 `context.git-pre-contract-audit-receipt/v1alpha1` 已登记。离线审计读取 Git index、commit object 和 tree blob；审计 receipt 的 `runtime_state_authority` 固定为 `false`。staged replay fixture 必须与独立 validation receipt 同时进入 index，并在 admission 时重新验证。初始验收见 [`m0-11-git-admission-acceptance-2026-08-12.md`](../migrations/m0-11-git-admission-acceptance-2026-08-12.md)，真实 root 纠偏见 [`m0-11-pre-contract-root-correction-2026-08-13.md`](../migrations/m0-11-pre-contract-root-correction-2026-08-13.md)。

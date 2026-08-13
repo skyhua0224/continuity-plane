@@ -1,7 +1,7 @@
 # Context Control Plane Status
 
-版本：revision 41  
-日期：2026-08-12  
+版本：revision 42  
+日期：2026-08-13  
 canonical plan：`MASTER.md`
 
 ## 当前状态
@@ -24,8 +24,8 @@ canonical plan：`MASTER.md`
 | Raw transcript import | 0 files |
 | Evidence index | [`docs/reports/verified-state.md`](docs/reports/verified-state.md) |
 | Documentation lifecycle | M0-10 verified；独立审查 High 0、Medium 0 |
-| Git admission | M0-11 verified；25/25 offline contract tests |
-| Governance authority | `MASTER.md` revision 41 |
+| Git admission | M0-11 verified；46/46 offline contract tests；真实 root 通过 hash-bound pre-contract migration audit；integrity metadata 显式白名单；staged set 绑定 path 与 index blob 内容；独立审查 High 0、Medium 0 |
+| Governance authority | `MASTER.md` revision 42 |
 | Operational router | `STATUS.md` |
 
 ## 恢复入口

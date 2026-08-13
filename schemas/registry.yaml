@@ -371,7 +371,7 @@ schemas:
     current_wire_version: context.git-pre-contract-audit-receipt/v1alpha1
     supported_wire_versions: [context.git-pre-contract-audit-receipt/v1alpha1]
     artifact_path: schemas/m0-11/git-pre-contract-audit-receipt.schema.json
-    content_sha256: a4c238ccbbc0212f1a382b9c4e27c5abb67a8559d59f562f0057bce7473862f0
+    content_sha256: 660b651d4698b32ba85aee5732428b2281dd9d87254468d27e3b5f4bed113fdd
     status: current
     compatibility_mode: strict-versioned
     migrations: []

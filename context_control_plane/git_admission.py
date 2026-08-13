@@ -6,6 +6,7 @@ claim, write, or derive runtime Typed State; every receipt says so explicitly.
 
 from __future__ import annotations
 
+import ast
 import hashlib
 import json
 import re
@@ -14,6 +15,9 @@ from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+import tomllib
+import yaml
 
 from context_control_plane.replay_fixture import (
     ReplayFixtureError,
@@ -26,9 +30,7 @@ RECEIPT_SCHEMA_VERSION = "context.git-admission-receipt/v1alpha1"
 PRE_CONTRACT_MIGRATION_SCHEMA_VERSION = (
     "context.git-pre-contract-migration-set/v1alpha1"
 )
-PRE_CONTRACT_RECEIPT_SCHEMA_VERSION = (
-    "context.git-pre-contract-audit-receipt/v1alpha1"
-)
+PRE_CONTRACT_RECEIPT_SCHEMA_VERSION = "context.git-pre-contract-audit-receipt/v1alpha1"
 
 _CONVENTIONAL_SUBJECT_RE = re.compile(
     r"^(?:feat|fix|docs|test|refactor|perf|chore|build|ci)"
@@ -43,14 +45,39 @@ _UUID_RE = re.compile(
     r"[0-9a-f]{3}-[0-9a-f]{12}\b",
     re.IGNORECASE,
 )
+_INTEGRITY_SHA256_FIELDS = frozenset(
+    {
+        "benchmark_config_sha256",
+        "benchmark_implementation_sha256",
+        "content_sha256",
+        "current_master_sha256",
+        "current_status_sha256",
+        "gitleaks_sha256",
+        "implementation_sha256",
+        "manifest_sha256",
+        "message_sha256",
+        "staged_set_sha256",
+    }
+)
 _INTEGRITY_METADATA_RE = re.compile(
-    r"(?:"
+    r"(?<![A-Za-z0-9_.-])(?:"
     r"artifact://sha256/"
     r"|(?:verification-run|evidence-bundle)://repository/"
-    r"|\"?[A-Za-z][A-Za-z0-9_.-]*sha256\"?\s*[:=]\s*\"?"
-    r"|\"?git_commit\"?\s*[:=]\s*\"?"
+    r"|\"?(?:" + "|".join(sorted(_INTEGRITY_SHA256_FIELDS)) + r")\"?\s*[:=]\s*\"?"
+    r"|\"?(?:git_commit|root_commit|root_tree|contract_introduction_commit)\"?"
+    r"\s*[:=]\s*\"?"
     r")(?P<digest>[0-9a-f]{64}|[0-9a-f]{40})",
     re.IGNORECASE,
+)
+_TEXT_SHA256_METADATA_RE = re.compile(
+    r"(?i)(?<![A-Za-z0-9_.-])(?:[-*+]\s+|\|\s*)?[\"']?"
+    r"(?P<field>[A-Za-z][A-Za-z0-9_.-]*sha256)[\"']?(?![A-Za-z0-9_.-])"
+    r"\s*(?::|=)\s*"
+    r"(?P<value>[^\r\n]+?)\s*$",
+)
+_MARKDOWN_TABLE_SHA256_METADATA_RE = re.compile(
+    r"(?i)\|\s*[\"']?(?P<field>[A-Za-z][A-Za-z0-9_.-]*sha256)[\"']?\s*"
+    r"\|\s*(?P<value>[^|\r\n]+)\|"
 )
 _PRIVATE_PATH_RE = re.compile(
     r"(?:/(?:home|Users|private|var/folders)/|[A-Za-z]:\\Users\\)",
@@ -114,6 +141,194 @@ def _require_text(value: Any, field: str) -> str:
     return value
 
 
+def _validate_sha256_metadata(
+    value: Any,
+    field: str,
+    *,
+    schema_document: bool = False,
+    schema_names: bool = False,
+) -> None:
+    if isinstance(value, dict):
+        for key, child in value.items():
+            if (
+                not schema_names
+                and isinstance(key, str)
+                and key.lower().endswith("sha256")
+            ):
+                normalized = key.lower()
+                if normalized not in _INTEGRITY_SHA256_FIELDS:
+                    raise GitAdmissionError(
+                        f"{field} contains unregistered SHA-256 metadata"
+                    )
+                if not isinstance(child, str) or not _SHA256_RE.fullmatch(child):
+                    raise GitAdmissionError(
+                        f"{field} contains malformed registered SHA-256 metadata"
+                    )
+            child_schema_names = bool(
+                schema_document
+                and key
+                in {
+                    "$defs",
+                    "definitions",
+                    "dependentSchemas",
+                    "patternProperties",
+                    "properties",
+                }
+            )
+            _validate_sha256_metadata(
+                child,
+                field,
+                schema_document=schema_document,
+                schema_names=child_schema_names,
+            )
+    elif isinstance(value, list):
+        for child in value:
+            _validate_sha256_metadata(
+                child, field, schema_document=schema_document, schema_names=False
+            )
+
+
+def _is_json_schema(path: str, value: Any) -> bool:
+    return bool(
+        path.replace("\\", "/").startswith("schemas/")
+        and path.endswith(".schema.json")
+        and isinstance(value, dict)
+        and isinstance(value.get("$schema"), str)
+        and value["$schema"].startswith("https://json-schema.org/")
+    )
+
+
+def _clean_text_scalar(value: str) -> str:
+    value = value.strip()
+    if value.endswith("|"):
+        value = value[:-1].rstrip()
+    value = value.rstrip(",}").strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'", "`"}:
+        value = value[1:-1]
+    elif value.endswith("`"):
+        value = value[:-1]
+    return value
+
+
+def _validate_text_sha256_metadata(path: str, text: str) -> None:
+    in_fence = False
+    for line in text.splitlines():
+        stripped = line.lstrip()
+        if Path(path).suffix.lower() in {".md", ".markdown"} and stripped.startswith(
+            ("```", "~~~")
+        ):
+            in_fence = not in_fence
+            continue
+        match = _MARKDOWN_TABLE_SHA256_METADATA_RE.search(line)
+        if match is None:
+            match = _TEXT_SHA256_METADATA_RE.search(line)
+        if not match:
+            continue
+        field = match.group("field").lower()
+        scalar = _clean_text_scalar(match.group("value"))
+        if in_fence and scalar == "sha256":
+            continue
+        if field not in _INTEGRITY_SHA256_FIELDS:
+            raise GitAdmissionError(
+                f"staged content {path} contains unregistered SHA-256 metadata"
+            )
+        if _SHA256_RE.fullmatch(scalar):
+            continue
+        raise GitAdmissionError(
+            f"staged content {path} contains malformed registered SHA-256 metadata"
+        )
+
+
+def _validate_python_sha256_metadata(path: str, text: str) -> bool:
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return False
+
+    def target_name(node: ast.AST) -> str | None:
+        if isinstance(node, ast.Name):
+            return node.id
+        if isinstance(node, ast.Attribute):
+            return node.attr
+        return None
+
+    def check_assignment(target: ast.AST, value: ast.AST) -> None:
+        name = target_name(target)
+        if name is None or not name.lower().endswith("sha256"):
+            return
+        normalized = name.lower()
+        if normalized not in _INTEGRITY_SHA256_FIELDS:
+            raise GitAdmissionError(
+                f"staged content {path} contains unregistered SHA-256 metadata"
+            )
+        if not isinstance(value, ast.Constant):
+            return
+        if not isinstance(value.value, str) or not _SHA256_RE.fullmatch(value.value):
+            raise GitAdmissionError(
+                f"staged content {path} contains malformed registered SHA-256 metadata"
+            )
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                check_assignment(target, node.value)
+        elif isinstance(node, (ast.AnnAssign, ast.NamedExpr)):
+            check_assignment(node.target, node.value)
+        if not isinstance(node, ast.Dict):
+            continue
+        for key, value in zip(node.keys, node.values, strict=True):
+            if not (
+                isinstance(key, ast.Constant)
+                and isinstance(key.value, str)
+                and key.value.lower().endswith("sha256")
+            ):
+                continue
+            normalized = key.value.lower()
+            if normalized not in _INTEGRITY_SHA256_FIELDS:
+                raise GitAdmissionError(
+                    f"staged content {path} contains unregistered SHA-256 metadata"
+                )
+            if not isinstance(value, ast.Constant):
+                continue
+            _validate_sha256_metadata(
+                {key.value: value.value}, f"staged content {path}"
+            )
+    return True
+
+
+def _validate_structured_sha256_metadata(path: str, content: bytes) -> None:
+    suffix = Path(path).suffix.lower()
+    try:
+        if suffix == ".json":
+            value = json.loads(content)
+        elif suffix in {".yaml", ".yml"}:
+            value = yaml.safe_load(content)
+        elif suffix == ".toml":
+            value = tomllib.loads(content.decode("utf-8"))
+        elif suffix == ".py":
+            text = content.decode("utf-8")
+            if _validate_python_sha256_metadata(path, text):
+                return
+            _validate_text_sha256_metadata(path, text)
+            return
+        else:
+            _validate_text_sha256_metadata(path, content.decode("utf-8"))
+            return
+    except (
+        UnicodeDecodeError,
+        json.JSONDecodeError,
+        tomllib.TOMLDecodeError,
+        yaml.YAMLError,
+    ):
+        _validate_text_sha256_metadata(path, content.decode("utf-8", errors="replace"))
+        return
+    _validate_sha256_metadata(
+        value,
+        f"staged content {path}",
+        schema_document=_is_json_schema(path, value),
+    )
+
+
 def _reject_private_material(value: str, field: str) -> None:
     if _UUID_RE.search(value) or _PRIVATE_PATH_RE.search(value):
         raise GitAdmissionError(f"{field} contains a private provider identity or path")
@@ -136,7 +351,9 @@ def _reject_private_material(value: str, field: str) -> None:
         )
     ]
     if disallowed:
-        raise GitAdmissionError(f"{field} contains secret, PII, provider, or machine material")
+        raise GitAdmissionError(
+            f"{field} contains secret, PII, provider, or machine material"
+        )
 
 
 def _parse_rfc3339(value: str, field: str) -> None:
@@ -172,7 +389,9 @@ def _validate_branch(branch: Any) -> None:
     if not isinstance(branch["exit_criteria"], list) or not branch["exit_criteria"]:
         raise GitAdmissionError("branch.exit_criteria must be a non-empty array")
     for item in branch["exit_criteria"]:
-        _reject_private_material(_require_text(item, "branch.exit_criteria"), "branch.exit_criteria")
+        _reject_private_material(
+            _require_text(item, "branch.exit_criteria"), "branch.exit_criteria"
+        )
     if (
         not isinstance(branch["attempt_budget"], int)
         or isinstance(branch["attempt_budget"], bool)
@@ -210,15 +429,21 @@ def _validate_commit(subject: Any, body: Any) -> dict[str, str]:
             if line.startswith(prefix):
                 trailers[field] = line.removeprefix(prefix).strip()
     if set(trailers) != set(_TRAILER_FIELDS) or not all(trailers.values()):
-        raise GitAdmissionError("commit body must contain Task, State-Revision, Evidence, and Tests")
+        raise GitAdmissionError(
+            "commit body must contain Task, State-Revision, Evidence, and Tests"
+        )
     if not trailers["Task"].startswith("M"):
         raise GitAdmissionError("commit Task trailer must identify a work item")
     if not trailers["State-Revision"].isdigit() or int(trailers["State-Revision"]) < 1:
-        raise GitAdmissionError("commit State-Revision trailer must be a positive integer")
+        raise GitAdmissionError(
+            "commit State-Revision trailer must be a positive integer"
+        )
     if not _ARTIFACT_REF_RE.fullmatch(trailers["Evidence"]) and not trailers[
         "Evidence"
     ].startswith("docs/"):
-        raise GitAdmissionError("commit Evidence trailer must be an artifact ref or repository path")
+        raise GitAdmissionError(
+            "commit Evidence trailer must be an artifact ref or repository path"
+        )
     return trailers
 
 
@@ -231,7 +456,9 @@ def _validate_pull_request(title: Any, body: Any) -> dict[str, str]:
     title = _require_text(title, "pull_request title")
     body = _require_text(body, "pull_request body")
     if not _CONVENTIONAL_SUBJECT_RE.fullmatch(title):
-        raise GitAdmissionError("pull_request title must use Conventional Commit syntax")
+        raise GitAdmissionError(
+            "pull_request title must use Conventional Commit syntax"
+        )
     _reject_private_material(title, "pull_request title")
     _reject_private_material(body, "pull_request body")
     if any(section not in body for section in _PR_SECTIONS):
@@ -245,14 +472,22 @@ def _validate_pull_request(title: Any, body: Any) -> dict[str, str]:
     if values["mainline_authority"] != "false":
         raise GitAdmissionError("pull_request mainline_authority must be false")
     if not values["attempt_budget"].isdigit() or int(values["attempt_budget"]) < 1:
-        raise GitAdmissionError("pull_request attempt_budget must be a positive integer")
+        raise GitAdmissionError(
+            "pull_request attempt_budget must be a positive integer"
+        )
     if not values["state_revision"].isdigit() or int(values["state_revision"]) < 1:
-        raise GitAdmissionError("pull_request state_revision must be a positive integer")
+        raise GitAdmissionError(
+            "pull_request state_revision must be a positive integer"
+        )
     if values["expiry"] != "null":
         _parse_rfc3339(values["expiry"], "pull_request expiry")
-    evidence_values = re.findall(r"artifact://sha256/[0-9a-f]{64}", values["evidence_refs"])
+    evidence_values = re.findall(
+        r"artifact://sha256/[0-9a-f]{64}", values["evidence_refs"]
+    )
     if not evidence_values:
-        raise GitAdmissionError("pull_request evidence_refs must contain an artifact reference")
+        raise GitAdmissionError(
+            "pull_request evidence_refs must contain an artifact reference"
+        )
     return values
 
 
@@ -280,7 +515,9 @@ def validate_git_collaboration_packet(packet: Any) -> None:
     if pull_request["title"] != commit["subject"]:
         raise GitAdmissionError("pull_request title does not match commit subject")
     if pr_values["state_revision"] != trailers["State-Revision"]:
-        raise GitAdmissionError("pull_request state_revision does not match commit State-Revision")
+        raise GitAdmissionError(
+            "pull_request state_revision does not match commit State-Revision"
+        )
     for pr_field, branch_field in (
         ("parent_id", "parent_id"),
         ("scope", "scope"),
@@ -327,7 +564,11 @@ def _git(root: Path | str, *arguments: str, input_bytes: bytes | None = None) ->
 
 def _staged_paths(root: Path | str) -> list[str]:
     output = _git(root, "diff", "--cached", "--name-only", "-z", "--diff-filter=ACMR")
-    paths = [item.decode("utf-8", errors="surrogateescape") for item in output.split(b"\0") if item]
+    paths = [
+        item.decode("utf-8", errors="surrogateescape")
+        for item in output.split(b"\0")
+        if item
+    ]
     return sorted(paths)
 
 
@@ -355,18 +596,26 @@ def audit_staged_admission(root: Path | str) -> dict[str, Any]:
     staged_blobs = {path: _read_staged_blob(root, path) for path in paths}
     _audit_blob_set(paths, lambda path: staged_blobs[path])
     _validate_replay_fixture_admission(staged_blobs)
+    staged_set = [
+        {"path": path, "content_sha256": hashlib.sha256(staged_blobs[path]).hexdigest()}
+        for path in paths
+    ]
     return {
         "schema_version": RECEIPT_SCHEMA_VERSION,
         "admission_kind": "staged",
         "admitted_paths": paths,
-        "staged_set_sha256": _canonical_digest(paths),
+        "staged_set_sha256": _canonical_digest(staged_set),
         "runtime_state_authority": False,
     }
 
 
 def _tree_paths(root: Path | str, commit: str) -> list[str]:
     output = _git(root, "ls-tree", "-r", "-z", "--name-only", commit)
-    paths = [item.decode("utf-8", errors="surrogateescape") for item in output.split(b"\0") if item]
+    paths = [
+        item.decode("utf-8", errors="surrogateescape")
+        for item in output.split(b"\0")
+        if item
+    ]
     return sorted(paths)
 
 
@@ -379,7 +628,10 @@ def _audit_blob_set(paths: list[str], read_blob: Any) -> None:
         _validate_staged_path(path)
         content = read_blob(path)
         if len(content) > 8 * 1024 * 1024:
-            raise GitAdmissionError(f"staged artifact exceeds 8 MiB admission bound: {path}")
+            raise GitAdmissionError(
+                f"staged artifact exceeds 8 MiB admission bound: {path}"
+            )
+        _validate_structured_sha256_metadata(path, content)
         text = content.decode("utf-8", errors="replace")
         _reject_private_material(text, f"staged content {path}")
 
@@ -483,7 +735,9 @@ def _is_ancestor(root: Path | str, ancestor: str, descendant: str) -> bool:
 
 def _validate_pre_contract_migration_set(value: Any) -> list[dict[str, Any]]:
     if not isinstance(value, dict) or set(value) != {"schema_version", "migrations"}:
-        raise GitAdmissionError("pre-contract migration set fields do not match the contract")
+        raise GitAdmissionError(
+            "pre-contract migration set fields do not match the contract"
+        )
     if value["schema_version"] != PRE_CONTRACT_MIGRATION_SCHEMA_VERSION:
         raise GitAdmissionError("unsupported pre-contract migration schema_version")
     migrations = value["migrations"]
@@ -503,7 +757,9 @@ def _validate_pre_contract_migration_set(value: Any) -> list[dict[str, Any]]:
     seen_roots: set[str] = set()
     for migration in migrations:
         if not isinstance(migration, dict) or set(migration) != expected:
-            raise GitAdmissionError("pre-contract migration fields do not match the contract")
+            raise GitAdmissionError(
+                "pre-contract migration fields do not match the contract"
+            )
         migration_id = migration["migration_id"]
         root_commit = migration["root_commit"]
         if (
@@ -511,13 +767,17 @@ def _validate_pre_contract_migration_set(value: Any) -> list[dict[str, Any]]:
             or not _MIGRATION_ID_RE.fullmatch(migration_id)
             or migration_id in seen_ids
         ):
-            raise GitAdmissionError("pre-contract migration_id must be unique and stable")
+            raise GitAdmissionError(
+                "pre-contract migration_id must be unique and stable"
+            )
         if (
             not isinstance(root_commit, str)
             or not _COMMIT_OBJECT_RE.fullmatch(root_commit)
             or root_commit in seen_roots
         ):
-            raise GitAdmissionError("pre-contract root_commit must be unique and immutable")
+            raise GitAdmissionError(
+                "pre-contract root_commit must be unique and immutable"
+            )
         seen_ids.add(migration_id)
         seen_roots.add(root_commit)
         for field in ("root_tree", "contract_introduction_commit"):
@@ -528,7 +788,9 @@ def _validate_pre_contract_migration_set(value: Any) -> list[dict[str, Any]]:
         if not isinstance(migration["message_sha256"], str) or not _SHA256_RE.fullmatch(
             migration["message_sha256"]
         ):
-            raise GitAdmissionError("pre-contract message_sha256 must be lowercase SHA-256")
+            raise GitAdmissionError(
+                "pre-contract message_sha256 must be lowercase SHA-256"
+            )
         deviations = migration["allowed_deviations"]
         if (
             not isinstance(deviations, list)
@@ -541,9 +803,13 @@ def _validate_pre_contract_migration_set(value: Any) -> list[dict[str, Any]]:
                 "pre-contract allowed_deviations must be unique and canonical"
             )
         if migration["current_tree_admission_required"] is not True:
-            raise GitAdmissionError("pre-contract current tree admission must be required")
+            raise GitAdmissionError(
+                "pre-contract current tree admission must be required"
+            )
         if migration["runtime_state_authority"] is not False:
-            raise GitAdmissionError("pre-contract migration cannot grant state authority")
+            raise GitAdmissionError(
+                "pre-contract migration cannot grant state authority"
+            )
     return migrations
 
 
@@ -551,7 +817,9 @@ def _pre_contract_deviations(subject: str, body: str) -> list[str]:
     subject = _require_text(subject, "commit subject")
     body = _require_text(body, "commit body")
     if not _CONVENTIONAL_SUBJECT_RE.fullmatch(subject):
-        raise GitAdmissionError("pre-contract subject must use Conventional Commit syntax")
+        raise GitAdmissionError(
+            "pre-contract subject must use Conventional Commit syntax"
+        )
     _reject_private_material(subject, "commit subject")
     _reject_private_material(body, "commit body")
 
@@ -577,7 +845,9 @@ def _pre_contract_deviations(subject: str, body: str) -> list[str]:
             if line.strip() and not line.startswith(trailer_prefixes)
         ]
         if not rationale:
-            raise GitAdmissionError("pre-contract root must retain a rationale paragraph")
+            raise GitAdmissionError(
+                "pre-contract root must retain a rationale paragraph"
+            )
         deviations.append("missing-why-label")
     evidence = trailers["Evidence"]
     if not _ARTIFACT_REF_RE.fullmatch(evidence) and not evidence.startswith("docs/"):
@@ -593,12 +863,16 @@ def _pre_contract_migration(
     migrations = _validate_pre_contract_migration_set(profile)
     matches = [item for item in migrations if item["root_commit"] == root_commit]
     if len(matches) != 1:
-        raise GitAdmissionError("pre-contract migration does not bind the repository root")
+        raise GitAdmissionError(
+            "pre-contract migration does not bind the repository root"
+        )
     migration = matches[0]
 
-    root_tree = _git(root, "rev-parse", f"{root_commit}^{{tree}}").decode(
-        "ascii", errors="strict"
-    ).strip()
+    root_tree = (
+        _git(root, "rev-parse", f"{root_commit}^{{tree}}")
+        .decode("ascii", errors="strict")
+        .strip()
+    )
     if root_tree != migration["root_tree"]:
         raise GitAdmissionError("pre-contract root tree does not match migration")
     message_sha256 = hashlib.sha256(_raw_commit_message(root, root_commit)).hexdigest()
@@ -612,16 +886,20 @@ def _pre_contract_migration(
         or not _is_ancestor(root, contract_commit, "HEAD")
     ):
         raise GitAdmissionError("pre-contract migration has invalid contract ancestry")
-    policy_change = _git(
-        root,
-        "diff-tree",
-        "--no-commit-id",
-        "--name-status",
-        "-r",
-        contract_commit,
-        "--",
-        "docs/policies/git-collaboration.md",
-    ).decode("utf-8", errors="replace").strip()
+    policy_change = (
+        _git(
+            root,
+            "diff-tree",
+            "--no-commit-id",
+            "--name-status",
+            "-r",
+            contract_commit,
+            "--",
+            "docs/policies/git-collaboration.md",
+        )
+        .decode("utf-8", errors="replace")
+        .strip()
+    )
     if policy_change != "A\tdocs/policies/git-collaboration.md":
         raise GitAdmissionError(
             "pre-contract migration does not bind the contract introduction"
@@ -635,11 +913,15 @@ def _pre_contract_migration(
 
 def audit_regular_merge(root: Path | str, merge_commit: str) -> dict[str, Any]:
     """Return a receipt only for a two-parent regular merge commit."""
-    parents = _git(root, "rev-list", "--parents", "-n", "1", merge_commit).decode(
-        "ascii", errors="strict"
-    ).split()
+    parents = (
+        _git(root, "rev-list", "--parents", "-n", "1", merge_commit)
+        .decode("ascii", errors="strict")
+        .split()
+    )
     if len(parents) != 3:
-        raise GitAdmissionError("regular merge audit requires exactly two parent commits")
+        raise GitAdmissionError(
+            "regular merge audit requires exactly two parent commits"
+        )
     return {
         "schema_version": RECEIPT_SCHEMA_VERSION,
         "admission_kind": "regular-merge",
@@ -652,9 +934,11 @@ def audit_regular_merge(root: Path | str, merge_commit: str) -> dict[str, Any]:
 
 def audit_first_commit(root: Path | str) -> dict[str, Any]:
     """Replay the root commit identity and machine-parseable admission trailers."""
-    roots = _git(root, "rev-list", "--max-parents=0", "HEAD").decode(
-        "ascii", errors="strict"
-    ).split()
+    roots = (
+        _git(root, "rev-list", "--max-parents=0", "HEAD")
+        .decode("ascii", errors="strict")
+        .split()
+    )
     if len(roots) != 1:
         raise GitAdmissionError("first-commit audit requires exactly one root commit")
     root_commit = roots[0]
@@ -667,9 +951,7 @@ def audit_first_commit(root: Path | str) -> dict[str, Any]:
             raise
         migration = _pre_contract_migration(root, root_commit, subject, body)
     root_paths = _tree_paths(root, root_commit)
-    root_blobs = {
-        path: _read_tree_blob(root, root_commit, path) for path in root_paths
-    }
+    root_blobs = {path: _read_tree_blob(root, root_commit, path) for path in root_paths}
     _audit_blob_set(root_paths, lambda path: root_blobs[path])
     _validate_replay_fixture_admission(root_blobs)
     author = _git(root, "show", "-s", "--format=%an%x00%ae", root_commit)
@@ -694,8 +976,6 @@ def audit_first_commit(root: Path | str) -> dict[str, Any]:
         "root_tree": migration["root_tree"],
         "message_sha256": migration["message_sha256"],
         "commit_count_before_root": 0,
-        "author_name": receipt["author_name"],
-        "author_email": receipt["author_email"],
         "contract_mode": "pre-contract-migration",
         "migration_ref": migration["migration_id"],
         "contract_introduction_commit": migration["contract_introduction_commit"],
