@@ -305,3 +305,33 @@ schemas:
     status: current
     compatibility_mode: strict-versioned
     migrations: []
+
+  - schema_id: context.document-control-manifest
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.document-control-manifest/v1alpha1
+    supported_wire_versions: [context.document-control-manifest/v1alpha1]
+    artifact_path: schemas/m0-10/document-control-manifest.schema.json
+    content_sha256: a73fb45ca7a7063ff431b3a5eaf3fca8aa2cefd1d0404b3fa1ad75bdb75bf06f
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.document-lifecycle-benchmark
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.document-lifecycle-benchmark/v1alpha1
+    supported_wire_versions: [context.document-lifecycle-benchmark/v1alpha1]
+    artifact_path: schemas/m0-10/document-lifecycle-benchmark.schema.json
+    content_sha256: d5a34fa613ae3d22e87943cdbdd85d9291c69a56139554b52c9aa56d2174a7b1
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.document-lifecycle-benchmark-config
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.document-lifecycle-benchmark-config/v1alpha1
+    supported_wire_versions: [context.document-lifecycle-benchmark-config/v1alpha1]
+    artifact_path: schemas/m0-10/document-lifecycle-benchmark-config.schema.json
+    content_sha256: 3237fc80eb6f4b54b989c93e6683a5005d988d2039da2b3ff1d00d65b2afcf72
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []

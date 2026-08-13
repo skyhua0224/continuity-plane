@@ -1,6 +1,6 @@
 # Context Control Plane MASTER
 
-版本：revision 38  
+版本：revision 40  
 日期：2026-08-12  
 状态：研究与 shadow pilot 准备阶段  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
@@ -212,7 +212,9 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 
 ## 7. 执行台账
 
-### M0 仓库与治理
+各 Campaign 使用独立二级章节，避免单一台账章节超过容量门。任务状态由治理 revision 维护；active leaf、blocker、next action 和当期验证数据只进入 `STATUS.md` 与 evidence projection。
+
+## 7.1 M0 仓库与治理
 
 | ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
 |---|---|---|---|---|---|---|
@@ -225,11 +227,11 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | M0-07 | 🧑‍💻 | 建立 schema/version/release governance | 所有协议可演进和回放 | 保障 checkpoint 兼容性 | M0-02 | registry/hash、transition、migration/replay/rollback 和 quarantine 离线验收完成；runtime State MCP migration 待 M2 |
 | M0-08 | 🧑‍💻 | 建立 ReferenceSource/Snapshot lifecycle、candidate catalog 与 harness 采用评估 | 外部资料可持续发现、固定、刷新、失效和复用 | 让研究证据进入后续 schema、adapter 与实验 | M0-03/M0-06 | Codex/Claude 官方来源带 URL/hash/refresh/adoption；5 个 catalog tests 通过；State/Watcher live integration 待后续阶段 |
 | M0-09 | 🧑‍💻 | 建立项目 self-dogfood observation protocol 与首个 baseline | 研发过程记录 compaction、Skill 装载、计划演进和质量门后的交付速度 | 以项目自身数据验证逐步优化 | M0-05/M0-07 | compaction、input routing、Skill load、plan revision、verification 和 delivery 可复核；首个 accepted work 基线 1,577 秒；自动 trace 待 M5/M8 |
-| M0-10 | 🟡 | 建立文档分类、更新触发、容量预算、supersedes 和生成投影生命周期 | MASTER、STATUS、细分文档和投影保持可定位、可更新、可收敛 | 防止长期陈旧与无界扩展 | M0-05/M0-06/M0-07 | policy validator、STATUS 与 evidence 漂移、重复全文、过期引用、容量超限和权限故障测试通过；拆分后恢复字段 100% |
-| M0-11 | ⏳ | 建立 Git branch/commit/PR/merge 与 staged admission 合同 | Git 集成边界可回放且不冒充权威状态 | 让单人、多 AI 和多人协作具有一致的审计与发布节奏 | M0-02/M0-03/M0-09 | policy、message/PR packet validator、staged transcript/secret admission、regular-merge replay 和 first-commit audit 通过 |
+| M0-10 | ✅ | 建立文档分类、更新触发、容量预算、supersedes 和生成投影生命周期 | MASTER、STATUS、细分文档和投影保持可定位、可更新、可收敛 | 防止长期陈旧与无界扩展 | M0-05/M0-06/M0-07 | policy validator、STATUS 与 evidence 漂移、重复全文、过期引用、容量超限和权限故障测试通过；拆分后恢复字段 100% |
+| M0-11 | 🟡 | 建立 Git branch/commit/PR/merge 与 staged admission 合同 | Git 集成边界可回放且不冒充权威状态 | 让单人、多 AI 和多人协作具有一致的审计与发布节奏 | M0-02/M0-03/M0-09 | policy、message/PR packet validator、staged transcript/secret admission、regular-merge replay 和 first-commit audit 通过 |
 | M0-12 | ✅ | 建立 provider-neutral CI Verification Profile、统一 verifier 与 Gitea required jobs | push/PR 自动执行 test、compile、data/schema/projection、privacy、benchmark 和 secret gates | 让本地开发、协作者与托管平台使用同一可复现验收边界 | M0-03/M0-07/M0-09 | 14 个 verifier 正反测试、102/102 repository tests、compile 和 Gitleaks 本地通过；push runs 1016/1017 与 pull_request run 1018 通过；`main` 禁止 direct/force push 并要求 4 个实测 status contexts |
 
-### M1 聊天来源与 Replay Corpus
+## 7.2 M1 聊天来源与 Replay Corpus
 
 | ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
 |---|---|---|---|---|---|---|
@@ -241,7 +243,7 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | M1-06 | 🧑‍💻 | 建立 archive retention/export/delete | 可移植、可撤销、可审计 | 满足长期协作与隐私治理 | M1-02 | 9 个 retention/export/import/tombstone/deletion-proof 合同测试通过；production adapter 与 backend receipt 待 M2/M8/M10 |
 | M1-07 | 🧑‍💻 | E0/E1 context compression 与 Execution Packet benchmark | 量化恢复率、旧决定复活、Skill 输入和 token proxy | 建立可复现实验基线 | M1-03/M1-04 | 合成 4 场景与真实 40 场景可重复；真实 corpus 在 768 字符时 E1 恢复 100%、旧决定复活 0；live tokenizer/A-B 待 M5/M7 |
 
-### M2 Typed State、Event 与 Checkpoint
+## 7.3 M2 Typed State、Event 与 Checkpoint
 
 | ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
 |---|---|---|---|---|---|---|
@@ -255,7 +257,7 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | M2-08 | ✅ | backend-neutral StateStore SPI 与 capability manifest | core 根据一致性、共享、离线和资源能力选择 adapter | 去除 PostgreSQL 对普通路径的隐式依赖 | M2-02/M2-03 | authoritative/projection Protocol 与 runtime 一致；schema/document/runtime round-trip 等价；通用 conformance 覆盖 defensive copy、unknown project、replay mismatch、duplicate identity、sequence/hash-head、second Event 和 atomic rollback；独立审查无 High/Medium finding |
 | M2-09 | 🧑‍💻 | SQLite embedded local state/event/checkpoint backend | 单人和本机多 Agent 获得零独立服务的持久恢复 | 建立默认轻量运行路径 | M2-08 | WAL/BEGIN IMMEDIATE、CAS、append-only、崩溃恢复和损坏检测通过；默认用户管理 daemon/Docker/PostgreSQL 均为 0；Windows/macOS/Linux fixture 通过 |
 
-### M3 任务图与智能切换
+## 7.4 M3 任务图与智能切换
 
 | ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
 |---|---|---|---|---|---|---|
@@ -268,7 +270,7 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | M3-07 | ⏳ | Idea relationship、dedupe、correction、urgency 与 impact review | 重复或跨域想法形成有界候选队列 | 支持持续输入并避免 prompt/主线污染 | M3-06/M6-02 | 去重确定；correction 写保护；expired/parked Idea 不进入执行权限 |
 | M3-08 | ⏳ | 输入意图、blocking decision、next-ready selector 与 bounded escalation taxonomy | non-blocking input 保持 active leaf，只有可证明的阻塞需要询问或停止 | 防止短消息、Idea、状态问答和分析偏移重置主线 | M3-03/M3-06 | ready required leaf 未选择为 0；premature stop 为 0；无 typed blocker 的用户询问为 0；每次 ask/stop 具有 reason、evidence 和 resume condition |
 
-### M4 Skill 控制面
+## 7.5 M4 Skill 控制面
 
 | ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
 |---|---|---|---|---|---|---|
@@ -283,7 +285,7 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | M4-09 | ⏳ | role/operation-aware Skill resolver | Thinker、Executor、Verifier 和 provider 获得最小规则集 | 控制动作权限与上下文成本 | M3-04/M4-04/M4-07 | 选择优先级、冲突、expiry、replay fixture 全部通过 |
 | M4-10 | 🧑‍💻 | 官方 Skill、Agent Skills standard、GitHub 和 marketplace catalog adapter | 发现结果带直接 URL、revision、hash、license 和 trust tier | 智能复用外部能力并阻止未审查加载 | M4-07/M0-07 | `context.external-skill-source-snapshot/v1alpha1` strict schema、version/hash 固定 adapter policy、pinned Git tree evidence、本地 CAS staging、四类来源 snapshot/quarantine/offline replay 与 M4-07 candidate-only projection 通过；27/27 定向测试；生产 streaming acquisition、authorization/audit 待 M7/M8 |
 
-### M5 压缩与 Context Composition
+## 7.6 M5 压缩与 Context Composition
 
 | ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
 |---|---|---|---|---|---|---|
@@ -296,7 +298,7 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | M5-07 | ⏳ | Project dogfood compaction/input-routing/Skill/plan/delivery/multi-Agent observation emitter | 每次恢复、消息或 Idea 路由、Skill 选择、计划演进、Agent dispatch/handoff 和 accepted delivery 产生可比较事件 | 持续验证控制面是否真实优化自身研发与交付速度 | M0-09/M4-04/M5-05/M8-04 | eligible ingress 分母、active leaf/return point、路由/中断、Skill、目标 revision、multi-Agent dispatch/handoff 和 delivery 覆盖率 100%；visible compaction canary 在首个副作用前落盘；任一 veto 失败标记 regressed |
 | M5-08 | ⏳ | Continuation Cursor 与 anti-reset canary | 保存 last durable action、in-flight phase、已确认输入和恢复响应模式 | 压缩后从原子执行点继续并避免重复解释 | M2-02/M2-06/M5-01 | 首个 post-restore action 匹配率 100%；已确认事项重播 0；continuation fields 恢复 100%；恢复读取量有 receipt |
 
-### M6 检索、代码图与 Recall Providers
+## 7.7 M6 检索、代码图与 Recall Providers
 
 | ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
 |---|---|---|---|---|---|---|
@@ -308,7 +310,7 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | M6-06 | ⏳ | MCP Registry/provider admission adapter | MCP server 发现、publisher、license、auth 和 tool scope 可审计 | 连接器按项目和操作受控启用 | M4-10/M2-05 | registry snapshot 固定 revision；未授权写工具激活率为 0 |
 | M6-07 | ⏳ | RetrievalReceipt、bounded expansion 与 index/cache freshness | 外置资料只按最小范围进入 packet，重复读取可计量 | 减少直接读取并保持 current evidence | M2-04/M5-04/M7-01 | receipt provenance 100%；承重 assertion 通过率 100%；重复读取 bytes 相对 E0 下降 >=30% |
 
-### M7 幻觉、证据与代码质量
+## 7.8 M7 幻觉、证据与代码质量
 
 | ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
 |---|---|---|---|---|---|---|
@@ -319,7 +321,7 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | M7-05 | ⏳ | affected graph 与测试选择 | 缩短验证时间并保持完整覆盖 | 提高大项目效率 | M6-01/M7-03 | wall time 下降 >=30%，漏测 0 |
 | M7-06 | ⏳ | ReferenceWatcher、freshness、hash change 与 assertion supersedes | 上游文档和标准变化可审计地使旧证据失效 | 持续吸收新资料并阻止 stale 结论 | M0-08/M7-01 | upstream change fixture 100% stale/quarantine；未复核 assertion 通过完成门为 0 |
 
-### M8 多协作者与耐久执行
+## 7.9 M8 多协作者与耐久执行
 
 | ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
 |---|---|---|---|---|---|---|
@@ -333,7 +335,7 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | M8-08 | ⏳ | GitHub/Gitea/GitLab forge collaboration adapter 与显式降级一致性 | 复用 Issue、PR、branch、assignee、review 和 CI 形成共享 Work 投影 | 普通开源团队零新增服务协作 | M2-07/M2-08/M8-02 | 至少 GitHub/Gitea 双 adapter replay；可见 Work/claim/evidence 映射 100%；remote ref 使用显式 expected value CAS；offline/unpublished work 不宣称唯一 claim |
 | M8-09 | ⏳ | unattended campaign dispatcher 与 `required/conditional/optional` obligation | 按 select -> CAS claim/lease -> execute -> verify -> complete/release -> next 持续推进 ready work | 在无人值守时完成所有可自动执行的必需工作并保留治理边界 | M3-08/M5-08/M8-02/M8-06 | 连续至少 3 个 required leaf 完成；automatable required closure 100%；optional 不阻塞；无 typed blocker 的 premature stop/ask 为 0；残留项只有 optional 或带 evidence/resume condition 的 blocker |
 
-### M9 可选 Docmost 与人类观察
+## 7.10 M9 可选 Docmost 与人类观察
 
 | ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
 |---|---|---|---|---|---|---|
@@ -347,7 +349,7 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 
 Docmost 候选实现固定到 [`Yundi339/docmost` 参考评估](docs/research/docmost-yundi339-reference-assessment-2026-08-10.md)的 `feat/native-database-fusion` revision。该 snapshot 只提供 M9 设计证据，adoption status 保持 candidate。
 
-### M10 跨项目发布
+## 7.11 M10 跨项目发布
 
 | ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
 |---|---|---|---|---|---|---|
@@ -422,11 +424,9 @@ E1、E2、E4、E6、E8、E9 具有 veto 权限；平均得分、token 降幅和�
 | affected build/test wall time | 相对全量下降 >=30%，漏测 0 |
 | 代码质量 | build/test/mutation 不退化，scope violation 0，返工率低于 E0 |
 
-## 10. 当前执行路由
+## 10. 执行路由合同
 
-M0-10 是当前 active leaf。M4-10 已注册 `context.external-skill-source-snapshot/v1alpha1`。四类 adapter policy 按 version/hash 注册，并在任何外部 callback 前冻结 source class、trust tier、publisher、canonical URL、允许 path、revision kind、resource kind 和 license；调用方不能自报 official/publisher/license 或任意 adapter version。Skill 来源由独立 pinned Git tree observation 派生期望资源集合，实际正文、license/publisher/tree evidence 和包含 `SKILL.md`、scripts、references、assets 的资源 manifest 经内存 staging 后进入本地 CAS；离线 replay、admission 和 M4-07 投影从 CAS 复验 tree 与 manifest。缺失或未登记资源、symlink、submodule、跨 Skill 目录资产、mutable revision、cross-host redirect、非规范路径、license/publisher evidence 缺失均 fail-closed 或 quarantine。标准文档和动态 marketplace index 不投影为 Skill；marketplace badge、publisher 和 license 不传播到子条目。固定 synthetic contract fixture 覆盖 official/standard/verified-organization/marketplace-community 四类来源，生成期执行 `4` 次内容 observation callback 与 `2` 次 pinned-tree callback；40 次 offline replay 追加 callback `0`、mismatch `0`，2 个 immutable candidate Skill 可投影，权限真值 `0`。验收见 [`m4-10-external-skill-source-acceptance-2026-08-12.md`](docs/migrations/m4-10-external-skill-source-acceptance-2026-08-12.md)。M4-10 保持 `🧑‍💻`，production streaming acquisition、request-count enforcement、authorization/audit、真实 publisher ownership verifier、approval/promotion 和 provider activation 由 M7/M8 验收；外部 active Skill 仍为 `0`。M4-09 等待 M3-04 的 active/claim/scope-owner 副作用门，M3-01 仍等待 M2-09 的 Windows/macOS 原生 fixture。M0-10 将把现有 documentation lifecycle policy 落为 validator，并验证 STATUS/evidence 漂移、重复全文、过期引用、容量和权限故障。
-
-M1-05 已完成 16 个 E0-E9 contract fixture，验收见 `docs/migrations/m1-05-fault-coverage-acceptance-2026-08-09.md`。Runtime fault evidence 仍由 M2/M5/M8 提供。M1-04 已完成 40 个 fixture admission，验收见 `docs/migrations/m1-04-replay-fixture-acceptance-2026-08-09.md`。受控 archive 继续采用流式、区间化读取；原始 JSONL 和 source namespace key material 禁止进入 Git。M1-06 archive retention/export/delete 的离线验收见 `docs/migrations/m1-06-archive-governance-acceptance-2026-08-09.md`。
+当前执行路由只由 `STATUS.md` 和 revisioned state 提供。任务完成与性能声明引用 migration/acceptance evidence；MASTER 不保存 Session、active leaf、当期测试数或临时 blocker。文档生命周期与容量门见 [`documentation-lifecycle.md`](docs/policies/documentation-lifecycle.md)。
 
 ## 11. 完成后的最终效果
 

@@ -1,0 +1,963 @@
+schema_version: context.document-control-config/v1alpha1
+generated_at: '2026-08-12T00:00:00Z'
+governance_revision: 40
+documents:
+- document_id: agents
+  path: AGENTS.md
+  category: policy
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: decision
+    authority_ref: governance-event://master/revision/40
+    supersedes: null
+    affected_tasks:
+    - M0-10
+    next_review: null
+  evidence_refs: []
+- document_id: master
+  path: MASTER.md
+  category: governance
+  document_revision: 1
+  authority:
+    governance_authority: true
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: decision
+    authority_ref: governance-event://master/revision/40
+    supersedes: null
+    affected_tasks:
+    - M0-10
+    next_review: null
+  evidence_refs:
+  - ref_id: master-evidence-1
+    path: docs/migrations/m0-10-document-lifecycle-acceptance-2026-08-12.md
+    valid_until: null
+- document_id: readme
+  path: README.md
+  category: projection
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: projection
+    authority_ref: state-revision://repository/40
+    supersedes: null
+    affected_tasks:
+    - M0-10
+    next_review: null
+  evidence_refs: []
+  projection_binding:
+    source_state_revision: 40
+    template_version: context.document-projection/v1alpha1
+    state_write_authority: false
+- document_id: status
+  path: STATUS.md
+  category: routing
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: status
+    authority_ref: governance-event://master/revision/40
+    supersedes: null
+    affected_tasks:
+    - M0-10
+    next_review: null
+  evidence_refs:
+  - ref_id: status-evidence-1
+    path: docs/migrations/m0-10-document-lifecycle-acceptance-2026-08-12.md
+    valid_until: null
+- document_id: docs-architecture-adaptive-information-plane
+  path: docs/architecture/adaptive-information-plane.md
+  category: architecture
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: decision
+    authority_ref: governance-event://master/revision/40
+    supersedes: null
+    affected_tasks:
+    - M0-10
+    next_review: null
+  evidence_refs: []
+- document_id: docs-architecture-idea-continuity
+  path: docs/architecture/idea-continuity.md
+  category: architecture
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: decision
+    authority_ref: governance-event://master/revision/40
+    supersedes: null
+    affected_tasks:
+    - M0-10
+    next_review: null
+  evidence_refs: []
+- document_id: docs-architecture-project-work-governance
+  path: docs/architecture/project-work-governance.md
+  category: architecture
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: decision
+    authority_ref: governance-event://master/revision/40
+    supersedes: null
+    affected_tasks:
+    - M0-10
+    next_review: null
+  evidence_refs: []
+- document_id: docs-architecture-skill-orchestration
+  path: docs/architecture/skill-orchestration.md
+  category: architecture
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: decision
+    authority_ref: governance-event://master/revision/40
+    supersedes: null
+    affected_tasks:
+    - M0-10
+    next_review: null
+  evidence_refs: []
+- document_id: docs-architecture-target-state
+  path: docs/architecture/target-state.md
+  category: architecture
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: decision
+    authority_ref: governance-event://master/revision/40
+    supersedes: null
+    affected_tasks:
+    - M0-10
+    next_review: null
+  evidence_refs:
+  - ref_id: docs-architecture-target-state-evidence-1
+    path: docs/migrations/m0-10-document-lifecycle-acceptance-2026-08-12.md
+    valid_until: null
+- document_id: docs-migrations-local-source-inventory-2026-08-09
+  path: docs/migrations/local-source-inventory-2026-08-09.md
+  category: migration
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: verification-run://repository/e0879d1644cbeb4ac20505f87d305882fa83d3bd5d69468cfcb476eaf8a3eee1
+    supersedes: null
+    affected_tasks:
+    - M0-10
+    next_review: null
+  evidence_refs: []
+- document_id: docs-migrations-m0-07-schema-governance-acceptance-2026-08-09
+  path: docs/migrations/m0-07-schema-governance-acceptance-2026-08-09.md
+  category: migration
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: verification-run://repository/b9acd73501ac4c4f88c47bebba8691fa784a792da58ca67fb5d31a3855090407
+    supersedes: null
+    affected_tasks:
+    - M0-07
+    next_review: null
+  evidence_refs: []
+- document_id: docs-migrations-m0-10-document-lifecycle-acceptance-2026-08-12
+  path: docs/migrations/m0-10-document-lifecycle-acceptance-2026-08-12.md
+  category: migration
+  document_revision: 4
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: correction
+    authority_ref: verification-run://repository/801fafc174a158843096173928d7d4071d0292730592397e26199395cf4bdf07
+    supersedes: context.document://docs-migrations-m0-10-document-lifecycle-acceptance-2026-08-12/revision/3
+    supersedes_provenance:
+      git_commit: 8db91cfd3301cbd68fe376abb5366f1dffafda24
+      manifest_sha256: c36d961a7f09b5622b700a2f3b4d62f4c2a541af50793e5a1e97d5b20fdad46b
+      content_sha256: 216e4a31ec260d9b7c166ccc995d60462b793160e47637dc70fdab9c3227430e
+    affected_tasks:
+    - M0-10
+    next_review: null
+  evidence_refs: []
+- document_id: docs-migrations-m1-02-source-registry-acceptance-2026-08-09
+  path: docs/migrations/m1-02-source-registry-acceptance-2026-08-09.md
+  category: migration
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: verification-run://repository/605c4b7a35d28bf59a43b1ed592b0b2919dd2922c1a4dd6a99dd5cd87f6a4e2d
+    supersedes: null
+    affected_tasks:
+    - M1-02
+    next_review: null
+  evidence_refs: []
+- document_id: docs-migrations-m1-03-sanitizer-acceptance-2026-08-09
+  path: docs/migrations/m1-03-sanitizer-acceptance-2026-08-09.md
+  category: migration
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: verification-run://repository/dde8291a034709ab3b66f4c196b759d360e7fda257b78e66c03e09317c8d43fb
+    supersedes: null
+    affected_tasks:
+    - M1-03
+    next_review: null
+  evidence_refs: []
+- document_id: docs-migrations-m1-04-replay-fixture-acceptance-2026-08-09
+  path: docs/migrations/m1-04-replay-fixture-acceptance-2026-08-09.md
+  category: migration
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: verification-run://repository/d04d373e3ac19744dc86bf7c4845da6d7849f3f7b9fdca1f40e23bb977b4019a
+    supersedes: null
+    affected_tasks:
+    - M1-04
+    next_review: null
+  evidence_refs: []
+- document_id: docs-migrations-m1-05-fault-coverage-acceptance-2026-08-09
+  path: docs/migrations/m1-05-fault-coverage-acceptance-2026-08-09.md
+  category: migration
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: verification-run://repository/2d34847101f56c7a6773ecc39223341e8b32b7464ac78e31718cb048563bbb15
+    supersedes: null
+    affected_tasks:
+    - M1-05
+    next_review: null
+  evidence_refs: []
+- document_id: docs-migrations-m1-06-archive-governance-acceptance-2026-08-09
+  path: docs/migrations/m1-06-archive-governance-acceptance-2026-08-09.md
+  category: migration
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: verification-run://repository/04e61e3407a68fb3be72dc5f1a3bd85c58b8ddd0dfa06c7000d2a4742ab8b991
+    supersedes: null
+    affected_tasks:
+    - M1-06
+    next_review: null
+  evidence_refs: []
+- document_id: docs-migrations-m2-01-typed-state-acceptance-2026-08-09
+  path: docs/migrations/m2-01-typed-state-acceptance-2026-08-09.md
+  category: migration
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: verification-run://repository/d00a2778aec663ee6b2787ff33c1f966ae352bdcf264000ec0e19794394ec3d6
+    supersedes: null
+    affected_tasks:
+    - M2-01
+    next_review: null
+  evidence_refs: []
+- document_id: docs-migrations-m2-02-state-event-acceptance-2026-08-10
+  path: docs/migrations/m2-02-state-event-acceptance-2026-08-10.md
+  category: migration
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: verification-run://repository/51d50ec62ca505bf1c1b45005e400a91d080df3936d2ea23b625fb6e5549c250
+    supersedes: null
+    affected_tasks:
+    - M2-02
+    next_review: null
+  evidence_refs: []
+- document_id: docs-migrations-m2-03-postgresql-state-store-acceptance-2026-08-10
+  path: docs/migrations/m2-03-postgresql-state-store-acceptance-2026-08-10.md
+  category: migration
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: verification-run://repository/17dec02adc00f2284638401b18c0e03dbac551e66673380bfb48f51c092cd1e6
+    supersedes: null
+    affected_tasks:
+    - M2-03
+    next_review: null
+  evidence_refs: []
+- document_id: docs-migrations-m2-04-artifact-store-acceptance-2026-08-10
+  path: docs/migrations/m2-04-artifact-store-acceptance-2026-08-10.md
+  category: migration
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: verification-run://repository/bda805dbb0c8f92cd270e433890bf08b40be54b2b1092f7f0a03c0a5a767e2e3
+    supersedes: null
+    affected_tasks:
+    - M2-04
+    next_review: null
+  evidence_refs: []
+- document_id: docs-migrations-m2-05-state-mcp-acceptance-2026-08-10
+  path: docs/migrations/m2-05-state-mcp-acceptance-2026-08-10.md
+  category: migration
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: verification-run://repository/ac385f9509d7408448f865f62b351276907e80267a7b591387c0e1ab8bf21420
+    supersedes: null
+    affected_tasks:
+    - M2-05
+    next_review: null
+  evidence_refs: []
+- document_id: docs-migrations-m2-06-checkpoint-canary-acceptance-2026-08-10
+  path: docs/migrations/m2-06-checkpoint-canary-acceptance-2026-08-10.md
+  category: migration
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: verification-run://repository/9115de6a0ee3daf6bf74b08c633ad01300ed425ff3098a6e98c61af8658feac5
+    supersedes: null
+    affected_tasks:
+    - M2-06
+    next_review: null
+  evidence_refs: []
+- document_id: docs-migrations-m2-07-project-governance-profile-acceptance-2026-08-10
+  path: docs/migrations/m2-07-project-governance-profile-acceptance-2026-08-10.md
+  category: migration
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: verification-run://repository/997f0755ae743682605e6bf4cd431e9cef64a0edc16746c3835066b71dd6c9d7
+    supersedes: null
+    affected_tasks:
+    - M2-07
+    next_review: null
+  evidence_refs: []
+- document_id: docs-migrations-m2-08-state-store-spi-acceptance-2026-08-10
+  path: docs/migrations/m2-08-state-store-spi-acceptance-2026-08-10.md
+  category: migration
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: verification-run://repository/fd60875044bfbc63eed8c9c14ed5e42a8f243685457aff9b12127ff8eb7b26f9
+    supersedes: null
+    affected_tasks:
+    - M2-08
+    next_review: null
+  evidence_refs: []
+- document_id: docs-migrations-m2-09-sqlite-state-store-acceptance-2026-08-10
+  path: docs/migrations/m2-09-sqlite-state-store-acceptance-2026-08-10.md
+  category: migration
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: verification-run://repository/e3e6608aec358827b7da256bf65cd3ab088b4b5ca3e41c46f9dc4acd45f3a88e
+    supersedes: null
+    affected_tasks:
+    - M2-09
+    next_review: null
+  evidence_refs: []
+- document_id: docs-migrations-m4-01-skill-manifest-set-acceptance-2026-08-10
+  path: docs/migrations/m4-01-skill-manifest-set-acceptance-2026-08-10.md
+  category: migration
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: verification-run://repository/62b2bb303f2061c05e014986eb925905633c8d54149eb307cf12addbbed90910
+    supersedes: null
+    affected_tasks:
+    - M4-01
+    next_review: null
+  evidence_refs: []
+- document_id: docs-migrations-m4-02-compiled-skill-packet-acceptance-2026-08-11
+  path: docs/migrations/m4-02-compiled-skill-packet-acceptance-2026-08-11.md
+  category: migration
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: verification-run://repository/5a035e9ee56d2b7fc15a2b39234c7120c31fae8b1405367e77fc7b28e5779d66
+    supersedes: null
+    affected_tasks:
+    - M4-02
+    next_review: null
+  evidence_refs: []
+- document_id: docs-migrations-m4-03-skill-drift-quarantine-acceptance-2026-08-11
+  path: docs/migrations/m4-03-skill-drift-quarantine-acceptance-2026-08-11.md
+  category: migration
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: verification-run://repository/39aa7eaf1298a4c96b11f5e6f5ae3ea07d43963924ed5b5d95aabe5312579254
+    supersedes: null
+    affected_tasks:
+    - M4-03
+    next_review: null
+  evidence_refs: []
+- document_id: docs-migrations-m4-04-layered-skill-loading-acceptance-2026-08-11
+  path: docs/migrations/m4-04-layered-skill-loading-acceptance-2026-08-11.md
+  category: migration
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: verification-run://repository/7b357f4ae1c996ca4e982efbb019a68538e056ec1fb002bf46205dbb7e02d628
+    supersedes: null
+    affected_tasks:
+    - M4-04
+    next_review: null
+  evidence_refs: []
+- document_id: docs-migrations-m4-05-provider-skill-adapter-acceptance-2026-08-11
+  path: docs/migrations/m4-05-provider-skill-adapter-acceptance-2026-08-11.md
+  category: migration
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: verification-run://repository/117dcc123da3c66b33abcb8b088fdfa162855c3154de081d4447ab57152e223a
+    supersedes: null
+    affected_tasks:
+    - M4-05
+    next_review: null
+  evidence_refs: []
+- document_id: docs-migrations-m4-06-skill-compatibility-acceptance-2026-08-11
+  path: docs/migrations/m4-06-skill-compatibility-acceptance-2026-08-11.md
+  category: migration
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: verification-run://repository/dfd1cde05845ac7d9a40375e83999da3e7ad3b436362e48831d4c76f89e4f9b5
+    supersedes: null
+    affected_tasks:
+    - M4-06
+    next_review: null
+  evidence_refs: []
+- document_id: docs-migrations-m4-07-skill-catalog-acceptance-2026-08-11
+  path: docs/migrations/m4-07-skill-catalog-acceptance-2026-08-11.md
+  category: migration
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: verification-run://repository/844da4a51183b10e797ada4f9c8a1d613cb1d3aa4b30014e97868012f81f9d53
+    supersedes: null
+    affected_tasks:
+    - M4-07
+    next_review: null
+  evidence_refs: []
+- document_id: docs-migrations-m4-08-skill-proposal-acceptance-2026-08-11
+  path: docs/migrations/m4-08-skill-proposal-acceptance-2026-08-11.md
+  category: migration
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: verification-run://repository/d64aca0b843d16fd022b498c4f1063c1c0d531bc3999771c3de783e17fb15fba
+    supersedes: null
+    affected_tasks:
+    - M4-08
+    next_review: null
+  evidence_refs: []
+- document_id: docs-migrations-m4-10-external-skill-source-acceptance-2026-08-12
+  path: docs/migrations/m4-10-external-skill-source-acceptance-2026-08-12.md
+  category: migration
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: verification-run://repository/13dc666d593ed1add313bce858f0d8db20024c37a2f2d0655e4a2873a5074230
+    supersedes: null
+    affected_tasks:
+    - M4-10
+    next_review: null
+  evidence_refs: []
+- document_id: docs-policies-archive-lifecycle
+  path: docs/policies/archive-lifecycle.md
+  category: policy
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: decision
+    authority_ref: governance-event://master/revision/40
+    supersedes: null
+    affected_tasks:
+    - M0-10
+    next_review: null
+  evidence_refs: []
+- document_id: docs-policies-continuous-integration
+  path: docs/policies/continuous-integration.md
+  category: policy
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: decision
+    authority_ref: governance-event://master/revision/40
+    supersedes: null
+    affected_tasks:
+    - M0-10
+    next_review: null
+  evidence_refs: []
+- document_id: docs-policies-conversation-ingestion
+  path: docs/policies/conversation-ingestion.md
+  category: policy
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: decision
+    authority_ref: governance-event://master/revision/40
+    supersedes: null
+    affected_tasks:
+    - M0-10
+    next_review: null
+  evidence_refs: []
+- document_id: docs-policies-documentation-lifecycle
+  path: docs/policies/documentation-lifecycle.md
+  category: policy
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: decision
+    authority_ref: governance-event://master/revision/40
+    supersedes: null
+    affected_tasks:
+    - M0-10
+    next_review: null
+  evidence_refs: []
+- document_id: docs-policies-documentation-style
+  path: docs/policies/documentation-style.md
+  category: policy
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: decision
+    authority_ref: governance-event://master/revision/40
+    supersedes: null
+    affected_tasks:
+    - M0-10
+    next_review: null
+  evidence_refs: []
+- document_id: docs-policies-git-collaboration
+  path: docs/policies/git-collaboration.md
+  category: policy
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: decision
+    authority_ref: governance-event://master/revision/40
+    supersedes: null
+    affected_tasks:
+    - M0-10
+    next_review: null
+  evidence_refs: []
+- document_id: docs-policies-project-dogfooding-observation
+  path: docs/policies/project-dogfooding-observation.md
+  category: policy
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: decision
+    authority_ref: governance-event://master/revision/40
+    supersedes: null
+    affected_tasks:
+    - M0-10
+    next_review: null
+  evidence_refs: []
+- document_id: docs-policies-reference-evidence-lifecycle
+  path: docs/policies/reference-evidence-lifecycle.md
+  category: policy
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: decision
+    authority_ref: governance-event://master/revision/40
+    supersedes: null
+    affected_tasks:
+    - M0-10
+    next_review: null
+  evidence_refs: []
+- document_id: docs-policies-schema-version-release-governance
+  path: docs/policies/schema-version-release-governance.md
+  category: policy
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: decision
+    authority_ref: governance-event://master/revision/40
+    supersedes: null
+    affected_tasks:
+    - M0-10
+    next_review: null
+  evidence_refs: []
+- document_id: docs-reports-verified-state
+  path: docs/reports/verified-state.md
+  category: report
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: projection
+    authority_ref: state-revision://repository/40
+    supersedes: null
+    affected_tasks:
+    - M0-10
+    next_review: null
+  evidence_refs:
+  - ref_id: docs-reports-verified-state-evidence-1
+    path: docs/migrations/m0-07-schema-governance-acceptance-2026-08-09.md
+    valid_until: null
+  - ref_id: docs-reports-verified-state-evidence-2
+    path: docs/migrations/m0-10-document-lifecycle-acceptance-2026-08-12.md
+    valid_until: null
+  - ref_id: docs-reports-verified-state-evidence-3
+    path: docs/migrations/m1-02-source-registry-acceptance-2026-08-09.md
+    valid_until: null
+  - ref_id: docs-reports-verified-state-evidence-4
+    path: docs/migrations/m1-03-sanitizer-acceptance-2026-08-09.md
+    valid_until: null
+  - ref_id: docs-reports-verified-state-evidence-5
+    path: docs/migrations/m1-04-replay-fixture-acceptance-2026-08-09.md
+    valid_until: null
+  - ref_id: docs-reports-verified-state-evidence-6
+    path: docs/migrations/m1-05-fault-coverage-acceptance-2026-08-09.md
+    valid_until: null
+  - ref_id: docs-reports-verified-state-evidence-7
+    path: docs/migrations/m1-06-archive-governance-acceptance-2026-08-09.md
+    valid_until: null
+  - ref_id: docs-reports-verified-state-evidence-8
+    path: docs/migrations/m2-01-typed-state-acceptance-2026-08-09.md
+    valid_until: null
+  - ref_id: docs-reports-verified-state-evidence-9
+    path: docs/migrations/m2-02-state-event-acceptance-2026-08-10.md
+    valid_until: null
+  - ref_id: docs-reports-verified-state-evidence-10
+    path: docs/migrations/m2-03-postgresql-state-store-acceptance-2026-08-10.md
+    valid_until: null
+  - ref_id: docs-reports-verified-state-evidence-11
+    path: docs/migrations/m2-04-artifact-store-acceptance-2026-08-10.md
+    valid_until: null
+  - ref_id: docs-reports-verified-state-evidence-12
+    path: docs/migrations/m2-05-state-mcp-acceptance-2026-08-10.md
+    valid_until: null
+  - ref_id: docs-reports-verified-state-evidence-13
+    path: docs/migrations/m2-06-checkpoint-canary-acceptance-2026-08-10.md
+    valid_until: null
+  - ref_id: docs-reports-verified-state-evidence-14
+    path: docs/migrations/m2-07-project-governance-profile-acceptance-2026-08-10.md
+    valid_until: null
+  - ref_id: docs-reports-verified-state-evidence-15
+    path: docs/migrations/m2-08-state-store-spi-acceptance-2026-08-10.md
+    valid_until: null
+  - ref_id: docs-reports-verified-state-evidence-16
+    path: docs/migrations/m2-09-sqlite-state-store-acceptance-2026-08-10.md
+    valid_until: null
+  - ref_id: docs-reports-verified-state-evidence-17
+    path: docs/migrations/m4-01-skill-manifest-set-acceptance-2026-08-10.md
+    valid_until: null
+  - ref_id: docs-reports-verified-state-evidence-18
+    path: docs/migrations/m4-02-compiled-skill-packet-acceptance-2026-08-11.md
+    valid_until: null
+  - ref_id: docs-reports-verified-state-evidence-19
+    path: docs/migrations/m4-03-skill-drift-quarantine-acceptance-2026-08-11.md
+    valid_until: null
+  - ref_id: docs-reports-verified-state-evidence-20
+    path: docs/migrations/m4-04-layered-skill-loading-acceptance-2026-08-11.md
+    valid_until: null
+  - ref_id: docs-reports-verified-state-evidence-21
+    path: docs/migrations/m4-05-provider-skill-adapter-acceptance-2026-08-11.md
+    valid_until: null
+  - ref_id: docs-reports-verified-state-evidence-22
+    path: docs/migrations/m4-06-skill-compatibility-acceptance-2026-08-11.md
+    valid_until: null
+  - ref_id: docs-reports-verified-state-evidence-23
+    path: docs/migrations/m4-07-skill-catalog-acceptance-2026-08-11.md
+    valid_until: null
+  - ref_id: docs-reports-verified-state-evidence-24
+    path: docs/migrations/m4-08-skill-proposal-acceptance-2026-08-11.md
+    valid_until: null
+  - ref_id: docs-reports-verified-state-evidence-25
+    path: docs/migrations/m4-10-external-skill-source-acceptance-2026-08-12.md
+    valid_until: null
+  - ref_id: docs-reports-verified-state-evidence-26
+    path: docs/policies/project-dogfooding-observation.md
+    valid_until: null
+  - ref_id: docs-reports-verified-state-evidence-27
+    path: docs/research/agent-harness-assessment-2026-08-09.md
+    valid_until: null
+  - ref_id: docs-reports-verified-state-evidence-28
+    path: docs/research/context-compression-real-replay-benchmark-2026-08-09.md
+    valid_until: null
+  - ref_id: docs-reports-verified-state-evidence-29
+    path: docs/research/external-skill-and-mcp-catalog-assessment-2026-08-09.md
+    valid_until: null
+  - ref_id: docs-reports-verified-state-evidence-30
+    path: docs/research/state-store-portability-assessment-2026-08-10.md
+    valid_until: null
+  projection_binding:
+    source_state_revision: 40
+    template_version: context.document-projection/v1alpha1
+    state_write_authority: false
+- document_id: docs-research-agent-harness-assessment-2026-08-09
+  path: docs/research/agent-harness-assessment-2026-08-09.md
+  category: research
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: evidence-bundle://repository/c4d959b48927ee6f49bb25cbcfac6bed27f45fb9771ca80accd198309d62fcea
+    supersedes: null
+    affected_tasks:
+    - M0-10
+    next_review: null
+  evidence_refs: []
+- document_id: docs-research-context-compression-benchmark-2026-08-09
+  path: docs/research/context-compression-benchmark-2026-08-09.md
+  category: research
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: evidence-bundle://repository/e98d464e95c8a6de43efd41a977b61d6a6e80311262dcd34a6412fa380b891b8
+    supersedes: null
+    affected_tasks:
+    - M0-10
+    next_review: null
+  evidence_refs: []
+- document_id: docs-research-context-compression-real-replay-benchmark-2026-08-09
+  path: docs/research/context-compression-real-replay-benchmark-2026-08-09.md
+  category: research
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: evidence-bundle://repository/774c487138c308cb01d6f93a820a4e102d8be95e3996a10ce762f4b9c633e079
+    supersedes: null
+    affected_tasks:
+    - M0-10
+    next_review: null
+  evidence_refs: []
+- document_id: docs-research-context-reliability-assessment-2026-08-09
+  path: docs/research/context-reliability-assessment-2026-08-09.md
+  category: research
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: evidence-bundle://repository/5f610c8f4d05a86bc2e0a08e4fe5364b7249caf9a9479262d74409043bef3e9a
+    supersedes: null
+    affected_tasks:
+    - M0-10
+    next_review: null
+  evidence_refs: []
+- document_id: docs-research-docmost-yundi339-reference-assessment-2026-08-10
+  path: docs/research/docmost-yundi339-reference-assessment-2026-08-10.md
+  category: research
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: evidence-bundle://repository/99acca7247db5159a08a7a6a404ea15e7aeb89a341625f8cfba410a29f72c87d
+    supersedes: null
+    affected_tasks:
+    - M0-10
+    next_review: null
+  evidence_refs: []
+- document_id: docs-research-external-skill-and-mcp-catalog-assessment-2026-08-09
+  path: docs/research/external-skill-and-mcp-catalog-assessment-2026-08-09.md
+  category: research
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: evidence-bundle://repository/ea717edc62b7b05a643b164dd98e2904a7a0f2b3149ea8ca6d30a795f395dd51
+    supersedes: null
+    affected_tasks:
+    - M0-10
+    next_review: null
+  evidence_refs: []
+- document_id: docs-research-postgresql-state-store-assessment-2026-08-10
+  path: docs/research/postgresql-state-store-assessment-2026-08-10.md
+  category: research
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: evidence-bundle://repository/522b8b4f9c31cc2974961b58a30a63f070620aee373c7f80d78d88c113fb6e6a
+    supersedes: null
+    affected_tasks:
+    - M0-10
+    next_review: null
+  evidence_refs: []
+- document_id: docs-research-state-store-portability-assessment-2026-08-10
+  path: docs/research/state-store-portability-assessment-2026-08-10.md
+  category: research
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: evidence-bundle://repository/31b9a14aaea6d7a157fa4fd945cad13447297ec3bbf21cda98037c147d690094
+    supersedes: null
+    affected_tasks:
+    - M0-10
+    next_review: null
+  evidence_refs: []

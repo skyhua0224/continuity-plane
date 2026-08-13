@@ -1,0 +1,4 @@
+schema_version: context.document-lifecycle-benchmark-config/v1alpha1
+baseline_git_ref: ed0873319b94f0a5cbac6b8a9815e9837f3ef2e1
+validator_samples: 40
+validator_p95_limit_ms: 100

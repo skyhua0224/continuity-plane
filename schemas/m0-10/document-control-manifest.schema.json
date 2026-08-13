@@ -1,0 +1,144 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m0-10/document-control-manifest.schema.json",
+  "title": "Context Document Control Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "governance_revision", "documents"],
+  "properties": {
+    "schema_version": {"const": "context.document-control-manifest/v1alpha1"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "governance_revision": {"type": "integer", "minimum": 1},
+    "documents": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 4096,
+      "items": {"$ref": "#/$defs/document"}
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["document_id", "path", "category", "document_revision", "content_sha256", "metrics", "authority", "change", "evidence_refs"],
+      "allOf": [
+        {
+          "if": {"properties": {"category": {"enum": ["report", "projection"]}}, "required": ["category"]},
+          "then": {"required": ["projection_binding"]},
+          "else": {"not": {"required": ["projection_binding"]}}
+        },
+        {
+          "if": {"properties": {"document_revision": {"minimum": 2}}, "required": ["document_revision"]},
+          "then": {"properties": {"change": {"required": ["supersedes_provenance"]}}},
+          "else": {"properties": {"change": {"not": {"required": ["supersedes_provenance"]}}}}
+        }
+      ],
+      "properties": {
+        "document_id": {"type": "string", "pattern": "^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$", "maxLength": 128},
+        "path": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "category": {"enum": ["governance", "routing", "policy", "architecture", "research", "migration", "report", "projection"]},
+        "document_revision": {"type": "integer", "minimum": 1},
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "metrics": {"$ref": "#/$defs/metrics"},
+        "authority": {"$ref": "#/$defs/authority"},
+        "change": {"$ref": "#/$defs/change"},
+        "projection_binding": {"$ref": "#/$defs/projection_binding"},
+        "evidence_refs": {
+          "type": "array",
+          "maxItems": 4096,
+          "items": {"$ref": "#/$defs/evidence"}
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["utf8_bytes", "section_count", "local_link_count", "external_link_count", "reference_depth"],
+      "properties": {
+        "utf8_bytes": {"type": "integer", "minimum": 0},
+        "section_count": {"type": "integer", "minimum": 0},
+        "local_link_count": {"type": "integer", "minimum": 0},
+        "external_link_count": {"type": "integer", "minimum": 0},
+        "reference_depth": {"type": "integer", "minimum": 0, "maximum": 2}
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["governance_authority", "active_state_authority", "controlled_action_entry"],
+      "properties": {
+        "governance_authority": {"type": "boolean"},
+        "active_state_authority": {"const": false},
+        "controlled_action_entry": {"type": "boolean"}
+      }
+    },
+    "change": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["change_type", "authority_ref", "supersedes", "affected_tasks", "next_review"],
+      "properties": {
+        "change_type": {"enum": ["correction", "decision", "status", "evidence", "schema", "projection", "style"]},
+        "authority_ref": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "supersedes": {
+          "oneOf": [
+            {"type": "null"},
+            {"type": "string", "pattern": "^context\\.document://[a-z][a-z0-9]*(?:-[a-z0-9]+)*/revision/[1-9][0-9]*$"}
+          ]
+        },
+        "affected_tasks": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4096,
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^M[0-9]+-[0-9]+$"}
+        },
+        "next_review": {
+          "oneOf": [
+            {"type": "null"},
+            {"type": "string", "pattern": "^(date|task|event):.+$", "maxLength": 4096}
+          ]
+        },
+        "supersedes_provenance": {"$ref": "#/$defs/supersedes_provenance"}
+      }
+    },
+    "supersedes_provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["git_commit", "manifest_sha256", "content_sha256"],
+      "properties": {
+        "git_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+        "manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "content_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "projection_binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_state_revision", "master_digest", "template_version", "content_hash", "state_write_authority"],
+      "properties": {
+        "source_state_revision": {"type": "integer", "minimum": 1},
+        "master_digest": {"$ref": "#/$defs/sha256"},
+        "template_version": {"const": "context.document-projection/v1alpha1"},
+        "content_hash": {"$ref": "#/$defs/sha256"},
+        "state_write_authority": {"const": false}
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref_id", "path", "content_sha256", "valid_until"],
+      "properties": {
+        "ref_id": {"type": "string", "minLength": 1, "maxLength": 256},
+        "path": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "valid_until": {
+          "oneOf": [
+            {"type": "null"},
+            {"type": "string", "format": "date-time"}
+          ]
+        }
+      }
+    }
+  }
+}
