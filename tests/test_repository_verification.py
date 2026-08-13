@@ -94,6 +94,20 @@ class RepositoryVerificationCliTests(unittest.TestCase):
             commands,
         )
 
+    def test_repository_verification_checkout_includes_governed_history(self):
+        root = Path(__file__).parents[1]
+        workflow = yaml.safe_load(
+            (root / ".gitea" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+        )
+        checkout = workflow["jobs"]["repository-verification"]["steps"][0]
+
+        self.assertEqual(checkout["uses"], "actions/checkout@v4")
+        self.assertEqual(checkout.get("with", {}).get("fetch-depth"), 0)
+
+        secret_scan_checkout = workflow["jobs"]["secret-scan"]["steps"][0]
+        self.assertEqual(secret_scan_checkout["uses"], "actions/checkout@v4")
+        self.assertEqual(secret_scan_checkout.get("with", {}).get("fetch-depth"), 0)
+
     def test_ci_supports_container_and_host_runner_postgres_networking(self):
         root = Path(__file__).parents[1]
         workflow = yaml.safe_load(
