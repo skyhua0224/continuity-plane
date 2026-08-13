@@ -1,0 +1,18 @@
+{
+  "schema_version": "context.git-pre-contract-migration-set/v1alpha1",
+  "migrations": [
+    {
+      "migration_id": "context-control-plane-root-v1",
+      "root_commit": "3ca68fa3b000eecc16ce34bd3a00eb23a13c364d",
+      "root_tree": "073a6101735c89c75400950cdbb5a737daf4eb80",
+      "message_sha256": "b8109c78716d87a0dc43dd55cdef418d997b8a1fbdace114e6be08580d275055",
+      "contract_introduction_commit": "b578663197780d170201778b7c4412360494fe2b",
+      "allowed_deviations": [
+        "missing-why-label",
+        "legacy-evidence-syntax"
+      ],
+      "current_tree_admission_required": true,
+      "runtime_state_authority": false
+    }
+  ]
+}

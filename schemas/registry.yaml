@@ -355,3 +355,23 @@ schemas:
     status: current
     compatibility_mode: strict-versioned
     migrations: []
+
+  - schema_id: context.git-pre-contract-migration-set
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.git-pre-contract-migration-set/v1alpha1
+    supported_wire_versions: [context.git-pre-contract-migration-set/v1alpha1]
+    artifact_path: schemas/m0-11/git-pre-contract-migration-set.schema.json
+    content_sha256: ee22f0b07b4fba151c72cdbcd8ebfe9e8cbb727ee9c2abbace9b7d947f41c827
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.git-pre-contract-audit-receipt
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.git-pre-contract-audit-receipt/v1alpha1
+    supported_wire_versions: [context.git-pre-contract-audit-receipt/v1alpha1]
+    artifact_path: schemas/m0-11/git-pre-contract-audit-receipt.schema.json
+    content_sha256: 660b651d4698b32ba85aee5732428b2281dd9d87254468d27e3b5f4bed113fdd
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []

@@ -1,7 +1,7 @@
 # Context Control Plane MASTER
 
-版本：revision 41  
-日期：2026-08-12  
+版本：revision 42  
+日期：2026-08-13  
 状态：研究与 shadow pilot 准备阶段  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
 
@@ -228,7 +228,7 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | M0-08 | 🧑‍💻 | 建立 ReferenceSource/Snapshot lifecycle、candidate catalog 与 harness 采用评估 | 外部资料可持续发现、固定、刷新、失效和复用 | 让研究证据进入后续 schema、adapter 与实验 | M0-03/M0-06 | Codex/Claude 官方来源带 URL/hash/refresh/adoption；5 个 catalog tests 通过；State/Watcher live integration 待后续阶段 |
 | M0-09 | 🧑‍💻 | 建立项目 self-dogfood observation protocol 与首个 baseline | 研发过程记录 compaction、Skill 装载、计划演进和质量门后的交付速度 | 以项目自身数据验证逐步优化 | M0-05/M0-07 | compaction、input routing、Skill load、plan revision、verification 和 delivery 可复核；首个 accepted work 基线 1,577 秒；自动 trace 待 M5/M8 |
 | M0-10 | ✅ | 建立文档分类、更新触发、容量预算、supersedes 和生成投影生命周期 | MASTER、STATUS、细分文档和投影保持可定位、可更新、可收敛 | 防止长期陈旧与无界扩展 | M0-05/M0-06/M0-07 | policy validator、STATUS 与 evidence 漂移、重复全文、过期引用、容量超限和权限故障测试通过；拆分后恢复字段 100% |
-| M0-11 | ✅ | 建立 Git branch/commit/PR/merge 与 staged admission 合同 | Git 集成边界可回放且不冒充权威状态 | 让单人、多 AI 和多人协作具有一致的审计与发布节奏 | M0-02/M0-03/M0-09 | packet/receipt strict schema、25/25 contract tests、index-only transcript/secret/private-path admission、fixture provenance revalidation、regular-merge replay 和 first-commit tree audit 通过 |
+| M0-11 | ✅ | 建立 Git branch/commit/PR/merge 与 staged admission 合同 | Git 集成边界可回放且不冒充权威状态 | 让单人、多 AI 和多人协作具有一致的审计与发布节奏 | M0-02/M0-03/M0-09 | packet/receipt strict schema、46/46 contract tests、explicit integrity metadata allowlist、path + staged blob content binding、index-only transcript/secret/private-path admission、fixture provenance revalidation、regular-merge replay，以及 current contract 或 hash-bound pre-contract migration 的 first-commit tree audit 通过 |
 | M0-12 | ✅ | 建立 provider-neutral CI Verification Profile、统一 verifier 与 Gitea required jobs | push/PR 自动执行 test、compile、data/schema/projection、privacy、benchmark 和 secret gates | 让本地开发、协作者与托管平台使用同一可复现验收边界 | M0-03/M0-07/M0-09 | 14 个 verifier 正反测试、102/102 repository tests、compile 和 Gitleaks 本地通过；push runs 1016/1017 与 pull_request run 1018 通过；`main` 禁止 direct/force push 并要求 4 个实测 status contexts |
 
 ## 7.2 M1 聊天来源与 Replay Corpus

@@ -1,9 +1,9 @@
 # Verified State Evidence Index
 
-版本：2  
-日期：2026-08-12  
+版本：3  
+日期：2026-08-13  
 状态：generated evidence projection  
-source governance revision：41  
+source governance revision：42  
 state write authority：false
 
 ## 已验收任务
@@ -12,7 +12,7 @@ state write authority：false
 |---|---|
 | M0-07 | [`m0-07-schema-governance-acceptance-2026-08-09.md`](../migrations/m0-07-schema-governance-acceptance-2026-08-09.md) |
 | M0-10 | [`m0-10-document-lifecycle-acceptance-2026-08-12.md`](../migrations/m0-10-document-lifecycle-acceptance-2026-08-12.md) |
-| M0-11 | [`m0-11-git-admission-acceptance-2026-08-12.md`](../migrations/m0-11-git-admission-acceptance-2026-08-12.md) |
+| M0-11 | [`m0-11-git-admission-acceptance-2026-08-12.md`](../migrations/m0-11-git-admission-acceptance-2026-08-12.md) + [`m0-11-pre-contract-root-correction-2026-08-13.md`](../migrations/m0-11-pre-contract-root-correction-2026-08-13.md) |
 | M1-02 | [`m1-02-source-registry-acceptance-2026-08-09.md`](../migrations/m1-02-source-registry-acceptance-2026-08-09.md) |
 | M1-03 | [`m1-03-sanitizer-acceptance-2026-08-09.md`](../migrations/m1-03-sanitizer-acceptance-2026-08-09.md) |
 | M1-04 | [`m1-04-replay-fixture-acceptance-2026-08-09.md`](../migrations/m1-04-replay-fixture-acceptance-2026-08-09.md) |

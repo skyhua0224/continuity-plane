@@ -1,9 +1,9 @@
 # Context Control Plane Target-State Architecture
 
-版本：1  
-日期：2026-08-09  
+版本：2  
+日期：2026-08-13  
 状态：current architecture contract  
-governance authority：`MASTER.md` revision 41
+governance authority：`MASTER.md` revision 42
 
 ## 三文档默认投影
 
@@ -38,7 +38,7 @@ Context Control Plane 安装到个人项目、协作项目或公开大型项目�
 | `context.information-access` | `bounded-information-plane` | 最小读取范围、artifact range、retrieval receipt 和 freshness | State MCP、artifact store、索引、Recall SPI | M5/M6 |
 | `context.adaptation` | `project-adaptation-loop` | 从已验证运行和明确纠正生成可审批、可回滚的 profile candidate | Typed State、OTel、A/B harness | M8/M10 |
 | `context.review` | `independent-reviewer` | 冲突检查、阶段 handoff 和承重证据复核；权威提交权限为 0 | 本地或外置模型 | M6/M7 |
-| `context.verification` | `continuous-integration-verifier` | push/PR 执行 test、compile、schema、projection、privacy、benchmark 和 secret gates；权威状态写权限为 0 | local verifier + Gitea Actions + Gitleaks | M0/M7/M8 |
+| `context.verification` | `continuous-integration-verifier` | push/PR 执行 test、compile、schema、projection、privacy、benchmark 和 secret gates；Git root 按 current contract 或严格 hash-bound pre-contract migration 审计；权威状态写权限为 0 | local verifier + Gitea Actions + Gitleaks | M0/M7/M8 |
 | `context.observability` | `context-otel` | token、Skill 装载、检索、恢复、输入路由、Agent dispatch/handoff、误切、返工和质量指标 | OTel Collector + 可替换后端 | M8 |
 | `context.presentation` | `docmost-project-graph` | 可选 Project Graph、Decision Timeline、Evidence Matrix、Context Health 和受控审批 | optional Docmost + State MCP provider；Obsidian 只读生成 | M9 |
 | `context.documentation` | `document-lifecycle-validator` | 生成并复验 document manifest、capacity、authority、change receipt、supersedes、evidence hash、duplicate prose 和 recovery fields | Git + repository verifier；外部 freshness 由 ReferenceWatcher | M0/M7 |

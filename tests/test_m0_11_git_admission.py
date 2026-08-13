@@ -2,6 +2,7 @@ import base64
 import hashlib
 import json
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -68,14 +69,10 @@ class GitAdmissionTests(unittest.TestCase):
                     "state_revision: 40\n"
                     "claim_ref: claim://local-shadow/m0-11\n"
                     "path_owner: actor://opaque/local-owner\n"
-                    "evidence_refs: [artifact://sha256/"
-                    + "a" * 64
-                    + "]\n"
+                    "evidence_refs: [artifact://sha256/" + "a" * 64 + "]\n"
                     "verification_profile: repository-verification\n\n"
                     "Evidence:\n"
-                    "artifact://sha256/"
-                    + "a" * 64
-                    + "\n\n"
+                    "artifact://sha256/" + "a" * 64 + "\n\n"
                     "Validation:\n"
                     "python -m unittest tests.test_m0_11_git_admission\n\n"
                     "Risk and rollback:\n"
@@ -87,7 +84,7 @@ class GitAdmissionTests(unittest.TestCase):
         }
 
     def _date(self) -> str:
-        return "-".join(("2026", "08", "12"))
+        return "-".join(("2026", "08", "12"))  # noqa: FLY002
 
     def _test_email(self) -> str:
         return "git-admission" + "@" + "example.invalid"
@@ -125,16 +122,107 @@ class GitAdmissionTests(unittest.TestCase):
         )
         return root
 
+    def _pre_contract_repository(
+        self,
+        *,
+        root_tree: str | None = None,
+        message_sha256: str | None = None,
+        contract_is_root: bool = False,
+        contract_adds_policy: bool = True,
+        allowed_deviations: list[str] | None = None,
+        root_path: str = "artifact.txt",
+    ) -> Path:
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        root = Path(directory.name)
+        self._git(root, "init", "-q", "-b", "main")
+        self._git(root, "config", "user.name", "Git Admission Test")
+        self._git(root, "config", "user.email", self._test_email())
+        legacy_message = (
+            "chore(repo): establish provider-neutral repository boundary\n\n"
+            "Preserve an auditable repository boundary before the contract exists.\n\n"
+            "Task: M0-01\n"
+            "State-Revision: 1\n"
+            "Evidence: legacy-verifier-0-findings\n"
+            "Tests: python -m unittest"
+        )
+        root_commit = self._commit(root, legacy_message, path=root_path)
+        raw_commit = subprocess.run(
+            ["git", "cat-file", "commit", root_commit],
+            cwd=root,
+            check=True,
+            capture_output=True,
+        ).stdout
+        message = raw_commit.partition(b"\n\n")[2]
+        actual_tree = self._git(root, "rev-parse", f"{root_commit}^{{tree}}")
+
+        policy_path = (
+            "docs/policies/git-collaboration.md"
+            if contract_adds_policy
+            else "docs/policies/unrelated.md"
+        )
+        policy = root / policy_path
+        policy.parent.mkdir(parents=True)
+        policy.write_text("# Git Collaboration Policy\n", encoding="utf-8")
+        self._git(root, "add", policy.relative_to(root).as_posix())
+        self._git(
+            root,
+            "commit",
+            "-m",
+            "docs(governance): add Git collaboration contract\n\n"
+            "Why: Establish strict admission for future commits.\n\n"
+            "Task: M0-11\n"
+            "State-Revision: 2\n"
+            "Evidence: docs/policies/git-collaboration.md\n"
+            "Tests: python -m unittest",
+        )
+        contract_commit = self._git(root, "rev-parse", "HEAD")
+
+        profile = {
+            "schema_version": "context.git-pre-contract-migration-set/v1alpha1",
+            "migrations": [
+                {
+                    "migration_id": "fixture-root-v1",
+                    "root_commit": root_commit,
+                    "root_tree": root_tree or actual_tree,
+                    "message_sha256": message_sha256
+                    or hashlib.sha256(message).hexdigest(),
+                    "contract_introduction_commit": (
+                        root_commit if contract_is_root else contract_commit
+                    ),
+                    "allowed_deviations": allowed_deviations
+                    or ["missing-why-label", "legacy-evidence-syntax"],
+                    "current_tree_admission_required": True,
+                    "runtime_state_authority": False,
+                }
+            ],
+        }
+        profile_path = root / "profiles" / "git-pre-contract-migrations.json"
+        profile_path.parent.mkdir()
+        profile_path.write_text(
+            json.dumps(profile, sort_keys=True) + "\n", encoding="utf-8"
+        )
+        self._git(root, "add", profile_path.relative_to(root).as_posix())
+        self._git(
+            root,
+            "commit",
+            "-m",
+            "docs(governance): bind pre-contract root migration\n\n"
+            "Why: Audit immutable history without weakening the current contract.\n\n"
+            "Task: M0-11\n"
+            "State-Revision: 3\n"
+            "Evidence: profiles/git-pre-contract-migrations.json\n"
+            "Tests: python -m unittest",
+        )
+        return root
+
     def test_validates_a_provider_neutral_branch_commit_and_pr_packet(self):
         validate_git_collaboration_packet(self._packet())
 
     def test_rejects_raw_provider_identity_in_branch_packet(self):
         packet = self._packet()
-        packet["branch"]["branch_id"] = (
-            "work/M0-11/git-admission--"
-            + "-".join(
-                ("019fe216", "111c", "71e3", "a1af", "497306ba2391")
-            )
+        packet["branch"]["branch_id"] = "work/M0-11/git-admission--" + "-".join(  # noqa: FLY002
+            ("019fe216", "111c", "71e3", "a1af", "497306ba2391")
         )
 
         with self.assertRaisesRegex(GitAdmissionError, "branch_id"):
@@ -198,7 +286,10 @@ class GitAdmissionTests(unittest.TestCase):
 
     def test_rejects_pr_packet_with_a_different_expiry_than_its_branch(self):
         packet = self._packet()
-        packet["branch"]["expiry"] = "-".join(("2026", "12", "31")) + "T00:00:00Z"
+        packet["branch"]["expiry"] = (
+            "-".join(("2026", "12", "31"))  # noqa: FLY002
+            + "T00:00:00Z"
+        )
 
         with self.assertRaisesRegex(GitAdmissionError, "expiry"):
             validate_git_collaboration_packet(packet)
@@ -282,6 +373,21 @@ class GitAdmissionTests(unittest.TestCase):
 
         self.assertEqual(receipt["admitted_paths"], ["benchmark.yaml"])
 
+    def test_staged_admission_accepts_backticked_sha256_metadata_in_a_table(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._git(root, "init", "-q")
+            digest = "abcdef" * 10 + "abcd"
+            (root / "receipt.md").write_text(
+                f"| raw digest | `message_sha256: {digest}` |\n",
+                encoding="utf-8",
+            )
+            self._git(root, "add", "receipt.md")
+
+            receipt = audit_staged_admission(root)
+
+        self.assertEqual(receipt["admitted_paths"], ["receipt.md"])
+
     def test_staged_admission_accepts_protocol_integrity_references(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -310,6 +416,158 @@ class GitAdmissionTests(unittest.TestCase):
             with self.assertRaises(GitAdmissionError):
                 audit_staged_admission(root)
 
+    def test_staged_admission_rejects_secrets_disguised_as_sha256_metadata(self):
+        suffix = "_sha256"
+        cases = {
+            "token" + suffix: "a" * 40,
+            "password" + suffix: "0x" + "a" * 64,
+            "credential" + suffix: "ordinary-secret",
+        }
+        for field, value in cases.items():
+            with self.subTest(field=field), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                self._git(root, "init", "-q")
+                (root / "credentials.yaml").write_text(
+                    f"{field}: {value}\n", encoding="utf-8"
+                )
+                self._git(root, "add", "credentials.yaml")
+
+                with self.assertRaises(GitAdmissionError):
+                    audit_staged_admission(root)
+
+    def test_staged_admission_rejects_sha256_metadata_in_plain_text(self):
+        suffix = "_sha256"
+        cases = {
+            "notes.md": "credential" + suffix + ": ordinary-secret\n",
+            "notes.txt": "current_status" + suffix + ": ordinary-secret\n",
+            ".env": "credential" + suffix + "=ordinary-secret\n",
+            "inline.txt": "prefix credential" + suffix + ": ordinary-secret\n",
+            "table.md": "| credential" + suffix + " | ordinary-secret |\n",
+        }
+        for path, content in cases.items():
+            with self.subTest(path=path), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                self._git(root, "init", "-q")
+                (root / path).write_text(content, encoding="utf-8")
+                self._git(root, "add", path)
+
+                with self.assertRaises(GitAdmissionError):
+                    audit_staged_admission(root)
+
+    def test_staged_admission_rejects_sha256_metadata_in_python_assignments(self):
+        suffix = "_sha256"
+        cases = {
+            "assignment.py": "credential" + suffix + " = 'ordinary-secret'\n",
+            "annotation.py": "credential" + suffix + ": str = 'ordinary-secret'\n",
+            "attribute.py": "holder.credential" + suffix + " = 'ordinary-secret'\n",
+            "dictionary.py": '{"credential' + suffix + '": "ordinary-secret"}\n',
+            "computed.py": "credential" + suffix + " = compute_secret()\n",
+        }
+        for path, content in cases.items():
+            with self.subTest(path=path), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                self._git(root, "init", "-q")
+                (root / path).write_text(content, encoding="utf-8")
+                self._git(root, "add", path)
+
+                with self.assertRaises(GitAdmissionError):
+                    audit_staged_admission(root)
+
+    def test_staged_admission_rejects_sha256_metadata_in_invalid_structured_text(self):
+        suffix = "_sha256"
+        cases = {
+            "broken.json": '{"credential' + suffix + '": "ordinary-secret",',
+            "broken.yaml": '"credential' + suffix + '": [ordinary-secret',
+            "broken.toml": '"credential' + suffix + '" = "ordinary-secret',
+        }
+        for path, content in cases.items():
+            with self.subTest(path=path), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                self._git(root, "init", "-q")
+                (root / path).write_text(content, encoding="utf-8")
+                self._git(root, "add", path)
+
+                with self.assertRaises(GitAdmissionError):
+                    audit_staged_admission(root)
+
+    def test_staged_admission_rejects_allowlisted_sha256_name_as_a_suffix(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._git(root, "init", "-q")
+            field = "token_current_status" + "_sha256"
+            (root / "credentials.txt").write_text(
+                f"{field}: {'a' * 64}\n", encoding="utf-8"
+            )
+            self._git(root, "add", "credentials.txt")
+
+            with self.assertRaises(GitAdmissionError):
+                audit_staged_admission(root)
+
+    def test_staged_admission_rejects_data_that_self_declares_a_schema_shape(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._git(root, "init", "-q")
+            field = "credential" + "_sha256"
+            (root / "credentials.json").write_text(
+                json.dumps({field: {"type": "string", "value": "ordinary-secret"}}),
+                encoding="utf-8",
+            )
+            self._git(root, "add", "credentials.json")
+
+            with self.assertRaises(GitAdmissionError):
+                audit_staged_admission(root)
+
+    def test_staged_admission_accepts_schema_properties_and_source_expressions(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._git(root, "init", "-q")
+            schema = root / "schemas" / "probe.schema.json"
+            schema.parent.mkdir()
+            property_name = "probe" + "_sha256"
+            schema.write_text(
+                json.dumps(
+                    {
+                        "$schema": "https://json-schema.org/draft/2020-12/schema",
+                        "$id": "https://context-control-plane.invalid/probe.schema.json",
+                        "type": "object",
+                        "properties": {
+                            property_name: {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{64}$",
+                            }
+                        },
+                    }
+                ),
+                encoding="utf-8",
+            )
+            source = root / "digest.py"
+            source.write_text(
+                "current_status_sha256 = hashlib.sha256(content).hexdigest()\n"
+                'metadata = {"current_status_" + "sha256": '
+                "hashlib.sha256(content).hexdigest()}\n",
+                encoding="utf-8",
+            )
+            self._git(root, "add", "schemas/probe.schema.json", "digest.py")
+
+            receipt = audit_staged_admission(root)
+
+        self.assertEqual(
+            receipt["admitted_paths"], ["digest.py", "schemas/probe.schema.json"]
+        )
+
+    def test_staged_admission_rejects_malformed_registered_sha256_metadata(self):
+        for value in ("a" * 40, "0x" + "a" * 64, "ordinary-secret"):
+            with self.subTest(value=value), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                self._git(root, "init", "-q")
+                (root / "benchmark.yaml").write_text(
+                    f"current_status_sha256: {value}\n", encoding="utf-8"
+                )
+                self._git(root, "add", "benchmark.yaml")
+
+                with self.assertRaises(GitAdmissionError):
+                    audit_staged_admission(root)
+
     def test_staged_admission_reads_the_index_not_unstaged_worktree_content(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -322,8 +580,16 @@ class GitAdmissionTests(unittest.TestCase):
             (root / "fixture.yaml").write_text(unstaged, encoding="utf-8")
 
             receipt = audit_staged_admission(root)
+            (root / "fixture.yaml").write_text(
+                "scenario: changed-clean-content\n", encoding="utf-8"
+            )
+            self._git(root, "add", "fixture.yaml")
+            changed_receipt = audit_staged_admission(root)
 
         self.assertEqual(receipt["admitted_paths"], ["fixture.yaml"])
+        self.assertNotEqual(
+            receipt["staged_set_sha256"], changed_receipt["staged_set_sha256"]
+        )
 
     def test_packet_schema_is_registered_and_accepts_the_contract_packet(self):
         registry = yaml.safe_load(
@@ -339,8 +605,9 @@ class GitAdmissionTests(unittest.TestCase):
             hashlib.sha256(artifact.read_bytes()).hexdigest(), entry["content_sha256"]
         )
         schema = json.loads(artifact.read_text(encoding="utf-8"))
-
-        self.assertEqual(list(Draft202012Validator(schema).iter_errors(self._packet())), [])
+        self.assertEqual(
+            list(Draft202012Validator(schema).iter_errors(self._packet())), []
+        )
 
     def test_receipt_schema_is_registered_and_accepts_all_audit_receipts(self):
         registry = yaml.safe_load(
@@ -383,6 +650,169 @@ class GitAdmissionTests(unittest.TestCase):
                     list(Draft202012Validator(schema).iter_errors(receipt)), []
                 )
 
+    def test_pre_contract_migration_schema_is_registered_and_accepts_profile(self):
+        registry = yaml.safe_load(
+            (self.root / "schemas" / "registry.yaml").read_text(encoding="utf-8")
+        )
+        entry = next(
+            item
+            for item in registry["schemas"]
+            if item["schema_id"] == "context.git-pre-contract-migration-set"
+        )
+        artifact = self.root / entry["artifact_path"]
+        self.assertEqual(
+            hashlib.sha256(artifact.read_bytes()).hexdigest(), entry["content_sha256"]
+        )
+        schema = json.loads(artifact.read_text(encoding="utf-8"))
+        profile = json.loads(
+            (self.root / "profiles" / "git-pre-contract-migrations.json").read_text(
+                encoding="utf-8"
+            )
+        )
+
+        self.assertEqual(list(Draft202012Validator(schema).iter_errors(profile)), [])
+
+    def test_real_repository_root_uses_hash_bound_pre_contract_migration(self):
+        receipt = audit_first_commit(self.root)
+
+        registry = yaml.safe_load(
+            (self.root / "schemas" / "registry.yaml").read_text(encoding="utf-8")
+        )
+        entry = next(
+            item
+            for item in registry["schemas"]
+            if item["schema_id"] == "context.git-pre-contract-audit-receipt"
+        )
+        artifact = self.root / entry["artifact_path"]
+        self.assertEqual(
+            hashlib.sha256(artifact.read_bytes()).hexdigest(), entry["content_sha256"]
+        )
+        schema = json.loads(artifact.read_text(encoding="utf-8"))
+        migration = json.loads(
+            (self.root / "profiles" / "git-pre-contract-migrations.json").read_text(
+                encoding="utf-8"
+            )
+        )["migrations"][0]
+
+        self.assertEqual(list(Draft202012Validator(schema).iter_errors(receipt)), [])
+        self.assertEqual(receipt["contract_mode"], "pre-contract-migration")
+        self.assertEqual(receipt["migration_ref"], "context-control-plane-root-v1")
+        self.assertEqual(
+            receipt["contract_introduction_commit"],
+            migration["contract_introduction_commit"],
+        )
+        self.assertEqual(
+            receipt["allowed_deviations"],
+            ["missing-why-label", "legacy-evidence-syntax"],
+        )
+        self.assertEqual(receipt["root_tree_admission"], "passed")
+        self.assertFalse(receipt["runtime_state_authority"])
+
+    def test_published_pre_contract_receipt_matches_live_root_audit(self):
+        published = json.loads(
+            (
+                self.root
+                / "experiments"
+                / "state"
+                / "m0-11-pre-contract-root-audit-receipt.json"
+            ).read_text(encoding="utf-8")
+        )
+
+        self.assertEqual(published, audit_first_commit(self.root))
+
+    def test_pre_contract_receipt_is_staged_without_raw_author_identity(self):
+        receipt = audit_first_commit(self.root)
+        root = self._repository()
+        path = root / "pre-contract-receipt.json"
+        path.write_text(json.dumps(receipt) + "\n", encoding="utf-8")
+        self._git(root, "add", path.name)
+
+        staged = audit_staged_admission(root)
+
+        self.assertEqual(staged["admitted_paths"], [path.name])
+        self.assertNotIn("author_identity_sha256", receipt)
+        self.assertNotIn("author_name", receipt)
+        self.assertNotIn("author_email", receipt)
+
+    def test_pre_contract_audit_cli_writes_the_live_receipt(self):
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "receipt.json"
+            subprocess.run(
+                [
+                    sys.executable,
+                    str(self.root / "tools" / "run_git_pre_contract_audit.py"),
+                    "--root",
+                    str(self.root),
+                    "--output",
+                    str(output),
+                ],
+                cwd=self.root,
+                check=True,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(
+                json.loads(output.read_text(encoding="utf-8")),
+                audit_first_commit(self.root),
+            )
+
+    def test_pre_contract_migration_rejects_a_mismatched_root_tree(self):
+        root = self._pre_contract_repository(root_tree="0" * 40)
+
+        with self.assertRaisesRegex(GitAdmissionError, "root tree"):
+            audit_first_commit(root)
+
+    def test_pre_contract_migration_rejects_a_mismatched_message_hash(self):
+        root = self._pre_contract_repository(message_sha256="0" * 64)
+
+        with self.assertRaisesRegex(GitAdmissionError, "root message"):
+            audit_first_commit(root)
+
+    def test_pre_contract_migration_rejects_invalid_contract_ancestry(self):
+        root = self._pre_contract_repository(contract_is_root=True)
+
+        with self.assertRaisesRegex(GitAdmissionError, "contract ancestry"):
+            audit_first_commit(root)
+
+    def test_pre_contract_migration_rejects_a_false_contract_introduction(self):
+        root = self._pre_contract_repository(contract_adds_policy=False)
+
+        with self.assertRaisesRegex(GitAdmissionError, "contract introduction"):
+            audit_first_commit(root)
+
+    def test_pre_contract_migration_rejects_unregistered_deviation_set(self):
+        root = self._pre_contract_repository(allowed_deviations=["missing-why-label"])
+
+        with self.assertRaisesRegex(GitAdmissionError, "deviations"):
+            audit_first_commit(root)
+
+    def test_unregistered_pre_contract_root_remains_rejected(self):
+        root = self._pre_contract_repository()
+        profile_path = root / "profiles" / "git-pre-contract-migrations.json"
+        profile_path.unlink()
+        self._git(root, "add", "-u")
+        self._git(
+            root,
+            "commit",
+            "-m",
+            "docs(governance): remove migration registration\n\n"
+            "Why: Exercise fail-closed legacy admission.\n\n"
+            "Task: M0-11\n"
+            "State-Revision: 4\n"
+            "Evidence: docs/policies/git-collaboration.md\n"
+            "Tests: python -m unittest",
+        )
+
+        with self.assertRaisesRegex(GitAdmissionError, "Why"):
+            audit_first_commit(root)
+
+    def test_pre_contract_migration_rejects_a_raw_transcript_in_the_root_tree(self):
+        root = self._pre_contract_repository(root_path="provider-session.jsonl")
+
+        with self.assertRaisesRegex(GitAdmissionError, "raw transcript"):
+            audit_first_commit(root)
+
     def test_audits_regular_merge_with_both_parent_commits_preserved(self):
         root = self._repository()
         base = self._git(root, "rev-parse", "HEAD")
@@ -394,7 +824,14 @@ class GitAdmissionTests(unittest.TestCase):
         )
         self._git(root, "checkout", "-q", "main")
         self._commit(root, "docs(governance): update merge baseline")
-        self._git(root, "merge", "--no-ff", "work/M0-11/merge-fixture", "-m", "Merge pull request 'feat(governance): add merge fixture'")
+        self._git(
+            root,
+            "merge",
+            "--no-ff",
+            "work/M0-11/merge-fixture",
+            "-m",
+            "Merge pull request 'feat(governance): add merge fixture'",
+        )
         merge = self._git(root, "rev-parse", "HEAD")
 
         receipt = audit_regular_merge(root, merge)
@@ -417,7 +854,10 @@ class GitAdmissionTests(unittest.TestCase):
 
         self.assertEqual(receipt["commit_count_before_root"], 0)
         self.assertEqual(receipt["runtime_state_authority"], False)
-        self.assertEqual(receipt["root_commit"], self._git(root, "rev-list", "--max-parents=0", "HEAD"))
+        self.assertEqual(
+            receipt["root_commit"],
+            self._git(root, "rev-list", "--max-parents=0", "HEAD"),
+        )
 
     def test_first_commit_audit_rejects_missing_commit_trailers(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -425,7 +865,9 @@ class GitAdmissionTests(unittest.TestCase):
             self._git(root, "init", "-q", "-b", "main")
             self._git(root, "config", "user.name", "Git Admission Test")
             self._git(root, "config", "user.email", self._test_email())
-            self._commit(root, "chore(repo): establish provider-neutral repository boundary")
+            self._commit(
+                root, "chore(repo): establish provider-neutral repository boundary"
+            )
 
             with self.assertRaisesRegex(GitAdmissionError, "commit body"):
                 audit_first_commit(root)
