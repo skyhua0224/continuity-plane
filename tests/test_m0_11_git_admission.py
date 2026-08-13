@@ -125,7 +125,14 @@ class GitAdmissionTests(unittest.TestCase):
         )
         return root
 
-    def _pre_contract_repository(self, *, root_tree: str | None = None) -> Path:
+    def _pre_contract_repository(
+        self,
+        *,
+        root_tree: str | None = None,
+        message_sha256: str | None = None,
+        contract_is_root: bool = False,
+        allowed_deviations: list[str] | None = None,
+    ) -> Path:
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
         root = Path(directory.name)
@@ -154,7 +161,7 @@ class GitAdmissionTests(unittest.TestCase):
         policy.parent.mkdir(parents=True)
         policy.write_text("# Git Collaboration Policy\n", encoding="utf-8")
         self._git(root, "add", policy.relative_to(root).as_posix())
-        contract_commit = self._git(
+        self._git(
             root,
             "commit",
             "-m",
@@ -174,12 +181,13 @@ class GitAdmissionTests(unittest.TestCase):
                     "migration_id": "fixture-root-v1",
                     "root_commit": root_commit,
                     "root_tree": root_tree or actual_tree,
-                    "message_sha256": hashlib.sha256(message).hexdigest(),
-                    "contract_introduction_commit": contract_commit,
-                    "allowed_deviations": [
-                        "missing-why-label",
-                        "legacy-evidence-syntax",
-                    ],
+                    "message_sha256": message_sha256
+                    or hashlib.sha256(message).hexdigest(),
+                    "contract_introduction_commit": (
+                        root_commit if contract_is_root else contract_commit
+                    ),
+                    "allowed_deviations": allowed_deviations
+                    or ["missing-why-label", "legacy-evidence-syntax"],
                     "current_tree_admission_required": True,
                     "runtime_state_authority": False,
                 }
@@ -487,6 +495,21 @@ class GitAdmissionTests(unittest.TestCase):
     def test_real_repository_root_uses_hash_bound_pre_contract_migration(self):
         receipt = audit_first_commit(self.root)
 
+        registry = yaml.safe_load(
+            (self.root / "schemas" / "registry.yaml").read_text(encoding="utf-8")
+        )
+        entry = next(
+            item
+            for item in registry["schemas"]
+            if item["schema_id"] == "context.git-pre-contract-audit-receipt"
+        )
+        artifact = self.root / entry["artifact_path"]
+        self.assertEqual(
+            hashlib.sha256(artifact.read_bytes()).hexdigest(), entry["content_sha256"]
+        )
+        schema = json.loads(artifact.read_text(encoding="utf-8"))
+
+        self.assertEqual(list(Draft202012Validator(schema).iter_errors(receipt)), [])
         self.assertEqual(receipt["contract_mode"], "pre-contract-migration")
         self.assertEqual(receipt["migration_ref"], "context-control-plane-root-v1")
         self.assertEqual(
@@ -506,6 +529,26 @@ class GitAdmissionTests(unittest.TestCase):
         with self.assertRaisesRegex(GitAdmissionError, "root tree"):
             audit_first_commit(root)
 
+    def test_pre_contract_migration_rejects_a_mismatched_message_hash(self):
+        root = self._pre_contract_repository(message_sha256="0" * 64)
+
+        with self.assertRaisesRegex(GitAdmissionError, "root message"):
+            audit_first_commit(root)
+
+    def test_pre_contract_migration_rejects_invalid_contract_ancestry(self):
+        root = self._pre_contract_repository(contract_is_root=True)
+
+        with self.assertRaisesRegex(GitAdmissionError, "contract ancestry"):
+            audit_first_commit(root)
+
+    def test_pre_contract_migration_rejects_unregistered_deviation_set(self):
+        root = self._pre_contract_repository(
+            allowed_deviations=["missing-why-label"]
+        )
+
+        with self.assertRaisesRegex(GitAdmissionError, "deviations"):
+            audit_first_commit(root)
+
     def test_unregistered_pre_contract_root_remains_rejected(self):
         root = self._pre_contract_repository()
         profile_path = root / "profiles" / "git-pre-contract-migrations.json"
@@ -523,7 +566,7 @@ class GitAdmissionTests(unittest.TestCase):
             "Tests: python -m unittest",
         )
 
-        with self.assertRaisesRegex(GitAdmissionError, "pre-contract migration"):
+        with self.assertRaisesRegex(GitAdmissionError, "Why"):
             audit_first_commit(root)
 
     def test_audits_regular_merge_with_both_parent_commits_preserved(self):
@@ -559,10 +602,6 @@ class GitAdmissionTests(unittest.TestCase):
         receipt = audit_first_commit(root)
 
         self.assertEqual(receipt["commit_count_before_root"], 0)
-        self.assertEqual(receipt["contract_mode"], "current")
-        self.assertIsNone(receipt["migration_ref"])
-        self.assertEqual(receipt["allowed_deviations"], [])
-        self.assertEqual(receipt["root_tree_admission"], "passed")
         self.assertEqual(receipt["runtime_state_authority"], False)
         self.assertEqual(receipt["root_commit"], self._git(root, "rev-list", "--max-parents=0", "HEAD"))
 

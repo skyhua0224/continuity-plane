@@ -6,21 +6,29 @@ claim, write, or derive runtime Typed State; every receipt says so explicitly.
 
 from __future__ import annotations
 
-from dataclasses import asdict
-from datetime import datetime
 import hashlib
 import json
 import re
 import subprocess
+from dataclasses import asdict
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from context_control_plane.replay_fixture import ReplayFixtureError, validate_replay_fixture
+from context_control_plane.replay_fixture import (
+    ReplayFixtureError,
+    validate_replay_fixture,
+)
 from context_control_plane.sanitizer import sanitize_text
-
 
 PACKET_SCHEMA_VERSION = "context.git-collaboration-packet/v1alpha1"
 RECEIPT_SCHEMA_VERSION = "context.git-admission-receipt/v1alpha1"
+PRE_CONTRACT_MIGRATION_SCHEMA_VERSION = (
+    "context.git-pre-contract-migration-set/v1alpha1"
+)
+PRE_CONTRACT_RECEIPT_SCHEMA_VERSION = (
+    "context.git-pre-contract-audit-receipt/v1alpha1"
+)
 
 _CONVENTIONAL_SUBJECT_RE = re.compile(
     r"^(?:feat|fix|docs|test|refactor|perf|chore|build|ci)"
@@ -78,7 +86,15 @@ _PR_FIELDS = (
 _RAW_TRANSCRIPT_SUFFIXES = {".jsonl", ".rollout", ".transcript"}
 _REPLAY_FIXTURE_DIRECTORY = "replay/fixtures/"
 _REPLAY_RECEIPT_PATH = "replay/fixtures/validation-receipts.json"
+_PRE_CONTRACT_MIGRATION_PATH = "profiles/git-pre-contract-migrations.json"
 _DATE_ONLY_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+_COMMIT_OBJECT_RE = re.compile(r"^[0-9a-f]{40}$")
+_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+_MIGRATION_ID_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*-v[1-9][0-9]*$")
+_PRE_CONTRACT_DEVIATION_ORDER = (
+    "missing-why-label",
+    "legacy-evidence-syntax",
+)
 
 
 class GitAdmissionError(ValueError):
@@ -300,8 +316,7 @@ def _git(root: Path | str, *arguments: str, input_bytes: bytes | None = None) ->
         ["git", *arguments],
         cwd=root,
         input=input_bytes,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         check=False,
     )
     if completed.returncode:
@@ -443,6 +458,181 @@ def _commit_message(root: Path | str, commit: str) -> tuple[str, str]:
     )
 
 
+def _raw_commit_message(root: Path | str, commit: str) -> bytes:
+    commit_object = _git(root, "cat-file", "commit", commit)
+    _, separator, message = commit_object.partition(b"\n\n")
+    if not separator or not message:
+        raise GitAdmissionError("Git audit could not read raw commit message")
+    return message
+
+
+def _is_ancestor(root: Path | str, ancestor: str, descendant: str) -> bool:
+    completed = subprocess.run(
+        ["git", "merge-base", "--is-ancestor", ancestor, descendant],
+        cwd=Path(root),
+        capture_output=True,
+        check=False,
+    )
+    if completed.returncode == 0:
+        return True
+    if completed.returncode == 1:
+        return False
+    detail = completed.stderr.decode("utf-8", errors="replace").strip()
+    raise GitAdmissionError(f"Git ancestry audit failed: {detail or 'merge-base'}")
+
+
+def _validate_pre_contract_migration_set(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, dict) or set(value) != {"schema_version", "migrations"}:
+        raise GitAdmissionError("pre-contract migration set fields do not match the contract")
+    if value["schema_version"] != PRE_CONTRACT_MIGRATION_SCHEMA_VERSION:
+        raise GitAdmissionError("unsupported pre-contract migration schema_version")
+    migrations = value["migrations"]
+    if not isinstance(migrations, list) or not migrations:
+        raise GitAdmissionError("pre-contract migrations must be a non-empty array")
+    expected = {
+        "migration_id",
+        "root_commit",
+        "root_tree",
+        "message_sha256",
+        "contract_introduction_commit",
+        "allowed_deviations",
+        "current_tree_admission_required",
+        "runtime_state_authority",
+    }
+    seen_ids: set[str] = set()
+    seen_roots: set[str] = set()
+    for migration in migrations:
+        if not isinstance(migration, dict) or set(migration) != expected:
+            raise GitAdmissionError("pre-contract migration fields do not match the contract")
+        migration_id = migration["migration_id"]
+        root_commit = migration["root_commit"]
+        if (
+            not isinstance(migration_id, str)
+            or not _MIGRATION_ID_RE.fullmatch(migration_id)
+            or migration_id in seen_ids
+        ):
+            raise GitAdmissionError("pre-contract migration_id must be unique and stable")
+        if (
+            not isinstance(root_commit, str)
+            or not _COMMIT_OBJECT_RE.fullmatch(root_commit)
+            or root_commit in seen_roots
+        ):
+            raise GitAdmissionError("pre-contract root_commit must be unique and immutable")
+        seen_ids.add(migration_id)
+        seen_roots.add(root_commit)
+        for field in ("root_tree", "contract_introduction_commit"):
+            if not isinstance(migration[field], str) or not _COMMIT_OBJECT_RE.fullmatch(
+                migration[field]
+            ):
+                raise GitAdmissionError(f"pre-contract {field} must be a Git object ID")
+        if not isinstance(migration["message_sha256"], str) or not _SHA256_RE.fullmatch(
+            migration["message_sha256"]
+        ):
+            raise GitAdmissionError("pre-contract message_sha256 must be lowercase SHA-256")
+        deviations = migration["allowed_deviations"]
+        if (
+            not isinstance(deviations, list)
+            or not deviations
+            or len(deviations) != len(set(deviations))
+            or deviations
+            != [item for item in _PRE_CONTRACT_DEVIATION_ORDER if item in deviations]
+        ):
+            raise GitAdmissionError(
+                "pre-contract allowed_deviations must be unique and canonical"
+            )
+        if migration["current_tree_admission_required"] is not True:
+            raise GitAdmissionError("pre-contract current tree admission must be required")
+        if migration["runtime_state_authority"] is not False:
+            raise GitAdmissionError("pre-contract migration cannot grant state authority")
+    return migrations
+
+
+def _pre_contract_deviations(subject: str, body: str) -> list[str]:
+    subject = _require_text(subject, "commit subject")
+    body = _require_text(body, "commit body")
+    if not _CONVENTIONAL_SUBJECT_RE.fullmatch(subject):
+        raise GitAdmissionError("pre-contract subject must use Conventional Commit syntax")
+    _reject_private_material(subject, "commit subject")
+    _reject_private_material(body, "commit body")
+
+    trailers: dict[str, str] = {}
+    for line in body.splitlines():
+        for field in _TRAILER_FIELDS:
+            prefix = f"{field}:"
+            if line.startswith(prefix):
+                trailers[field] = line.removeprefix(prefix).strip()
+    if set(trailers) != set(_TRAILER_FIELDS) or not all(trailers.values()):
+        raise GitAdmissionError("pre-contract root must retain all commit trailers")
+    if not trailers["Task"].startswith("M"):
+        raise GitAdmissionError("pre-contract root Task trailer is invalid")
+    if not trailers["State-Revision"].isdigit() or int(trailers["State-Revision"]) < 1:
+        raise GitAdmissionError("pre-contract root State-Revision trailer is invalid")
+
+    deviations: list[str] = []
+    if _field_value(body, "Why") is None:
+        trailer_prefixes = tuple(f"{field}:" for field in _TRAILER_FIELDS)
+        rationale = [
+            line.strip()
+            for line in body.splitlines()
+            if line.strip() and not line.startswith(trailer_prefixes)
+        ]
+        if not rationale:
+            raise GitAdmissionError("pre-contract root must retain a rationale paragraph")
+        deviations.append("missing-why-label")
+    evidence = trailers["Evidence"]
+    if not _ARTIFACT_REF_RE.fullmatch(evidence) and not evidence.startswith("docs/"):
+        deviations.append("legacy-evidence-syntax")
+    return deviations
+
+
+def _pre_contract_migration(
+    root: Path | str, root_commit: str, subject: str, body: str
+) -> dict[str, Any]:
+    profile_blob = _read_tree_blob(root, "HEAD", _PRE_CONTRACT_MIGRATION_PATH)
+    profile = _json_blob(profile_blob, "pre-contract migration set")
+    migrations = _validate_pre_contract_migration_set(profile)
+    matches = [item for item in migrations if item["root_commit"] == root_commit]
+    if len(matches) != 1:
+        raise GitAdmissionError("pre-contract migration does not bind the repository root")
+    migration = matches[0]
+
+    root_tree = _git(root, "rev-parse", f"{root_commit}^{{tree}}").decode(
+        "ascii", errors="strict"
+    ).strip()
+    if root_tree != migration["root_tree"]:
+        raise GitAdmissionError("pre-contract root tree does not match migration")
+    message_sha256 = hashlib.sha256(_raw_commit_message(root, root_commit)).hexdigest()
+    if message_sha256 != migration["message_sha256"]:
+        raise GitAdmissionError("pre-contract root message does not match migration")
+
+    contract_commit = migration["contract_introduction_commit"]
+    if (
+        contract_commit == root_commit
+        or not _is_ancestor(root, root_commit, contract_commit)
+        or not _is_ancestor(root, contract_commit, "HEAD")
+    ):
+        raise GitAdmissionError("pre-contract migration has invalid contract ancestry")
+    policy_change = _git(
+        root,
+        "diff-tree",
+        "--no-commit-id",
+        "--name-status",
+        "-r",
+        contract_commit,
+        "--",
+        "docs/policies/git-collaboration.md",
+    ).decode("utf-8", errors="replace").strip()
+    if policy_change != "A\tdocs/policies/git-collaboration.md":
+        raise GitAdmissionError(
+            "pre-contract migration does not bind the contract introduction"
+        )
+
+    detected = _pre_contract_deviations(subject, body)
+    if detected != migration["allowed_deviations"]:
+        raise GitAdmissionError("pre-contract deviations do not match migration")
+    return migration
+
+
 def audit_regular_merge(root: Path | str, merge_commit: str) -> dict[str, Any]:
     """Return a receipt only for a two-parent regular merge commit."""
     parents = _git(root, "rev-list", "--parents", "-n", "1", merge_commit).decode(
@@ -469,7 +659,13 @@ def audit_first_commit(root: Path | str) -> dict[str, Any]:
         raise GitAdmissionError("first-commit audit requires exactly one root commit")
     root_commit = roots[0]
     subject, body = _commit_message(root, root_commit)
-    _validate_commit(subject, body)
+    migration: dict[str, Any] | None = None
+    try:
+        _validate_commit(subject, body)
+    except GitAdmissionError:
+        if _PRE_CONTRACT_MIGRATION_PATH not in _tree_paths(root, "HEAD"):
+            raise
+        migration = _pre_contract_migration(root, root_commit, subject, body)
     root_paths = _tree_paths(root, root_commit)
     root_blobs = {
         path: _read_tree_blob(root, root_commit, path) for path in root_paths
@@ -480,12 +676,30 @@ def audit_first_commit(root: Path | str) -> dict[str, Any]:
     author_name, separator, author_email = author.partition(b"\0")
     if not separator or not author_name.strip() or not author_email.strip():
         raise GitAdmissionError("first-commit audit requires author name and email")
-    return {
+    receipt = {
         "schema_version": RECEIPT_SCHEMA_VERSION,
         "admission_kind": "first-commit",
         "root_commit": root_commit,
         "commit_count_before_root": 0,
         "author_name": author_name.decode("utf-8", errors="replace"),
         "author_email": author_email.decode("utf-8", errors="replace"),
+        "runtime_state_authority": False,
+    }
+    if migration is None:
+        return receipt
+    return {
+        "schema_version": PRE_CONTRACT_RECEIPT_SCHEMA_VERSION,
+        "admission_kind": "first-commit-pre-contract",
+        "root_commit": root_commit,
+        "root_tree": migration["root_tree"],
+        "message_sha256": migration["message_sha256"],
+        "commit_count_before_root": 0,
+        "author_name": receipt["author_name"],
+        "author_email": receipt["author_email"],
+        "contract_mode": "pre-contract-migration",
+        "migration_ref": migration["migration_id"],
+        "contract_introduction_commit": migration["contract_introduction_commit"],
+        "allowed_deviations": migration["allowed_deviations"],
+        "root_tree_admission": "passed",
         "runtime_state_authority": False,
     }
