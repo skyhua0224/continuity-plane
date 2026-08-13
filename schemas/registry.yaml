@@ -86,6 +86,26 @@ schemas:
     compatibility_mode: strict-versioned
     migrations: []
 
+  - schema_id: context.layered-skill-load
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.layered-skill-load/v1alpha1
+    supported_wire_versions: [context.layered-skill-load/v1alpha1]
+    artifact_path: schemas/m4-04/layered-skill-load.schema.json
+    content_sha256: a7e840bad03efdfd38c5cc54891fc14dc59e6e3a0fc3f3e2476e8cdbb8b6c970
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.layered-skill-load-plan
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.layered-skill-load-plan/v1alpha1
+    supported_wire_versions: [context.layered-skill-load-plan/v1alpha1]
+    artifact_path: schemas/m4-04/layered-skill-load-plan.schema.json
+    content_sha256: ebaa6b091ab885bab13cd1b702c2f4d8cce99863e4a55081f272476497982020
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
   - schema_id: context.reference-catalog
     current_semver: 1.0.0-alpha.1
     current_wire_version: context.reference-catalog/v1alpha1
@@ -121,7 +141,7 @@ schemas:
     current_wire_version: context.dogfood-observation/v1alpha1
     supported_wire_versions: [context.dogfood-observation/v1alpha1]
     artifact_path: experiments/dogfood/observations-2026-08-09.yaml
-    content_sha256: 28002b3927a03ffdbc6a2472868aba630c5fa590c4e90a067b820bbfe0be7c9b
+    content_sha256: 5c18a2c0061a1507de2810e625b6d2ba014a26dc5ab835f32ca38aae89c4f42a
     status: current
     compatibility_mode: profile-contract
     migrations: []

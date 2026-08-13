@@ -1,10 +1,10 @@
 schema_version: context.dogfood-observation/v1alpha1
-generated_at: "2026-08-11T12:01:20+08:00"
+generated_at: "2026-08-11T13:54:47+08:00"
 status: baseline
 measurement_limitations:
   - provider token accounting was unavailable for this resumed segment
   - restore wall-clock and p95 were not emitted by a State MCP or OTel trace
-  - twenty-five visible compactions still did not expose comparable provider context-window usage, input/cache tokens, or restore latency
+  - twenty-seven visible compactions still did not expose comparable provider context-window usage, input/cache tokens, or restore latency
   - delivery lead time currently uses Git activation and merge timestamps; active, blocked, and rework wall time are not yet emitted by State MCP or OTel
 
 observations:
@@ -2861,3 +2861,214 @@ observations:
       e4_negative_variants_total: 33
       e4_negative_variants_intercepted: 33
       e4_interception_percent: 100.0
+
+  - observation_id: dogfood-compaction-028
+    event_type: compaction
+    observed_at: "2026-08-11T13:40:44+08:00"
+    authority: structured-handoff-current-worktree-and-targeted-reproduction
+    active_leaf_before: M4-04
+    active_leaf_after: M4-04
+    metrics:
+      critical_fields_total: 8
+      critical_fields_recovered: 8
+      stale_decisions_revived: 0
+      unauthorized_task_switches: 0
+      comparable_context_input_bytes: null
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      restore_latency_ms: null
+      provider_compaction_signal_available: true
+      continuation_fields_total: 4
+      continuation_fields_recovered: 4
+      already_acknowledged_items_replayed: 0
+      first_post_restore_action_matched: true
+    evidence:
+      - handoff worktree, branch, active M4-04 leaf, uncommitted files and pending version-governance review matched current repository evidence
+      - first corrective action restored the immutable M4-02 wire contract and moved layer binding into a versioned M4-04 plan
+      - prior user questions and completed M4-01 through M4-03 work were not replayed
+
+  - observation_id: dogfood-skill-load-032
+    event_type: skill-load
+    observed_at: "2026-08-11T13:40:44+08:00"
+    authority: active-m4-04-handoff-implementation-and-documentation
+    active_leaf_before: M4-04
+    active_leaf_after: M4-04
+    metrics:
+      body_load_count: 3
+      total_body_bytes: 27216
+      repeated_body_load_bytes: 27216
+      skills:
+        - skill_id: session-memory-hygiene
+          content_sha256: e7814b9010db3d5dd83d978f93d80515cee2f5388761f5fb20f7a406fdc856f0
+          body_bytes: 1361
+          body_lines: 34
+          reason: structured handoff and current-evidence continuation audit
+        - skill_id: test-driven-development
+          content_sha256: 7dee67b4af6bdccc7a914ca34533184d64592d0f5b23aeae631538168db14994
+          body_bytes: 9867
+          body_lines: 371
+          reason: M4-04 plan authority, provenance and dogfood red-green corrections
+        - skill_id: human-first-writing
+          content_sha256: 0f3754759a185b43e6932864703cca58543a8ef58ed80a57469f680f0eaf5832
+          body_bytes: 15988
+          body_lines: 427
+          reason: active response and acceptance documentation contract
+
+  - observation_id: dogfood-input-routing-025
+    event_type: input-routing
+    observed_at: "2026-08-11T13:40:44+08:00"
+    authority: explicit-user-autonomous-continuation-request
+    active_leaf_before: M4-04
+    active_leaf_after: M4-04
+    input_kind: interrupt
+    route: continue
+    candidate_id: continuation-m4-04-effect-readiness-001
+    candidate_summary: "Continue the active M4-04 acceptance from the handoff checkpoint until a meaningful provider-effect test is ready."
+    candidate_summary_sha256: 0200102dc842cf71448e4f922352bab2b2385a33a59aa67623acba3f0a9080bf
+    metrics:
+      messages_observed: 1
+      ideas_captured: 0
+      unauthorized_task_switches: 0
+      return_point_preserved: true
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      provider_compaction_signal_available: true
+      tool_interruption_observed: false
+
+  - observation_id: dogfood-plan-revision-028
+    event_type: plan-revision
+    observed_at: "2026-08-11T13:40:44+08:00"
+    authority: m4-04-loader-proxy-completion-gates-and-next-ready-selector
+    authorized: true
+    active_leaf_before: M4-04
+    active_leaf_after: M4-05
+    metrics:
+      master_revision_before: 31
+      master_revision_after: 32
+      unauthorized_goal_changes: 0
+      project_mission_changed: false
+      return_point_preserved: true
+      tasks_completed: [M4-04]
+      tasks_activated: [M4-05]
+
+  - observation_id: dogfood-verification-028
+    event_type: verification
+    observed_at: "2026-08-11T13:40:44+08:00"
+    authority: m4-04-tests-schemas-authorized-plan-benchmark-and-repository-gates
+    active_leaf_before: M4-04
+    active_leaf_after: M4-05
+    evidence_refs:
+      - unittest:m4-04-plan-loader-benchmark-35-2026-08-11
+      - unittest:m4-01-through-m4-04-combined-111-2026-08-11
+      - unittest:discover-tests-510-one-failure-2026-08-11
+      - check:compile-verifier-diff-receipt-2026-08-11
+      - metric:m4-04-composition-body-25600-to-5120-bytes
+      - metric:m4-04-loader-p95-under-10ms-2026-08-11
+    metrics:
+      tests_run: 510
+      tests_failed: 1
+      checks_failed: 0
+      scope_violations: 0
+      available_skill_content_bytes: 25600
+      selected_skill_content_bytes: 5120
+      composition_body_bytes_reduction_percent: 80.0
+
+  - observation_id: dogfood-compaction-029
+    event_type: compaction
+    observed_at: "2026-08-11T13:47:50+08:00"
+    authority: post-compaction-current-evidence-and-provider-adapter-cursor
+    active_leaf_before: M4-05
+    active_leaf_after: M4-05
+    metrics:
+      critical_fields_total: 8
+      critical_fields_recovered: 8
+      stale_decisions_revived: 0
+      unauthorized_task_switches: 0
+      comparable_context_input_bytes: null
+      context_window_used_tokens: null
+      context_window_limit_tokens: null
+      restore_latency_ms: null
+      provider_compaction_signal_available: true
+      continuation_fields_total: 4
+      continuation_fields_recovered: 4
+      already_acknowledged_items_replayed: 0
+      first_post_restore_action_matched: true
+    evidence:
+      - structured handoff matched the current worktree, branch, M4-05 active leaf and the single stale revision assertion
+      - first corrective action added a red continuation test for the provider-adapter cursor; M4-04 implementation was not replayed
+      - provider token, context-window and comparable input-byte telemetry were unavailable, so no compaction or cost improvement is claimed
+
+  - observation_id: dogfood-skill-load-033
+    event_type: skill-load
+    observed_at: "2026-08-11T13:47:50+08:00"
+    authority: active-m4-05-continuation-audit-and-branch-delivery-contract
+    active_leaf_before: M4-05
+    active_leaf_after: M4-05
+    metrics:
+      body_load_count: 6
+      total_body_bytes: 55218
+      repeated_body_load_bytes: 55218
+      skills:
+        - skill_id: session-memory-hygiene
+          content_sha256: e7814b9010db3d5dd83d978f93d80515cee2f5388761f5fb20f7a406fdc856f0
+          body_bytes: 1361
+          body_lines: 34
+          reason: post-compaction current-evidence and stale-memory audit
+        - skill_id: human-first-writing
+          content_sha256: 0f3754759a185b43e6932864703cca58543a8ef58ed80a57469f680f0eaf5832
+          body_bytes: 15988
+          body_lines: 427
+          reason: active response and governance-documentation contract
+        - skill_id: test-driven-development
+          content_sha256: 7dee67b4af6bdccc7a914ca34533184d64592d0f5b23aeae631538168db14994
+          body_bytes: 9867
+          body_lines: 371
+          reason: provider-adapter replay implementation and regression coverage
+        - skill_id: finishing-a-development-branch
+          content_sha256: dd2f82c6dc8582b621f9eb57fcb65f557f88eadf872727ac81d0840ae12c504e
+          body_bytes: 4250
+          body_lines: 200
+          reason: M4-04 delivery and repository integration contract
+        - skill_id: using-git-worktrees
+          content_sha256: de9dcde34840eee074047ec327d4ea6ca4954c5a73a6d874dc48f25fe46c9e7c
+          body_bytes: 5635
+          body_lines: 218
+          reason: isolated M4-05 branch and worktree continuation
+        - skill_id: git
+          content_sha256: c13013bb735a6ca5e13596c126136bffa18fdba6d573dc781e0e3978ebb24b17
+          body_bytes: 18117
+          body_lines: 386
+          reason: commit and pull-request delivery contract
+
+  - observation_id: dogfood-verification-029
+    event_type: verification
+    observed_at: "2026-08-11T13:54:47+08:00"
+    authority: repository-test-environment-evidence
+    active_leaf_before: M4-05
+    active_leaf_after: M4-05
+    evidence_refs:
+      - unittest:system-python-discover-287-eleven-import-errors-2026-08-11
+      - environment:python-3.14-missing-project-dev-dependencies-2026-08-11
+      - policy:project-venv-required-by-continuous-integration
+    metrics:
+      tests_run: 287
+      tests_failed: 11
+      checks_failed: 0
+      scope_violations: 0
+
+  - observation_id: dogfood-verification-030
+    event_type: verification
+    observed_at: "2026-08-11T13:56:57+08:00"
+    authority: project-venv-repository-gates
+    active_leaf_before: M4-05
+    active_leaf_after: M4-05
+    evidence_refs:
+      - unittest:venv-discover-tests-511-2026-08-11
+      - check:venv-python-compileall-2026-08-11
+      - check:repository-verifier-2026-08-11
+      - check:git-diff-check-2026-08-11
+    metrics:
+      tests_run: 511
+      tests_failed: 0
+      checks_failed: 0
+      scope_violations: 0
