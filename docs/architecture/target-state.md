@@ -3,7 +3,7 @@
 版本：1  
 日期：2026-08-09  
 状态：current architecture contract  
-governance authority：`MASTER.md` revision 35
+governance authority：`MASTER.md` revision 36
 
 ## 三文档默认投影
 
@@ -29,7 +29,7 @@ Context Control Plane 安装到个人项目、协作项目或公开大型项目�
 | `context.forge-coordination` | `forge-work-adapter` | 将 Issue、PR、branch、assignee、review 和 CI 映射为共享 Work/claim/evidence projection；声明离线与未发布工作的保证缺口 | GitHub / Gitea / GitLab adapters | M8 |
 | `context.task-routing` | `sticky-task-router` | 识别 continue、child、interrupt、switch、correction、discussion 和 blocking decision；选择 next-ready required leaf；副作用受 active/claim/path-owner 一致性门控制 | deterministic rules + bounded classifier | M3 |
 | `context.workflow` | `durable-execution` | checkpoint、重试、幂等、lease、unattended required-work loop、multi-Agent fan-out/fan-in 和长流程恢复 | DBOS；Temporal 按需启用 | M8 |
-| `context.skill-resolution` | `versioned-skill-registry` | Skill manifest、五类 source catalog、固定 source/license/provenance、approval/verification evidence、stable rule IDs、dependency-closed compiled packet、drift quarantine、packet-bound S0-S3 load plan、selected manifest digest、exact provider applicability/contract、active-task compatibility lock、live input/adapter surface 重算、evidence-verified replay/rollback migration、gated composition entrypoint、host-owned authorization adapter 和 deterministic loader | Git + selected StateStore metadata | M4 |
+| `context.skill-resolution` | `versioned-skill-registry` | Skill manifest、五类 source catalog、M4-01 manifest schema reuse、64 KiB preflight/canonical input、16,384 Unicode scalar/64 KiB UTF-8 content 与 128 KiB output bounded Project/User proposal、strict SemVer/ID/timestamp gate、set-like input canonicalization、Verification Profile license policy、expected-time-bound replay verifier、candidate-only body asset、固定 source/license/provenance、approval/verification evidence、stable rule IDs、dependency-closed compiled packet、drift quarantine、packet-bound S0-S3 load plan、selected manifest digest、exact provider applicability/contract、active-task compatibility lock、live input/adapter surface 重算、evidence-verified replay/rollback migration、gated composition entrypoint、host-owned authorization adapter 和 deterministic loader | Git + selected StateStore metadata | M4 |
 | `context.composition` | `execution-packet-composer` | 组装当前任务、当前 Skill、当前 evidence 与 Continuation Cursor 的有界执行包 | State MCP + artifact store | M5 |
 | `context.replay` | `checkpoint-canary-validator` | 压缩、切任务、换模型、崩溃后的确定性恢复门 | deterministic validator | M1/M5 |
 | `context.evidence` | `assertion-resolver` | 当前代码、标准、OS/软件官方文档的 version、validity 和 provenance | Git metadata、artifact store、`rg`、LSP、SCIP、RTFM | M6/M7 |
