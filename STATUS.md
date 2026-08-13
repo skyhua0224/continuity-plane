@@ -1,6 +1,6 @@
 # Context Control Plane Status
 
-版本：revision 34  
+版本：revision 35  
 日期：2026-08-11  
 canonical plan：`MASTER.md`
 
@@ -9,8 +9,8 @@ canonical plan：`MASTER.md`
 | 字段 | 值 |
 |---|---|
 | 当前 Campaign | M4 Skill 控制面 |
-| active work | M4-07：Built-in、External、Project、User、Workflow Skill catalog（🟡） |
-| next action | 建立五类 catalog entry 的失败测试，固定 source/license/provenance、activation/quarantine 与 M4-06 compatibility lock 关联 |
+| active work | M4-08：项目初始化与用户习惯 Skill proposal（🟡） |
+| next action | 为仓库、Verification Profile 和显式偏好建立可重现 proposal 输入与未经批准不得 active 的失败测试 |
 | hard blocker | active leaf 无；M3-01 仍等待 M2-09 的 Windows/macOS 原生 live fixture |
 | repository mode | research / shadow pilot |
 | production state | local-embedded implemented / shadow pilot；shared production pilot planned |
@@ -37,6 +37,7 @@ canonical plan：`MASTER.md`
 | M4-04 layered Skill loading | `context.layered-skill-load-plan/v1alpha1` 与 load receipt strict schema、host-owned authorizer、M4-03 allow gate、bytes-only deterministic loader 和 canonical fixture 通过；35/35 定向测试；固定 corpus S0+S2 从 25,600 降至 5,120 composition bytes（80% proxy）；40 样本 loader p95 `<10 ms`；provider token/真实压缩未宣称；验收见 `docs/migrations/m4-04-layered-skill-loading-acceptance-2026-08-11.md` |
 | M4-05 provider Skill adapter | `context.provider-skill-adapter-effect/v1alpha1` 与 probe strict schema、Codex/Claude 独立 materializer 和官方 Skill filesystem surface 通过；24/24 定向测试；40 组 byte-distinct compositions 产生 80/80 validated effects 与 240 次 compose；neutral mismatch `0/40`、provider replay mismatch `0/80`、state-write declaration `0/80`；Codex p95 `0.7937 ms`、Claude p95 `0.7750 ms`；High 0/Medium 0；provider process/token/cache/规则遵循/真实压缩未测；验收见 `docs/migrations/m4-05-provider-skill-adapter-acceptance-2026-08-11.md` |
 | M4-06 Skill compatibility | lock/decision/migration/probe strict schema、selected manifest digest、exact provider applicability/contract-to-surface binding、live input/adapter identity 重算、evidence verifier、canonical replay/rollback、gated composition entrypoint 和 40 样本 fault matrix 通过；unselected metadata `8/8 compatible`，selected identity/provider contract `32/32 migration_required`，unauthorized gated composition `0/32`，synthetic verifier-authorized migration `4/4`，missing verifier/evidence/wrong binding allowed `0/4`，replay/rollback mismatch `0/4`，assessment p95 `0.8320 ms`；M4-05 materializer 与 provider process/network/State commit 均无外部副作用；验收见 `docs/migrations/m4-06-skill-compatibility-acceptance-2026-08-11.md` |
+| M4-07 Skill catalog | `context.skill-catalog/v1alpha1` strict schema、registry hash、manifest/source/license/provenance/approval/verification/permission binding、五类来源 `5/5` 合法 entry、18/18 admission/quarantine 负变体、candidate projection、canonical manifest digest 的 M4-06 exact identity binding `1/1`、manifest metadata/content/status drift rejection 和 canonical fixture `1/1` 通过；18/18 定向测试；固定 fixture 200 次 validator p50 `0.0107 ms`、p95 `0.0140 ms`、max `0.1231 ms`；验收见 `docs/migrations/m4-07-skill-catalog-acceptance-2026-08-11.md` |
 | M2-04 artifact store | 20/20 定向测试；streamed SHA-256、atomic publication、并发去重、bounded range、损坏/symlink typed error 和 64 MiB benchmark 输入门通过；1 MiB 到 8 KiB context output bytes 下降 `99.2188%`；全库 303 tests、27 PostgreSQL skips；独立审查 High 0、Medium 0 |
 | M2-05 State MCP | 26/26 contract/auth tests；默认拒绝、trusted actor、revision/CAS、validator、concurrent request idempotency、strict receipt、PostgreSQL busy normalization、claim/effect provenance、malformed intent 和 torn-read detection 通过；四工具 SQLite/PostgreSQL live parity 1/1；验收见 `docs/migrations/m2-05-state-mcp-acceptance-2026-08-10.md` |
 | M2-06 checkpoint canary | 9/9 contract tests、8/8 benchmark/receipt tests；snapshot/manifest 双层 CAS、18 字段 deterministic restore、missing/tampered/stale/unknown/oversized fail-closed 和 SQLite 零服务链路通过；原 40 样本 receipt 字节保持不变，current provenance 复验使用独立 receipt；验收见 `docs/migrations/m2-06-checkpoint-canary-acceptance-2026-08-10.md` |
@@ -58,8 +59,8 @@ canonical plan：`MASTER.md`
 | Reference catalog | 22 个候选来源；Codex/Claude harness 与 Yundi339 Docmost fork 均固定 URL、revision/tree hash、validity、refresh trigger 和 adoption status；active adoption 0 |
 | Project dogfood baseline | 27 次 compaction 的结构字段恢复 100%，Continuation Cursor 累计恢复 78/80；首动作不匹配和已确认事项重播累计各 2 次，后续未新增，整体趋势仍为 regressed；25 次 input routing 无未授权切换；92 个 Skill body 共 942,873 bytes，其中重复 763,452 bytes；provider context/token/latency 不可见 |
 | Autonomous progression | required/conditional/optional、bounded escalation、next-ready selector、unattended dispatcher 与 multi-Agent claim/lease/handoff 验收合同进入 revision 21；runtime 实现待 M2-M8；当前 provider-host multi-Agent 只计 shadow evidence |
-| Repository verification | 558 tests 通过；28 个无 DSN PostgreSQL live tests skipped；repository verifier、Python compile、diff check 与 M4-06 changed Python files Ruff 通过；fixture privacy、documentation link/style、transcript admission 和 Gitea secret-scan checks 保持提交门 |
-| Governance authority | `MASTER.md` revision 34 |
+| Repository verification | 576 tests 通过；28 个无 DSN PostgreSQL live tests skipped；repository verifier、Python compile、diff check 与 changed Python files Ruff 通过；fixture privacy、documentation link/style、transcript admission 和 Gitea secret-scan checks 保持提交门 |
+| Governance authority | `MASTER.md` revision 35 |
 | Operational router | `STATUS.md` |
 
 ## 恢复入口
@@ -81,7 +82,7 @@ canonical plan：`MASTER.md`
 | Historical memory | handoff、project memory 和聊天摘要保持 candidate 状态 |
 | Idea intake | 默认 capture-and-continue；明确 interrupt 先 checkpoint；未批准 Idea 不改变 active state |
 | Fixture admission | sanitizer、provenance、current-evidence verification 和 independent validator 全部通过后开放 |
-| External Skill activation | 需固定 revision/hash、license/provenance、权限检查、审批和 replay；当前 active 0 |
+| External Skill activation | 需固定 revision/hash、license/provenance、权限检查、审批和 replay；外部 active 0；M4-07 catalog validator 已通过离线 admission/quarantine |
 | Reference adoption | 发现器只写 candidate/stale signal；承重 assertion 必须 current provenance 与 validator |
 | Platform boundary | Context Control Plane 通过外部 Project Profile 与 API 集成 |
 | Repository topology | modular、monolith、mixed 使用同一 core；Foundation Sunshine 当前按 monolith Profile 协作，模块边界不构成准入条件 |
