@@ -1,0 +1,166 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m4-06/skill-compatibility-probe.schema.json",
+  "title": "Context Control Plane Skill Compatibility Probe Receipt",
+  "$comment": "Runtime validation recomputes classification, provider-call, migration, rollback, latency, acceptance and provenance summaries.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "observed_at", "provenance", "environment", "workload", "measurement", "acceptance", "authority_boundary", "limitations", "generation"],
+  "properties": {
+    "schema_version": {"const": "context.skill-compatibility-probe/v1alpha1"},
+    "observed_at": {"type": "string", "format": "date-time", "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d+)?(?:Z|[+-]\\d{2}:\\d{2})$"},
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implementation_sha256", "probe_sha256", "runner_sha256", "probe_schema_sha256", "lock_schema_sha256", "decision_schema_sha256", "migration_schema_sha256", "manifest_fixture_sha256", "compiled_packet_implementation_sha256", "manifest_validator_implementation_sha256", "provider_adapter_implementation_sha256", "compatibility_test_sha256", "probe_test_sha256", "lock_registry_entry_sha256", "decision_registry_entry_sha256", "migration_registry_entry_sha256", "probe_registry_entry_sha256"],
+      "properties": {
+        "implementation_sha256": {"$ref": "#/$defs/sha256"},
+        "probe_sha256": {"$ref": "#/$defs/sha256"},
+        "runner_sha256": {"$ref": "#/$defs/sha256"},
+        "probe_schema_sha256": {"$ref": "#/$defs/sha256"},
+        "lock_schema_sha256": {"$ref": "#/$defs/sha256"},
+        "decision_schema_sha256": {"$ref": "#/$defs/sha256"},
+        "migration_schema_sha256": {"$ref": "#/$defs/sha256"},
+        "manifest_fixture_sha256": {"$ref": "#/$defs/sha256"},
+        "compiled_packet_implementation_sha256": {"$ref": "#/$defs/sha256"},
+        "manifest_validator_implementation_sha256": {"$ref": "#/$defs/sha256"},
+        "provider_adapter_implementation_sha256": {"$ref": "#/$defs/sha256"},
+        "compatibility_test_sha256": {"$ref": "#/$defs/sha256"},
+        "probe_test_sha256": {"$ref": "#/$defs/sha256"},
+        "lock_registry_entry_sha256": {"$ref": "#/$defs/sha256"},
+        "decision_registry_entry_sha256": {"$ref": "#/$defs/sha256"},
+        "migration_registry_entry_sha256": {"$ref": "#/$defs/sha256"},
+        "probe_registry_entry_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["python_version", "python_implementation", "platform", "machine", "external_services"],
+      "properties": {
+        "python_version": {"$ref": "#/$defs/nonempty"},
+        "python_implementation": {"$ref": "#/$defs/nonempty"},
+        "platform": {"$ref": "#/$defs/nonempty"},
+        "machine": {"$ref": "#/$defs/nonempty"},
+        "external_services": {"const": 0}
+      }
+    },
+    "workload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fixture", "samples", "change_kinds", "samples_per_change_kind"],
+      "properties": {
+        "fixture": {"const": "m4-06-active-task-skill-change-matrix"},
+        "samples": {"const": 40},
+        "change_kinds": {"const": ["unselected-metadata", "selected-version", "selected-content", "selected-rules", "provider-contract"]},
+        "samples_per_change_kind": {"const": 8}
+      }
+    },
+    "measurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["samples", "compatible_samples", "breaking_samples", "classification_counts", "unauthorized_deliveries", "blocked_provider_compose_calls", "compatible_provider_compose_calls", "evidence_missing_migrations_allowed", "valid_migrations_allowed", "migration_replay_mismatches", "rollback_mismatches", "wrong_binding_migrations_allowed", "latency_samples_ms", "assessment_p50_ms", "assessment_p95_ms", "assessment_max_ms", "assessment_p95_limit_ms", "results", "migration_results"],
+      "properties": {
+        "samples": {"const": 40},
+        "compatible_samples": {"const": 8},
+        "breaking_samples": {"const": 32},
+        "classification_counts": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["unchanged", "compatible", "migration_required", "rejected"],
+          "properties": {"unchanged": {"const": 0}, "compatible": {"const": 8}, "migration_required": {"const": 32}, "rejected": {"const": 0}}
+        },
+        "unauthorized_deliveries": {"const": 0},
+        "blocked_provider_compose_calls": {"const": 0},
+        "compatible_provider_compose_calls": {"const": 8},
+        "evidence_missing_migrations_allowed": {"const": 0},
+        "valid_migrations_allowed": {"const": 4},
+        "migration_replay_mismatches": {"const": 0},
+        "rollback_mismatches": {"const": 0},
+        "wrong_binding_migrations_allowed": {"const": 0},
+        "latency_samples_ms": {"type": "array", "minItems": 40, "maxItems": 40, "items": {"type": "number", "minimum": 0}},
+        "assessment_p50_ms": {"type": "number", "minimum": 0},
+        "assessment_p95_ms": {"type": "number", "minimum": 0, "exclusiveMaximum": 10},
+        "assessment_max_ms": {"type": "number", "minimum": 0},
+        "assessment_p95_limit_ms": {"const": 10.0},
+        "results": {"type": "array", "minItems": 40, "maxItems": 40, "items": {"$ref": "#/$defs/result"}},
+        "migration_results": {"type": "array", "minItems": 4, "maxItems": 4, "items": {"$ref": "#/$defs/migration_result"}}
+      }
+    },
+    "acceptance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["forty_sample_gate_passed", "classification_gate_passed", "unauthorized_delivery_gate_passed", "pre_provider_gate_passed", "migration_evidence_gate_passed", "migration_replay_gate_passed", "rollback_gate_passed", "task_binding_gate_passed", "assessment_p95_gate_passed", "zero_external_services_gate_passed"],
+      "properties": {
+        "forty_sample_gate_passed": {"const": true},
+        "classification_gate_passed": {"const": true},
+        "unauthorized_delivery_gate_passed": {"const": true},
+        "pre_provider_gate_passed": {"const": true},
+        "migration_evidence_gate_passed": {"const": true},
+        "migration_replay_gate_passed": {"const": true},
+        "rollback_gate_passed": {"const": true},
+        "task_binding_gate_passed": {"const": true},
+        "assessment_p95_gate_passed": {"const": true},
+        "zero_external_services_gate_passed": {"const": true}
+      }
+    },
+    "authority_boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["local_compatibility_gate_measured", "synthetic_skill_sources", "provider_adapter_test_double", "synthetic_evidence_verifier", "provider_process_invoked", "provider_network_invoked", "state_commit_invoked", "state_write_authority"],
+      "properties": {
+        "local_compatibility_gate_measured": {"const": true},
+        "synthetic_skill_sources": {"const": true},
+        "provider_adapter_test_double": {"const": true},
+        "synthetic_evidence_verifier": {"const": true},
+        "provider_process_invoked": {"const": false},
+        "provider_network_invoked": {"const": false},
+        "state_commit_invoked": {"const": false},
+        "state_write_authority": {"const": false}
+      }
+    },
+    "limitations": {"const": ["This probe measures the local compatibility gate, not a provider process.", "M5 and M8 must bind this gate to checkpoint restore and authoritative task state."]},
+    "generation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["command", "arguments", "writes_runtime_state_to_repository"],
+      "properties": {
+        "command": {"const": "tools/run_skill_compatibility_probe.py"},
+        "arguments": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+        "writes_runtime_state_to_repository": {"const": false}
+      }
+    }
+  },
+  "$defs": {
+    "nonempty": {"type": "string", "minLength": 1, "maxLength": 1024},
+    "sha256": {"type": "string", "minLength": 64, "maxLength": 64, "pattern": "^[0-9a-f]{64}$"},
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scenario_id", "change_kind", "classification", "delivery_allowed_without_migration", "provider_compose_calls", "blocked", "decision_sha256"],
+      "properties": {
+        "scenario_id": {"type": "string", "pattern": "^m4-06-[0-9]{2}$"},
+        "change_kind": {"enum": ["unselected-metadata", "selected-version", "selected-content", "selected-rules", "provider-contract"]},
+        "classification": {"enum": ["unchanged", "compatible", "migration_required", "rejected"]},
+        "delivery_allowed_without_migration": {"type": "boolean"},
+        "provider_compose_calls": {"type": "integer", "minimum": 0, "maximum": 1},
+        "blocked": {"type": "boolean"},
+        "decision_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "migration_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["change_kind", "migration_allowed", "missing_evidence_allowed", "replay_match", "rollback_match", "wrong_binding_allowed", "migration_sha256"],
+      "properties": {
+        "change_kind": {"enum": ["selected-version", "selected-content", "selected-rules", "provider-contract"]},
+        "migration_allowed": {"const": true},
+        "missing_evidence_allowed": {"const": false},
+        "replay_match": {"const": true},
+        "rollback_match": {"const": true},
+        "wrong_binding_allowed": {"const": false},
+        "migration_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

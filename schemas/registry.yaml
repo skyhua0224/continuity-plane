@@ -126,6 +126,46 @@ schemas:
     compatibility_mode: strict-versioned
     migrations: []
 
+  - schema_id: context.skill-compatibility-lock
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.skill-compatibility-lock/v1alpha1
+    supported_wire_versions: [context.skill-compatibility-lock/v1alpha1]
+    artifact_path: schemas/m4-06/skill-compatibility-lock.schema.json
+    content_sha256: 31f27020405cf88956c84e6ea3927057b4040db516b6858cbcfdcab36153d841
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.skill-compatibility-decision
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.skill-compatibility-decision/v1alpha1
+    supported_wire_versions: [context.skill-compatibility-decision/v1alpha1]
+    artifact_path: schemas/m4-06/skill-compatibility-decision.schema.json
+    content_sha256: 1286bd3353558cce63f1bfcac4ff1929f91cf233259e60746ad54455edc9a94d
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.skill-compatibility-migration
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.skill-compatibility-migration/v1alpha1
+    supported_wire_versions: [context.skill-compatibility-migration/v1alpha1]
+    artifact_path: schemas/m4-06/skill-compatibility-migration.schema.json
+    content_sha256: 889ff8ce064e36d15538d6f072c263681d74b9f3be218600803cfad930f66b39
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.skill-compatibility-probe
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.skill-compatibility-probe/v1alpha1
+    supported_wire_versions: [context.skill-compatibility-probe/v1alpha1]
+    artifact_path: schemas/m4-06/skill-compatibility-probe.schema.json
+    content_sha256: 4c5088c90d1520aa8553f126c21e602d0e528479ccb2e65742cd9a43970fadb3
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
   - schema_id: context.reference-catalog
     current_semver: 1.0.0-alpha.1
     current_wire_version: context.reference-catalog/v1alpha1

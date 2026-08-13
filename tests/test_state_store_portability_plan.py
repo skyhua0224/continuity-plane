@@ -125,6 +125,12 @@ class StateStorePortabilityPlanTests(unittest.TestCase):
             / "migrations"
             / "m4-05-provider-skill-adapter-acceptance-2026-08-11.md"
         )
+        compatibility_acceptance_path = (
+            self.root
+            / "docs"
+            / "migrations"
+            / "m4-06-skill-compatibility-acceptance-2026-08-11.md"
+        )
         m204 = next(line for line in self.master.splitlines() if "| M2-04 |" in line)
         m205 = next(line for line in self.master.splitlines() if "| M2-05 |" in line)
         m208 = next(line for line in self.master.splitlines() if "| M2-08 |" in line)
@@ -135,6 +141,7 @@ class StateStorePortabilityPlanTests(unittest.TestCase):
         self.assertTrue(artifact_acceptance_path.exists())
         self.assertTrue(skill_acceptance_path.exists())
         self.assertTrue(provider_adapter_acceptance_path.exists())
+        self.assertTrue(compatibility_acceptance_path.exists())
         spi_acceptance = spi_acceptance_path.read_text(encoding="utf-8")
         sqlite_acceptance = sqlite_acceptance_path.read_text(encoding="utf-8")
         artifact_acceptance = artifact_acceptance_path.read_text(encoding="utf-8")
@@ -153,8 +160,8 @@ class StateStorePortabilityPlanTests(unittest.TestCase):
         provider_adapter_acceptance = provider_adapter_acceptance_path.read_text(
             encoding="utf-8"
         )
-        self.assertIn("版本：revision 33", self.master)
-        self.assertIn("版本：revision 33", self.status)
+        self.assertIn("版本：revision 34", self.master)
+        self.assertIn("版本：revision 34", self.status)
         self.assertIn("| M2-05 | ✅ |", self.master)
         self.assertIn("| M2-06 | ✅ |", self.master)
         self.assertIn("| M2-07 | ✅ |", self.master)
@@ -163,12 +170,17 @@ class StateStorePortabilityPlanTests(unittest.TestCase):
         self.assertIn("| M4-03 | ✅ |", self.master)
         self.assertIn("| M4-04 | ✅ |", self.master)
         self.assertIn("| M4-05 | ✅ |", self.master)
-        self.assertIn("active work | M4-06", self.status)
+        self.assertIn("| M4-06 | ✅ |", self.master)
+        self.assertIn("active work | M4-07", self.status)
         self.assertIn("24/24", provider_adapter_acceptance)
         self.assertIn("80/80", provider_adapter_acceptance)
         self.assertIn("240", provider_adapter_acceptance)
         self.assertIn("provider_process_invoked: false", provider_adapter_acceptance)
-        self.assertIn("governance authority：`MASTER.md` revision 33", self.target_state)
+        compatibility_acceptance = compatibility_acceptance_path.read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("unauthorized gated composition `0/32`", compatibility_acceptance)
+        self.assertIn("governance authority：`MASTER.md` revision 34", self.target_state)
 
 
 if __name__ == "__main__":
