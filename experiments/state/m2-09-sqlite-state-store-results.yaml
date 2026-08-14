@@ -1,7 +1,7 @@
 schema_version: context.sqlite-state-store-results/v1alpha1
-observed_at: '2026-08-10T04:08:35+08:00'
+observed_at: '2026-08-14T00:00:00+08:00'
 provenance:
-  implementation_sha256: 44a9649ff1ae49dab2694deb548855751afb7fa766df5f9b67ee85ea95d45eb5
+  implementation_sha256: 3524100f02e54d2be1c9d7081203f453c56a8af17ddf6654c122673238d38ca5
   benchmark_sha256: 8764425ee2e628fc0e5d3aadf676a27aaa45fd6fc88cec24c2824ad7568079bf
   runner_sha256: 3c627e540fa833e9681a04c4edc1ec8d2eb0e4b995c0255a266383a13a59b8ce
   fixture_sha256: 9be7887519cfed4466436ea6714d48e399d7023281729b3bd8c78cb3a086beab
@@ -20,13 +20,13 @@ environment:
   external_services: 0
 latency_ms:
   samples: 40
-  commit_p50: 0.55
-  commit_p95: 0.65
-  commit_max: 0.7949
-  read_p50: 0.2404
-  read_p95: 0.2678
-  read_max: 0.2906
-  state_only_restore_p95: 0.2678
+  commit_p50: 0.539
+  commit_p95: 0.5667
+  commit_max: 0.5809
+  read_p50: 0.2286
+  read_p95: 0.2411
+  read_max: 0.2428
+  state_only_restore_p95: 0.2411
 footprint_bytes:
   database: 274432
   wal: 0
@@ -37,22 +37,22 @@ stream_scaling:
   initial_revision: 14
   final_revision: 1014
   latency_ms:
-    commit_p50: 18.4738
-    commit_p95: 34.9701
-    commit_max: 50.1664
-    total_commit: 18735.9483
-    total_wall: 19539.0875
-    final_restore: 21.7868
+    commit_p50: 17.1326
+    commit_p95: 32.9307
+    commit_max: 47.8408
+    total_commit: 17388.2758
+    total_wall: 18130.5695
+    final_restore: 21.4215
   milestones:
     '1':
-      last_commit_ms: 0.5541
-      cumulative_commit_ms: 0.5541
+      last_commit_ms: 0.5437
+      cumulative_commit_ms: 0.5437
     '100':
-      last_commit_ms: 5.1818
-      cumulative_commit_ms: 248.0145
+      last_commit_ms: 3.8828
+      cumulative_commit_ms: 225.0605
     '1000':
-      last_commit_ms: 36.1012
-      cumulative_commit_ms: 18735.9483
+      last_commit_ms: 35.8281
+      cumulative_commit_ms: 17388.2758
   footprint_bytes:
     database: 2932736
 live_platform_gates:
@@ -72,8 +72,8 @@ comparison_to_postgresql:
   same_fixture: true
   same_samples: true
   postgres_samples: 40
-  commit_p95_reduction_percent: 97.0481
-  read_p95_reduction_percent: 97.8973
+  commit_p95_reduction_percent: 97.4264
+  read_p95_reduction_percent: 98.1069
 limitations:
 - Results describe one host and do not predict other devices.
 - Native platform gates require one receipt from each operating system.
@@ -100,14 +100,14 @@ references:
   content_sha256: e00709e3f37e95332d8e6df243510665e9cab1d7938d4fd85cbf5f47648a50bf
 generation:
   command: .venv/bin/python tools/run_sqlite_benchmark.py --samples 40 --stream-events
-    1000 --observed-at 2026-08-10T04:08:35+08:00 --output experiments/state/m2-09-sqlite-state-store-results.yaml
+    1000 --observed-at 2026-08-14T00:00:00+08:00 --output experiments/state/m2-09-sqlite-state-store-results.yaml
   arguments:
   - --samples
   - '40'
   - --stream-events
   - '1000'
   - --observed-at
-  - '2026-08-10T04:08:35+08:00'
+  - '2026-08-14T00:00:00+08:00'
   - --output
   - experiments/state/m2-09-sqlite-state-store-results.yaml
   writes_runtime_state_to_repository: false

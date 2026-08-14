@@ -113,8 +113,9 @@ class M202StateEventTests(unittest.TestCase):
         )
         schema = json.loads((self.root / entry["artifact_path"]).read_text(encoding="utf-8"))
 
-        self.assertEqual(entry["current_wire_version"], "context.state-event/v2alpha1")
+        self.assertEqual(entry["current_wire_version"], "context.state-event/v3alpha1")
         self.assertIn("context.state-event/v1alpha1", entry["supported_wire_versions"])
+        self.assertIn("context.state-event/v2alpha1", entry["supported_wire_versions"])
         self.assertEqual(schema["properties"]["schema_version"]["const"], entry["current_wire_version"])
         self.assertFalse(schema["additionalProperties"])
         self.assertFalse(schema["$defs"]["change"]["additionalProperties"])

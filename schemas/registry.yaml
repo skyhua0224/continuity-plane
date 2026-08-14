@@ -222,16 +222,21 @@ schemas:
         rollback_ref: docs/migrations/m3-01-task-graph-acceptance-2026-08-14.md#rollback
 
   - schema_id: context.state-event
-    current_semver: 2.0.0-alpha.1
-    current_wire_version: context.state-event/v2alpha1
-    supported_wire_versions: [context.state-event/v1alpha1, context.state-event/v2alpha1]
-    artifact_path: schemas/m3-01/state-event-v2alpha1.schema.json
-    content_sha256: 8181cbfc55cf0dd327c719b537f776ae4d336f1831011b64ecb017d673e6de46
+    current_semver: 3.0.0-alpha.1
+    current_wire_version: context.state-event/v3alpha1
+    supported_wire_versions: [context.state-event/v1alpha1, context.state-event/v2alpha1, context.state-event/v3alpha1]
+    artifact_path: schemas/m3-03/state-event-v3alpha1.schema.json
+    content_sha256: d89b2081d84786b387f9e82ababc56b429608e6324a56518e16914b70d5a4dea
     status: current
     compatibility_mode: strict-versioned
     migrations:
       - from: context.state-event/v1alpha1
-        to: context.state-event/v2alpha1
+        to: context.state-event/v3alpha1
+        replay_passed: true
+        idempotent: true
+        rollback_ref: docs/migrations/m3-01-task-graph-acceptance-2026-08-13.md#rollback
+      - from: context.state-event/v2alpha1
+        to: context.state-event/v3alpha1
         replay_passed: true
         idempotent: true
         rollback_ref: docs/migrations/m3-01-task-graph-acceptance-2026-08-14.md#rollback
@@ -392,6 +397,16 @@ schemas:
     supported_wire_versions: [context.task-route-decision/v1alpha1]
     artifact_path: schemas/m3-02/task-route-decision.schema.json
     content_sha256: 4a47cdf922fe12ad53e34997a124c8cd7513c2891a6eb46e1b5224f41490e250
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.task-route-apply-request
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.task-route-apply-request/v1alpha1
+    supported_wire_versions: [context.task-route-apply-request/v1alpha1]
+    artifact_path: schemas/m3-03/route-apply-request.schema.json
+    content_sha256: 6d46559950e504aa894d00c78927f3170750e422c3f2079dc09cd95c1759b103
     status: current
     compatibility_mode: strict-versioned
     migrations: []

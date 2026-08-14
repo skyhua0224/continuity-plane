@@ -252,26 +252,25 @@ class PostgresStateStore:
             if duplicate is not None:
                 raise PostgresStateConflict("event identity already exists")
 
-            known_event_ids: set[str] = set()
-            supersedes_event_id = event["supersedes_event_id"]
-            if supersedes_event_id is not None:
-                supersedes = connection.execute(
+            prior_events = None
+            if event["supersedes_event_id"] is not None:
+                prior_rows = connection.execute(
                     """
-                    SELECT event_id
+                    SELECT envelope
                     FROM context_control.state_events
-                    WHERE project_id = %s AND event_id = %s
+                    WHERE project_id = %s
+                    ORDER BY sequence_no
                     """,
-                    (project_id, supersedes_event_id),
-                ).fetchone()
-                if supersedes is not None:
-                    known_event_ids.add(supersedes["event_id"])
+                    (project_id,),
+                ).fetchall()
+                prior_events = [copy.deepcopy(item["envelope"]) for item in prior_rows]
             try:
                 restored = replay_state_events(
                     current_snapshot,
                     [event],
                     starting_sequence_no=expected_sequence,
                     previous_event_sha256=previous_event_sha256,
-                    known_event_ids=known_event_ids,
+                    prior_events=prior_events,
                 )
             except (StateEventError, TypedStateError) as exc:
                 raise PostgresStateIntegrityError("state Event replay failed") from exc

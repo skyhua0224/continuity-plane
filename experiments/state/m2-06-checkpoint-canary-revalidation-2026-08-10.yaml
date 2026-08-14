@@ -1,7 +1,7 @@
 schema_version: context.checkpoint-results/v1alpha1
-observed_at: '2026-08-10T07:24:11+08:00'
+observed_at: '2026-08-14T00:00:00+08:00'
 provenance:
-  implementation_sha256: 691a9d48e3463eef3180508a589cd4b534f54eaf705d675ba437a67e1c209fcf
+  implementation_sha256: 02c5e2f290124efa838373d014d4073bf28db2123b25504b101dd3aa4690dddc
   benchmark_sha256: 3120de8dc752f8a7a248ec25b7b8a21f5f8c218a3adcb246c378d1b0faa1c351
   runner_sha256: e36ca8d27e1e1a786dd1b15676637224c7c5b3b9a71bce50f08762eee81060a2
   fixture_sha256: 9be7887519cfed4466436ea6714d48e399d7023281729b3bd8c78cb3a086beab
@@ -25,9 +25,9 @@ measurement:
   checkpoint_ref:
     schema_version: context.artifact-ref/v1alpha1
     digest_algorithm: sha-256
-    digest: e78f431653a43a92b518a6568888cc4e6253026b4bbcac7e8864fc503655b31a
+    digest: 8c2ef28cd0d40aea693fcbab4bc9040a1afd29503ecfed3c5b8ec1718254f401
     size_bytes: 1137
-    artifact_uri: artifact://sha256/e78f431653a43a92b518a6568888cc4e6253026b4bbcac7e8864fc503655b31a
+    artifact_uri: artifact://sha256/8c2ef28cd0d40aea693fcbab4bc9040a1afd29503ecfed3c5b8ec1718254f401
   snapshot_ref:
     schema_version: context.artifact-ref/v1alpha1
     digest_algorithm: sha-256
@@ -35,8 +35,8 @@ measurement:
     size_bytes: 2583
     artifact_uri: artifact://sha256/677cc7eef6330e6f80f142884e3fe0b02acf2a35de741f85f787519ebaaed3dc
   restore_p50_ms: 0.191
-  restore_p95_ms: 0.2109
-  restore_max_ms: 0.216
+  restore_p95_ms: 0.2086
+  restore_max_ms: 0.2232
   restore_p95_limit_ms: 2000.0
   critical_fields_total: 18
   critical_fields_recovered: 18
@@ -69,12 +69,12 @@ limitations:
 - PreCompact, Execution Packet and the PostCompact write gate remain M5 work.
 generation:
   command: .venv/bin/python tools/run_checkpoint_benchmark.py --samples 40 --observed-at
-    2026-08-10T07:24:11+08:00 --output experiments/state/m2-06-checkpoint-canary-revalidation-2026-08-10.yaml
+    2026-08-14T00:00:00+08:00 --output experiments/state/m2-06-checkpoint-canary-revalidation-2026-08-10.yaml
   arguments:
   - --samples
   - '40'
   - --observed-at
-  - '2026-08-10T07:24:11+08:00'
+  - '2026-08-14T00:00:00+08:00'
   - --output
   - experiments/state/m2-06-checkpoint-canary-revalidation-2026-08-10.yaml
   writes_runtime_state_to_repository: false

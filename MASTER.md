@@ -1,6 +1,6 @@
 # Context Control Plane MASTER
 
-版本：revision 43  
+版本：revision 44  
 日期：2026-08-14  
 状态：研究与 shadow pilot 准备阶段  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
@@ -265,8 +265,8 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 |---|---|---|---|---|---|---|
 | M3-01 | 🧑‍💻 | 建立 Campaign/Goal/Work/Experiment DAG | 分支、阻塞、回流可计算 | 将发散与停滞转化为可检测状态 | M2-08/M2-09 | strict graph、typed-state v2 migration、replay/rollback、无环、无孤儿、无无回流分支；26/26 定向测试与 1,000 节点 p95 4.0 ms 通过；M2-09 Windows/macOS native fixture 仍待补；验收见 `docs/migrations/m3-01-task-graph-acceptance-2026-08-14.md` |
 | M3-02 | 🧑‍💻 | sticky task router | 默认保持当前 active leaf | 保持压缩前后任务一致 | M3-01 | 16/16 定向测试、route replay、1,000 决策有界性通过；验收见 `docs/migrations/m3-02-sticky-router-acceptance-2026-08-14.md` |
-| M3-03 | 🟡 | continue/child/interrupt/switch/correction 事件 | 切换可审计、可恢复 | 以信号和事件驱动任务切换 | M3-02 | return point 恢复 100% |
-| M3-04 | ⏳ | active/claim/scope-owner 副作用门 | repo/path/symbol/capability/effect binding 冲突时授予只读权限 | 将副作用绑定至权威任务 | M3-03 | 误切写入/提交/部署为 0；第二个未协调 claim/effect 为 0 |
+| M3-03 | 🧑‍💻 | continue/child/interrupt/switch/correction 事件 | 切换可审计、可恢复 | 以信号和事件驱动任务切换 | M3-02 | 27/27 定向测试、return frame、route replay、SQLite CAS 通过；PostgreSQL live parity 待补；验收见 `docs/migrations/m3-03-route-events-acceptance-2026-08-14.md` |
+| M3-04 | 🟡 | active/claim/scope-owner 副作用门 | repo/path/symbol/capability/effect binding 冲突时授予只读权限 | 将副作用绑定至权威任务 | M3-03 | 误切写入/提交/部署为 0；第二个未协调 claim/effect 为 0 |
 | M3-05 | ⏳ | attempt budget、expiry、promotion gate | 实验按预算和期限运行 | 实验发现有序回流 MASTER | M3-01 | 无预算分支和未授权 promotion 为 0 |
 | M3-06 | ⏳ | Idea candidate、parking、capture-and-continue 与 switch proposal | 新想法不污染当前 active leaf | 保留价值并控制上下文切换 | M3-03/M3-05 | Idea 有 parent/return point/expiry；未授权 Idea 不改变 active state |
 | M3-07 | ⏳ | Idea relationship、dedupe、correction、urgency 与 impact review | 重复或跨域想法形成有界候选队列 | 支持持续输入并避免 prompt/主线污染 | M3-06/M6-02 | 去重确定；correction 写保护；expired/parked Idea 不进入执行权限 |

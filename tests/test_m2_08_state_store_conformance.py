@@ -178,7 +178,9 @@ class _MemoryStateStore:
                 [event],
                 starting_sequence_no=sequence,
                 previous_event_sha256=previous_hash,
-                known_event_ids={item["event_id"] for item in existing},
+                prior_events=(
+                    existing if event["supersedes_event_id"] is not None else None
+                ),
             )
         except (StateEventError, TypedStateError) as exc:
             raise StateStoreIntegrityError("state Event replay failed") from exc

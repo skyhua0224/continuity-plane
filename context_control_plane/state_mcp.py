@@ -490,7 +490,7 @@ class StateMCPService:
             raise ValueError("clock and event_id_factory must be callable")
         self._store = store
         self._authorizer = authorizer or _DenyAllAuthorizer()
-        self._registry_digest = registry_digest
+        self._registry_hash_value = registry_digest
         self._clock = clock
         self._event_id_factory = event_id_factory
         self._request_receipts: dict[
@@ -675,7 +675,7 @@ class StateMCPService:
                 "snapshot": snapshot,
                 "revision": snapshot["project"]["revision"],
                 "event_head": event_head,
-                "registry_digest": self._registry_digest,
+                "registry_digest": self._registry_hash_value,
                 "capabilities": capability_manifest_to_document(self._manifest),
             },
         )
@@ -840,7 +840,9 @@ class StateMCPService:
                 [event],
                 starting_sequence_no=sequence_no,
                 previous_event_sha256=previous_hash,
-                known_event_ids={item["event_id"] for item in events},
+                prior_events=(
+                    events if event["supersedes_event_id"] is not None else None
+                ),
             )
             invoke_state_store(
                 self._store,
@@ -875,7 +877,7 @@ class StateMCPService:
                     "event_sha256": event["event_sha256"],
                 },
                 "event": event,
-                "registry_digest": self._registry_digest,
+                "registry_digest": self._registry_hash_value,
                 "capabilities": capability_manifest_to_document(self._manifest),
             },
         )
@@ -1000,7 +1002,9 @@ class StateMCPService:
                 [event],
                 starting_sequence_no=sequence_no,
                 previous_event_sha256=previous_hash,
-                known_event_ids={item["event_id"] for item in events},
+                prior_events=(
+                    events if event["supersedes_event_id"] is not None else None
+                ),
             )
             invoke_state_store(
                 self._store,
@@ -1035,7 +1039,7 @@ class StateMCPService:
                     "event_sha256": event["event_sha256"],
                 },
                 "event": event,
-                "registry_digest": self._registry_digest,
+                "registry_digest": self._registry_hash_value,
                 "capabilities": capability_manifest_to_document(self._manifest),
             },
         )
@@ -1109,7 +1113,9 @@ class StateMCPService:
                 [event],
                 starting_sequence_no=sequence_no,
                 previous_event_sha256=previous_hash,
-                known_event_ids={item["event_id"] for item in events},
+                prior_events=(
+                    events if event["supersedes_event_id"] is not None else None
+                ),
             )
             invoke_state_store(
                 self._store,
@@ -1152,7 +1158,7 @@ class StateMCPService:
                     "event_sha256": event["event_sha256"],
                 },
                 "event": event,
-                "registry_digest": self._registry_digest,
+                "registry_digest": self._registry_hash_value,
                 "capabilities": capability_manifest_to_document(self._manifest),
             },
         )
