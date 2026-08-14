@@ -207,11 +207,11 @@ schemas:
     migrations: []
 
   - schema_id: context.typed-state
-    current_semver: 3.0.0-alpha.1
-    current_wire_version: context.typed-state/v3alpha1
-    supported_wire_versions: [context.typed-state/v1alpha1, context.typed-state/v2alpha1, context.typed-state/v3alpha1]
-    artifact_path: schemas/m3-05/typed-state-v3alpha1.schema.json
-    content_sha256: 533626c3c5451fbb0009620e2bc857498fd4321f3b1c65023a193438a1fa9c86
+    current_semver: 4.0.0-alpha.1
+    current_wire_version: context.typed-state/v4alpha1
+    supported_wire_versions: [context.typed-state/v1alpha1, context.typed-state/v2alpha1, context.typed-state/v3alpha1, context.typed-state/v4alpha1]
+    artifact_path: schemas/m3-07/typed-state-v4alpha1.schema.json
+    content_sha256: 4b4917ed4c18e6298224cd92accde48e5af7d4c5ab98cd0cf9bf68c85e209f8a
     status: current
     compatibility_mode: strict-versioned
     migrations:
@@ -225,6 +225,11 @@ schemas:
         replay_passed: true
         idempotent: true
         rollback_ref: docs/migrations/m3-05-experiment-lifecycle-acceptance-2026-08-14.md#rollback
+      - from: context.typed-state/v3alpha1
+        to: context.typed-state/v4alpha1
+        replay_passed: true
+        idempotent: true
+        rollback_ref: docs/migrations/m3-07-idea-review-acceptance-2026-08-14.md#rollback
 
   - schema_id: context.state-event
     current_semver: 4.0.0-alpha.1
@@ -251,25 +256,35 @@ schemas:
         idempotent: true
         rollback_ref: docs/migrations/m3-05-experiment-lifecycle-acceptance-2026-08-14.md#rollback
 
-  - schema_id: context.idea-capture
-    current_semver: 1.0.0-alpha.1
-    current_wire_version: context.idea-capture-request/v1alpha1
-    supported_wire_versions: [context.idea-capture-request/v1alpha1]
-    artifact_path: schemas/m3-06/idea-capture.schema.json
-    content_sha256: 57ce195183a8534df1cb075c8d8f8a343545aeba31af30b64fc5bf01e1cf56ca
-    status: current
-    compatibility_mode: strict-versioned
-    migrations: []
-
   - schema_id: context.idea-event
-    current_semver: 1.0.0-alpha.1
-    current_wire_version: context.idea-event/v1alpha1
-    supported_wire_versions: [context.idea-event/v1alpha1]
-    artifact_path: schemas/m3-06/idea-event-v1alpha1.schema.json
-    content_sha256: 7207bf6406bc3827f9eb14b10ed41d1679aebe28802fc1e95c38d83f65ced3c7
+    current_semver: 2.0.0-alpha.1
+    current_wire_version: context.idea-event/v2alpha1
+    supported_wire_versions: [context.idea-event/v1alpha1, context.idea-event/v2alpha1]
+    artifact_path: schemas/m3-07/idea-event-v2alpha1.schema.json
+    content_sha256: f47ebc466c27af26e6c44407a105102337b3aa07ccc972178db56c869c0369d0
     status: current
     compatibility_mode: strict-versioned
-    migrations: []
+    migrations:
+      - from: context.idea-event/v1alpha1
+        to: context.idea-event/v2alpha1
+        replay_passed: true
+        idempotent: true
+        rollback_ref: docs/migrations/m3-07-idea-review-acceptance-2026-08-14.md#rollback
+
+  - schema_id: context.idea-capture
+    current_semver: 2.0.0-alpha.1
+    current_wire_version: context.idea-capture-request/v2alpha1
+    supported_wire_versions: [context.idea-capture-request/v1alpha1, context.idea-capture-request/v2alpha1]
+    artifact_path: schemas/m3-07/idea-capture-v2alpha1.schema.json
+    content_sha256: aa4533a0458172d520dc3acdae5f0da08f597e54fe6737a72308039a2a12c7b8
+    status: current
+    compatibility_mode: strict-versioned
+    migrations:
+      - from: context.idea-capture-request/v1alpha1
+        to: context.idea-capture-request/v2alpha1
+        replay_passed: true
+        idempotent: true
+        rollback_ref: docs/migrations/m3-07-idea-review-acceptance-2026-08-14.md#rollback
 
   - schema_id: context.idea-continuity-benchmark
     current_semver: 1.0.0-alpha.1
@@ -277,6 +292,56 @@ schemas:
     supported_wire_versions: [context.idea-continuity-benchmark/v1alpha1]
     artifact_path: schemas/m3-06/idea-continuity-benchmark.schema.json
     content_sha256: 8064674d0efcac479c2ef2f86d78d8b650b3a71875022a11ccf4956d8a410d33
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.typed-state-migration-receipt
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.typed-state-migration-receipt/v1alpha1
+    supported_wire_versions: [context.typed-state-migration-receipt/v1alpha1]
+    artifact_path: schemas/m3-07/typed-state-migration-receipt.schema.json
+    content_sha256: 17c672b358a4ee8653fddf7330f2da533a8de3b37a1a33c1a264fec391a07a54
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.idea-review
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.idea-review-request/v1alpha1
+    supported_wire_versions: [context.idea-review-request/v1alpha1]
+    artifact_path: schemas/m3-07/idea-review-request.schema.json
+    content_sha256: 798f863207a84d51c2961f27fe44628a9cbf07d00d3a14bada3c640ed3348788
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.idea-correction-protection
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.idea-correction-protection-request/v1alpha1
+    supported_wire_versions: [context.idea-correction-protection-request/v1alpha1]
+    artifact_path: schemas/m3-07/idea-correction-protection-request.schema.json
+    content_sha256: 49a488b75a8566e06e73af78d635f1e07ea8eb708317049ad316de6aad4fbf0b
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.idea-correction-release
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.idea-correction-release-request/v1alpha1
+    supported_wire_versions: [context.idea-correction-release-request/v1alpha1]
+    artifact_path: schemas/m3-07/idea-correction-release-request.schema.json
+    content_sha256: cd93ca90c8d2030b630a30211b2c394c38f3530e8b9636c6e128c0135de44244
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.idea-review-benchmark
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.idea-review-benchmark/v1alpha1
+    supported_wire_versions: [context.idea-review-benchmark/v1alpha1]
+    artifact_path: schemas/m3-07/idea-review-benchmark.schema.json
+    content_sha256: 18e614f9f2093519a422476cf40187ddfbe3327b73418fe251fac17c1cd4d3a3
     status: current
     compatibility_mode: strict-versioned
     migrations: []

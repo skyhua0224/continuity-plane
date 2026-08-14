@@ -1,6 +1,6 @@
 # Context Control Plane MASTER
 
-版本：revision 47  
+版本：revision 48  
 日期：2026-08-14  
 状态：研究与 shadow pilot 准备阶段  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
@@ -269,8 +269,8 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | M3-04 | 🧑‍💻 | active/claim/scope-owner 副作用门 | repo/path/symbol/capability/effect binding 冲突时授予只读权限 | 将副作用绑定至权威任务 | M3-03 | 23/23 定向测试、10,000 gate evaluations 和 pending-effect deny benchmark 通过；验收见 `docs/migrations/m3-04-effect-scope-gate-acceptance-2026-08-14.md` |
 | M3-05 | 🧑‍💻 | attempt budget、expiry、promotion gate | 实验按预算和期限运行 | 实验发现有序回流 MASTER | M3-01 | 27/27 定向测试、40/40 attempt→proposal→approval、3 Event/1 attempt/2 promotion 每样本通过；验收见 `docs/migrations/m3-05-experiment-lifecycle-acceptance-2026-08-14.md` |
 | M3-06 | ✅ | Idea candidate、parking、capture-and-continue 与 switch proposal | 新想法不污染当前 active leaf | 保留价值并控制上下文切换 | M3-03/M3-05 | 15/15 定向测试、40/40 zero-service capture、active execution authority mutation 0；验收见 `docs/migrations/m3-06-idea-continuity-acceptance-2026-08-14.md` |
-| M3-07 | 🟡 | Idea relationship、dedupe、correction、urgency 与 impact review | 重复或跨域想法形成有界候选队列 | 支持持续输入并避免 prompt/主线污染 | M3-06/M6-02 | 去重确定；correction 写保护；expired/parked Idea 不进入执行权限 |
-| M3-08 | ⏳ | 输入意图、blocking decision、next-ready selector 与 bounded escalation taxonomy | non-blocking input 保持 active leaf，只有可证明的阻塞需要询问或停止 | 防止短消息、Idea、状态问答和分析偏移重置主线 | M3-03/M3-06 | ready required leaf 未选择为 0；premature stop 为 0；无 typed blocker 的用户询问为 0；每次 ask/stop 具有 reason、evidence 和 resume condition |
+| M3-07 | ✅ | Idea relationship、dedupe、correction、urgency 与 impact review | 重复或跨域想法形成有界候选队列 | 支持持续输入并避免 prompt/主线污染 | M3-06/M6-02 | v3→v4 migration receipt、Idea v2 dedupe/occurrence、relationship cycle gate、review/protection/release；40/40 benchmark；dedupe/occurrence/packet `100%`，protected writes/terminal revival/unverified release `0`，p95 `14.210198 ms`；验收见 `docs/migrations/m3-07-idea-review-acceptance-2026-08-14.md` |
+| M3-08 | 🟡 | 输入意图、blocking decision、next-ready selector 与 bounded escalation taxonomy | non-blocking input 保持 active leaf，只有可证明的阻塞需要询问或停止 | 防止短消息、Idea、状态问答和分析偏移重置主线 | M3-03/M3-06/M3-07 | ready required leaf 未选择为 0；premature stop 为 0；无 typed blocker 的用户询问为 0；每次 ask/stop 具有 reason、evidence 和 resume condition |
 
 ## 7.5 M4 Skill 控制面
 

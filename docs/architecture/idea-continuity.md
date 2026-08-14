@@ -1,8 +1,8 @@
 # Idea Intake and Context Return Architecture
 
-版本：2  
-日期：2026-08-09  
-状态：architecture contract / M3-06 local-embedded implementation
+版本：3  
+日期：2026-08-14  
+状态：architecture contract / M3-07 local-embedded implementation
 
 ## 目标
 
@@ -56,6 +56,16 @@ capture 生成独立的 `context.idea-event/v1alpha1` Idea transition，并与 `
 
 `capture-and-continue` 写入 `candidate`，`park` 写入 `parked`，`propose-switch` 写入 `proposed` 与 target ref。三种动作均不激活 target、不释放当前 claim、不授权副作用，也不写 route transition。后续 task switch 必须经 M3-03 route apply、checkpoint、scope/claim gate 和 CAS。M3-06 未实现 dedupe、relationship、correction、urgency/impact review 或 Execution Packet exclusion；这些合同属于 M3-07 与 M5。
 
+## M3-07 实现边界
+
+M3-07 将 Typed State 升级为 `context.typed-state/v4alpha1`，通过原子 SQLite migration receipt 保存 v3 source revision、event head、snapshot hash 和 v4 target hash。Idea v2 capture 使用稳定 `dedupe_key`；相同 key 在重启和并发 CAS 下收敛为一个 canonical Idea，同时追加 immutable occurrence。`relationship` 只允许已存在 Idea 的有向关系，禁止自引用、重复边和环；relationship enrichment 仍是候选数据，不能授予执行权限。
+
+`context.idea.review` 只改变 Idea 的 review、urgency、impact 和状态。`parked`、`expired`、`rejected`、`superseded` Idea 不进入 packet，也不能被 review 重新打开。review、correction protect 和 correction release 都使用独立的 v2 Idea Event，严格验证精确 delta、actor、trusted time、CAS、request identity 和 hash-chain replay。
+
+`context.idea.correction.protect` 创建 active protection，冻结受影响 Work、parent/dependency 引用、canonical scope 和新 Effect；已有 pending Effect 只允许提交完成回执。`context.idea.correction.release` 是独立权限动作，只接受当前 Typed State 中 `validity=verified` 且具有 `verified_at` 的 evidence，并保留 opening provenance。release 采用项目级 expected revision/CAS；并发 release 只有一个胜者，另一请求显式 conflict。保护期间不能通过 generic commit、route apply 或 effect preflight 绕过门禁。
+
+M3-07 不改变 active Work、Claim、path ownership 或 effect authority；Idea review、dedupe、relationship 和 protection 只保留候选与纠偏状态。Task switch 仍必须经 M3-03 route apply；relationship 的权威影响分析保留给 M6-02，Execution Packet 组合与压缩恢复保留给 M5。
+
 ## 默认路由
 
 默认动作是 `capture-and-continue`：
@@ -102,5 +112,7 @@ State MCP profile 不可用时，`STATUS.md` 只记录 active work、blocker、n
 - blocking decision 的 reason、evidence、scope 和 resume condition 完整率为 100%；
 - task switch、compaction、model/provider change 和进程恢复后的 return point 为 100%；
 - 重复 Idea 合并结果确定，过期 Idea 不进入 Execution Packet；
+- 相同 dedupe key 的 Idea 在并发、重启和 stale CAS 下收敛为一个 canonical Idea，所有 occurrence 保留且可追溯；
+- correction protection 的受影响写入拦截率为 100%，pending Effect 完成回执不丢失，未验证 release 为 0，终态 Idea 复活为 0；
 - context return packet 恢复关键字段 100%，完整 Idea 正文复制率为 0；
 - 256/512 等容量不足 canary 保持 veto，token 降幅不能覆盖恢复失败。

@@ -1659,7 +1659,11 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
         }
         self.assertEqual(
             entries["context.typed-state"]["current_wire_version"],
+            "context.typed-state/v4alpha1",
+        )
+        self.assertIn(
             "context.typed-state/v3alpha1",
+            entries["context.typed-state"]["supported_wire_versions"],
         )
         self.assertEqual(
             entries["context.state-event"]["current_wire_version"],
@@ -1683,7 +1687,13 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
             )
             schemas[schema_id] = schema
 
-        Draft202012Validator(schemas["context.typed-state"]).validate(self.snapshot())
+        historical_typed_state = json.loads(
+            (root / "schemas/m3-05/typed-state-v3alpha1.schema.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        Draft202012Validator.check_schema(historical_typed_state)
+        Draft202012Validator(historical_typed_state).validate(self.snapshot())
         for object_name in (
             "project",
             "work",

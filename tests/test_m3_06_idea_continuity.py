@@ -485,11 +485,19 @@ class M306IdeaContinuityTests(unittest.TestCase):
         )
         self.assertEqual(
             entries["context.idea-event"]["current_wire_version"],
+            "context.idea-event/v2alpha1",
+        )
+        self.assertIn(
             "context.idea-event/v1alpha1",
+            entries["context.idea-event"]["supported_wire_versions"],
         )
         self.assertEqual(
             entries["context.idea-capture"]["current_wire_version"],
+            "context.idea-capture-request/v2alpha1",
+        )
+        self.assertIn(
             "context.idea-capture-request/v1alpha1",
+            entries["context.idea-capture"]["supported_wire_versions"],
         )
         schemas = {}
         for schema_id, entry in entries.items():
@@ -500,8 +508,18 @@ class M306IdeaContinuityTests(unittest.TestCase):
             schemas[schema_id] = json.loads(path.read_text(encoding="utf-8"))
             Draft202012Validator.check_schema(schemas[schema_id])
 
+        historical_capture = json.loads(
+            (root / "schemas/m3-06/idea-capture.schema.json").read_text(encoding="utf-8")
+        )
+        historical_idea_event = json.loads(
+            (root / "schemas/m3-06/idea-event-v1alpha1.schema.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        Draft202012Validator.check_schema(historical_capture)
+        Draft202012Validator.check_schema(historical_idea_event)
         request = self.make_request()
-        request_validator = Draft202012Validator(schemas["context.idea-capture"])
+        request_validator = Draft202012Validator(historical_capture)
         request_validator.validate(request)
         invalid_request = copy.deepcopy(request)
         invalid_request["source_ref"] = "opaque://full-body"
@@ -511,7 +529,7 @@ class M306IdeaContinuityTests(unittest.TestCase):
         response, _ = self._capture(request)
         event = response["result"]["event"]
         event_validator = Draft202012Validator(
-            schemas["context.idea-event"],
+            historical_idea_event,
             registry=Registry().with_resource(
                 "https://context-control-plane.dev/schema/context.typed-state/v3alpha1",
                 Resource.from_contents(

@@ -5,14 +5,16 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from .artifact_store import ArtifactRef, ArtifactStoreError
 from .checkpoint import CheckpointError, verify_historical_checkpoint
 from .effect_scope_gate import evaluate_claim_scope_gate
 from .experiment_lifecycle import evaluate_experiment_activation_gate
+from .idea_review import evaluate_correction_write_gate
 from .state_events import (
-    StateEventError,
+    EVENT_SCHEMA_VERSION_V4,
     build_state_event,
     replay_state_events,
 )
@@ -28,8 +30,7 @@ from .sticky_router import (
     _validate_decision,
     canonical_route_decision_bytes,
 )
-from .typed_state import TypedStateError, canonical_state_bytes, validate_typed_state
-
+from .typed_state import canonical_state_bytes
 
 REQUEST_SCHEMA_VERSION = "context.task-route-apply-request/v1alpha1"
 _REQUEST_FIELDS = {
@@ -130,6 +131,16 @@ def _validate_request(request: Any) -> dict[str, Any]:
             object_id = change.get("object_id")
             if not isinstance(collection, str) or not isinstance(object_id, str):
                 continue
+            if collection in {
+                "ideas",
+                "idea_relationships",
+                "idea_occurrences",
+                "idea_reviews",
+                "correction_protections",
+            }:
+                raise RouteApplyError(
+                    "Idea corrections require a dedicated Idea transition"
+                )
             key = (collection, object_id)
             if key in seen_correction_keys:
                 raise RouteApplyError("duplicate correction object change")
@@ -278,6 +289,11 @@ def _commit_route_event(store: Any, *, project_id: str, current: dict[str, Any],
         changes=changes,
         project_after=candidate["project"],
         task_transition=transition,
+        schema_version=(
+            EVENT_SCHEMA_VERSION_V4
+            if current.get("schema_version") == "context.typed-state/v4alpha1"
+            else None
+        ),
     )
     expected = replay_state_events(
         current,
@@ -405,7 +421,6 @@ def apply_route(
         changes.append({"collection": "works", "object_id": child["work_id"], "value": copy.deepcopy(child)})
         transition = {"route_decision_sha256": proposal_hash, "route_apply_request_sha256": request_hash, "route_kind": "child", "task_events": [{"task_event_id": f"task-{request['request_id']}", "event_kind": "child_proposed", "work_id": child["work_id"], "work_revision": child["revision"], "return_work_id": active["work_id"], "checkpoint_ref": None, "related_event_id": None}]}
         status = "applied"
-        return_frame = {"return_work_id": active["work_id"], "return_work_revision": active["revision"], "old_project_revision": current["project"]["revision"], "proposal_sha256": proposal_hash}
     elif request["operation"] in {"interrupt", "switch"}:
         if request["checkpoint_ref"] is None or request["checkpoint_binding"] is None:
             raise RouteApplyError("checkpoint binding is required before activation")
@@ -486,7 +501,7 @@ def apply_route(
         old_claim["status"] = "released"
         old_claim["released_at"] = now
         target_claim_id = "claim-route-" + hashlib.sha256(
-            f"{request['project_id']}:{request['request_id']}".encode("utf-8")
+            f"{request['project_id']}:{request['request_id']}".encode()
         ).hexdigest()
         if any(claim["claim_id"] == target_claim_id for claim in candidate["claims"]):
             raise RouteApplyError("derived target Claim identity already exists")
@@ -509,7 +524,6 @@ def apply_route(
         candidate["project"]["primary_work_id"] = target["work_id"]
         transition = {"route_decision_sha256": proposal_hash, "route_apply_request_sha256": request_hash, "route_kind": request["operation"], "task_events": [{"task_event_id": f"task-suspended-{request['request_id']}", "event_kind": "task_suspended", "work_id": old_work["work_id"], "work_revision": active["revision"], "return_work_id": old_work["work_id"], "checkpoint_ref": request["checkpoint_ref"], "related_event_id": None}, {"task_event_id": f"task-activated-{request['request_id']}", "event_kind": "task_activated", "work_id": target["work_id"], "work_revision": target["revision"], "return_work_id": None, "checkpoint_ref": None, "related_event_id": f"task-suspended-{request['request_id']}"}]}
         status = "applied"
-        return_frame = {"checkpoint_ref": copy.deepcopy(request["checkpoint_ref"]), "old_project_revision": current["project"]["revision"], "old_work_id": active["work_id"], "old_work_revision": active["revision"], "return_work_id": active["work_id"], "return_work_revision": active["revision"], "current_work_id": target["work_id"], "proposal_sha256": proposal_hash}
     else:
         if not request["supersedes_event_id"] or not request["correction_changes"]:
             raise RouteApplyError("correction requires supersedes_event_id and changes")
@@ -567,7 +581,11 @@ def apply_route(
             )
             changes.append(copy.deepcopy(change))
         status = "applied"
-        return_frame = {"old_project_revision": current["project"]["revision"], "proposal_sha256": proposal_hash}
+
+    if current.get("schema_version") == "context.typed-state/v4alpha1":
+        correction_gate = evaluate_correction_write_gate(current, changes)
+        if correction_gate["decision"] != "allow":
+            raise RouteApplyError("route write denied by active correction protection")
 
     candidate["project"]["revision"] = revision_after
     candidate["project"]["updated_at"] = now

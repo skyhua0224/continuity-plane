@@ -30,9 +30,10 @@ class M201TypedStateTests(unittest.TestCase):
         )
         schema = json.loads((self.root / entry["artifact_path"]).read_text(encoding="utf-8"))
 
-        self.assertEqual(entry["current_wire_version"], "context.typed-state/v3alpha1")
+        self.assertEqual(entry["current_wire_version"], "context.typed-state/v4alpha1")
         self.assertIn("context.typed-state/v1alpha1", entry["supported_wire_versions"])
         self.assertIn("context.typed-state/v2alpha1", entry["supported_wire_versions"])
+        self.assertIn("context.typed-state/v3alpha1", entry["supported_wire_versions"])
         self.assertEqual(schema["properties"]["schema_version"]["const"], entry["current_wire_version"])
         self.assertFalse(schema["additionalProperties"])
         for object_name in (

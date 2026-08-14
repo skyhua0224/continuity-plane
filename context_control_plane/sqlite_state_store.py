@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import re
 import sqlite3
 from contextlib import contextmanager
 from functools import lru_cache
@@ -21,10 +22,11 @@ from .state_store import (
     StateStoreNotFound,
 )
 from .typed_state import TypedStateError, canonical_state_bytes, validate_typed_state
+from .idea_review import validate_typed_state_v3_to_v4_migration_receipt
 
 
 SQLITE_APPLICATION_ID = 0x43435031
-SQLITE_SCHEMA_VERSION = 1
+SQLITE_SCHEMA_VERSION = 2
 
 
 class SQLiteStateStoreError(StateStoreError):
@@ -83,7 +85,7 @@ def _json_object(value: str, *, field: str) -> dict[str, Any]:
     return decoded
 
 
-_INITIAL_SCHEMA = """
+_INITIAL_SCHEMA_V1 = """
 CREATE TABLE projects (
     project_id TEXT PRIMARY KEY,
     revision INTEGER NOT NULL CHECK (revision >= 0),
@@ -129,6 +131,38 @@ BEGIN
 END;
 """
 
+_MIGRATION_SCHEMA_V2 = """
+CREATE TABLE typed_state_migrations (
+    project_id TEXT NOT NULL,
+    migration_id TEXT NOT NULL,
+    source_revision INTEGER NOT NULL CHECK (source_revision >= 0),
+    source_event_head_sha256 TEXT,
+    source_snapshot_sha256 TEXT NOT NULL,
+    target_snapshot_sha256 TEXT NOT NULL,
+    from_schema_version TEXT NOT NULL,
+    to_schema_version TEXT NOT NULL,
+    receipt TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (project_id, migration_id),
+    UNIQUE (project_id, from_schema_version, to_schema_version),
+    FOREIGN KEY (project_id) REFERENCES projects(project_id)
+) STRICT;
+
+CREATE TRIGGER typed_state_migrations_no_update
+BEFORE UPDATE ON typed_state_migrations
+BEGIN
+    SELECT RAISE(ABORT, 'typed_state_migrations are append-only');
+END;
+
+CREATE TRIGGER typed_state_migrations_no_delete
+BEFORE DELETE ON typed_state_migrations
+BEGIN
+    SELECT RAISE(ABORT, 'typed_state_migrations are append-only');
+END;
+"""
+
+_INITIAL_SCHEMA = _INITIAL_SCHEMA_V1 + "\n" + _MIGRATION_SCHEMA_V2
+
 def _schema_signature(
     connection: sqlite3.Connection,
 ) -> frozenset[tuple[str, str, str]]:
@@ -146,6 +180,16 @@ def _expected_schema_signature() -> frozenset[tuple[str, str, str]]:
     connection = sqlite3.connect(":memory:", isolation_level=None)
     try:
         connection.executescript(_INITIAL_SCHEMA)
+        return _schema_signature(connection)
+    finally:
+        connection.close()
+
+
+@lru_cache(maxsize=1)
+def _expected_schema_signature_v1() -> frozenset[tuple[str, str, str]]:
+    connection = sqlite3.connect(":memory:", isolation_level=None)
+    try:
+        connection.executescript(_INITIAL_SCHEMA_V1)
         return _schema_signature(connection)
     finally:
         connection.close()
@@ -335,6 +379,28 @@ class SQLiteStateStore:
                     _validate_schema_objects(connection)
                     _validate_database_integrity(connection)
                     return
+
+                if schema_version == 1:
+                    if application_id != SQLITE_APPLICATION_ID:
+                        raise SQLiteStateStoreError("database application_id is missing")
+                    if _schema_signature(connection) != _expected_schema_signature_v1():
+                        raise SQLiteStateIntegrityError(
+                            "SQLite v1 schema objects are missing or invalid"
+                        )
+                    try:
+                        connection.executescript(
+                            "BEGIN IMMEDIATE;\n"
+                            + _MIGRATION_SCHEMA_V2
+                            + f"\nPRAGMA user_version = {SQLITE_SCHEMA_VERSION};"
+                            + "\nCOMMIT;"
+                        )
+                        _validate_schema_objects(connection)
+                        _validate_database_integrity(connection)
+                        return
+                    except BaseException:
+                        if connection.in_transaction:
+                            connection.execute("ROLLBACK")
+                        raise
 
                 if _schema_signature(connection):
                     raise SQLiteStateStoreError(
@@ -597,6 +663,179 @@ class SQLiteStateStore:
                 connection.execute("COMMIT")
                 if self._fault_hook is not None:
                     self._fault_hook("after_commit")
+            except BaseException:
+                if connection.in_transaction:
+                    connection.execute("ROLLBACK")
+                raise
+
+    def read_migration_receipt(
+        self, project_id: str, migration_id: str
+    ) -> dict[str, Any] | None:
+        """Return one immutable typed-state migration receipt when present."""
+        with self._connect() as connection:
+            row = connection.execute(
+                """
+                SELECT source_revision, source_event_head_sha256,
+                       source_snapshot_sha256, target_snapshot_sha256,
+                       from_schema_version, to_schema_version, receipt
+                FROM typed_state_migrations
+                WHERE project_id = ? AND migration_id = ?
+                """,
+                (project_id, migration_id),
+            ).fetchone()
+            if row is None:
+                return None
+            receipt = _json_object(row[6], field="migration receipt")
+            durable = (
+                receipt.get("source_revision"),
+                receipt.get("source_event_head_sha256"),
+                receipt.get("source_snapshot_sha256"),
+                receipt.get("target_snapshot_sha256"),
+                receipt.get("from_schema_version"),
+                receipt.get("to_schema_version"),
+            )
+            if durable != row[:6]:
+                raise SQLiteStateIntegrityError(
+                    "persisted migration receipt column/envelope mismatch"
+                )
+            return receipt
+
+    def migrate_project(
+        self,
+        *,
+        project_id: str,
+        expected_revision: int,
+        expected_event_head_sha256: str | None,
+        target_snapshot: dict[str, Any],
+        migration_receipt: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Atomically advance a stored snapshot across a versioned schema boundary."""
+        target_snapshot = copy.deepcopy(target_snapshot)
+        migration_receipt = copy.deepcopy(migration_receipt)
+        _validate_snapshot(target_snapshot)
+        if target_snapshot["project"]["project_id"] != project_id:
+            raise SQLiteStateIntegrityError("migration target project_id mismatch")
+        if target_snapshot["project"]["revision"] != expected_revision:
+            raise SQLiteStateIntegrityError("migration target revision mismatch")
+        if not isinstance(expected_event_head_sha256, (str, type(None))):
+            raise SQLiteStateIntegrityError("migration event head is invalid")
+        if (
+            isinstance(expected_event_head_sha256, str)
+            and not re.fullmatch(r"[0-9a-f]{64}", expected_event_head_sha256)
+        ):
+            raise SQLiteStateIntegrityError("migration event head is invalid")
+
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            try:
+                existing = connection.execute(
+                    """
+                    SELECT receipt FROM typed_state_migrations
+                    WHERE project_id = ? AND migration_id = ?
+                    """,
+                    (project_id, migration_receipt.get("migration_id")),
+                ).fetchone()
+                if existing is not None:
+                    persisted = _json_object(existing[0], field="migration receipt")
+                    if persisted != migration_receipt:
+                        raise SQLiteStateConflict(
+                            "migration identity conflicts with durable receipt"
+                        )
+                    row = connection.execute(
+                        "SELECT snapshot, snapshot_sha256 FROM projects WHERE project_id = ?",
+                        (project_id,),
+                    ).fetchone()
+                    if row is None:
+                        raise SQLiteStateNotFound(f"project does not exist: {project_id}")
+                    if (
+                        _snapshot_sha256(target_snapshot) != row[1]
+                        or _json_object(row[0], field="snapshot") != target_snapshot
+                    ):
+                        raise SQLiteStateConflict(
+                            "migration receipt target does not match durable snapshot"
+                        )
+                    connection.execute("COMMIT")
+                    return persisted
+
+                row = connection.execute(
+                    """
+                    SELECT revision, last_sequence, last_event_sha256, snapshot, snapshot_sha256
+                    FROM projects WHERE project_id = ?
+                    """,
+                    (project_id,),
+                ).fetchone()
+                if row is None:
+                    raise SQLiteStateNotFound(f"project does not exist: {project_id}")
+                actual_revision, last_sequence, actual_head, source_text, source_hash = row
+                if actual_revision != expected_revision:
+                    raise SQLiteStateConflict(
+                        f"expected revision {expected_revision}, actual revision {actual_revision}"
+                    )
+                if actual_head != expected_event_head_sha256:
+                    raise SQLiteStateConflict("migration event head does not match current head")
+                source_snapshot = _json_object(source_text, field="snapshot")
+                _validate_snapshot(source_snapshot)
+                if _snapshot_sha256(source_snapshot) != source_hash:
+                    raise SQLiteStateIntegrityError("persisted source snapshot hash mismatch")
+                try:
+                    validate_typed_state_v3_to_v4_migration_receipt(
+                        migration_receipt,
+                        source=source_snapshot,
+                        target=target_snapshot,
+                    )
+                except ValueError as exc:
+                    raise SQLiteStateIntegrityError(
+                        "typed-state migration receipt is invalid"
+                    ) from exc
+                if migration_receipt["project_id"] != project_id:
+                    raise SQLiteStateIntegrityError("migration receipt project_id mismatch")
+                if migration_receipt["source_event_head_sha256"] != actual_head:
+                    raise SQLiteStateIntegrityError("migration receipt event head mismatch")
+
+                try:
+                    connection.execute(
+                        """
+                        INSERT INTO typed_state_migrations (
+                            project_id, migration_id, source_revision,
+                            source_event_head_sha256, source_snapshot_sha256,
+                            target_snapshot_sha256, from_schema_version,
+                            to_schema_version, receipt, created_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
+                        """,
+                        (
+                            project_id,
+                            migration_receipt["migration_id"],
+                            migration_receipt["source_revision"],
+                            migration_receipt["source_event_head_sha256"],
+                            migration_receipt["source_snapshot_sha256"],
+                            migration_receipt["target_snapshot_sha256"],
+                            migration_receipt["from_schema_version"],
+                            migration_receipt["to_schema_version"],
+                            _json_text(migration_receipt),
+                        ),
+                    )
+                    if self._fault_hook is not None:
+                        self._fault_hook("after_migration_receipt_insert")
+                except sqlite3.IntegrityError as exc:
+                    raise SQLiteStateConflict("migration receipt identity conflict") from exc
+                updated = connection.execute(
+                    """
+                    UPDATE projects
+                    SET snapshot = ?, snapshot_sha256 = ?, updated_at = datetime('now')
+                    WHERE project_id = ? AND revision = ? AND last_event_sha256 IS ?
+                    """,
+                    (
+                        _json_text(target_snapshot),
+                        _snapshot_sha256(target_snapshot),
+                        project_id,
+                        expected_revision,
+                        expected_event_head_sha256,
+                    ),
+                )
+                if updated.rowcount != 1:
+                    raise SQLiteStateConflict("project changed during migration")
+                connection.execute("COMMIT")
+                return migration_receipt
             except BaseException:
                 if connection.in_transaction:
                     connection.execute("ROLLBACK")

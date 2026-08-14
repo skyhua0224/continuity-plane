@@ -13,8 +13,8 @@ from unittest.mock import patch
 import yaml
 from jsonschema import Draft202012Validator, ValidationError
 
-from context_control_plane.sqlite_state_store import SQLiteStateStore
 from context_control_plane.postgres_state_store import PostgresStateStore
+from context_control_plane.sqlite_state_store import SQLiteStateStore
 from context_control_plane.state_mcp import (
     RequestContext,
     StateMCPService,
@@ -354,9 +354,8 @@ class M205StateMCPContractTests(unittest.TestCase):
                 result_ref=None,
             ),
         ):
-            with self.subTest(invalid=invalid):
-                with self.assertRaises(ValidationError):
-                    validator.validate(invalid)
+            with self.subTest(invalid=invalid), self.assertRaises(ValidationError):
+                validator.validate(invalid)
 
     def test_tool_definitions_expose_the_versioned_state_tools(self):
         definitions = state_mcp_tool_definitions()
@@ -374,6 +373,9 @@ class M205StateMCPContractTests(unittest.TestCase):
                 "context.experiment.promotion.propose",
                 "context.experiment.promotion.approve",
                 "context.idea.capture",
+                "context.idea.review",
+                "context.idea.correction.protect",
+                "context.idea.correction.release",
             },
         )
         schema_versions = {
@@ -382,9 +384,24 @@ class M205StateMCPContractTests(unittest.TestCase):
             "context.experiment.promotion.propose": "context.experiment-promotion-proposal-request/v1alpha1",
             "context.experiment.promotion.approve": "context.experiment-promotion-approval-request/v1alpha1",
             "context.idea.capture": "context.idea-capture-request/v1alpha1",
+            "context.idea.review": "context.idea-review-request/v1alpha1",
+            "context.idea.correction.protect": "context.idea-correction-protection-request/v1alpha1",
+            "context.idea.correction.release": "context.idea-correction-release-request/v1alpha1",
         }
         for item in definitions:
             with self.subTest(tool=item["name"]):
+                if item["name"] == "context.idea.capture":
+                    self.assertEqual(
+                        [
+                            variant["properties"]["schema_version"]["const"]
+                            for variant in item["inputSchema"]["oneOf"]
+                        ],
+                        [
+                            "context.idea-capture-request/v1alpha1",
+                            "context.idea-capture-request/v2alpha1",
+                        ],
+                    )
+                    continue
                 self.assertEqual(
                     item["inputSchema"]["properties"]["schema_version"]["const"],
                     schema_versions.get(
@@ -478,9 +495,8 @@ class M205StateMCPContractTests(unittest.TestCase):
         with patch(
             "context_control_plane.postgres_state_store.psycopg.connect",
             side_effect=ValueError("programming failure"),
-        ):
-            with self.assertRaisesRegex(ValueError, "programming failure"):
-                store.read_project("project-unavailable")
+        ), self.assertRaisesRegex(ValueError, "programming failure"):
+            store.read_project("project-unavailable")
 
     def test_unknown_tool_version_and_fields_are_rejected_before_backend_access(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -528,20 +544,19 @@ class M205StateMCPContractTests(unittest.TestCase):
         )
 
         for authorizer in (None, _ExplodingAuthorizer()):
-            with self.subTest(authorizer=type(authorizer).__name__):
-                with tempfile.TemporaryDirectory() as directory:
-                    store = _CountingSQLiteStore(Path(directory) / "state.db")
-                    store.initialize()
-                    store.create_project(copy.deepcopy(self.snapshot))
-                    response = self.make_service(
-                        store,
-                        authorizer=authorizer,
-                    ).call_tool("context.state.read", request, context=context)
+            with self.subTest(authorizer=type(authorizer).__name__), tempfile.TemporaryDirectory() as directory:
+                store = _CountingSQLiteStore(Path(directory) / "state.db")
+                store.initialize()
+                store.create_project(copy.deepcopy(self.snapshot))
+                response = self.make_service(
+                    store,
+                    authorizer=authorizer,
+                ).call_tool("context.state.read", request, context=context)
 
-                    self.assertFalse(response["ok"])
-                    self.assertEqual(response["error"]["code"], "permission_denied")
-                    self.assertEqual(store.read_project_calls, 0)
-                    self.assertEqual(store.read_events_calls, 0)
+                self.assertFalse(response["ok"])
+                self.assertEqual(response["error"]["code"], "permission_denied")
+                self.assertEqual(store.read_project_calls, 0)
+                self.assertEqual(store.read_events_calls, 0)
 
     def test_default_deny_covers_all_state_mutation_tools_before_backend_access(self):
         context = RequestContext(

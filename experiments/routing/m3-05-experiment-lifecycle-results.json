@@ -15,21 +15,21 @@
   "measurement": {
     "attempts_per_run": 1,
     "events_per_run": 3,
-    "max_total_ms": 12.031341,
-    "p50_total_ms": 7.660796,
-    "p95_total_ms": 10.610762,
+    "max_total_ms": 11.551386,
+    "p50_total_ms": 8.084453,
+    "p95_total_ms": 9.107612,
     "promotion_records_per_run": 2,
     "samples": 40,
     "successful_runs": 40
   },
-  "observed_at": "2026-08-14T08:45:00+08:00",
+  "observed_at": "2026-08-14T08:35:00+08:00",
   "provenance": {
     "benchmark_sha256": "49c230cf09febeebb4774cc318af55a9cffb0f8ef79028aa694c5cf5d92ab3e5",
     "fixture_sha256": "693a75b9c1bd0fa9aa55cd34e61dda51237e429b4516289818beeecb9aa19aed",
     "implementation_sha256": "633da214297ae8c1c933245d8fc09a2217f10fa53dbd13b2cfbfc7346d59c6e6",
-    "state_events_sha256": "fed27207c81edd03f2403f68c40a8eb5474a35b42e89366c50c31e5f68efb11d",
-    "state_mcp_sha256": "a1764900aa11d0861cfb3ecd020f6ab4636dcec2c298541797f9e283a917a48b",
-    "typed_state_sha256": "f32d08ac4c29dec95a4960470e5a6feffe5fc6507a976efcc745b81ffcbb9de4"
+    "state_events_sha256": "1080a48bcc3cf2ff28fd5e301f21ea2689ccf7c73c75da9c0e067256f602e6aa",
+    "state_mcp_sha256": "4cd8ccb87b88e382ec2293d60b738546ceb22a2f11a4d7ff4a9cc8bb45eb57e7",
+    "typed_state_sha256": "e2c90c68983381d4fdf2757453904c7eddcfcd7388d03fb516e6acfb8504af77"
   },
   "schema_version": "context.experiment-lifecycle-benchmark/v1alpha1"
 }

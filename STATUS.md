@@ -1,6 +1,6 @@
 # Context Control Plane Status
 
-版本：revision 47  
+版本：revision 48  
 日期：2026-08-14  
 canonical plan：`MASTER.md`
 
@@ -9,8 +9,8 @@ canonical plan：`MASTER.md`
 | 字段 | 值 |
 |---|---|
 | 当前 Campaign | M3 任务图与智能切换 |
-| active work | M3-07：Idea relationship and correction（🟡） |
-| next action | 固定 dedupe identity、relationship、correction 写保护与 urgency/impact review 的 typed contract，先写失败测试 |
+| active work | M3-08：Input intent and bounded escalation（🟡） |
+| next action | 为输入意图、typed blocker、next-ready selector 和 ask/stop resume condition 写失败测试，保持 non-blocking input 不改变 active leaf |
 | hard blocker | M3-01 已通过 Linux 离线图合同，但最终完成门仍等待 M2-09 的 Windows/macOS 原生 live fixture |
 | repository mode | research / shadow pilot |
 | production state | local-embedded implemented / shadow pilot；shared production pilot planned |
@@ -23,12 +23,13 @@ canonical plan：`MASTER.md`
 | Repository role | Provider-neutral developer control plane |
 | Raw transcript import | 0 files |
 | Evidence index | [`docs/reports/verified-state.md`](docs/reports/verified-state.md) |
-| Documentation lifecycle | M0-10 verified；独立审查 High 0、Medium 0；STATUS 12 KiB 门与 MASTER 二级节容量门通过 |
-| Git admission | M0-11 offline contract `25/25` 通过；canonical `731` tests 与 repository verifier 通过 |
-| Skill catalog/proposal/source adapters | M4-07、M4-08、M4-10 离线合同已验收；external active 0；DeepSeek/Pi/Cordis adoption 0 |
-| Project dogfood baseline | 27 次 compaction；Continuation Cursor 78/80；首动作不匹配和已确认事项重播各 2 次；provider context/token/latency 仍不可见 |
-| Repository verification | M3-06 定向 `15/15` 通过；40/40 zero-service Idea capture；完整回归与 revision 47 文档 verifier 待本提交前重跑 |
-| Governance authority | `MASTER.md` revision 47 |
+| Documentation lifecycle | M0-10 verified；High/Medium review 0；容量门通过 |
+| Git admission | M0-11 offline contract `25/25`；repository verifier 通过 |
+| Skill catalog/proposal/source adapters | M4-07、M4-08、M4-10 验收；external active 0 |
+| Project dogfood baseline | 27 次 compaction；Cursor 78/80；首动作与重播各 2 次；provider metrics 不可见 |
+| M3-07 Idea review | `40/40` benchmark；dedupe/occurrence/packet `100%`；protected writes/terminal revival/unverified release `0`；p95 `14.210198 ms`；验收见 evidence index |
+| Repository verification | `915/915` 通过；30 PostgreSQL skips；revision 48 verifier/compile/diff 通过 |
+| Governance authority | `MASTER.md` revision 48 |
 | Operational router | `STATUS.md` |
 
 ## 恢复入口
