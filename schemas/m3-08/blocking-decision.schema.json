@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schema/context.blocking-decision/v1alpha1",
+  "title": "Context Control Plane typed blocking decision",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "blocking_decision_id", "project_id", "project_revision", "blocker_id", "blocker_kind", "reason", "affected_work_ids", "evidence_ids", "affected_scope_refs", "decision_options", "default_option_id", "resume_condition", "resolution_actor", "safe_reversible_default_available", "state_write_authority"],
+  "properties": {
+    "schema_version": {"const": "context.blocking-decision/v1alpha1"},
+    "blocking_decision_id": {"$ref": "#/$defs/nonEmptyString"},
+    "project_id": {"$ref": "#/$defs/nonEmptyString"},
+    "project_revision": {"type": "integer", "minimum": 0},
+    "blocker_id": {"$ref": "#/$defs/nonEmptyString"},
+    "blocker_kind": {"enum": ["irreversible-effect-authorization-required", "approved-constraint-conflict", "acceptance-output-choice-required", "external-completion-evidence-unavailable"]},
+    "reason": {"$ref": "#/$defs/nonEmptyString"},
+    "affected_work_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/nonEmptyString"}},
+    "evidence_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/nonEmptyString"}},
+    "affected_scope_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/scope"}},
+    "decision_options": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/option"}},
+    "default_option_id": {"$ref": "#/$defs/nullableString"},
+    "resume_condition": {"$ref": "#/$defs/resumeCondition"},
+    "resolution_actor": {"enum": ["user", "external_system"]},
+    "safe_reversible_default_available": {"type": "boolean"},
+    "state_write_authority": {"const": false}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"blocker_kind": {"enum": ["irreversible-effect-authorization-required", "approved-constraint-conflict", "acceptance-output-choice-required"]}}},
+      "then": {"properties": {"resolution_actor": {"const": "user"}, "decision_options": {"minItems": 2}, "default_option_id": {"type": "string"}}}
+    },
+    {
+      "if": {"properties": {"blocker_kind": {"const": "external-completion-evidence-unavailable"}}},
+      "then": {"properties": {"resolution_actor": {"const": "external_system"}, "decision_options": {"maxItems": 0}, "default_option_id": {"type": "null"}}}
+    }
+  ],
+  "$defs": {
+    "nonEmptyString": {"type": "string", "minLength": 1, "pattern": ".*\\S.*"},
+    "nullableString": {"type": ["string", "null"], "minLength": 1, "pattern": ".*\\S.*"},
+    "scope": {"type": "object", "additionalProperties": false, "required": ["scope_kind", "scope_ref"], "properties": {"scope_kind": {"enum": ["repo", "directory", "file", "symbol", "capability", "effect"]}, "scope_ref": {"$ref": "#/$defs/nonEmptyString"}}},
+    "option": {"type": "object", "additionalProperties": false, "required": ["option_id", "summary"], "properties": {"option_id": {"$ref": "#/$defs/nonEmptyString"}, "summary": {"$ref": "#/$defs/nonEmptyString"}}},
+    "resumeCondition": {"type": "object", "additionalProperties": false, "required": ["kind", "refs"], "properties": {"kind": {"enum": ["authorization", "decision", "evidence", "blocker_resolved", "new_ready_work"]}, "refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/nonEmptyString"}}}}
+  }
+}

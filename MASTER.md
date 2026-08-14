@@ -1,6 +1,6 @@
 # Context Control Plane MASTER
 
-版本：revision 48  
+版本：revision 49  
 日期：2026-08-14  
 状态：研究与 shadow pilot 准备阶段  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
@@ -270,7 +270,7 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | M3-05 | 🧑‍💻 | attempt budget、expiry、promotion gate | 实验按预算和期限运行 | 实验发现有序回流 MASTER | M3-01 | 27/27 定向测试、40/40 attempt→proposal→approval、3 Event/1 attempt/2 promotion 每样本通过；验收见 `docs/migrations/m3-05-experiment-lifecycle-acceptance-2026-08-14.md` |
 | M3-06 | ✅ | Idea candidate、parking、capture-and-continue 与 switch proposal | 新想法不污染当前 active leaf | 保留价值并控制上下文切换 | M3-03/M3-05 | 15/15 定向测试、40/40 zero-service capture、active execution authority mutation 0；验收见 `docs/migrations/m3-06-idea-continuity-acceptance-2026-08-14.md` |
 | M3-07 | ✅ | Idea relationship、dedupe、correction、urgency 与 impact review | 重复或跨域想法形成有界候选队列 | 支持持续输入并避免 prompt/主线污染 | M3-06/M6-02 | v3→v4 migration receipt、Idea v2 dedupe/occurrence、relationship cycle gate、review/protection/release；40/40 benchmark；dedupe/occurrence/packet `100%`，protected writes/terminal revival/unverified release `0`，p95 `14.210198 ms`；验收见 `docs/migrations/m3-07-idea-review-acceptance-2026-08-14.md` |
-| M3-08 | 🟡 | 输入意图、blocking decision、next-ready selector 与 bounded escalation taxonomy | non-blocking input 保持 active leaf，只有可证明的阻塞需要询问或停止 | 防止短消息、Idea、状态问答和分析偏移重置主线 | M3-03/M3-06/M3-07 | ready required leaf 未选择为 0；premature stop 为 0；无 typed blocker 的用户询问为 0；每次 ask/stop 具有 reason、evidence 和 resume condition |
+| M3-08 | ✅ | 输入意图、blocking decision、next-ready selector 与 bounded escalation taxonomy | non-blocking input 保持 active leaf，只有可证明的阻塞需要询问或停止 | 防止短消息、Idea、状态问答和分析偏移重置主线 | M3-03/M3-06/M3-07 | 4 份 strict schema 与 current provenance；1,000/1,000 zero-service decision、125/125 负向 fixture；ready required missed、premature stop、untyped ask、incomplete escalation、active leaf change 和 replay mismatch 均为 0；p95 `0.185716 ms`；验收见 `docs/migrations/m3-08-continuation-dispatch-acceptance-2026-08-14.md` |
 
 ## 7.5 M4 Skill 控制面
 
@@ -284,7 +284,7 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | M4-06 | ✅ | Skill 变更 replay 与兼容锁 | 进行中任务固定使用已记录 rule set | 可持续迭代替换 | M4-03 | lock/decision/migration/probe strict schema 注册；selected manifest digest、exact provider applicability/contract 与 live adapter surface 重算；40 变更样本中未选中 metadata `8/8 compatible`，selected identity/provider contract `32/32 migration_required`；unauthorized gated composition `0/32`；synthetic verifier-authorized migration `4/4` 可 replay/rollback；assessment p95 `<10 ms` |
 | M4-07 | ✅ | Built-in、External、Project、User、Workflow Skill catalog 与动态组件候选准入 | 来源、license、provenance、依赖、reversible registration 和权限边界可审计 | 管理可复用与项目专属规则 | M4-01/M0-07/M4-06 | `context.skill-catalog/v1alpha1` strict schema、registry hash、五类来源 `5/5` 合法 entry、18/18 admission/quarantine 负变体、candidate projection、canonical manifest digest 的 M4-06 exact identity binding 和 canonical fixture 通过；固定 fixture validator p95 `0.0140 ms`；DeepSeek Skill/plugin 与 Cordis dependency/lifecycle candidate 固定 provenance、license 和隔离边界；Cordis license 未决时保持 reference-only |
 | M4-08 | 🧑‍💻 | 项目初始化与用户习惯 Skill proposal | 从仓库、验证配置和显式偏好生成可审查候选 | 缩短接入并保持用户控制 | M4-07/M7-03 | `context.skill-proposal/v1alpha1` strict schema、M4-01 manifest schema reuse、64 KiB preflight/canonical input、16,384 Unicode scalar/64 KiB UTF-8 content 与 128 KiB output bound、strict SemVer/ID/timestamp gate、set-like input canonicalization、explicit license policy、Project/User provenance isolation、expected-time-bound replay verifier、candidate-only body asset、M4-03 resolver 和 fixture replay 通过；34/34 定向测试；200 次 replay mismatch `0`，40/40 fact 变体 fingerprint/content digest 唯一，权限真值 `0`；production Verification Profile adapter 待 M7-03 |
-| M4-09 | ⏳ | role/operation-aware Skill resolver | Thinker、Executor、Verifier 和 provider 获得最小规则集 | 控制动作权限与上下文成本 | M3-04/M4-04/M4-07 | 选择优先级、冲突、expiry、replay fixture 全部通过 |
+| M4-09 | 🟡 | role/operation-aware Skill resolver | Thinker、Executor、Verifier 和 provider 获得最小规则集 | 控制动作权限与上下文成本 | M3-04/M4-04/M4-07 | 选择优先级、冲突、expiry、replay fixture 全部通过 |
 | M4-10 | 🧑‍💻 | 官方 Skill、Agent Skills standard、GitHub 和 marketplace catalog adapter | 发现结果带直接 URL、revision、hash、license 和 trust tier | 智能复用外部能力并阻止未审查加载 | M4-07/M0-07 | `context.external-skill-source-snapshot/v1alpha1` strict schema、version/hash 固定 adapter policy、pinned Git tree evidence、本地 CAS staging、四类来源 snapshot/quarantine/offline replay 与 M4-07 candidate-only projection 通过；27/27 定向测试；生产 streaming acquisition、authorization/audit 待 M7/M8 |
 
 ## 7.6 M5 压缩与 Context Composition

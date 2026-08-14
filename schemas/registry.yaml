@@ -346,6 +346,46 @@ schemas:
     compatibility_mode: strict-versioned
     migrations: []
 
+  - schema_id: context.continuation-dispatch-request
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.continuation-dispatch-request/v1alpha1
+    supported_wire_versions: [context.continuation-dispatch-request/v1alpha1]
+    artifact_path: schemas/m3-08/continuation-dispatch-request.schema.json
+    content_sha256: 9335032c829090a40a76e9a99fea5f6942f57f12b00e7e16b85e6503ab95da3c
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.blocking-decision
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.blocking-decision/v1alpha1
+    supported_wire_versions: [context.blocking-decision/v1alpha1]
+    artifact_path: schemas/m3-08/blocking-decision.schema.json
+    content_sha256: 4c7dc82095d18576a3396068bca5fd29b88425bcd47d906efc75c4cc1fa66f0e
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.continuation-dispatch-decision
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.continuation-dispatch-decision/v1alpha1
+    supported_wire_versions: [context.continuation-dispatch-decision/v1alpha1]
+    artifact_path: schemas/m3-08/continuation-dispatch-decision.schema.json
+    content_sha256: 97e600efc8c7bf7cb3b874237521561c05f9a2b7d61dfdaf890ff50c32c4f883
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.continuation-dispatch-benchmark
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.continuation-dispatch-benchmark/v1alpha1
+    supported_wire_versions: [context.continuation-dispatch-benchmark/v1alpha1]
+    artifact_path: schemas/m3-08/continuation-dispatch-benchmark.schema.json
+    content_sha256: 68de336714fb8fb1cefd746aced9ff33bbe5f45633f5539b15d27572a9be0b6e
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
   - schema_id: context.state-store-capabilities
     current_semver: 1.0.0-alpha.1
     current_wire_version: context.state-store-capabilities/v1alpha1

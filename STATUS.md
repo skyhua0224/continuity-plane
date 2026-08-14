@@ -1,6 +1,6 @@
 # Context Control Plane Status
 
-版本：revision 48  
+版本：revision 49  
 日期：2026-08-14  
 canonical plan：`MASTER.md`
 
@@ -8,9 +8,9 @@ canonical plan：`MASTER.md`
 
 | 字段 | 值 |
 |---|---|
-| 当前 Campaign | M3 任务图与智能切换 |
-| active work | M3-08：Input intent and bounded escalation（🟡） |
-| next action | 为输入意图、typed blocker、next-ready selector 和 ask/stop resume condition 写失败测试，保持 non-blocking input 不改变 active leaf |
+| 当前 Campaign | M4 Skill 控制面 |
+| active work | M4-09：role/operation-aware Skill resolver（🟡） |
+| next action | 为 Thinker、Executor、Verifier、provider 与 operation applicability 的最小 rule set、冲突和 expiry 写失败测试 |
 | hard blocker | M3-01 已通过 Linux 离线图合同，但最终完成门仍等待 M2-09 的 Windows/macOS 原生 live fixture |
 | repository mode | research / shadow pilot |
 | production state | local-embedded implemented / shadow pilot；shared production pilot planned |
@@ -25,11 +25,12 @@ canonical plan：`MASTER.md`
 | Evidence index | [`docs/reports/verified-state.md`](docs/reports/verified-state.md) |
 | Documentation lifecycle | M0-10 verified；High/Medium review 0；容量门通过 |
 | Git admission | M0-11 offline contract `25/25`；repository verifier 通过 |
-| Skill catalog/proposal/source adapters | M4-07、M4-08、M4-10 验收；external active 0 |
+| Skill adapters | M4-07/08/10 验收；external active 0 |
 | Project dogfood baseline | 27 次 compaction；Cursor 78/80；首动作与重播各 2 次；provider metrics 不可见 |
 | M3-07 Idea review | `40/40` benchmark；dedupe/occurrence/packet `100%`；protected writes/terminal revival/unverified release `0`；p95 `14.210198 ms`；验收见 evidence index |
-| Repository verification | `915/915` 通过；30 PostgreSQL skips；revision 48 verifier/compile/diff 通过 |
-| Governance authority | `MASTER.md` revision 48 |
+| M3-08 continuation dispatch | `1000/1000` decision、`125/125` 负向 fixture；6 项一致性故障均为 `0`；p95 `0.185716 ms` |
+| Repository verification | `929/929` 通过；30 PostgreSQL skips；revision 49 verifier/compile/diff 通过 |
+| Governance authority | `MASTER.md` revision 49 |
 | Operational router | `STATUS.md` |
 
 ## 恢复入口
