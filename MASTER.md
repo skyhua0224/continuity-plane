@@ -1,6 +1,6 @@
 # Context Control Plane MASTER
 
-版本：revision 51  
+版本：revision 52  
 日期：2026-08-14  
 状态：研究与 shadow pilot 准备阶段  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
@@ -292,8 +292,8 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
 |---|---|---|---|---|---|---|
 | M5-01 | ✅ | Execution Packet composer | 当前叶包含任务、规则、证据、相关 Idea refs 和唯一 next action | 恢复成本与项目总历史解耦 | M3-03/M4-04 | packet 4-12 KB 且 canary 100%；`docs/migrations/m5-01-execution-packet-acceptance-2026-08-14.md` |
-| M5-02 | 🟡 | material event 滚动 checkpoint 与 provider compaction hook adapter | PreCompact 提交增量 delta；Pi hook 与 DeepSeek semantic checkpoint 进入统一 bracket | 提高压缩速度并固定 host 适配边界 | M2-06/M5-01 | PreCompact p95 < 500 ms；Pi/DeepSeek shadow adapter 的 task revision/effect watermark 保留率 100%；provider-native authority 写入 0 |
-| M5-03 | ⏳ | PostCompact deterministic canary 与 host compaction 对照 | 恢复错误在写代码前被阻断；Pi cut point/split-turn 与 DeepSeek checkpoint/compaction 进入 fixture | 保证一致性 | M5-01/M5-02 | decision/constraint/work 100%；cut point、split-turn、checkpoint mismatch 故障 100% fail closed |
+| M5-02 | ✅ | material event 滚动 checkpoint 与 provider compaction hook adapter | PreCompact 提交增量 delta；Pi hook 与 DeepSeek semantic checkpoint 进入统一 bracket | 提高压缩速度并固定 host 适配边界 | M2-06/M5-01 | `1000/1000` replay；delta `1093 B`；PreCompact p95 `0.666804 ms`；watermark/replay/authority mismatch `0`；外部服务 `0`；验收见 `docs/migrations/m5-02-compaction-checkpoint-acceptance-2026-08-14.md` |
+| M5-03 | 🟡 | PostCompact deterministic canary 与 host compaction 对照 | 恢复错误在写代码前被阻断；Pi cut point/split-turn 与 DeepSeek checkpoint/compaction 进入 fixture | 保证一致性 | M5-01/M5-02 | decision/constraint/work 100%；cut point、split-turn、checkpoint mismatch 故障 100% fail closed |
 | M5-04 | ⏳ | artifact ref 与 bounded expansion | 大输出按需展开 | 降低 token 和注意力污染 | M2-04 | prompt 保存摘要、引用和必要片段 |
 | M5-05 | ⏳ | token/cache/retrieval 与 compaction accounting | 形成成本、时延、cut point 和 cache invalidation 明细 | 以实测数据确定优化优先级 | M5-01 | provider 账单/trace 可对账；Pi/DeepSeek token、KV cache、route-aware threshold 和 model-free pruning 对照使用同一 corpus/budget |
 | M5-06 | ⏳ | Idea-aware checkpoint 与 context return packet | 压缩、切换后可回到原任务 | 保留 return point、相关 Idea refs 和禁止副作用 | M3-06/M5-03 | 原任务恢复 100%；Idea 正文不复制进 packet；candidate Idea 不获得执行权限 |

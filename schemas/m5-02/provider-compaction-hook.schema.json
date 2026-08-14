@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schemas/m5-02/provider-compaction-hook.schema.json",
+  "title": "Context Control Plane Provider Compaction Hook Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "provider_id", "adapter_version", "operation", "delta_id", "delta_sha256",
+    "project_id", "project_revision", "event_head", "task_revision", "effect_high_watermark",
+    "host_metadata", "provider_native_authority", "state_write_authority", "observed_at", "hook_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.provider-compaction-hook/v1alpha1"},
+    "provider_id": {"enum": ["pi", "deepseek"]},
+    "adapter_version": {"const": "context.provider-compaction-hook-adapter/v1alpha1"},
+    "operation": {"const": "precompact"},
+    "delta_id": {"$ref": "#/$defs/id"},
+    "delta_sha256": {"$ref": "#/$defs/sha256"},
+    "project_id": {"$ref": "#/$defs/id"},
+    "project_revision": {"$ref": "#/$defs/nonNegativeInteger"},
+    "event_head": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/eventHead"}]},
+    "task_revision": {"$ref": "#/$defs/nonNegativeInteger"},
+    "effect_high_watermark": {"$ref": "#/$defs/nonNegativeInteger"},
+    "host_metadata": {},
+    "provider_native_authority": {"const": false},
+    "state_write_authority": {"const": false},
+    "observed_at": {"type": "string", "format": "date-time"},
+    "hook_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"provider_id": {"const": "pi"}}},
+      "then": {
+        "properties": {
+          "host_metadata": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["cut_point", "split_turn", "usage_tokens"],
+            "properties": {
+              "cut_point": {"$ref": "#/$defs/nonNegativeInteger"},
+              "split_turn": {"type": "boolean"},
+              "usage_tokens": {"$ref": "#/$defs/nonNegativeInteger"}
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"provider_id": {"const": "deepseek"}}},
+      "then": {
+        "properties": {
+          "host_metadata": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["checkpoint_kind", "checkpoint_sequence"],
+            "properties": {
+              "checkpoint_kind": {"const": "semantic"},
+              "checkpoint_sequence": {"type": "integer", "minimum": 1}
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nonNegativeInteger": {"type": "integer", "minimum": 0},
+    "eventHead": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sequence_no", "event_sha256"],
+      "properties": {
+        "sequence_no": {"type": "integer", "minimum": 1},
+        "event_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

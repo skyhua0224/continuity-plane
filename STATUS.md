@@ -1,6 +1,6 @@
 # Context Control Plane Status
 
-版本：revision 51  
+版本：revision 52  
 日期：2026-08-14  
 canonical plan：`MASTER.md`
 
@@ -9,9 +9,9 @@ canonical plan：`MASTER.md`
 | 字段 | 值 |
 |---|---|
 | 当前 Campaign | M5 压缩与 Context Composition |
-| active work | M5-02：material event rolling checkpoint 与 provider compaction hook adapter（🟡） |
-| next action | 为 PreCompact delta、Pi hook 和 DeepSeek checkpoint 写失败测试；provider-native authority 保持 0 |
-| hard blocker | M3-01 已通过 Linux 离线图合同，但最终完成门仍等待 M2-09 的 Windows/macOS 原生 live fixture |
+| active work | M5-03：PostCompact deterministic canary 与 host compaction 对照（🟡） |
+| next action | M5-03：为 restore canary 与 Pi/DeepSeek mismatch 写失败测试；写权限 0 |
+| hard blocker | M3-01：待 M2-09 Windows/macOS 原生 live fixture |
 | repository mode | research / shadow pilot |
 | production state | local-embedded implemented / shadow pilot；shared production pilot planned |
 
@@ -24,12 +24,13 @@ canonical plan：`MASTER.md`
 | Git admission | M0-11 offline contract `25/25`；repository verifier 通过 |
 | Skill adapters | M4-07/08/10 done；external=0 |
 | Project dogfood | compaction=27；Cursor=78/80；first/replay=2/2；provider metrics unavailable |
-| M3-07 Idea review | `40/40`；dedupe/occurrence/packet=100%；protected/terminal/unverified=0；p95 `12.765558 ms` |
-| M3-08 continuation | `1000/1000`；negative `125/125`；6 faults=0；p95 `0.15 ms` |
+| M3-07 Idea review | `40/40`；dedupe/occurrence/packet=100%；protected/terminal/unverified=0；p95 `20.826929 ms` |
+| M3-08 continuation | `1000/1000`；negative `125/125`；6 faults=0；p95 `0.26578 ms` |
 | M4-09 Skill resolver | replay `1000/1000`；quarantine `125/125`；faults=0；reduction `33.3333%`；p95 `1.109641 ms`；external=0 |
 | M5-01 Execution Packet | replay `1000/1000`；canary failures=0；authority=0；packet `4436 B`；p95 `0.517655 ms`；external=0 |
-| Repository verification | 全库 `953/953` 通过；30 PostgreSQL skips；repository verifier、Ruff、compileall、diff check 通过 |
-| Governance authority | `MASTER.md` revision 51 |
+| M5-02 checkpoint | replay `1000/1000`；delta `1093 B`；p50/p95/max `0.639104/0.666804/1.111154 ms`；mismatch/authority `0`；external=0 |
+| Repository verification | unittest `961`；30 PostgreSQL skips；verifier、compileall、diff check 通过 |
+| Governance authority | `MASTER.md` revision 52 |
 
 ## 恢复入口
 

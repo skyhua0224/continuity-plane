@@ -635,3 +635,23 @@ schemas:
     status: current
     compatibility_mode: strict-versioned
     migrations: []
+
+  - schema_id: context.material-event-delta
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.material-event-delta/v1alpha1
+    supported_wire_versions: [context.material-event-delta/v1alpha1]
+    artifact_path: schemas/m5-02/material-event-delta.schema.json
+    content_sha256: 9e11c75a95ea36c78b861e9ad189a51dfef153146130d2fddaa9a0d13eede605
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.provider-compaction-hook
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.provider-compaction-hook/v1alpha1
+    supported_wire_versions: [context.provider-compaction-hook/v1alpha1]
+    artifact_path: schemas/m5-02/provider-compaction-hook.schema.json
+    content_sha256: 2bd39d333650f02194a0a1f13abb0fcccfe9c74705809359be0edfa7c890a76f
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []

@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schemas/m5-02/material-event-delta.schema.json",
+  "title": "Context Control Plane Material Event Delta",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "delta_id", "project_id", "base_checkpoint_ref", "base_revision",
+    "base_event_head", "project_revision", "event_head", "material_events", "state_sha256",
+    "execution_packet_sha256", "canonical_plan_sha256", "active_work_id", "task_revision",
+    "effect_high_watermark", "observed_at", "state_write_authority", "provider_native_authority",
+    "delta_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.material-event-delta/v1alpha1"},
+    "delta_id": {"$ref": "#/$defs/id"},
+    "project_id": {"$ref": "#/$defs/id"},
+    "base_checkpoint_ref": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/artifactRef"}]},
+    "base_revision": {"$ref": "#/$defs/nonNegativeInteger"},
+    "base_event_head": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/eventHead"}]},
+    "project_revision": {"$ref": "#/$defs/nonNegativeInteger"},
+    "event_head": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/eventHead"}]},
+    "material_events": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/materialEvent"}
+    },
+    "state_sha256": {"$ref": "#/$defs/sha256"},
+    "execution_packet_sha256": {"$ref": "#/$defs/sha256"},
+    "canonical_plan_sha256": {"$ref": "#/$defs/sha256"},
+    "active_work_id": {"type": ["string", "null"], "minLength": 1},
+    "task_revision": {"$ref": "#/$defs/nonNegativeInteger"},
+    "effect_high_watermark": {"$ref": "#/$defs/nonNegativeInteger"},
+    "observed_at": {"type": "string", "format": "date-time"},
+    "state_write_authority": {"const": false},
+    "provider_native_authority": {"const": false},
+    "delta_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nonNegativeInteger": {"type": "integer", "minimum": 0},
+    "eventHead": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sequence_no", "event_sha256"],
+      "properties": {
+        "sequence_no": {"type": "integer", "minimum": 1},
+        "event_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "materialEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "event_type", "sequence_no", "revision_before", "revision_after", "event_sha256"],
+      "properties": {
+        "event_id": {"$ref": "#/$defs/id"},
+        "event_type": {"type": "string", "minLength": 1, "maxLength": 64},
+        "sequence_no": {"type": "integer", "minimum": 1},
+        "revision_before": {"$ref": "#/$defs/nonNegativeInteger"},
+        "revision_after": {"$ref": "#/$defs/nonNegativeInteger"},
+        "event_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "artifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "digest_algorithm", "digest", "size_bytes", "artifact_uri"],
+      "properties": {
+        "schema_version": {"const": "context.artifact-ref/v1alpha1"},
+        "digest_algorithm": {"const": "sha-256"},
+        "digest": {"$ref": "#/$defs/sha256"},
+        "size_bytes": {"$ref": "#/$defs/nonNegativeInteger"},
+        "artifact_uri": {"type": "string", "pattern": "^artifact://sha256/[0-9a-f]{64}$"}
+      }
+    }
+  }
+}
