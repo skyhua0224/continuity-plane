@@ -25,10 +25,19 @@ from .experiment_lifecycle import (
     experiment_time_verdict,
 )
 from .idea_continuity import evaluate_idea_capture_gate
+from .idea_review import (
+    apply_idea_review,
+    compute_idea_dedupe_key,
+    evaluate_correction_write_gate,
+    open_correction_protection,
+    release_correction_protection,
+    upsert_idea_observation,
+)
 from .state_events import (
     EVENT_SCHEMA_VERSION,
     EVENT_SCHEMA_VERSION_V4,
     IDEA_EVENT_SCHEMA_VERSION,
+    IDEA_EVENT_SCHEMA_VERSION_V2,
     LEGACY_EVENT_SCHEMA_VERSION,
     StateEventError,
     build_state_event,
@@ -59,6 +68,9 @@ ATTEMPT_TOOL = "context.experiment.attempt"
 PROMOTION_PROPOSE_TOOL = "context.experiment.promotion.propose"
 PROMOTION_APPROVE_TOOL = "context.experiment.promotion.approve"
 IDEA_CAPTURE_TOOL = "context.idea.capture"
+IDEA_REVIEW_TOOL = "context.idea.review"
+IDEA_CORRECTION_PROTECT_TOOL = "context.idea.correction.protect"
+IDEA_CORRECTION_RELEASE_TOOL = "context.idea.correction.release"
 STATE_MCP_TOOLS = (
     READ_TOOL,
     COMMIT_TOOL,
@@ -70,6 +82,9 @@ STATE_MCP_TOOLS = (
     PROMOTION_PROPOSE_TOOL,
     PROMOTION_APPROVE_TOOL,
     IDEA_CAPTURE_TOOL,
+    IDEA_REVIEW_TOOL,
+    IDEA_CORRECTION_PROTECT_TOOL,
+    IDEA_CORRECTION_RELEASE_TOOL,
 )
 
 ATTEMPT_REQUEST_SCHEMA_VERSION = "context.experiment-attempt-request/v1alpha1"
@@ -81,6 +96,14 @@ PROMOTION_APPROVAL_REQUEST_SCHEMA_VERSION = (
     "context.experiment-promotion-approval-request/v1alpha1"
 )
 IDEA_CAPTURE_REQUEST_SCHEMA_VERSION = "context.idea-capture-request/v1alpha1"
+IDEA_CAPTURE_REQUEST_SCHEMA_VERSION_V2 = "context.idea-capture-request/v2alpha1"
+IDEA_REVIEW_REQUEST_SCHEMA_VERSION = "context.idea-review-request/v1alpha1"
+IDEA_CORRECTION_PROTECTION_REQUEST_SCHEMA_VERSION = (
+    "context.idea-correction-protection-request/v1alpha1"
+)
+IDEA_CORRECTION_RELEASE_REQUEST_SCHEMA_VERSION = (
+    "context.idea-correction-release-request/v1alpha1"
+)
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _OPAQUE_RANGE_REF_RE = re.compile(r"^rng_[a-z2-7]{26}$")
@@ -191,6 +214,47 @@ _REQUEST_FIELDS = {
         "causation_ref",
         "correlation_ref",
     },
+    IDEA_REVIEW_TOOL: _COMMON_FIELDS
+    | {
+        "expected_revision",
+        "idea_id",
+        "review_id",
+        "decision",
+        "urgency",
+        "impact",
+        "review_at",
+        "evidence_ids",
+        "causation_ref",
+        "correlation_ref",
+    },
+    IDEA_CORRECTION_PROTECT_TOOL: _COMMON_FIELDS
+    | {
+        "expected_revision",
+        "idea_id",
+        "protection_id",
+        "affected_work_ids",
+        "affected_scope_refs",
+        "reason",
+        "evidence_ids",
+        "causation_ref",
+        "correlation_ref",
+    },
+    IDEA_CORRECTION_RELEASE_TOOL: _COMMON_FIELDS
+    | {
+        "expected_revision",
+        "idea_id",
+        "protection_id",
+        "release_reason",
+        "release_evidence_ids",
+        "causation_ref",
+        "correlation_ref",
+    },
+}
+_IDEA_CAPTURE_REQUEST_FIELDS_V2 = _REQUEST_FIELDS[IDEA_CAPTURE_TOOL] | {
+    "scope_ref",
+    "urgency",
+    "review_at",
+    "occurrence_id",
 }
 _AUTHORIZATION_ACTIONS = {
     READ_TOOL: "state.read",
@@ -201,6 +265,9 @@ _AUTHORIZATION_ACTIONS = {
     PROMOTION_PROPOSE_TOOL: "state.experiment.promotion.propose",
     PROMOTION_APPROVE_TOOL: "state.experiment.promotion.approve",
     IDEA_CAPTURE_TOOL: "state.idea.capture",
+    IDEA_REVIEW_TOOL: "state.idea.review",
+    IDEA_CORRECTION_PROTECT_TOOL: "state.idea.correction.protect",
+    IDEA_CORRECTION_RELEASE_TOOL: "state.idea.correction.release",
 }
 _COMMIT_COLLECTION_ID_FIELDS = {
     "works": "work_id",
@@ -221,7 +288,10 @@ _ALL_COLLECTION_ID_FIELDS = {
 
 def _event_schema_version(snapshot: dict[str, Any]) -> str:
     schema_version = snapshot.get("schema_version")
-    if schema_version == "context.typed-state/v3alpha1":
+    if schema_version in {
+        "context.typed-state/v3alpha1",
+        "context.typed-state/v4alpha1",
+    }:
         return EVENT_SCHEMA_VERSION_V4
     if schema_version == "context.typed-state/v2alpha1":
         return EVENT_SCHEMA_VERSION
@@ -307,6 +377,52 @@ def _request_properties(tool: str) -> dict[str, Any]:
             "action": {"enum": ["capture-and-continue", "park", "propose-switch"]},
             "switch_target_work_id": {"type": ["string", "null"], "minLength": 1, "maxLength": 200},
             "expiry": {"type": ["string", "null"], "format": "date-time"},
+            "causation_ref": {"type": ["string", "null"]},
+            "correlation_ref": {"type": ["string", "null"]},
+        }
+    if tool == IDEA_REVIEW_TOOL:
+        return {
+            **common,
+            "schema_version": {"const": IDEA_REVIEW_REQUEST_SCHEMA_VERSION},
+            "expected_revision": {"type": "integer", "minimum": 0},
+            "idea_id": {"type": "string", "minLength": 1, "maxLength": 200},
+            "review_id": {"type": "string", "minLength": 1, "maxLength": 200},
+            "decision": {"enum": ["keep", "park", "reject", "supersede", "approve"]},
+            "urgency": {"enum": ["immediate", "next", "later", "review-date"]},
+            "impact": {"enum": ["none", "low", "medium", "high"]},
+            "review_at": {"type": ["string", "null"], "format": "date-time"},
+            "evidence_ids": {"type": "array", "items": {"type": "string"}},
+            "causation_ref": {"type": ["string", "null"]},
+            "correlation_ref": {"type": ["string", "null"]},
+        }
+    if tool == IDEA_CORRECTION_PROTECT_TOOL:
+        return {
+            **common,
+            "schema_version": {"const": IDEA_CORRECTION_PROTECTION_REQUEST_SCHEMA_VERSION},
+            "expected_revision": {"type": "integer", "minimum": 0},
+            "idea_id": {"type": "string", "minLength": 1, "maxLength": 200},
+            "protection_id": {"type": "string", "minLength": 1, "maxLength": 200},
+            "affected_work_ids": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+            "affected_scope_refs": {"type": "array", "minItems": 1, "items": {"type": "string"}},
+            "reason": {"type": "string", "minLength": 1, "maxLength": 2000},
+            "evidence_ids": {"type": "array", "items": {"type": "string"}},
+            "causation_ref": {"type": ["string", "null"]},
+            "correlation_ref": {"type": ["string", "null"]},
+        }
+    if tool == IDEA_CORRECTION_RELEASE_TOOL:
+        return {
+            **common,
+            "schema_version": {"const": IDEA_CORRECTION_RELEASE_REQUEST_SCHEMA_VERSION},
+            "expected_revision": {"type": "integer", "minimum": 0},
+            "idea_id": {"type": "string", "minLength": 1, "maxLength": 200},
+            "protection_id": {"type": "string", "minLength": 1, "maxLength": 200},
+            "release_reason": {"type": "string", "minLength": 1, "maxLength": 2000},
+            "release_evidence_ids": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": True,
+                "items": {"type": "string", "minLength": 1},
+            },
             "causation_ref": {"type": ["string", "null"]},
             "correlation_ref": {"type": ["string", "null"]},
         }
@@ -402,6 +518,20 @@ def _request_properties(tool: str) -> dict[str, Any]:
     }
 
 
+def _idea_capture_v2_request_properties() -> dict[str, Any]:
+    properties = _request_properties(IDEA_CAPTURE_TOOL)
+    properties["schema_version"] = {"const": IDEA_CAPTURE_REQUEST_SCHEMA_VERSION_V2}
+    properties.update(
+        {
+            "scope_ref": {"type": "string", "minLength": 1, "maxLength": 500},
+            "urgency": {"enum": ["immediate", "next", "later", "review-date"]},
+            "review_at": {"type": ["string", "null"], "format": "date-time"},
+            "occurrence_id": {"type": "string", "minLength": 1, "maxLength": 200},
+        }
+    )
+    return properties
+
+
 def state_mcp_tool_definitions() -> list[dict[str, Any]]:
     """Return provider-neutral MCP tool metadata with strict input schemas."""
     descriptions = {
@@ -415,12 +545,24 @@ def state_mcp_tool_definitions() -> list[dict[str, Any]]:
         PROMOTION_PROPOSE_TOOL: "Propose verified Experiment findings for a canonical target.",
         PROMOTION_APPROVE_TOOL: "Approve a proposed Experiment promotion with an independent verifier.",
         IDEA_CAPTURE_TOOL: "Capture a candidate Idea without changing active execution authority.",
+        IDEA_REVIEW_TOOL: "Record a bounded Idea review without granting execution authority.",
+        IDEA_CORRECTION_PROTECT_TOOL: "Protect affected writes while an Idea correction is unresolved.",
+        IDEA_CORRECTION_RELEASE_TOOL: "Release an Idea correction protection after verified evidence.",
     }
     return [
         {
             "name": tool,
             "description": descriptions[tool],
-            "inputSchema": _object_schema(_request_properties(tool)),
+            "inputSchema": (
+                {
+                    "oneOf": [
+                        _object_schema(_request_properties(IDEA_CAPTURE_TOOL)),
+                        _object_schema(_idea_capture_v2_request_properties()),
+                    ]
+                }
+                if tool == IDEA_CAPTURE_TOOL
+                else _object_schema(_request_properties(tool))
+            ),
         }
         for tool in STATE_MCP_TOOLS
     ]
@@ -459,16 +601,34 @@ def _request_id(arguments: Any) -> str | None:
 
 
 def _validate_request(tool: str, arguments: Any) -> str | None:
-    if not isinstance(arguments, dict) or set(arguments) != _REQUEST_FIELDS[tool]:
+    if not isinstance(arguments, dict):
+        return "request fields do not match the tool contract"
+    expected_fields = (
+        _IDEA_CAPTURE_REQUEST_FIELDS_V2
+        if tool == IDEA_CAPTURE_TOOL
+        and arguments.get("schema_version") == IDEA_CAPTURE_REQUEST_SCHEMA_VERSION_V2
+        else _REQUEST_FIELDS[tool]
+    )
+    if set(arguments) != expected_fields:
         return "request fields do not match the tool contract"
     expected_schema_version = {
         ATTEMPT_TOOL: ATTEMPT_REQUEST_SCHEMA_VERSION,
         EXPERIMENT_EFFECT_TOOL: EXPERIMENT_EFFECT_REQUEST_SCHEMA_VERSION,
         PROMOTION_PROPOSE_TOOL: PROMOTION_PROPOSAL_REQUEST_SCHEMA_VERSION,
         PROMOTION_APPROVE_TOOL: PROMOTION_APPROVAL_REQUEST_SCHEMA_VERSION,
-        IDEA_CAPTURE_TOOL: IDEA_CAPTURE_REQUEST_SCHEMA_VERSION,
+        IDEA_CAPTURE_TOOL: arguments.get("schema_version"),
+        IDEA_REVIEW_TOOL: IDEA_REVIEW_REQUEST_SCHEMA_VERSION,
+        IDEA_CORRECTION_PROTECT_TOOL: IDEA_CORRECTION_PROTECTION_REQUEST_SCHEMA_VERSION,
+        IDEA_CORRECTION_RELEASE_TOOL: IDEA_CORRECTION_RELEASE_REQUEST_SCHEMA_VERSION,
     }.get(tool, REQUEST_SCHEMA_VERSION)
-    if arguments["schema_version"] != expected_schema_version:
+    if arguments["schema_version"] != expected_schema_version or (
+        tool == IDEA_CAPTURE_TOOL
+        and expected_schema_version
+        not in {
+            IDEA_CAPTURE_REQUEST_SCHEMA_VERSION,
+            IDEA_CAPTURE_REQUEST_SCHEMA_VERSION_V2,
+        }
+    ):
         return "unsupported request schema_version"
     for field in ("request_id", "project_id"):
         value = arguments[field]
@@ -581,6 +741,85 @@ def _validate_request(tool: str, arguments: Any) -> str | None:
                 return "expiry must be null or RFC3339"
             if parsed_expiry.tzinfo is None:
                 return "expiry must include a timezone"
+        if arguments["schema_version"] == IDEA_CAPTURE_REQUEST_SCHEMA_VERSION_V2:
+            scope_ref = arguments["scope_ref"]
+            if not isinstance(scope_ref, str) or not scope_ref.strip() or len(scope_ref) > 500:
+                return "scope_ref must be a bounded non-empty string"
+            if arguments["urgency"] not in {"immediate", "next", "later", "review-date"}:
+                return "urgency is unsupported"
+            review_at = arguments["review_at"]
+            if arguments["urgency"] == "review-date" and review_at is None:
+                return "review-date urgency requires review_at"
+            if review_at is not None:
+                if not isinstance(review_at, str) or not review_at.strip():
+                    return "review_at must be null or RFC3339"
+                try:
+                    parsed_review_at = datetime.fromisoformat(review_at.replace("Z", "+00:00"))
+                except ValueError:
+                    return "review_at must be null or RFC3339"
+                if parsed_review_at.tzinfo is None:
+                    return "review_at must include a timezone"
+            occurrence_id = arguments["occurrence_id"]
+            if (
+                not isinstance(occurrence_id, str)
+                or not occurrence_id.strip()
+                or len(occurrence_id) > 200
+            ):
+                return "occurrence_id must be a bounded non-empty string"
+    if tool == IDEA_REVIEW_TOOL:
+        for field in ("idea_id", "review_id"):
+            value = arguments[field]
+            if not isinstance(value, str) or not value.strip() or len(value) > 200:
+                return f"{field} must be a bounded non-empty string"
+        if arguments["decision"] not in {"keep", "park", "reject", "supersede", "approve"}:
+            return "review decision is unsupported"
+        if arguments["urgency"] not in {"immediate", "next", "later", "review-date"}:
+            return "urgency is unsupported"
+        if arguments["impact"] not in {"none", "low", "medium", "high"}:
+            return "impact is unsupported"
+        if arguments["urgency"] == "review-date" and arguments["review_at"] is None:
+            return "review-date urgency requires review_at"
+        if arguments["review_at"] is not None:
+            try:
+                parsed = datetime.fromisoformat(arguments["review_at"].replace("Z", "+00:00"))
+            except (AttributeError, ValueError):
+                return "review_at must be null or RFC3339"
+            if parsed.tzinfo is None:
+                return "review_at must include a timezone"
+        evidence_ids = arguments["evidence_ids"]
+        if (
+            not isinstance(evidence_ids, list)
+            or any(not isinstance(item, str) or not item.strip() for item in evidence_ids)
+            or len(evidence_ids) != len(set(evidence_ids))
+        ):
+            return "evidence_ids must contain unique non-empty strings"
+    if tool == IDEA_CORRECTION_PROTECT_TOOL:
+        for field in ("idea_id", "protection_id", "reason"):
+            value = arguments[field]
+            if not isinstance(value, str) or not value.strip() or len(value) > 2000:
+                return f"{field} must be a bounded non-empty string"
+        for field in ("affected_work_ids", "affected_scope_refs", "evidence_ids"):
+            values = arguments[field]
+            if (
+                not isinstance(values, list)
+                or (field != "evidence_ids" and not values)
+                or any(not isinstance(item, str) or not item.strip() for item in values)
+                or len(values) != len(set(values))
+            ):
+                return f"{field} must contain unique non-empty strings"
+    if tool == IDEA_CORRECTION_RELEASE_TOOL:
+        for field in ("idea_id", "protection_id", "release_reason"):
+            value = arguments[field]
+            if not isinstance(value, str) or not value.strip() or len(value) > 2000:
+                return f"{field} must be a bounded non-empty string"
+        values = arguments["release_evidence_ids"]
+        if (
+            not isinstance(values, list)
+            or not values
+            or any(not isinstance(item, str) or not item.strip() for item in values)
+            or len(values) != len(set(values))
+        ):
+            return "release_evidence_ids must contain unique non-empty strings"
     if tool in {PROMOTION_PROPOSE_TOOL, PROMOTION_APPROVE_TOOL}:
         for field in ("work_id", "proposal_id"):
             value = arguments[field]
@@ -920,6 +1159,9 @@ class StateMCPService:
             PROMOTION_PROPOSE_TOOL,
             PROMOTION_APPROVE_TOOL,
             IDEA_CAPTURE_TOOL,
+            IDEA_REVIEW_TOOL,
+            IDEA_CORRECTION_PROTECT_TOOL,
+            IDEA_CORRECTION_RELEASE_TOOL,
         }:
             with self._mutation_lock:
                 replay = self._request_replay(tool, arguments, context)
@@ -933,6 +1175,12 @@ class StateMCPService:
                     return self._attempt(arguments, context=context)
                 if tool == IDEA_CAPTURE_TOOL:
                     return self._idea_capture(arguments, context=context)
+                if tool in {
+                    IDEA_REVIEW_TOOL,
+                    IDEA_CORRECTION_PROTECT_TOOL,
+                    IDEA_CORRECTION_RELEASE_TOOL,
+                }:
+                    return self._idea_review_write(tool, arguments, context=context)
                 if tool in {PROMOTION_PROPOSE_TOOL, PROMOTION_APPROVE_TOOL}:
                     return self._promotion(tool, arguments, context=context)
                 if tool == EXPERIMENT_EFFECT_TOOL:
@@ -1011,6 +1259,8 @@ class StateMCPService:
         """Persist one candidate-only Idea without changing execution authority."""
         request_id = arguments["request_id"]
         project_id = arguments["project_id"]
+        if arguments["schema_version"] == IDEA_CAPTURE_REQUEST_SCHEMA_VERSION_V2:
+            return self._idea_capture_v2(arguments, context=context)
         try:
             snapshot = invoke_state_store(self._store, "read_project", project_id)
             events = invoke_state_store(self._store, "read_events", project_id)
@@ -1200,6 +1450,476 @@ class StateMCPService:
             },
         )
         self._remember_request(IDEA_CAPTURE_TOOL, arguments, context, response)
+        return response
+
+    def _idea_capture_v2(
+        self,
+        arguments: dict[str, Any],
+        *,
+        context: RequestContext,
+        _retry_on_conflict: bool = True,
+    ) -> dict[str, Any]:
+        """Capture one v4 Idea observation with deterministic canonical dedupe."""
+        request_id = arguments["request_id"]
+        project_id = arguments["project_id"]
+        try:
+            snapshot = invoke_state_store(self._store, "read_project", project_id)
+            events = invoke_state_store(self._store, "read_events", project_id)
+            request_fingerprint = self._request_fingerprint(
+                IDEA_CAPTURE_TOOL, arguments, context
+            )
+            event_id = self._event_id_factory(request_id)
+            existing_event = next(
+                (item for item in events if item["event_id"] == event_id), None
+            )
+            if existing_event is not None:
+                transition = existing_event.get("idea_transition")
+                if (
+                    not isinstance(transition, dict)
+                    or transition.get("request_sha256") != request_fingerprint
+                    or transition.get("submitted_idea_id") != arguments["idea_id"]
+                    or transition.get("occurrence_id") != arguments["occurrence_id"]
+                ):
+                    return _response(
+                        tool=IDEA_CAPTURE_TOOL,
+                        request_id=request_id,
+                        error_code="conflict",
+                        error_message="Idea v2 capture request identity conflicts with durable state",
+                    )
+                response = _response(
+                    tool=IDEA_CAPTURE_TOOL,
+                    request_id=request_id,
+                    result={
+                        "revision": existing_event["revision_after"],
+                        "canonical_idea_id": transition["canonical_idea_id"],
+                        "event_head": {
+                            "sequence_no": existing_event["sequence_no"],
+                            "event_sha256": existing_event["event_sha256"],
+                        },
+                        "event": existing_event,
+                    },
+                )
+                self._remember_request(IDEA_CAPTURE_TOOL, arguments, context, response)
+                return response
+            if snapshot.get("schema_version") != "context.typed-state/v4alpha1":
+                return _response(
+                    tool=IDEA_CAPTURE_TOOL,
+                    request_id=request_id,
+                    error_code="integrity",
+                    error_message="Idea v2 capture requires typed-state v4alpha1",
+                )
+            dedupe_key = compute_idea_dedupe_key(
+                parent_work_id=arguments["parent_work_id"],
+                scope_ref=arguments["scope_ref"],
+                summary=arguments["summary"],
+            )
+            existing = next(
+                (item for item in snapshot["ideas"] if item["dedupe_key"] == dedupe_key),
+                None,
+            )
+            commit_revision = snapshot["project"]["revision"]
+            if (
+                commit_revision != arguments["expected_revision"]
+                and existing is None
+            ):
+                return _response(
+                    tool=IDEA_CAPTURE_TOOL,
+                    request_id=request_id,
+                    error_code="conflict",
+                    error_message="expected revision is stale",
+                )
+            observed_at = self._clock()
+            gate = evaluate_idea_capture_gate(
+                snapshot,
+                actor_ref=context.subject_ref,
+                expected_revision=commit_revision,
+                parent_work_id=arguments["parent_work_id"],
+                return_work_id=arguments["return_work_id"],
+                action=arguments["action"],
+                switch_target_work_id=arguments["switch_target_work_id"],
+                expiry=arguments["expiry"],
+                observed_at=observed_at,
+            )
+            if gate["decision"] != "allow":
+                return _response(
+                    tool=IDEA_CAPTURE_TOOL,
+                    request_id=request_id,
+                    error_code="conflict" if gate["reason"] == "stale_revision" else "integrity",
+                    error_message="Idea v2 capture gate denied read-only: " + gate["reason"],
+                )
+            candidate = upsert_idea_observation(
+                snapshot,
+                idea_id=arguments["idea_id"],
+                parent_work_id=arguments["parent_work_id"],
+                return_work_id=arguments["return_work_id"],
+                source_ref=arguments["source_ref"],
+                summary=arguments["summary"],
+                scope_ref=arguments["scope_ref"],
+                urgency=arguments["urgency"],
+                review_at=arguments["review_at"],
+                occurrence_id=arguments["occurrence_id"],
+                observed_at=observed_at,
+                actor_ref=context.subject_ref,
+                request_sha256=request_fingerprint,
+            )
+            canonical_idea_id = existing["idea_id"] if existing is not None else arguments["idea_id"]
+            if existing is None:
+                canonical = next(
+                    item for item in candidate["ideas"] if item["idea_id"] == canonical_idea_id
+                )
+                canonical["status"] = {
+                    "capture-and-continue": "candidate",
+                    "park": "parked",
+                    "propose-switch": "proposed",
+                }[arguments["action"]]
+                canonical["expiry"] = arguments["expiry"]
+                canonical["promotion_target"] = arguments["switch_target_work_id"]
+            revision_after = commit_revision + 1
+            occurrence = next(
+                item
+                for item in candidate["idea_occurrences"]
+                if item["occurrence_id"] == arguments["occurrence_id"]
+            )
+            changes: list[dict[str, Any]] = []
+            if existing is None:
+                canonical = next(
+                    item for item in candidate["ideas"] if item["idea_id"] == canonical_idea_id
+                )
+                changes.append(
+                    {"collection": "ideas", "object_id": canonical_idea_id, "value": canonical}
+                )
+            changes.append(
+                {
+                    "collection": "idea_occurrences",
+                    "object_id": occurrence["occurrence_id"],
+                    "value": occurrence,
+                }
+            )
+            for claim in candidate["claims"]:
+                if claim["status"] == "active":
+                    claim["expected_project_revision"] = revision_after
+                    _upsert_change(changes, collection="claims", value=claim)
+            for effect in candidate["effects"]:
+                if effect["status"] in {"authorized", "started"}:
+                    effect["expected_project_revision"] = revision_after
+                    _upsert_change(changes, collection="effects", value=effect)
+            _derive_project_projection(
+                candidate,
+                revision=revision_after,
+                updated_at=observed_at,
+            )
+            previous_hash = events[-1]["event_sha256"] if events else None
+            sequence_no = events[-1]["sequence_no"] + 1 if events else 1
+            event = build_state_event(
+                event_id=event_id,
+                event_type="state-transition",
+                project_id=project_id,
+                sequence_no=sequence_no,
+                revision_before=commit_revision,
+                occurred_at=observed_at,
+                actor_ref=context.subject_ref,
+                causation_ref=arguments["causation_ref"],
+                correlation_ref=arguments["correlation_ref"],
+                previous_event_sha256=previous_hash,
+                supersedes_event_id=None,
+                changes=changes,
+                project_after=candidate["project"],
+                idea_transition={
+                    "operation": "capture-merged" if existing is not None else "capture-created",
+                    "request_sha256": request_fingerprint,
+                    "canonical_idea_id": canonical_idea_id,
+                    "submitted_idea_id": arguments["idea_id"],
+                    "occurrence_id": occurrence["occurrence_id"],
+                    "review_id": None,
+                    "protection_id": None,
+                },
+                schema_version=IDEA_EVENT_SCHEMA_VERSION_V2,
+            )
+            expected_snapshot = replay_state_events(
+                snapshot,
+                [event],
+                starting_sequence_no=sequence_no,
+                previous_event_sha256=previous_hash,
+            )
+            invoke_state_store(
+                self._store,
+                "commit_event",
+                project_id=project_id,
+                expected_revision=commit_revision,
+                event=event,
+                expected_snapshot=expected_snapshot,
+            )
+        except StateStoreConflict as exc:
+            if _retry_on_conflict:
+                return self._idea_capture_v2(
+                    arguments,
+                    context=context,
+                    _retry_on_conflict=False,
+                )
+            return _backend_error_response(
+                tool=IDEA_CAPTURE_TOOL,
+                request_id=request_id,
+                error=exc,
+            )
+        except (
+            StateStoreCapabilityError,
+            StateStoreNotFound,
+            StateStoreBusy,
+            StateStoreIntegrityError,
+            StateEventError,
+            TypedStateError,
+            ValueError,
+        ) as exc:
+            return _backend_error_response(
+                tool=IDEA_CAPTURE_TOOL,
+                request_id=request_id,
+                error=exc,
+            )
+        response = _response(
+            tool=IDEA_CAPTURE_TOOL,
+            request_id=request_id,
+            result={
+                "revision": expected_snapshot["project"]["revision"],
+                "canonical_idea_id": canonical_idea_id,
+                "event_head": {
+                    "sequence_no": event["sequence_no"],
+                    "event_sha256": event["event_sha256"],
+                },
+                "event": event,
+            },
+        )
+        self._remember_request(IDEA_CAPTURE_TOOL, arguments, context, response)
+        return response
+
+    def _idea_review_write(
+        self,
+        tool: str,
+        arguments: dict[str, Any],
+        *,
+        context: RequestContext,
+    ) -> dict[str, Any]:
+        """Persist one review or correction-protection Idea v2 transition."""
+        request_id = arguments["request_id"]
+        project_id = arguments["project_id"]
+        try:
+            snapshot = invoke_state_store(self._store, "read_project", project_id)
+            events = invoke_state_store(self._store, "read_events", project_id)
+            request_fingerprint = self._request_fingerprint(tool, arguments, context)
+            event_id = self._event_id_factory(request_id)
+            existing_event = next(
+                (item for item in events if item["event_id"] == event_id), None
+            )
+            if existing_event is not None:
+                transition = existing_event.get("idea_transition")
+                expected_operation = {
+                    IDEA_REVIEW_TOOL: "review-updated",
+                    IDEA_CORRECTION_PROTECT_TOOL: "correction-guarded",
+                    IDEA_CORRECTION_RELEASE_TOOL: "correction-released",
+                }[tool]
+                if (
+                    not isinstance(transition, dict)
+                    or transition.get("request_sha256") != request_fingerprint
+                    or transition.get("operation") != expected_operation
+                    or transition.get("canonical_idea_id") != arguments["idea_id"]
+                ):
+                    return _response(
+                        tool=tool,
+                        request_id=request_id,
+                        error_code="conflict",
+                        error_message="Idea review request identity conflicts with durable state",
+                    )
+                response = _response(
+                    tool=tool,
+                    request_id=request_id,
+                    result={
+                        "revision": existing_event["revision_after"],
+                        "event_head": {
+                            "sequence_no": existing_event["sequence_no"],
+                            "event_sha256": existing_event["event_sha256"],
+                        },
+                        "event": existing_event,
+                    },
+                )
+                self._remember_request(tool, arguments, context, response)
+                return response
+            if snapshot.get("schema_version") != "context.typed-state/v4alpha1":
+                return _response(
+                    tool=tool,
+                    request_id=request_id,
+                    error_code="integrity",
+                    error_message="Idea review writes require typed-state v4alpha1",
+                )
+            if snapshot["project"]["revision"] != arguments["expected_revision"]:
+                return _response(
+                    tool=tool,
+                    request_id=request_id,
+                    error_code="conflict",
+                    error_message="expected revision is stale",
+                )
+            occurred_at = self._clock()
+            if tool == IDEA_REVIEW_TOOL:
+                candidate = apply_idea_review(
+                    snapshot,
+                    idea_id=arguments["idea_id"],
+                    review_id=arguments["review_id"],
+                    reviewer_ref=context.subject_ref,
+                    decision=arguments["decision"],
+                    urgency=arguments["urgency"],
+                    impact=arguments["impact"],
+                    review_at=arguments["review_at"],
+                    evidence_ids=arguments["evidence_ids"],
+                    reviewed_at=occurred_at,
+                )
+                idea = next(
+                    item for item in candidate["ideas"] if item["idea_id"] == arguments["idea_id"]
+                )
+                review = next(
+                    item
+                    for item in candidate["idea_reviews"]
+                    if item["review_id"] == arguments["review_id"]
+                )
+                changes = [
+                    {"collection": "ideas", "object_id": idea["idea_id"], "value": idea},
+                    {
+                        "collection": "idea_reviews",
+                        "object_id": review["review_id"],
+                        "value": review,
+                    },
+                ]
+                operation = "review-updated"
+                review_id = review["review_id"]
+                protection_id = None
+            elif tool == IDEA_CORRECTION_PROTECT_TOOL:
+                candidate = open_correction_protection(
+                    snapshot,
+                    protection_id=arguments["protection_id"],
+                    idea_id=arguments["idea_id"],
+                    affected_work_ids=arguments["affected_work_ids"],
+                    affected_scope_refs=arguments["affected_scope_refs"],
+                    reason=arguments["reason"],
+                    evidence_ids=arguments["evidence_ids"],
+                    opened_at=occurred_at,
+                    opened_by_ref=context.subject_ref,
+                )
+                protection = next(
+                    item
+                    for item in candidate["correction_protections"]
+                    if item["protection_id"] == arguments["protection_id"]
+                )
+                changes = [
+                    {
+                        "collection": "correction_protections",
+                        "object_id": protection["protection_id"],
+                        "value": protection,
+                    }
+                ]
+                operation = "correction-guarded"
+                review_id = None
+                protection_id = protection["protection_id"]
+            else:
+                candidate = release_correction_protection(
+                    snapshot,
+                    protection_id=arguments["protection_id"],
+                    idea_id=arguments["idea_id"],
+                    released_by_ref=context.subject_ref,
+                    release_reason=arguments["release_reason"],
+                    release_evidence_ids=arguments["release_evidence_ids"],
+                    released_at=occurred_at,
+                )
+                protection = next(
+                    item
+                    for item in candidate["correction_protections"]
+                    if item["protection_id"] == arguments["protection_id"]
+                )
+                changes = [
+                    {
+                        "collection": "correction_protections",
+                        "object_id": protection["protection_id"],
+                        "value": protection,
+                    }
+                ]
+                operation = "correction-released"
+                review_id = None
+                protection_id = protection["protection_id"]
+            revision_after = arguments["expected_revision"] + 1
+            for claim in candidate["claims"]:
+                if claim["status"] == "active":
+                    claim["expected_project_revision"] = revision_after
+                    _upsert_change(changes, collection="claims", value=claim)
+            for effect in candidate["effects"]:
+                if effect["status"] in {"authorized", "started"}:
+                    effect["expected_project_revision"] = revision_after
+                    _upsert_change(changes, collection="effects", value=effect)
+            _derive_project_projection(
+                candidate,
+                revision=revision_after,
+                updated_at=occurred_at,
+            )
+            previous_hash = events[-1]["event_sha256"] if events else None
+            sequence_no = events[-1]["sequence_no"] + 1 if events else 1
+            event = build_state_event(
+                event_id=event_id,
+                event_type="state-transition",
+                project_id=project_id,
+                sequence_no=sequence_no,
+                revision_before=arguments["expected_revision"],
+                occurred_at=occurred_at,
+                actor_ref=context.subject_ref,
+                causation_ref=arguments["causation_ref"],
+                correlation_ref=arguments["correlation_ref"],
+                previous_event_sha256=previous_hash,
+                supersedes_event_id=None,
+                changes=changes,
+                project_after=candidate["project"],
+                idea_transition={
+                    "operation": operation,
+                    "request_sha256": request_fingerprint,
+                    "canonical_idea_id": arguments["idea_id"],
+                    "submitted_idea_id": None,
+                    "occurrence_id": None,
+                    "review_id": review_id,
+                    "protection_id": protection_id,
+                },
+                schema_version=IDEA_EVENT_SCHEMA_VERSION_V2,
+            )
+            expected_snapshot = replay_state_events(
+                snapshot,
+                [event],
+                starting_sequence_no=sequence_no,
+                previous_event_sha256=previous_hash,
+            )
+            invoke_state_store(
+                self._store,
+                "commit_event",
+                project_id=project_id,
+                expected_revision=arguments["expected_revision"],
+                event=event,
+                expected_snapshot=expected_snapshot,
+            )
+        except (
+            StateStoreCapabilityError,
+            StateStoreNotFound,
+            StateStoreConflict,
+            StateStoreBusy,
+            StateStoreIntegrityError,
+            StateEventError,
+            TypedStateError,
+            ValueError,
+        ) as exc:
+            return _backend_error_response(tool=tool, request_id=request_id, error=exc)
+        response = _response(
+            tool=tool,
+            request_id=request_id,
+            result={
+                "revision": expected_snapshot["project"]["revision"],
+                "event_head": {
+                    "sequence_no": event["sequence_no"],
+                    "event_sha256": event["event_sha256"],
+                },
+                "event": event,
+            },
+        )
+        self._remember_request(tool, arguments, context, response)
         return response
 
     def _attempt(
@@ -1825,6 +2545,37 @@ class StateMCPService:
                 request_id=request_id,
                 error=exc,
             )
+        if snapshot.get("schema_version") == "context.typed-state/v4alpha1":
+            correction_gate = evaluate_correction_write_gate(
+                snapshot,
+                [
+                    {
+                        "collection": "effects",
+                        "object_id": arguments["effect_id"],
+                        "value": {
+                            "work_id": arguments["work_id"],
+                            "scope_ref": arguments["scope_ref"],
+                        },
+                    }
+                ],
+            )
+            if correction_gate["decision"] != "allow":
+                verdict = {
+                    "schema_version": "context.effect-scope-verdict/v1alpha1",
+                    "decision": "deny",
+                    "read_only": True,
+                    "reason": "correction_protection",
+                }
+                return _response(
+                    tool=EFFECT_GATE_TOOL,
+                    request_id=request_id,
+                    result={
+                        "verdict": verdict,
+                        "revision": snapshot["project"]["revision"],
+                        "registry_digest": self._registry_hash_value,
+                        "capabilities": capability_manifest_to_document(self._manifest),
+                    },
+                )
         work = next(
             (
                 item
@@ -1891,6 +2642,32 @@ class StateMCPService:
                     error_code="conflict",
                     error_message="expected revision is stale",
                 )
+            if (
+                arguments["action"] == "authorize"
+                and snapshot.get("schema_version") == "context.typed-state/v4alpha1"
+            ):
+                correction_gate = evaluate_correction_write_gate(
+                    snapshot,
+                    [
+                        {
+                            "collection": "effects",
+                            "object_id": arguments["effect_id"],
+                            "value": {
+                                "work_id": arguments["work_id"],
+                                "scope_ref": arguments["scope_ref"],
+                            },
+                        }
+                    ],
+                )
+                if correction_gate["decision"] != "allow":
+                    return _response(
+                        tool=tool,
+                        request_id=request_id,
+                        error_code="integrity",
+                        error_message=(
+                            "effect authorization denied by active correction protection"
+                        ),
+                    )
             if snapshot["schema_version"] in {
                 "context.typed-state/v2alpha1",
                 "context.typed-state/v3alpha1",
@@ -2061,7 +2838,10 @@ class StateMCPService:
                     "requested_at": observed_at,
                     "completed_at": None,
                 }
-                if snapshot["schema_version"] == "context.typed-state/v3alpha1":
+                if snapshot["schema_version"] in {
+                    "context.typed-state/v3alpha1",
+                    "context.typed-state/v4alpha1",
+                }:
                     effect["attempt_id"] = (
                         arguments["attempt_id"]
                         if tool == EXPERIMENT_EFFECT_TOOL
@@ -2083,7 +2863,11 @@ class StateMCPService:
                     or existing["scope_ref"] != arguments["scope_ref"]
                     or existing["status"] not in {"authorized", "started"}
                     or (
-                        snapshot["schema_version"] == "context.typed-state/v3alpha1"
+                        snapshot["schema_version"]
+                        in {
+                            "context.typed-state/v3alpha1",
+                            "context.typed-state/v4alpha1",
+                        }
                         and existing.get("attempt_id")
                         != (
                             arguments["attempt_id"]
@@ -2429,15 +3213,27 @@ class StateMCPService:
             snapshot = invoke_state_store(self._store, "read_project", project_id)
             events = invoke_state_store(self._store, "read_events", project_id)
             if (
-                snapshot.get("schema_version") == "context.typed-state/v3alpha1"
+                snapshot.get("schema_version")
+                in {"context.typed-state/v3alpha1", "context.typed-state/v4alpha1"}
                 and any(change["collection"] == "ideas" for change in arguments["changes"])
             ):
                 return _response(
                     tool=COMMIT_TOOL,
                     request_id=request_id,
                     error_code="integrity",
-                    error_message="typed-state v3 Ideas require context.idea.capture",
+                    error_message="typed-state Ideas require a dedicated Idea State MCP tool",
                 )
+            if snapshot.get("schema_version") == "context.typed-state/v4alpha1":
+                correction_gate = evaluate_correction_write_gate(
+                    snapshot, arguments["changes"]
+                )
+                if correction_gate["decision"] != "allow":
+                    return _response(
+                        tool=COMMIT_TOOL,
+                        request_id=request_id,
+                        error_code="integrity",
+                        error_message="state commit denied by active correction protection",
+                    )
             if snapshot["project"]["revision"] != arguments["expected_revision"]:
                 return _response(
                     tool=COMMIT_TOOL,
