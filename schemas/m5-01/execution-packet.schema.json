@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://continuity.invalid/schemas/m5-01/execution-packet.schema.json",
+  "title": "Continuity Plane Execution Packet",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "composer_version", "project_id", "project_revision",
+    "governance_ref", "canonical_plan_sha256", "state_sha256", "observed_at",
+    "active_leaf", "claims", "decisions", "constraints", "blockers",
+    "evidence_refs", "idea_refs", "next_action", "skill_lock",
+    "continuation_cursor", "packet_sha256", "state_write_authority"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.execution-packet/v1alpha1"},
+    "composer_version": {"const": "context.execution-packet-composer/v1alpha1"},
+    "project_id": {"$ref": "#/$defs/id"},
+    "project_revision": {"$ref": "#/$defs/nonNegativeInteger"},
+    "governance_ref": {"$ref": "#/$defs/nonEmptyString"},
+    "canonical_plan_sha256": {"$ref": "#/$defs/sha256"},
+    "state_sha256": {"$ref": "#/$defs/sha256"},
+    "observed_at": {"type": "string", "format": "date-time", "minLength": 1, "maxLength": 64},
+    "active_leaf": {"$ref": "#/$defs/activeLeaf"},
+    "claims": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/claim"}},
+    "decisions": {"type": "array", "maxItems": 128, "items": {"$ref": "#/$defs/decision"}},
+    "constraints": {"type": "array", "maxItems": 128, "items": {"$ref": "#/$defs/constraint"}},
+    "blockers": {"type": "array", "maxItems": 128, "items": {"$ref": "#/$defs/blocker"}},
+    "evidence_refs": {"type": "array", "maxItems": 256, "uniqueItems": true, "items": {"$ref": "#/$defs/evidenceRef"}},
+    "idea_refs": {"type": "array", "maxItems": 128, "uniqueItems": true, "items": {"$ref": "#/$defs/ideaRef"}},
+    "next_action": {"$ref": "#/$defs/shortText"},
+    "skill_lock": {"$ref": "#/$defs/skillLock"},
+    "continuation_cursor": {"$ref": "#/$defs/continuationCursor"},
+    "packet_sha256": {"$ref": "#/$defs/sha256"},
+    "state_write_authority": {"const": false}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"},
+    "nonEmptyString": {"type": "string", "minLength": 1, "pattern": ".*\\S.*"},
+    "shortText": {"type": "string", "minLength": 1, "maxLength": 1024, "pattern": "^[^\\r\\n\\x00]+$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nonNegativeInteger": {"type": "integer", "minimum": 0},
+    "nullableId": {"type": ["string", "null"], "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"},
+    "idList": {"type": "array", "maxItems": 4096, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+    "scope": {
+      "type": "object", "additionalProperties": false,
+      "required": ["scope_kind", "scope_ref"],
+      "properties": {"scope_kind": {"$ref": "#/$defs/shortText"}, "scope_ref": {"$ref": "#/$defs/nonEmptyString"}}
+    },
+    "scopeList": {"type": "array", "maxItems": 256, "uniqueItems": true, "items": {"$ref": "#/$defs/scope"}},
+    "activeLeaf": {
+      "type": "object", "additionalProperties": false,
+      "required": ["work_id", "kind", "title", "status", "revision", "parent_work_id", "dependency_ids", "owner_refs", "scope_refs", "return_point_work_id", "exit_criteria", "promotion_target_work_id", "mainline_authority"],
+      "properties": {
+        "work_id": {"$ref": "#/$defs/id"},
+        "kind": {"$ref": "#/$defs/shortText"},
+        "title": {"type": "string", "minLength": 1, "maxLength": 8192, "pattern": ".*\\S.*"},
+        "status": {"const": "active"},
+        "revision": {"$ref": "#/$defs/nonNegativeInteger"},
+        "parent_work_id": {"$ref": "#/$defs/nullableId"},
+        "dependency_ids": {"$ref": "#/$defs/idList"},
+        "owner_refs": {"$ref": "#/$defs/idList"},
+        "scope_refs": {"$ref": "#/$defs/scopeList"},
+        "return_point_work_id": {"$ref": "#/$defs/nullableId"},
+        "exit_criteria": {"type": "array", "maxItems": 256, "items": {"$ref": "#/$defs/nonEmptyString"}},
+        "promotion_target_work_id": {"$ref": "#/$defs/nullableId"},
+        "mainline_authority": {"type": "boolean"}
+      }
+    },
+    "claim": {
+      "type": "object", "additionalProperties": false,
+      "required": ["claim_id", "work_id", "actor_ref", "status", "lease_expires_at", "scope_owners"],
+      "properties": {
+        "claim_id": {"$ref": "#/$defs/id"}, "work_id": {"$ref": "#/$defs/id"}, "actor_ref": {"$ref": "#/$defs/id"},
+        "status": {"enum": ["active", "expired", "released"]},
+        "lease_expires_at": {"type": "string", "format": "date-time"}, "scope_owners": {"$ref": "#/$defs/scopeList"}
+      }
+    },
+    "decision": {
+      "type": "object", "additionalProperties": false,
+      "required": ["decision_id", "work_id", "status", "statement", "evidence_ids"],
+      "properties": {
+        "decision_id": {"$ref": "#/$defs/id"}, "work_id": {"$ref": "#/$defs/id"}, "status": {"const": "accepted"},
+        "statement": {"$ref": "#/$defs/nonEmptyString"}, "evidence_ids": {"$ref": "#/$defs/idList"}
+      }
+    },
+    "constraint": {
+      "type": "object", "additionalProperties": false,
+      "required": ["constraint_id", "status", "statement", "scope_work_ids", "evidence_ids"],
+      "properties": {
+        "constraint_id": {"$ref": "#/$defs/id"}, "status": {"const": "active"}, "statement": {"$ref": "#/$defs/nonEmptyString"},
+        "scope_work_ids": {"$ref": "#/$defs/idList"}, "evidence_ids": {"$ref": "#/$defs/idList"}
+      }
+    },
+    "blocker": {
+      "type": "object", "additionalProperties": false,
+      "required": ["blocker_id", "status", "reason", "blocked_work_ids", "evidence_ids"],
+      "properties": {
+        "blocker_id": {"$ref": "#/$defs/id"}, "status": {"const": "open"}, "reason": {"$ref": "#/$defs/nonEmptyString"},
+        "blocked_work_ids": {"$ref": "#/$defs/idList"}, "evidence_ids": {"$ref": "#/$defs/idList"}
+      }
+    },
+    "evidenceRef": {
+      "type": "object", "additionalProperties": false,
+      "required": ["evidence_id", "artifact_ref", "content_sha256", "validity", "verified_at"],
+      "properties": {
+        "evidence_id": {"$ref": "#/$defs/id"}, "artifact_ref": {"type": "string", "minLength": 1},
+        "content_sha256": {"$ref": "#/$defs/sha256"}, "validity": {"const": "verified"},
+        "verified_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "ideaRef": {
+      "type": "object", "additionalProperties": false,
+      "required": ["idea_id", "status", "summary", "return_work_id", "evidence_ids", "authority"],
+      "properties": {
+        "idea_id": {"$ref": "#/$defs/id"}, "status": {"enum": ["candidate", "parked", "proposed", "approved"]},
+        "summary": {"type": "string", "minLength": 1, "maxLength": 1024, "pattern": ".*\\S.*"},
+        "return_work_id": {"$ref": "#/$defs/id"}, "evidence_ids": {"$ref": "#/$defs/idList"}, "authority": {"const": "candidate-only"}
+      }
+    },
+    "skillLock": {
+      "type": "object", "additionalProperties": false,
+      "required": ["resolver_version", "request_id", "request_sha256", "catalog_sha256", "manifest_set_sha256", "compiled_packet_sha256", "decision_sha256", "selected_rule_ids", "provider_contract_ref", "schema_refs"],
+      "properties": {
+        "resolver_version": {"$ref": "#/$defs/nonEmptyString"}, "request_id": {"$ref": "#/$defs/id"},
+        "request_sha256": {"$ref": "#/$defs/sha256"}, "catalog_sha256": {"$ref": "#/$defs/sha256"},
+        "manifest_set_sha256": {"$ref": "#/$defs/sha256"}, "compiled_packet_sha256": {"$ref": "#/$defs/sha256"},
+        "decision_sha256": {"$ref": "#/$defs/sha256"}, "selected_rule_ids": {"$ref": "#/$defs/idList"},
+        "provider_contract_ref": {"$ref": "#/$defs/nonEmptyString"}, "schema_refs": {"$ref": "#/$defs/idList"}
+      }
+    },
+    "continuationCursor": {
+      "type": "object", "additionalProperties": false,
+      "required": ["last_durable_action", "in_flight_phase", "confirmed_input_refs", "reserved_effect_ids", "replay_policy"],
+      "properties": {
+        "last_durable_action": {"$ref": "#/$defs/shortText"}, "in_flight_phase": {"$ref": "#/$defs/shortText"},
+        "confirmed_input_refs": {"$ref": "#/$defs/idList"}, "reserved_effect_ids": {"$ref": "#/$defs/idList"},
+        "replay_policy": {"enum": ["resume-verified", "replay-idempotent", "verify-before-effect"]}
+      }
+    }
+  }
+}
