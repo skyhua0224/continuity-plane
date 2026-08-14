@@ -26,7 +26,7 @@ canonical plan：`MASTER.md`
 | Documentation lifecycle | M0-10 verified；独立审查 High 0、Medium 0；STATUS 12 KiB 门与 MASTER 二级节容量门通过 |
 | Skill catalog/proposal/source adapters | M4-07、M4-08、M4-10 离线合同已验收；external active 0；DeepSeek/Pi/Cordis adoption 0 |
 | Project dogfood baseline | 27 次 compaction；Continuation Cursor 78/80；首动作不匹配和已确认事项重播各 2 次；provider context/token/latency 仍不可见 |
-| Repository verification | 705 tests 通过；28 个无 DSN PostgreSQL live tests skipped；repository verifier、Python compile、diff check 和文档 lifecycle benchmark 通过 |
+| Repository verification | 706 tests 通过；28 个无 DSN PostgreSQL live tests skipped；repository verifier、Python compile、diff check 和文档 lifecycle benchmark 通过 |
 | Governance authority | `MASTER.md` revision 40 |
 | Operational router | `STATUS.md` |
 

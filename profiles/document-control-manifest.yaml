@@ -48,7 +48,7 @@ documents:
   - ref_id: master-evidence-1
     path: docs/migrations/m0-10-document-lifecycle-acceptance-2026-08-12.md
     valid_until: null
-    content_sha256: 801fafc174a158843096173928d7d4071d0292730592397e26199395cf4bdf07
+    content_sha256: 5ab492d286e034d30fd84de799023b4b2369fd56b1e6787a3b9815c636c59a90
   content_sha256: 5103a2fa8651281b8966ec41894bf46b79fd050488149b4655f17d46593c9150
   metrics:
     utf8_bytes: 53166
@@ -88,7 +88,7 @@ documents:
 - document_id: status
   path: STATUS.md
   category: routing
-  document_revision: 2
+  document_revision: 3
   authority:
     governance_authority: false
     active_state_authority: false
@@ -96,11 +96,11 @@ documents:
   change:
     change_type: status
     authority_ref: governance-event://master/revision/40
-    supersedes: context.document://status/revision/1
+    supersedes: context.document://status/revision/2
     supersedes_provenance:
-      git_commit: 446e4ad60bab8447cec3d7973cd5185d4ac25727
-      manifest_sha256: b7b0d2ea85521b4f16c9ad3754121244f2005d5df63ad210debf67d0acbb9b61
-      content_sha256: 5d925f8a2620e59269065a8e0526b3adaf5d4310cf6c10a3b0ba8f05af0b5e56
+      git_commit: 2fd419b1352a98ff795f9039aba1c421bfd010db
+      manifest_sha256: 969cc0ed690ee9f04db2c4e026f914b995c2486f14bc6b9b1918f11b5bc130fa
+      content_sha256: 9dc8dc1ef6da9ed17db36d00c1794a6ceea06228b784397443c3456789f06683
     affected_tasks:
     - M0-10
     next_review: null
@@ -108,8 +108,8 @@ documents:
   - ref_id: status-evidence-1
     path: docs/migrations/m0-10-document-lifecycle-acceptance-2026-08-12.md
     valid_until: null
-    content_sha256: 801fafc174a158843096173928d7d4071d0292730592397e26199395cf4bdf07
-  content_sha256: 9dc8dc1ef6da9ed17db36d00c1794a6ceea06228b784397443c3456789f06683
+    content_sha256: 5ab492d286e034d30fd84de799023b4b2369fd56b1e6787a3b9815c636c59a90
+  content_sha256: 046a5324286aa052314b299fef188f626816719012e33cc4ffb5e55edb731931
   metrics:
     utf8_bytes: 3750
     section_count: 4
@@ -227,7 +227,7 @@ documents:
   - ref_id: docs-architecture-target-state-evidence-1
     path: docs/migrations/m0-10-document-lifecycle-acceptance-2026-08-12.md
     valid_until: null
-    content_sha256: 801fafc174a158843096173928d7d4071d0292730592397e26199395cf4bdf07
+    content_sha256: 5ab492d286e034d30fd84de799023b4b2369fd56b1e6787a3b9815c636c59a90
   content_sha256: 2e603ec877e9f05bd9c47690a11ec753715d83a2fab6a264316b5a05627a5fec
   metrics:
     utf8_bytes: 12245
@@ -284,24 +284,24 @@ documents:
 - document_id: docs-migrations-m0-10-document-lifecycle-acceptance-2026-08-12
   path: docs/migrations/m0-10-document-lifecycle-acceptance-2026-08-12.md
   category: migration
-  document_revision: 4
+  document_revision: 5
   authority:
     governance_authority: false
     active_state_authority: false
     controlled_action_entry: false
   change:
     change_type: correction
-    authority_ref: verification-run://repository/801fafc174a158843096173928d7d4071d0292730592397e26199395cf4bdf07
-    supersedes: context.document://docs-migrations-m0-10-document-lifecycle-acceptance-2026-08-12/revision/3
+    authority_ref: verification-run://repository/5ab492d286e034d30fd84de799023b4b2369fd56b1e6787a3b9815c636c59a90
+    supersedes: context.document://docs-migrations-m0-10-document-lifecycle-acceptance-2026-08-12/revision/4
     supersedes_provenance:
-      git_commit: 8db91cfd3301cbd68fe376abb5366f1dffafda24
-      manifest_sha256: c36d961a7f09b5622b700a2f3b4d62f4c2a541af50793e5a1e97d5b20fdad46b
-      content_sha256: 216e4a31ec260d9b7c166ccc995d60462b793160e47637dc70fdab9c3227430e
+      git_commit: 2fd419b1352a98ff795f9039aba1c421bfd010db
+      manifest_sha256: 969cc0ed690ee9f04db2c4e026f914b995c2486f14bc6b9b1918f11b5bc130fa
+      content_sha256: 801fafc174a158843096173928d7d4071d0292730592397e26199395cf4bdf07
     affected_tasks:
     - M0-10
     next_review: null
   evidence_refs: []
-  content_sha256: 801fafc174a158843096173928d7d4071d0292730592397e26199395cf4bdf07
+  content_sha256: 5ab492d286e034d30fd84de799023b4b2369fd56b1e6787a3b9815c636c59a90
   metrics:
     utf8_bytes: 3292
     section_count: 3
@@ -1067,7 +1067,7 @@ documents:
   - ref_id: docs-reports-verified-state-evidence-2
     path: docs/migrations/m0-10-document-lifecycle-acceptance-2026-08-12.md
     valid_until: null
-    content_sha256: 801fafc174a158843096173928d7d4071d0292730592397e26199395cf4bdf07
+    content_sha256: 5ab492d286e034d30fd84de799023b4b2369fd56b1e6787a3b9815c636c59a90
   - ref_id: docs-reports-verified-state-evidence-3
     path: docs/migrations/m1-02-source-registry-acceptance-2026-08-09.md
     valid_until: null
