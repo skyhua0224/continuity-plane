@@ -40,7 +40,10 @@ def evaluate_idea_capture_gate(
     observed_at: str,
 ) -> dict[str, Any]:
     """Return a deterministic allow/deny decision for one candidate-only capture."""
-    if not isinstance(snapshot, dict) or snapshot.get("schema_version") != "context.typed-state/v3alpha1":
+    if not isinstance(snapshot, dict) or snapshot.get("schema_version") not in {
+        "context.typed-state/v3alpha1",
+        "context.typed-state/v4alpha1",
+    }:
         return _deny("typed_state_version")
     project = snapshot.get("project")
     if not isinstance(project, dict) or project.get("revision") != expected_revision:

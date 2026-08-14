@@ -5,7 +5,6 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-
 _PATH_KINDS = {"repo", "directory", "file", "symbol"}
 _SCOPE_KINDS = _PATH_KINDS | {"capability", "effect"}
 _PATH_OPERATION_PREFIXES = ("write-",)
@@ -14,6 +13,7 @@ _EFFECT_OPERATION_PREFIXES = ("deploy", "external-")
 _CURRENT_TYPED_STATE_VERSIONS = {
     "context.typed-state/v2alpha1",
     "context.typed-state/v3alpha1",
+    "context.typed-state/v4alpha1",
 }
 
 

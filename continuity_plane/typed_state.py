@@ -18,10 +18,12 @@ from .experiment_lifecycle import experiment_contract_sha256
 LEGACY_SCHEMA_VERSION = "context.typed-state/v1alpha1"
 SCHEMA_VERSION = "context.typed-state/v2alpha1"
 EXPERIMENT_LIFECYCLE_SCHEMA_VERSION = "context.typed-state/v3alpha1"
+IDEA_REVIEW_SCHEMA_VERSION = "context.typed-state/v4alpha1"
 SUPPORTED_SCHEMA_VERSIONS = {
     LEGACY_SCHEMA_VERSION,
     SCHEMA_VERSION,
     EXPERIMENT_LIFECYCLE_SCHEMA_VERSION,
+    IDEA_REVIEW_SCHEMA_VERSION,
 }
 
 _DOCUMENT_FIELDS = {
@@ -39,6 +41,12 @@ _DOCUMENT_FIELDS = {
 _DOCUMENT_FIELDS_V3 = _DOCUMENT_FIELDS | {
     "experiment_attempts",
     "experiment_promotions",
+}
+_DOCUMENT_FIELDS_V4 = _DOCUMENT_FIELDS_V3 | {
+    "idea_relationships",
+    "idea_occurrences",
+    "idea_reviews",
+    "correction_protections",
 }
 _PROJECT_FIELDS = {
     "project_id",
@@ -98,6 +106,14 @@ _IDEA_FIELDS = {
     "attempt_budget",
     "promotion_target",
     "evidence_ids",
+}
+_IDEA_FIELDS_V4 = _IDEA_FIELDS | {
+    "dedupe_key",
+    "scope_ref",
+    "urgency",
+    "review_at",
+    "created_at",
+    "revision",
 }
 _DECISION_FIELDS = {
     "decision_id",
@@ -175,6 +191,51 @@ _EXPERIMENT_PROMOTION_FIELDS = {
     "criterion_evidence",
     "created_at",
 }
+_IDEA_RELATIONSHIP_FIELDS = {
+    "relationship_id",
+    "source_idea_id",
+    "target_idea_id",
+    "relationship_kind",
+    "evidence_ids",
+    "created_at",
+}
+_IDEA_OCCURRENCE_FIELDS = {
+    "occurrence_id",
+    "idea_id",
+    "submitted_idea_id",
+    "source_ref",
+    "dedupe_key",
+    "observed_at",
+    "actor_ref",
+    "request_sha256",
+    "origin",
+}
+_IDEA_REVIEW_FIELDS = {
+    "review_id",
+    "idea_id",
+    "reviewer_ref",
+    "decision",
+    "urgency",
+    "impact",
+    "review_at",
+    "evidence_ids",
+    "reviewed_at",
+}
+_CORRECTION_PROTECTION_FIELDS = {
+    "protection_id",
+    "idea_id",
+    "status",
+    "affected_work_ids",
+    "affected_scope_refs",
+    "reason",
+    "evidence_ids",
+    "opened_by_ref",
+    "opened_at",
+    "released_by_ref",
+    "release_reason",
+    "release_evidence_ids",
+    "released_at",
+}
 _SCOPE_FIELDS = {"scope_kind", "scope_ref"}
 
 _WORK_KINDS = {"campaign", "goal", "work", "experiment"}
@@ -191,7 +252,27 @@ _WORK_STATUSES = {
 }
 _DEDUPE_STATUSES = {"clear", "candidate", "blocked", "coordinated"}
 _CLAIM_STATUSES = {"active", "released", "expired", "revoked"}
-_IDEA_STATUSES = {"candidate", "parked", "proposed", "approved", "rejected", "superseded"}
+_IDEA_STATUSES = {
+    "candidate",
+    "parked",
+    "proposed",
+    "approved",
+    "expired",
+    "rejected",
+    "superseded",
+}
+_IDEA_URGENCIES = {"immediate", "next", "later", "review-date"}
+_IDEA_REVIEW_DECISIONS = {"keep", "park", "reject", "supersede", "approve"}
+_IDEA_IMPACTS = {"none", "low", "medium", "high"}
+_IDEA_RELATIONSHIP_KINDS = {
+    "related",
+    "depends-on",
+    "duplicates",
+    "supersedes",
+    "blocks",
+}
+_OCCURRENCE_ORIGINS = {"capture", "legacy-v3"}
+_CORRECTION_PROTECTION_STATUSES = {"active", "released", "superseded"}
 _DECISION_STATUSES = {"proposed", "accepted", "rejected", "reverted", "superseded"}
 _CONSTRAINT_STATUSES = {"active", "satisfied", "expired", "rejected", "superseded"}
 _EVIDENCE_KINDS = {
@@ -446,11 +527,12 @@ def validate_typed_state(document: dict[str, Any]) -> None:
     """Validate a complete M2-01 typed state snapshot."""
     if not isinstance(document, dict):
         raise TypedStateError("document fields do not match the contract")
-    document_fields = (
-        _DOCUMENT_FIELDS_V3
-        if document.get("schema_version") == EXPERIMENT_LIFECYCLE_SCHEMA_VERSION
-        else _DOCUMENT_FIELDS
-    )
+    if document.get("schema_version") == IDEA_REVIEW_SCHEMA_VERSION:
+        document_fields = _DOCUMENT_FIELDS_V4
+    elif document.get("schema_version") == EXPERIMENT_LIFECYCLE_SCHEMA_VERSION:
+        document_fields = _DOCUMENT_FIELDS_V3
+    else:
+        document_fields = _DOCUMENT_FIELDS
     document = _fields(document, document_fields, "document")
     schema_version = document["schema_version"]
     if schema_version not in SUPPORTED_SCHEMA_VERSIONS:
@@ -486,18 +568,30 @@ def validate_typed_state(document: dict[str, Any]) -> None:
     experiment_promotions = _objects(
         document.get("experiment_promotions", []), "experiment_promotions"
     )
+    idea_relationships = _objects(
+        document.get("idea_relationships", []), "idea_relationships"
+    )
+    idea_occurrences = _objects(
+        document.get("idea_occurrences", []), "idea_occurrences"
+    )
+    idea_reviews = _objects(document.get("idea_reviews", []), "idea_reviews")
+    correction_protections = _objects(
+        document.get("correction_protections", []), "correction_protections"
+    )
 
     canonical_scopes = schema_version in {
         SCHEMA_VERSION,
         EXPERIMENT_LIFECYCLE_SCHEMA_VERSION,
+        IDEA_REVIEW_SCHEMA_VERSION,
     }
     work_fields = _WORK_FIELDS_V2 if canonical_scopes else _WORK_FIELDS_V1
     for item in works:
         _fields(item, work_fields, "work")
     for item in claims:
         _fields(item, _CLAIM_FIELDS, "claim")
+    idea_fields = _IDEA_FIELDS_V4 if schema_version == IDEA_REVIEW_SCHEMA_VERSION else _IDEA_FIELDS
     for item in ideas:
-        _fields(item, _IDEA_FIELDS, "idea")
+        _fields(item, idea_fields, "idea")
     for item in decisions:
         _fields(item, _DECISION_FIELDS, "decision")
     for item in constraints:
@@ -506,13 +600,25 @@ def validate_typed_state(document: dict[str, Any]) -> None:
         _fields(item, _EVIDENCE_FIELDS, "evidence")
     for item in blockers:
         _fields(item, _BLOCKER_FIELDS, "blocker")
-    effect_fields = _EFFECT_FIELDS_V3 if schema_version == EXPERIMENT_LIFECYCLE_SCHEMA_VERSION else _EFFECT_FIELDS
+    effect_fields = (
+        _EFFECT_FIELDS_V3
+        if schema_version in {EXPERIMENT_LIFECYCLE_SCHEMA_VERSION, IDEA_REVIEW_SCHEMA_VERSION}
+        else _EFFECT_FIELDS
+    )
     for item in effects:
         _fields(item, effect_fields, "effect")
     for item in experiment_attempts:
         _fields(item, _EXPERIMENT_ATTEMPT_FIELDS, "experiment_attempt")
     for item in experiment_promotions:
         _fields(item, _EXPERIMENT_PROMOTION_FIELDS, "experiment_promotion")
+    for item in idea_relationships:
+        _fields(item, _IDEA_RELATIONSHIP_FIELDS, "idea_relationship")
+    for item in idea_occurrences:
+        _fields(item, _IDEA_OCCURRENCE_FIELDS, "idea_occurrence")
+    for item in idea_reviews:
+        _fields(item, _IDEA_REVIEW_FIELDS, "idea_review")
+    for item in correction_protections:
+        _fields(item, _CORRECTION_PROTECTION_FIELDS, "correction_protection")
 
     work_by_id = _index(works, "work_id", "work")
     claim_by_id = _index(claims, "claim_id", "claim")
@@ -528,6 +634,14 @@ def validate_typed_state(document: dict[str, Any]) -> None:
     promotion_by_id = _index(
         experiment_promotions, "promotion_id", "experiment_promotion"
     )
+    relationship_by_id = _index(
+        idea_relationships, "relationship_id", "idea_relationship"
+    )
+    occurrence_by_id = _index(idea_occurrences, "occurrence_id", "idea_occurrence")
+    review_by_id = _index(idea_reviews, "review_id", "idea_review")
+    protection_by_id = _index(
+        correction_protections, "protection_id", "correction_protection"
+    )
 
     all_ids = [
         *work_by_id,
@@ -540,6 +654,10 @@ def validate_typed_state(document: dict[str, Any]) -> None:
         *effect_by_id,
         *attempt_by_id,
         *promotion_by_id,
+        *relationship_by_id,
+        *occurrence_by_id,
+        *review_by_id,
+        *protection_by_id,
     ]
     if len(all_ids) != len(set(all_ids)):
         raise TypedStateError("object IDs must be globally unique")
@@ -646,6 +764,173 @@ def validate_typed_state(document: dict[str, Any]) -> None:
         _optional_string(item["promotion_target"], "idea.promotion_target")
         idea_evidence = _strings(item["evidence_ids"], "idea.evidence_ids")
         _references(idea_evidence, evidence_by_id, "idea.evidence_ids")
+
+    if schema_version == IDEA_REVIEW_SCHEMA_VERSION:
+        seen_dedupe_keys: set[str] = set()
+        for item in ideas:
+            dedupe_key = item["dedupe_key"]
+            if not isinstance(dedupe_key, str) or not re.fullmatch(
+                r"sha256:[0-9a-f]{64}", dedupe_key
+            ):
+                raise TypedStateError("idea.dedupe_key must be a SHA-256 key")
+            if dedupe_key in seen_dedupe_keys:
+                raise TypedStateError("idea.dedupe_key must be unique")
+            seen_dedupe_keys.add(dedupe_key)
+            _string(item["scope_ref"], "idea.scope_ref")
+            urgency = _enum(item["urgency"], _IDEA_URGENCIES, "idea.urgency")
+            review_at = _timestamp(item["review_at"], "idea.review_at", optional=True)
+            if urgency == "review-date" and review_at is None:
+                raise TypedStateError("review-date Idea requires review_at")
+            _timestamp(item["created_at"], "idea.created_at", optional=True)
+            if _uint(item["revision"], "idea.revision") == 0:
+                raise TypedStateError("idea.revision must be positive")
+
+        relationship_keys: set[tuple[str, str, str]] = set()
+        relationship_graph: dict[str, set[str]] = {idea_id: set() for idea_id in idea_by_id}
+        for item in idea_relationships:
+            source_id = item["source_idea_id"]
+            target_id = item["target_idea_id"]
+            if source_id not in idea_by_id or target_id not in idea_by_id:
+                raise TypedStateError("idea relationship references an unknown Idea")
+            if source_id == target_id:
+                raise TypedStateError("idea relationship cannot self-reference")
+            kind = _enum(
+                item["relationship_kind"],
+                _IDEA_RELATIONSHIP_KINDS,
+                "idea_relationship.relationship_kind",
+            )
+            key = (source_id, target_id, kind)
+            if key in relationship_keys:
+                raise TypedStateError("idea relationship must be unique")
+            relationship_keys.add(key)
+            relationship_graph[source_id].add(target_id)
+            refs = _strings(item["evidence_ids"], "idea_relationship.evidence_ids")
+            _references(refs, evidence_by_id, "idea_relationship.evidence_ids")
+            _timestamp(item["created_at"], "idea_relationship.created_at")
+
+        visiting: set[str] = set()
+        visited: set[str] = set()
+
+        def visit_idea(idea_id: str) -> None:
+            if idea_id in visiting:
+                raise TypedStateError("idea relationship cycle is invalid")
+            if idea_id in visited:
+                return
+            visiting.add(idea_id)
+            for target_id in relationship_graph[idea_id]:
+                visit_idea(target_id)
+            visiting.remove(idea_id)
+            visited.add(idea_id)
+
+        for idea_id in relationship_graph:
+            visit_idea(idea_id)
+
+        source_bindings: set[str] = set()
+        for item in idea_occurrences:
+            idea_id = item["idea_id"]
+            if idea_id not in idea_by_id:
+                raise TypedStateError("idea occurrence references an unknown Idea")
+            _string(item["submitted_idea_id"], "idea_occurrence.submitted_idea_id")
+            _string(item["source_ref"], "idea_occurrence.source_ref")
+            if item["source_ref"] in source_bindings:
+                raise TypedStateError("idea occurrence source cannot bind multiple Ideas")
+            source_bindings.add(item["source_ref"])
+            if item["dedupe_key"] != idea_by_id[idea_id]["dedupe_key"]:
+                raise TypedStateError("idea occurrence must retain the canonical dedupe key")
+            origin = _enum(item["origin"], _OCCURRENCE_ORIGINS, "idea_occurrence.origin")
+            observed_at = _timestamp(
+                item["observed_at"], "idea_occurrence.observed_at", optional=True
+            )
+            _string(item["actor_ref"], "idea_occurrence.actor_ref")
+            request_sha256 = item["request_sha256"]
+            if request_sha256 is not None and (
+                not isinstance(request_sha256, str) or not _SHA256_RE.fullmatch(request_sha256)
+            ):
+                raise TypedStateError("idea occurrence request_sha256 must be SHA-256")
+            if origin == "capture" and observed_at is None:
+                raise TypedStateError("captured occurrence requires observed_at")
+            if origin == "capture" and request_sha256 is None:
+                raise TypedStateError("captured occurrence requires request_sha256")
+            if origin == "legacy-v3" and observed_at is not None:
+                raise TypedStateError("legacy occurrence cannot invent observed_at")
+            if origin == "legacy-v3" and request_sha256 is not None:
+                raise TypedStateError("legacy occurrence cannot invent request_sha256")
+
+        for item in idea_reviews:
+            if item["idea_id"] not in idea_by_id:
+                raise TypedStateError("idea review references an unknown Idea")
+            _string(item["reviewer_ref"], "idea_review.reviewer_ref")
+            _enum(item["decision"], _IDEA_REVIEW_DECISIONS, "idea_review.decision")
+            urgency = _enum(item["urgency"], _IDEA_URGENCIES, "idea_review.urgency")
+            _enum(item["impact"], _IDEA_IMPACTS, "idea_review.impact")
+            review_at = _timestamp(item["review_at"], "idea_review.review_at", optional=True)
+            if urgency == "review-date" and review_at is None:
+                raise TypedStateError("review-date Idea review requires review_at")
+            refs = _strings(item["evidence_ids"], "idea_review.evidence_ids")
+            _references(refs, evidence_by_id, "idea_review.evidence_ids")
+            _timestamp(item["reviewed_at"], "idea_review.reviewed_at")
+
+        for item in correction_protections:
+            if item["idea_id"] not in idea_by_id:
+                raise TypedStateError("correction protection references an unknown Idea")
+            status = _enum(
+                item["status"],
+                _CORRECTION_PROTECTION_STATUSES,
+                "correction_protection.status",
+            )
+            affected_work_ids = _strings(
+                item["affected_work_ids"],
+                "correction_protection.affected_work_ids",
+                non_empty=True,
+            )
+            _references(
+                affected_work_ids, work_by_id, "correction_protection.affected_work_ids"
+            )
+            _strings(
+                item["affected_scope_refs"],
+                "correction_protection.affected_scope_refs",
+                non_empty=True,
+            )
+            _string(item["reason"], "correction_protection.reason")
+            refs = _strings(item["evidence_ids"], "correction_protection.evidence_ids")
+            _references(refs, evidence_by_id, "correction_protection.evidence_ids")
+            _string(item["opened_by_ref"], "correction_protection.opened_by_ref")
+            opened_at = _timestamp(item["opened_at"], "correction_protection.opened_at")
+            released_by_ref = _optional_string(
+                item["released_by_ref"], "correction_protection.released_by_ref"
+            )
+            release_reason = _optional_string(
+                item["release_reason"], "correction_protection.release_reason"
+            )
+            release_refs = _strings(
+                item["release_evidence_ids"],
+                "correction_protection.release_evidence_ids",
+            )
+            _references(
+                release_refs,
+                evidence_by_id,
+                "correction_protection.release_evidence_ids",
+            )
+            released_at = _timestamp(
+                item["released_at"], "correction_protection.released_at", optional=True
+            )
+            assert opened_at is not None
+            if status == "active" and (
+                released_at is not None
+                or released_by_ref is not None
+                or release_reason is not None
+                or release_refs
+            ):
+                raise TypedStateError("active correction protection cannot have release provenance")
+            if status != "active" and (
+                released_at is None
+                or released_by_ref is None
+                or release_reason is None
+                or not release_refs
+            ):
+                raise TypedStateError("inactive correction protection requires release provenance")
+            if released_at is not None and released_at < opened_at:
+                raise TypedStateError("correction protection release precedes opening")
 
     for item in decisions:
         _enum(item["status"], _DECISION_STATUSES, "decision.status")
