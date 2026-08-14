@@ -373,6 +373,7 @@ class M205StateMCPContractTests(unittest.TestCase):
                 "context.experiment.effect",
                 "context.experiment.promotion.propose",
                 "context.experiment.promotion.approve",
+                "context.idea.capture",
             },
         )
         schema_versions = {
@@ -380,6 +381,7 @@ class M205StateMCPContractTests(unittest.TestCase):
             "context.experiment.effect": "context.experiment-effect-request/v1alpha1",
             "context.experiment.promotion.propose": "context.experiment-promotion-proposal-request/v1alpha1",
             "context.experiment.promotion.approve": "context.experiment-promotion-approval-request/v1alpha1",
+            "context.idea.capture": "context.idea-capture-request/v1alpha1",
         }
         for item in definitions:
             with self.subTest(tool=item["name"]):

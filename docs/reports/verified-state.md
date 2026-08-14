@@ -1,9 +1,9 @@
 # Verified State Evidence Index
 
-版本：2  
+版本：3  
 日期：2026-08-12  
 状态：generated evidence projection  
-source governance revision：41  
+source governance revision：47  
 state write authority：false
 
 ## 已验收任务
@@ -32,6 +32,7 @@ state write authority：false
 | M3-03 | [`m3-03-route-events-acceptance-2026-08-14.md`](../migrations/m3-03-route-events-acceptance-2026-08-14.md) |
 | M3-04 | [`m3-04-effect-scope-gate-acceptance-2026-08-14.md`](../migrations/m3-04-effect-scope-gate-acceptance-2026-08-14.md) |
 | M3-05 | [`m3-05-experiment-lifecycle-acceptance-2026-08-14.md`](../migrations/m3-05-experiment-lifecycle-acceptance-2026-08-14.md) |
+| M3-06 | [`m3-06-idea-continuity-acceptance-2026-08-14.md`](../migrations/m3-06-idea-continuity-acceptance-2026-08-14.md) |
 | M4-01 | [`m4-01-skill-manifest-set-acceptance-2026-08-10.md`](../migrations/m4-01-skill-manifest-set-acceptance-2026-08-10.md) |
 | M4-02 | [`m4-02-compiled-skill-packet-acceptance-2026-08-11.md`](../migrations/m4-02-compiled-skill-packet-acceptance-2026-08-11.md) |
 | M4-03 | [`m4-03-skill-drift-quarantine-acceptance-2026-08-11.md`](../migrations/m4-03-skill-drift-quarantine-acceptance-2026-08-11.md) |

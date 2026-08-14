@@ -1,0 +1,70 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schema/context.idea-continuity-benchmark/v1alpha1",
+  "title": "Context Control Plane Idea continuity benchmark receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "observed_at", "provenance", "environment", "measurement", "acceptance"],
+  "properties": {
+    "schema_version": {"const": "context.idea-continuity-benchmark/v1alpha1"},
+    "observed_at": {"type": "string", "format": "date-time", "minLength": 1},
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implementation_sha256", "state_mcp_sha256", "state_events_sha256", "typed_state_sha256", "sqlite_state_store_sha256", "benchmark_sha256", "runner_sha256", "registry_sha256", "idea_capture_schema_sha256", "idea_event_schema_sha256", "benchmark_schema_sha256"],
+      "properties": {
+        "implementation_sha256": {"$ref": "#/$defs/sha256"},
+        "state_mcp_sha256": {"$ref": "#/$defs/sha256"},
+        "state_events_sha256": {"$ref": "#/$defs/sha256"},
+        "typed_state_sha256": {"$ref": "#/$defs/sha256"},
+        "sqlite_state_store_sha256": {"$ref": "#/$defs/sha256"},
+        "benchmark_sha256": {"$ref": "#/$defs/sha256"},
+        "runner_sha256": {"$ref": "#/$defs/sha256"},
+        "registry_sha256": {"$ref": "#/$defs/sha256"},
+        "idea_capture_schema_sha256": {"$ref": "#/$defs/sha256"},
+        "idea_event_schema_sha256": {"$ref": "#/$defs/sha256"},
+        "benchmark_schema_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["python_implementation", "python_version", "platform", "machine", "external_services"],
+      "properties": {
+        "python_implementation": {"type": "string", "minLength": 1},
+        "python_version": {"type": "string", "minLength": 1},
+        "platform": {"type": "string", "minLength": 1},
+        "machine": {"type": "string", "minLength": 1},
+        "external_services": {"const": 0}
+      }
+    },
+    "measurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["samples", "successful_runs", "p50_total_ms", "p95_total_ms", "max_total_ms", "events_per_run", "ideas_per_run"],
+      "properties": {
+        "samples": {"type": "integer", "minimum": 1},
+        "successful_runs": {"type": "integer", "minimum": 0},
+        "p50_total_ms": {"type": "number", "minimum": 0},
+        "p95_total_ms": {"type": "number", "minimum": 0},
+        "max_total_ms": {"type": "number", "minimum": 0},
+        "events_per_run": {"const": 1},
+        "ideas_per_run": {"const": 1}
+      }
+    },
+    "acceptance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["all_runs_succeeded", "active_execution_authority_preserved", "candidate_only", "zero_external_services"],
+      "properties": {
+        "all_runs_succeeded": {"const": true},
+        "active_execution_authority_preserved": {"const": true},
+        "candidate_only": {"const": true},
+        "zero_external_services": {"const": true}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

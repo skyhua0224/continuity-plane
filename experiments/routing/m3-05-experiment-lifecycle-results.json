@@ -22,13 +22,13 @@
     "samples": 40,
     "successful_runs": 40
   },
-  "observed_at": "2026-08-14T08:35:00+08:00",
+  "observed_at": "2026-08-14T08:45:00+08:00",
   "provenance": {
     "benchmark_sha256": "49c230cf09febeebb4774cc318af55a9cffb0f8ef79028aa694c5cf5d92ab3e5",
     "fixture_sha256": "693a75b9c1bd0fa9aa55cd34e61dda51237e429b4516289818beeecb9aa19aed",
     "implementation_sha256": "633da214297ae8c1c933245d8fc09a2217f10fa53dbd13b2cfbfc7346d59c6e6",
-    "state_events_sha256": "c32887ebf8fa77caad2bbb12e08b7d5bfebbf46f559dcdae399c6a36954196bc",
-    "state_mcp_sha256": "0cf64b480af86c8dff9cd33fa83ba3bb1482bc365c678ea10947584eb16181dc",
+    "state_events_sha256": "fed27207c81edd03f2403f68c40a8eb5474a35b42e89366c50c31e5f68efb11d",
+    "state_mcp_sha256": "a1764900aa11d0861cfb3ecd020f6ab4636dcec2c298541797f9e283a917a48b",
     "typed_state_sha256": "f32d08ac4c29dec95a4960470e5a6feffe5fc6507a976efcc745b81ffcbb9de4"
   },
   "schema_version": "context.experiment-lifecycle-benchmark/v1alpha1"

@@ -1,8 +1,8 @@
 # Idea Intake and Context Return Architecture
 
-版本：1  
+版本：2  
 日期：2026-08-09  
-状态：architecture contract / M2-M5 implementation planned
+状态：architecture contract / M3-06 local-embedded implementation
 
 ## 目标
 
@@ -48,6 +48,14 @@ evidence_refs: [artifact-ref | assertion-id]
 
 Idea 正文留在受控 source range 或 content-addressed artifact；Typed State 保存最小 envelope。相同 `dedupe_key + parent_task_id + scope` 的重复输入合并为追加证据，不创建并行执行权限。涉及当前安全、事实错误或不可违反约束的 correction 优先于普通 Idea，并触发写权限保护。
 
+## M3-06 实现边界
+
+`context.idea.capture` 接受 `capture-and-continue`、`park` 和 `propose-switch` 三种受控请求。请求必须绑定当前 active Work 作为 parent 与 return point、提供 opaque `rng_` source range、通过 trusted time、active claim、authorization 和 expected revision/CAS 校验。Idea 仅保存 bounded summary、source ref、parent、return point、expiry 和 proposal target；正文不进入 Typed State。
+
+capture 生成独立的 `context.idea-event/v1alpha1` Idea transition，并与 `context.state-event/v1alpha1` 至 `v4alpha1` 共用 append-only stream。reducer 验证 parent/return point、source ref、expiry、actor/claim 与 project projection，并拒绝任何改变 active work、claim owner、scope、effect watermark、Decision、Constraint、Effect 或 Work 的 Idea Event。`context.state.commit` 在 Typed State v3 中拒绝 Idea 写入，防止绕过专用 gate。
+
+`capture-and-continue` 写入 `candidate`，`park` 写入 `parked`，`propose-switch` 写入 `proposed` 与 target ref。三种动作均不激活 target、不释放当前 claim、不授权副作用，也不写 route transition。后续 task switch 必须经 M3-03 route apply、checkpoint、scope/claim gate 和 CAS。M3-06 未实现 dedupe、relationship、correction、urgency/impact review 或 Execution Packet exclusion；这些合同属于 M3-07 与 M5。
+
 ## 默认路由
 
 默认动作是 `capture-and-continue`：
@@ -81,9 +89,9 @@ Execution Packet 只包含与当前 active leaf 直接相关的 Idea ID 和单�
 
 切回原任务时，composer 从 checkpoint 生成 context return packet。该 packet 不复述整个聊天，只包含当前 revision、完成进度、最新决定、阻塞、验证证据、受影响文件、唯一 next action 和按需展开引用。当前源码或官方证据与 Idea 产生时的假设冲突时，Idea 标记 stale 或 superseded。
 
-## 当前过渡模式
+## 无 State MCP 过渡模式
 
-M2 State MCP 上线前，`STATUS.md` 只记录 active work、blocker、next action 和已晋升到计划的 Idea。MASTER 只保存通过治理的长期任务；未晋升 Idea 不进入长期计划。历史聊天和 handoff 保持 background candidate，当前仓库证据决定恢复结果。
+State MCP profile 不可用时，`STATUS.md` 只记录 active work、blocker、next action 和已晋升到计划的 Idea。MASTER 只保存通过治理的长期任务；未晋升 Idea 不进入长期计划。历史聊天和 handoff 保持 background candidate，当前仓库证据决定恢复结果。
 
 ## 验收门
 

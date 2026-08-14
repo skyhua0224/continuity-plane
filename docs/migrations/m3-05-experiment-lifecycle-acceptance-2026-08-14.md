@@ -1,17 +1,17 @@
 # M3-05 Experiment Lifecycle Acceptance
 
-版本：1  
+版本：2  
 日期：2026-08-14  
 状态：implemented local-embedded experiment lifecycle contract
 
 ```yaml
 document_id: context.m3-05-experiment-lifecycle-acceptance
-document_revision: 1
+document_revision: 2
 change_type: evidence
 authority_ref: verification-run://repository/current-head
 supersedes: null
 affected_tasks: [M3-05, M3-06, M5-01, M8-02]
-next_review: M3-06
+next_review: M3-07
 ```
 
 ## 范围

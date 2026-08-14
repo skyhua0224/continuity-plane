@@ -1,0 +1,39 @@
+{
+  "acceptance": {
+    "active_execution_authority_preserved": true,
+    "all_runs_succeeded": true,
+    "candidate_only": true,
+    "zero_external_services": true
+  },
+  "environment": {
+    "external_services": 0,
+    "machine": "x86_64",
+    "platform": "Linux",
+    "python_implementation": "CPython",
+    "python_version": "3.14.6"
+  },
+  "measurement": {
+    "events_per_run": 1,
+    "ideas_per_run": 1,
+    "max_total_ms": 3.417913,
+    "p50_total_ms": 2.794341,
+    "p95_total_ms": 3.264753,
+    "samples": 40,
+    "successful_runs": 40
+  },
+  "observed_at": "2026-08-14T08:45:00+08:00",
+  "provenance": {
+    "benchmark_schema_sha256": "8064674d0efcac479c2ef2f86d78d8b650b3a71875022a11ccf4956d8a410d33",
+    "benchmark_sha256": "b1659376b595ae6ead23429edd377a35408eeb58e4986e56d27c168033bd0864",
+    "idea_capture_schema_sha256": "57ce195183a8534df1cb075c8d8f8a343545aeba31af30b64fc5bf01e1cf56ca",
+    "idea_event_schema_sha256": "7207bf6406bc3827f9eb14b10ed41d1679aebe28802fc1e95c38d83f65ced3c7",
+    "implementation_sha256": "61520931ca47caaa35b9ea4863f11c24772ca0de5f23338a688c57df2be85040",
+    "registry_sha256": "2b51fbae80cd7904486fffbd3b4a44409476915c59c8d33c9b3e058e4d572ec3",
+    "runner_sha256": "1b0f71b2e50014cb31cdc33d8aec4597fb2569d4da42b014654e265cea34544d",
+    "sqlite_state_store_sha256": "3524100f02e54d2be1c9d7081203f453c56a8af17ddf6654c122673238d38ca5",
+    "state_events_sha256": "a7d25285e651642caa95c9f6e65675d8ab42712b76e8cfd9bb1cba30e557aa00",
+    "state_mcp_sha256": "9d4b1657b2abfc498d5444cd43e927a82cad7642f655a4e20edb1718afc706eb",
+    "typed_state_sha256": "f32d08ac4c29dec95a4960470e5a6feffe5fc6507a976efcc745b81ffcbb9de4"
+  },
+  "schema_version": "context.idea-continuity-benchmark/v1alpha1"
+}

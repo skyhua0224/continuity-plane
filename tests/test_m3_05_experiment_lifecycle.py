@@ -1804,7 +1804,11 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
             },
         )
         event_validator = Draft202012Validator(
-            schemas["context.state-event"],
+            json.loads(
+                (root / "schemas/m3-05/state-event-v4alpha1.schema.json").read_text(
+                    encoding="utf-8"
+                )
+            ),
             registry=Registry().with_resource(
                 "https://context-control-plane.dev/schema/context.typed-state/v3alpha1",
                 Resource.from_contents(schemas["context.typed-state"]),

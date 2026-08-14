@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schema/context.idea-event/v1alpha1",
+  "title": "Context Control Plane append-only candidate Idea event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "event_id", "event_type", "project_id", "sequence_no", "revision_before", "revision_after", "occurred_at", "actor_ref", "causation_ref", "correlation_ref", "previous_event_sha256", "supersedes_event_id", "changes", "project_after", "task_transition", "experiment_transition", "idea_transition", "event_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.idea-event/v1alpha1"},
+    "event_id": {"$ref": "#/$defs/nonEmptyString"},
+    "event_type": {"const": "state-transition"},
+    "project_id": {"$ref": "#/$defs/nonEmptyString"},
+    "sequence_no": {"type": "integer", "minimum": 1},
+    "revision_before": {"type": "integer", "minimum": 0},
+    "revision_after": {"type": "integer", "minimum": 1},
+    "occurred_at": {"$ref": "#/$defs/timestamp"},
+    "actor_ref": {"$ref": "#/$defs/nonEmptyString"},
+    "causation_ref": {"$ref": "#/$defs/nullableString"},
+    "correlation_ref": {"$ref": "#/$defs/nullableString"},
+    "previous_event_sha256": {"$ref": "#/$defs/nullableSha256"},
+    "supersedes_event_id": {"type": "null"},
+    "changes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "oneOf": [
+          {"$ref": "#/$defs/ideaChange"},
+          {"$ref": "#/$defs/claimChange"}
+        ]
+      },
+      "contains": {"$ref": "#/$defs/ideaChange"},
+      "minContains": 1,
+      "maxContains": 1
+    },
+    "project_after": {"$ref": "https://context-control-plane.dev/schema/context.typed-state/v3alpha1#/$defs/project"},
+    "task_transition": {"type": "null"},
+    "experiment_transition": {"type": "null"},
+    "idea_transition": {"$ref": "#/$defs/ideaTransition"},
+    "event_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"idea_transition": {"properties": {"operation": {"const": "propose-switch"}}}}},
+      "then": {"properties": {"idea_transition": {"properties": {"switch_target_work_id": {"$ref": "#/$defs/nonEmptyString"}}}}}
+    },
+    {
+      "if": {"properties": {"idea_transition": {"properties": {"operation": {"enum": ["capture-and-continue", "park"]}}}}},
+      "then": {"properties": {"idea_transition": {"properties": {"switch_target_work_id": {"type": "null"}}}}}
+    }
+  ],
+  "$defs": {
+    "nonEmptyString": {"type": "string", "minLength": 1, "pattern": ".*\\S.*"},
+    "nullableString": {"type": ["string", "null"], "minLength": 1, "pattern": ".*\\S.*"},
+    "timestamp": {"type": "string", "format": "date-time", "minLength": 1},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nullableSha256": {"type": ["string", "null"], "pattern": "^[0-9a-f]{64}$"},
+    "ideaTransition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operation", "request_sha256", "idea_id", "parent_work_id", "return_work_id", "switch_target_work_id"],
+      "properties": {
+        "operation": {"enum": ["capture-and-continue", "park", "propose-switch"]},
+        "request_sha256": {"$ref": "#/$defs/sha256"},
+        "idea_id": {"$ref": "#/$defs/nonEmptyString"},
+        "parent_work_id": {"$ref": "#/$defs/nonEmptyString"},
+        "return_work_id": {"$ref": "#/$defs/nonEmptyString"},
+        "switch_target_work_id": {"$ref": "#/$defs/nullableString"}
+      }
+    },
+    "ideaChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["collection", "object_id", "value"],
+      "properties": {
+        "collection": {"const": "ideas"},
+        "object_id": {"$ref": "#/$defs/nonEmptyString"},
+        "value": {
+          "allOf": [
+            {"$ref": "https://context-control-plane.dev/schema/context.typed-state/v3alpha1#/$defs/idea"},
+            {
+              "type": "object",
+              "properties": {
+                "source_ref": {"type": "string", "pattern": "^rng_[a-z2-7]{26}$"},
+                "summary": {"type": "string", "minLength": 1, "maxLength": 2000, "pattern": ".*\\S.*"}
+              }
+            }
+          ]
+        }
+      }
+    },
+    "claimChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["collection", "object_id", "value"],
+      "properties": {
+        "collection": {"const": "claims"},
+        "object_id": {"$ref": "#/$defs/nonEmptyString"},
+        "value": {"$ref": "https://context-control-plane.dev/schema/context.typed-state/v3alpha1#/$defs/claim"}
+      }
+    }
+  }
+}
