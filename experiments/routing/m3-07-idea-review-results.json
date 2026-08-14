@@ -19,10 +19,10 @@
   "measurement": {
     "dedupe_convergence_rate_millionths": 1000000,
     "events_per_run": 4,
-    "max_total_ms": 13.949509,
+    "max_total_ms": 20.775346,
     "occurrence_retention_rate_millionths": 1000000,
-    "p50_total_ms": 12.353044,
-    "p95_total_ms": 12.59237,
+    "p50_total_ms": 13.18721,
+    "p95_total_ms": 18.040229,
     "packet_exclusion_rate_millionths": 1000000,
     "samples": 40,
     "successful_runs": 40,
@@ -30,7 +30,7 @@
     "unauthorized_write_count": 0,
     "unverified_release_count": 0
   },
-  "observed_at": "2026-08-14T15:30:00+08:00",
+  "observed_at": "2026-08-14T10:00:00+08:00",
   "provenance": {
     "benchmark_schema_sha256": "18e614f9f2093519a422476cf40187ddfbe3327b73418fe251fac17c1cd4d3a3",
     "benchmark_sha256": "d8e86b4fa98c985af7f4e4f49c2b507f2ff3c4b414ac9200039ebfd7be33950e",
@@ -40,7 +40,7 @@
     "idea_review_schema_sha256": "798f863207a84d51c2961f27fe44628a9cbf07d00d3a14bada3c640ed3348788",
     "implementation_sha256": "094f645c8ee1f9499e7f02c43d30fd986f09ce8e9d47ac2324ef1b3a03f17a67",
     "protection_schema_sha256": "49a488b75a8566e06e73af78d635f1e07ea8eb708317049ad316de6aad4fbf0b",
-    "registry_sha256": "11c806dc9c7e4a3947e85f7b31a674f9dfc311131e8fa9ca3b1909b84c258d0b",
+    "registry_sha256": "8ffa36bd2ebeb6def3d7d8db7922c6054ab557ed3eb609c8eaead5e3558403b8",
     "release_schema_sha256": "cd93ca90c8d2030b630a30211b2c394c38f3530e8b9636c6e128c0135de44244",
     "route_apply_sha256": "22d29a398937184f2baa43a7c3bd73a523ce8635e526defab9d9800d0ed258df",
     "runner_sha256": "15a03ec96d1ffdfe097014d726a62f51c8ea8ab65d48768fbe003853e95205d2",

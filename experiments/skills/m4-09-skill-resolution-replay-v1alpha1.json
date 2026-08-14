@@ -1,0 +1,741 @@
+{
+  "fixture_version": "context.skill-resolution-replay-fixture/v1alpha1",
+  "catalog": {
+    "schema_version": "context.skill-catalog/v1alpha1",
+    "catalog_id": "skill-catalog/m4-09-benchmark",
+    "catalog_revision": "2026-08-14T00:00:00+08:00",
+    "entries": [
+      {
+        "catalog_entry_id": "catalog/builtin.recovery",
+        "source_kind": "builtin",
+        "manifest": {
+          "skill_id": "builtin.recovery",
+          "version": "1.0.0",
+          "content_sha256": "bfac84eb184c7b8b6a7e5ee47fb71ecb2788ce17bdb67b4eab3265a43749d392",
+          "source_kind": "builtin",
+          "license_ref": "MIT",
+          "applicability": [
+            {
+              "kind": "operation",
+              "ref": "operation://code-change"
+            }
+          ],
+          "rule_ids": [
+            "rule.builtin.recovery.main"
+          ],
+          "dependencies": [],
+          "conflicts": [],
+          "expires_at": null,
+          "compatibility": {
+            "schema_refs": [
+              "context.compiled-skill-packet/v1alpha1"
+            ],
+            "provider_contract_refs": [
+              "provider://codex/v1"
+            ]
+          },
+          "provenance_refs": [
+            "artifact://sha256/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          ],
+          "status": "active"
+        },
+        "source_url": "builtin://builtin.recovery",
+        "source_revision": "1.0.0",
+        "source_path": "SKILL.md",
+        "publisher": "context-control-plane",
+        "license_ref": "MIT",
+        "provenance_refs": [
+          "artifact://sha256/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ],
+        "capabilities": [
+          "read:repository"
+        ],
+        "approval_refs": [
+          "artifact://sha256/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        ],
+        "verification_refs": [
+          "artifact://sha256/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+        ],
+        "permissions": {
+          "state_write": false,
+          "task_switch": false,
+          "claim": false,
+          "effect": false,
+          "promotion": false,
+          "evidence_gate": false
+        },
+        "status": "active"
+      },
+      {
+        "catalog_entry_id": "catalog/project.testing",
+        "source_kind": "project",
+        "manifest": {
+          "skill_id": "project.testing",
+          "version": "1.0.0",
+          "content_sha256": "c9ffd46e9e9efc085a78b1e485917a1380b6ef9081787ad0fc112c2ecaa7ddcd",
+          "source_kind": "project",
+          "license_ref": "MIT",
+          "applicability": [
+            {
+              "kind": "project",
+              "ref": "project://demo"
+            },
+            {
+              "kind": "repo",
+              "ref": "repo://main"
+            },
+            {
+              "kind": "operation",
+              "ref": "operation://code-change"
+            }
+          ],
+          "rule_ids": [
+            "rule.project.testing.main"
+          ],
+          "dependencies": [
+            {
+              "skill_id": "builtin.recovery",
+              "version_range": {
+                "minimum": "1.0.0",
+                "minimum_inclusive": true,
+                "maximum": "1.0.0",
+                "maximum_inclusive": true
+              }
+            }
+          ],
+          "conflicts": [],
+          "expires_at": null,
+          "compatibility": {
+            "schema_refs": [
+              "context.compiled-skill-packet/v1alpha1"
+            ],
+            "provider_contract_refs": [
+              "provider://codex/v1"
+            ]
+          },
+          "provenance_refs": [
+            "artifact://sha256/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          ],
+          "status": "approved"
+        },
+        "source_url": "https://skills.example/project.testing",
+        "source_revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "source_path": "SKILL.md",
+        "publisher": "context-control-plane",
+        "license_ref": "MIT",
+        "provenance_refs": [
+          "artifact://sha256/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ],
+        "capabilities": [
+          "read:repository"
+        ],
+        "approval_refs": [
+          "artifact://sha256/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        ],
+        "verification_refs": [
+          "artifact://sha256/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+        ],
+        "permissions": {
+          "state_write": false,
+          "task_switch": false,
+          "claim": false,
+          "effect": false,
+          "promotion": false,
+          "evidence_gate": false
+        },
+        "status": "approved"
+      },
+      {
+        "catalog_entry_id": "catalog/workflow.executor",
+        "source_kind": "workflow",
+        "manifest": {
+          "skill_id": "workflow.executor",
+          "version": "1.0.0",
+          "content_sha256": "0df05ff4cbe75ef348b55f786843205caaa910195631836b7b04c575388d4087",
+          "source_kind": "workflow",
+          "license_ref": "MIT",
+          "applicability": [
+            {
+              "kind": "role",
+              "ref": "role://executor"
+            },
+            {
+              "kind": "operation",
+              "ref": "operation://code-change"
+            },
+            {
+              "kind": "provider",
+              "ref": "provider://codex"
+            }
+          ],
+          "rule_ids": [
+            "rule.workflow.executor.main"
+          ],
+          "dependencies": [],
+          "conflicts": [],
+          "expires_at": null,
+          "compatibility": {
+            "schema_refs": [
+              "context.compiled-skill-packet/v1alpha1"
+            ],
+            "provider_contract_refs": [
+              "provider://codex/v1"
+            ]
+          },
+          "provenance_refs": [
+            "artifact://sha256/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          ],
+          "status": "active"
+        },
+        "source_url": "workflow://workflow.executor",
+        "source_revision": "1.0.0",
+        "source_path": "SKILL.md",
+        "publisher": "context-control-plane",
+        "license_ref": "MIT",
+        "provenance_refs": [
+          "artifact://sha256/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ],
+        "capabilities": [
+          "read:repository"
+        ],
+        "approval_refs": [
+          "artifact://sha256/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        ],
+        "verification_refs": [
+          "artifact://sha256/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+        ],
+        "permissions": {
+          "state_write": false,
+          "task_switch": false,
+          "claim": false,
+          "effect": false,
+          "promotion": false,
+          "evidence_gate": false
+        },
+        "status": "active"
+      },
+      {
+        "catalog_entry_id": "catalog/workflow.verifier",
+        "source_kind": "workflow",
+        "manifest": {
+          "skill_id": "workflow.verifier",
+          "version": "1.0.0",
+          "content_sha256": "bb3768eca34e9d2b0038f8e8520b92d960da79c5c3b78ef169df8d280f0df5d7",
+          "source_kind": "workflow",
+          "license_ref": "MIT",
+          "applicability": [
+            {
+              "kind": "role",
+              "ref": "role://verifier"
+            },
+            {
+              "kind": "operation",
+              "ref": "operation://test"
+            },
+            {
+              "kind": "provider",
+              "ref": "provider://codex"
+            }
+          ],
+          "rule_ids": [
+            "rule.workflow.verifier.main"
+          ],
+          "dependencies": [],
+          "conflicts": [],
+          "expires_at": null,
+          "compatibility": {
+            "schema_refs": [
+              "context.compiled-skill-packet/v1alpha1"
+            ],
+            "provider_contract_refs": [
+              "provider://codex/v1"
+            ]
+          },
+          "provenance_refs": [
+            "artifact://sha256/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          ],
+          "status": "active"
+        },
+        "source_url": "workflow://workflow.verifier",
+        "source_revision": "1.0.0",
+        "source_path": "SKILL.md",
+        "publisher": "context-control-plane",
+        "license_ref": "MIT",
+        "provenance_refs": [
+          "artifact://sha256/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ],
+        "capabilities": [
+          "read:repository"
+        ],
+        "approval_refs": [
+          "artifact://sha256/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        ],
+        "verification_refs": [
+          "artifact://sha256/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+        ],
+        "permissions": {
+          "state_write": false,
+          "task_switch": false,
+          "claim": false,
+          "effect": false,
+          "promotion": false,
+          "evidence_gate": false
+        },
+        "status": "active"
+      },
+      {
+        "catalog_entry_id": "catalog/user.style",
+        "source_kind": "user",
+        "manifest": {
+          "skill_id": "user.style",
+          "version": "1.0.0",
+          "content_sha256": "be0da7bc7de674e52c56b72fbce0ebda7bb570b4c00305ce768734c4ea4b8ca6",
+          "source_kind": "user",
+          "license_ref": "MIT",
+          "applicability": [
+            {
+              "kind": "role",
+              "ref": "role://executor"
+            },
+            {
+              "kind": "task",
+              "ref": "task://code-change"
+            },
+            {
+              "kind": "provider",
+              "ref": "provider://codex"
+            }
+          ],
+          "rule_ids": [
+            "rule.user.style.main"
+          ],
+          "dependencies": [],
+          "conflicts": [],
+          "expires_at": null,
+          "compatibility": {
+            "schema_refs": [
+              "context.compiled-skill-packet/v1alpha1"
+            ],
+            "provider_contract_refs": [
+              "provider://codex/v1"
+            ]
+          },
+          "provenance_refs": [
+            "artifact://sha256/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          ],
+          "status": "approved"
+        },
+        "source_url": "https://skills.example/user.style",
+        "source_revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "source_path": "SKILL.md",
+        "publisher": "context-control-plane",
+        "license_ref": "MIT",
+        "provenance_refs": [
+          "artifact://sha256/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ],
+        "capabilities": [
+          "read:repository"
+        ],
+        "approval_refs": [
+          "artifact://sha256/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        ],
+        "verification_refs": [
+          "artifact://sha256/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+        ],
+        "permissions": {
+          "state_write": false,
+          "task_switch": false,
+          "claim": false,
+          "effect": false,
+          "promotion": false,
+          "evidence_gate": false
+        },
+        "status": "approved"
+      },
+      {
+        "catalog_entry_id": "catalog/external.claude",
+        "source_kind": "external",
+        "manifest": {
+          "skill_id": "external.claude",
+          "version": "1.0.0",
+          "content_sha256": "a53051d7495502d855983b35ea9f12bd417223cffa967cfdcb901e7f34b3c7ff",
+          "source_kind": "external",
+          "license_ref": "MIT",
+          "applicability": [
+            {
+              "kind": "operation",
+              "ref": "operation://code-change"
+            },
+            {
+              "kind": "provider",
+              "ref": "provider://claude-code"
+            }
+          ],
+          "rule_ids": [
+            "rule.external.claude.main"
+          ],
+          "dependencies": [],
+          "conflicts": [],
+          "expires_at": null,
+          "compatibility": {
+            "schema_refs": [
+              "context.compiled-skill-packet/v1alpha1"
+            ],
+            "provider_contract_refs": [
+              "provider://claude-code/v1"
+            ]
+          },
+          "provenance_refs": [
+            "artifact://sha256/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          ],
+          "status": "approved"
+        },
+        "source_url": "https://skills.example/external.claude",
+        "source_revision": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "source_path": "SKILL.md",
+        "publisher": "context-control-plane",
+        "license_ref": "MIT",
+        "provenance_refs": [
+          "artifact://sha256/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ],
+        "capabilities": [
+          "read:repository"
+        ],
+        "approval_refs": [
+          "artifact://sha256/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        ],
+        "verification_refs": [
+          "artifact://sha256/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+        ],
+        "permissions": {
+          "state_write": false,
+          "task_switch": false,
+          "claim": false,
+          "effect": false,
+          "promotion": false,
+          "evidence_gate": false
+        },
+        "status": "approved"
+      }
+    ]
+  },
+  "request": {
+    "schema_version": "context.skill-resolution-request/v1alpha1",
+    "request_id": "resolve-m4-09-benchmark",
+    "catalog_sha256": "8fa532cf771148a46833fbb0b1cb9ce8932f66907fe295864de2438feadc1f69",
+    "project_ref": "project://demo",
+    "repo_ref": "repo://main",
+    "path_refs": [
+      "path://src/core",
+      "path://tests"
+    ],
+    "task_ref": "task://code-change",
+    "role_ref": "role://executor",
+    "operation_ref": "operation://code-change",
+    "provider_contract_ref": "provider://codex/v1",
+    "required_schema_refs": [
+      "context.compiled-skill-packet/v1alpha1"
+    ],
+    "required_skill_ids": [],
+    "binding_provenance_ref": null,
+    "observed_at": "2026-08-14T12:00:00+08:00",
+    "state_write_authority": false
+  },
+  "decision": {
+    "candidate_count": 4,
+    "catalog_sha256": "8fa532cf771148a46833fbb0b1cb9ce8932f66907fe295864de2438feadc1f69",
+    "disposition": "resolved",
+    "findings": [],
+    "manifest_set_sha256": "1e01be38fa431a14f8ea8ed6b1a369d91cf91f6942da5a489049c05fbf3a9e78",
+    "observed_at": "2026-08-14T12:00:00+08:00",
+    "packet_sha256": "1c21f59feb7a14e5687cef6aaa3f691f85a5943b139264d952a6ec7ef9d5e33c",
+    "reason_code": "matched-minimal-set",
+    "request_id": "resolve-m4-09-benchmark",
+    "request_sha256": "92fbb7cecc60b701fbb2abfd805699c8d7e951b7b1da43a92cb4cfac806fd02a",
+    "resolver_version": "context.skill-resolver/v1alpha1",
+    "schema_version": "context.skill-resolution-decision/v1alpha1",
+    "selected_count": 4,
+    "selected_rule_ids": [
+      "rule.builtin.recovery.main",
+      "rule.project.testing.main",
+      "rule.user.style.main",
+      "rule.workflow.executor.main"
+    ],
+    "selected_skills": [
+      {
+        "content_sha256": "bfac84eb184c7b8b6a7e5ee47fb71ecb2788ce17bdb67b4eab3265a43749d392",
+        "manifest_sha256": "d3dfe0f19e5421ffa85cc5834103ee8b07893f46bafe574b38bde090b7089168",
+        "priority_score": 400,
+        "rule_ids": [
+          "rule.builtin.recovery.main"
+        ],
+        "selection_reason": "applicability",
+        "skill_id": "builtin.recovery",
+        "version": "1.0.0"
+      },
+      {
+        "content_sha256": "c9ffd46e9e9efc085a78b1e485917a1380b6ef9081787ad0fc112c2ecaa7ddcd",
+        "manifest_sha256": "540577e555501ad2196d68a4295192771c93479f385a1d3b78899f23db421e48",
+        "priority_score": 1900,
+        "rule_ids": [
+          "rule.project.testing.main"
+        ],
+        "selection_reason": "applicability",
+        "skill_id": "project.testing",
+        "version": "1.0.0"
+      },
+      {
+        "content_sha256": "be0da7bc7de674e52c56b72fbce0ebda7bb570b4c00305ce768734c4ea4b8ca6",
+        "manifest_sha256": "bf17edcf54526084fdd0860b2af33abaeb3802843eafe0ec7d059e7710d7a0f8",
+        "priority_score": 800,
+        "rule_ids": [
+          "rule.user.style.main"
+        ],
+        "selection_reason": "applicability",
+        "skill_id": "user.style",
+        "version": "1.0.0"
+      },
+      {
+        "content_sha256": "0df05ff4cbe75ef348b55f786843205caaa910195631836b7b04c575388d4087",
+        "manifest_sha256": "fc6d74f2e69d1a8cb03fa25d5c8ec730281b587f25f85b40a9b416ed475393bc",
+        "priority_score": 700,
+        "rule_ids": [
+          "rule.workflow.executor.main"
+        ],
+        "selection_reason": "applicability",
+        "skill_id": "workflow.executor",
+        "version": "1.0.0"
+      }
+    ],
+    "state_write_authority": false,
+    "suppressed_skills": []
+  },
+  "manifest_set": {
+    "manifests": [
+      {
+        "applicability": [
+          {
+            "kind": "operation",
+            "ref": "operation://code-change"
+          }
+        ],
+        "compatibility": {
+          "provider_contract_refs": [
+            "provider://codex/v1"
+          ],
+          "schema_refs": [
+            "context.compiled-skill-packet/v1alpha1"
+          ]
+        },
+        "conflicts": [],
+        "content_sha256": "bfac84eb184c7b8b6a7e5ee47fb71ecb2788ce17bdb67b4eab3265a43749d392",
+        "dependencies": [],
+        "expires_at": null,
+        "license_ref": "MIT",
+        "provenance_refs": [
+          "artifact://sha256/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ],
+        "rule_ids": [
+          "rule.builtin.recovery.main"
+        ],
+        "skill_id": "builtin.recovery",
+        "source_kind": "builtin",
+        "status": "active",
+        "version": "1.0.0"
+      },
+      {
+        "applicability": [
+          {
+            "kind": "operation",
+            "ref": "operation://code-change"
+          },
+          {
+            "kind": "project",
+            "ref": "project://demo"
+          },
+          {
+            "kind": "repo",
+            "ref": "repo://main"
+          }
+        ],
+        "compatibility": {
+          "provider_contract_refs": [
+            "provider://codex/v1"
+          ],
+          "schema_refs": [
+            "context.compiled-skill-packet/v1alpha1"
+          ]
+        },
+        "conflicts": [],
+        "content_sha256": "c9ffd46e9e9efc085a78b1e485917a1380b6ef9081787ad0fc112c2ecaa7ddcd",
+        "dependencies": [
+          {
+            "skill_id": "builtin.recovery",
+            "version_range": {
+              "maximum": "1.0.0",
+              "maximum_inclusive": true,
+              "minimum": "1.0.0",
+              "minimum_inclusive": true
+            }
+          }
+        ],
+        "expires_at": null,
+        "license_ref": "MIT",
+        "provenance_refs": [
+          "artifact://sha256/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ],
+        "rule_ids": [
+          "rule.project.testing.main"
+        ],
+        "skill_id": "project.testing",
+        "source_kind": "project",
+        "status": "approved",
+        "version": "1.0.0"
+      },
+      {
+        "applicability": [
+          {
+            "kind": "provider",
+            "ref": "provider://codex"
+          },
+          {
+            "kind": "role",
+            "ref": "role://executor"
+          },
+          {
+            "kind": "task",
+            "ref": "task://code-change"
+          }
+        ],
+        "compatibility": {
+          "provider_contract_refs": [
+            "provider://codex/v1"
+          ],
+          "schema_refs": [
+            "context.compiled-skill-packet/v1alpha1"
+          ]
+        },
+        "conflicts": [],
+        "content_sha256": "be0da7bc7de674e52c56b72fbce0ebda7bb570b4c00305ce768734c4ea4b8ca6",
+        "dependencies": [],
+        "expires_at": null,
+        "license_ref": "MIT",
+        "provenance_refs": [
+          "artifact://sha256/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ],
+        "rule_ids": [
+          "rule.user.style.main"
+        ],
+        "skill_id": "user.style",
+        "source_kind": "user",
+        "status": "approved",
+        "version": "1.0.0"
+      },
+      {
+        "applicability": [
+          {
+            "kind": "operation",
+            "ref": "operation://code-change"
+          },
+          {
+            "kind": "provider",
+            "ref": "provider://codex"
+          },
+          {
+            "kind": "role",
+            "ref": "role://executor"
+          }
+        ],
+        "compatibility": {
+          "provider_contract_refs": [
+            "provider://codex/v1"
+          ],
+          "schema_refs": [
+            "context.compiled-skill-packet/v1alpha1"
+          ]
+        },
+        "conflicts": [],
+        "content_sha256": "0df05ff4cbe75ef348b55f786843205caaa910195631836b7b04c575388d4087",
+        "dependencies": [],
+        "expires_at": null,
+        "license_ref": "MIT",
+        "provenance_refs": [
+          "artifact://sha256/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        ],
+        "rule_ids": [
+          "rule.workflow.executor.main"
+        ],
+        "skill_id": "workflow.executor",
+        "source_kind": "workflow",
+        "status": "active",
+        "version": "1.0.0"
+      }
+    ],
+    "schema_version": "context.skill-manifest-set/v1alpha1"
+  },
+  "packet": {
+    "compiler_version": "context.skill-packet-compiler/v1alpha1",
+    "manifest_set_sha256": "1e01be38fa431a14f8ea8ed6b1a369d91cf91f6942da5a489049c05fbf3a9e78",
+    "rule_bindings": [
+      {
+        "rule_id": "rule.builtin.recovery.main",
+        "skill_content_sha256": "bfac84eb184c7b8b6a7e5ee47fb71ecb2788ce17bdb67b4eab3265a43749d392",
+        "skill_id": "builtin.recovery",
+        "skill_version": "1.0.0"
+      },
+      {
+        "rule_id": "rule.project.testing.main",
+        "skill_content_sha256": "c9ffd46e9e9efc085a78b1e485917a1380b6ef9081787ad0fc112c2ecaa7ddcd",
+        "skill_id": "project.testing",
+        "skill_version": "1.0.0"
+      },
+      {
+        "rule_id": "rule.user.style.main",
+        "skill_content_sha256": "be0da7bc7de674e52c56b72fbce0ebda7bb570b4c00305ce768734c4ea4b8ca6",
+        "skill_id": "user.style",
+        "skill_version": "1.0.0"
+      },
+      {
+        "rule_id": "rule.workflow.executor.main",
+        "skill_content_sha256": "0df05ff4cbe75ef348b55f786843205caaa910195631836b7b04c575388d4087",
+        "skill_id": "workflow.executor",
+        "skill_version": "1.0.0"
+      }
+    ],
+    "schema_version": "context.compiled-skill-packet/v1alpha1",
+    "selections": [
+      {
+        "content_sha256": "bfac84eb184c7b8b6a7e5ee47fb71ecb2788ce17bdb67b4eab3265a43749d392",
+        "rule_ids": [
+          "rule.builtin.recovery.main"
+        ],
+        "skill_id": "builtin.recovery",
+        "version": "1.0.0"
+      },
+      {
+        "content_sha256": "c9ffd46e9e9efc085a78b1e485917a1380b6ef9081787ad0fc112c2ecaa7ddcd",
+        "rule_ids": [
+          "rule.project.testing.main"
+        ],
+        "skill_id": "project.testing",
+        "version": "1.0.0"
+      },
+      {
+        "content_sha256": "be0da7bc7de674e52c56b72fbce0ebda7bb570b4c00305ce768734c4ea4b8ca6",
+        "rule_ids": [
+          "rule.user.style.main"
+        ],
+        "skill_id": "user.style",
+        "version": "1.0.0"
+      },
+      {
+        "content_sha256": "0df05ff4cbe75ef348b55f786843205caaa910195631836b7b04c575388d4087",
+        "rule_ids": [
+          "rule.workflow.executor.main"
+        ],
+        "skill_id": "workflow.executor",
+        "version": "1.0.0"
+      }
+    ]
+  }
+}

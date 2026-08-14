@@ -1,8 +1,8 @@
 # Skill Orchestration Contract
 
-版本：2  
-日期：2026-08-09  
-状态：planned  
+版本：3  
+日期：2026-08-14  
+状态：implemented local resolver contract / production integration pending  
 适用范围：Context Control Plane 的 Skill registry、resolver、provider adapter、项目初始化和协作 workflow
 
 ## 目标
@@ -78,3 +78,11 @@ Thinker 产生候选方案、风险和 evidence request；Executor 只能使用�
 - 相对 E0，重复 Skill 输入下降至少 60%，规则遵循、build/test/mutation 和 scope violation 不退化。
 
 详细任务拆分、依赖和生产门位于 [`MASTER.md`](../../MASTER.md) 的 M4、E3/E4 和生产验收章节。
+
+## M4-09 Resolver Contract
+
+M4-09 的 request 固定 `catalog_sha256`、项目、仓库、path、task、role、operation、provider contract、required schema 和显式 Skill binding provenance。request 不包含 Skill 正文、聊天 transcript 或动态执行权限。resolver 对同一 `kind` 的 applicability 使用 OR，对不同 `kind` 使用 AND；path 使用 segment-prefix，provider contract 使用精确版本匹配。
+
+解析顺序为：required binding、项目/仓库/path/task/operation、role/provider、manifest metadata。冲突按匹配上下文的确定性 priority 处理；同级冲突、依赖冲突、过期、provider/schema 不兼容和缺失适用性进入 quarantine。依赖闭包完成后才调用 M4-02 compiler。decision 只写 request、manifest、rule、packet digest、reason 和 selection evidence，`state_write_authority=false`。
+
+当前 local-embedded evidence：`1000/1000` replay、`125/125` negative quarantine、replay/role/provider/authority fault `0`、catalog universe 到 selected set `33.3333%` reduction、p95 `1.109641 ms`。fixture、catalog admission 和 decision 可在无外部服务下独立回放；State revision、claim/lease、Execution Packet 和 provider runtime 绑定由 M5/M8 完成。

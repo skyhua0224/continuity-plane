@@ -1,6 +1,6 @@
 # Context Control Plane Status
 
-版本：revision 49  
+版本：revision 50  
 日期：2026-08-14  
 canonical plan：`MASTER.md`
 
@@ -8,9 +8,9 @@ canonical plan：`MASTER.md`
 
 | 字段 | 值 |
 |---|---|
-| 当前 Campaign | M4 Skill 控制面 |
-| active work | M4-09：role/operation-aware Skill resolver（🟡） |
-| next action | 为 Thinker、Executor、Verifier、provider 与 operation applicability 的最小 rule set、冲突和 expiry 写失败测试 |
+| 当前 Campaign | M5 压缩与 Context Composition |
+| active work | M5-01：Execution Packet composer（🟡） |
+| next action | 为当前 leaf、唯一 next action、locked Skill packet、evidence refs、Idea refs 和 continuation cursor 写 bounded packet 失败测试 |
 | hard blocker | M3-01 已通过 Linux 离线图合同，但最终完成门仍等待 M2-09 的 Windows/macOS 原生 live fixture |
 | repository mode | research / shadow pilot |
 | production state | local-embedded implemented / shadow pilot；shared production pilot planned |
@@ -25,12 +25,13 @@ canonical plan：`MASTER.md`
 | Evidence index | [`docs/reports/verified-state.md`](docs/reports/verified-state.md) |
 | Documentation lifecycle | M0-10 verified；High/Medium review 0；容量门通过 |
 | Git admission | M0-11 offline contract `25/25`；repository verifier 通过 |
-| Skill adapters | M4-07/08/10 验收；external active 0 |
-| Project dogfood baseline | 27 次 compaction；Cursor 78/80；首动作与重播各 2 次；provider metrics 不可见 |
-| M3-07 Idea review | `40/40` benchmark；dedupe/occurrence/packet `100%`；protected writes/terminal revival/unverified release `0`；p95 `14.210198 ms`；验收见 evidence index |
-| M3-08 continuation dispatch | `1000/1000` decision、`125/125` 负向 fixture；6 项一致性故障均为 `0`；p95 `0.185716 ms` |
-| Repository verification | `929/929` 通过；30 PostgreSQL skips；revision 49 verifier/compile/diff 通过 |
-| Governance authority | `MASTER.md` revision 49 |
+| Skill adapters | M4-07/08/10 done；external=0 |
+| Project dogfood | compaction=27；Cursor=78/80；first/replay=2/2；provider metrics unavailable |
+| M3-07 Idea review | `40/40`；dedupe/occurrence/packet=100%；protected/terminal/unverified=0；p95 `14.210198 ms` |
+| M3-08 continuation | `1000/1000`；negative `125/125`；6 faults=0；p95 `0.185716 ms` |
+| M4-09 Skill resolver | replay `1000/1000`；quarantine `125/125`；faults=0；reduction `33.3333%`；p95 `1.109641 ms`；external=0 |
+| Repository verification | `929/929` 通过；30 PostgreSQL skips；revision 50 verifier/compile/diff 通过 |
+| Governance authority | `MASTER.md` revision 50 |
 | Operational router | `STATUS.md` |
 
 ## 恢复入口

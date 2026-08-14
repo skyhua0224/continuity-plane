@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m4-09/skill-resolution-request.schema.json",
+  "title": "Context Control Plane Skill Resolution Request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "request_id", "catalog_sha256", "project_ref", "repo_ref",
+    "path_refs", "task_ref", "role_ref", "operation_ref", "provider_contract_ref",
+    "required_schema_refs", "required_skill_ids", "binding_provenance_ref", "observed_at",
+    "state_write_authority"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.skill-resolution-request/v1alpha1"},
+    "request_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*(?:/[a-z0-9][a-z0-9._-]*)*$", "maxLength": 256},
+    "catalog_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "project_ref": {"type": "string", "pattern": "^project://[a-z0-9][a-z0-9._/-]*$", "maxLength": 512},
+    "repo_ref": {"type": "string", "pattern": "^repo://[a-z0-9][a-z0-9._/-]*$", "maxLength": 512},
+    "path_refs": {"type": "array", "maxItems": 256, "uniqueItems": true, "items": {"type": "string", "pattern": "^path://[A-Za-z0-9][A-Za-z0-9._/-]*$", "maxLength": 1024}},
+    "task_ref": {"type": "string", "pattern": "^task://[a-z0-9][a-z0-9._-]*$", "maxLength": 256},
+    "role_ref": {"enum": ["role://executor", "role://reviewer", "role://thinker", "role://verifier"]},
+    "operation_ref": {"type": "string", "pattern": "^operation://[a-z0-9][a-z0-9._-]*$", "maxLength": 256},
+    "provider_contract_ref": {"type": "string", "pattern": "^provider://[a-z0-9][a-z0-9._-]*/v[a-z0-9._-]+$", "maxLength": 256},
+    "required_schema_refs": {"type": "array", "minItems": 1, "maxItems": 64, "uniqueItems": true, "items": {"type": "string", "pattern": "^context\\.[a-z0-9._/-]+/v[a-z0-9._-]+$", "maxLength": 256}},
+    "required_skill_ids": {"type": "array", "maxItems": 128, "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]*(?:/[a-z0-9][a-z0-9._-]*)*$", "maxLength": 256}},
+    "binding_provenance_ref": {"type": ["string", "null"], "pattern": "^artifact://sha256/[0-9a-f]{64}$"},
+    "observed_at": {"type": "string", "format": "date-time", "maxLength": 64},
+    "state_write_authority": {"const": false}
+  }
+}

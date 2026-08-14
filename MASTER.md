@@ -1,6 +1,6 @@
 # Context Control Plane MASTER
 
-版本：revision 49  
+版本：revision 50  
 日期：2026-08-14  
 状态：研究与 shadow pilot 准备阶段  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
@@ -284,14 +284,14 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | M4-06 | ✅ | Skill 变更 replay 与兼容锁 | 进行中任务固定使用已记录 rule set | 可持续迭代替换 | M4-03 | lock/decision/migration/probe strict schema 注册；selected manifest digest、exact provider applicability/contract 与 live adapter surface 重算；40 变更样本中未选中 metadata `8/8 compatible`，selected identity/provider contract `32/32 migration_required`；unauthorized gated composition `0/32`；synthetic verifier-authorized migration `4/4` 可 replay/rollback；assessment p95 `<10 ms` |
 | M4-07 | ✅ | Built-in、External、Project、User、Workflow Skill catalog 与动态组件候选准入 | 来源、license、provenance、依赖、reversible registration 和权限边界可审计 | 管理可复用与项目专属规则 | M4-01/M0-07/M4-06 | `context.skill-catalog/v1alpha1` strict schema、registry hash、五类来源 `5/5` 合法 entry、18/18 admission/quarantine 负变体、candidate projection、canonical manifest digest 的 M4-06 exact identity binding 和 canonical fixture 通过；固定 fixture validator p95 `0.0140 ms`；DeepSeek Skill/plugin 与 Cordis dependency/lifecycle candidate 固定 provenance、license 和隔离边界；Cordis license 未决时保持 reference-only |
 | M4-08 | 🧑‍💻 | 项目初始化与用户习惯 Skill proposal | 从仓库、验证配置和显式偏好生成可审查候选 | 缩短接入并保持用户控制 | M4-07/M7-03 | `context.skill-proposal/v1alpha1` strict schema、M4-01 manifest schema reuse、64 KiB preflight/canonical input、16,384 Unicode scalar/64 KiB UTF-8 content 与 128 KiB output bound、strict SemVer/ID/timestamp gate、set-like input canonicalization、explicit license policy、Project/User provenance isolation、expected-time-bound replay verifier、candidate-only body asset、M4-03 resolver 和 fixture replay 通过；34/34 定向测试；200 次 replay mismatch `0`，40/40 fact 变体 fingerprint/content digest 唯一，权限真值 `0`；production Verification Profile adapter 待 M7-03 |
-| M4-09 | 🟡 | role/operation-aware Skill resolver | Thinker、Executor、Verifier 和 provider 获得最小规则集 | 控制动作权限与上下文成本 | M3-04/M4-04/M4-07 | 选择优先级、冲突、expiry、replay fixture 全部通过 |
+| M4-09 | ✅ | role/operation-aware Skill resolver | Thinker、Executor、Verifier 和 provider 获得最小规则集 | 控制动作权限与上下文成本 | M3-04/M4-04/M4-07 | `context.skill-resolution-request/v1alpha1`、`context.skill-resolution-decision/v1alpha1` 与 benchmark schema；同 kind OR、跨 kind AND、segment-prefix path、精确 provider contract、dependency closure、priority conflict、expiry quarantine；`1000/1000` replay、`125/125` negative quarantine、replay/role/provider/authority fault `0`；universe→selected reduction `33.3333%`、p95 `1.109641 ms`；验收见 `docs/migrations/m4-09-skill-resolver-acceptance-2026-08-14.md` |
 | M4-10 | 🧑‍💻 | 官方 Skill、Agent Skills standard、GitHub 和 marketplace catalog adapter | 发现结果带直接 URL、revision、hash、license 和 trust tier | 智能复用外部能力并阻止未审查加载 | M4-07/M0-07 | `context.external-skill-source-snapshot/v1alpha1` strict schema、version/hash 固定 adapter policy、pinned Git tree evidence、本地 CAS staging、四类来源 snapshot/quarantine/offline replay 与 M4-07 candidate-only projection 通过；27/27 定向测试；生产 streaming acquisition、authorization/audit 待 M7/M8 |
 
 ## 7.6 M5 压缩与 Context Composition
 
 | ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
 |---|---|---|---|---|---|---|
-| M5-01 | ⏳ | Execution Packet composer | 当前叶包含任务、规则、证据、相关 Idea refs 和唯一 next action | 恢复成本与项目总历史解耦 | M3-03/M4-04 | packet 4-12 KB 且 canary 100% |
+| M5-01 | 🟡 | Execution Packet composer | 当前叶包含任务、规则、证据、相关 Idea refs 和唯一 next action | 恢复成本与项目总历史解耦 | M3-03/M4-04 | packet 4-12 KB 且 canary 100% |
 | M5-02 | ⏳ | material event 滚动 checkpoint 与 provider compaction hook adapter | PreCompact 提交增量 delta；Pi hook 与 DeepSeek semantic checkpoint 进入统一 bracket | 提高压缩速度并固定 host 适配边界 | M2-06 | PreCompact p95 < 500 ms；Pi/DeepSeek shadow adapter 的 task revision/effect watermark 保留率 100%；provider-native authority 写入 0 |
 | M5-03 | ⏳ | PostCompact deterministic canary 与 host compaction 对照 | 恢复错误在写代码前被阻断；Pi cut point/split-turn 与 DeepSeek checkpoint/compaction 进入 fixture | 保证一致性 | M5-01/M5-02 | decision/constraint/work 100%；cut point、split-turn、checkpoint mismatch 故障 100% fail closed |
 | M5-04 | ⏳ | artifact ref 与 bounded expansion | 大输出按需展开 | 降低 token 和注意力污染 | M2-04 | prompt 保存摘要、引用和必要片段 |

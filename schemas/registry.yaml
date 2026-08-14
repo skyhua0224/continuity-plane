@@ -456,6 +456,36 @@ schemas:
     compatibility_mode: strict-versioned
     migrations: []
 
+  - schema_id: context.skill-resolution-request
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.skill-resolution-request/v1alpha1
+    supported_wire_versions: [context.skill-resolution-request/v1alpha1]
+    artifact_path: schemas/m4-09/skill-resolution-request.schema.json
+    content_sha256: 841cf13b5bfb62c840ae43b17be4ecdc8b854cd19f2f4ca89a8fc5c85a72789a
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.skill-resolution-decision
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.skill-resolution-decision/v1alpha1
+    supported_wire_versions: [context.skill-resolution-decision/v1alpha1]
+    artifact_path: schemas/m4-09/skill-resolution-decision.schema.json
+    content_sha256: 74f9701c85aa22c1ed1b1db5dd64db974312e5ee4d48be4f4a4b1e1c397f7f62
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.skill-resolution-benchmark
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.skill-resolution-benchmark/v1alpha1
+    supported_wire_versions: [context.skill-resolution-benchmark/v1alpha1]
+    artifact_path: schemas/m4-09/skill-resolution-benchmark.schema.json
+    content_sha256: f5cd9d83f223f15a9447cd6583dba72f20585fe3f92a86d1b09de9150473037a
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
   - schema_id: context.external-skill-source-snapshot
     current_semver: 1.0.0-alpha.1
     current_wire_version: context.external-skill-source-snapshot/v1alpha1
