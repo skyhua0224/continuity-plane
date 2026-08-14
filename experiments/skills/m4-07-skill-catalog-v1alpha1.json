@@ -1,0 +1,49 @@
+{
+  "schema_version": "context.skill-catalog/v1alpha1",
+  "catalog_id": "skill-catalog/default",
+  "catalog_revision": "2026-08-11T00:00:00Z",
+  "entries": [
+    {
+      "catalog_entry_id": "catalog/builtin.recovery",
+      "source_kind": "builtin",
+      "manifest": {
+        "skill_id": "builtin.recovery",
+        "version": "1.0.0",
+        "content_sha256": "bfac84eb184c7b8b6a7e5ee47fb71ecb2788ce17bdb67b4eab3265a43749d392",
+        "source_kind": "builtin",
+        "license_ref": "MIT",
+        "applicability": [
+          {"kind": "operation", "ref": "operation://code-change"}
+        ],
+        "rule_ids": ["rule.builtin.recovery.main"],
+        "dependencies": [],
+        "conflicts": [],
+        "expires_at": null,
+        "compatibility": {
+          "schema_refs": ["context.compiled-skill-packet/v1alpha1"],
+          "provider_contract_refs": ["provider://codex/v1"]
+        },
+        "provenance_refs": ["artifact://sha256/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"],
+        "status": "active"
+      },
+      "source_url": "builtin://builtin.recovery",
+      "source_revision": "1.0.0",
+      "source_path": "SKILL.md",
+      "publisher": "context-control-plane",
+      "license_ref": "MIT",
+      "provenance_refs": ["artifact://sha256/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"],
+      "capabilities": ["read:repository"],
+      "approval_refs": ["artifact://sha256/cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"],
+      "verification_refs": ["artifact://sha256/dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"],
+      "permissions": {
+        "state_write": false,
+        "task_switch": false,
+        "claim": false,
+        "effect": false,
+        "promotion": false,
+        "evidence_gate": false
+      },
+      "status": "active"
+    }
+  ]
+}

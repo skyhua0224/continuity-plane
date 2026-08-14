@@ -171,7 +171,7 @@ class StateStorePortabilityPlanTests(unittest.TestCase):
         self.assertIn("| M4-04 | ✅ |", self.master)
         self.assertIn("| M4-05 | ✅ |", self.master)
         self.assertIn("| M4-06 | ✅ |", self.master)
-        self.assertIn("active work | M4-07", self.status)
+        self.assertIn("active work | M4-08", self.status)
         self.assertIn("24/24", provider_adapter_acceptance)
         self.assertIn("80/80", provider_adapter_acceptance)
         self.assertIn("240", provider_adapter_acceptance)
