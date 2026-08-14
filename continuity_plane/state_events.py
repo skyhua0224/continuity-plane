@@ -11,16 +11,17 @@ from typing import Any
 
 from .typed_state import TypedStateError, validate_typed_state
 
-
 LEGACY_EVENT_SCHEMA_VERSION = "context.state-event/v1alpha1"
 EVENT_SCHEMA_VERSION = "context.state-event/v2alpha1"
 EVENT_SCHEMA_VERSION_V3 = "context.state-event/v3alpha1"
 EVENT_SCHEMA_VERSION_V4 = "context.state-event/v4alpha1"
+IDEA_EVENT_SCHEMA_VERSION = "context.idea-event/v1alpha1"
 SUPPORTED_EVENT_SCHEMA_VERSIONS = {
     LEGACY_EVENT_SCHEMA_VERSION,
     EVENT_SCHEMA_VERSION,
     EVENT_SCHEMA_VERSION_V3,
     EVENT_SCHEMA_VERSION_V4,
+    IDEA_EVENT_SCHEMA_VERSION,
 }
 
 _BASE_EVENT_FIELDS = {
@@ -43,6 +44,11 @@ _BASE_EVENT_FIELDS = {
 }
 _V3_EVENT_FIELDS = _BASE_EVENT_FIELDS | {"task_transition"}
 _V4_EVENT_FIELDS = _BASE_EVENT_FIELDS | {"task_transition", "experiment_transition"}
+_IDEA_EVENT_FIELDS = _BASE_EVENT_FIELDS | {
+    "task_transition",
+    "experiment_transition",
+    "idea_transition",
+}
 _CHANGE_FIELDS = {"collection", "object_id", "value"}
 _EVENT_TYPES = {"state-transition", "correction"}
 _COLLECTION_ID_FIELDS = {
@@ -71,6 +77,7 @@ _EXPERIMENT_CONTRACT_FIELDS = {
     "mainline_authority",
 }
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+_OPAQUE_RANGE_REF_RE = re.compile(r"^rng_[a-z2-7]{26}$")
 _TASK_TRANSITION_FIELDS = {
     "route_decision_sha256",
     "route_apply_request_sha256",
@@ -92,6 +99,14 @@ _EXPERIMENT_TRANSITION_FIELDS = {
     "attempt_id",
     "promotion_id",
     "proposal_id",
+}
+_IDEA_TRANSITION_FIELDS = {
+    "operation",
+    "request_sha256",
+    "idea_id",
+    "parent_work_id",
+    "return_work_id",
+    "switch_target_work_id",
 }
 _ARTIFACT_REF_FIELDS = {
     "schema_version",
@@ -240,15 +255,14 @@ def _validate_task_transition(
             raise StateEventError(
                 "task_events must contain suspended old work then activated target"
             )
-    elif route_kind == "correction":
-        if (
-            kinds != ["correction_applied"]
-            or event_type != "correction"
-            or supersedes_event_id is None
-        ):
-            raise StateEventError(
-                "correction route requires one correction_applied task event and supersedes"
-            )
+    elif route_kind == "correction" and (
+        kinds != ["correction_applied"]
+        or event_type != "correction"
+        or supersedes_event_id is None
+    ):
+        raise StateEventError(
+            "correction route requires one correction_applied task event and supersedes"
+        )
 
 
 def _validate_experiment_transition(
@@ -292,18 +306,61 @@ def _validate_experiment_transition(
         raise StateEventError("promotion transition requires its ledger change")
 
 
+def _validate_idea_transition(
+    transition: Any,
+    *,
+    changes: list[dict[str, Any]],
+) -> None:
+    if not isinstance(transition, dict) or set(transition) != _IDEA_TRANSITION_FIELDS:
+        raise StateEventError("idea_transition fields do not match the contract")
+    operation = transition["operation"]
+    if operation not in {"capture-and-continue", "park", "propose-switch"}:
+        raise StateEventError("idea_transition operation is unsupported")
+    _sha256(transition["request_sha256"], "idea_transition.request_sha256")
+    for field in ("idea_id", "parent_work_id", "return_work_id"):
+        _non_empty_string(transition[field], f"idea_transition.{field}")
+    switch_target = _optional_string(
+        transition["switch_target_work_id"], "idea_transition.switch_target_work_id"
+    )
+    if (operation == "propose-switch") != (switch_target is not None):
+        raise StateEventError("idea transition switch target is invalid")
+    idea_changes = [change for change in changes if change["collection"] == "ideas"]
+    if (
+        len(idea_changes) != 1
+        or idea_changes[0]["object_id"] != transition["idea_id"]
+    ):
+        raise StateEventError("idea transition requires exactly one Idea change")
+    idea = idea_changes[0]["value"]
+    if (
+        idea.get("parent_work_id") != transition["parent_work_id"]
+        or idea.get("return_work_id") != transition["return_work_id"]
+    ):
+        raise StateEventError("idea transition does not match Idea binding")
+    expected_status = {
+        "capture-and-continue": "candidate",
+        "park": "parked",
+        "propose-switch": "proposed",
+    }[operation]
+    if idea.get("status") != expected_status or idea.get("promotion_target") != switch_target:
+        raise StateEventError("idea transition does not match candidate state")
+
+
 def validate_state_event(event: dict[str, Any]) -> None:
     """Validate one event independently of its position in a stream."""
     if not isinstance(event, dict) or set(event) not in (
         _BASE_EVENT_FIELDS,
         _V3_EVENT_FIELDS,
         _V4_EVENT_FIELDS,
+        _IDEA_EVENT_FIELDS,
     ):
         raise StateEventError("event fields do not match the contract")
     schema_version = event["schema_version"]
     if schema_version not in SUPPORTED_EVENT_SCHEMA_VERSIONS:
         raise StateEventError("unsupported schema_version")
-    if schema_version == EVENT_SCHEMA_VERSION_V4:
+    if schema_version == IDEA_EVENT_SCHEMA_VERSION:
+        if set(event) != _IDEA_EVENT_FIELDS:
+            raise StateEventError("Idea event fields do not match the contract")
+    elif schema_version == EVENT_SCHEMA_VERSION_V4:
         if set(event) != _V4_EVENT_FIELDS:
             raise StateEventError("v4 event fields do not match the contract")
     elif schema_version == EVENT_SCHEMA_VERSION_V3:
@@ -340,7 +397,11 @@ def validate_state_event(event: dict[str, Any]) -> None:
         raise StateEventError("state-transition cannot supersede an event")
     if event_type == "correction" and supersedes_event_id is None:
         raise StateEventError("correction requires supersedes_event_id")
-    if schema_version not in {EVENT_SCHEMA_VERSION_V3, EVENT_SCHEMA_VERSION_V4}:
+    if schema_version not in {
+        EVENT_SCHEMA_VERSION_V3,
+        EVENT_SCHEMA_VERSION_V4,
+        IDEA_EVENT_SCHEMA_VERSION,
+    }:
         if "task_transition" in event:
             raise StateEventError("v1/v2 events cannot contain task_transition")
     else:
@@ -349,12 +410,22 @@ def validate_state_event(event: dict[str, Any]) -> None:
             event_type=event_type,
             supersedes_event_id=supersedes_event_id,
         )
-    if schema_version == EVENT_SCHEMA_VERSION_V4:
+    if schema_version in {EVENT_SCHEMA_VERSION_V4, IDEA_EVENT_SCHEMA_VERSION}:
         transition = event["experiment_transition"]
         if transition is not None:
             _validate_experiment_transition(transition, changes=event["changes"])
             if event["task_transition"] is not None:
                 raise StateEventError("experiment transition cannot mix with route transition")
+    if schema_version == IDEA_EVENT_SCHEMA_VERSION:
+        transition = event["idea_transition"]
+        if transition is None:
+            raise StateEventError("Idea event requires idea_transition")
+        _validate_idea_transition(transition, changes=event["changes"])
+        if (
+            event["task_transition"] is not None
+            or event["experiment_transition"] is not None
+        ):
+            raise StateEventError("idea transition cannot mix with task or experiment transition")
 
     changes = event["changes"]
     if not isinstance(changes, list) or not changes:
@@ -408,11 +479,14 @@ def build_state_event(
     project_after: dict[str, Any],
     task_transition: dict[str, Any] | None = None,
     experiment_transition: dict[str, Any] | None = None,
+    idea_transition: dict[str, Any] | None = None,
     schema_version: str | None = None,
 ) -> dict[str, Any]:
     """Build a canonical event and bind its content hash."""
     if schema_version is None:
-        if experiment_transition is not None:
+        if idea_transition is not None:
+            schema_version = IDEA_EVENT_SCHEMA_VERSION
+        elif experiment_transition is not None:
             schema_version = EVENT_SCHEMA_VERSION_V4
         elif task_transition is not None:
             schema_version = EVENT_SCHEMA_VERSION_V3
@@ -433,6 +507,8 @@ def build_state_event(
         raise StateEventError("task_transition requires v3 event schema")
     if experiment_transition is not None and schema_version != EVENT_SCHEMA_VERSION_V4:
         raise StateEventError("experiment_transition requires v4 event schema")
+    if idea_transition is not None and schema_version != IDEA_EVENT_SCHEMA_VERSION:
+        raise StateEventError("idea_transition requires Idea event schema")
     event = {
         "schema_version": schema_version,
         "event_id": event_id,
@@ -451,10 +527,16 @@ def build_state_event(
         "project_after": copy.deepcopy(project_after),
         "event_sha256": "0" * 64,
     }
-    if schema_version in {EVENT_SCHEMA_VERSION_V3, EVENT_SCHEMA_VERSION_V4}:
+    if schema_version in {
+        EVENT_SCHEMA_VERSION_V3,
+        EVENT_SCHEMA_VERSION_V4,
+        IDEA_EVENT_SCHEMA_VERSION,
+    }:
         event["task_transition"] = copy.deepcopy(task_transition)
-    if schema_version == EVENT_SCHEMA_VERSION_V4:
+    if schema_version in {EVENT_SCHEMA_VERSION_V4, IDEA_EVENT_SCHEMA_VERSION}:
         event["experiment_transition"] = copy.deepcopy(experiment_transition)
+    if schema_version == IDEA_EVENT_SCHEMA_VERSION:
+        event["idea_transition"] = copy.deepcopy(idea_transition)
     event["event_sha256"] = _computed_event_sha256(event)
     validate_state_event(event)
     return event
@@ -589,6 +671,13 @@ def replay_state_events(
         )
         if occurred_at < snapshot_updated_at:
             raise StateEventError("event occurred_at regresses project.updated_at")
+        idea_transition = event.get("idea_transition")
+        if idea_transition is not None:
+            _validate_idea_replay_gate(
+                state,
+                event=event,
+                occurred_at=occurred_at,
+            )
         lifecycle_changes = {
             change["collection"]
             for change in event["changes"]
@@ -622,7 +711,12 @@ def replay_state_events(
                     raise StateEventError("lifecycle event occurs after Experiment expiry")
         allowed_event_versions = (
             (
-                {EVENT_SCHEMA_VERSION, EVENT_SCHEMA_VERSION_V3, EVENT_SCHEMA_VERSION_V4}
+                {
+                    EVENT_SCHEMA_VERSION,
+                    EVENT_SCHEMA_VERSION_V3,
+                    EVENT_SCHEMA_VERSION_V4,
+                    IDEA_EVENT_SCHEMA_VERSION,
+                }
                 if state["schema_version"] == "context.typed-state/v3alpha1"
                 else {EVENT_SCHEMA_VERSION, EVENT_SCHEMA_VERSION_V3}
             )
@@ -685,3 +779,86 @@ def replay_state_events(
         expected_sequence += 1
 
     return state
+
+
+def _validate_idea_replay_gate(
+    state: dict[str, Any],
+    *,
+    event: dict[str, Any],
+    occurred_at: datetime,
+) -> None:
+    """Keep an Idea Event within candidate-only execution authority."""
+    transition = event["idea_transition"]
+    assert isinstance(transition, dict)
+    project = state["project"]
+    active_work_id = project["primary_work_id"]
+    if (
+        transition["parent_work_id"] != active_work_id
+        or transition["return_work_id"] != active_work_id
+    ):
+        raise StateEventError("Idea event parent or return point does not match active Work")
+    idea_change = next(
+        change
+        for change in event["changes"]
+        if change["collection"] == "ideas"
+        and change["object_id"] == transition["idea_id"]
+    )
+    idea = idea_change["value"]
+    if any(item["idea_id"] == transition["idea_id"] for item in state["ideas"]):
+        raise StateEventError("Idea capture cannot replace an existing Idea")
+    if not isinstance(idea.get("source_ref"), str) or not _OPAQUE_RANGE_REF_RE.fullmatch(
+        idea["source_ref"]
+    ):
+        raise StateEventError("Idea event source_ref is not an opaque range")
+    if (
+        not isinstance(idea.get("summary"), str)
+        or not idea["summary"].strip()
+        or len(idea["summary"]) > 2000
+    ):
+        raise StateEventError("Idea event summary is not bounded")
+    expiry = idea.get("expiry")
+    if expiry is not None:
+        try:
+            expires_at = datetime.fromisoformat(expiry.replace("Z", "+00:00"))
+        except (AttributeError, ValueError) as exc:
+            raise StateEventError("Idea event expiry is invalid") from exc
+        if expires_at.tzinfo is None or expires_at <= occurred_at:
+            raise StateEventError("Idea event expiry is not in the future")
+    project_after = event["project_after"]
+    immutable_project_fields = set(project) - {"revision", "updated_at"}
+    if (
+        any(project_after[field] != project[field] for field in immutable_project_fields)
+        or project_after["updated_at"] != event["occurred_at"]
+    ):
+        raise StateEventError("Idea event cannot change active execution authority")
+    changed_collections = {change["collection"] for change in event["changes"]}
+    if changed_collections - {"ideas", "claims"}:
+        raise StateEventError("Idea event can change only Idea and claim revision")
+    previous_claims = {item["claim_id"]: item for item in state["claims"]}
+    active_claims = [
+        claim
+        for claim in previous_claims.values()
+        if claim["work_id"] == active_work_id and claim["status"] == "active"
+    ]
+    if len(active_claims) != 1 or active_claims[0]["actor_ref"] != event["actor_ref"]:
+        raise StateEventError("Idea event actor does not own the active claim")
+    target_id = transition["switch_target_work_id"]
+    if target_id is not None:
+        target = next(
+            (work for work in state["works"] if work["work_id"] == target_id), None
+        )
+        if target is None or target["status"] != "ready" or target_id == active_work_id:
+            raise StateEventError("Idea switch proposal target is invalid")
+    for change in event["changes"]:
+        if change["collection"] != "claims":
+            continue
+        previous = previous_claims.get(change["object_id"])
+        current = change["value"]
+        if previous is None:
+            raise StateEventError("Idea event cannot add a claim")
+        if any(
+            current[field] != previous[field]
+            for field in current
+            if field != "expected_project_revision"
+        ) or current["expected_project_revision"] != event["revision_after"]:
+            raise StateEventError("Idea event cannot change claim authority")

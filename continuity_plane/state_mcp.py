@@ -7,10 +7,33 @@ import hashlib
 import json
 import re
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Callable, Protocol
+from typing import Any, Protocol
 
+from .effect_scope_gate import (
+    evaluate_claim_scope_gate,
+    evaluate_effect_completion_gate,
+    evaluate_effect_scope_gate,
+    validate_scope,
+)
+from .experiment_lifecycle import (
+    evaluate_attempt_gate,
+    evaluate_experiment_activation_gate,
+    experiment_contract_sha256,
+    experiment_time_verdict,
+)
+from .idea_continuity import evaluate_idea_capture_gate
+from .state_events import (
+    EVENT_SCHEMA_VERSION,
+    EVENT_SCHEMA_VERSION_V4,
+    IDEA_EVENT_SCHEMA_VERSION,
+    LEGACY_EVENT_SCHEMA_VERSION,
+    StateEventError,
+    build_state_event,
+    replay_state_events,
+)
 from .state_store import (
     StateStoreBusy,
     StateStoreCapabilityError,
@@ -21,28 +44,7 @@ from .state_store import (
     invoke_state_store,
     validate_state_store_adapter,
 )
-from .state_events import (
-    EVENT_SCHEMA_VERSION,
-    EVENT_SCHEMA_VERSION_V4,
-    LEGACY_EVENT_SCHEMA_VERSION,
-    StateEventError,
-    build_state_event,
-    replay_state_events,
-)
-from .effect_scope_gate import (
-    evaluate_effect_completion_gate,
-    evaluate_claim_scope_gate,
-    evaluate_effect_scope_gate,
-    validate_scope,
-)
 from .typed_state import TypedStateError
-from .experiment_lifecycle import (
-    evaluate_attempt_gate,
-    evaluate_experiment_activation_gate,
-    experiment_time_verdict,
-    experiment_contract_sha256,
-)
-
 
 REQUEST_SCHEMA_VERSION = "context.state-mcp-request/v1alpha1"
 RESPONSE_SCHEMA_VERSION = "context.state-mcp-response/v1alpha1"
@@ -56,6 +58,7 @@ EXPERIMENT_EFFECT_TOOL = "context.experiment.effect"
 ATTEMPT_TOOL = "context.experiment.attempt"
 PROMOTION_PROPOSE_TOOL = "context.experiment.promotion.propose"
 PROMOTION_APPROVE_TOOL = "context.experiment.promotion.approve"
+IDEA_CAPTURE_TOOL = "context.idea.capture"
 STATE_MCP_TOOLS = (
     READ_TOOL,
     COMMIT_TOOL,
@@ -66,6 +69,7 @@ STATE_MCP_TOOLS = (
     ATTEMPT_TOOL,
     PROMOTION_PROPOSE_TOOL,
     PROMOTION_APPROVE_TOOL,
+    IDEA_CAPTURE_TOOL,
 )
 
 ATTEMPT_REQUEST_SCHEMA_VERSION = "context.experiment-attempt-request/v1alpha1"
@@ -76,8 +80,10 @@ PROMOTION_PROPOSAL_REQUEST_SCHEMA_VERSION = (
 PROMOTION_APPROVAL_REQUEST_SCHEMA_VERSION = (
     "context.experiment-promotion-approval-request/v1alpha1"
 )
+IDEA_CAPTURE_REQUEST_SCHEMA_VERSION = "context.idea-capture-request/v1alpha1"
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+_OPAQUE_RANGE_REF_RE = re.compile(r"^rng_[a-z2-7]{26}$")
 _COMMON_FIELDS = {"schema_version", "request_id", "project_id"}
 _REQUEST_FIELDS = {
     READ_TOOL: _COMMON_FIELDS,
@@ -171,6 +177,20 @@ _REQUEST_FIELDS = {
         "causation_ref",
         "correlation_ref",
     },
+    IDEA_CAPTURE_TOOL: _COMMON_FIELDS
+    | {
+        "expected_revision",
+        "idea_id",
+        "parent_work_id",
+        "return_work_id",
+        "source_ref",
+        "summary",
+        "action",
+        "switch_target_work_id",
+        "expiry",
+        "causation_ref",
+        "correlation_ref",
+    },
 }
 _AUTHORIZATION_ACTIONS = {
     READ_TOOL: "state.read",
@@ -180,6 +200,7 @@ _AUTHORIZATION_ACTIONS = {
     ATTEMPT_TOOL: "state.experiment.attempt.begin",
     PROMOTION_PROPOSE_TOOL: "state.experiment.promotion.propose",
     PROMOTION_APPROVE_TOOL: "state.experiment.promotion.approve",
+    IDEA_CAPTURE_TOOL: "state.idea.capture",
 }
 _COMMIT_COLLECTION_ID_FIELDS = {
     "works": "work_id",
@@ -267,6 +288,25 @@ def _request_properties(tool: str) -> dict[str, Any]:
             "attempt_id": {"type": "string", "minLength": 1, "maxLength": 200},
             "work_id": {"type": "string", "minLength": 1, "maxLength": 200},
             "claim_id": {"type": "string", "minLength": 1, "maxLength": 200},
+            "causation_ref": {"type": ["string", "null"]},
+            "correlation_ref": {"type": ["string", "null"]},
+        }
+    if tool == IDEA_CAPTURE_TOOL:
+        return {
+            **common,
+            "schema_version": {"const": IDEA_CAPTURE_REQUEST_SCHEMA_VERSION},
+            "expected_revision": {"type": "integer", "minimum": 0},
+            "idea_id": {"type": "string", "minLength": 1, "maxLength": 200},
+            "parent_work_id": {"type": "string", "minLength": 1, "maxLength": 200},
+            "return_work_id": {"type": "string", "minLength": 1, "maxLength": 200},
+            "source_ref": {
+                "type": "string",
+                "pattern": r"^rng_[a-z2-7]{26}$",
+            },
+            "summary": {"type": "string", "minLength": 1, "maxLength": 2000},
+            "action": {"enum": ["capture-and-continue", "park", "propose-switch"]},
+            "switch_target_work_id": {"type": ["string", "null"], "minLength": 1, "maxLength": 200},
+            "expiry": {"type": ["string", "null"], "format": "date-time"},
             "causation_ref": {"type": ["string", "null"]},
             "correlation_ref": {"type": ["string", "null"]},
         }
@@ -374,6 +414,7 @@ def state_mcp_tool_definitions() -> list[dict[str, Any]]:
         ATTEMPT_TOOL: "Persist one authorized Experiment attempt before external effects.",
         PROMOTION_PROPOSE_TOOL: "Propose verified Experiment findings for a canonical target.",
         PROMOTION_APPROVE_TOOL: "Approve a proposed Experiment promotion with an independent verifier.",
+        IDEA_CAPTURE_TOOL: "Capture a candidate Idea without changing active execution authority.",
     }
     return [
         {
@@ -425,6 +466,7 @@ def _validate_request(tool: str, arguments: Any) -> str | None:
         EXPERIMENT_EFFECT_TOOL: EXPERIMENT_EFFECT_REQUEST_SCHEMA_VERSION,
         PROMOTION_PROPOSE_TOOL: PROMOTION_PROPOSAL_REQUEST_SCHEMA_VERSION,
         PROMOTION_APPROVE_TOOL: PROMOTION_APPROVAL_REQUEST_SCHEMA_VERSION,
+        IDEA_CAPTURE_TOOL: IDEA_CAPTURE_REQUEST_SCHEMA_VERSION,
     }.get(tool, REQUEST_SCHEMA_VERSION)
     if arguments["schema_version"] != expected_schema_version:
         return "unsupported request schema_version"
@@ -508,6 +550,37 @@ def _validate_request(tool: str, arguments: Any) -> str | None:
             value = arguments[field]
             if not isinstance(value, str) or not value.strip() or len(value) > 200:
                 return f"{field} must be a bounded non-empty string"
+    if tool == IDEA_CAPTURE_TOOL:
+        for field in ("idea_id", "parent_work_id", "return_work_id"):
+            value = arguments[field]
+            if not isinstance(value, str) or not value.strip() or len(value) > 200:
+                return f"{field} must be a bounded non-empty string"
+        source_ref = arguments["source_ref"]
+        if not isinstance(source_ref, str) or not _OPAQUE_RANGE_REF_RE.fullmatch(
+            source_ref
+        ):
+            return "source_ref must be an opaque source range reference"
+        summary = arguments["summary"]
+        if not isinstance(summary, str) or not summary.strip() or len(summary) > 2000:
+            return "summary must be a bounded non-empty string"
+        action = arguments["action"]
+        target = arguments["switch_target_work_id"]
+        if action not in {"capture-and-continue", "park", "propose-switch"}:
+            return "action is unsupported"
+        if (action == "propose-switch") != (isinstance(target, str) and bool(target.strip())):
+            return "switch_target_work_id does not match action"
+        if isinstance(target, str) and len(target) > 200:
+            return "switch_target_work_id must be bounded"
+        expiry = arguments["expiry"]
+        if expiry is not None:
+            if not isinstance(expiry, str) or not expiry.strip():
+                return "expiry must be null or RFC3339"
+            try:
+                parsed_expiry = datetime.fromisoformat(expiry.replace("Z", "+00:00"))
+            except ValueError:
+                return "expiry must be null or RFC3339"
+            if parsed_expiry.tzinfo is None:
+                return "expiry must include a timezone"
     if tool in {PROMOTION_PROPOSE_TOOL, PROMOTION_APPROVE_TOOL}:
         for field in ("work_id", "proposal_id"):
             value = arguments[field]
@@ -710,7 +783,7 @@ class StateMCPService:
         ):
             raise ValueError("registry_digest must be lowercase SHA-256")
         if not callable(clock) or not callable(event_id_factory):
-            raise ValueError("clock and event_id_factory must be callable")
+            raise TypeError("clock and event_id_factory must be callable")
         self._store = store
         self._authorizer = authorizer or _DenyAllAuthorizer()
         self._registry_hash_value = registry_digest
@@ -781,7 +854,8 @@ class StateMCPService:
     ) -> bool:
         try:
             return self._authorizer.authorize(context, action, project_id) is True
-        except Exception:
+        except Exception:  # noqa: BLE001
+            # Authorization provider failures deny writes.
             return False
 
     def call_tool(
@@ -845,6 +919,7 @@ class StateMCPService:
             ATTEMPT_TOOL,
             PROMOTION_PROPOSE_TOOL,
             PROMOTION_APPROVE_TOOL,
+            IDEA_CAPTURE_TOOL,
         }:
             with self._mutation_lock:
                 replay = self._request_replay(tool, arguments, context)
@@ -856,6 +931,8 @@ class StateMCPService:
                     return self._claim(arguments, context=context)
                 if tool == ATTEMPT_TOOL:
                     return self._attempt(arguments, context=context)
+                if tool == IDEA_CAPTURE_TOOL:
+                    return self._idea_capture(arguments, context=context)
                 if tool in {PROMOTION_PROPOSE_TOOL, PROMOTION_APPROVE_TOOL}:
                     return self._promotion(tool, arguments, context=context)
                 if tool == EXPERIMENT_EFFECT_TOOL:
@@ -924,6 +1001,206 @@ class StateMCPService:
                 "capabilities": capability_manifest_to_document(self._manifest),
             },
         )
+
+    def _idea_capture(
+        self,
+        arguments: dict[str, Any],
+        *,
+        context: RequestContext,
+    ) -> dict[str, Any]:
+        """Persist one candidate-only Idea without changing execution authority."""
+        request_id = arguments["request_id"]
+        project_id = arguments["project_id"]
+        try:
+            snapshot = invoke_state_store(self._store, "read_project", project_id)
+            events = invoke_state_store(self._store, "read_events", project_id)
+            request_fingerprint = self._request_fingerprint(
+                IDEA_CAPTURE_TOOL, arguments, context
+            )
+            event_id = self._event_id_factory(request_id)
+            existing_event = next(
+                (item for item in events if item["event_id"] == event_id), None
+            )
+            if existing_event is not None:
+                transition = existing_event.get("idea_transition")
+                if (
+                    not isinstance(transition, dict)
+                    or transition.get("request_sha256") != request_fingerprint
+                    or transition.get("operation") != arguments["action"]
+                    or transition.get("idea_id") != arguments["idea_id"]
+                ):
+                    return _response(
+                        tool=IDEA_CAPTURE_TOOL,
+                        request_id=request_id,
+                        error_code="conflict",
+                        error_message="Idea capture request identity conflicts with durable state",
+                    )
+                response = _response(
+                    tool=IDEA_CAPTURE_TOOL,
+                    request_id=request_id,
+                    result={
+                        "revision": existing_event["revision_after"],
+                        "event_head": {
+                            "sequence_no": existing_event["sequence_no"],
+                            "event_sha256": existing_event["event_sha256"],
+                        },
+                        "event": existing_event,
+                    },
+                )
+                self._remember_request(IDEA_CAPTURE_TOOL, arguments, context, response)
+                return response
+            if snapshot.get("schema_version") != "context.typed-state/v3alpha1":
+                return _response(
+                    tool=IDEA_CAPTURE_TOOL,
+                    request_id=request_id,
+                    error_code="integrity",
+                    error_message="Idea capture requires typed-state v3alpha1",
+                )
+            if snapshot["project"]["revision"] != arguments["expected_revision"]:
+                return _response(
+                    tool=IDEA_CAPTURE_TOOL,
+                    request_id=request_id,
+                    error_code="conflict",
+                    error_message="expected revision is stale",
+                )
+            if any(item["idea_id"] == arguments["idea_id"] for item in snapshot["ideas"]):
+                return _response(
+                    tool=IDEA_CAPTURE_TOOL,
+                    request_id=request_id,
+                    error_code="conflict",
+                    error_message="Idea identity already exists",
+                )
+            observed_at = self._clock()
+            gate = evaluate_idea_capture_gate(
+                snapshot,
+                actor_ref=context.subject_ref,
+                expected_revision=arguments["expected_revision"],
+                parent_work_id=arguments["parent_work_id"],
+                return_work_id=arguments["return_work_id"],
+                action=arguments["action"],
+                switch_target_work_id=arguments["switch_target_work_id"],
+                expiry=arguments["expiry"],
+                observed_at=observed_at,
+            )
+            if gate["decision"] != "allow":
+                return _response(
+                    tool=IDEA_CAPTURE_TOOL,
+                    request_id=request_id,
+                    error_code=(
+                        "conflict" if gate["reason"] == "stale_revision" else "integrity"
+                    ),
+                    error_message="Idea capture gate denied read-only: " + gate["reason"],
+                )
+            idea = {
+                "idea_id": arguments["idea_id"],
+                "parent_work_id": arguments["parent_work_id"],
+                "source_ref": arguments["source_ref"],
+                "summary": arguments["summary"],
+                "status": {
+                    "capture-and-continue": "candidate",
+                    "park": "parked",
+                    "propose-switch": "proposed",
+                }[arguments["action"]],
+                "return_work_id": arguments["return_work_id"],
+                "expiry": arguments["expiry"],
+                "attempt_budget": None,
+                "promotion_target": arguments["switch_target_work_id"],
+                "evidence_ids": [],
+            }
+            candidate = copy.deepcopy(snapshot)
+            _replace_or_append(
+                candidate,
+                {
+                    "collection": "ideas",
+                    "object_id": idea["idea_id"],
+                    "value": idea,
+                },
+            )
+            revision_after = arguments["expected_revision"] + 1
+            changes = [
+                {
+                    "collection": "ideas",
+                    "object_id": idea["idea_id"],
+                    "value": idea,
+                }
+            ]
+            for claim in candidate["claims"]:
+                if claim["status"] == "active":
+                    claim["expected_project_revision"] = revision_after
+                    _upsert_change(changes, collection="claims", value=claim)
+            _derive_project_projection(
+                candidate,
+                revision=revision_after,
+                updated_at=observed_at,
+            )
+            previous_hash = events[-1]["event_sha256"] if events else None
+            sequence_no = events[-1]["sequence_no"] + 1 if events else 1
+            event = build_state_event(
+                event_id=event_id,
+                event_type="state-transition",
+                project_id=project_id,
+                sequence_no=sequence_no,
+                revision_before=arguments["expected_revision"],
+                occurred_at=observed_at,
+                actor_ref=context.subject_ref,
+                causation_ref=arguments["causation_ref"],
+                correlation_ref=arguments["correlation_ref"],
+                previous_event_sha256=previous_hash,
+                supersedes_event_id=None,
+                changes=changes,
+                project_after=candidate["project"],
+                idea_transition={
+                    "operation": arguments["action"],
+                    "request_sha256": request_fingerprint,
+                    "idea_id": idea["idea_id"],
+                    "parent_work_id": idea["parent_work_id"],
+                    "return_work_id": idea["return_work_id"],
+                    "switch_target_work_id": idea["promotion_target"],
+                },
+                schema_version=IDEA_EVENT_SCHEMA_VERSION,
+            )
+            expected_snapshot = replay_state_events(
+                snapshot,
+                [event],
+                starting_sequence_no=sequence_no,
+                previous_event_sha256=previous_hash,
+            )
+            invoke_state_store(
+                self._store,
+                "commit_event",
+                project_id=project_id,
+                expected_revision=arguments["expected_revision"],
+                event=event,
+                expected_snapshot=expected_snapshot,
+            )
+        except (
+            StateStoreCapabilityError,
+            StateStoreNotFound,
+            StateStoreConflict,
+            StateStoreBusy,
+            StateStoreIntegrityError,
+            StateEventError,
+            TypedStateError,
+        ) as exc:
+            return _backend_error_response(
+                tool=IDEA_CAPTURE_TOOL,
+                request_id=request_id,
+                error=exc,
+            )
+        response = _response(
+            tool=IDEA_CAPTURE_TOOL,
+            request_id=request_id,
+            result={
+                "revision": expected_snapshot["project"]["revision"],
+                "event_head": {
+                    "sequence_no": event["sequence_no"],
+                    "event_sha256": event["event_sha256"],
+                },
+                "event": event,
+            },
+        )
+        self._remember_request(IDEA_CAPTURE_TOOL, arguments, context, response)
+        return response
 
     def _attempt(
         self,
@@ -2151,6 +2428,16 @@ class StateMCPService:
         try:
             snapshot = invoke_state_store(self._store, "read_project", project_id)
             events = invoke_state_store(self._store, "read_events", project_id)
+            if (
+                snapshot.get("schema_version") == "context.typed-state/v3alpha1"
+                and any(change["collection"] == "ideas" for change in arguments["changes"])
+            ):
+                return _response(
+                    tool=COMMIT_TOOL,
+                    request_id=request_id,
+                    error_code="integrity",
+                    error_message="typed-state v3 Ideas require context.idea.capture",
+                )
             if snapshot["project"]["revision"] != arguments["expected_revision"]:
                 return _response(
                     tool=COMMIT_TOOL,
