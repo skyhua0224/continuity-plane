@@ -335,3 +335,23 @@ schemas:
     status: current
     compatibility_mode: strict-versioned
     migrations: []
+
+  - schema_id: context.git-collaboration-packet
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.git-collaboration-packet/v1alpha1
+    supported_wire_versions: [context.git-collaboration-packet/v1alpha1]
+    artifact_path: schemas/m0-11/git-collaboration-packet.schema.json
+    content_sha256: a326275ffb14f8219f0b133ebbfd27eac251ab1b67eb309dec448b58da141c4a
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.git-admission-receipt
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.git-admission-receipt/v1alpha1
+    supported_wire_versions: [context.git-admission-receipt/v1alpha1]
+    artifact_path: schemas/m0-11/git-admission-receipt.schema.json
+    content_sha256: 26b3a79259faffaa8bb9c0cdf0d4d8fdb007ab1dd8cf9436f9636cc53fd877ec
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []

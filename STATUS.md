@@ -1,6 +1,6 @@
 # Context Control Plane Status
 
-版本：revision 40  
+版本：revision 41  
 日期：2026-08-14  
 canonical plan：`MASTER.md`
 
@@ -8,10 +8,10 @@ canonical plan：`MASTER.md`
 
 | 字段 | 值 |
 |---|---|
-| 当前 Campaign | M0 仓库与治理 |
-| active work | M0-11：Git collaboration 与 staged admission 合同（🟡） |
-| next action | 为 branch metadata、commit/PR packet、staged secret/transcript admission、regular merge replay 和 first-commit audit 建立失败测试 |
-| hard blocker | active leaf 无；M3-01 仍等待 M2-09 的 Windows/macOS 原生 live fixture |
+| 当前 Campaign | M3 任务图与智能切换 |
+| active work | M3-01：Campaign/Goal/Work/Experiment DAG（🟡） |
+| next action | 为无环 Campaign/Goal/Work/Experiment graph、parent/return point/promotion 合同与孤儿分支建立失败测试 |
+| hard blocker | M3-01 完成门仍等待 M2-09 的 Windows/macOS 原生 live fixture |
 | repository mode | research / shadow pilot |
 | production state | local-embedded implemented / shadow pilot；shared production pilot planned |
 
@@ -24,10 +24,11 @@ canonical plan：`MASTER.md`
 | Raw transcript import | 0 files |
 | Evidence index | [`docs/reports/verified-state.md`](docs/reports/verified-state.md) |
 | Documentation lifecycle | M0-10 verified；独立审查 High 0、Medium 0；STATUS 12 KiB 门与 MASTER 二级节容量门通过 |
+| Git admission | M0-11 offline contract `25/25` 通过；canonical `731` tests 与 repository verifier 通过 |
 | Skill catalog/proposal/source adapters | M4-07、M4-08、M4-10 离线合同已验收；external active 0；DeepSeek/Pi/Cordis adoption 0 |
 | Project dogfood baseline | 27 次 compaction；Continuation Cursor 78/80；首动作不匹配和已确认事项重播各 2 次；provider context/token/latency 仍不可见 |
-| Repository verification | 706 tests 通过；28 个无 DSN PostgreSQL live tests skipped；repository verifier、Python compile、diff check 和文档 lifecycle benchmark 通过 |
-| Governance authority | `MASTER.md` revision 40 |
+| Repository verification | 731 tests 通过；28 个无 DSN PostgreSQL live tests skipped；repository verifier、Python compile、diff check 和文档 lifecycle benchmark 通过 |
+| Governance authority | `MASTER.md` revision 41 |
 | Operational router | `STATUS.md` |
 
 ## 恢复入口
