@@ -1,6 +1,6 @@
 schema_version: context.document-control-config/v1alpha1
-generated_at: '2026-08-14T00:00:00Z'
-governance_revision: 52
+generated_at: '2026-08-15T00:00:00Z'
+governance_revision: 53
 documents:
 - document_id: agents
   path: AGENTS.md
@@ -12,7 +12,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/52
+    authority_ref: governance-event://master/revision/53
     supersedes: null
     affected_tasks:
     - M0-10
@@ -21,24 +21,25 @@ documents:
 - document_id: master
   path: MASTER.md
   category: governance
-  document_revision: 14
+  document_revision: 15
   authority:
     governance_authority: true
     active_state_authority: false
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/52
-    supersedes: context.document://master/revision/13
+    authority_ref: governance-event://master/revision/53
+    supersedes: context.document://master/revision/14
     supersedes_provenance:
-      git_commit: 377155fd7f01f9112dff923c274bd00731fef883
-      manifest_sha256: ebc94d2561e23c78b82ff0cff1d037f4dfb8bc415f215bec1a8999edb394fb4a
-      content_sha256: 24406009f32aca4e4673f707e57b7cb0cd5d85c42cc1c02155e5a33b5ccd7666
+      git_commit: b6461e921cd0dfc123a0b208f645ac9a38d9438c
+      manifest_sha256: 003234d41d40b1af700f32a30abe5070ef7367e15d56db4dbc2a07cb23bb2014
+      content_sha256: c0d8ee980dc4eee98747d1305ef5e1cbc3cec935fee6ee0d7c28ede5115ce1bf
     affected_tasks:
     - M3-08
     - M4-09
     - M5-01
     - M5-02
+    - M5-03
     next_review: null
   evidence_refs:
   - ref_id: master-evidence-1
@@ -56,6 +57,9 @@ documents:
   - ref_id: master-evidence-m5-02
     path: docs/migrations/m5-02-compaction-checkpoint-acceptance-2026-08-14.md
     valid_until: null
+  - ref_id: master-evidence-m5-03
+    path: docs/migrations/m5-03-postcompact-canary-acceptance-2026-08-15.md
+    valid_until: null
 - document_id: readme
   path: README.md
   category: projection
@@ -66,37 +70,38 @@ documents:
     controlled_action_entry: false
   change:
     change_type: projection
-    authority_ref: state-revision://repository/52
+    authority_ref: state-revision://repository/53
     supersedes: null
     affected_tasks:
     - M0-10
     next_review: null
   evidence_refs: []
   projection_binding:
-    source_state_revision: 52
+    source_state_revision: 53
     template_version: context.document-projection/v1alpha1
     state_write_authority: false
 - document_id: status
   path: STATUS.md
   category: routing
-  document_revision: 15
+  document_revision: 16
   authority:
     governance_authority: false
     active_state_authority: false
     controlled_action_entry: false
   change:
     change_type: status
-    authority_ref: governance-event://master/revision/52
-    supersedes: context.document://status/revision/14
+    authority_ref: governance-event://master/revision/53
+    supersedes: context.document://status/revision/15
     supersedes_provenance:
-      git_commit: 377155fd7f01f9112dff923c274bd00731fef883
-      manifest_sha256: ebc94d2561e23c78b82ff0cff1d037f4dfb8bc415f215bec1a8999edb394fb4a
-      content_sha256: 213eb51b737bc6f4e8af270b75c564a678e48d1632984f344a4391cbbcd39576
+      git_commit: b6461e921cd0dfc123a0b208f645ac9a38d9438c
+      manifest_sha256: 003234d41d40b1af700f32a30abe5070ef7367e15d56db4dbc2a07cb23bb2014
+      content_sha256: d662f5a66aa490a555624003cae6c19806dbf18b469518e71b96843cbf6b6de7
     affected_tasks:
     - M3-08
     - M4-09
     - M5-01
     - M5-02
+    - M5-03
     next_review: null
   evidence_refs:
   - ref_id: status-evidence-1
@@ -114,6 +119,9 @@ documents:
   - ref_id: status-evidence-m5-02
     path: docs/migrations/m5-02-compaction-checkpoint-acceptance-2026-08-14.md
     valid_until: null
+  - ref_id: status-evidence-m5-03
+    path: docs/migrations/m5-03-postcompact-canary-acceptance-2026-08-15.md
+    valid_until: null
 - document_id: docs-architecture-adaptive-information-plane
   path: docs/architecture/adaptive-information-plane.md
   category: architecture
@@ -124,7 +132,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/52
+    authority_ref: governance-event://master/revision/53
     supersedes: null
     affected_tasks:
     - M0-10
@@ -140,7 +148,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/52
+    authority_ref: governance-event://master/revision/53
     supersedes: context.document://docs-architecture-idea-continuity/revision/2
     supersedes_provenance:
       git_commit: 84ac82f3375a39c712e3c98a95f6126753e64199
@@ -161,7 +169,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/52
+    authority_ref: governance-event://master/revision/53
     supersedes: null
     affected_tasks:
     - M0-10
@@ -177,7 +185,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/52
+    authority_ref: governance-event://master/revision/53
     supersedes: context.document://docs-architecture-skill-orchestration/revision/1
     affected_tasks:
     - M0-10
@@ -192,24 +200,25 @@ documents:
 - document_id: docs-architecture-target-state
   path: docs/architecture/target-state.md
   category: architecture
-  document_revision: 13
+  document_revision: 14
   authority:
     governance_authority: false
     active_state_authority: false
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/52
-    supersedes: context.document://docs-architecture-target-state/revision/12
+    authority_ref: governance-event://master/revision/53
+    supersedes: context.document://docs-architecture-target-state/revision/13
     supersedes_provenance:
-      git_commit: 377155fd7f01f9112dff923c274bd00731fef883
-      manifest_sha256: ebc94d2561e23c78b82ff0cff1d037f4dfb8bc415f215bec1a8999edb394fb4a
-      content_sha256: cff2b07543b04f8cb9372163347798ea0afdacf3024883e57908e6551da594da
+      git_commit: b6461e921cd0dfc123a0b208f645ac9a38d9438c
+      manifest_sha256: 003234d41d40b1af700f32a30abe5070ef7367e15d56db4dbc2a07cb23bb2014
+      content_sha256: 0497bd81ed952a2b65256ee2fbc5a22bf448139cbcae6341736f912ba70c9b8d
     affected_tasks:
     - M3-08
     - M4-09
     - M5-01
     - M5-02
+    - M5-03
     next_review: null
   evidence_refs:
   - ref_id: docs-architecture-target-state-evidence-1
@@ -226,6 +235,9 @@ documents:
     valid_until: null
   - ref_id: docs-architecture-target-state-evidence-m5-02
     path: docs/migrations/m5-02-compaction-checkpoint-acceptance-2026-08-14.md
+    valid_until: null
+  - ref_id: docs-architecture-target-state-evidence-m5-03
+    path: docs/migrations/m5-03-postcompact-canary-acceptance-2026-08-15.md
     valid_until: null
 - document_id: docs-migrations-local-source-inventory-2026-08-09
   path: docs/migrations/local-source-inventory-2026-08-09.md
@@ -854,7 +866,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/52
+    authority_ref: governance-event://master/revision/53
     supersedes: null
     affected_tasks:
     - M0-10
@@ -870,7 +882,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/52
+    authority_ref: governance-event://master/revision/53
     supersedes: null
     affected_tasks:
     - M0-10
@@ -886,7 +898,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/52
+    authority_ref: governance-event://master/revision/53
     supersedes: null
     affected_tasks:
     - M0-10
@@ -902,7 +914,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/52
+    authority_ref: governance-event://master/revision/53
     supersedes: null
     affected_tasks:
     - M0-10
@@ -918,7 +930,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/52
+    authority_ref: governance-event://master/revision/53
     supersedes: null
     affected_tasks:
     - M0-10
@@ -934,7 +946,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/52
+    authority_ref: governance-event://master/revision/53
     supersedes: context.document://docs-policies-git-collaboration/revision/1
     supersedes_provenance:
       git_commit: 51663f3b23a4dc4af31ba4be9e9d3f80066d64ca
@@ -957,7 +969,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/52
+    authority_ref: governance-event://master/revision/53
     supersedes: null
     affected_tasks:
     - M0-10
@@ -973,7 +985,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/52
+    authority_ref: governance-event://master/revision/53
     supersedes: null
     affected_tasks:
     - M0-10
@@ -989,7 +1001,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/52
+    authority_ref: governance-event://master/revision/53
     supersedes: null
     affected_tasks:
     - M0-10
@@ -998,24 +1010,25 @@ documents:
 - document_id: docs-reports-verified-state
   path: docs/reports/verified-state.md
   category: report
-  document_revision: 13
+  document_revision: 14
   authority:
     governance_authority: false
     active_state_authority: false
     controlled_action_entry: false
   change:
     change_type: projection
-    authority_ref: state-revision://repository/52
-    supersedes: context.document://docs-reports-verified-state/revision/12
+    authority_ref: state-revision://repository/53
+    supersedes: context.document://docs-reports-verified-state/revision/13
     supersedes_provenance:
-      git_commit: 377155fd7f01f9112dff923c274bd00731fef883
-      manifest_sha256: ebc94d2561e23c78b82ff0cff1d037f4dfb8bc415f215bec1a8999edb394fb4a
-      content_sha256: 80b289d095cbfc6a84e68c5282a25dc8d0ce5268c8cf2aa4fcc7361cb4f62d8e
+      git_commit: b6461e921cd0dfc123a0b208f645ac9a38d9438c
+      manifest_sha256: 003234d41d40b1af700f32a30abe5070ef7367e15d56db4dbc2a07cb23bb2014
+      content_sha256: 3399d1318d77085980f650edf896549b7f2cbb4b02b1e3daac25df6d256300e8
     affected_tasks:
     - M3-08
     - M4-09
     - M5-01
     - M5-02
+    - M5-03
     next_review: task:M5-02
   evidence_refs:
   - ref_id: docs-reports-verified-state-evidence-1
@@ -1126,8 +1139,11 @@ documents:
   - ref_id: docs-reports-verified-state-evidence-37
     path: docs/migrations/m3-06-idea-continuity-acceptance-2026-08-14.md
     valid_until: null
+  - ref_id: docs-reports-verified-state-evidence-m5-03
+    path: docs/migrations/m5-03-postcompact-canary-acceptance-2026-08-15.md
+    valid_until: null
   projection_binding:
-    source_state_revision: 52
+    source_state_revision: 53
     template_version: context.document-projection/v1alpha1
     state_write_authority: false
 - document_id: docs-research-agent-harness-assessment-2026-08-09
@@ -1299,4 +1315,24 @@ documents:
     - M5-07
     - M5-08
     next_review: task:M5-03
+  evidence_refs: []
+- document_id: docs-migrations-m5-03-postcompact-canary-acceptance-2026-08-15
+  path: docs/migrations/m5-03-postcompact-canary-acceptance-2026-08-15.md
+  category: migration
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: verification-run://repository/e5aa86f4af2ea4b27436190d75646b05c7507b200c65f8c6ff5ffbc60172a224
+    supersedes: null
+    affected_tasks:
+    - M5-03
+    - M5-04
+    - M5-06
+    - M5-07
+    - M5-08
+    next_review: task:M5-04
   evidence_refs: []

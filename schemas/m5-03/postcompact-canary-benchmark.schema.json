@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schemas/m5-03/postcompact-canary-benchmark.schema.json",
+  "title": "Context Control Plane PostCompact Canary Benchmark Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "generated_at", "samples", "successful_samples", "replay_mismatch",
+    "critical_field_mismatch", "authority_violations", "fault_samples", "fault_rejections",
+    "faults", "decision_recovery_millionths", "constraint_recovery_millionths",
+    "work_recovery_millionths", "p50_ms", "p95_ms", "max_ms", "external_services",
+    "provenance"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.postcompact-canary-benchmark/v1alpha1"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "samples": {"$ref": "#/$defs/positiveInteger"},
+    "successful_samples": {"$ref": "#/$defs/nonNegativeInteger"},
+    "replay_mismatch": {"$ref": "#/$defs/nonNegativeInteger"},
+    "critical_field_mismatch": {"$ref": "#/$defs/nonNegativeInteger"},
+    "authority_violations": {"$ref": "#/$defs/nonNegativeInteger"},
+    "fault_samples": {"$ref": "#/$defs/nonNegativeInteger"},
+    "fault_rejections": {"$ref": "#/$defs/nonNegativeInteger"},
+    "faults": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "active_work", "constraint", "decision", "deepseek_checkpoint", "delta_binding",
+        "effect_watermark", "pi_cut_point", "pi_split_turn"
+      ],
+      "properties": {
+        "active_work": {"$ref": "#/$defs/nonNegativeInteger"},
+        "constraint": {"$ref": "#/$defs/nonNegativeInteger"},
+        "decision": {"$ref": "#/$defs/nonNegativeInteger"},
+        "deepseek_checkpoint": {"$ref": "#/$defs/nonNegativeInteger"},
+        "delta_binding": {"$ref": "#/$defs/nonNegativeInteger"},
+        "effect_watermark": {"$ref": "#/$defs/nonNegativeInteger"},
+        "pi_cut_point": {"$ref": "#/$defs/nonNegativeInteger"},
+        "pi_split_turn": {"$ref": "#/$defs/nonNegativeInteger"}
+      }
+    },
+    "decision_recovery_millionths": {"type": "integer", "minimum": 0, "maximum": 1000000},
+    "constraint_recovery_millionths": {"type": "integer", "minimum": 0, "maximum": 1000000},
+    "work_recovery_millionths": {"type": "integer", "minimum": 0, "maximum": 1000000},
+    "p50_ms": {"type": "number", "minimum": 0},
+    "p95_ms": {"type": "number", "minimum": 0},
+    "max_ms": {"type": "number", "minimum": 0},
+    "external_services": {"const": 0},
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "implementation_sha256", "benchmark_sha256", "runner_sha256", "canary_schema_sha256",
+        "benchmark_schema_sha256", "test_sha256", "benchmark_test_sha256",
+        "canary_registry_entry_sha256", "benchmark_registry_entry_sha256"
+      ],
+      "properties": {
+        "implementation_sha256": {"$ref": "#/$defs/sha256"},
+        "benchmark_sha256": {"$ref": "#/$defs/sha256"},
+        "runner_sha256": {"$ref": "#/$defs/sha256"},
+        "canary_schema_sha256": {"$ref": "#/$defs/sha256"},
+        "benchmark_schema_sha256": {"$ref": "#/$defs/sha256"},
+        "test_sha256": {"$ref": "#/$defs/sha256"},
+        "benchmark_test_sha256": {"$ref": "#/$defs/sha256"},
+        "canary_registry_entry_sha256": {"$ref": "#/$defs/sha256"},
+        "benchmark_registry_entry_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nonNegativeInteger": {"type": "integer", "minimum": 0},
+    "positiveInteger": {"type": "integer", "minimum": 1}
+  }
+}

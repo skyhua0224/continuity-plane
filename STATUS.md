@@ -1,7 +1,7 @@
 # Context Control Plane Status
 
-版本：revision 52  
-日期：2026-08-14  
+版本：revision 53  
+日期：2026-08-15  
 canonical plan：`MASTER.md`
 
 ## 当前状态
@@ -9,8 +9,8 @@ canonical plan：`MASTER.md`
 | 字段 | 值 |
 |---|---|
 | 当前 Campaign | M5 压缩与 Context Composition |
-| active work | M5-03：PostCompact deterministic canary 与 host compaction 对照（🟡） |
-| next action | M5-03：为 restore canary 与 Pi/DeepSeek mismatch 写失败测试；写权限 0 |
+| active work | M5-04：artifact ref 与 bounded expansion（🟡） |
+| next action | M5-04：验证总展开预算、range receipt、扫描量与 digest mismatch fail closed |
 | hard blocker | M3-01：待 M2-09 Windows/macOS 原生 live fixture |
 | repository mode | research / shadow pilot |
 | production state | local-embedded implemented / shadow pilot；shared production pilot planned |
@@ -29,8 +29,9 @@ canonical plan：`MASTER.md`
 | M4-09 Skill resolver | replay `1000/1000`；quarantine `125/125`；faults=0；reduction `33.3333%`；p95 `1.109641 ms`；external=0 |
 | M5-01 Execution Packet | replay `1000/1000`；canary failures=0；authority=0；packet `4436 B`；p95 `0.517655 ms`；external=0 |
 | M5-02 checkpoint | replay `1000/1000`；delta `1093 B`；p50/p95/max `0.639104/0.666804/1.111154 ms`；mismatch/authority `0`；external=0 |
-| Repository verification | unittest `961`；30 PostgreSQL skips；verifier、compileall、diff check 通过 |
-| Governance authority | `MASTER.md` revision 52 |
+| M5-03 PostCompact | restore `1000/1000`；critical recovery `100%`；fault reject `8000/8000`；p50/p95/max `1.06194/1.125964/1.980451 ms`；authority=0；external=0 |
+| Repository verification | M5-03 focused `10/10`；repository verifier pending current leaf close |
+| Governance authority | `MASTER.md` revision 53 |
 
 ## 恢复入口
 

@@ -655,3 +655,23 @@ schemas:
     status: current
     compatibility_mode: strict-versioned
     migrations: []
+
+  - schema_id: context.postcompact-canary
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.postcompact-canary/v1alpha1
+    supported_wire_versions: [context.postcompact-canary/v1alpha1]
+    artifact_path: schemas/m5-03/postcompact-canary.schema.json
+    content_sha256: 891df799886cfcffd65c2ed2dd60620ae1b6786daef3b0e79affd1bea4549483
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.postcompact-canary-benchmark
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.postcompact-canary-benchmark/v1alpha1
+    supported_wire_versions: [context.postcompact-canary-benchmark/v1alpha1]
+    artifact_path: schemas/m5-03/postcompact-canary-benchmark.schema.json
+    content_sha256: b2f95afb8136e1ba12b3f988629ba0f774a93f5bf8e0b33f4a295280761bb927
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
