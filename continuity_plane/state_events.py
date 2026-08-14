@@ -15,10 +15,12 @@ from .typed_state import TypedStateError, validate_typed_state
 LEGACY_EVENT_SCHEMA_VERSION = "context.state-event/v1alpha1"
 EVENT_SCHEMA_VERSION = "context.state-event/v2alpha1"
 EVENT_SCHEMA_VERSION_V3 = "context.state-event/v3alpha1"
+EVENT_SCHEMA_VERSION_V4 = "context.state-event/v4alpha1"
 SUPPORTED_EVENT_SCHEMA_VERSIONS = {
     LEGACY_EVENT_SCHEMA_VERSION,
     EVENT_SCHEMA_VERSION,
     EVENT_SCHEMA_VERSION_V3,
+    EVENT_SCHEMA_VERSION_V4,
 }
 
 _BASE_EVENT_FIELDS = {
@@ -40,6 +42,7 @@ _BASE_EVENT_FIELDS = {
     "event_sha256",
 }
 _V3_EVENT_FIELDS = _BASE_EVENT_FIELDS | {"task_transition"}
+_V4_EVENT_FIELDS = _BASE_EVENT_FIELDS | {"task_transition", "experiment_transition"}
 _CHANGE_FIELDS = {"collection", "object_id", "value"}
 _EVENT_TYPES = {"state-transition", "correction"}
 _COLLECTION_ID_FIELDS = {
@@ -51,11 +54,22 @@ _COLLECTION_ID_FIELDS = {
     "evidence": "evidence_id",
     "blockers": "blocker_id",
     "effects": "effect_id",
+    "experiment_attempts": "attempt_id",
+    "experiment_promotions": "promotion_id",
 }
 _TERMINAL_DECISION_STATUSES = {"rejected", "reverted", "superseded"}
 _REVIVABLE_DECISION_STATUSES = {"proposed", "accepted"}
 _TERMINAL_WORK_STATUSES = {"completed", "rejected", "reverted", "superseded"}
 _REVIVABLE_WORK_STATUSES = {"proposed", "blocked", "ready", "active", "verifying"}
+_APPEND_ONLY_COLLECTIONS = {"experiment_attempts", "experiment_promotions"}
+_EXPERIMENT_CONTRACT_FIELDS = {
+    "return_point_work_id",
+    "exit_criteria",
+    "attempt_budget",
+    "expires_at",
+    "promotion_target_work_id",
+    "mainline_authority",
+}
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _TASK_TRANSITION_FIELDS = {
     "route_decision_sha256",
@@ -71,6 +85,13 @@ _TASK_EVENT_FIELDS = {
     "return_work_id",
     "checkpoint_ref",
     "related_event_id",
+}
+_EXPERIMENT_TRANSITION_FIELDS = {
+    "operation",
+    "request_sha256",
+    "attempt_id",
+    "promotion_id",
+    "proposal_id",
 }
 _ARTIFACT_REF_FIELDS = {
     "schema_version",
@@ -230,17 +251,62 @@ def _validate_task_transition(
             )
 
 
+def _validate_experiment_transition(
+    transition: Any,
+    *,
+    changes: list[dict[str, Any]],
+) -> None:
+    if not isinstance(transition, dict) or set(transition) != _EXPERIMENT_TRANSITION_FIELDS:
+        raise StateEventError("experiment_transition fields do not match the contract")
+    operation = transition["operation"]
+    if operation not in {"attempt-started", "promotion-proposed", "promotion-approved"}:
+        raise StateEventError("experiment_transition operation is unsupported")
+    _sha256(transition["request_sha256"], "experiment_transition.request_sha256")
+    for field in ("attempt_id", "promotion_id", "proposal_id"):
+        _optional_string(transition[field], f"experiment_transition.{field}")
+    if operation == "attempt-started":
+        if transition["attempt_id"] is None or any(
+            transition[field] is not None for field in ("promotion_id", "proposal_id")
+        ):
+            raise StateEventError("attempt transition identity is invalid")
+        if {
+            (change["collection"], change["object_id"])
+            for change in changes
+        } & {("experiment_attempts", transition["attempt_id"])} != {
+            ("experiment_attempts", transition["attempt_id"])
+        }:
+            raise StateEventError("attempt transition requires its ledger change")
+    elif transition["attempt_id"] is not None or transition["promotion_id"] is None:
+        raise StateEventError("promotion transition identity is invalid")
+    elif operation == "promotion-proposed" and transition["proposal_id"] != transition["promotion_id"]:
+        raise StateEventError("promotion proposal must self-identify")
+    elif operation == "promotion-approved" and transition["proposal_id"] is None:
+        raise StateEventError("promotion approval requires proposal identity")
+    if operation in {"promotion-proposed", "promotion-approved"} and (
+        ("experiment_promotions", transition["promotion_id"])
+        not in {
+            (change["collection"], change["object_id"])
+            for change in changes
+        }
+    ):
+        raise StateEventError("promotion transition requires its ledger change")
+
+
 def validate_state_event(event: dict[str, Any]) -> None:
     """Validate one event independently of its position in a stream."""
     if not isinstance(event, dict) or set(event) not in (
         _BASE_EVENT_FIELDS,
         _V3_EVENT_FIELDS,
+        _V4_EVENT_FIELDS,
     ):
         raise StateEventError("event fields do not match the contract")
     schema_version = event["schema_version"]
     if schema_version not in SUPPORTED_EVENT_SCHEMA_VERSIONS:
         raise StateEventError("unsupported schema_version")
-    if schema_version == EVENT_SCHEMA_VERSION_V3:
+    if schema_version == EVENT_SCHEMA_VERSION_V4:
+        if set(event) != _V4_EVENT_FIELDS:
+            raise StateEventError("v4 event fields do not match the contract")
+    elif schema_version == EVENT_SCHEMA_VERSION_V3:
         if set(event) != _V3_EVENT_FIELDS:
             raise StateEventError("v3 event fields do not match the contract")
     elif set(event) != _BASE_EVENT_FIELDS:
@@ -274,7 +340,7 @@ def validate_state_event(event: dict[str, Any]) -> None:
         raise StateEventError("state-transition cannot supersede an event")
     if event_type == "correction" and supersedes_event_id is None:
         raise StateEventError("correction requires supersedes_event_id")
-    if schema_version != EVENT_SCHEMA_VERSION_V3:
+    if schema_version not in {EVENT_SCHEMA_VERSION_V3, EVENT_SCHEMA_VERSION_V4}:
         if "task_transition" in event:
             raise StateEventError("v1/v2 events cannot contain task_transition")
     else:
@@ -283,6 +349,12 @@ def validate_state_event(event: dict[str, Any]) -> None:
             event_type=event_type,
             supersedes_event_id=supersedes_event_id,
         )
+    if schema_version == EVENT_SCHEMA_VERSION_V4:
+        transition = event["experiment_transition"]
+        if transition is not None:
+            _validate_experiment_transition(transition, changes=event["changes"])
+            if event["task_transition"] is not None:
+                raise StateEventError("experiment transition cannot mix with route transition")
 
     changes = event["changes"]
     if not isinstance(changes, list) or not changes:
@@ -335,11 +407,14 @@ def build_state_event(
     changes: list[dict[str, Any]],
     project_after: dict[str, Any],
     task_transition: dict[str, Any] | None = None,
+    experiment_transition: dict[str, Any] | None = None,
     schema_version: str | None = None,
 ) -> dict[str, Any]:
     """Build a canonical event and bind its content hash."""
     if schema_version is None:
-        if task_transition is not None:
+        if experiment_transition is not None:
+            schema_version = EVENT_SCHEMA_VERSION_V4
+        elif task_transition is not None:
             schema_version = EVENT_SCHEMA_VERSION_V3
         elif any(
             change.get("collection") == "works"
@@ -351,8 +426,13 @@ def build_state_event(
             schema_version = LEGACY_EVENT_SCHEMA_VERSION
     if schema_version not in SUPPORTED_EVENT_SCHEMA_VERSIONS:
         raise StateEventError("unsupported event schema_version")
-    if task_transition is not None and schema_version != EVENT_SCHEMA_VERSION_V3:
+    if task_transition is not None and schema_version not in {
+        EVENT_SCHEMA_VERSION_V3,
+        EVENT_SCHEMA_VERSION_V4,
+    }:
         raise StateEventError("task_transition requires v3 event schema")
+    if experiment_transition is not None and schema_version != EVENT_SCHEMA_VERSION_V4:
+        raise StateEventError("experiment_transition requires v4 event schema")
     event = {
         "schema_version": schema_version,
         "event_id": event_id,
@@ -371,8 +451,10 @@ def build_state_event(
         "project_after": copy.deepcopy(project_after),
         "event_sha256": "0" * 64,
     }
-    if schema_version == EVENT_SCHEMA_VERSION_V3:
+    if schema_version in {EVENT_SCHEMA_VERSION_V3, EVENT_SCHEMA_VERSION_V4}:
         event["task_transition"] = copy.deepcopy(task_transition)
+    if schema_version == EVENT_SCHEMA_VERSION_V4:
+        event["experiment_transition"] = copy.deepcopy(experiment_transition)
     event["event_sha256"] = _computed_event_sha256(event)
     validate_state_event(event)
     return event
@@ -401,6 +483,18 @@ def _put_change(state: dict[str, Any], change: dict[str, Any]) -> None:
     if existing_index is not None:
         previous = values[existing_index]
         current = change["value"]
+        if collection in _APPEND_ONLY_COLLECTIONS:
+            raise StateEventError(f"{collection} are append-only")
+        if (
+            collection == "works"
+            and previous.get("kind") == "experiment"
+            and any(
+                attempt["work_id"] == object_id
+                for attempt in state.get("experiment_attempts", [])
+            )
+            and any(previous[field] != current[field] for field in _EXPERIMENT_CONTRACT_FIELDS)
+        ):
+            raise StateEventError("attempt-bound Experiment contract is immutable")
         if (
             collection == "decisions"
             and previous["status"] in _TERMINAL_DECISION_STATUSES
@@ -489,9 +583,53 @@ def replay_state_events(
 
     for event in events:
         validate_state_event(event)
+        occurred_at = datetime.fromisoformat(event["occurred_at"].replace("Z", "+00:00"))
+        snapshot_updated_at = datetime.fromisoformat(
+            state["project"]["updated_at"].replace("Z", "+00:00")
+        )
+        if occurred_at < snapshot_updated_at:
+            raise StateEventError("event occurred_at regresses project.updated_at")
+        lifecycle_changes = {
+            change["collection"]
+            for change in event["changes"]
+            if change["collection"] in _APPEND_ONLY_COLLECTIONS
+        }
+        if lifecycle_changes and event.get("experiment_transition") is None:
+            lifecycle_ids = {
+                (change["collection"], change["object_id"])
+                for change in event["changes"]
+                if change["collection"] in _APPEND_ONLY_COLLECTIONS
+            }
+            existing_lifecycle_ids = {
+                (collection, item["attempt_id"] if collection == "experiment_attempts" else item["promotion_id"])
+                for collection in _APPEND_ONLY_COLLECTIONS
+                for item in state[collection]
+            }
+            if not lifecycle_ids.issubset(existing_lifecycle_ids):
+                raise StateEventError("lifecycle change requires experiment transition")
+        if lifecycle_changes:
+            lifecycle_work_ids = {
+                change["value"]["work_id"] for change in event["changes"]
+                if change["collection"] in _APPEND_ONLY_COLLECTIONS
+            }
+            work_by_id = {work["work_id"]: work for work in state["works"]}
+            for work_id in lifecycle_work_ids:
+                work = work_by_id.get(work_id)
+                if work is None:
+                    raise StateEventError("lifecycle change references unknown Experiment")
+                expiry = datetime.fromisoformat(work["expires_at"].replace("Z", "+00:00"))
+                if occurred_at >= expiry:
+                    raise StateEventError("lifecycle event occurs after Experiment expiry")
         allowed_event_versions = (
-            {EVENT_SCHEMA_VERSION, EVENT_SCHEMA_VERSION_V3}
-            if state["schema_version"] == "context.typed-state/v2alpha1"
+            (
+                {EVENT_SCHEMA_VERSION, EVENT_SCHEMA_VERSION_V3, EVENT_SCHEMA_VERSION_V4}
+                if state["schema_version"] == "context.typed-state/v3alpha1"
+                else {EVENT_SCHEMA_VERSION, EVENT_SCHEMA_VERSION_V3}
+            )
+            if state["schema_version"] in {
+                "context.typed-state/v2alpha1",
+                "context.typed-state/v3alpha1",
+            }
             else {LEGACY_EVENT_SCHEMA_VERSION}
         )
         if event["schema_version"] not in allowed_event_versions:
