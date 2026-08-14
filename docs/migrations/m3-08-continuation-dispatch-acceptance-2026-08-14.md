@@ -1,15 +1,15 @@
 # M3-08 Continuation Dispatch Acceptance
 
-版本：1  
+版本：2  
 日期：2026-08-14  
 状态：verified local-embedded continuation and bounded escalation contract
 
 ```yaml
 document_id: context.m3-08-continuation-dispatch-acceptance
-document_revision: 1
+document_revision: 2
 change_type: evidence
-authority_ref: verification-run://repository/m3-08-continuation-dispatch-v1
-supersedes: null
+authority_ref: verification-run://repository/m3-08-continuation-dispatch-v2
+supersedes: context.document://docs-migrations-m3-08-continuation-dispatch-acceptance-2026-08-14/revision/1
 affected_tasks: [M3-08, M4-09, M5-01, M5-03, M5-08, M8-09]
 next_review: M4-09
 ```
@@ -57,9 +57,9 @@ M3-08 增加独立 continuation/dispatch 层。它消费 M3-02 的 canonical rou
 | nondeterministic replay | `0` |
 | request/state/profile mutation | `0/0/0` |
 | external services | `0` |
-| decision p50 | `0.122582 ms` |
-| decision p95 | `0.185716 ms` |
-| decision max | `0.348334 ms` |
+| decision p50 | `0.117555 ms` |
+| decision p95 | `0.15 ms` |
+| decision max | `0.330878 ms` |
 
 Receipt 通过 `context.continuation-dispatch-benchmark/v1alpha1` strict schema；provenance 固定 continuation implementation、M3-02 router、Typed State、Project Governance Profile、四份 schema 和 registry 的 SHA-256。validator 会在验收时重新计算这些 hash，过期 receipt 拒绝。
 
@@ -70,7 +70,7 @@ Receipt 通过 `context.continuation-dispatch-benchmark/v1alpha1` strict schema�
 ## 复现
 
 ```text
-.venv/bin/python tools/run_input_progression_benchmark.py --samples 1000 --observed-at 2026-08-14T17:00:00+08:00 --output experiments/routing/m3-08-input-progression-results.json
+.venv/bin/python tools/run_input_progression_benchmark.py --samples 1000 --observed-at 2026-08-14T18:00:00+08:00 --output experiments/routing/m3-08-input-progression-results.json
 .venv/bin/python -m unittest tests.test_m3_08_input_progression tests.test_m3_08_input_progression_benchmark -q
 ruff check context_control_plane/input_progression.py context_control_plane/input_progression_benchmark.py tests/test_m3_08_input_progression.py tests/test_m3_08_input_progression_benchmark.py tools/run_input_progression_benchmark.py
 .venv/bin/python tools/verify_repository.py --root .

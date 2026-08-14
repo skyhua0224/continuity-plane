@@ -1,0 +1,537 @@
+{
+  "fixture_version": "context.execution-packet-replay-fixture/v1alpha1",
+  "snapshot": {
+    "schema_version": "context.typed-state/v1alpha1",
+    "project": {
+      "project_id": "project-solo",
+      "revision": 7,
+      "governance_ref": "artifact://governance/master@revision-16",
+      "active_work_ids": [
+        "work-solo"
+      ],
+      "primary_work_id": "work-solo",
+      "current_decision_ids": [
+        "decision-solo"
+      ],
+      "active_constraint_ids": [
+        "constraint-solo"
+      ],
+      "open_blocker_ids": [],
+      "effect_high_watermark": 0,
+      "updated_at": "2026-08-09T09:15:00+08:00"
+    },
+    "works": [
+      {
+        "work_id": "work-solo",
+        "kind": "work",
+        "title": "Implement the typed state contract",
+        "status": "active",
+        "parent_work_id": null,
+        "dependency_ids": [],
+        "owner_refs": [
+          "actor-owner"
+        ],
+        "scope_refs": [
+          {
+            "scope_kind": "file",
+            "scope_ref": "src/core.py"
+          }
+        ],
+        "overlap_candidate_ids": [],
+        "dedupe_status": "clear",
+        "supersedes_work_id": null,
+        "evidence_ids": [
+          "evidence-solo",
+          "evidence-packet-1",
+          "evidence-packet-2",
+          "evidence-packet-3",
+          "evidence-packet-4",
+          "evidence-packet-5",
+          "evidence-packet-6"
+        ],
+        "blocker_ids": [],
+        "revision": 3
+      }
+    ],
+    "claims": [
+      {
+        "claim_id": "claim-solo",
+        "work_id": "work-solo",
+        "actor_ref": "actor-owner",
+        "status": "active",
+        "expected_project_revision": 7,
+        "claimed_at": "2026-08-09T09:00:00+08:00",
+        "lease_expires_at": "2026-08-09T11:00:00+08:00",
+        "released_at": null,
+        "scope_owners": [
+          {
+            "scope_kind": "file",
+            "scope_ref": "src/core.py"
+          }
+        ]
+      }
+    ],
+    "ideas": [
+      {
+        "idea_id": "idea-later",
+        "parent_work_id": "work-solo",
+        "source_ref": "opaque://input/idea-later",
+        "summary": "Add a future presentation adapter.",
+        "status": "parked",
+        "return_work_id": "work-solo",
+        "expiry": null,
+        "attempt_budget": null,
+        "promotion_target": "M9",
+        "evidence_ids": []
+      }
+    ],
+    "decisions": [
+      {
+        "decision_id": "decision-solo",
+        "work_id": "work-solo",
+        "status": "accepted",
+        "statement": "Typed state remains provider-neutral.",
+        "decided_at": "2026-08-09T08:50:00+08:00",
+        "supersedes_decision_id": null,
+        "evidence_ids": [
+          "evidence-solo"
+        ]
+      }
+    ],
+    "constraints": [
+      {
+        "constraint_id": "constraint-solo",
+        "status": "active",
+        "statement": "Provider session identifiers cannot become state authority.",
+        "scope_work_ids": [
+          "work-solo"
+        ],
+        "expires_at": null,
+        "supersedes_constraint_id": null,
+        "evidence_ids": [
+          "evidence-solo"
+        ]
+      }
+    ],
+    "evidence": [
+      {
+        "evidence_id": "evidence-solo",
+        "kind": "user-decision",
+        "artifact_ref": "artifact://fixture/solo-governance",
+        "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "validity": "verified",
+        "observed_at": "2026-08-09T08:45:00+08:00",
+        "verified_at": "2026-08-09T08:50:00+08:00"
+      },
+      {
+        "evidence_id": "evidence-packet-1",
+        "kind": "test",
+        "artifact_ref": "artifact://fixture/evidence-packet-1",
+        "content_sha256": "019afe8300ccd625e3c94207f6bcc109e146478456e284824ca99c5411b38f4f",
+        "validity": "verified",
+        "observed_at": "2026-08-14T11:00:00+08:00",
+        "verified_at": "2026-08-14T11:30:00+08:00"
+      },
+      {
+        "evidence_id": "evidence-packet-2",
+        "kind": "test",
+        "artifact_ref": "artifact://fixture/evidence-packet-2",
+        "content_sha256": "be29608b7ed791f96c654511e1ad0dfc4ff12c5cae9fdab81cdb58b3bb567079",
+        "validity": "verified",
+        "observed_at": "2026-08-14T12:00:00+08:00",
+        "verified_at": "2026-08-14T12:30:00+08:00"
+      },
+      {
+        "evidence_id": "evidence-packet-3",
+        "kind": "test",
+        "artifact_ref": "artifact://fixture/evidence-packet-3",
+        "content_sha256": "77ff7b241c225ecdcc12c7b4788d2685500182ac782a801fa8ad868b2116e53f",
+        "validity": "verified",
+        "observed_at": "2026-08-14T13:00:00+08:00",
+        "verified_at": "2026-08-14T13:30:00+08:00"
+      },
+      {
+        "evidence_id": "evidence-packet-4",
+        "kind": "test",
+        "artifact_ref": "artifact://fixture/evidence-packet-4",
+        "content_sha256": "5482babe28c94c4ebfca518b7ab1ddbad9a0e6d91c30d9cd15e4788d512c93d4",
+        "validity": "verified",
+        "observed_at": "2026-08-14T14:00:00+08:00",
+        "verified_at": "2026-08-14T14:30:00+08:00"
+      },
+      {
+        "evidence_id": "evidence-packet-5",
+        "kind": "test",
+        "artifact_ref": "artifact://fixture/evidence-packet-5",
+        "content_sha256": "327c43917b646fcc5c40622ccf811d4a956f996e39f22f92071b6cbc834bb219",
+        "validity": "verified",
+        "observed_at": "2026-08-14T15:00:00+08:00",
+        "verified_at": "2026-08-14T15:30:00+08:00"
+      },
+      {
+        "evidence_id": "evidence-packet-6",
+        "kind": "test",
+        "artifact_ref": "artifact://fixture/evidence-packet-6",
+        "content_sha256": "b1f15fcc9b2456137e64a9a3444fb218f5e2ed10a620abec961f3436bc5b1c5e",
+        "validity": "verified",
+        "observed_at": "2026-08-14T16:00:00+08:00",
+        "verified_at": "2026-08-14T16:30:00+08:00"
+      }
+    ],
+    "blockers": [],
+    "effects": [
+      {
+        "effect_id": "effect-solo",
+        "effect_key": "effect-key-solo",
+        "work_id": "work-solo",
+        "claim_id": "claim-solo",
+        "status": "authorized",
+        "operation": "write-state-schema",
+        "scope_ref": {
+          "scope_kind": "file",
+          "scope_ref": "src/core.py"
+        },
+        "expected_project_revision": 7,
+        "sequence_no": 1,
+        "evidence_ids": [
+          "evidence-solo"
+        ],
+        "result_ref": null,
+        "requested_at": "2026-08-09T09:10:00+08:00",
+        "completed_at": null
+      }
+    ]
+  },
+  "skill_request": {
+    "schema_version": "context.skill-resolution-request/v1alpha1",
+    "request_id": "resolve-packet-benchmark",
+    "catalog_sha256": "8fa532cf771148a46833fbb0b1cb9ce8932f66907fe295864de2438feadc1f69",
+    "project_ref": "project://project-solo",
+    "repo_ref": "repo://main",
+    "path_refs": [
+      "path://src/core",
+      "path://tests"
+    ],
+    "task_ref": "task://work-solo",
+    "role_ref": "role://executor",
+    "operation_ref": "operation://code-change",
+    "provider_contract_ref": "provider://codex/v1",
+    "required_schema_refs": [
+      "context.compiled-skill-packet/v1alpha1"
+    ],
+    "required_skill_ids": [],
+    "binding_provenance_ref": null,
+    "observed_at": "2026-08-14T12:00:00+08:00",
+    "state_write_authority": false
+  },
+  "skill_decision": {
+    "candidate_count": 4,
+    "catalog_sha256": "8fa532cf771148a46833fbb0b1cb9ce8932f66907fe295864de2438feadc1f69",
+    "disposition": "resolved",
+    "findings": [],
+    "manifest_set_sha256": "1e01be38fa431a14f8ea8ed6b1a369d91cf91f6942da5a489049c05fbf3a9e78",
+    "observed_at": "2026-08-14T12:00:00+08:00",
+    "packet_sha256": "1c21f59feb7a14e5687cef6aaa3f691f85a5943b139264d952a6ec7ef9d5e33c",
+    "reason_code": "matched-minimal-set",
+    "request_id": "resolve-packet-benchmark",
+    "request_sha256": "51aa9d40aad39dee71097f1b602dfe4c318fd3ff24e8aa5d471ba978625b491f",
+    "resolver_version": "context.skill-resolver/v1alpha1",
+    "schema_version": "context.skill-resolution-decision/v1alpha1",
+    "selected_count": 4,
+    "selected_rule_ids": [
+      "rule.builtin.recovery.main",
+      "rule.project.testing.main",
+      "rule.user.style.main",
+      "rule.workflow.executor.main"
+    ],
+    "selected_skills": [
+      {
+        "content_sha256": "bfac84eb184c7b8b6a7e5ee47fb71ecb2788ce17bdb67b4eab3265a43749d392",
+        "manifest_sha256": "d3dfe0f19e5421ffa85cc5834103ee8b07893f46bafe574b38bde090b7089168",
+        "priority_score": 400,
+        "rule_ids": [
+          "rule.builtin.recovery.main"
+        ],
+        "selection_reason": "applicability",
+        "skill_id": "builtin.recovery",
+        "version": "1.0.0"
+      },
+      {
+        "content_sha256": "c9ffd46e9e9efc085a78b1e485917a1380b6ef9081787ad0fc112c2ecaa7ddcd",
+        "manifest_sha256": "540577e555501ad2196d68a4295192771c93479f385a1d3b78899f23db421e48",
+        "priority_score": 1900,
+        "rule_ids": [
+          "rule.project.testing.main"
+        ],
+        "selection_reason": "applicability",
+        "skill_id": "project.testing",
+        "version": "1.0.0"
+      },
+      {
+        "content_sha256": "be0da7bc7de674e52c56b72fbce0ebda7bb570b4c00305ce768734c4ea4b8ca6",
+        "manifest_sha256": "bf17edcf54526084fdd0860b2af33abaeb3802843eafe0ec7d059e7710d7a0f8",
+        "priority_score": 800,
+        "rule_ids": [
+          "rule.user.style.main"
+        ],
+        "selection_reason": "applicability",
+        "skill_id": "user.style",
+        "version": "1.0.0"
+      },
+      {
+        "content_sha256": "0df05ff4cbe75ef348b55f786843205caaa910195631836b7b04c575388d4087",
+        "manifest_sha256": "fc6d74f2e69d1a8cb03fa25d5c8ec730281b587f25f85b40a9b416ed475393bc",
+        "priority_score": 700,
+        "rule_ids": [
+          "rule.workflow.executor.main"
+        ],
+        "selection_reason": "applicability",
+        "skill_id": "workflow.executor",
+        "version": "1.0.0"
+      }
+    ],
+    "state_write_authority": false,
+    "suppressed_skills": []
+  },
+  "compiled_skill_packet": {
+    "compiler_version": "context.skill-packet-compiler/v1alpha1",
+    "manifest_set_sha256": "1e01be38fa431a14f8ea8ed6b1a369d91cf91f6942da5a489049c05fbf3a9e78",
+    "rule_bindings": [
+      {
+        "rule_id": "rule.builtin.recovery.main",
+        "skill_content_sha256": "bfac84eb184c7b8b6a7e5ee47fb71ecb2788ce17bdb67b4eab3265a43749d392",
+        "skill_id": "builtin.recovery",
+        "skill_version": "1.0.0"
+      },
+      {
+        "rule_id": "rule.project.testing.main",
+        "skill_content_sha256": "c9ffd46e9e9efc085a78b1e485917a1380b6ef9081787ad0fc112c2ecaa7ddcd",
+        "skill_id": "project.testing",
+        "skill_version": "1.0.0"
+      },
+      {
+        "rule_id": "rule.user.style.main",
+        "skill_content_sha256": "be0da7bc7de674e52c56b72fbce0ebda7bb570b4c00305ce768734c4ea4b8ca6",
+        "skill_id": "user.style",
+        "skill_version": "1.0.0"
+      },
+      {
+        "rule_id": "rule.workflow.executor.main",
+        "skill_content_sha256": "0df05ff4cbe75ef348b55f786843205caaa910195631836b7b04c575388d4087",
+        "skill_id": "workflow.executor",
+        "skill_version": "1.0.0"
+      }
+    ],
+    "schema_version": "context.compiled-skill-packet/v1alpha1",
+    "selections": [
+      {
+        "content_sha256": "bfac84eb184c7b8b6a7e5ee47fb71ecb2788ce17bdb67b4eab3265a43749d392",
+        "rule_ids": [
+          "rule.builtin.recovery.main"
+        ],
+        "skill_id": "builtin.recovery",
+        "version": "1.0.0"
+      },
+      {
+        "content_sha256": "c9ffd46e9e9efc085a78b1e485917a1380b6ef9081787ad0fc112c2ecaa7ddcd",
+        "rule_ids": [
+          "rule.project.testing.main"
+        ],
+        "skill_id": "project.testing",
+        "version": "1.0.0"
+      },
+      {
+        "content_sha256": "be0da7bc7de674e52c56b72fbce0ebda7bb570b4c00305ce768734c4ea4b8ca6",
+        "rule_ids": [
+          "rule.user.style.main"
+        ],
+        "skill_id": "user.style",
+        "version": "1.0.0"
+      },
+      {
+        "content_sha256": "0df05ff4cbe75ef348b55f786843205caaa910195631836b7b04c575388d4087",
+        "rule_ids": [
+          "rule.workflow.executor.main"
+        ],
+        "skill_id": "workflow.executor",
+        "version": "1.0.0"
+      }
+    ]
+  },
+  "next_action": "run the M5-01 bounded packet canary",
+  "continuation_cursor": {
+    "last_durable_action": "m4-09-commit",
+    "in_flight_phase": "ready-to-execute",
+    "confirmed_input_refs": [
+      "opaque://input/m4-09-commit"
+    ],
+    "reserved_effect_ids": [],
+    "replay_policy": "verify-before-effect"
+  },
+  "canonical_plan_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "observed_at": "2026-08-14T20:00:00+08:00",
+  "packet": {
+    "active_leaf": {
+      "dependency_ids": [],
+      "exit_criteria": [],
+      "kind": "work",
+      "mainline_authority": true,
+      "owner_refs": [
+        "actor-owner"
+      ],
+      "parent_work_id": null,
+      "promotion_target_work_id": null,
+      "return_point_work_id": null,
+      "revision": 3,
+      "scope_refs": [
+        {
+          "scope_kind": "file",
+          "scope_ref": "src/core.py"
+        }
+      ],
+      "status": "active",
+      "title": "Implement the typed state contract",
+      "work_id": "work-solo"
+    },
+    "blockers": [],
+    "canonical_plan_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "claims": [
+      {
+        "actor_ref": "actor-owner",
+        "claim_id": "claim-solo",
+        "lease_expires_at": "2026-08-09T11:00:00+08:00",
+        "scope_owners": [
+          {
+            "scope_kind": "file",
+            "scope_ref": "src/core.py"
+          }
+        ],
+        "status": "active",
+        "work_id": "work-solo"
+      }
+    ],
+    "composer_version": "context.execution-packet-composer/v1alpha1",
+    "constraints": [
+      {
+        "constraint_id": "constraint-solo",
+        "evidence_ids": [
+          "evidence-solo"
+        ],
+        "scope_work_ids": [
+          "work-solo"
+        ],
+        "statement": "Provider session identifiers cannot become state authority.",
+        "status": "active"
+      }
+    ],
+    "continuation_cursor": {
+      "confirmed_input_refs": [
+        "opaque://input/m4-09-commit"
+      ],
+      "in_flight_phase": "ready-to-execute",
+      "last_durable_action": "m4-09-commit",
+      "replay_policy": "verify-before-effect",
+      "reserved_effect_ids": []
+    },
+    "decisions": [
+      {
+        "decision_id": "decision-solo",
+        "evidence_ids": [
+          "evidence-solo"
+        ],
+        "statement": "Typed state remains provider-neutral.",
+        "status": "accepted",
+        "work_id": "work-solo"
+      }
+    ],
+    "evidence_refs": [
+      {
+        "artifact_ref": "artifact://fixture/evidence-packet-1",
+        "content_sha256": "019afe8300ccd625e3c94207f6bcc109e146478456e284824ca99c5411b38f4f",
+        "evidence_id": "evidence-packet-1",
+        "validity": "verified",
+        "verified_at": "2026-08-14T11:30:00+08:00"
+      },
+      {
+        "artifact_ref": "artifact://fixture/evidence-packet-2",
+        "content_sha256": "be29608b7ed791f96c654511e1ad0dfc4ff12c5cae9fdab81cdb58b3bb567079",
+        "evidence_id": "evidence-packet-2",
+        "validity": "verified",
+        "verified_at": "2026-08-14T12:30:00+08:00"
+      },
+      {
+        "artifact_ref": "artifact://fixture/evidence-packet-3",
+        "content_sha256": "77ff7b241c225ecdcc12c7b4788d2685500182ac782a801fa8ad868b2116e53f",
+        "evidence_id": "evidence-packet-3",
+        "validity": "verified",
+        "verified_at": "2026-08-14T13:30:00+08:00"
+      },
+      {
+        "artifact_ref": "artifact://fixture/evidence-packet-4",
+        "content_sha256": "5482babe28c94c4ebfca518b7ab1ddbad9a0e6d91c30d9cd15e4788d512c93d4",
+        "evidence_id": "evidence-packet-4",
+        "validity": "verified",
+        "verified_at": "2026-08-14T14:30:00+08:00"
+      },
+      {
+        "artifact_ref": "artifact://fixture/evidence-packet-5",
+        "content_sha256": "327c43917b646fcc5c40622ccf811d4a956f996e39f22f92071b6cbc834bb219",
+        "evidence_id": "evidence-packet-5",
+        "validity": "verified",
+        "verified_at": "2026-08-14T15:30:00+08:00"
+      },
+      {
+        "artifact_ref": "artifact://fixture/evidence-packet-6",
+        "content_sha256": "b1f15fcc9b2456137e64a9a3444fb218f5e2ed10a620abec961f3436bc5b1c5e",
+        "evidence_id": "evidence-packet-6",
+        "validity": "verified",
+        "verified_at": "2026-08-14T16:30:00+08:00"
+      },
+      {
+        "artifact_ref": "artifact://fixture/solo-governance",
+        "content_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "evidence_id": "evidence-solo",
+        "validity": "verified",
+        "verified_at": "2026-08-09T08:50:00+08:00"
+      }
+    ],
+    "governance_ref": "artifact://governance/master@revision-16",
+    "idea_refs": [
+      {
+        "authority": "candidate-only",
+        "evidence_ids": [],
+        "idea_id": "idea-later",
+        "return_work_id": "work-solo",
+        "status": "parked",
+        "summary": "Add a future presentation adapter."
+      }
+    ],
+    "next_action": "run the M5-01 bounded packet canary",
+    "observed_at": "2026-08-14T20:00:00+08:00",
+    "packet_sha256": "118324f66e462ec58d1d3193d3d3ba87c6f12f6d5346adf0982de60ecb4f48c7",
+    "project_id": "project-solo",
+    "project_revision": 7,
+    "schema_version": "context.execution-packet/v1alpha1",
+    "skill_lock": {
+      "catalog_sha256": "8fa532cf771148a46833fbb0b1cb9ce8932f66907fe295864de2438feadc1f69",
+      "compiled_packet_sha256": "1c21f59feb7a14e5687cef6aaa3f691f85a5943b139264d952a6ec7ef9d5e33c",
+      "decision_sha256": "5abeff375aed36d4ee626dafdee1f07dc01cd47b7171fc165fd24201e6b507d4",
+      "manifest_set_sha256": "1e01be38fa431a14f8ea8ed6b1a369d91cf91f6942da5a489049c05fbf3a9e78",
+      "provider_contract_ref": "provider://codex/v1",
+      "request_id": "resolve-packet-benchmark",
+      "request_sha256": "51aa9d40aad39dee71097f1b602dfe4c318fd3ff24e8aa5d471ba978625b491f",
+      "resolver_version": "context.skill-resolver/v1alpha1",
+      "schema_refs": [
+        "context.compiled-skill-packet/v1alpha1"
+      ],
+      "selected_rule_ids": [
+        "rule.builtin.recovery.main",
+        "rule.project.testing.main",
+        "rule.user.style.main",
+        "rule.workflow.executor.main"
+      ]
+    },
+    "state_sha256": "0ab058716248829a30178cb348455b6e8bd8b69d50b51e25e1300fa91f6ba450",
+    "state_write_authority": false
+  }
+}

@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m5-01/execution-packet-benchmark.schema.json",
+  "title": "Context Control Plane Execution Packet Benchmark",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "generated_at", "samples", "successful_samples", "replay_mismatch",
+    "canary_failures", "state_write_authority_true", "min_packet_bytes", "max_packet_bytes",
+    "p50_packet_bytes", "p95_packet_bytes", "p50_ms", "p95_ms", "max_ms", "capacity_in_bound",
+    "external_services", "implementation_sha256", "fixture_sha256", "compiled_skill_packet_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.execution-packet-benchmark/v1alpha1"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "samples": {"type": "integer", "minimum": 1},
+    "successful_samples": {"type": "integer", "minimum": 0},
+    "replay_mismatch": {"const": 0},
+    "canary_failures": {"const": 0},
+    "state_write_authority_true": {"const": 0},
+    "min_packet_bytes": {"type": "integer", "minimum": 4096},
+    "max_packet_bytes": {"type": "integer", "minimum": 4096, "maximum": 12288},
+    "p50_packet_bytes": {"type": "integer", "minimum": 4096, "maximum": 12288},
+    "p95_packet_bytes": {"type": "integer", "minimum": 4096, "maximum": 12288},
+    "p50_ms": {"type": "number", "minimum": 0},
+    "p95_ms": {"type": "number", "minimum": 0},
+    "max_ms": {"type": "number", "minimum": 0},
+    "capacity_in_bound": {"const": 1},
+    "external_services": {"const": 0},
+    "implementation_sha256": {"$ref": "#/$defs/sha256"},
+    "fixture_sha256": {"$ref": "#/$defs/sha256"},
+    "compiled_skill_packet_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

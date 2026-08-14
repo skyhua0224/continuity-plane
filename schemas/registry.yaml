@@ -615,3 +615,23 @@ schemas:
     status: current
     compatibility_mode: strict-versioned
     migrations: []
+
+  - schema_id: context.execution-packet
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.execution-packet/v1alpha1
+    supported_wire_versions: [context.execution-packet/v1alpha1]
+    artifact_path: schemas/m5-01/execution-packet.schema.json
+    content_sha256: c1efaca0a9d6c2b075d694e8961ed476591a79c1a89520d8d84a5e75f771daf4
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.execution-packet-benchmark
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.execution-packet-benchmark/v1alpha1
+    supported_wire_versions: [context.execution-packet-benchmark/v1alpha1]
+    artifact_path: schemas/m5-01/execution-packet-benchmark.schema.json
+    content_sha256: a6b9351c995887167d7f386b9254e0e0f2970156ef4be424e1a86a6851ace15e
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
