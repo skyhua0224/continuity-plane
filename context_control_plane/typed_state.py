@@ -7,6 +7,12 @@ import re
 from datetime import datetime
 from typing import Any
 
+from .effect_scope_gate import (
+    any_scope_covers,
+    scopes_overlap,
+    validate_scope,
+)
+
 
 LEGACY_SCHEMA_VERSION = "context.typed-state/v1alpha1"
 SCHEMA_VERSION = "context.typed-state/v2alpha1"
@@ -377,10 +383,20 @@ def _validate_work_graph_v2(work_by_id: dict[str, dict[str, Any]]) -> None:
             raise TypedStateError("non-experiment cannot claim experiment authority")
 
 
-def _scope(value: Any, field: str) -> tuple[str, str]:
+def _scope(
+    value: Any,
+    field: str,
+    *,
+    canonical: bool,
+) -> tuple[str, str]:
     scope = _fields(value, _SCOPE_FIELDS, field)
     kind = _enum(scope["scope_kind"], _SCOPE_KINDS, f"{field}.scope_kind")
     ref = _string(scope["scope_ref"], f"{field}.scope_ref")
+    if canonical:
+        try:
+            validate_scope(scope)
+        except ValueError as exc:
+            raise TypedStateError(f"{field} is not canonical") from exc
     return kind, ref
 
 
@@ -416,7 +432,8 @@ def validate_typed_state(document: dict[str, Any]) -> None:
     blockers = _objects(document["blockers"], "blockers")
     effects = _objects(document["effects"], "effects")
 
-    work_fields = _WORK_FIELDS_V2 if schema_version == SCHEMA_VERSION else _WORK_FIELDS_V1
+    canonical_scopes = schema_version == SCHEMA_VERSION
+    work_fields = _WORK_FIELDS_V2 if canonical_scopes else _WORK_FIELDS_V1
     for item in works:
         _fields(item, work_fields, "work")
     for item in claims:
@@ -496,7 +513,10 @@ def validate_typed_state(document: dict[str, Any]) -> None:
         parent = _optional_string(item["parent_work_id"], "work.parent_work_id")
         dependencies = _strings(item["dependency_ids"], "work.dependency_ids")
         _strings(item["owner_refs"], "work.owner_refs")
-        scopes = [_scope(scope, "work.scope_ref") for scope in item["scope_refs"]]
+        scopes = [
+            _scope(scope, "work.scope_ref", canonical=canonical_scopes)
+            for scope in item["scope_refs"]
+        ]
         if len(scopes) != len(set(scopes)):
             raise TypedStateError("work.scope_refs must be unique")
         overlaps = _strings(item["overlap_candidate_ids"], "work.overlap_candidate_ids")
@@ -608,7 +628,7 @@ def validate_typed_state(document: dict[str, Any]) -> None:
         raise TypedStateError("project.open_blocker_ids must contain only open blockers")
 
     active_claims: dict[str, dict[str, Any]] = {}
-    owned_scopes: dict[tuple[str, str], str] = {}
+    owned_scopes: list[tuple[dict[str, str], str]] = []
     for item in claims:
         work_id = item["work_id"]
         if work_id not in work_by_id:
@@ -624,18 +644,32 @@ def validate_typed_state(document: dict[str, Any]) -> None:
         assert claimed_at is not None and lease_expires_at is not None
         if lease_expires_at <= claimed_at:
             raise TypedStateError("claim lease must expire after claimed_at")
-        scopes = [_scope(scope, "claim.scope_owner") for scope in item["scope_owners"]]
+        scopes = [
+            _scope(scope, "claim.scope_owner", canonical=canonical_scopes)
+            for scope in item["scope_owners"]
+        ]
         if not scopes or len(scopes) != len(set(scopes)):
             raise TypedStateError("claim.scope_owners must be unique and non-empty")
-        work_scopes = {
-            _scope(scope, "work.scope_ref")
-            for scope in work_by_id[work_id]["scope_refs"]
-        }
-        if not set(scopes).issubset(work_scopes):
+        work_scope_values = work_by_id[work_id]["scope_refs"]
+        if canonical_scopes:
+            scope_is_owned = all(
+                any_scope_covers(work_scope_values, scope)
+                for scope in item["scope_owners"]
+            )
+        else:
+            scope_is_owned = set(scopes).issubset(
+                {
+                    _scope(value, "work.scope_ref", canonical=False)
+                    for value in work_scope_values
+                }
+            )
+        if not scope_is_owned:
             raise TypedStateError("claim scope must belong to its work")
         if status == "active":
             if work_by_id[work_id]["status"] != "active":
                 raise TypedStateError("active claim requires active work")
+            if item["actor_ref"] not in work_by_id[work_id]["owner_refs"]:
+                raise TypedStateError("active claim actor must own its work")
             if expected_revision != revision:
                 raise TypedStateError("active claim requires expected project revision")
             if released_at is not None:
@@ -645,12 +679,20 @@ def validate_typed_state(document: dict[str, Any]) -> None:
             if work_id in active_claims:
                 raise TypedStateError("active work can have only one active claim")
             active_claims[work_id] = item
-            for scope in scopes:
-                if scope in owned_scopes:
+            for scope_value, scope in zip(item["scope_owners"], scopes, strict=True):
+                overlap = (
+                    any(scopes_overlap(scope_value, owned) for owned, _ in owned_scopes)
+                    if canonical_scopes
+                    else any(scope == owned for _, owned in owned_scopes)
+                )
+                if overlap:
                     raise TypedStateError("active claim scope ownership conflict")
-                owned_scopes[scope] = item["claim_id"]
-        elif released_at is None:
-            raise TypedStateError("inactive claim requires released_at")
+                owned_scopes.append((scope_value, scope))
+        else:
+            if released_at is None:
+                raise TypedStateError("inactive claim requires released_at")
+            if status == "expired" and released_at < lease_expires_at:
+                raise TypedStateError("expired claim cannot release before lease expiry")
 
     if set(active_claims) != actual_active_work_ids:
         raise TypedStateError("every active work requires one active claim")
@@ -658,6 +700,7 @@ def validate_typed_state(document: dict[str, Any]) -> None:
     effect_keys: set[str] = set()
     sequence_numbers: set[int] = set()
     committed_sequences: list[int] = []
+    pending_effect_scopes: list[dict[str, str]] = []
     for item in effects:
         effect_key = _string(item["effect_key"], "effect.effect_key")
         if effect_key in effect_keys:
@@ -670,8 +713,10 @@ def validate_typed_state(document: dict[str, Any]) -> None:
         if claim_id is not None and claim_id not in claim_by_id:
             raise TypedStateError("effect.claim_id is unknown")
         status = _enum(item["status"], _EFFECT_STATUSES, "effect.status")
-        _string(item["operation"], "effect.operation")
-        scope = _scope(item["scope_ref"], "effect.scope_ref")
+        operation = _string(item["operation"], "effect.operation")
+        scope = _scope(
+            item["scope_ref"], "effect.scope_ref", canonical=canonical_scopes
+        )
         expected_revision = _uint(
             item["expected_project_revision"], "effect.expected_project_revision"
         )
@@ -691,14 +736,27 @@ def validate_typed_state(document: dict[str, Any]) -> None:
                 raise TypedStateError("authorized effect requires a current active claim")
             if claim_by_id[claim_id]["work_id"] != work_id:
                 raise TypedStateError("effect claim must belong to its work")
-            claim_scopes = {
-                _scope(value, "claim.scope_owner")
-                for value in claim_by_id[claim_id]["scope_owners"]
-            }
-            if scope not in claim_scopes:
+            claim_scopes = claim_by_id[claim_id]["scope_owners"]
+            scope_is_owned = (
+                any_scope_covers(claim_scopes, item["scope_ref"])
+                if canonical_scopes
+                else scope
+                in {
+                    _scope(value, "claim.scope_owner", canonical=False)
+                    for value in claim_scopes
+                }
+            )
+            if not scope_is_owned:
                 raise TypedStateError("effect scope must be owned by its claim")
             if work_id not in actual_active_work_ids:
                 raise TypedStateError("authorized effect requires active work")
+            if canonical_scopes and any(
+                scopes_overlap(item["scope_ref"], owned)
+                for owned in pending_effect_scopes
+            ):
+                raise TypedStateError("pending effect scope conflict")
+            if canonical_scopes:
+                pending_effect_scopes.append(item["scope_ref"])
         if status in {"succeeded", "failed", "compensated"}:
             if claim_id is None:
                 raise TypedStateError("committed effect requires claim provenance")

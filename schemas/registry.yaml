@@ -266,7 +266,7 @@ schemas:
     current_wire_version: context.state-mcp/v1alpha1
     supported_wire_versions: [context.state-mcp/v1alpha1]
     artifact_path: schemas/m2-05/state-mcp.schema.json
-    content_sha256: 4c891c471f25da5857ddc39b37bb198d86459d1ddab630515ea20b68fa1517d3
+    content_sha256: d80728c35556d18cc2bd8bd1f9783900b171515b143f615b033ea33314cc24ab
     status: current
     compatibility_mode: strict-versioned
     migrations: []
@@ -407,6 +407,16 @@ schemas:
     supported_wire_versions: [context.task-route-apply-request/v1alpha1]
     artifact_path: schemas/m3-03/route-apply-request.schema.json
     content_sha256: 6d46559950e504aa894d00c78927f3170750e422c3f2079dc09cd95c1759b103
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.effect-scope-verdict
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.effect-scope-verdict/v1alpha1
+    supported_wire_versions: [context.effect-scope-verdict/v1alpha1]
+    artifact_path: schemas/m3-04/effect-scope-verdict.schema.json
+    content_sha256: 87e649499c866e17344c4aea528deebba0fd92389c6ccff0a0f50650d8145411
     status: current
     compatibility_mode: strict-versioned
     migrations: []

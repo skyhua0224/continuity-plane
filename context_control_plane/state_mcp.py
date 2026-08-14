@@ -28,6 +28,12 @@ from .state_events import (
     build_state_event,
     replay_state_events,
 )
+from .effect_scope_gate import (
+    evaluate_effect_completion_gate,
+    evaluate_claim_scope_gate,
+    evaluate_effect_scope_gate,
+    validate_scope,
+)
 from .typed_state import TypedStateError
 
 
@@ -38,7 +44,8 @@ READ_TOOL = "context.state.read"
 COMMIT_TOOL = "context.state.commit"
 CLAIM_TOOL = "context.state.claim"
 EFFECT_TOOL = "context.state.effect"
-STATE_MCP_TOOLS = (READ_TOOL, COMMIT_TOOL, CLAIM_TOOL, EFFECT_TOOL)
+EFFECT_GATE_TOOL = "context.state.effect.gate"
+STATE_MCP_TOOLS = (READ_TOOL, COMMIT_TOOL, CLAIM_TOOL, EFFECT_TOOL, EFFECT_GATE_TOOL)
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _COMMON_FIELDS = {"schema_version", "request_id", "project_id"}
@@ -77,11 +84,21 @@ _REQUEST_FIELDS = {
         "causation_ref",
         "correlation_ref",
     },
+    EFFECT_GATE_TOOL: _COMMON_FIELDS
+    | {
+        "expected_revision",
+        "effect_id",
+        "work_id",
+        "claim_id",
+        "operation",
+        "scope_ref",
+    },
 }
 _AUTHORIZATION_ACTIONS = {
     READ_TOOL: "state.read",
     COMMIT_TOOL: "state.commit",
     CLAIM_TOOL: "state.claim",
+    EFFECT_GATE_TOOL: "state.effect.gate",
 }
 _COMMIT_COLLECTION_ID_FIELDS = {
     "works": "work_id",
@@ -178,6 +195,16 @@ def _request_properties(tool: str) -> dict[str, Any]:
             "causation_ref": {"type": ["string", "null"]},
             "correlation_ref": {"type": ["string", "null"]},
         }
+    if tool == EFFECT_GATE_TOOL:
+        return {
+            **common,
+            "expected_revision": {"type": "integer", "minimum": 0},
+            "effect_id": {"type": "string", "minLength": 1},
+            "work_id": {"type": "string", "minLength": 1},
+            "claim_id": {"type": "string", "minLength": 1},
+            "operation": {"type": "string", "minLength": 1},
+            "scope_ref": {"type": "object"},
+        }
     return {
         **common,
         "expected_revision": {"type": "integer", "minimum": 0},
@@ -202,6 +229,7 @@ def state_mcp_tool_definitions() -> list[dict[str, Any]]:
         COMMIT_TOOL: "Commit an authorized non-claim state intent with CAS.",
         CLAIM_TOOL: "Claim one ready Work atomically with CAS.",
         EFFECT_TOOL: "Authorize or complete one claimed external effect with CAS.",
+        EFFECT_GATE_TOOL: "Evaluate one effect authorization gate without a state write.",
     }
     return [
         {
@@ -259,12 +287,13 @@ def _validate_request(tool: str, arguments: Any) -> str | None:
     revision = arguments["expected_revision"]
     if not isinstance(revision, int) or isinstance(revision, bool) or revision < 0:
         return "expected_revision must be a non-negative integer"
-    for field in ("causation_ref", "correlation_ref"):
-        value = arguments[field]
-        if value is not None and (
-            not isinstance(value, str) or not value.strip() or len(value) > 500
-        ):
-            return f"{field} must be null or a bounded non-empty string"
+    if tool != EFFECT_GATE_TOOL:
+        for field in ("causation_ref", "correlation_ref"):
+            value = arguments[field]
+            if value is not None and (
+                not isinstance(value, str) or not value.strip() or len(value) > 500
+            ):
+                return f"{field} must be null or a bounded non-empty string"
     if tool == COMMIT_TOOL:
         supersedes = arguments["supersedes_event_id"]
         if supersedes is not None and (
@@ -324,10 +353,8 @@ def _validate_request(tool: str, arguments: Any) -> str | None:
             return "lease_expires_at must be a valid RFC3339 timestamp"
         if parsed_lease.tzinfo is None:
             return "lease_expires_at must include a timezone"
-    if tool == EFFECT_TOOL:
-        if arguments["action"] not in {"authorize", "complete"}:
-            return "action is unsupported"
-        for field in ("effect_id", "effect_key", "work_id", "claim_id", "operation"):
+    if tool in {EFFECT_TOOL, EFFECT_GATE_TOOL}:
+        for field in ("effect_id", "work_id", "claim_id", "operation"):
             value = arguments[field]
             if not isinstance(value, str) or not value.strip() or len(value) > 300:
                 return f"{field} must be a bounded non-empty string"
@@ -343,6 +370,13 @@ def _validate_request(tool: str, arguments: Any) -> str | None:
             "effect",
         } or not isinstance(scope["scope_ref"], str) or not scope["scope_ref"].strip():
             return "scope_ref is invalid"
+    if tool == EFFECT_TOOL:
+        if arguments["action"] not in {"authorize", "complete"}:
+            return "action is unsupported"
+        for field in ("effect_key",):
+            value = arguments[field]
+            if not isinstance(value, str) or not value.strip() or len(value) > 300:
+                return f"{field} must be a bounded non-empty string"
         evidence_ids = arguments["evidence_ids"]
         if not isinstance(evidence_ids, list) or any(
             not isinstance(item, str) or not item.strip() for item in evidence_ids
@@ -610,6 +644,8 @@ class StateMCPService:
                 error_message="request is not authorized",
             )
 
+        if tool == EFFECT_GATE_TOOL:
+            return self._effect_gate(arguments, context=context)
         if tool in {COMMIT_TOOL, CLAIM_TOOL, EFFECT_TOOL}:
             with self._mutation_lock:
                 replay = self._request_replay(tool, arguments, context)
@@ -680,6 +716,52 @@ class StateMCPService:
             },
         )
 
+    def _effect_gate(
+        self,
+        arguments: dict[str, Any],
+        *,
+        context: RequestContext,
+    ) -> dict[str, Any]:
+        """Return a typed read-only effect verdict at the current revision."""
+        request_id = arguments["request_id"]
+        try:
+            snapshot = invoke_state_store(
+                self._store, "read_project", arguments["project_id"]
+            )
+        except (
+            StateStoreCapabilityError,
+            StateStoreNotFound,
+            StateStoreConflict,
+            StateStoreBusy,
+            StateStoreIntegrityError,
+        ) as exc:
+            return _backend_error_response(
+                tool=EFFECT_GATE_TOOL,
+                request_id=request_id,
+                error=exc,
+            )
+        verdict = evaluate_effect_scope_gate(
+            snapshot,
+            actor_ref=context.subject_ref,
+            work_id=arguments["work_id"],
+            claim_id=arguments["claim_id"],
+            expected_revision=arguments["expected_revision"],
+            operation=arguments["operation"],
+            requested_scope=arguments["scope_ref"],
+            effect_id=arguments["effect_id"],
+            observed_at=self._clock(),
+        )
+        return _response(
+            tool=EFFECT_GATE_TOOL,
+            request_id=request_id,
+            result={
+                "verdict": verdict,
+                "revision": snapshot["project"]["revision"],
+                "registry_digest": self._registry_hash_value,
+                "capabilities": capability_manifest_to_document(self._manifest),
+            },
+        )
+
     def _effect(
         self,
         arguments: dict[str, Any],
@@ -698,6 +780,58 @@ class StateMCPService:
                     error_code="conflict",
                     error_message="expected revision is stale",
                 )
+            if snapshot["schema_version"] == "context.typed-state/v2alpha1":
+                try:
+                    validate_scope(arguments["scope_ref"])
+                except ValueError:
+                    return _response(
+                        tool=EFFECT_TOOL,
+                        request_id=request_id,
+                        error_code="invalid_request",
+                        error_message="scope_ref is not canonical",
+                    )
+            observed_at = self._clock()
+            if arguments["action"] == "authorize":
+                gate = evaluate_effect_scope_gate(
+                    snapshot,
+                    actor_ref=context.subject_ref,
+                    work_id=arguments["work_id"],
+                    claim_id=arguments["claim_id"],
+                    expected_revision=arguments["expected_revision"],
+                    operation=arguments["operation"],
+                    requested_scope=arguments["scope_ref"],
+                    effect_id=arguments["effect_id"],
+                    observed_at=observed_at,
+                )
+            else:
+                gate = evaluate_effect_completion_gate(
+                    snapshot,
+                    actor_ref=context.subject_ref,
+                    work_id=arguments["work_id"],
+                    claim_id=arguments["claim_id"],
+                    expected_revision=arguments["expected_revision"],
+                    effect_id=arguments["effect_id"],
+                    effect_key=arguments["effect_key"],
+                    operation=arguments["operation"],
+                    requested_scope=arguments["scope_ref"],
+                )
+            if gate["decision"] != "allow":
+                return _response(
+                    tool=EFFECT_TOOL,
+                    request_id=request_id,
+                    error_code=(
+                        "conflict"
+                        if gate["reason"]
+                        in {
+                            "stale_revision",
+                            "claim_revision_mismatch",
+                            "claim_expired",
+                            "effect_scope_conflict",
+                        }
+                        else "integrity"
+                    ),
+                    error_message=f"effect scope gate denied read-only: {gate['reason']}",
+                )
             claim = next(
                 (item for item in snapshot["claims"] if item["claim_id"] == arguments["claim_id"]),
                 None,
@@ -706,21 +840,7 @@ class StateMCPService:
                 (item for item in snapshot["works"] if item["work_id"] == arguments["work_id"]),
                 None,
             )
-            if (
-                claim is None
-                or work is None
-                or claim["status"] != "active"
-                or claim["actor_ref"] != context.subject_ref
-                or claim["work_id"] != work["work_id"]
-                or work["status"] != "active"
-                or arguments["scope_ref"] not in claim["scope_owners"]
-            ):
-                return _response(
-                    tool=EFFECT_TOOL,
-                    request_id=request_id,
-                    error_code="integrity",
-                    error_message="effect is outside the active claim boundary",
-                )
+            assert claim is not None and work is not None
 
             existing = next(
                 (item for item in snapshot["effects"] if item["effect_id"] == arguments["effect_id"]),
@@ -760,7 +880,7 @@ class StateMCPService:
                     + 1,
                     "evidence_ids": copy.deepcopy(arguments["evidence_ids"]),
                     "result_ref": None,
-                    "requested_at": self._clock(),
+                    "requested_at": observed_at,
                     "completed_at": None,
                 }
             else:
@@ -791,7 +911,7 @@ class StateMCPService:
                         "status": "succeeded",
                         "evidence_ids": copy.deepcopy(arguments["evidence_ids"]),
                         "result_ref": arguments["result_ref"],
-                        "completed_at": self._clock(),
+                        "completed_at": observed_at,
                     }
                 )
 
@@ -803,6 +923,35 @@ class StateMCPService:
             changes = [
                 {"collection": "effects", "object_id": effect["effect_id"], "value": effect}
             ]
+            if arguments["action"] == "complete":
+                completed_claim = next(
+                    item
+                    for item in candidate["claims"]
+                    if item["claim_id"] == claim["claim_id"]
+                )
+                lease_expires_at = datetime.fromisoformat(
+                    completed_claim["lease_expires_at"].replace("Z", "+00:00")
+                )
+                completed_at = datetime.fromisoformat(observed_at.replace("Z", "+00:00"))
+                if completed_at >= lease_expires_at:
+                    completed_claim.update(
+                        {"status": "expired", "released_at": observed_at}
+                    )
+                    _upsert_change(
+                        changes, collection="claims", value=completed_claim
+                    )
+                    recovery_work = next(
+                        item
+                        for item in candidate["works"]
+                        if item["work_id"] == completed_claim["work_id"]
+                    )
+                    recovery_work.update(
+                        {
+                            "status": "verifying",
+                            "revision": recovery_work["revision"] + 1,
+                        }
+                    )
+                    _upsert_change(changes, collection="works", value=recovery_work)
             revision_after = arguments["expected_revision"] + 1
             for existing_claim in candidate["claims"]:
                 if existing_claim["status"] == "active":
@@ -815,7 +964,7 @@ class StateMCPService:
             _derive_project_projection(
                 candidate,
                 revision=revision_after,
-                updated_at=self._clock(),
+                updated_at=observed_at,
             )
             previous_hash = events[-1]["event_sha256"] if events else None
             sequence_no = events[-1]["sequence_no"] + 1 if events else 1
@@ -902,21 +1051,29 @@ class StateMCPService:
                     error_code="conflict",
                     error_message="expected revision is stale",
                 )
+            gate = evaluate_claim_scope_gate(
+                snapshot,
+                actor_ref=context.subject_ref,
+                work_id=arguments["work_id"],
+                expected_revision=arguments["expected_revision"],
+                requested_scopes=arguments["scope_owners"],
+            )
+            if gate["decision"] != "allow":
+                return _response(
+                    tool=CLAIM_TOOL,
+                    request_id=request_id,
+                    error_code=(
+                        "conflict"
+                        if gate["reason"] in {"stale_revision", "scope_conflict"}
+                        else "integrity"
+                    ),
+                    error_message=f"claim scope gate denied read-only: {gate['reason']}",
+                )
             work = next(
                 (item for item in snapshot["works"] if item["work_id"] == arguments["work_id"]),
                 None,
             )
-            if (
-                work is None
-                or work["status"] != "ready"
-                or context.subject_ref not in work["owner_refs"]
-            ):
-                return _response(
-                    tool=CLAIM_TOOL,
-                    request_id=request_id,
-                    error_code="integrity",
-                    error_message="claim actor must own ready Work",
-                )
+            assert work is not None
             if any(
                 claim["claim_id"] == arguments["claim_id"]
                 for claim in snapshot["claims"]

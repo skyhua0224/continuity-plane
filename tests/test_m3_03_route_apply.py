@@ -278,6 +278,89 @@ class M303RouteApplyTests(unittest.TestCase):
         self.assertEqual([item["event_kind"] for item in result["event"]["task_transition"]["task_events"]], ["task_suspended", "task_activated"])
         self.assertEqual(result["return_frame"]["return_work_id"], active)
 
+    def test_switch_rejects_a_target_claim_not_owned_by_the_route_actor(self):
+        target = next(
+            item for item in self.state["works"]
+            if item["status"] == "ready" and item["kind"] == "work"
+        )
+        request = self._request(
+            "switch",
+            target_work_id=target["work_id"],
+            user_authorization_candidate=True,
+            authorization_candidate_ref="opaque://candidate/auth",
+        )
+        decision = self._decision(request)
+        artifact, binding = self._publish_checkpoint()
+        with self.assertRaisesRegex(RouteApplyError, "actor_not_owner"):
+            self._apply_route(
+                self.store,
+                self._apply_request(
+                    decision,
+                    authorization_ref="auth:trusted",
+                    checkpoint_ref=artifact,
+                    checkpoint_binding=binding,
+                ),
+                decision=decision,
+                context={"subject_ref": "actor-other", "authorization_ref": "auth:trusted"},
+                authorizer=_AllowAuthorizer(),
+                clock=lambda: "2026-08-13T17:00:00+08:00",
+                event_id_factory=lambda request_id: f"event-{request_id}",
+            )
+        self.assertEqual(self.store.read_project(self.state["project"]["project_id"]), self.state)
+        self.assertEqual(self.store.read_events(self.state["project"]["project_id"]), [])
+
+    def test_switch_rejects_an_active_source_with_a_pending_effect(self):
+        pending = copy.deepcopy(self.state)
+        pending["effects"] = [
+            {
+                "effect_id": "effect-route-pending",
+                "effect_key": "effect-key-route-pending",
+                "work_id": "work-active",
+                "claim_id": "claim-active",
+                "status": "authorized",
+                "operation": "git-commit",
+                "scope_ref": {"scope_kind": "capability", "scope_ref": "route/work-active"},
+                "expected_project_revision": 1,
+                "sequence_no": 1,
+                "evidence_ids": [],
+                "result_ref": None,
+                "requested_at": "2026-08-13T15:30:00+08:00",
+                "completed_at": None,
+            }
+        ]
+        pending_store = SQLiteStateStore(Path(self.temp.name) / "pending.sqlite3")
+        pending_store.initialize()
+        pending_store.create_project(pending)
+        target = next(
+            item for item in pending["works"]
+            if item["status"] == "ready" and item["kind"] == "work"
+        )
+        request = self._request(
+            "switch",
+            target_work_id=target["work_id"],
+            user_authorization_candidate=True,
+            authorization_candidate_ref="opaque://candidate/auth",
+        )
+        decision = self._decision(request)
+        artifact, binding = self._publish_checkpoint(pending_store)
+        with self.assertRaisesRegex(RouteApplyError, "pending Effect"):
+            self._apply_route(
+                pending_store,
+                self._apply_request(
+                    decision,
+                    authorization_ref="auth:trusted",
+                    checkpoint_ref=artifact,
+                    checkpoint_binding=binding,
+                ),
+                decision=decision,
+                context={"subject_ref": "actor-owner", "authorization_ref": "auth:trusted"},
+                authorizer=_AllowAuthorizer(),
+                clock=lambda: "2026-08-13T17:00:00+08:00",
+                event_id_factory=lambda request_id: f"event-{request_id}",
+            )
+        self.assertEqual(pending_store.read_project(pending["project"]["project_id"]), pending)
+        self.assertEqual(pending_store.read_events(pending["project"]["project_id"]), [])
+
     def test_switch_rejects_checkpoint_bound_to_wrong_event_head(self):
         child_request = self._request("child_work", request_id="route-seed-child")
         child_decision = self._decision(child_request)

@@ -9,6 +9,7 @@ from typing import Any, Callable
 
 from .artifact_store import ArtifactRef, ArtifactStoreError
 from .checkpoint import CheckpointError, verify_historical_checkpoint
+from .effect_scope_gate import evaluate_claim_scope_gate
 from .state_events import (
     StateEventError,
     build_state_event,
@@ -445,6 +446,12 @@ def apply_route(
         )
         if rejection_reason is not None:
             raise RouteApplyError(rejection_reason)
+        if any(
+            effect["work_id"] == active["work_id"]
+            and effect["status"] in {"authorized", "started"}
+            for effect in candidate["effects"]
+        ):
+            raise RouteApplyError("active source Work has a pending Effect")
         old_work = copy.deepcopy(active)
         old_work["status"] = "ready"
         old_work["revision"] += 1
@@ -452,6 +459,21 @@ def apply_route(
         target["status"] = "active"
         target["revision"] += 1
         old_claim = next(claim for claim in candidate["claims"] if claim["status"] == "active" and claim["work_id"] == active["work_id"])
+        claim_gate_snapshot = copy.deepcopy(candidate)
+        next(
+            claim
+            for claim in claim_gate_snapshot["claims"]
+            if claim["claim_id"] == old_claim["claim_id"]
+        )["status"] = "released"
+        claim_gate = evaluate_claim_scope_gate(
+            claim_gate_snapshot,
+            actor_ref=actor_ref,
+            work_id=target["work_id"],
+            expected_revision=current["project"]["revision"],
+            requested_scopes=target["scope_refs"],
+        )
+        if claim_gate["decision"] != "allow":
+            raise RouteApplyError(claim_gate["reason"])
         old_claim["status"] = "released"
         old_claim["released_at"] = now
         target_claim_id = "claim-route-" + hashlib.sha256(

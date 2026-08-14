@@ -1,0 +1,66 @@
+{
+  "acceptance": {
+    "all_authorized_allowed": true,
+    "all_conflict_loads_read_only": true,
+    "all_out_of_scope_read_only": true,
+    "baseline_p95_gate_latency_ms_max": 1.0,
+    "state_unchanged": true
+  },
+  "environment": {
+    "external_services": 0,
+    "machine": "x86_64",
+    "platform": "Linux",
+    "python_implementation": "CPython",
+    "python_version": "3.14.6"
+  },
+  "measurement": {
+    "baseline": {
+      "allowed": 5000,
+      "max_gate_latency_ms": 0.103265,
+      "p50_gate_latency_ms": 0.005638,
+      "p95_gate_latency_ms": 0.015779,
+      "read_only_denied": 5000,
+      "samples": 10000,
+      "state_mutations": 0
+    },
+    "conflict_loads": [
+      {
+        "allowed": 0,
+        "max_gate_latency_ms": 0.015978,
+        "p50_gate_latency_ms": 0.00826,
+        "p95_gate_latency_ms": 0.008492,
+        "pending_effects": 1,
+        "read_only_denied": 1000,
+        "reason": "effect_scope_conflict",
+        "samples": 1000
+      },
+      {
+        "allowed": 0,
+        "max_gate_latency_ms": 0.796615,
+        "p50_gate_latency_ms": 0.522614,
+        "p95_gate_latency_ms": 0.53255,
+        "pending_effects": 100,
+        "read_only_denied": 1000,
+        "reason": "effect_scope_conflict",
+        "samples": 1000
+      },
+      {
+        "allowed": 0,
+        "max_gate_latency_ms": 7.23648,
+        "p50_gate_latency_ms": 5.225814,
+        "p95_gate_latency_ms": 5.289955,
+        "pending_effects": 1000,
+        "read_only_denied": 1000,
+        "reason": "effect_scope_conflict",
+        "samples": 1000
+      }
+    ]
+  },
+  "observed_at": "2026-08-14T00:00:00+08:00",
+  "provenance": {
+    "benchmark_sha256": "851b95ffd24260963a2f4f3804b66f26e40a094e724dabc1815a9f8ac7be6a2c",
+    "fixture_sha256": "9be7887519cfed4466436ea6714d48e399d7023281729b3bd8c78cb3a086beab",
+    "implementation_sha256": "e1de28c0502fe039f7405875c60a10749524bb216c078a84bb5788f21fa05817"
+  },
+  "schema_version": "context.effect-scope-benchmark/v1alpha1"
+}

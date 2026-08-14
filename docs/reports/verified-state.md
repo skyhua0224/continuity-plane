@@ -30,6 +30,7 @@ state write authority：false
 | M3-01 | [`m3-01-task-graph-acceptance-2026-08-14.md`](../migrations/m3-01-task-graph-acceptance-2026-08-14.md) |
 | M3-02 | [`m3-02-sticky-router-acceptance-2026-08-14.md`](../migrations/m3-02-sticky-router-acceptance-2026-08-14.md) |
 | M3-03 | [`m3-03-route-events-acceptance-2026-08-14.md`](../migrations/m3-03-route-events-acceptance-2026-08-14.md) |
+| M3-04 | [`m3-04-effect-scope-gate-acceptance-2026-08-14.md`](../migrations/m3-04-effect-scope-gate-acceptance-2026-08-14.md) |
 | M4-01 | [`m4-01-skill-manifest-set-acceptance-2026-08-10.md`](../migrations/m4-01-skill-manifest-set-acceptance-2026-08-10.md) |
 | M4-02 | [`m4-02-compiled-skill-packet-acceptance-2026-08-11.md`](../migrations/m4-02-compiled-skill-packet-acceptance-2026-08-11.md) |
 | M4-03 | [`m4-03-skill-drift-quarantine-acceptance-2026-08-11.md`](../migrations/m4-03-skill-drift-quarantine-acceptance-2026-08-11.md) |

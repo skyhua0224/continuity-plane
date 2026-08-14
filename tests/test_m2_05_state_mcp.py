@@ -195,6 +195,8 @@ class M205StateMCPContractTests(unittest.TestCase):
             "commit_request",
             "claim_request",
             "effect_request",
+            "effect_gate_request",
+            "effect_gate_result",
             "response",
         ):
             with self.subTest(definition_name=definition_name):
@@ -205,6 +207,33 @@ class M205StateMCPContractTests(unittest.TestCase):
                     set(definition["properties"]),
                 )
                 Draft202012Validator.check_schema(definition)
+
+    def test_effect_gate_response_rejects_a_contradictory_verdict(self):
+        schema = json.loads(
+            (
+                self.root / "schemas" / "m2-05" / "state-mcp.schema.json"
+            ).read_text(encoding="utf-8")
+        )
+        contradictory_response = {
+            "schema_version": "context.state-mcp-response/v1alpha1",
+            "request_id": "request-contradictory-effect-gate",
+            "tool": "context.state.effect.gate",
+            "ok": True,
+            "result": {
+                "verdict": {
+                    "schema_version": "context.effect-scope-verdict/v1alpha1",
+                    "decision": "allow",
+                    "read_only": True,
+                    "reason": "authorized",
+                },
+                "revision": 7,
+                "registry_digest": "a" * 64,
+                "capabilities": {},
+            },
+            "error": None,
+        }
+        with self.assertRaises(ValidationError):
+            Draft202012Validator(schema).validate(contradictory_response)
 
     def test_contract_root_validates_wire_documents_and_response_state(self):
         schema = json.loads(
@@ -233,6 +262,24 @@ class M205StateMCPContractTests(unittest.TestCase):
                 self.make_commit_request(request_id="request-root-response-commit"),
                 context=context,
             )
+            gate_response = service.call_tool(
+                "context.state.effect.gate",
+                {
+                    "schema_version": "context.state-mcp-request/v1alpha1",
+                    "request_id": "request-root-response-effect-gate",
+                    "project_id": self.snapshot["project"]["project_id"],
+                    "expected_revision": self.snapshot["project"]["revision"],
+                    "effect_id": "effect-root-gate",
+                    "work_id": "work-repeat",
+                    "claim_id": "claim-root-gate",
+                    "operation": "write-file",
+                    "scope_ref": {
+                        "scope_kind": "file",
+                        "scope_ref": "src/registry.py",
+                    },
+                },
+                context=context,
+            )
             denied_response = self.make_service(store).call_tool(
                 "context.state.read",
                 {
@@ -251,8 +298,23 @@ class M205StateMCPContractTests(unittest.TestCase):
             self.make_commit_request(request_id="request-root-commit"),
             self.make_claim_request(request_id="request-root-claim"),
             self.make_effect_request(request_id="request-root-effect"),
+            {
+                "schema_version": "context.state-mcp-request/v1alpha1",
+                "request_id": "request-root-effect-gate",
+                "project_id": "project-root",
+                "expected_revision": 1,
+                "effect_id": "effect-root-gate",
+                "work_id": "work-root",
+                "claim_id": "claim-root",
+                "operation": "write-file",
+                "scope_ref": {
+                    "scope_kind": "file",
+                    "scope_ref": "src/root.py",
+                },
+            },
             read_response,
             commit_response,
+            gate_response,
             denied_response,
         ):
             with self.subTest(document=document["request_id"]):
@@ -296,7 +358,7 @@ class M205StateMCPContractTests(unittest.TestCase):
                 with self.assertRaises(ValidationError):
                     validator.validate(invalid)
 
-    def test_tool_definitions_expose_only_the_four_versioned_state_tools(self):
+    def test_tool_definitions_expose_the_five_versioned_state_tools(self):
         definitions = state_mcp_tool_definitions()
 
         self.assertEqual(
@@ -306,6 +368,7 @@ class M205StateMCPContractTests(unittest.TestCase):
                 "context.state.commit",
                 "context.state.claim",
                 "context.state.effect",
+                "context.state.effect.gate",
             },
         )
         for item in definitions:
