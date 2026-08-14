@@ -86,6 +86,47 @@ class ReferenceCatalogTests(unittest.TestCase):
         self.assertEqual(docmost["validity"], "candidate")
         self.assertEqual(docmost["adoption_status"], "candidate")
 
+    def test_catalog_tracks_deepseek_cordis_and_pi_as_bounded_candidates(self):
+        entries = {entry["reference_id"]: entry for entry in self.catalog["entries"]}
+
+        expected = {
+            "deepseek-ai-deepseek-harness": {
+                "source_revision": "47f943859bef60e4160492346772ded9b24f765a",
+                "source_tree": "f904efab9ef435201d6ba4da88a34d6366568272",
+                "content_sha256": "0b86f44cf564c8fefa279134c21a6e5f9bb933520ef25c7ac360c42437e381be",
+                "license_ref": "MIT",
+                "validity": "verified-current",
+            },
+            "cordiverse-spatiotemporal-composability-paper": {
+                "source_revision": "948a07b369c62adb3b12e102458be5c18dfb69b9",
+                "source_tree": "9843926bd597bf184536fe9b2961bcc77f245bb6",
+                "content_sha256": "4d48478dc0b6222d9f74d7db10ee776449b1209eb112632336544d32a49db97f",
+                "license_ref": "unknown",
+                "validity": "candidate",
+            },
+            "earendil-pi-compaction": {
+                "source_revision": "retrieved-2026-08-14",
+                "content_sha256": "af529b36af20560837631b3c4c3681ee5d409d849474a380860690b08d448bc4",
+                "license_ref": "source-terms",
+                "validity": "verified-current",
+            },
+            "earendil-pi-agent-harness": {
+                "source_revision": "9d2ec7ffabe927bfad2214c1cee25b6632a78dcf",
+                "source_tree": "9108e8903e1ba009dac694ff8ad6289b8673b1eb",
+                "article_source_revision": "47610217098d9ba8f22d223fa7c1413f9f5fd759",
+                "content_sha256": "1a33d95a34a4cc2a23f787b3a62acb3e6bc6b538187991aab08da94a82e387b0",
+                "license_ref": "MIT",
+                "validity": "verified-current",
+            },
+        }
+
+        for reference_id, fields in expected.items():
+            with self.subTest(reference_id=reference_id):
+                self.assertIn(reference_id, entries)
+                for field, value in fields.items():
+                    self.assertEqual(entries[reference_id][field], value)
+                self.assertEqual(entries[reference_id]["adoption_status"], "candidate")
+
 
 if __name__ == "__main__":
     unittest.main()

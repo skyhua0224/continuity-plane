@@ -160,8 +160,8 @@ class StateStorePortabilityPlanTests(unittest.TestCase):
         provider_adapter_acceptance = provider_adapter_acceptance_path.read_text(
             encoding="utf-8"
         )
-        self.assertIn("版本：revision 34", self.master)
-        self.assertIn("版本：revision 34", self.status)
+        self.assertIn("版本：revision 35", self.master)
+        self.assertIn("版本：revision 35", self.status)
         self.assertIn("| M2-05 | ✅ |", self.master)
         self.assertIn("| M2-06 | ✅ |", self.master)
         self.assertIn("| M2-07 | ✅ |", self.master)
@@ -180,7 +180,7 @@ class StateStorePortabilityPlanTests(unittest.TestCase):
             encoding="utf-8"
         )
         self.assertIn("unauthorized gated composition `0/32`", compatibility_acceptance)
-        self.assertIn("governance authority：`MASTER.md` revision 34", self.target_state)
+        self.assertIn("governance authority：`MASTER.md` revision 35", self.target_state)
 
 
 if __name__ == "__main__":

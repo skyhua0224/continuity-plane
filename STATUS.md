@@ -1,7 +1,7 @@
 # Context Control Plane Status
 
-版本：revision 34  
-日期：2026-08-11  
+版本：revision 35  
+日期：2026-08-14  
 canonical plan：`MASTER.md`
 
 ## 当前状态
@@ -10,7 +10,7 @@ canonical plan：`MASTER.md`
 |---|---|
 | 当前 Campaign | M4 Skill 控制面 |
 | active work | M4-07：Built-in、External、Project、User、Workflow Skill catalog（🟡） |
-| next action | 建立五类 catalog entry 的失败测试，固定 source/license/provenance、activation/quarantine 与 M4-06 compatibility lock 关联 |
+| next action | 建立五类 catalog entry 的失败测试，固定 source/license/provenance、activation/quarantine 与 M4-06 compatibility lock 关联，并纳入 DeepSeek Skill/plugin 与 Cordis dependency/lifecycle candidate |
 | hard blocker | active leaf 无；M3-01 仍等待 M2-09 的 Windows/macOS 原生 live fixture |
 | repository mode | research / shadow pilot |
 | production state | local-embedded implemented / shadow pilot；shared production pilot planned |
@@ -48,18 +48,18 @@ canonical plan：`MASTER.md`
 | E0/E1 synthetic canary | 4 场景；768 字符时 E1 恢复 100%、旧决定复活 0、Skill 输入下降 75%、token proxy 下降 20.7031% |
 | E0/E1 real replay | 40 场景；768 字符时 E1 恢复 100%、旧决定复活 0、Skill 输入下降 74.7903%、token proxy 下降 12.6042%；512 字符 capacity veto |
 | External Skill catalog | OpenAI/Anthropic/GitHub/Agent Skills/MCP/Skills.sh metadata-only；active 0 |
-| Harness research | OpenAI/Codex、Anthropic/Claude Code/Agent SDK、agent teams/subagents/advisor/worktree reference catalog 与 adoption matrix 已落盘；provider-native state authority 为 0 |
+| Harness research | OpenAI/Codex、Anthropic/Claude Code/Agent SDK、DeepSeek Harness、Pi compaction/durable AgentHarness 与 Cordis reference catalog、adoption matrix 和 M4/M5/M8 完成门已落盘；DeepSeek/Pi/Cordis active adoption 0，provider-native state authority 为 0 |
 | Idea continuity | capture-and-continue、correction 写保护、checkpoint/switch/context return 架构合同已落盘；typed implementation 待 M2-M5 |
 | Adaptive information | bounded retrieval receipt、ProjectAdaptation proposal/shadow/approval/rollback 合同已落盘；实现待 M2/M6/M8/M10 |
 | Documentation lifecycle | 文档分类、更新触发、容量预算、supersedes 和投影规则已落盘；第 4 次恢复发现 STATUS/evidence 漂移并登记为 M0-10 validator 反例 |
 | Default project projections | MASTER、STATUS、目标态架构全表为人类/Agent 默认安装方案；公开项目只接收三文档、最小 Profile、已采用 policy 和脱敏证据 |
 | Git collaboration | branch/commit/PR/merge 和 staged admission 合同已落盘；公开 Gitea remote 为 `skyhua/context-control-plane`，默认分支 `main`；repo-local identity 已与托管账号核验 |
 | Continuous integration | 独立 Verifier 权威状态写权限为 0；M2-03 runs 1037/1038 暴露 service lifecycle 与 job-network 故障，run 1039 的两个 jobs 全绿；`main` 禁止 direct/force push、禁止 admin merge override，并要求 4 个 push/PR status contexts |
-| Reference catalog | 22 个候选来源；Codex/Claude harness 与 Yundi339 Docmost fork 均固定 URL、revision/tree hash、validity、refresh trigger 和 adoption status；active adoption 0 |
+| Reference catalog | 26 个候选来源；Codex/Claude/DeepSeek/Pi harness、Cordis paper 与 Yundi339 Docmost fork 均固定 URL、revision/hash、license、validity、refresh trigger 和 adoption status；active adoption 0 |
 | Project dogfood baseline | 27 次 compaction 的结构字段恢复 100%，Continuation Cursor 累计恢复 78/80；首动作不匹配和已确认事项重播累计各 2 次，后续未新增，整体趋势仍为 regressed；25 次 input routing 无未授权切换；92 个 Skill body 共 942,873 bytes，其中重复 763,452 bytes；provider context/token/latency 不可见 |
 | Autonomous progression | required/conditional/optional、bounded escalation、next-ready selector、unattended dispatcher 与 multi-Agent claim/lease/handoff 验收合同进入 revision 21；runtime 实现待 M2-M8；当前 provider-host multi-Agent 只计 shadow evidence |
-| Repository verification | 558 tests 通过；28 个无 DSN PostgreSQL live tests skipped；repository verifier、Python compile、diff check 与 M4-06 changed Python files Ruff 通过；fixture privacy、documentation link/style、transcript admission 和 Gitea secret-scan checks 保持提交门 |
-| Governance authority | `MASTER.md` revision 34 |
+| Repository verification | 560 tests 通过；28 个无 DSN PostgreSQL live tests skipped；repository verifier、Python compile 和 diff check 通过；fixture privacy、documentation link/style、schema registry、transcript admission 和 Gitea secret-scan checks 保持提交门 |
+| Governance authority | `MASTER.md` revision 35 |
 | Operational router | `STATUS.md` |
 
 ## 恢复入口

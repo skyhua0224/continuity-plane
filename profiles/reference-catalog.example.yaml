@@ -1,5 +1,5 @@
 schema_version: context.reference-catalog/v1alpha1
-generated_at: "2026-08-11T00:00:00Z"
+generated_at: "2026-08-14T00:00:00Z"
 status: candidate-catalog
 
 # Metadata and hashes only. External full text remains at the canonical source
@@ -380,3 +380,79 @@ entries:
     refresh_cadence_days: 14
     refresh_triggers: [before-bearing-use, upstream-release, hash-change, conflict, scheduled]
     supports: [M9-01, M9-02, M9-03, M9-04, M9-05, M9-07]
+
+  - reference_id: deepseek-ai-deepseek-harness
+    title: DeepSeek Harness
+    publisher: DeepSeek AI
+    authority_class: current-source
+    canonical_url: https://github.com/deepseek-ai/deepseek-harness
+    retrieval_url: https://github.com/deepseek-ai/deepseek-harness.git
+    retrieved_at: "2026-08-14T00:00:00Z"
+    source_revision: 47f943859bef60e4160492346772ded9b24f765a
+    source_tree: f904efab9ef435201d6ba4da88a34d6366568272
+    content_sha256: 0b86f44cf564c8fefa279134c21a6e5f9bb933520ef25c7ac360c42437e381be
+    snapshot_basis: sha256-git-ls-tree
+    acquisition: git-snapshot
+    license_ref: MIT
+    validity: verified-current
+    adoption_status: candidate
+    refresh_cadence_days: 14
+    refresh_triggers: [before-bearing-use, upstream-release, hash-change, conflict, scheduled]
+    supports: [M0-08, M4-07, M5-02, M5-03, M5-05, M8-01, M8-06]
+
+  - reference_id: cordiverse-spatiotemporal-composability-paper
+    title: A Programming Paradigm for Spatiotemporal Composability
+    publisher: Cordiverse
+    authority_class: research
+    canonical_url: https://github.com/cordiverse/paper/blob/main/paper.pdf
+    retrieval_url: https://raw.githubusercontent.com/cordiverse/paper/948a07b369c62adb3b12e102458be5c18dfb69b9/paper.pdf
+    retrieved_at: "2026-08-14T00:00:00Z"
+    source_revision: 948a07b369c62adb3b12e102458be5c18dfb69b9
+    source_tree: 9843926bd597bf184536fe9b2961bcc77f245bb6
+    content_sha256: 4d48478dc0b6222d9f74d7db10ee776449b1209eb112632336544d32a49db97f
+    snapshot_basis: sha256-paper-pdf
+    acquisition: git-snapshot
+    license_ref: unknown
+    validity: candidate
+    adoption_status: candidate
+    refresh_cadence_days: 14
+    refresh_triggers: [before-bearing-use, upstream-release, hash-change, conflict, scheduled]
+    supports: [M0-08, M4-07, M4-09, M8-06]
+
+  - reference_id: earendil-pi-compaction
+    title: How Compaction Works in Pi
+    publisher: Earendil Engineering
+    authority_class: vendor-engineering
+    canonical_url: https://earendil.com/posts/compaction-in-pi/
+    retrieval_url: https://earendil.com/posts/compaction-in-pi/
+    retrieved_at: "2026-08-14T00:00:00Z"
+    source_revision: retrieved-2026-08-14
+    content_sha256: af529b36af20560837631b3c4c3681ee5d409d849474a380860690b08d448bc4
+    acquisition: direct-official
+    license_ref: source-terms
+    validity: verified-current
+    adoption_status: candidate
+    refresh_cadence_days: 30
+    refresh_triggers: [before-bearing-use, upstream-release, hash-change, conflict, scheduled]
+    supports: [M0-08, M5-02, M5-03, M5-05]
+
+  - reference_id: earendil-pi-agent-harness
+    title: Pi agent and coding-agent harness source
+    publisher: Earendil Works
+    authority_class: current-source
+    canonical_url: https://github.com/earendil-works/pi
+    retrieval_url: https://github.com/earendil-works/pi.git
+    retrieved_at: "2026-08-14T00:00:00Z"
+    source_revision: 9d2ec7ffabe927bfad2214c1cee25b6632a78dcf
+    source_tree: 9108e8903e1ba009dac694ff8ad6289b8673b1eb
+    article_source_revision: 47610217098d9ba8f22d223fa7c1413f9f5fd759
+    article_source_tree: c523c383ca2cbd068b6a5bc277babfeafad2c9df
+    content_sha256: 1a33d95a34a4cc2a23f787b3a62acb3e6bc6b538187991aab08da94a82e387b0
+    snapshot_basis: sha256-git-ls-tree
+    acquisition: git-snapshot
+    license_ref: MIT
+    validity: verified-current
+    adoption_status: candidate
+    refresh_cadence_days: 14
+    refresh_triggers: [before-bearing-use, upstream-release, hash-change, conflict, scheduled]
+    supports: [M0-08, M5-02, M5-03, M5-05, M5-08, M8-01, M8-06]

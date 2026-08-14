@@ -1,7 +1,7 @@
 # Context Control Plane MASTER
 
-版本：revision 34  
-日期：2026-08-11  
+版本：revision 35  
+日期：2026-08-14  
 状态：研究与 shadow pilot 准备阶段  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
 
@@ -204,6 +204,8 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 
 每个 provider-neutral Harness Run 绑定 task revision、claim、Execution Packet hash、Skill digest、tool grants、checkpoint、effect watermark、Verification Profile、reference validity watermark 和 OTel trace。Provider transcript、session ID、goal、host checkpoint 和 workflow state 作为 provenance；task completion、决定、effect 和 promotion 仍通过 State MCP 提交。
 
+当前候选基线按职责拆分：DeepSeek Harness 作为 M4/M5 动态插件、Skill、checkpoint、compaction、sandbox/approval 和本地持久化实现候选；Pi Coding Agent 现行 compaction 作为 M5 cut point、split-turn、hook、usage/cache 对照；Pi durable AgentHarness 规范作为 M8 `op.state`、effect sandwich、reserved ID、replay policy 和 crash/race 测试 oracle；Cordis 论文作为 M4 动态组件依赖、revertible registration 和生命周期依据。Cordis inverse 只覆盖运行时管理的 context transformation 和 registration；外部 effect 仍使用 State MCP authorization、effect ledger、幂等键和显式补偿。上述来源均保持 candidate，不能从 provider session、summary、transcript 或 durable log 提交项目级权威状态。
+
 ### 6.4 有界信息访问与项目适配合同
 
 控制面通过 `RetrievalReceipt` 记录查询类型、source revision/hash、选中范围、读取与输出 bytes、freshness 和验证结果。Execution Packet 只装载当前 active leaf 所需字段、锁定 Skill rule IDs、承重 evidence refs 和唯一 next action；完整历史、报告、大型日志、候选 Idea 和 memory 通过 opaque ref 进行 bounded expansion。外置 memory、索引、缓存和 reviewer 在 provider 故障或结果冲突时降级，不改变权威状态。
@@ -223,7 +225,7 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | M0-05 | ✅ | 建立短小 `STATUS.md` 路由器 | 日常恢复通过定向引用完成 | 控制 MASTER 装载成本 | M0-02 | 当前任务、阻塞、next action 和文档引用可在小文件恢复 |
 | M0-06 | ✅ | 建立正式文档语言规范 | 规范使用稳定属性、权限和验收指标 | 保持长期文档一致性 | M0-02 | style policy 与文档审计通过 |
 | M0-07 | 🧑‍💻 | 建立 schema/version/release governance | 所有协议可演进和回放 | 保障 checkpoint 兼容性 | M0-02 | registry/hash、transition、migration/replay/rollback 和 quarantine 离线验收完成；runtime State MCP migration 待 M2 |
-| M0-08 | 🧑‍💻 | 建立 ReferenceSource/Snapshot lifecycle、candidate catalog 与 harness 采用评估 | 外部资料可持续发现、固定、刷新、失效和复用 | 让研究证据进入后续 schema、adapter 与实验 | M0-03/M0-06 | Codex/Claude 官方来源带 URL/hash/refresh/adoption；5 个 catalog tests 通过；State/Watcher live integration 待后续阶段 |
+| M0-08 | 🧑‍💻 | 建立 ReferenceSource/Snapshot lifecycle、candidate catalog 与 harness 采用评估 | 外部资料可持续发现、固定、刷新、失效和复用 | 让研究证据进入后续 schema、adapter 与实验 | M0-03/M0-06 | Codex/Claude、DeepSeek、Pi 和 Cordis 来源带 URL/revision/hash/license/refresh/adoption；7 个 catalog tests 通过；State/Watcher live integration 待后续阶段 |
 | M0-09 | 🧑‍💻 | 建立项目 self-dogfood observation protocol 与首个 baseline | 研发过程记录 compaction、Skill 装载、计划演进和质量门后的交付速度 | 以项目自身数据验证逐步优化 | M0-05/M0-07 | compaction、input routing、Skill load、plan revision、verification 和 delivery 可复核；首个 accepted work 基线 1,577 秒；自动 trace 待 M5/M8 |
 | M0-10 | ⏳ | 建立文档分类、更新触发、容量预算、supersedes 和生成投影生命周期 | MASTER、STATUS、细分文档和投影保持可定位、可更新、可收敛 | 防止长期陈旧与无界扩展 | M0-05/M0-06/M0-07 | policy validator、STATUS 与 evidence 漂移、重复全文、过期引用、容量超限和权限故障测试通过；拆分后恢复字段 100% |
 | M0-11 | ⏳ | 建立 Git branch/commit/PR/merge 与 staged admission 合同 | Git 集成边界可回放且不冒充权威状态 | 让单人、多 AI 和多人协作具有一致的审计与发布节奏 | M0-02/M0-03/M0-09 | policy、message/PR packet validator、staged transcript/secret admission、regular-merge replay 和 first-commit audit 通过 |
@@ -278,7 +280,7 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | M4-04 | ✅ | S0-S3 分层加载 | 恢复装载 1-2 KB bootstrap 与 2-6 KB packet | 缩短恢复热路径 | M4-02/M4-03 | strict plan/load schema、M4-03 allow gate、host-owned authorizer 和 canonical fixture 通过；35/35 定向测试；loader p95 `<10 ms`；向 composition 转发的 Skill 正文字节相对 all-layer control 下降 `>=60%`；provider token/真实压缩由 M4-05/M5 验收 |
 | M4-05 | ✅ | Codex/Claude/其他 provider Skill adapter | 同一规则合同跨工具使用 | 可移植协作 | M4-04 | strict effect/probe schema 与官方 Codex/Claude Skill surface 通过；24/24 定向测试；40 组 byte-distinct compositions 生成 80/80 validated effects 与 240 次 compose；neutral mismatch `0/40`、provider replay mismatch `0/80`、state-write declaration `0/80`；本地 adapter p95 `<10 ms`；独立复核 High 0/Medium 0；provider process/token/cache/规则遵循/真实压缩未在本阶段声明 |
 | M4-06 | ✅ | Skill 变更 replay 与兼容锁 | 进行中任务固定使用已记录 rule set | 可持续迭代替换 | M4-03 | lock/decision/migration/probe strict schema 注册；selected manifest digest、exact provider applicability/contract 与 live adapter surface 重算；40 变更样本中未选中 metadata `8/8 compatible`，selected identity/provider contract `32/32 migration_required`；unauthorized gated composition `0/32`；synthetic verifier-authorized migration `4/4` 可 replay/rollback；assessment p95 `<10 ms` |
-| M4-07 | 🟡 | Built-in、External、Project、User、Workflow Skill catalog | 来源、license、provenance 和权限边界可审计 | 管理可复用与项目专属规则 | M4-01/M0-07/M4-06 | 五类来源均有 manifest、准入和 quarantine 测试 |
+| M4-07 | 🟡 | Built-in、External、Project、User、Workflow Skill catalog 与动态组件候选准入 | 来源、license、provenance、依赖、reversible registration 和权限边界可审计 | 管理可复用与项目专属规则 | M4-01/M0-07/M4-06 | 五类来源均有 manifest、准入和 quarantine 测试；DeepSeek Skill/plugin 与 Cordis dependency/lifecycle candidate 固定 provenance、license 和隔离边界；Cordis license 未决时保持 reference-only |
 | M4-08 | ⏳ | 项目初始化与用户习惯 Skill proposal | 从仓库、验证配置和显式偏好生成可审查候选 | 缩短接入并保持用户控制 | M4-07/M7-03 | proposal 可重现；未经批准不得 active |
 | M4-09 | ⏳ | role/operation-aware Skill resolver | Thinker、Executor、Verifier 和 provider 获得最小规则集 | 控制动作权限与上下文成本 | M3-04/M4-04/M4-07 | 选择优先级、冲突、expiry、replay fixture 全部通过 |
 | M4-10 | ⏳ | 官方 Skill、Agent Skills standard、GitHub 和 marketplace catalog adapter | 发现结果带直接 URL、revision、hash、license 和 trust tier | 智能复用外部能力并阻止未审查加载 | M4-07/M0-07 | official/standard/market/community 条目均可 snapshot、quarantine、replay |
@@ -288,13 +290,13 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
 |---|---|---|---|---|---|---|
 | M5-01 | ⏳ | Execution Packet composer | 当前叶包含任务、规则、证据、相关 Idea refs 和唯一 next action | 恢复成本与项目总历史解耦 | M3-03/M4-04 | packet 4-12 KB 且 canary 100% |
-| M5-02 | ⏳ | material event 滚动 checkpoint | PreCompact 提交增量 delta | 提高压缩速度 | M2-06 | PreCompact p95 < 500 ms |
-| M5-03 | ⏳ | PostCompact deterministic canary | 恢复错误在写代码前被阻断 | 保证一致性 | M5-01/M5-02 | decision/constraint/work 100% |
+| M5-02 | ⏳ | material event 滚动 checkpoint 与 provider compaction hook adapter | PreCompact 提交增量 delta；Pi hook 与 DeepSeek semantic checkpoint 进入统一 bracket | 提高压缩速度并固定 host 适配边界 | M2-06 | PreCompact p95 < 500 ms；Pi/DeepSeek shadow adapter 的 task revision/effect watermark 保留率 100%；provider-native authority 写入 0 |
+| M5-03 | ⏳ | PostCompact deterministic canary 与 host compaction 对照 | 恢复错误在写代码前被阻断；Pi cut point/split-turn 与 DeepSeek checkpoint/compaction 进入 fixture | 保证一致性 | M5-01/M5-02 | decision/constraint/work 100%；cut point、split-turn、checkpoint mismatch 故障 100% fail closed |
 | M5-04 | ⏳ | artifact ref 与 bounded expansion | 大输出按需展开 | 降低 token 和注意力污染 | M2-04 | prompt 保存摘要、引用和必要片段 |
-| M5-05 | ⏳ | token/cache/retrieval accounting | 形成成本与时延明细 | 以实测数据确定优化优先级 | M5-01 | provider 账单/trace 可对账 |
+| M5-05 | ⏳ | token/cache/retrieval 与 compaction accounting | 形成成本、时延、cut point 和 cache invalidation 明细 | 以实测数据确定优化优先级 | M5-01 | provider 账单/trace 可对账；Pi/DeepSeek token、KV cache、route-aware threshold 和 model-free pruning 对照使用同一 corpus/budget |
 | M5-06 | ⏳ | Idea-aware checkpoint 与 context return packet | 压缩、切换后可回到原任务 | 保留 return point、相关 Idea refs 和禁止副作用 | M3-06/M5-03 | 原任务恢复 100%；Idea 正文不复制进 packet；candidate Idea 不获得执行权限 |
 | M5-07 | ⏳ | Project dogfood compaction/input-routing/Skill/plan/delivery/multi-Agent observation emitter | 每次恢复、消息或 Idea 路由、Skill 选择、计划演进、Agent dispatch/handoff 和 accepted delivery 产生可比较事件 | 持续验证控制面是否真实优化自身研发与交付速度 | M0-09/M4-04/M5-05/M8-04 | eligible ingress 分母、active leaf/return point、路由/中断、Skill、目标 revision、multi-Agent dispatch/handoff 和 delivery 覆盖率 100%；visible compaction canary 在首个副作用前落盘；任一 veto 失败标记 regressed |
-| M5-08 | ⏳ | Continuation Cursor 与 anti-reset canary | 保存 last durable action、in-flight phase、已确认输入和恢复响应模式 | 压缩后从原子执行点继续并避免重复解释 | M2-02/M2-06/M5-01 | 首个 post-restore action 匹配率 100%；已确认事项重播 0；continuation fields 恢复 100%；恢复读取量有 receipt |
+| M5-08 | ⏳ | Continuation Cursor、durable operation state 与 anti-reset canary | 保存 last durable action、in-flight phase、已确认输入、reserved effect IDs、replay policy 和恢复响应模式 | 压缩后从原子执行点继续并避免重复解释 | M2-02/M2-06/M5-01 | 首个 post-restore action 匹配率 100%；已确认事项重播 0；Pi `op.state` 对照字段与 continuation fields 恢复 100%；恢复读取量有 receipt |
 
 ### M6 检索、代码图与 Recall Providers
 
@@ -323,12 +325,12 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 
 | ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
 |---|---|---|---|---|---|---|
-| M8-01 | ⏳ | DBOS checkpoint/effect workflow | 本地崩溃恢复和幂等 | 单机可靠运行 | M5-03 | SIGKILL/retry 重复副作用 0 |
+| M8-01 | ⏳ | DBOS checkpoint/effect workflow 与 harness crash fixture | 本地崩溃恢复和幂等；DeepSeek runnable checkpoint 与 Pi effect sandwich 形成对照矩阵 | 单机可靠运行 | M5-03 | SIGKILL/retry 重复副作用 0；intent/effect/settlement 各 crash point 与 DeepSeek checkpoint fixture 可重放 |
 | M8-02 | ⏳ | 共享 Work Ledger、lease、claim、scope ownership、heartbeat 和 expiry | 所有协作者看到同 revision active/completed work；过期或撤销 worker 可安全 reclaim | 团队协作并避免无感重复开发 | M3-04/M8-01 | 并发静默覆盖和重复 effect 为 0；第二个 claim/effect 前拦截重复 Work 100%；旧 worker revoke 后 effect 为 0；orphan 在 SLO 内 reclaim 100% |
 | M8-03 | ⏳ | Temporal 长流程与 Continue-As-New | 跨服务、长周期工作可 replay | 大型团队生产化 | M8-02 | replay/patch/versioning tests 通过 |
 | M8-04 | ⏳ | OTel `context.*` trace | 切换、压缩、检索、返工可观察 | 持续优化而非凭感觉 | M5-05 | trace 与 state revision 可关联 |
 | M8-05 | ⏳ | 权限、审计、tenant/project 隔离 | 协作者访问范围与授权一致 | 安全共享 | M2-05/M8-02 | 越权测试 100% 拒绝 |
-| M8-06 | ⏳ | Provider-neutral Harness Run、multi-Agent fan-out/fan-in 与 feedback-loop contract | model、packet、工具、权限、checkpoint、handoff、evidence、effect 和 trace 绑定同一 revision | 使 Codex/Claude host 与 worker 能力可替换和可回放 | M2-05/M4-05/M5-03/M8-04 | 双 provider replay 一致；executor effect 绑定有效 claim/lease/scope/revision 100%；handoff 首动作匹配 100%；worker loss 不改变权威状态 |
+| M8-06 | ⏳ | Provider-neutral Harness Run、durable operation、multi-Agent fan-out/fan-in 与 feedback-loop contract | model、packet、工具、权限、checkpoint、handoff、evidence、effect 和 trace 绑定同一 State revision | 使 Codex/Claude/DeepSeek host 与 worker 能力可替换和可回放 | M2-05/M4-05/M5-03/M8-04 | 双 provider replay 一致；Pi `op.state`、reserved IDs、`safe/never` replay 和 terminal cleanup oracle 通过；executor effect 绑定有效 claim/lease/scope/revision 100%；handoff 首动作匹配 100%；worker loss 与 provider durable log 均不改变 State MCP 权威状态 |
 | M8-07 | ⏳ | ProjectAdaptation observe/propose/shadow/approve/rollback loop | 项目和用户习惯可在安全边界内持续优化 | 使安装后的控制面随实测使用演进 | M5-07/M6-07/M7-04 | 未批准 proposal 激活率 0；相同 fixture/provider/budget 三次 A/B；回滚后 veto 指标恢复 |
 | M8-08 | ⏳ | GitHub/Gitea/GitLab forge collaboration adapter 与显式降级一致性 | 复用 Issue、PR、branch、assignee、review 和 CI 形成共享 Work 投影 | 普通开源团队零新增服务协作 | M2-07/M2-08/M8-02 | 至少 GitHub/Gitea 双 adapter replay；可见 Work/claim/evidence 映射 100%；remote ref 使用显式 expected value CAS；offline/unpublished work 不宣称唯一 claim |
 | M8-09 | ⏳ | unattended campaign dispatcher 与 `required/conditional/optional` obligation | 按 select -> CAS claim/lease -> execute -> verify -> complete/release -> next 持续推进 ready work | 在无人值守时完成所有可自动执行的必需工作并保留治理边界 | M3-08/M5-08/M8-02/M8-06 | 连续至少 3 个 required leaf 完成；automatable required closure 100%；optional 不阻塞；无 typed blocker 的 premature stop/ask 为 0；残留项只有 optional 或带 evidence/resume condition 的 blocker |
@@ -424,7 +426,7 @@ E1、E2、E4、E6、E8、E9 具有 veto 权限；平均得分、token 降幅和�
 
 ## 10. 当前执行路由
 
-M4-07 是当前 active leaf。M4-06 已建立 active-task rule-set lock、selected manifest digest、exact provider applicability/contract、live input/adapter surface 重算、candidate classification、gated composition entrypoint、evidence verifier、explicit migration 与 rollback。40 个变更样本中，未选中 metadata `8/8 compatible`，selected identity/provider contract `32/32 migration_required`，unauthorized gated composition `0/32`；四类 synthetic verifier-authorized migration 均可 deterministic replay 和 rollback，验收见 [`m4-06-skill-compatibility-acceptance-2026-08-11.md`](docs/migrations/m4-06-skill-compatibility-acceptance-2026-08-11.md)。M4-05 adapter 保持零外部副作用的本地 materializer；真实 provider dispatcher 的强制 authorization/State receipt、token/cache、规则遵循、context-window、压缩恢复、State revision/CAS、production evidence resolver 与 multi-Agent claim/lease 仍由 M5/M8 验收。M3-01 的内容依赖仍由 M2-09 的 Windows/macOS 原生 fixture 阻塞。
+M4-07 是当前 active leaf。M4-06 已建立 active-task rule-set lock、selected manifest digest、exact provider applicability/contract、live input/adapter surface 重算、candidate classification、gated composition entrypoint、evidence verifier、explicit migration 与 rollback。40 个变更样本中，未选中 metadata `8/8 compatible`，selected identity/provider contract `32/32 migration_required`，unauthorized gated composition `0/32`；四类 synthetic verifier-authorized migration 均可 deterministic replay 和 rollback，验收见 [`m4-06-skill-compatibility-acceptance-2026-08-11.md`](docs/migrations/m4-06-skill-compatibility-acceptance-2026-08-11.md)。M4-07 的 catalog fixture 纳入 DeepSeek Skill/plugin 和 Cordis dependency/lifecycle candidate，license 未决来源保持 reference-only。M4-05 adapter 保持零外部副作用的本地 materializer；真实 provider dispatcher 的强制 authorization/State receipt、token/cache、规则遵循、context-window、压缩恢复、State revision/CAS、production evidence resolver 与 multi-Agent claim/lease 仍由 M5/M8 验收。M3-01 的内容依赖仍由 M2-09 的 Windows/macOS 原生 fixture 阻塞。
 
 M1-05 已完成 16 个 E0-E9 contract fixture，验收见 `docs/migrations/m1-05-fault-coverage-acceptance-2026-08-09.md`。Runtime fault evidence 仍由 M2/M5/M8 提供。M1-04 已完成 40 个 fixture admission，验收见 `docs/migrations/m1-04-replay-fixture-acceptance-2026-08-09.md`。受控 archive 继续采用流式、区间化读取；原始 JSONL 和 source namespace key material 禁止进入 Git。M1-06 archive retention/export/delete 的离线验收见 `docs/migrations/m1-06-archive-governance-acceptance-2026-08-09.md`。
 

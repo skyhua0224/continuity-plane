@@ -171,7 +171,7 @@ schemas:
     current_wire_version: context.reference-catalog/v1alpha1
     supported_wire_versions: [context.reference-catalog/v1alpha1]
     artifact_path: profiles/reference-catalog.example.yaml
-    content_sha256: 706f10cf2e56e6256e68a64f49335bb07b57e08d4258d447361e75e10443e3e3
+    content_sha256: 2f9abf5ee693a73d12236ce751cc5d566cba4634421ad35148ac367acc3c41b3
     status: current
     compatibility_mode: profile-contract
     migrations: []
