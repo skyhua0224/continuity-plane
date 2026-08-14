@@ -523,14 +523,17 @@ class SQLiteStateStore:
                 if duplicate is not None:
                     raise SQLiteStateConflict("event identity already exists")
 
-                known_event_ids = {item["event_id"] for item in existing_events}
                 try:
                     restored = replay_state_events(
                         current_snapshot,
                         [event],
                         starting_sequence_no=expected_sequence,
                         previous_event_sha256=previous_hash,
-                        known_event_ids=known_event_ids,
+                        prior_events=(
+                            existing_events
+                            if event["supersedes_event_id"] is not None
+                            else None
+                        ),
                     )
                 except (StateEventError, TypedStateError) as exc:
                     raise SQLiteStateIntegrityError("state Event replay failed") from exc

@@ -259,10 +259,10 @@ def _validate_manifest(document: dict[str, Any]) -> ArtifactRef:
         or not document["captured_state_updated_at"]
     ):
         raise CheckpointIntegrityError("checkpoint captured timestamp is invalid")
-    expected_projection_digest = _projection_digest(
+    expected_projection_hash_value = _projection_digest(
         {field: copy.deepcopy(document[field]) for field in _PROJECTION_FIELDS}
     )
-    if document["critical_projection_sha256"] != expected_projection_digest:
+    if document["critical_projection_sha256"] != expected_projection_hash_value:
         raise CheckpointIntegrityError("checkpoint critical projection digest mismatch")
     return snapshot_ref
 
@@ -416,6 +416,115 @@ def restore_checkpoint(
         if manifest[field] != expected:
             raise CheckpointStaleError(f"checkpoint {field} is stale")
 
+    return RestoredCheckpoint(
+        checkpoint_ref=checkpoint_ref,
+        manifest=copy.deepcopy(manifest),
+        snapshot=copy.deepcopy(snapshot),
+    )
+
+
+def verify_historical_checkpoint(
+    checkpoint_ref: ArtifactRef,
+    artifact_store: LocalArtifactStore,
+    *,
+    binding: dict[str, Any],
+    expected_plan_sha256: str,
+    expected_registry_digest: str,
+    max_manifest_bytes: int = DEFAULT_MAX_MANIFEST_BYTES,
+    max_snapshot_bytes: int = DEFAULT_MAX_SNAPSHOT_BYTES,
+) -> RestoredCheckpoint:
+    """Verify an immutable past checkpoint without treating it as current state."""
+    expected_fields = {
+        "project_id",
+        "checkpoint_ref",
+        "checkpoint_revision",
+        "checkpoint_event_head",
+        "return_work_id",
+        "return_work_revision",
+    }
+    if not isinstance(binding, dict) or set(binding) != expected_fields:
+        raise CheckpointInputError("historical checkpoint binding fields are invalid")
+    try:
+        bound_ref = ArtifactRef.from_document(binding["checkpoint_ref"])
+    except (TypeError, ValueError) as exc:
+        raise CheckpointInputError("historical checkpoint_ref is invalid") from exc
+    if bound_ref != checkpoint_ref:
+        raise CheckpointStaleError("historical checkpoint ref is unrelated")
+    if not isinstance(binding["project_id"], str) or not binding["project_id"]:
+        raise CheckpointInputError("historical project_id is invalid")
+    if (
+        type(binding["checkpoint_revision"]) is not int
+        or binding["checkpoint_revision"] < 0
+        or type(binding["return_work_revision"]) is not int
+        or binding["return_work_revision"] < 0
+    ):
+        raise CheckpointInputError("historical checkpoint revisions are invalid")
+    if not isinstance(binding["return_work_id"], str) or not binding["return_work_id"]:
+        raise CheckpointInputError("historical return_work_id is invalid")
+    bound_head = _event_head(
+        binding["checkpoint_event_head"], error_type=CheckpointInputError
+    )
+    _sha256(expected_plan_sha256, "expected_plan_sha256", CheckpointInputError)
+    _sha256(expected_registry_digest, "expected_registry_digest", CheckpointInputError)
+
+    manifest_payload = _read_artifact(
+        artifact_store,
+        checkpoint_ref,
+        maximum_bytes=max_manifest_bytes,
+        field="historical checkpoint manifest",
+    )
+    manifest = _strict_json_document(manifest_payload, "historical checkpoint manifest")
+    snapshot_ref = _validate_manifest(manifest)
+    snapshot_payload = _read_artifact(
+        artifact_store,
+        snapshot_ref,
+        maximum_bytes=max_snapshot_bytes,
+        field="historical checkpoint snapshot",
+    )
+    snapshot = _strict_json_document(snapshot_payload, "historical checkpoint snapshot")
+    try:
+        validate_typed_state(snapshot)
+    except (TypeError, TypedStateError) as exc:
+        raise CheckpointIntegrityError(
+            "historical checkpoint snapshot violates typed state"
+        ) from exc
+    derived_projection = _critical_projection(
+        snapshot,
+        canonical_plan_sha256=manifest["canonical_plan_sha256"],
+        registry_digest=manifest["registry_digest"],
+        event_head=manifest["event_head"],
+    )
+    manifest_projection = {
+        field: copy.deepcopy(manifest[field]) for field in _PROJECTION_FIELDS
+    }
+    if derived_projection != manifest_projection:
+        raise CheckpointIntegrityError(
+            "historical checkpoint manifest and snapshot projection drift"
+        )
+
+    expected_manifest = {
+        "project_id": binding["project_id"],
+        "revision": binding["checkpoint_revision"],
+        "event_head": bound_head,
+        "canonical_plan_sha256": expected_plan_sha256,
+        "registry_digest": expected_registry_digest,
+    }
+    if any(manifest[field] != value for field, value in expected_manifest.items()):
+        raise CheckpointStaleError("historical checkpoint authority binding is stale")
+    work = next(
+        (
+            item
+            for item in snapshot["works"]
+            if item["work_id"] == binding["return_work_id"]
+        ),
+        None,
+    )
+    if (
+        work is None
+        or work["revision"] != binding["return_work_revision"]
+        or snapshot["project"]["primary_work_id"] != work["work_id"]
+    ):
+        raise CheckpointStaleError("historical return Work binding is stale")
     return RestoredCheckpoint(
         checkpoint_ref=checkpoint_ref,
         manifest=copy.deepcopy(manifest),
