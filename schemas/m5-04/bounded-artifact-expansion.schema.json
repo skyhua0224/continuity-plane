@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schemas/m5-04/bounded-artifact-expansion.schema.json",
+  "title": "Context Control Plane Bounded Artifact Expansion Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "expander_version", "artifact_ref", "returned_byte_budget", "scanned_byte_budget", "requested_bytes", "returned_bytes", "scanned_bytes", "prompt_bytes", "prompt_sha256", "ranges", "state_write_authority", "provider_native_authority"],
+  "properties": {
+    "schema_version": {"const": "context.bounded-artifact-expansion/v1alpha1"},
+    "expander_version": {"const": "context.bounded-artifact-expander/v1alpha1"},
+    "artifact_ref": {"$ref": "#/$defs/artifactRef"},
+    "returned_byte_budget": {"type": "integer", "minimum": 1},
+    "scanned_byte_budget": {"type": "integer", "minimum": 0},
+    "requested_bytes": {"type": "integer", "minimum": 0},
+    "returned_bytes": {"type": "integer", "minimum": 0},
+    "scanned_bytes": {"type": "integer", "minimum": 0},
+    "prompt_bytes": {"type": "integer", "minimum": 0},
+    "prompt_sha256": {"$ref": "#/$defs/sha256"},
+    "ranges": {"type": "array", "maxItems": 256, "items": {"$ref": "#/$defs/range"}},
+    "state_write_authority": {"const": false},
+    "provider_native_authority": {"const": false}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "id": {"type": "string", "minLength": 1, "maxLength": 256},
+    "artifactRef": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "digest_algorithm", "digest", "size_bytes", "artifact_uri"],
+      "properties": {
+        "schema_version": {"const": "context.artifact-ref/v1alpha1"},
+        "digest_algorithm": {"const": "sha-256"},
+        "digest": {"$ref": "#/$defs/sha256"},
+        "size_bytes": {"type": "integer", "minimum": 0},
+        "artifact_uri": {"type": "string", "pattern": "^artifact://sha256/[0-9a-f]{64}$"}
+      }
+    },
+    "range": {
+      "type": "object", "additionalProperties": false,
+      "required": ["purpose", "offset_bytes", "requested_bytes", "returned_bytes", "scanned_bytes", "output_sha256"],
+      "properties": {
+        "purpose": {"$ref": "#/$defs/id"},
+        "offset_bytes": {"type": "integer", "minimum": 0},
+        "requested_bytes": {"type": "integer", "minimum": 1},
+        "returned_bytes": {"type": "integer", "minimum": 0},
+        "scanned_bytes": {"type": "integer", "minimum": 0},
+        "output_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

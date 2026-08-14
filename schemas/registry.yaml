@@ -675,3 +675,43 @@ schemas:
     status: current
     compatibility_mode: strict-versioned
     migrations: []
+
+  - schema_id: context.bounded-artifact-expansion
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.bounded-artifact-expansion/v1alpha1
+    supported_wire_versions: [context.bounded-artifact-expansion/v1alpha1]
+    artifact_path: schemas/m5-04/bounded-artifact-expansion.schema.json
+    content_sha256: 05854d80def28ea7a6768a4417155ab6bf3d0efa65fc26ca50e1c55498a0f0e7
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.bounded-artifact-expansion-benchmark
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.bounded-artifact-expansion-benchmark/v1alpha1
+    supported_wire_versions: [context.bounded-artifact-expansion-benchmark/v1alpha1]
+    artifact_path: schemas/m5-04/bounded-artifact-expansion-benchmark.schema.json
+    content_sha256: 37b366a28e2c5311d27895d62ef18c1ddc45bc30663da477fb5d62c1bce24336
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.context-accounting
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.context-accounting/v1alpha1
+    supported_wire_versions: [context.context-accounting/v1alpha1]
+    artifact_path: schemas/m5-05/context-accounting.schema.json
+    content_sha256: a4e154a56b8bfce62443466d143d3c2c43e7ea963e1a9c684413ad00b5117471
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.context-accounting-benchmark
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.context-accounting-benchmark/v1alpha1
+    supported_wire_versions: [context.context-accounting-benchmark/v1alpha1]
+    artifact_path: schemas/m5-05/context-accounting-benchmark.schema.json
+    content_sha256: b053019b1104bf0934d59af10a1454f88601d947c1ecf8198a715ad79bee7106
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []

@@ -1,9 +1,9 @@
 # Verified State Evidence Index
 
-版本：8
+版本：9
 日期：2026-08-15  
 状态：generated evidence projection  
-source governance revision：53
+source governance revision：54
 state write authority：false
 
 ## 已验收任务
@@ -47,6 +47,8 @@ state write authority：false
 | M5-01 | [`m5-01-execution-packet-acceptance-2026-08-14.md`](../migrations/m5-01-execution-packet-acceptance-2026-08-14.md) |
 | M5-02 | [`m5-02-compaction-checkpoint-acceptance-2026-08-14.md`](../migrations/m5-02-compaction-checkpoint-acceptance-2026-08-14.md) |
 | M5-03 | [`m5-03-postcompact-canary-acceptance-2026-08-15.md`](../migrations/m5-03-postcompact-canary-acceptance-2026-08-15.md) |
+| M5-04 | [`m5-04-bounded-expansion-acceptance-2026-08-15.md`](../migrations/m5-04-bounded-expansion-acceptance-2026-08-15.md) |
+| M5-05 | [`m5-05-context-accounting-acceptance-2026-08-15.md`](../migrations/m5-05-context-accounting-acceptance-2026-08-15.md) |
 | M4-10 | [`m4-10-external-skill-source-acceptance-2026-08-12.md`](../migrations/m4-10-external-skill-source-acceptance-2026-08-12.md) |
 
 ## 非任务证据

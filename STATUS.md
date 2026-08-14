@@ -1,6 +1,6 @@
 # Context Control Plane Status
 
-版本：revision 53  
+版本：revision 54  
 日期：2026-08-15  
 canonical plan：`MASTER.md`
 
@@ -9,8 +9,8 @@ canonical plan：`MASTER.md`
 | 字段 | 值 |
 |---|---|
 | 当前 Campaign | M5 压缩与 Context Composition |
-| active work | M5-04：artifact ref 与 bounded expansion（🟡） |
-| next action | M5-04：验证总展开预算、range receipt、扫描量与 digest mismatch fail closed |
+| active work | M5-06：Idea-aware checkpoint 与 context return packet（🟡） |
+| next action | M5-06：把 candidate Idea、return point 和原任务恢复绑定到 M5-03 canary |
 | hard blocker | M3-01：待 M2-09 Windows/macOS 原生 live fixture |
 | repository mode | research / shadow pilot |
 | production state | local-embedded implemented / shadow pilot；shared production pilot planned |
@@ -30,8 +30,10 @@ canonical plan：`MASTER.md`
 | M5-01 Execution Packet | replay `1000/1000`；canary failures=0；authority=0；packet `4436 B`；p95 `0.517655 ms`；external=0 |
 | M5-02 checkpoint | replay `1000/1000`；delta `1093 B`；p50/p95/max `0.639104/0.666804/1.111154 ms`；mismatch/authority `0`；external=0 |
 | M5-03 PostCompact | restore `1000/1000`；critical recovery `100%`；fault reject `8000/8000`；p50/p95/max `1.06194/1.125964/1.980451 ms`；authority=0；external=0 |
-| Repository verification | M5-03 focused `10/10`；repository verifier pending current leaf close |
-| Governance authority | `MASTER.md` revision 53 |
+| M5-04 bounded expansion | `1000/1000`；returned max `88 B` ≤ budget `256 B`；budget/digest reject `2000/2000`；prompt reduction `942480/1000000`；external=0 |
+| M5-05 accounting | `1000/1000`；provider measured `0`；unavailable `2`；local metrics `5/route`；false claims `0`；p95 `0.295058 ms`；external=0 |
+| Repository verification | focused M5-03/04/05 `34/34`；M2-04 regression `20/20`；repository verifier passed |
+| Governance authority | `MASTER.md` revision 54 |
 
 ## 恢复入口
 

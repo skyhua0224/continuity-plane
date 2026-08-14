@@ -1,6 +1,6 @@
 # Context Control Plane MASTER
 
-版本：revision 53  
+版本：revision 54  
 日期：2026-08-15  
 状态：研究与 shadow pilot 准备阶段  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
@@ -294,9 +294,9 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | M5-01 | ✅ | Execution Packet composer | 当前叶包含任务、规则、证据、相关 Idea refs 和唯一 next action | 恢复成本与项目总历史解耦 | M3-03/M4-04 | packet 4-12 KB 且 canary 100%；`docs/migrations/m5-01-execution-packet-acceptance-2026-08-14.md` |
 | M5-02 | ✅ | material event 滚动 checkpoint 与 provider compaction hook adapter | PreCompact 提交增量 delta；Pi hook 与 DeepSeek semantic checkpoint 进入统一 bracket | 提高压缩速度并固定 host 适配边界 | M2-06/M5-01 | `1000/1000` replay；delta `1093 B`；PreCompact p95 `0.666804 ms`；watermark/replay/authority mismatch `0`；外部服务 `0`；验收见 `docs/migrations/m5-02-compaction-checkpoint-acceptance-2026-08-14.md` |
 | M5-03 | ✅ | PostCompact deterministic canary 与 host compaction 对照 | 恢复错误在写代码前被阻断；Pi cut point/split-turn 与 DeepSeek checkpoint/compaction 进入 fixture | 保证一致性 | M5-01/M5-02 | `1000/1000` restore；decision/constraint/work `100%`；`8000/8000` fault injection fail closed；p95 `1.125964 ms`；authority violation `0`；验收见 `docs/migrations/m5-03-postcompact-canary-acceptance-2026-08-15.md` |
-| M5-04 | 🟡 | artifact ref 与 bounded expansion | 大输出按需展开 | 降低 token 和注意力污染 | M2-04 | prompt 保存摘要、引用和必要片段 |
-| M5-05 | ⏳ | token/cache/retrieval 与 compaction accounting | 形成成本、时延、cut point 和 cache invalidation 明细 | 以实测数据确定优化优先级 | M5-01 | provider 账单/trace 可对账；Pi/DeepSeek token、KV cache、route-aware threshold 和 model-free pruning 对照使用同一 corpus/budget |
-| M5-06 | ⏳ | Idea-aware checkpoint 与 context return packet | 压缩、切换后可回到原任务 | 保留 return point、相关 Idea refs 和禁止副作用 | M3-06/M5-03 | 原任务恢复 100%；Idea 正文不复制进 packet；candidate Idea 不获得执行权限 |
+| M5-04 | ✅ | artifact ref 与 bounded expansion | 大输出按需展开 | 降低 token 和注意力污染 | M2-04 | `1000/1000` bounded expansion；returned bytes ≤ `256 B`（实测 max `88 B`）；预算/digest fault `2000/2000` fail closed；prompt bytes reduction `>0`；external=0；验收见 `docs/migrations/m5-04-bounded-expansion-acceptance-2026-08-15.md` |
+| M5-05 | ✅ | token/cache/retrieval 与 compaction accounting | 形成成本、时延、cut point 和 cache invalidation 明细 | 以实测数据确定优化优先级 | M5-01 | `1000/1000` accounting；provider measured `0`、unavailable `2`；local metrics `5/route`；false provider claims `0`；同 corpus/budget route replay `0`；验收见 `docs/migrations/m5-05-context-accounting-acceptance-2026-08-15.md` |
+| M5-06 | 🟡 | Idea-aware checkpoint 与 context return packet | 压缩、切换后可回到原任务 | 保留 return point、相关 Idea refs 和禁止副作用 | M3-06/M5-03 | 原任务恢复 100%；Idea 正文不复制进 packet；candidate Idea 不获得执行权限 |
 | M5-07 | ⏳ | Project dogfood compaction/input-routing/Skill/plan/delivery/multi-Agent observation emitter | 每次恢复、消息或 Idea 路由、Skill 选择、计划演进、Agent dispatch/handoff 和 accepted delivery 产生可比较事件 | 持续验证控制面是否真实优化自身研发与交付速度 | M0-09/M4-04/M5-05/M8-04 | eligible ingress 分母、active leaf/return point、路由/中断、Skill、目标 revision、multi-Agent dispatch/handoff 和 delivery 覆盖率 100%；visible compaction canary 在首个副作用前落盘；任一 veto 失败标记 regressed |
 | M5-08 | ⏳ | Continuation Cursor、durable operation state 与 anti-reset canary | 保存 last durable action、in-flight phase、已确认输入、reserved effect IDs、replay policy 和恢复响应模式 | 压缩后从原子执行点继续并避免重复解释 | M2-02/M2-06/M5-01 | 首个 post-restore action 匹配率 100%；已确认事项重播 0；Pi `op.state` 对照字段与 continuation fields 恢复 100%；恢复读取量有 receipt |
 

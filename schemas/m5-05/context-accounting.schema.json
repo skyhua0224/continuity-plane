@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schemas/m5-05/context-accounting.schema.json",
+  "title": "Context Control Plane Context Accounting Receipt",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "accounting_id", "corpus_id", "corpus_sha256", "budget_tokens", "routes", "provider_comparison_status", "real_provider_improvement_claimed", "byte_token_proxy_used", "state_write_authority", "provider_native_authority", "observed_at", "accounting_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.context-accounting/v1alpha1"}, "accounting_id": {"$ref": "#/$defs/id"}, "corpus_id": {"$ref": "#/$defs/id"}, "corpus_sha256": {"$ref": "#/$defs/sha256"}, "budget_tokens": {"type": "integer", "minimum": 1},
+    "routes": {"type": "array", "minItems": 2, "items": {"$ref": "#/$defs/route"}}, "provider_comparison_status": {"enum": ["measured", "unavailable"]}, "real_provider_improvement_claimed": {"type": "boolean"}, "byte_token_proxy_used": {"const": false}, "state_write_authority": {"const": false}, "provider_native_authority": {"const": false}, "observed_at": {"type": "string", "format": "date-time"}, "accounting_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"}, "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "metric": {"oneOf": [
+      {"type": "object", "additionalProperties": false, "required": ["status", "value", "unit", "source_kind", "evidence_ref", "unavailable_reason"], "properties": {"status": {"const": "unavailable"}, "value": {"type": "null"}, "unit": {"type": "string"}, "source_kind": {"type": "null"}, "evidence_ref": {"type": "null"}, "unavailable_reason": {"type": "string", "minLength": 1, "maxLength": 512}}},
+      {"type": "object", "additionalProperties": false, "required": ["status", "value", "unit", "source_kind", "evidence_ref", "unavailable_reason"], "properties": {"status": {"const": "measured"}, "value": {}, "unit": {"type": "string"}, "source_kind": {"enum": ["provider_trace", "retrieval_receipt", "monotonic_clock", "host_hook"]}, "evidence_ref": {"type": "string", "minLength": 1, "maxLength": 512}, "unavailable_reason": {"type": "null"}}}
+    ]},
+    "route": {"type": "object", "additionalProperties": false, "required": ["route_id", "provider_id", "route_threshold_tokens", "model_free_pruning", "metrics"], "properties": {"route_id": {"$ref": "#/$defs/id"}, "provider_id": {"$ref": "#/$defs/id"}, "route_threshold_tokens": {"type": "integer", "minimum": 1}, "model_free_pruning": {"type": "boolean"}, "metrics": {"type": "object", "additionalProperties": false, "required": ["input_tokens", "output_tokens", "cache_read_tokens", "cache_write_tokens", "billing_usd_micros", "retrieval_queries", "retrieval_read_bytes", "retrieval_output_bytes", "retrieval_latency_ms", "compaction_latency_ms", "cut_point_tokens", "cache_invalidated"], "properties": {"input_tokens": {"$ref": "#/$defs/metric"}, "output_tokens": {"$ref": "#/$defs/metric"}, "cache_read_tokens": {"$ref": "#/$defs/metric"}, "cache_write_tokens": {"$ref": "#/$defs/metric"}, "billing_usd_micros": {"$ref": "#/$defs/metric"}, "retrieval_queries": {"$ref": "#/$defs/metric"}, "retrieval_read_bytes": {"$ref": "#/$defs/metric"}, "retrieval_output_bytes": {"$ref": "#/$defs/metric"}, "retrieval_latency_ms": {"$ref": "#/$defs/metric"}, "compaction_latency_ms": {"$ref": "#/$defs/metric"}, "cut_point_tokens": {"$ref": "#/$defs/metric"}, "cache_invalidated": {"$ref": "#/$defs/metric"}}}}}
+  }
+}
