@@ -14,12 +14,14 @@ from .typed_state import TypedStateError, validate_typed_state
 
 LEGACY_EVENT_SCHEMA_VERSION = "context.state-event/v1alpha1"
 EVENT_SCHEMA_VERSION = "context.state-event/v2alpha1"
+EVENT_SCHEMA_VERSION_V3 = "context.state-event/v3alpha1"
 SUPPORTED_EVENT_SCHEMA_VERSIONS = {
     LEGACY_EVENT_SCHEMA_VERSION,
     EVENT_SCHEMA_VERSION,
+    EVENT_SCHEMA_VERSION_V3,
 }
 
-_EVENT_FIELDS = {
+_BASE_EVENT_FIELDS = {
     "schema_version",
     "event_id",
     "event_type",
@@ -37,6 +39,7 @@ _EVENT_FIELDS = {
     "project_after",
     "event_sha256",
 }
+_V3_EVENT_FIELDS = _BASE_EVENT_FIELDS | {"task_transition"}
 _CHANGE_FIELDS = {"collection", "object_id", "value"}
 _EVENT_TYPES = {"state-transition", "correction"}
 _COLLECTION_ID_FIELDS = {
@@ -54,6 +57,28 @@ _REVIVABLE_DECISION_STATUSES = {"proposed", "accepted"}
 _TERMINAL_WORK_STATUSES = {"completed", "rejected", "reverted", "superseded"}
 _REVIVABLE_WORK_STATUSES = {"proposed", "blocked", "ready", "active", "verifying"}
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+_TASK_TRANSITION_FIELDS = {
+    "route_decision_sha256",
+    "route_apply_request_sha256",
+    "route_kind",
+    "task_events",
+}
+_TASK_EVENT_FIELDS = {
+    "task_event_id",
+    "event_kind",
+    "work_id",
+    "work_revision",
+    "return_work_id",
+    "checkpoint_ref",
+    "related_event_id",
+}
+_ARTIFACT_REF_FIELDS = {
+    "schema_version",
+    "digest_algorithm",
+    "digest",
+    "size_bytes",
+    "artifact_uri",
+}
 
 
 class StateEventError(ValueError):
@@ -116,12 +141,110 @@ def _computed_event_sha256(event: dict[str, Any]) -> str:
     return hashlib.sha256(_event_payload_bytes(event)).hexdigest()
 
 
+def _validate_artifact_ref(value: Any, field: str) -> None:
+    if not isinstance(value, dict) or set(value) != _ARTIFACT_REF_FIELDS:
+        raise StateEventError(f"{field} fields do not match ArtifactRef")
+    if value["schema_version"] != "context.artifact-ref/v1alpha1":
+        raise StateEventError(f"{field}.schema_version is unsupported")
+    if value["digest_algorithm"] != "sha-256":
+        raise StateEventError(f"{field}.digest_algorithm must be sha-256")
+    digest = _sha256(value["digest"], f"{field}.digest")
+    _non_negative_integer(value["size_bytes"], f"{field}.size_bytes")
+    if value["artifact_uri"] != f"artifact://sha256/{digest}":
+        raise StateEventError(f"{field}.artifact_uri does not match digest")
+
+
+def _validate_task_transition(
+    transition: Any,
+    *,
+    event_type: str,
+    supersedes_event_id: str | None,
+) -> None:
+    if transition is None:
+        return
+    if not isinstance(transition, dict) or set(transition) != _TASK_TRANSITION_FIELDS:
+        raise StateEventError("task_transition fields do not match the contract")
+    _sha256(
+        transition["route_decision_sha256"],
+        "task_transition.route_decision_sha256",
+    )
+    _sha256(
+        transition["route_apply_request_sha256"],
+        "task_transition.route_apply_request_sha256",
+    )
+    route_kind = transition["route_kind"]
+    if route_kind not in {"child", "interrupt", "switch", "correction"}:
+        raise StateEventError("task_transition.route_kind is unsupported")
+    task_events = transition["task_events"]
+    if not isinstance(task_events, list) or not task_events:
+        raise StateEventError("task_transition.task_events must be non-empty")
+
+    seen_task_event_ids: set[str] = set()
+    for task_event in task_events:
+        if not isinstance(task_event, dict) or set(task_event) != _TASK_EVENT_FIELDS:
+            raise StateEventError("task event fields do not match the contract")
+        task_event_id = _non_empty_string(
+            task_event["task_event_id"], "task_event.task_event_id"
+        )
+        if task_event_id in seen_task_event_ids:
+            raise StateEventError("task_event_id must be unique")
+        seen_task_event_ids.add(task_event_id)
+        if task_event["event_kind"] not in {
+            "child_proposed",
+            "task_suspended",
+            "task_activated",
+            "correction_applied",
+        }:
+            raise StateEventError("task_event.event_kind is unsupported")
+        _non_empty_string(task_event["work_id"], "task_event.work_id")
+        _non_negative_integer(task_event["work_revision"], "task_event.work_revision")
+        _optional_string(task_event["return_work_id"], "task_event.return_work_id")
+        checkpoint_ref = task_event["checkpoint_ref"]
+        if checkpoint_ref is not None:
+            _validate_artifact_ref(checkpoint_ref, "task_event.checkpoint_ref")
+        _optional_string(task_event["related_event_id"], "task_event.related_event_id")
+
+    kinds = [task_event["event_kind"] for task_event in task_events]
+    work_ids = [task_event["work_id"] for task_event in task_events]
+    if route_kind == "child":
+        if kinds != ["child_proposed"] or event_type != "state-transition":
+            raise StateEventError("child route requires one child_proposed task event")
+    elif route_kind in {"interrupt", "switch"}:
+        if (
+            kinds != ["task_suspended", "task_activated"]
+            or len(work_ids) != 2
+            or work_ids[0] == work_ids[1]
+            or event_type != "state-transition"
+        ):
+            raise StateEventError(
+                "task_events must contain suspended old work then activated target"
+            )
+    elif route_kind == "correction":
+        if (
+            kinds != ["correction_applied"]
+            or event_type != "correction"
+            or supersedes_event_id is None
+        ):
+            raise StateEventError(
+                "correction route requires one correction_applied task event and supersedes"
+            )
+
+
 def validate_state_event(event: dict[str, Any]) -> None:
     """Validate one event independently of its position in a stream."""
-    if not isinstance(event, dict) or set(event) != _EVENT_FIELDS:
+    if not isinstance(event, dict) or set(event) not in (
+        _BASE_EVENT_FIELDS,
+        _V3_EVENT_FIELDS,
+    ):
         raise StateEventError("event fields do not match the contract")
-    if event["schema_version"] not in SUPPORTED_EVENT_SCHEMA_VERSIONS:
+    schema_version = event["schema_version"]
+    if schema_version not in SUPPORTED_EVENT_SCHEMA_VERSIONS:
         raise StateEventError("unsupported schema_version")
+    if schema_version == EVENT_SCHEMA_VERSION_V3:
+        if set(event) != _V3_EVENT_FIELDS:
+            raise StateEventError("v3 event fields do not match the contract")
+    elif set(event) != _BASE_EVENT_FIELDS:
+        raise StateEventError("legacy event fields do not match the contract")
 
     _non_empty_string(event["event_id"], "event.event_id")
     event_type = event["event_type"]
@@ -151,6 +274,15 @@ def validate_state_event(event: dict[str, Any]) -> None:
         raise StateEventError("state-transition cannot supersede an event")
     if event_type == "correction" and supersedes_event_id is None:
         raise StateEventError("correction requires supersedes_event_id")
+    if schema_version != EVENT_SCHEMA_VERSION_V3:
+        if "task_transition" in event:
+            raise StateEventError("v1/v2 events cannot contain task_transition")
+    else:
+        _validate_task_transition(
+            event["task_transition"],
+            event_type=event_type,
+            supersedes_event_id=supersedes_event_id,
+        )
 
     changes = event["changes"]
     if not isinstance(changes, list) or not changes:
@@ -202,21 +334,25 @@ def build_state_event(
     supersedes_event_id: str | None,
     changes: list[dict[str, Any]],
     project_after: dict[str, Any],
+    task_transition: dict[str, Any] | None = None,
     schema_version: str | None = None,
 ) -> dict[str, Any]:
     """Build a canonical event and bind its content hash."""
     if schema_version is None:
-        schema_version = (
-            EVENT_SCHEMA_VERSION
-            if any(
-                change.get("collection") == "works"
-                and "return_point_work_id" in change.get("value", {})
-                for change in changes
-            )
-            else LEGACY_EVENT_SCHEMA_VERSION
-        )
+        if task_transition is not None:
+            schema_version = EVENT_SCHEMA_VERSION_V3
+        elif any(
+            change.get("collection") == "works"
+            and "return_point_work_id" in change.get("value", {})
+            for change in changes
+        ):
+            schema_version = EVENT_SCHEMA_VERSION
+        else:
+            schema_version = LEGACY_EVENT_SCHEMA_VERSION
     if schema_version not in SUPPORTED_EVENT_SCHEMA_VERSIONS:
         raise StateEventError("unsupported event schema_version")
+    if task_transition is not None and schema_version != EVENT_SCHEMA_VERSION_V3:
+        raise StateEventError("task_transition requires v3 event schema")
     event = {
         "schema_version": schema_version,
         "event_id": event_id,
@@ -235,6 +371,8 @@ def build_state_event(
         "project_after": copy.deepcopy(project_after),
         "event_sha256": "0" * 64,
     }
+    if schema_version == EVENT_SCHEMA_VERSION_V3:
+        event["task_transition"] = copy.deepcopy(task_transition)
     event["event_sha256"] = _computed_event_sha256(event)
     validate_state_event(event)
     return event
@@ -294,6 +432,7 @@ def replay_state_events(
     starting_sequence_no: int = 1,
     previous_event_sha256: str | None = None,
     known_event_ids: set[str] | None = None,
+    prior_events: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Replay a contiguous event segment from an M2-01 snapshot."""
     if not isinstance(events, list):
@@ -311,6 +450,8 @@ def replay_state_events(
         "previous_event_sha256",
         optional=True,
     )
+    if known_event_ids is not None and prior_events is not None:
+        raise StateEventError("known_event_ids and prior_events are mutually exclusive")
     if known_event_ids is None:
         seen_event_ids: set[str] = set()
     elif not isinstance(known_event_ids, set) or any(
@@ -320,15 +461,40 @@ def replay_state_events(
         raise StateEventError("known_event_ids must be a set of non-empty strings")
     else:
         seen_event_ids = set(known_event_ids)
+    prior_event_by_id: dict[str, dict[str, Any]] = {}
+    superseded_event_ids: set[str] = set()
+    if prior_events is not None:
+        if not isinstance(prior_events, list):
+            raise StateEventError("prior_events must be a list")
+        for prior_event in prior_events:
+            validate_state_event(prior_event)
+            if prior_event["project_id"] != project_id:
+                raise StateEventError("prior Event project_id does not match the snapshot")
+            prior_event_id = prior_event["event_id"]
+            if prior_event_id in seen_event_ids:
+                raise StateEventError("prior Event identities must be unique")
+            seen_event_ids.add(prior_event_id)
+            prior_event_by_id[prior_event_id] = copy.deepcopy(prior_event)
+            if prior_event["supersedes_event_id"] is not None:
+                superseded_event_ids.add(prior_event["supersedes_event_id"])
+        if prior_events:
+            if prior_events[-1]["sequence_no"] != expected_sequence - 1:
+                raise StateEventError("prior Event sequence does not precede replay segment")
+            if prior_events[-1]["event_sha256"] != previous_event_sha256:
+                raise StateEventError("prior Event head does not match replay segment")
+            if prior_events[-1]["revision_after"] != expected_revision:
+                raise StateEventError("prior Event revision does not match snapshot")
+        elif expected_sequence != 1 or previous_event_sha256 is not None:
+            raise StateEventError("empty prior Event history does not match replay cursor")
 
     for event in events:
         validate_state_event(event)
-        expected_event_version = (
-            EVENT_SCHEMA_VERSION
+        allowed_event_versions = (
+            {EVENT_SCHEMA_VERSION, EVENT_SCHEMA_VERSION_V3}
             if state["schema_version"] == "context.typed-state/v2alpha1"
-            else LEGACY_EVENT_SCHEMA_VERSION
+            else {LEGACY_EVENT_SCHEMA_VERSION}
         )
-        if event["schema_version"] != expected_event_version:
+        if event["schema_version"] not in allowed_event_versions:
             raise StateEventError("event wire version does not match typed state")
         event_id = event["event_id"]
         if event_id in seen_event_ids:
@@ -344,6 +510,27 @@ def replay_state_events(
         supersedes_event_id = event["supersedes_event_id"]
         if supersedes_event_id is not None and supersedes_event_id not in seen_event_ids:
             raise StateEventError("supersedes_event_id must reference an earlier event")
+        if supersedes_event_id is not None:
+            if supersedes_event_id in superseded_event_ids:
+                raise StateEventError("correction lineage fork: target already superseded")
+            target_event = prior_event_by_id.get(supersedes_event_id)
+            if target_event is None:
+                raise StateEventError(
+                    "correction requires the superseded prior Event envelope"
+                )
+            target_keys = {
+                (change["collection"], change["object_id"])
+                for change in target_event["changes"]
+            }
+            changed_keys = {
+                (change["collection"], change["object_id"])
+                for change in event["changes"]
+            }
+            if not target_keys.intersection(changed_keys):
+                raise StateEventError(
+                    "correction changes must intersect superseded event changed keys"
+                )
+            superseded_event_ids.add(supersedes_event_id)
 
         for change in event["changes"]:
             _put_change(state, change)
@@ -354,6 +541,7 @@ def replay_state_events(
             raise StateEventError("event creates an invalid typed state graph") from exc
 
         seen_event_ids.add(event_id)
+        prior_event_by_id[event_id] = copy.deepcopy(event)
         previous_event_sha256 = event["event_sha256"]
         expected_revision = event["revision_after"]
         expected_sequence += 1
