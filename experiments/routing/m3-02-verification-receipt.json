@@ -1,0 +1,29 @@
+{
+  "artifacts": [
+    {"path": "context_control_plane/sticky_router.py", "content_sha256": "ca9d3f7e83dee037c9a5953db1852a0086da0bf8376c972af2f6c00c1852a4d2"},
+    {"path": "context_control_plane/sticky_router_benchmark.py", "content_sha256": "c8b2c98ffa3aff28d9c5465cdf2407977819c9a798ebc0789b35472f566a7309"},
+    {"path": "experiments/routing/m3-02-route-replay.json", "content_sha256": "f9bb99763e871cb5f1ab0ce2cf84cb7102b0c94d2ce343c8971653747e0dad5f"},
+    {"path": "experiments/routing/m3-02-sticky-router.yaml", "content_sha256": "8d88c618071cd7031aa7e42671cce0946e34dae418b7dfe95ed542f403e8e055"},
+    {"path": "schemas/m3-02/task-route-decision.schema.json", "content_sha256": "4a47cdf922fe12ad53e34997a124c8cd7513c2891a6eb46e1b5224f41490e250"},
+    {"path": "schemas/m3-02/task-route-request.schema.json", "content_sha256": "96a005d332a64606c99f07de7f07effa1597d1aa7b7ae6f4638967be0bff4f6b"},
+    {"path": "tests/test_m3_02_sticky_router.py", "content_sha256": "4ed3367865fbe2a404af341628db50a406b3a96521176477ae3edbe9de77907d"}
+  ],
+  "environment": {
+    "implementation": "CPython 3.14",
+    "platform": "Linux x86_64"
+  },
+  "generated_at": "2026-08-13T00:00:00Z",
+  "metrics": {
+    "active_leaf_preserved": 1000,
+    "deterministic_replays": 1000,
+    "max_route_latency_ms": 0.187436,
+    "p50_route_latency_ms": 0.053213,
+    "p95_route_latency_ms": 0.104553,
+    "requests_unchanged": true,
+    "sample_count": 1000,
+    "state_unchanged": true,
+    "unauthorized_switches": 0
+  },
+  "schema_version": "context.routing-verification/v1alpha1",
+  "task_id": "M3-02"
+}

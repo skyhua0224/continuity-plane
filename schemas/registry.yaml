@@ -375,3 +375,23 @@ schemas:
     status: current
     compatibility_mode: strict-versioned
     migrations: []
+
+  - schema_id: context.task-route-request
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.task-route-request/v1alpha1
+    supported_wire_versions: [context.task-route-request/v1alpha1]
+    artifact_path: schemas/m3-02/task-route-request.schema.json
+    content_sha256: 96a005d332a64606c99f07de7f07effa1597d1aa7b7ae6f4638967be0bff4f6b
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.task-route-decision
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.task-route-decision/v1alpha1
+    supported_wire_versions: [context.task-route-decision/v1alpha1]
+    artifact_path: schemas/m3-02/task-route-decision.schema.json
+    content_sha256: 4a47cdf922fe12ad53e34997a124c8cd7513c2891a6eb46e1b5224f41490e250
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
