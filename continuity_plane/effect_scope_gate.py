@@ -11,7 +11,10 @@ _SCOPE_KINDS = _PATH_KINDS | {"capability", "effect"}
 _PATH_OPERATION_PREFIXES = ("write-",)
 _CAPABILITY_OPERATIONS = {"record-correction"}
 _EFFECT_OPERATION_PREFIXES = ("deploy", "external-")
-_CURRENT_TYPED_STATE_VERSION = "context.typed-state/v2alpha1"
+_CURRENT_TYPED_STATE_VERSIONS = {
+    "context.typed-state/v2alpha1",
+    "context.typed-state/v3alpha1",
+}
 
 
 def _path_identity(scope: dict[str, str]) -> tuple[str | None, tuple[str, ...], str | None]:
@@ -151,7 +154,7 @@ def operation_scope_kinds(operation: str) -> set[str] | None:
 
 
 def _is_current_scope_contract(snapshot: dict[str, Any]) -> bool:
-    return snapshot.get("schema_version") == _CURRENT_TYPED_STATE_VERSION
+    return snapshot.get("schema_version") in _CURRENT_TYPED_STATE_VERSIONS
 
 
 def _legacy_scope_covers(owner: dict[str, str], requested: dict[str, str]) -> bool:

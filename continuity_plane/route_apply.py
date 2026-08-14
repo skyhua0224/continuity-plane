@@ -10,6 +10,7 @@ from typing import Any, Callable
 from .artifact_store import ArtifactRef, ArtifactStoreError
 from .checkpoint import CheckpointError, verify_historical_checkpoint
 from .effect_scope_gate import evaluate_claim_scope_gate
+from .experiment_lifecycle import evaluate_experiment_activation_gate
 from .state_events import (
     StateEventError,
     build_state_event,
@@ -439,6 +440,14 @@ def apply_route(
         target = next((item for item in candidate["works"] if item["work_id"] == request["target_work_id"]), None)
         if target is None or target["status"] != "ready" or target["kind"] not in {"work", "experiment"} or target["revision"] != request["target_work_revision"]:
             raise RouteApplyError("target Work is stale or not ready")
+        if target["kind"] == "experiment":
+            lifecycle_gate = evaluate_experiment_activation_gate(
+                candidate,
+                work_id=target["work_id"],
+                observed_at=clock(),
+            )
+            if lifecycle_gate["decision"] != "allow":
+                raise RouteApplyError(lifecycle_gate["reason"])
         rejection_reason = _target_rejection_reason(
             target,
             {item["work_id"]: item for item in candidate["works"]},
