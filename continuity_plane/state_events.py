@@ -9,10 +9,15 @@ import re
 from datetime import datetime
 from typing import Any
 
-from .typed_state import validate_typed_state
+from .typed_state import TypedStateError, validate_typed_state
 
 
-EVENT_SCHEMA_VERSION = "context.state-event/v1alpha1"
+LEGACY_EVENT_SCHEMA_VERSION = "context.state-event/v1alpha1"
+EVENT_SCHEMA_VERSION = "context.state-event/v2alpha1"
+SUPPORTED_EVENT_SCHEMA_VERSIONS = {
+    LEGACY_EVENT_SCHEMA_VERSION,
+    EVENT_SCHEMA_VERSION,
+}
 
 _EVENT_FIELDS = {
     "schema_version",
@@ -115,7 +120,7 @@ def validate_state_event(event: dict[str, Any]) -> None:
     """Validate one event independently of its position in a stream."""
     if not isinstance(event, dict) or set(event) != _EVENT_FIELDS:
         raise StateEventError("event fields do not match the contract")
-    if event["schema_version"] != EVENT_SCHEMA_VERSION:
+    if event["schema_version"] not in SUPPORTED_EVENT_SCHEMA_VERSIONS:
         raise StateEventError("unsupported schema_version")
 
     _non_empty_string(event["event_id"], "event.event_id")
@@ -197,10 +202,23 @@ def build_state_event(
     supersedes_event_id: str | None,
     changes: list[dict[str, Any]],
     project_after: dict[str, Any],
+    schema_version: str | None = None,
 ) -> dict[str, Any]:
     """Build a canonical event and bind its content hash."""
+    if schema_version is None:
+        schema_version = (
+            EVENT_SCHEMA_VERSION
+            if any(
+                change.get("collection") == "works"
+                and "return_point_work_id" in change.get("value", {})
+                for change in changes
+            )
+            else LEGACY_EVENT_SCHEMA_VERSION
+        )
+    if schema_version not in SUPPORTED_EVENT_SCHEMA_VERSIONS:
+        raise StateEventError("unsupported event schema_version")
     event = {
-        "schema_version": EVENT_SCHEMA_VERSION,
+        "schema_version": schema_version,
         "event_id": event_id,
         "event_type": event_type,
         "project_id": project_id,
@@ -257,6 +275,13 @@ def _put_change(state: dict[str, Any], change: dict[str, Any]) -> None:
             and current["status"] in _REVIVABLE_WORK_STATUSES
         ):
             raise StateEventError("terminal Work cannot be revived")
+        if collection == "works" and any(
+            previous[field] != current[field]
+            for field in ("kind", "parent_work_id", "dependency_ids")
+        ) and current["revision"] != previous["revision"] + 1:
+            raise StateEventError(
+                "Work revision must advance by one for a graph change"
+            )
         values[existing_index] = copy.deepcopy(current)
     else:
         values.append(copy.deepcopy(change["value"]))
@@ -298,6 +323,13 @@ def replay_state_events(
 
     for event in events:
         validate_state_event(event)
+        expected_event_version = (
+            EVENT_SCHEMA_VERSION
+            if state["schema_version"] == "context.typed-state/v2alpha1"
+            else LEGACY_EVENT_SCHEMA_VERSION
+        )
+        if event["schema_version"] != expected_event_version:
+            raise StateEventError("event wire version does not match typed state")
         event_id = event["event_id"]
         if event_id in seen_event_ids:
             raise StateEventError("event_id must be unique in a stream")
@@ -316,7 +348,10 @@ def replay_state_events(
         for change in event["changes"]:
             _put_change(state, change)
         state["project"] = copy.deepcopy(event["project_after"])
-        validate_typed_state(state)
+        try:
+            validate_typed_state(state)
+        except TypedStateError as exc:
+            raise StateEventError("event creates an invalid typed state graph") from exc
 
         seen_event_ids.add(event_id)
         previous_event_sha256 = event["event_sha256"]

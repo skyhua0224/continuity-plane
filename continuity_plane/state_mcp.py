@@ -21,7 +21,13 @@ from .state_store import (
     invoke_state_store,
     validate_state_store_adapter,
 )
-from .state_events import StateEventError, build_state_event, replay_state_events
+from .state_events import (
+    EVENT_SCHEMA_VERSION,
+    LEGACY_EVENT_SCHEMA_VERSION,
+    StateEventError,
+    build_state_event,
+    replay_state_events,
+)
 from .typed_state import TypedStateError
 
 
@@ -90,6 +96,14 @@ _ALL_COLLECTION_ID_FIELDS = {
     "claims": "claim_id",
     "effects": "effect_id",
 }
+
+
+def _event_schema_version(snapshot: dict[str, Any]) -> str:
+    return (
+        EVENT_SCHEMA_VERSION
+        if snapshot.get("schema_version") == "context.typed-state/v2alpha1"
+        else LEGACY_EVENT_SCHEMA_VERSION
+    )
 
 
 @dataclass(frozen=True)
@@ -819,6 +833,7 @@ class StateMCPService:
                 supersedes_event_id=None,
                 changes=changes,
                 project_after=candidate["project"],
+                schema_version=_event_schema_version(snapshot),
             )
             expected_snapshot = replay_state_events(
                 snapshot,
@@ -978,6 +993,7 @@ class StateMCPService:
                 supersedes_event_id=None,
                 changes=changes,
                 project_after=candidate["project"],
+                schema_version=_event_schema_version(snapshot),
             )
             expected_snapshot = replay_state_events(
                 snapshot,
@@ -1086,6 +1102,7 @@ class StateMCPService:
                 supersedes_event_id=arguments["supersedes_event_id"],
                 changes=changes,
                 project_after=candidate["project"],
+                schema_version=_event_schema_version(snapshot),
             )
             expected_snapshot = replay_state_events(
                 snapshot,
