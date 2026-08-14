@@ -7,6 +7,7 @@
     {"$ref": "#/$defs/commit_request"},
     {"$ref": "#/$defs/claim_request"},
     {"$ref": "#/$defs/effect_request"},
+    {"$ref": "#/$defs/effect_gate_request"},
     {"$ref": "#/$defs/response"}
   ],
   "$defs": {
@@ -111,6 +112,22 @@
         }
       ]
     },
+    "effect_gate_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "request_id", "project_id", "expected_revision", "effect_id", "work_id", "claim_id", "operation", "scope_ref"],
+      "properties": {
+        "schema_version": {"const": "context.state-mcp-request/v1alpha1"},
+        "request_id": {"type": "string", "minLength": 1, "maxLength": 200},
+        "project_id": {"type": "string", "minLength": 1, "maxLength": 200},
+        "expected_revision": {"type": "integer", "minimum": 0},
+        "effect_id": {"type": "string", "minLength": 1},
+        "work_id": {"type": "string", "minLength": 1},
+        "claim_id": {"type": "string", "minLength": 1},
+        "operation": {"type": "string", "minLength": 1},
+        "scope_ref": {"$ref": "#/$defs/scope_ref"}
+      }
+    },
     "event_head": {
       "type": "object",
       "additionalProperties": false,
@@ -143,6 +160,71 @@
         "revision": {"type": "integer", "minimum": 0},
         "event_head": {"$ref": "#/$defs/event_head"},
         "event": {"type": "object"},
+        "registry_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "capabilities": {"type": "object"}
+      }
+    },
+    "effect_scope_verdict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "decision", "read_only", "reason"],
+      "properties": {
+        "schema_version": {"const": "context.effect-scope-verdict/v1alpha1"},
+        "decision": {"enum": ["allow", "deny"]},
+        "read_only": {"type": "boolean"},
+        "reason": {
+          "enum": [
+            "authorized",
+            "stale_revision",
+            "inactive_work",
+            "work_not_ready",
+            "actor_not_owner",
+            "claim_mismatch",
+            "claim_revision_mismatch",
+            "actor_mismatch",
+            "claim_expired",
+            "scope_outside_work",
+            "scope_not_owned",
+            "scope_conflict",
+            "effect_scope_conflict",
+            "operation_invalid",
+            "scope_invalid",
+            "operation_scope_mismatch",
+            "effect_not_found",
+            "effect_not_pending",
+            "effect_provenance_mismatch",
+            "completion_actor_mismatch"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"decision": {"const": "allow"}},
+            "required": ["decision"]
+          },
+          "then": {
+            "properties": {
+              "read_only": {"const": false},
+              "reason": {"const": "authorized"}
+            }
+          },
+          "else": {
+            "properties": {
+              "read_only": {"const": true},
+              "reason": {"not": {"const": "authorized"}}
+            }
+          }
+        }
+      ]
+    },
+    "effect_gate_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verdict", "revision", "registry_digest", "capabilities"],
+      "properties": {
+        "verdict": {"$ref": "#/$defs/effect_scope_verdict"},
+        "revision": {"type": "integer", "minimum": 0},
         "registry_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
         "capabilities": {"type": "object"}
       }
@@ -191,6 +273,12 @@
                     "enum": ["context.state.commit", "context.state.claim", "context.state.effect"]
                   },
                   "result": {"$ref": "#/$defs/mutation_result"}
+                }
+              },
+              {
+                "properties": {
+                  "tool": {"const": "context.state.effect.gate"},
+                  "result": {"$ref": "#/$defs/effect_gate_result"}
                 }
               }
             ]
