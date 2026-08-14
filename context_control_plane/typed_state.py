@@ -8,7 +8,9 @@ from datetime import datetime
 from typing import Any
 
 
-SCHEMA_VERSION = "context.typed-state/v1alpha1"
+LEGACY_SCHEMA_VERSION = "context.typed-state/v1alpha1"
+SCHEMA_VERSION = "context.typed-state/v2alpha1"
+SUPPORTED_SCHEMA_VERSIONS = {LEGACY_SCHEMA_VERSION, SCHEMA_VERSION}
 
 _DOCUMENT_FIELDS = {
     "schema_version",
@@ -34,7 +36,7 @@ _PROJECT_FIELDS = {
     "effect_high_watermark",
     "updated_at",
 }
-_WORK_FIELDS = {
+_WORK_FIELDS_V1 = {
     "work_id",
     "kind",
     "title",
@@ -49,6 +51,14 @@ _WORK_FIELDS = {
     "evidence_ids",
     "blocker_ids",
     "revision",
+}
+_WORK_FIELDS_V2 = _WORK_FIELDS_V1 | {
+    "return_point_work_id",
+    "exit_criteria",
+    "attempt_budget",
+    "expires_at",
+    "promotion_target_work_id",
+    "mainline_authority",
 }
 _CLAIM_FIELDS = {
     "claim_id",
@@ -250,6 +260,123 @@ def _acyclic_supersedes(
             current = index[current][supersedes_field]
 
 
+def _assert_combined_work_graph_acyclic(
+    work_by_id: dict[str, dict[str, Any]],
+) -> None:
+    outgoing: dict[str, list[str]] = {work_id: [] for work_id in work_by_id}
+    indegree = {work_id: 0 for work_id in work_by_id}
+    for work_id, work in work_by_id.items():
+        targets = list(work["dependency_ids"])
+        if work["parent_work_id"] is not None:
+            targets.append(work["parent_work_id"])
+        for target in set(targets):
+            outgoing[work_id].append(target)
+            indegree[target] += 1
+
+    ready = [work_id for work_id, degree in indegree.items() if degree == 0]
+    visited = 0
+    while ready:
+        current = ready.pop()
+        visited += 1
+        for target in outgoing[current]:
+            indegree[target] -= 1
+            if indegree[target] == 0:
+                ready.append(target)
+    if visited != len(work_by_id):
+        raise TypedStateError("work combined-edge cycle is invalid")
+
+
+def _validate_work_graph_v2(work_by_id: dict[str, dict[str, Any]]) -> None:
+    _assert_combined_work_graph_acyclic(work_by_id)
+    children: dict[str, list[str]] = {work_id: [] for work_id in work_by_id}
+    roots: list[str] = []
+    for work_id, work in work_by_id.items():
+        parent_id = work["parent_work_id"]
+        if parent_id is None:
+            roots.append(work_id)
+        else:
+            children[parent_id].append(work_id)
+    entered: dict[str, int] = {}
+    exited: dict[str, int] = {}
+    clock = 0
+    stack: list[tuple[str, bool]] = [(root, False) for root in reversed(roots)]
+    while stack:
+        work_id, leaving = stack.pop()
+        if leaving:
+            exited[work_id] = clock
+            clock += 1
+            continue
+        entered[work_id] = clock
+        clock += 1
+        stack.append((work_id, True))
+        stack.extend((child, False) for child in reversed(children[work_id]))
+
+    def is_ancestor(ancestor_id: str, descendant_id: str) -> bool:
+        return (
+            entered[ancestor_id] < entered[descendant_id]
+            and exited[descendant_id] < exited[ancestor_id]
+        )
+
+    parent_kinds = {
+        "campaign": set(),
+        "goal": {"campaign", "goal"},
+        "work": {"goal", "work"},
+        "experiment": {"goal", "work", "experiment"},
+    }
+    for work_id, work in work_by_id.items():
+        parent_id = work["parent_work_id"]
+        if work["kind"] == "campaign":
+            if parent_id is not None:
+                raise TypedStateError("Campaign must be a work graph root")
+        elif parent_id is None:
+            raise TypedStateError("work graph contains an orphan")
+        elif work_by_id[parent_id]["kind"] not in parent_kinds[work["kind"]]:
+            raise TypedStateError("work graph parent kind is invalid")
+
+        return_point = _optional_string(
+            work["return_point_work_id"], "experiment.return_point_work_id"
+        )
+        exit_criteria = _strings(work["exit_criteria"], "experiment.exit_criteria")
+        attempt_budget = work["attempt_budget"]
+        expires_at = work["expires_at"]
+        promotion_target = _optional_string(
+            work["promotion_target_work_id"], "experiment.promotion_target_work_id"
+        )
+        authority = work["mainline_authority"]
+        if type(authority) is not bool:
+            raise TypedStateError("experiment.mainline_authority must be boolean")
+        if work["kind"] == "experiment":
+            if return_point is None or return_point not in work_by_id:
+                raise TypedStateError("experiment requires a valid return point")
+            if not is_ancestor(return_point, work_id):
+                raise TypedStateError("experiment return point must be an ancestor")
+            if not exit_criteria:
+                raise TypedStateError("experiment requires exit criteria")
+            if (
+                type(attempt_budget) is not int
+                or attempt_budget <= 0
+            ):
+                raise TypedStateError("experiment attempt budget must be positive")
+            _timestamp(expires_at, "experiment.expires_at")
+            if promotion_target is None or promotion_target not in work_by_id:
+                raise TypedStateError("experiment requires a valid promotion target")
+            if not is_ancestor(promotion_target, work_id):
+                raise TypedStateError("experiment promotion target must be an ancestor")
+            if authority:
+                raise TypedStateError("experiment cannot have mainline authority")
+            if not work_by_id[promotion_target]["mainline_authority"]:
+                raise TypedStateError("experiment promotion target requires mainline authority")
+        elif (
+            return_point is not None
+            or exit_criteria
+            or attempt_budget is not None
+            or expires_at is not None
+            or promotion_target is not None
+            or not authority
+        ):
+            raise TypedStateError("non-experiment cannot claim experiment authority")
+
+
 def _scope(value: Any, field: str) -> tuple[str, str]:
     scope = _fields(value, _SCOPE_FIELDS, field)
     kind = _enum(scope["scope_kind"], _SCOPE_KINDS, f"{field}.scope_kind")
@@ -260,7 +387,8 @@ def _scope(value: Any, field: str) -> tuple[str, str]:
 def validate_typed_state(document: dict[str, Any]) -> None:
     """Validate a complete M2-01 typed state snapshot."""
     document = _fields(document, _DOCUMENT_FIELDS, "document")
-    if document["schema_version"] != SCHEMA_VERSION:
+    schema_version = document["schema_version"]
+    if schema_version not in SUPPORTED_SCHEMA_VERSIONS:
         raise TypedStateError("unsupported schema_version")
 
     project = _fields(document["project"], _PROJECT_FIELDS, "project")
@@ -288,8 +416,9 @@ def validate_typed_state(document: dict[str, Any]) -> None:
     blockers = _objects(document["blockers"], "blockers")
     effects = _objects(document["effects"], "effects")
 
+    work_fields = _WORK_FIELDS_V2 if schema_version == SCHEMA_VERSION else _WORK_FIELDS_V1
     for item in works:
-        _fields(item, _WORK_FIELDS, "work")
+        _fields(item, work_fields, "work")
     for item in claims:
         _fields(item, _CLAIM_FIELDS, "claim")
     for item in ideas:
@@ -397,8 +526,15 @@ def validate_typed_state(document: dict[str, Any]) -> None:
         ):
             raise TypedStateError("completed work requires verified evidence")
     _acyclic_supersedes(work_by_id, "supersedes_work_id", "work")
+    if schema_version == SCHEMA_VERSION:
+        _validate_work_graph_v2(work_by_id)
 
     actual_active_work_ids = {item["work_id"] for item in works if item["status"] == "active"}
+    if schema_version == SCHEMA_VERSION and any(
+        work_by_id[work_id]["kind"] not in {"work", "experiment"}
+        for work_id in actual_active_work_ids
+    ):
+        raise TypedStateError("active work must be an executable leaf")
     if set(active_work_ids) != actual_active_work_ids:
         raise TypedStateError("project.active_work_ids must match active Work status")
     primary_work_id = _optional_string(project["primary_work_id"], "project.primary_work_id")

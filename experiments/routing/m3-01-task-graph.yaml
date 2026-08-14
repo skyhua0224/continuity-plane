@@ -1,0 +1,65 @@
+schema_version: context.task-graph/v1alpha1
+project_id: context-control-plane
+state_revision: 42
+root_ids: [campaign-m3]
+nodes:
+  - node_id: campaign-m3
+    work_revision: 1
+    kind: campaign
+    title: Task graph and routing
+    parent_id: null
+    dependency_ids: []
+    return_point_id: null
+    exit_criteria: []
+    attempt_budget: null
+    expiry: null
+    promotion_target_id: null
+    mainline_authority: true
+  - node_id: goal-routing
+    work_revision: 1
+    kind: goal
+    title: Preserve work across input and recovery
+    parent_id: campaign-m3
+    dependency_ids: []
+    return_point_id: null
+    exit_criteria: []
+    attempt_budget: null
+    expiry: null
+    promotion_target_id: null
+    mainline_authority: true
+  - node_id: work-router
+    work_revision: 1
+    kind: work
+    title: Implement the sticky router
+    parent_id: goal-routing
+    dependency_ids: []
+    return_point_id: null
+    exit_criteria: []
+    attempt_budget: null
+    expiry: null
+    promotion_target_id: null
+    mainline_authority: true
+  - node_id: work-evidence
+    work_revision: 1
+    kind: work
+    title: Verify routing evidence
+    parent_id: goal-routing
+    dependency_ids: []
+    return_point_id: null
+    exit_criteria: []
+    attempt_budget: null
+    expiry: null
+    promotion_target_id: null
+    mainline_authority: true
+  - node_id: experiment-classifier
+    work_revision: 1
+    kind: experiment
+    title: Evaluate bounded classifier fallback
+    parent_id: work-router
+    dependency_ids: []
+    return_point_id: work-router
+    exit_criteria: [classification matrix passes]
+    attempt_budget: 3
+    expiry: "2026-09-01T00:00:00Z"
+    promotion_target_id: work-router
+    mainline_authority: false

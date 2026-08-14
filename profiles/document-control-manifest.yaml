@@ -1,6 +1,6 @@
 schema_version: context.document-control-manifest/v1alpha1
 generated_at: '2026-08-14T00:00:00Z'
-governance_revision: 41
+governance_revision: 42
 documents:
 - document_id: agents
   path: AGENTS.md
@@ -12,7 +12,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/41
+    authority_ref: governance-event://master/revision/42
     supersedes: null
     affected_tasks:
     - M0-10
@@ -28,21 +28,21 @@ documents:
 - document_id: master
   path: MASTER.md
   category: governance
-  document_revision: 3
+  document_revision: 4
   authority:
     governance_authority: true
     active_state_authority: false
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/41
-    supersedes: context.document://master/revision/2
+    authority_ref: governance-event://master/revision/42
+    supersedes: context.document://master/revision/3
     supersedes_provenance:
-      git_commit: 51663f3b23a4dc4af31ba4be9e9d3f80066d64ca
-      manifest_sha256: 31f5efe2d83cea39ffc7137cbc5959498cfc048290d5893970b23c595b5605ef
-      content_sha256: 5103a2fa8651281b8966ec41894bf46b79fd050488149b4655f17d46593c9150
+      git_commit: 9d24dbe9d61ca595af51e7a4225ad9cfd255ea3a
+      manifest_sha256: 2dd1af1ee984ed19967516bf1e024d16bb804b2aba07828e853bc1f40af16ee9
+      content_sha256: 9065383a6ad2d4e96d27c8a590ddb8cdbf96e845adebbae1424fbcb768dbf709
     affected_tasks:
-    - M0-11
+    - M3-01
     next_review: null
   evidence_refs:
   - ref_id: master-evidence-1
@@ -53,9 +53,9 @@ documents:
     path: docs/migrations/m0-11-git-admission-acceptance-2026-08-12.md
     valid_until: null
     content_sha256: b04365cb9afd5ffc88b20b07d78cdde968eb5c04d18176a18685caade5bc7d52
-  content_sha256: 9065383a6ad2d4e96d27c8a590ddb8cdbf96e845adebbae1424fbcb768dbf709
+  content_sha256: 6b98200f4912693619df283a46ab6d961fa714d2f5014fa996d211c209e8d333
   metrics:
-    utf8_bytes: 53237
+    utf8_bytes: 53547
     section_count: 23
     local_link_count: 9
     external_link_count: 0
@@ -70,17 +70,17 @@ documents:
     controlled_action_entry: false
   change:
     change_type: projection
-    authority_ref: state-revision://repository/41
+    authority_ref: state-revision://repository/42
     supersedes: null
     affected_tasks:
     - M0-10
     next_review: null
   evidence_refs: []
   projection_binding:
-    source_state_revision: 41
+    source_state_revision: 42
     template_version: context.document-projection/v1alpha1
     state_write_authority: false
-    master_digest: 9065383a6ad2d4e96d27c8a590ddb8cdbf96e845adebbae1424fbcb768dbf709
+    master_digest: 6b98200f4912693619df283a46ab6d961fa714d2f5014fa996d211c209e8d333
     content_hash: 7122a327da3fb18eb4f12c922865b5f91914eb6181d066bf0bb6f4b4a4662410
   content_sha256: 7122a327da3fb18eb4f12c922865b5f91914eb6181d066bf0bb6f4b4a4662410
   metrics:
@@ -92,21 +92,21 @@ documents:
 - document_id: status
   path: STATUS.md
   category: routing
-  document_revision: 4
+  document_revision: 5
   authority:
     governance_authority: false
     active_state_authority: false
     controlled_action_entry: false
   change:
     change_type: status
-    authority_ref: governance-event://master/revision/41
-    supersedes: context.document://status/revision/3
+    authority_ref: governance-event://master/revision/42
+    supersedes: context.document://status/revision/4
     supersedes_provenance:
-      git_commit: 51663f3b23a4dc4af31ba4be9e9d3f80066d64ca
-      manifest_sha256: 31f5efe2d83cea39ffc7137cbc5959498cfc048290d5893970b23c595b5605ef
-      content_sha256: 046a5324286aa052314b299fef188f626816719012e33cc4ffb5e55edb731931
+      git_commit: 9d24dbe9d61ca595af51e7a4225ad9cfd255ea3a
+      manifest_sha256: 2dd1af1ee984ed19967516bf1e024d16bb804b2aba07828e853bc1f40af16ee9
+      content_sha256: 815845525e4d09c9bafdce384474cefe599f3b9a513a21074165ce4fb549bd83
     affected_tasks:
-    - M0-11
+    - M3-02
     next_review: null
   evidence_refs:
   - ref_id: status-evidence-1
@@ -117,9 +117,9 @@ documents:
     path: docs/migrations/m0-11-git-admission-acceptance-2026-08-12.md
     valid_until: null
     content_sha256: b04365cb9afd5ffc88b20b07d78cdde968eb5c04d18176a18685caade5bc7d52
-  content_sha256: 815845525e4d09c9bafdce384474cefe599f3b9a513a21074165ce4fb549bd83
+  content_sha256: 513fdbf77d321cb5309b0a99e24977191d60fb7c4a4ea104486ef8691660c140
   metrics:
-    utf8_bytes: 3828
+    utf8_bytes: 3848
     section_count: 4
     local_link_count: 1
     external_link_count: 0
@@ -134,7 +134,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/41
+    authority_ref: governance-event://master/revision/42
     supersedes: null
     affected_tasks:
     - M0-10
@@ -157,7 +157,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/41
+    authority_ref: governance-event://master/revision/42
     supersedes: null
     affected_tasks:
     - M0-10
@@ -180,7 +180,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/41
+    authority_ref: governance-event://master/revision/42
     supersedes: null
     affected_tasks:
     - M0-10
@@ -203,7 +203,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/41
+    authority_ref: governance-event://master/revision/42
     supersedes: null
     affected_tasks:
     - M0-10
@@ -219,21 +219,21 @@ documents:
 - document_id: docs-architecture-target-state
   path: docs/architecture/target-state.md
   category: architecture
-  document_revision: 2
+  document_revision: 3
   authority:
     governance_authority: false
     active_state_authority: false
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/41
-    supersedes: context.document://docs-architecture-target-state/revision/1
+    authority_ref: governance-event://master/revision/42
+    supersedes: context.document://docs-architecture-target-state/revision/2
     supersedes_provenance:
-      git_commit: 51663f3b23a4dc4af31ba4be9e9d3f80066d64ca
-      manifest_sha256: 31f5efe2d83cea39ffc7137cbc5959498cfc048290d5893970b23c595b5605ef
-      content_sha256: 2e603ec877e9f05bd9c47690a11ec753715d83a2fab6a264316b5a05627a5fec
+      git_commit: 9d24dbe9d61ca595af51e7a4225ad9cfd255ea3a
+      manifest_sha256: 2dd1af1ee984ed19967516bf1e024d16bb804b2aba07828e853bc1f40af16ee9
+      content_sha256: d515691b31a1058641996fa378e3d5f942842aa24b3b5137e53a0871f8f809e7
     affected_tasks:
-    - M0-11
+    - M3-01
     next_review: null
   evidence_refs:
   - ref_id: docs-architecture-target-state-evidence-1
@@ -244,7 +244,7 @@ documents:
     path: docs/migrations/m0-11-git-admission-acceptance-2026-08-12.md
     valid_until: null
     content_sha256: b04365cb9afd5ffc88b20b07d78cdde968eb5c04d18176a18685caade5bc7d52
-  content_sha256: d515691b31a1058641996fa378e3d5f942842aa24b3b5137e53a0871f8f809e7
+  content_sha256: f897574794623b7717542f1a1b0597d008c77965d0fee38005ea4964315e0e0e
   metrics:
     utf8_bytes: 12245
     section_count: 5
@@ -669,6 +669,29 @@ documents:
     local_link_count: 0
     external_link_count: 0
     reference_depth: 0
+- document_id: docs-migrations-m3-01-task-graph-acceptance-2026-08-14
+  path: docs/migrations/m3-01-task-graph-acceptance-2026-08-14.md
+  category: migration
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: verification-run://repository/30d5c15c76c0397ead2e880da174a9b965a1b0919af2750971562b995036bcaa
+    supersedes: null
+    affected_tasks:
+    - M3-01
+    next_review: task:M3-02
+  evidence_refs: []
+  content_sha256: 30d5c15c76c0397ead2e880da174a9b965a1b0919af2750971562b995036bcaa
+  metrics:
+    utf8_bytes: 3962
+    section_count: 5
+    local_link_count: 0
+    external_link_count: 0
+    reference_depth: 0
 - document_id: docs-migrations-m4-01-skill-manifest-set-acceptance-2026-08-10
   path: docs/migrations/m4-01-skill-manifest-set-acceptance-2026-08-10.md
   category: migration
@@ -886,7 +909,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/41
+    authority_ref: governance-event://master/revision/42
     supersedes: null
     affected_tasks:
     - M0-10
@@ -909,7 +932,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/41
+    authority_ref: governance-event://master/revision/42
     supersedes: null
     affected_tasks:
     - M0-10
@@ -932,7 +955,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/41
+    authority_ref: governance-event://master/revision/42
     supersedes: null
     affected_tasks:
     - M0-10
@@ -955,7 +978,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/41
+    authority_ref: governance-event://master/revision/42
     supersedes: null
     affected_tasks:
     - M0-10
@@ -978,7 +1001,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/41
+    authority_ref: governance-event://master/revision/42
     supersedes: null
     affected_tasks:
     - M0-10
@@ -1001,7 +1024,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/41
+    authority_ref: governance-event://master/revision/42
     supersedes: context.document://docs-policies-git-collaboration/revision/1
     supersedes_provenance:
       git_commit: 51663f3b23a4dc4af31ba4be9e9d3f80066d64ca
@@ -1032,7 +1055,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/41
+    authority_ref: governance-event://master/revision/42
     supersedes: null
     affected_tasks:
     - M0-10
@@ -1055,7 +1078,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/41
+    authority_ref: governance-event://master/revision/42
     supersedes: null
     affected_tasks:
     - M0-10
@@ -1078,7 +1101,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/41
+    authority_ref: governance-event://master/revision/42
     supersedes: null
     affected_tasks:
     - M0-10
@@ -1094,19 +1117,19 @@ documents:
 - document_id: docs-reports-verified-state
   path: docs/reports/verified-state.md
   category: report
-  document_revision: 2
+  document_revision: 3
   authority:
     governance_authority: false
     active_state_authority: false
     controlled_action_entry: false
   change:
     change_type: projection
-    authority_ref: state-revision://repository/41
-    supersedes: context.document://docs-reports-verified-state/revision/1
+    authority_ref: state-revision://repository/42
+    supersedes: context.document://docs-reports-verified-state/revision/2
     supersedes_provenance:
-      git_commit: 51663f3b23a4dc4af31ba4be9e9d3f80066d64ca
-      manifest_sha256: 31f5efe2d83cea39ffc7137cbc5959498cfc048290d5893970b23c595b5605ef
-      content_sha256: 92aee974bf97c131f4898402bdd99b2f3ff1a11fd6c8022c4b94e44aeb2b9696
+      git_commit: 9d24dbe9d61ca595af51e7a4225ad9cfd255ea3a
+      manifest_sha256: 2dd1af1ee984ed19967516bf1e024d16bb804b2aba07828e853bc1f40af16ee9
+      content_sha256: af9b961ec515e7899e24650e357fda3429af6fdbe44af80947226a110c14ae83
     affected_tasks:
     - M0-11
     next_review: null
@@ -1236,16 +1259,16 @@ documents:
     valid_until: null
     content_sha256: b04365cb9afd5ffc88b20b07d78cdde968eb5c04d18176a18685caade5bc7d52
   projection_binding:
-    source_state_revision: 41
+    source_state_revision: 42
     template_version: context.document-projection/v1alpha1
     state_write_authority: false
-    master_digest: 9065383a6ad2d4e96d27c8a590ddb8cdbf96e845adebbae1424fbcb768dbf709
-    content_hash: af9b961ec515e7899e24650e357fda3429af6fdbe44af80947226a110c14ae83
-  content_sha256: af9b961ec515e7899e24650e357fda3429af6fdbe44af80947226a110c14ae83
+    master_digest: 6b98200f4912693619df283a46ab6d961fa714d2f5014fa996d211c209e8d333
+    content_hash: 409c45aa781b5d0051ea6faaadeda8c2eb650875335ea948177983e6edffb686
+  content_sha256: 409c45aa781b5d0051ea6faaadeda8c2eb650875335ea948177983e6edffb686
   metrics:
-    utf8_bytes: 4473
+    utf8_bytes: 4588
     section_count: 2
-    local_link_count: 31
+    local_link_count: 32
     external_link_count: 0
     reference_depth: 1
 - document_id: docs-research-agent-harness-assessment-2026-08-09

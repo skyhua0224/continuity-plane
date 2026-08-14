@@ -207,24 +207,34 @@ schemas:
     migrations: []
 
   - schema_id: context.typed-state
-    current_semver: 1.0.0-alpha.1
-    current_wire_version: context.typed-state/v1alpha1
-    supported_wire_versions: [context.typed-state/v1alpha1]
-    artifact_path: schemas/m2-01/typed-state.schema.json
-    content_sha256: 7571a96ac34dce044f928312f01ba8885b91d141727e40f4c7b9899fa9009900
+    current_semver: 2.0.0-alpha.1
+    current_wire_version: context.typed-state/v2alpha1
+    supported_wire_versions: [context.typed-state/v1alpha1, context.typed-state/v2alpha1]
+    artifact_path: schemas/m3-01/typed-state-v2alpha1.schema.json
+    content_sha256: 3f5ac85614c5b61ba779fe23660012ac2ee9d5c6474d621c4992463a687268d3
     status: current
     compatibility_mode: strict-versioned
-    migrations: []
+    migrations:
+      - from: context.typed-state/v1alpha1
+        to: context.typed-state/v2alpha1
+        replay_passed: true
+        idempotent: true
+        rollback_ref: docs/migrations/m3-01-task-graph-acceptance-2026-08-14.md#rollback
 
   - schema_id: context.state-event
-    current_semver: 1.0.0-alpha.1
-    current_wire_version: context.state-event/v1alpha1
-    supported_wire_versions: [context.state-event/v1alpha1]
-    artifact_path: schemas/m2-02/state-event.schema.json
-    content_sha256: 6a6f968e8d1049aa0c016418d700969840722f5e27fa0ac85d0a7d2345ce511c
+    current_semver: 2.0.0-alpha.1
+    current_wire_version: context.state-event/v2alpha1
+    supported_wire_versions: [context.state-event/v1alpha1, context.state-event/v2alpha1]
+    artifact_path: schemas/m3-01/state-event-v2alpha1.schema.json
+    content_sha256: 8181cbfc55cf0dd327c719b537f776ae4d336f1831011b64ecb017d673e6de46
     status: current
     compatibility_mode: strict-versioned
-    migrations: []
+    migrations:
+      - from: context.state-event/v1alpha1
+        to: context.state-event/v2alpha1
+        replay_passed: true
+        idempotent: true
+        rollback_ref: docs/migrations/m3-01-task-graph-acceptance-2026-08-14.md#rollback
 
   - schema_id: context.state-store-capabilities
     current_semver: 1.0.0-alpha.1
@@ -352,6 +362,16 @@ schemas:
     supported_wire_versions: [context.git-admission-receipt/v1alpha1]
     artifact_path: schemas/m0-11/git-admission-receipt.schema.json
     content_sha256: 26b3a79259faffaa8bb9c0cdf0d4d8fdb007ab1dd8cf9436f9636cc53fd877ec
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.task-graph
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.task-graph/v1alpha1
+    supported_wire_versions: [context.task-graph/v1alpha1]
+    artifact_path: schemas/m3-01/task-graph.schema.json
+    content_sha256: 6cdf220f697b57273f5a79203695a259b21308819b16837404850b892752ac4f
     status: current
     compatibility_mode: strict-versioned
     migrations: []

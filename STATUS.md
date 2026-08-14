@@ -1,6 +1,6 @@
 # Context Control Plane Status
 
-版本：revision 41  
+版本：revision 42  
 日期：2026-08-14  
 canonical plan：`MASTER.md`
 
@@ -9,9 +9,9 @@ canonical plan：`MASTER.md`
 | 字段 | 值 |
 |---|---|
 | 当前 Campaign | M3 任务图与智能切换 |
-| active work | M3-01：Campaign/Goal/Work/Experiment DAG（🟡） |
-| next action | 为无环 Campaign/Goal/Work/Experiment graph、parent/return point/promotion 合同与孤儿分支建立失败测试 |
-| hard blocker | M3-01 完成门仍等待 M2-09 的 Windows/macOS 原生 live fixture |
+| active work | M3-02：sticky task router（🟡） |
+| next action | 在当前任务图之上验证 continue 优先、active leaf 粘性、显式 switch 和 route decision replay |
+| hard blocker | M3-01 已通过 Linux 离线图合同，但最终完成门仍等待 M2-09 的 Windows/macOS 原生 live fixture |
 | repository mode | research / shadow pilot |
 | production state | local-embedded implemented / shadow pilot；shared production pilot planned |
 
@@ -28,7 +28,7 @@ canonical plan：`MASTER.md`
 | Skill catalog/proposal/source adapters | M4-07、M4-08、M4-10 离线合同已验收；external active 0；DeepSeek/Pi/Cordis adoption 0 |
 | Project dogfood baseline | 27 次 compaction；Continuation Cursor 78/80；首动作不匹配和已确认事项重播各 2 次；provider context/token/latency 仍不可见 |
 | Repository verification | 731 tests 通过；28 个无 DSN PostgreSQL live tests skipped；repository verifier、Python compile、diff check 和文档 lifecycle benchmark 通过 |
-| Governance authority | `MASTER.md` revision 41 |
+| Governance authority | `MASTER.md` revision 42 |
 | Operational router | `STATUS.md` |
 
 ## 恢复入口

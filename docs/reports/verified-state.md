@@ -27,6 +27,7 @@ state write authority：false
 | M2-07 | [`m2-07-project-governance-profile-acceptance-2026-08-10.md`](../migrations/m2-07-project-governance-profile-acceptance-2026-08-10.md) |
 | M2-08 | [`m2-08-state-store-spi-acceptance-2026-08-10.md`](../migrations/m2-08-state-store-spi-acceptance-2026-08-10.md) |
 | M2-09 | [`m2-09-sqlite-state-store-acceptance-2026-08-10.md`](../migrations/m2-09-sqlite-state-store-acceptance-2026-08-10.md) |
+| M3-01 | [`m3-01-task-graph-acceptance-2026-08-14.md`](../migrations/m3-01-task-graph-acceptance-2026-08-14.md) |
 | M4-01 | [`m4-01-skill-manifest-set-acceptance-2026-08-10.md`](../migrations/m4-01-skill-manifest-set-acceptance-2026-08-10.md) |
 | M4-02 | [`m4-02-compiled-skill-packet-acceptance-2026-08-11.md`](../migrations/m4-02-compiled-skill-packet-acceptance-2026-08-11.md) |
 | M4-03 | [`m4-03-skill-drift-quarantine-acceptance-2026-08-11.md`](../migrations/m4-03-skill-drift-quarantine-acceptance-2026-08-11.md) |
