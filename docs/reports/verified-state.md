@@ -1,9 +1,9 @@
 # Verified State Evidence Index
 
-版本：9
+版本：10
 日期：2026-08-15  
 状态：generated evidence projection  
-source governance revision：54
+source governance revision：55
 state write authority：false
 
 ## 已验收任务
@@ -49,6 +49,10 @@ state write authority：false
 | M5-03 | [`m5-03-postcompact-canary-acceptance-2026-08-15.md`](../migrations/m5-03-postcompact-canary-acceptance-2026-08-15.md) |
 | M5-04 | [`m5-04-bounded-expansion-acceptance-2026-08-15.md`](../migrations/m5-04-bounded-expansion-acceptance-2026-08-15.md) |
 | M5-05 | [`m5-05-context-accounting-acceptance-2026-08-15.md`](../migrations/m5-05-context-accounting-acceptance-2026-08-15.md) |
+| M5-06 | [`m5-06-idea-return-packet-acceptance-2026-08-15.md`](../migrations/m5-06-idea-return-packet-acceptance-2026-08-15.md) |
+| M5-07 | [`m5-07-dogfood-emitter-acceptance-2026-08-15.md`](../migrations/m5-07-dogfood-emitter-acceptance-2026-08-15.md) |
+| M5-08 | [`m5-08-durable-continuation-acceptance-2026-08-15.md`](../migrations/m5-08-durable-continuation-acceptance-2026-08-15.md) |
+| M8-04 | [`m8-04-context-trace-acceptance-2026-08-15.md`](../migrations/m8-04-context-trace-acceptance-2026-08-15.md) |
 | M4-10 | [`m4-10-external-skill-source-acceptance-2026-08-12.md`](../migrations/m4-10-external-skill-source-acceptance-2026-08-12.md) |
 
 ## 非任务证据

@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schemas/m8-04/otel-export-receipt.schema.json",
+  "title": "Context Control Plane OTel Export Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "status",
+    "configured",
+    "attempted",
+    "exported_events",
+    "exporter_id",
+    "evidence_ref",
+    "unavailable_reason",
+    "authority"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.otel-export/v1alpha1"},
+    "status": {"enum": ["unavailable", "failed", "exported"]},
+    "configured": {"type": "boolean"},
+    "attempted": {"type": "boolean"},
+    "exported_events": {"type": "integer", "minimum": 0},
+    "exporter_id": {
+      "type": ["string", "null"],
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"
+    },
+    "evidence_ref": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^[^\\r\\n\\u0000]+$"
+    },
+    "unavailable_reason": {
+      "type": ["string", "null"],
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "authority": {"const": false}
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "status": {"const": "unavailable"},
+        "configured": {"const": false},
+        "attempted": {"const": false},
+        "exported_events": {"const": 0},
+        "exporter_id": {"type": "null"},
+        "evidence_ref": {"type": "null"},
+        "unavailable_reason": {"type": "string", "minLength": 1, "maxLength": 512}
+      }
+    },
+    {
+      "properties": {
+        "status": {"const": "failed"},
+        "configured": {"const": true},
+        "attempted": {"const": true},
+        "exported_events": {"const": 0},
+        "exporter_id": {"type": "null"},
+        "evidence_ref": {"type": "null"},
+        "unavailable_reason": {"type": "string", "minLength": 1, "maxLength": 512}
+      }
+    },
+    {
+      "properties": {
+        "status": {"const": "exported"},
+        "configured": {"const": true},
+        "attempted": {"const": true},
+        "exported_events": {"type": "integer", "minimum": 1},
+        "exporter_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"
+        },
+        "evidence_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512,
+          "pattern": "^[^\\r\\n\\u0000]+$"
+        },
+        "unavailable_reason": {"type": "null"}
+      }
+    }
+  ]
+}

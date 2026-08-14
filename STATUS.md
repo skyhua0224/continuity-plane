@@ -1,6 +1,6 @@
 # Context Control Plane Status
 
-版本：revision 54  
+版本：revision 55  
 日期：2026-08-15  
 canonical plan：`MASTER.md`
 
@@ -8,10 +8,10 @@ canonical plan：`MASTER.md`
 
 | 字段 | 值 |
 |---|---|
-| 当前 Campaign | M5 压缩与 Context Composition |
-| active work | M5-06：Idea-aware checkpoint 与 context return packet（🟡） |
-| next action | M5-06：把 candidate Idea、return point 和原任务恢复绑定到 M5-03 canary |
-| hard blocker | M3-01：待 M2-09 Windows/macOS 原生 live fixture |
+| 当前 Campaign | M6 检索、代码图与 Recall Providers |
+| active work | M6-01：有界检索路由（🟡） |
+| next action | M6-01：为 `rg -> Zoekt -> LSP -> SCIP -> RTFM` 建立问题分类、最小读取预算和 precision/recall/freshness 基线 |
+| hard blocker | 当前叶无；M3-01 的 Windows/macOS 原生 live fixture 保持 conditional |
 | repository mode | research / shadow pilot |
 | production state | local-embedded implemented / shadow pilot；shared production pilot planned |
 
@@ -20,20 +20,15 @@ canonical plan：`MASTER.md`
 | 对象 | 状态 |
 |---|---|
 | Evidence index | [`docs/reports/verified-state.md`](docs/reports/verified-state.md) |
-| Documentation lifecycle | M0-10 verified；High/Medium review 0；容量门通过 |
+| Documentation lifecycle | M0-10 verified；STATUS reduction `79.6651%`；MASTER section reduction `68.9812%`；High/Medium review 0 |
 | Git admission | M0-11 offline contract `25/25`；repository verifier 通过 |
 | Skill adapters | M4-07/08/10 done；external=0 |
-| Project dogfood | compaction=27；Cursor=78/80；first/replay=2/2；provider metrics unavailable |
-| M3-07 Idea review | `40/40`；dedupe/occurrence/packet=100%；protected/terminal/unverified=0；p95 `20.826929 ms` |
-| M3-08 continuation | `1000/1000`；negative `125/125`；6 faults=0；p95 `0.26578 ms` |
-| M4-09 Skill resolver | replay `1000/1000`；quarantine `125/125`；faults=0；reduction `33.3333%`；p95 `1.109641 ms`；external=0 |
-| M5-01 Execution Packet | replay `1000/1000`；canary failures=0；authority=0；packet `4436 B`；p95 `0.517655 ms`；external=0 |
-| M5-02 checkpoint | replay `1000/1000`；delta `1093 B`；p50/p95/max `0.639104/0.666804/1.111154 ms`；mismatch/authority `0`；external=0 |
-| M5-03 PostCompact | restore `1000/1000`；critical recovery `100%`；fault reject `8000/8000`；p50/p95/max `1.06194/1.125964/1.980451 ms`；authority=0；external=0 |
-| M5-04 bounded expansion | `1000/1000`；returned max `88 B` ≤ budget `256 B`；budget/digest reject `2000/2000`；prompt reduction `942480/1000000`；external=0 |
-| M5-05 accounting | `1000/1000`；provider measured `0`；unavailable `2`；local metrics `5/route`；false claims `0`；p95 `0.295058 ms`；external=0 |
-| Repository verification | focused M5-03/04/05 `34/34`；M2-04 regression `20/20`；repository verifier passed |
-| Governance authority | `MASTER.md` revision 54 |
+| Prior gates | M3-07/M3-08/M4-09 verified；replay and quarantine gates pass；details in evidence index |
+| M5-01..05 | all verified；packet/checkpoint/canary/bounded/accounting receipts pass；provider metrics remain unavailable where unexported |
+| M5-06..08 | all verified；replay `1000/1000`；Idea faults `6000/6000`；dogfood coverage/veto 100%；continuation fields/faults `10000/10000` |
+| M8-04 trace | `1000/1000`；`8000` events；eight-family coverage 100%；OTel unavailable `1000/1000` |
+| Repository verification | focused M5/M8-04 `99/99`；schema governance `23/23`；repository verifier passed |
+| Governance authority | `MASTER.md` revision 55 |
 
 ## 恢复入口
 
@@ -43,20 +38,15 @@ canonical plan：`MASTER.md`
 4. 组件选择和实验结论读 `docs/research/context-reliability-assessment-2026-08-09.md`。
 5. 当前代码或官方证据与历史 memory 冲突时，以当前证据为准。
 6. 需要历史完成证据时按 `docs/reports/verified-state.md` 的 task/evidence ref 有界展开。
-7. 压缩、Skill 选择或 MASTER revision 后按 `context.dogfood-observation/v1alpha1` 追加受控观察事件；仅在 schema/hash 变化或 validator 失败时重读完整 policy。
+7. 压缩、Skill 选择或 MASTER revision 后按 `context.dogfood-event/v1alpha1` 追加受控观察事件；仅在 schema/hash 变化或 validator 失败时重读完整 policy。
 8. 文档更新、拆分和 supersedes 按 `docs/policies/documentation-lifecycle.md`，恢复时只展开当前任务对应的最小合同。
 
 ## 当前控制门
 
 | 门 | 约束 |
 |---|---|
-| Raw archive access | 大型 rollout 采用流式、区间化读取 |
-| Source namespace | key material 只能由 secret manager/受保护文件/进程注入；Git 和公开记录只保留安全 key ID |
-| Historical memory | handoff、project memory 和聊天摘要保持 candidate 状态 |
-| Idea intake | 默认 capture-and-continue；明确 interrupt 先 checkpoint；未批准 Idea 不改变 active state |
-| Fixture admission | sanitizer、provenance、current-evidence verification 和 independent validator 全部通过后开放 |
-| External Skill activation | 需固定 revision/hash、license/provenance、权限检查、审批和 replay；外部 active 0 |
-| Reference adoption | 发现器只写 candidate/stale signal；承重 assertion 必须 current provenance 与 validator |
-| Platform boundary | Context Control Plane 通过外部 Project Profile 与 API 集成 |
-| Repository topology | modular、monolith、mixed 使用同一 core；Foundation Sunshine 当前按 monolith Profile 协作，模块边界不构成准入条件 |
-| Runtime profile | 默认 `local-embedded` 无独立数据库/daemon；Git remote 只触发 `forge-coordinated` proposal；PostgreSQL、Temporal、Docmost、OTel 均为 opt-in |
+| Data and memory | raw archive 流式读取；secret 只经受保护注入；memory/handoff 为 candidate |
+| Routing and admission | Idea 默认 capture-and-continue；fixture 需 sanitizer、provenance、current-evidence 和 validator |
+| Skills and evidence | 外部 Skill 固定 revision/hash/license/provenance 后 candidate-only；承重 assertion 需 current provenance |
+| Authority boundary | MASTER 为治理权威；Typed State/State MCP 管 active state；trace、memory、文档投影无绕过写权 |
+| Runtime and topology | modular/monolith/mixed 共用 core；默认 `local-embedded`；Git forge、PostgreSQL、Temporal、Docmost、OTel opt-in |

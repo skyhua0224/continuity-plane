@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schemas/m5-06/return-context-migration.schema.json",
+  "title": "Context Control Plane Return Context Migration Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "migration_id",
+    "project_id",
+    "return_work_id",
+    "from_project_revision",
+    "to_project_revision",
+    "from_canonical_plan_sha256",
+    "to_canonical_plan_sha256",
+    "from_registry_digest",
+    "to_registry_digest",
+    "authority_event_ref",
+    "authorization_ref",
+    "status",
+    "receipt_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.return-context-migration/v1alpha1"},
+    "migration_id": {"$ref": "#/$defs/id"},
+    "project_id": {"$ref": "#/$defs/id"},
+    "return_work_id": {"$ref": "#/$defs/id"},
+    "from_project_revision": {"type": "integer", "minimum": 0},
+    "to_project_revision": {"type": "integer", "minimum": 0},
+    "from_canonical_plan_sha256": {"$ref": "#/$defs/sha256"},
+    "to_canonical_plan_sha256": {"$ref": "#/$defs/sha256"},
+    "from_registry_digest": {"$ref": "#/$defs/sha256"},
+    "to_registry_digest": {"$ref": "#/$defs/sha256"},
+    "authority_event_ref": {"$ref": "#/$defs/id"},
+    "authorization_ref": {"$ref": "#/$defs/id"},
+    "status": {"const": "committed"},
+    "receipt_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}

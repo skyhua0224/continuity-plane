@@ -1,0 +1,215 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schemas/m5-06/idea-return-packet.schema.json",
+  "title": "Context Control Plane Idea Return Packet",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "composer_version",
+    "project_id",
+    "project_revision",
+    "governance_ref",
+    "canonical_plan_sha256",
+    "registry_digest",
+    "state_sha256",
+    "observed_at",
+    "active_leaf",
+    "historical_checkpoint",
+    "return_point",
+    "progress",
+    "idea_refs",
+    "next_action",
+    "governance_migration_ref",
+    "execution_gate",
+    "candidate_execution_authority",
+    "candidate_state_write_authority",
+    "state_write_authority",
+    "external_effect_authority",
+    "forbidden_without_state_mcp",
+    "packet_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.idea-return-packet/v1alpha1"},
+    "composer_version": {"const": "context.idea-return-packet-composer/v1alpha1"},
+    "project_id": {"$ref": "#/$defs/id"},
+    "project_revision": {"type": "integer", "minimum": 0},
+    "governance_ref": {"type": "string", "minLength": 1, "maxLength": 2048},
+    "canonical_plan_sha256": {"$ref": "#/$defs/sha256"},
+    "registry_digest": {"$ref": "#/$defs/sha256"},
+    "state_sha256": {"$ref": "#/$defs/sha256"},
+    "observed_at": {"type": "string", "format": "date-time", "maxLength": 64},
+    "active_leaf": {"$ref": "#/$defs/active_leaf"},
+    "historical_checkpoint": {"$ref": "#/$defs/historical_checkpoint"},
+    "return_point": {"$ref": "#/$defs/return_point"},
+    "progress": {"$ref": "#/$defs/progress"},
+    "idea_refs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/idea_ref"}
+    },
+    "next_action": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "pattern": "^[^\\r\\n\\u0000]+$"
+    },
+    "governance_migration_ref": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/migration_ref"}
+      ]
+    },
+    "execution_gate": {"const": "allow-original-task-only"},
+    "candidate_execution_authority": {"const": false},
+    "candidate_state_write_authority": {"const": false},
+    "state_write_authority": {"const": false},
+    "external_effect_authority": {"const": false},
+    "forbidden_without_state_mcp": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "prefixItems": [
+        {"const": "external-effect"},
+        {"const": "idea-activation"},
+        {"const": "state-write"},
+        {"const": "task-switch"}
+      ],
+      "items": false
+    },
+    "packet_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "id_array": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/id"}
+    },
+    "artifact_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "digest_algorithm",
+        "digest",
+        "size_bytes",
+        "artifact_uri"
+      ],
+      "properties": {
+        "schema_version": {"const": "context.artifact-ref/v1alpha1"},
+        "digest_algorithm": {"const": "sha-256"},
+        "digest": {"$ref": "#/$defs/sha256"},
+        "size_bytes": {"type": "integer", "minimum": 0},
+        "artifact_uri": {
+          "type": "string",
+          "pattern": "^artifact://sha256/[0-9a-f]{64}$"
+        }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope_kind", "scope_ref"],
+      "properties": {
+        "scope_kind": {"type": "string", "minLength": 1, "maxLength": 64},
+        "scope_ref": {"type": "string", "minLength": 1, "maxLength": 2048}
+      }
+    },
+    "active_leaf": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["work_id", "title", "status", "revision"],
+      "properties": {
+        "work_id": {"$ref": "#/$defs/id"},
+        "title": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "status": {"const": "active"},
+        "revision": {"type": "integer", "minimum": 0}
+      }
+    },
+    "historical_checkpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "checkpoint_ref",
+        "project_revision",
+        "return_work_id",
+        "return_work_revision",
+        "canary_sha256",
+        "authority_role"
+      ],
+      "properties": {
+        "checkpoint_ref": {"$ref": "#/$defs/artifact_ref"},
+        "project_revision": {"type": "integer", "minimum": 0},
+        "return_work_id": {"$ref": "#/$defs/id"},
+        "return_work_revision": {"type": "integer", "minimum": 0},
+        "canary_sha256": {"$ref": "#/$defs/sha256"},
+        "authority_role": {"const": "recovery-evidence-only"}
+      }
+    },
+    "return_point": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "work_id",
+        "historical_work_revision",
+        "current_work_revision"
+      ],
+      "properties": {
+        "work_id": {"$ref": "#/$defs/id"},
+        "historical_work_revision": {"type": "integer", "minimum": 0},
+        "current_work_revision": {"type": "integer", "minimum": 0}
+      }
+    },
+    "progress": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "decision_ids",
+        "constraint_ids",
+        "blocker_ids",
+        "evidence_ids",
+        "scope_refs"
+      ],
+      "properties": {
+        "decision_ids": {"$ref": "#/$defs/id_array"},
+        "constraint_ids": {"$ref": "#/$defs/id_array"},
+        "blocker_ids": {"$ref": "#/$defs/id_array"},
+        "evidence_ids": {"$ref": "#/$defs/id_array"},
+        "scope_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/scope"}
+        }
+      }
+    },
+    "idea_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["idea_id", "status", "return_work_id", "authority"],
+      "properties": {
+        "idea_id": {"$ref": "#/$defs/id"},
+        "status": {"enum": ["candidate", "proposed", "approved"]},
+        "return_work_id": {"$ref": "#/$defs/id"},
+        "authority": {"const": "candidate-only"}
+      }
+    },
+    "migration_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["migration_id", "receipt_sha256", "authority_event_ref"],
+      "properties": {
+        "migration_id": {"$ref": "#/$defs/id"},
+        "receipt_sha256": {"$ref": "#/$defs/sha256"},
+        "authority_event_ref": {"$ref": "#/$defs/id"}
+      }
+    }
+  }
+}

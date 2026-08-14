@@ -1,6 +1,6 @@
 # Context Control Plane MASTER
 
-版本：revision 54  
+版本：revision 55  
 日期：2026-08-15  
 状态：研究与 shadow pilot 准备阶段  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
@@ -228,7 +228,7 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | M0-06 | ✅ | 建立正式文档语言规范 | 规范使用稳定属性、权限和验收指标 | 保持长期文档一致性 | M0-02 | style policy 与文档审计通过 |
 | M0-07 | 🧑‍💻 | 建立 schema/version/release governance | 所有协议可演进和回放 | 保障 checkpoint 兼容性 | M0-02 | registry/hash、transition、migration/replay/rollback 和 quarantine 离线验收完成；runtime State MCP migration 待 M2 |
 | M0-08 | 🧑‍💻 | 建立 ReferenceSource/Snapshot lifecycle、candidate catalog 与 harness 采用评估 | 外部资料可持续发现、固定、刷新、失效和复用 | 让研究证据进入后续 schema、adapter 与实验 | M0-03/M0-06 | Codex/Claude、DeepSeek、Pi 和 Cordis 来源带 URL/revision/hash/license/refresh/adoption；7 个 catalog tests 通过；State/Watcher live integration 待后续阶段 |
-| M0-09 | 🧑‍💻 | 建立项目 self-dogfood observation protocol 与首个 baseline | 研发过程记录 compaction、Skill 装载、计划演进和质量门后的交付速度 | 以项目自身数据验证逐步优化 | M0-05/M0-07 | compaction、input routing、Skill load、plan revision、verification 和 delivery 可复核；首个 accepted work 基线 1,577 秒；自动 trace 待 M5/M8 |
+| M0-09 | ✅ | 建立项目 self-dogfood observation protocol 与首个 baseline | 研发过程记录 compaction、Skill 装载、计划演进和质量门后的交付速度 | 以项目自身数据验证逐步优化 | M0-05/M0-07 | 历史 baseline 与自动 `context.*` emitter 均可复核；M5-07 `8000` events、七类覆盖 100%、四类 veto `4000/4000`；provider 原生指标缺失时保持 `unavailable` |
 | M0-10 | ✅ | 建立文档分类、更新触发、容量预算、supersedes 和生成投影生命周期 | MASTER、STATUS、细分文档和投影保持可定位、可更新、可收敛 | 防止长期陈旧与无界扩展 | M0-05/M0-06/M0-07 | policy validator、STATUS 与 evidence 漂移、重复全文、过期引用、容量超限和权限故障测试通过；拆分后恢复字段 100% |
 | M0-11 | ✅ | 建立 Git branch/commit/PR/merge 与 staged admission 合同 | Git 集成边界可回放且不冒充权威状态 | 让单人、多 AI 和多人协作具有一致的审计与发布节奏 | M0-02/M0-03/M0-09 | packet/receipt strict schema、25/25 contract tests、index-only transcript/secret/private-path admission、fixture provenance revalidation、regular-merge replay 和 first-commit tree audit 通过 |
 | M0-12 | ✅ | 建立 provider-neutral CI Verification Profile、统一 verifier 与 Gitea required jobs | push/PR 自动执行 test、compile、data/schema/projection、privacy、benchmark 和 secret gates | 让本地开发、协作者与托管平台使用同一可复现验收边界 | M0-03/M0-07/M0-09 | 14 个 verifier 正反测试、102/102 repository tests、compile 和 Gitleaks 本地通过；push runs 1016/1017 与 pull_request run 1018 通过；`main` 禁止 direct/force push 并要求 4 个实测 status contexts |
@@ -296,15 +296,15 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | M5-03 | ✅ | PostCompact deterministic canary 与 host compaction 对照 | 恢复错误在写代码前被阻断；Pi cut point/split-turn 与 DeepSeek checkpoint/compaction 进入 fixture | 保证一致性 | M5-01/M5-02 | `1000/1000` restore；decision/constraint/work `100%`；`8000/8000` fault injection fail closed；p95 `1.125964 ms`；authority violation `0`；验收见 `docs/migrations/m5-03-postcompact-canary-acceptance-2026-08-15.md` |
 | M5-04 | ✅ | artifact ref 与 bounded expansion | 大输出按需展开 | 降低 token 和注意力污染 | M2-04 | `1000/1000` bounded expansion；returned bytes ≤ `256 B`（实测 max `88 B`）；预算/digest fault `2000/2000` fail closed；prompt bytes reduction `>0`；external=0；验收见 `docs/migrations/m5-04-bounded-expansion-acceptance-2026-08-15.md` |
 | M5-05 | ✅ | token/cache/retrieval 与 compaction accounting | 形成成本、时延、cut point 和 cache invalidation 明细 | 以实测数据确定优化优先级 | M5-01 | `1000/1000` accounting；provider measured `0`、unavailable `2`；local metrics `5/route`；false provider claims `0`；同 corpus/budget route replay `0`；验收见 `docs/migrations/m5-05-context-accounting-acceptance-2026-08-15.md` |
-| M5-06 | 🟡 | Idea-aware checkpoint 与 context return packet | 压缩、切换后可回到原任务 | 保留 return point、相关 Idea refs 和禁止副作用 | M3-06/M5-03 | 原任务恢复 100%；Idea 正文不复制进 packet；candidate Idea 不获得执行权限 |
-| M5-07 | ⏳ | Project dogfood compaction/input-routing/Skill/plan/delivery/multi-Agent observation emitter | 每次恢复、消息或 Idea 路由、Skill 选择、计划演进、Agent dispatch/handoff 和 accepted delivery 产生可比较事件 | 持续验证控制面是否真实优化自身研发与交付速度 | M0-09/M4-04/M5-05/M8-04 | eligible ingress 分母、active leaf/return point、路由/中断、Skill、目标 revision、multi-Agent dispatch/handoff 和 delivery 覆盖率 100%；visible compaction canary 在首个副作用前落盘；任一 veto 失败标记 regressed |
-| M5-08 | ⏳ | Continuation Cursor、durable operation state 与 anti-reset canary | 保存 last durable action、in-flight phase、已确认输入、reserved effect IDs、replay policy 和恢复响应模式 | 压缩后从原子执行点继续并避免重复解释 | M2-02/M2-06/M5-01 | 首个 post-restore action 匹配率 100%；已确认事项重播 0；Pi `op.state` 对照字段与 continuation fields 恢复 100%；恢复读取量有 receipt |
+| M5-06 | ✅ | Idea-aware checkpoint 与 context return packet | 压缩、切换后可回到原任务 | 保留 return point、相关 Idea refs 和禁止副作用 | M3-06/M5-03 | `1000/1000` replay；原任务与 return point 恢复 100%；Idea 正文复制和 candidate authority `0`；六类 fault `6000/6000`；packet `1983 B`；验收见 `docs/migrations/m5-06-idea-return-packet-acceptance-2026-08-15.md` |
+| M5-07 | ✅ | Project dogfood compaction/input-routing/Skill/plan/delivery/multi-Agent observation emitter | 每次恢复、消息或 Idea 路由、Skill 选择、计划演进、Agent dispatch/handoff 和 accepted delivery 产生可比较事件 | 持续验证控制面是否真实优化自身研发与交付速度 | M0-09/M4-04/M5-05/M8-04 | `1000/1000` replay、`8000` events；七类覆盖 `1000000/1000000`；四类 veto `4000/4000`；replay/authority/external `0`；验收见 `docs/migrations/m5-07-dogfood-emitter-acceptance-2026-08-15.md` |
+| M5-08 | ✅ | Continuation Cursor、durable operation state 与 anti-reset canary | 保存 last durable action、in-flight phase、已确认输入、reserved effect IDs、replay policy 和恢复响应模式 | 压缩后从原子执行点继续并避免重复解释 | M2-02/M2-06/M5-01 | `1000/1000` replay；continuation fields `10000/10000`；十类 fault `10000/10000`；首动作错配与已确认输入重播 `0`；恢复读取 `3328/4096 B`；验收见 `docs/migrations/m5-08-durable-continuation-acceptance-2026-08-15.md` |
 
 ## 7.7 M6 检索、代码图与 Recall Providers
 
 | ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
 |---|---|---|---|---|---|---|
-| M6-01 | ⏳ | 固化 `rg -> Zoekt -> LSP -> SCIP -> RTFM` 路由 | 按问题选择最小工具 | 减少重复全仓扫描 | M5-04 | E5 precision/recall/freshness 达标 |
+| M6-01 | 🟡 | 固化 `rg -> Zoekt -> LSP -> SCIP -> RTFM` 路由 | 按问题选择最小工具 | 减少重复全仓扫描 | M5-04 | 当前原子步骤：定义问题分类、路由选择字段和最小读取预算；退出条件：strict RetrievalReceipt fixture、三类 precision/recall/freshness 负向门与 E5 baseline 通过 |
 | M6-02 | ⏳ | CodeGraph 跨仓影响线索 | 图关系与精确检索联合使用 | 控制图索引遗漏风险 | M6-01 | 核心符号用 `rg/LSP` 双检 |
 | M6-03 | ⏳ | Recall Provider SPI | Mem0/Hindsight/Graphiti 可替换 | 新技术可消融和替换 | M2-05 | provider 503 不影响权威状态 |
 | M6-04 | ⏳ | memory 消融测试 | Provider 准入依据真实增益 | 建立可重复的组件准入机制 | M6-03 | 相对 no-memory 基线有显著收益且安全指标保持基线 |
@@ -330,7 +330,7 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | M8-01 | ⏳ | DBOS checkpoint/effect workflow 与 harness crash fixture | 本地崩溃恢复和幂等；DeepSeek runnable checkpoint 与 Pi effect sandwich 形成对照矩阵 | 单机可靠运行 | M5-03 | SIGKILL/retry 重复副作用 0；intent/effect/settlement 各 crash point 与 DeepSeek checkpoint fixture 可重放 |
 | M8-02 | ⏳ | 共享 Work Ledger、lease、claim、scope ownership、heartbeat 和 expiry | 所有协作者看到同 revision active/completed work；过期或撤销 worker 可安全 reclaim | 团队协作并避免无感重复开发 | M3-04/M8-01 | 并发静默覆盖和重复 effect 为 0；第二个 claim/effect 前拦截重复 Work 100%；旧 worker revoke 后 effect 为 0；orphan 在 SLO 内 reclaim 100% |
 | M8-03 | ⏳ | Temporal 长流程与 Continue-As-New | 跨服务、长周期工作可 replay | 大型团队生产化 | M8-02 | replay/patch/versioning tests 通过 |
-| M8-04 | ⏳ | OTel `context.*` trace | 切换、压缩、检索、返工可观察 | 持续优化而非凭感觉 | M5-05 | trace 与 state revision 可关联 |
+| M8-04 | ✅ | OTel `context.*` trace | 切换、压缩、检索、返工可观察 | 持续优化而非凭感觉 | M5-05 | local trace `1000/1000`、`8000` events、八类覆盖 100%；binding/hash/evidence/authority failure `0`；OTel 未配置 `1000/1000 unavailable`；验收见 `docs/migrations/m8-04-context-trace-acceptance-2026-08-15.md` |
 | M8-05 | ⏳ | 权限、审计、tenant/project 隔离 | 协作者访问范围与授权一致 | 安全共享 | M2-05/M8-02 | 越权测试 100% 拒绝 |
 | M8-06 | ⏳ | Provider-neutral Harness Run、durable operation、multi-Agent fan-out/fan-in 与 feedback-loop contract | model、packet、工具、权限、checkpoint、handoff、evidence、effect 和 trace 绑定同一 State revision | 使 Codex/Claude/DeepSeek host 与 worker 能力可替换和可回放 | M2-05/M4-05/M5-03/M8-04 | 双 provider replay 一致；Pi `op.state`、reserved IDs、`safe/never` replay 和 terminal cleanup oracle 通过；executor effect 绑定有效 claim/lease/scope/revision 100%；handoff 首动作匹配 100%；worker loss 与 provider durable log 均不改变 State MCP 权威状态 |
 | M8-07 | ⏳ | ProjectAdaptation observe/propose/shadow/approve/rollback loop | 项目和用户习惯可在安全边界内持续优化 | 使安装后的控制面随实测使用演进 | M5-07/M6-07/M7-04 | 未批准 proposal 激活率 0；相同 fixture/provider/budget 三次 A/B；回滚后 veto 指标恢复 |

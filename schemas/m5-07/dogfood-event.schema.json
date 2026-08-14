@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m5-07/dogfood-event.schema.json",
+  "title": "Context Control Plane dogfood observation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "observation_id", "event_kind", "subject_id", "active_work_before", "active_work_after", "return_point_work_id", "route", "interrupted", "candidate_only", "acknowledged_input_replayed", "first_action_match", "target_revision", "canary_sequence", "first_side_effect_sequence", "provider_metrics_status", "evidence_refs", "trace_event_id", "trace_event_name", "trace_event_sha256", "observed_at", "state_write_authority", "provider_native_authority", "observation_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.dogfood-event/v1alpha1"},
+    "observation_id": {"$ref": "#/$defs/id"},
+    "event_kind": {"enum": ["input-routing", "compaction", "skill-selection", "plan-revision", "agent-dispatch", "agent-handoff", "delivery"]},
+    "subject_id": {"$ref": "#/$defs/id"},
+    "active_work_before": {"$ref": "#/$defs/id"},
+    "active_work_after": {"$ref": "#/$defs/id"},
+    "return_point_work_id": {"$ref": "#/$defs/id"},
+    "route": {"type": ["string", "null"], "enum": [null, "continue", "capture-and-continue", "interrupt", "switch", "correction", "status"]},
+    "interrupted": {"type": "boolean"},
+    "candidate_only": {"type": "boolean"},
+    "acknowledged_input_replayed": {"type": "boolean"},
+    "first_action_match": {"type": "boolean"},
+    "target_revision": {"type": "integer", "minimum": 0},
+    "canary_sequence": {"type": ["integer", "null"], "minimum": 1},
+    "first_side_effect_sequence": {"type": ["integer", "null"], "minimum": 1},
+    "provider_metrics_status": {"enum": ["measured", "unavailable"]},
+    "evidence_refs": {"type": "array", "minItems": 1, "maxItems": 64, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 512}},
+    "trace_event_id": {"$ref": "#/$defs/id"},
+    "trace_event_name": {"type": "string", "pattern": "^context\\.dogfood\\.[a-z][a-z0-9-]*$"},
+    "trace_event_sha256": {"$ref": "#/$defs/sha256"},
+    "observed_at": {"type": "string", "format": "date-time"},
+    "state_write_authority": {"const": false},
+    "provider_native_authority": {"const": false},
+    "observation_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

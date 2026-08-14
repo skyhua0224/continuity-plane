@@ -1,22 +1,22 @@
 schema_version: context.document-lifecycle-benchmark/v1alpha1
-generated_at: '2026-08-15T04:00:00Z'
+generated_at: '2026-08-15T07:00:00Z'
 metrics:
   baseline_status_utf8_bytes: 15884
-  current_status_utf8_bytes: 4407
-  status_bytes_reduction_percent: 72.2551
+  current_status_utf8_bytes: 3230
+  status_bytes_reduction_percent: 79.6651
   baseline_master_max_section_utf8_bytes: 28976
   current_master_max_section_utf8_bytes: 8988
   master_max_section_reduction_percent: 68.9812
   recovery_fields_total: 5
   recovery_fields_recovered: 5
-  managed_document_count: 68
+  managed_document_count: 72
 provenance:
   baseline_git_ref: ed0873319b94f0a5cbac6b8a9815e9837f3ef2e1
   baseline_status_path: STATUS.md
   baseline_master_path: MASTER.md
-  current_status_sha256: 131de5e65e6b71ec5a6fc38aaaeb5d2d976f7e8e011bd0170ac4d48bb14ecf69
-  current_master_sha256: 323b167e882de0efa119fcf5018755449060db63303fe339b0c0f9297f479930
-  manifest_sha256: 3eb90d76978ecd222f60b30dba108ebf3573ad3afc152681b306a98144f4c34a
+  current_status_sha256: e64180b50a65f045959960779c7723c5087c4acdc675302885bbc99a6a9cbb3f
+  current_master_sha256: 5af2f3542bf252187aa3c3023a98ddc8c7e0e536bc92c1c35d6d9f75306887ab
+  manifest_sha256: 291eafa24ef90dda2be94e43400f4fb797b79a426f1526a843387a533030b39e
   implementation_sha256: f24704a6120c89c3cfd0265020b6d81f4f5c8bd66c0c067ad88330b7a7fdff56
   benchmark_implementation_sha256: c8c57319ae875dbc18ecee48dfbf32f30ff8a28845f69b472417693087a8348e
   benchmark_config_sha256: bf7d78a7e313a71e47b6eb9a052bddcbfa02e0a56e7f5735505f562720b94bd6
