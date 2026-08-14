@@ -1,6 +1,6 @@
 # Context Control Plane Status
 
-版本：revision 36  
+版本：revision 38  
 日期：2026-08-14  
 canonical plan：`MASTER.md`
 
@@ -8,9 +8,9 @@ canonical plan：`MASTER.md`
 
 | 字段 | 值 |
 |---|---|
-| 当前 Campaign | M4 Skill 控制面 |
-| active work | M4-10：官方 Skill、Agent Skills standard、GitHub 和 marketplace catalog adapter（🟡） |
-| next action | 先为 official/standard/verified-organization/marketplace-community 四类 source snapshot 写 pinned revision、hash、license、trust tier、quarantine 和 deterministic replay 失败测试 |
+| 当前 Campaign | M0 仓库与治理 |
+| active work | M0-10：文档分类、更新触发、容量预算、supersedes 和生成投影生命周期 validator（🟡） |
+| next action | 为 STATUS/evidence 漂移、重复全文、过期引用、容量超限和文档权限边界写失败测试，再实现 repository validator |
 | hard blocker | active leaf 无；M3-01 仍等待 M2-09 的 Windows/macOS 原生 live fixture |
 | repository mode | research / shadow pilot |
 | production state | local-embedded implemented / shadow pilot；shared production pilot planned |
@@ -39,6 +39,7 @@ canonical plan：`MASTER.md`
 | M4-06 Skill compatibility | lock/decision/migration/probe strict schema、selected manifest digest、exact provider applicability/contract-to-surface binding、live input/adapter identity 重算、evidence verifier、canonical replay/rollback、gated composition entrypoint 和 40 样本 fault matrix 通过；unselected metadata `8/8 compatible`，selected identity/provider contract `32/32 migration_required`，unauthorized gated composition `0/32`，synthetic verifier-authorized migration `4/4`，missing verifier/evidence/wrong binding allowed `0/4`，replay/rollback mismatch `0/4`，assessment p95 `0.8320 ms`；M4-05 materializer 与 provider process/network/State commit 均无外部副作用；验收见 `docs/migrations/m4-06-skill-compatibility-acceptance-2026-08-11.md` |
 | M4-07 Skill catalog | `context.skill-catalog/v1alpha1` strict schema、registry hash、manifest/source/license/provenance/approval/verification/permission binding、五类来源 `5/5` 合法 entry、18/18 admission/quarantine 负变体、candidate projection、canonical manifest digest 的 M4-06 exact identity binding `1/1`、manifest metadata/content/status drift rejection 和 canonical fixture `1/1` 通过；18/18 定向测试；固定 fixture 200 次 validator p50 `0.0107 ms`、p95 `0.0140 ms`、max `0.1231 ms`；验收见 `docs/migrations/m4-07-skill-catalog-acceptance-2026-08-11.md` |
 | M4-08 Skill proposal | `context.skill-proposal/v1alpha1` strict schema、M4-01 manifest schema reuse、64 KiB preflight/canonical input、16,384 Unicode scalar/64 KiB UTF-8 content 与 128 KiB output bound、strict SemVer/ID/timestamp gate、set-like input canonicalization、Verification Profile license policy、Project/User provenance isolation、expected-time-bound replay verifier、candidate-only body asset、registry hash 和 live-regenerated fixture 通过；34/34 定向测试；200 次 replay mismatch `0`，40/40 project-fact 变体 fingerprint/content digest 唯一，权限真值 `0`；M4-03 resolver `allow`；generate+validate+canonicalize p95 `<10 ms` 持续测试；production Verification Profile adapter 待 M7-03；验收见 `docs/migrations/m4-08-skill-proposal-acceptance-2026-08-11.md` |
+| M4-10 External Skill source adapter | `context.external-skill-source-snapshot/v1alpha1` strict schema、version/hash 固定四类 adapter policy、独立 pinned Git tree evidence、本地 CAS staging、metadata/admission 分层、offline replay 和 M4-07 candidate-only projection 通过；27/27 定向测试；四类 synthetic fixture 内容 observation callback `4` 次、Skill tree callback `2` 次，40 次 offline replay 追加 callback `0`、mismatch `0`；eligible Skill projection `2/2`、标准/market index projection `0/2`、权限真值 `0`；schema hash `0c64c7af279ab955a7a546c8f71e15612d5ca7c970767929683715e6d6f29cb6`；fixture hash `d0043e4340bfa5d2069f0f091df5eb43897c2ac947750dea205652646fd423c4`；production streaming acquisition、request-count enforcement 和 authorization/audit 待 M7/M8；验收见 `docs/migrations/m4-10-external-skill-source-acceptance-2026-08-12.md` |
 | M2-04 artifact store | 20/20 定向测试；streamed SHA-256、atomic publication、并发去重、bounded range、损坏/symlink typed error 和 64 MiB benchmark 输入门通过；1 MiB 到 8 KiB context output bytes 下降 `99.2188%`；全库 303 tests、27 PostgreSQL skips；独立审查 High 0、Medium 0 |
 | M2-05 State MCP | 26/26 contract/auth tests；默认拒绝、trusted actor、revision/CAS、validator、concurrent request idempotency、strict receipt、PostgreSQL busy normalization、claim/effect provenance、malformed intent 和 torn-read detection 通过；四工具 SQLite/PostgreSQL live parity 1/1；验收见 `docs/migrations/m2-05-state-mcp-acceptance-2026-08-10.md` |
 | M2-06 checkpoint canary | 9/9 contract tests、8/8 benchmark/receipt tests；snapshot/manifest 双层 CAS、18 字段 deterministic restore、missing/tampered/stale/unknown/oversized fail-closed 和 SQLite 零服务链路通过；原 40 样本 receipt 字节保持不变，current provenance 复验使用独立 receipt；验收见 `docs/migrations/m2-06-checkpoint-canary-acceptance-2026-08-10.md` |
@@ -49,8 +50,8 @@ canonical plan：`MASTER.md`
 | M0-07 | schema registry/hash、semver transition、migration/replay/rollback 和 unknown-version quarantine 离线验收完成 |
 | E0/E1 synthetic canary | 4 场景；768 字符时 E1 恢复 100%、旧决定复活 0、Skill 输入下降 75%、token proxy 下降 20.7031% |
 | E0/E1 real replay | 40 场景；768 字符时 E1 恢复 100%、旧决定复活 0、Skill 输入下降 74.7903%、token proxy 下降 12.6042%；512 字符 capacity veto |
-| External Skill catalog | OpenAI/Anthropic/GitHub/Agent Skills/MCP/Skills.sh metadata-only；active 0 |
-| Harness research | OpenAI/Codex、Anthropic/Claude Code/Agent SDK、DeepSeek Harness、Pi compaction/durable AgentHarness 与 Cordis reference catalog、adoption matrix 和 M4/M5/M8 完成门已落盘；DeepSeek/Pi/Cordis active adoption 0，provider-native state authority 为 0 |
+| External Skill catalog | OpenAI plugins、Agent Skills standard、GitHub organization collection、Skills.sh、Anthropic/MCP 等来源均保持 metadata/candidate；四类 source snapshot contract 已验收；真实来源 revision/hash 在研究文档复核；external active 0 |
+| Harness research | OpenAI/Codex、Anthropic/Claude Code/Agent SDK、DeepSeek Harness、Pi compaction/durable AgentHarness、Cordis、agent teams/subagents/advisor/worktree reference catalog 与 adoption matrix 已落盘；DeepSeek/Pi/Cordis active adoption 0，provider-native state authority 为 0 |
 | Idea continuity | capture-and-continue、correction 写保护、checkpoint/switch/context return 架构合同已落盘；typed implementation 待 M2-M5 |
 | Adaptive information | bounded retrieval receipt、ProjectAdaptation proposal/shadow/approval/rollback 合同已落盘；实现待 M2/M6/M8/M10 |
 | Documentation lifecycle | 文档分类、更新触发、容量预算、supersedes 和投影规则已落盘；第 4 次恢复发现 STATUS/evidence 漂移并登记为 M0-10 validator 反例 |
@@ -60,8 +61,8 @@ canonical plan：`MASTER.md`
 | Reference catalog | 26 个候选来源；Codex/Claude/DeepSeek/Pi harness、Cordis paper 与 Yundi339 Docmost fork 均固定 URL、revision/hash、license、validity、refresh trigger 和 adoption status；active adoption 0 |
 | Project dogfood baseline | 27 次 compaction 的结构字段恢复 100%，Continuation Cursor 累计恢复 78/80；首动作不匹配和已确认事项重播累计各 2 次，后续未新增，整体趋势仍为 regressed；25 次 input routing 无未授权切换；92 个 Skill body 共 942,873 bytes，其中重复 763,452 bytes；provider context/token/latency 不可见 |
 | Autonomous progression | required/conditional/optional、bounded escalation、next-ready selector、unattended dispatcher 与 multi-Agent claim/lease/handoff 验收合同进入 revision 21；runtime 实现待 M2-M8；当前 provider-host multi-Agent 只计 shadow evidence |
-| Repository verification | 612 tests 通过；28 个无 DSN PostgreSQL live tests skipped；repository verifier、Python compile 和 diff check 通过；fixture privacy、documentation link/style、schema registry、transcript admission 和 Gitea secret-scan checks 保持提交门 |
-| Governance authority | `MASTER.md` revision 36 |
+| Repository verification | 639 tests 通过；28 个无 DSN PostgreSQL live tests skipped；repository verifier、Python compile 和 diff check 通过；fixture privacy、documentation link/style、schema registry、transcript admission 和 Gitea secret-scan checks 保持提交门 |
+| Governance authority | `MASTER.md` revision 38 |
 | Operational router | `STATUS.md` |
 
 ## 恢复入口

@@ -295,3 +295,13 @@ schemas:
     status: current
     compatibility_mode: strict-versioned
     migrations: []
+
+  - schema_id: context.external-skill-source-snapshot
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.external-skill-source-snapshot/v1alpha1
+    supported_wire_versions: [context.external-skill-source-snapshot/v1alpha1]
+    artifact_path: schemas/m4-10/external-skill-source-snapshot.schema.json
+    content_sha256: 0c64c7af279ab955a7a546c8f71e15612d5ca7c970767929683715e6d6f29cb6
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []

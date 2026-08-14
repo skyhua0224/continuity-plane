@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m4-10/external-skill-source-snapshot.schema.json",
+  "title": "Context Control Plane External Skill Source Snapshot",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "snapshot_id", "generator_version", "generated_at", "input_sha256", "adapter_policy_sha256", "sources"],
+  "properties": {
+    "schema_version": {"const": "context.external-skill-source-snapshot/v1alpha1"},
+    "snapshot_id": {"$ref": "#/$defs/id"},
+    "generator_version": {"$ref": "#/$defs/semver"},
+    "generated_at": {"$ref": "#/$defs/timestamp"},
+    "input_sha256": {"$ref": "#/$defs/sha256"},
+    "adapter_policy_sha256": {"$ref": "#/$defs/sha256"},
+    "sources": {"type": "array", "minItems": 1, "maxItems": 256, "uniqueItems": true, "items": {"$ref": "#/$defs/source"}}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[a-z0-9][a-z0-9._-]*(/[a-z0-9][a-z0-9._-]*)*$"},
+    "semver": {"type": "string", "maxLength": 256, "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"},
+    "timestamp": {"type": "string", "maxLength": 64, "format": "date-time", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$"},
+    "sha256": {"type": "string", "minLength": 64, "maxLength": 64, "pattern": "^[0-9a-f]{64}$"},
+    "artifact": {"type": "string", "maxLength": 256, "pattern": "^artifact://sha256/[0-9a-f]{64}$"},
+    "artifactList": {"type": "array", "maxItems": 4096, "uniqueItems": true, "items": {"$ref": "#/$defs/artifact"}},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "source_class", "resource_kind", "adapter_id", "adapter_version", "publisher_id", "publisher_verification_refs", "canonical_url", "retrieval_url", "final_url", "revision_kind", "source_revision", "retrieved_at", "acquisition", "source_path", "content_size_bytes", "content_sha256", "content_artifact_ref", "resource_count", "resource_tree_sha256", "resource_manifest_size_bytes", "resource_manifest_ref", "tree_evidence_ref", "license_ref", "license_evidence_refs", "declared_capabilities", "provenance_refs", "trust_tier", "status", "quarantine_reasons"],
+      "properties": {
+        "source_id": {"$ref": "#/$defs/id"},
+        "source_class": {"enum": ["official", "standard", "verified-organization", "marketplace-community"]},
+        "resource_kind": {"enum": ["skill", "standard", "catalog-index", "reference"]},
+        "adapter_id": {"$ref": "#/$defs/id"},
+        "adapter_version": {"$ref": "#/$defs/semver"},
+        "publisher_id": {"$ref": "#/$defs/id"},
+        "publisher_verification_refs": {"$ref": "#/$defs/artifactList"},
+        "canonical_url": {"type": "string", "minLength": 1, "maxLength": 4096, "format": "uri"},
+        "retrieval_url": {"type": "string", "minLength": 1, "maxLength": 4096, "format": "uri"},
+        "final_url": {"type": "string", "minLength": 1, "maxLength": 4096, "format": "uri"},
+        "revision_kind": {"enum": ["git-commit", "dynamic-index"]},
+        "source_revision": {"type": "string", "minLength": 1, "maxLength": 256},
+        "retrieved_at": {"$ref": "#/$defs/timestamp"},
+        "acquisition": {"const": "https-get"},
+        "source_path": {"type": "string", "minLength": 1, "maxLength": 2048},
+        "content_size_bytes": {"type": "integer", "minimum": 0, "maximum": 4194304},
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "content_artifact_ref": {"$ref": "#/$defs/artifact"},
+        "resource_count": {"type": "integer", "minimum": 1, "maximum": 256},
+        "resource_tree_sha256": {"$ref": "#/$defs/sha256"},
+        "resource_manifest_size_bytes": {"type": "integer", "minimum": 1, "maximum": 1048576},
+        "resource_manifest_ref": {"$ref": "#/$defs/artifact"},
+        "tree_evidence_ref": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/artifact"}]},
+        "license_ref": {"oneOf": [{"type": "null"}, {"type": "string", "minLength": 1, "maxLength": 256}]},
+        "license_evidence_refs": {"$ref": "#/$defs/artifactList"},
+        "declared_capabilities": {"type": "array", "maxItems": 4096, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 2048, "pattern": "^[a-z0-9][a-z0-9._:-]*$"}},
+        "provenance_refs": {"type": "array", "minItems": 1, "maxItems": 4096, "uniqueItems": true, "items": {"$ref": "#/$defs/artifact"}},
+        "trust_tier": {"enum": ["official", "standard", "verified-organization", "marketplace-community"]},
+        "status": {"enum": ["candidate", "quarantined"]},
+        "quarantine_reasons": {"type": "array", "maxItems": 11, "uniqueItems": true, "items": {"enum": ["license-unverified", "mutable-source-revision", "publisher-unverified", "retrieval-url-not-revision-bound", "redirect-outside-policy", "source-path-outside-policy", "resource-missing", "resource-unlisted", "unsafe-resource-kind", "resource-outside-scope", "resource-tree-unverified"]}}
+      }
+    }
+  }
+}
