@@ -60,7 +60,7 @@
   "provenance": {
     "benchmark_sha256": "851b95ffd24260963a2f4f3804b66f26e40a094e724dabc1815a9f8ac7be6a2c",
     "fixture_sha256": "9be7887519cfed4466436ea6714d48e399d7023281729b3bd8c78cb3a086beab",
-    "implementation_sha256": "e1de28c0502fe039f7405875c60a10749524bb216c078a84bb5788f21fa05817"
+    "implementation_sha256": "d59a39eddc1da9ae1585d8f087b70b2838176df8f111b1feb94cd4b6bd6245d8"
   },
   "schema_version": "context.effect-scope-benchmark/v1alpha1"
 }

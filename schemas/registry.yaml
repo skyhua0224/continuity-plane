@@ -207,11 +207,11 @@ schemas:
     migrations: []
 
   - schema_id: context.typed-state
-    current_semver: 2.0.0-alpha.1
-    current_wire_version: context.typed-state/v2alpha1
-    supported_wire_versions: [context.typed-state/v1alpha1, context.typed-state/v2alpha1]
-    artifact_path: schemas/m3-01/typed-state-v2alpha1.schema.json
-    content_sha256: 3f5ac85614c5b61ba779fe23660012ac2ee9d5c6474d621c4992463a687268d3
+    current_semver: 3.0.0-alpha.1
+    current_wire_version: context.typed-state/v3alpha1
+    supported_wire_versions: [context.typed-state/v1alpha1, context.typed-state/v2alpha1, context.typed-state/v3alpha1]
+    artifact_path: schemas/m3-05/typed-state-v3alpha1.schema.json
+    content_sha256: 533626c3c5451fbb0009620e2bc857498fd4321f3b1c65023a193438a1fa9c86
     status: current
     compatibility_mode: strict-versioned
     migrations:
@@ -220,13 +220,18 @@ schemas:
         replay_passed: true
         idempotent: true
         rollback_ref: docs/migrations/m3-01-task-graph-acceptance-2026-08-14.md#rollback
+      - from: context.typed-state/v2alpha1
+        to: context.typed-state/v3alpha1
+        replay_passed: true
+        idempotent: true
+        rollback_ref: docs/migrations/m3-05-experiment-lifecycle-acceptance-2026-08-14.md#rollback
 
   - schema_id: context.state-event
-    current_semver: 3.0.0-alpha.1
-    current_wire_version: context.state-event/v3alpha1
-    supported_wire_versions: [context.state-event/v1alpha1, context.state-event/v2alpha1, context.state-event/v3alpha1]
-    artifact_path: schemas/m3-03/state-event-v3alpha1.schema.json
-    content_sha256: d89b2081d84786b387f9e82ababc56b429608e6324a56518e16914b70d5a4dea
+    current_semver: 4.0.0-alpha.1
+    current_wire_version: context.state-event/v4alpha1
+    supported_wire_versions: [context.state-event/v1alpha1, context.state-event/v2alpha1, context.state-event/v3alpha1, context.state-event/v4alpha1]
+    artifact_path: schemas/m3-05/state-event-v4alpha1.schema.json
+    content_sha256: 56219c43e076857486299dcdc295ea5b13e81b103fafe15e3f6ed44ae1e8838f
     status: current
     compatibility_mode: strict-versioned
     migrations:
@@ -234,12 +239,17 @@ schemas:
         to: context.state-event/v3alpha1
         replay_passed: true
         idempotent: true
-        rollback_ref: docs/migrations/m3-01-task-graph-acceptance-2026-08-13.md#rollback
+        rollback_ref: docs/migrations/m3-01-task-graph-acceptance-2026-08-14.md#rollback
       - from: context.state-event/v2alpha1
         to: context.state-event/v3alpha1
         replay_passed: true
         idempotent: true
         rollback_ref: docs/migrations/m3-01-task-graph-acceptance-2026-08-14.md#rollback
+      - from: context.state-event/v3alpha1
+        to: context.state-event/v4alpha1
+        replay_passed: true
+        idempotent: true
+        rollback_ref: docs/migrations/m3-05-experiment-lifecycle-acceptance-2026-08-14.md#rollback
 
   - schema_id: context.state-store-capabilities
     current_semver: 1.0.0-alpha.1
@@ -417,6 +427,26 @@ schemas:
     supported_wire_versions: [context.effect-scope-verdict/v1alpha1]
     artifact_path: schemas/m3-04/effect-scope-verdict.schema.json
     content_sha256: 87e649499c866e17344c4aea528deebba0fd92389c6ccff0a0f50650d8145411
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.experiment-lifecycle
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.experiment-lifecycle/v1alpha1
+    supported_wire_versions: [context.experiment-lifecycle/v1alpha1]
+    artifact_path: schemas/m3-05/experiment-lifecycle.schema.json
+    content_sha256: 3861ea8e6807551b81fb038655f498044de6e6d7bc73d3fea1b784a2e82a0c9e
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.experiment-lifecycle-benchmark
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.experiment-lifecycle-benchmark/v1alpha1
+    supported_wire_versions: [context.experiment-lifecycle-benchmark/v1alpha1]
+    artifact_path: schemas/m3-05/experiment-lifecycle-benchmark.schema.json
+    content_sha256: 16dc4da5448c648468e2c97451bc3257473b693256ee4a115552cf782fb1b35c
     status: current
     compatibility_mode: strict-versioned
     migrations: []

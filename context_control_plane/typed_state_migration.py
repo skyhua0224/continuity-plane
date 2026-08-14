@@ -6,6 +6,7 @@ import copy
 from typing import Any
 
 from .typed_state import (
+    EXPERIMENT_LIFECYCLE_SCHEMA_VERSION,
     LEGACY_SCHEMA_VERSION,
     SCHEMA_VERSION,
     TypedStateError,
@@ -77,5 +78,49 @@ def rollback_v2alpha1_to_v1alpha1(document: dict[str, Any]) -> dict[str, Any]:
     for work in legacy["works"]:
         for field in _EXPERIMENT_FIELDS:
             del work[field]
+    validate_typed_state(legacy)
+    return legacy
+
+
+def migrate_v2alpha1_to_v3alpha1(document: dict[str, Any]) -> dict[str, Any]:
+    """Add empty append-only Experiment lifecycle ledgers without inference."""
+    if document.get("schema_version") == EXPERIMENT_LIFECYCLE_SCHEMA_VERSION:
+        migrated = copy.deepcopy(document)
+        validate_typed_state(migrated)
+        return migrated
+    if document.get("schema_version") != SCHEMA_VERSION:
+        raise TypedStateError("unsupported migration source")
+    validate_typed_state(document)
+    migrated = copy.deepcopy(document)
+    migrated["schema_version"] = EXPERIMENT_LIFECYCLE_SCHEMA_VERSION
+    migrated["experiment_attempts"] = []
+    migrated["experiment_promotions"] = []
+    for effect in migrated["effects"]:
+        effect["attempt_id"] = None
+    validate_typed_state(migrated)
+    return migrated
+
+
+def rollback_v3alpha1_to_v2alpha1(document: dict[str, Any]) -> dict[str, Any]:
+    """Permit rollback only before any Experiment lifecycle record exists."""
+    if document.get("schema_version") == SCHEMA_VERSION:
+        legacy = copy.deepcopy(document)
+        validate_typed_state(legacy)
+        return legacy
+    if document.get("schema_version") != EXPERIMENT_LIFECYCLE_SCHEMA_VERSION:
+        raise TypedStateError("unsupported rollback source")
+    validate_typed_state(document)
+    if (
+        document["experiment_attempts"]
+        or document["experiment_promotions"]
+        or any(effect["attempt_id"] is not None for effect in document["effects"])
+    ):
+        raise TypedStateError("v3 lifecycle history prevents v2 rollback")
+    legacy = copy.deepcopy(document)
+    legacy["schema_version"] = SCHEMA_VERSION
+    del legacy["experiment_attempts"]
+    del legacy["experiment_promotions"]
+    for effect in legacy["effects"]:
+        del effect["attempt_id"]
     validate_typed_state(legacy)
     return legacy

@@ -884,6 +884,60 @@ class M303RouteApplyTests(unittest.TestCase):
         second = self._apply_route(self.store, arguments, **kwargs)
         self.assertEqual(first, second)
 
+    def test_switch_cannot_activate_an_expired_v3_experiment(self):
+        snapshot = copy.deepcopy(self.state)
+        snapshot["schema_version"] = "context.typed-state/v3alpha1"
+        snapshot["experiment_attempts"] = []
+        snapshot["experiment_promotions"] = []
+        target = next(
+            item for item in snapshot["works"] if item["work_id"] == "work-target"
+        )
+        target.update(
+            {
+                "kind": "experiment",
+                "return_point_work_id": "goal",
+                "exit_criteria": ["bounded result"],
+                "attempt_budget": 1,
+                "expires_at": "2026-08-13T17:00:00+08:00",
+                "promotion_target_work_id": "goal",
+                "mainline_authority": False,
+            }
+        )
+        store = SQLiteStateStore(Path(self.temp.name) / "expired-route.sqlite3")
+        store.initialize()
+        store.create_project(snapshot)
+        self.state = snapshot
+        request = self._request(
+            "switch",
+            target_work_id=target["work_id"],
+            user_authorization_candidate=True,
+            authorization_candidate_ref="opaque://candidate/auth-expired",
+        )
+        decision = self._decision(request)
+        checkpoint_ref, binding = self._publish_checkpoint(store)
+
+        with self.assertRaisesRegex(RouteApplyError, "experiment_expired"):
+            self._apply_route(
+                store,
+                self._apply_request(
+                    decision,
+                    authorization_ref="auth:test",
+                    checkpoint_ref=checkpoint_ref,
+                    checkpoint_binding=binding,
+                ),
+                decision=decision,
+                context={
+                    "subject_ref": "actor-owner",
+                    "authorization_ref": "auth:test",
+                },
+                authorizer=_AllowAuthorizer(),
+                clock=lambda: "2026-08-13T17:00:00+08:00",
+                event_id_factory=lambda request_id: f"event-{request_id}",
+            )
+
+        self.assertEqual(store.read_project(snapshot["project"]["project_id"]), snapshot)
+        self.assertEqual(store.read_events(snapshot["project"]["project_id"]), [])
+
     def test_old_switch_retry_is_rejected_after_the_event_head_advances(self):
         target = next(
             item for item in self.state["works"] if item["status"] == "ready" and item["kind"] == "work"

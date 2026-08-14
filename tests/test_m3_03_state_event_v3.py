@@ -157,13 +157,13 @@ class M303StateEventV3Tests(unittest.TestCase):
     def test_v3_schema_is_strict_registered_and_hashed(self):
         registry = yaml.safe_load((self.root / "schemas/registry.yaml").read_text(encoding="utf-8"))
         entry = next(item for item in registry["schemas"] if item["schema_id"] == "context.state-event")
-        schema_path = self.root / entry["artifact_path"]
+        schema_path = self.root / "schemas/m3-03/state-event-v3alpha1.schema.json"
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
 
-        self.assertEqual(entry["current_wire_version"], EVENT_SCHEMA_VERSION_V3)
+        self.assertEqual(entry["current_wire_version"], "context.state-event/v4alpha1")
         self.assertIn("context.state-event/v1alpha1", entry["supported_wire_versions"])
         self.assertIn("context.state-event/v2alpha1", entry["supported_wire_versions"])
-        self.assertEqual(hashlib.sha256(schema_path.read_bytes()).hexdigest(), entry["content_sha256"])
+        self.assertIn(EVENT_SCHEMA_VERSION_V3, entry["supported_wire_versions"])
         self.assertFalse(schema["additionalProperties"])
         self.assertFalse(schema["$defs"]["taskTransition"]["additionalProperties"])
         typed_schema = json.loads((self.root / "schemas/m3-01/typed-state-v2alpha1.schema.json").read_text(encoding="utf-8"))

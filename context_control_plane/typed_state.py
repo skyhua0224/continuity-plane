@@ -12,11 +12,17 @@ from .effect_scope_gate import (
     scopes_overlap,
     validate_scope,
 )
+from .experiment_lifecycle import experiment_contract_sha256
 
 
 LEGACY_SCHEMA_VERSION = "context.typed-state/v1alpha1"
 SCHEMA_VERSION = "context.typed-state/v2alpha1"
-SUPPORTED_SCHEMA_VERSIONS = {LEGACY_SCHEMA_VERSION, SCHEMA_VERSION}
+EXPERIMENT_LIFECYCLE_SCHEMA_VERSION = "context.typed-state/v3alpha1"
+SUPPORTED_SCHEMA_VERSIONS = {
+    LEGACY_SCHEMA_VERSION,
+    SCHEMA_VERSION,
+    EXPERIMENT_LIFECYCLE_SCHEMA_VERSION,
+}
 
 _DOCUMENT_FIELDS = {
     "schema_version",
@@ -29,6 +35,10 @@ _DOCUMENT_FIELDS = {
     "evidence",
     "blockers",
     "effects",
+}
+_DOCUMENT_FIELDS_V3 = _DOCUMENT_FIELDS | {
+    "experiment_attempts",
+    "experiment_promotions",
 }
 _PROJECT_FIELDS = {
     "project_id",
@@ -141,6 +151,30 @@ _EFFECT_FIELDS = {
     "requested_at",
     "completed_at",
 }
+_EFFECT_FIELDS_V3 = _EFFECT_FIELDS | {"attempt_id"}
+_EXPERIMENT_ATTEMPT_FIELDS = {
+    "attempt_id",
+    "work_id",
+    "claim_id",
+    "actor_ref",
+    "attempt_no",
+    "experiment_contract_sha256",
+    "started_at",
+}
+_EXPERIMENT_PROMOTION_FIELDS = {
+    "promotion_id",
+    "kind",
+    "proposal_id",
+    "work_id",
+    "target_work_id",
+    "actor_ref",
+    "source_work_revision",
+    "target_work_revision",
+    "attempt_id",
+    "experiment_contract_sha256",
+    "criterion_evidence",
+    "created_at",
+}
 _SCOPE_FIELDS = {"scope_kind", "scope_ref"}
 
 _WORK_KINDS = {"campaign", "goal", "work", "experiment"}
@@ -172,6 +206,7 @@ _EVIDENCE_KINDS = {
 _EVIDENCE_VALIDITY = {"candidate", "verified", "stale", "rejected"}
 _BLOCKER_STATUSES = {"open", "resolved", "superseded"}
 _EFFECT_STATUSES = {"planned", "authorized", "started", "succeeded", "failed", "compensated"}
+_PROMOTION_KINDS = {"proposed", "approved"}
 _SCOPE_KINDS = {"repo", "directory", "file", "symbol", "capability", "effect"}
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
@@ -217,9 +252,16 @@ def _timestamp(value: Any, field: str, *, optional: bool = False) -> datetime | 
     return parsed
 
 
-def _strings(value: Any, field: str) -> list[str]:
+def _strings(
+    value: Any,
+    field: str,
+    *,
+    non_empty: bool = False,
+) -> list[str]:
     if not isinstance(value, list) or not all(isinstance(item, str) and item for item in value):
         raise TypedStateError(f"{field} must be a string list")
+    if non_empty and not value:
+        raise TypedStateError(f"{field} must be a non-empty string list")
     if len(value) != len(set(value)):
         raise TypedStateError(f"{field} must contain unique values")
     return value
@@ -402,7 +444,14 @@ def _scope(
 
 def validate_typed_state(document: dict[str, Any]) -> None:
     """Validate a complete M2-01 typed state snapshot."""
-    document = _fields(document, _DOCUMENT_FIELDS, "document")
+    if not isinstance(document, dict):
+        raise TypedStateError("document fields do not match the contract")
+    document_fields = (
+        _DOCUMENT_FIELDS_V3
+        if document.get("schema_version") == EXPERIMENT_LIFECYCLE_SCHEMA_VERSION
+        else _DOCUMENT_FIELDS
+    )
+    document = _fields(document, document_fields, "document")
     schema_version = document["schema_version"]
     if schema_version not in SUPPORTED_SCHEMA_VERSIONS:
         raise TypedStateError("unsupported schema_version")
@@ -431,8 +480,17 @@ def validate_typed_state(document: dict[str, Any]) -> None:
     evidence = _objects(document["evidence"], "evidence")
     blockers = _objects(document["blockers"], "blockers")
     effects = _objects(document["effects"], "effects")
+    experiment_attempts = _objects(
+        document.get("experiment_attempts", []), "experiment_attempts"
+    )
+    experiment_promotions = _objects(
+        document.get("experiment_promotions", []), "experiment_promotions"
+    )
 
-    canonical_scopes = schema_version == SCHEMA_VERSION
+    canonical_scopes = schema_version in {
+        SCHEMA_VERSION,
+        EXPERIMENT_LIFECYCLE_SCHEMA_VERSION,
+    }
     work_fields = _WORK_FIELDS_V2 if canonical_scopes else _WORK_FIELDS_V1
     for item in works:
         _fields(item, work_fields, "work")
@@ -448,8 +506,13 @@ def validate_typed_state(document: dict[str, Any]) -> None:
         _fields(item, _EVIDENCE_FIELDS, "evidence")
     for item in blockers:
         _fields(item, _BLOCKER_FIELDS, "blocker")
+    effect_fields = _EFFECT_FIELDS_V3 if schema_version == EXPERIMENT_LIFECYCLE_SCHEMA_VERSION else _EFFECT_FIELDS
     for item in effects:
-        _fields(item, _EFFECT_FIELDS, "effect")
+        _fields(item, effect_fields, "effect")
+    for item in experiment_attempts:
+        _fields(item, _EXPERIMENT_ATTEMPT_FIELDS, "experiment_attempt")
+    for item in experiment_promotions:
+        _fields(item, _EXPERIMENT_PROMOTION_FIELDS, "experiment_promotion")
 
     work_by_id = _index(works, "work_id", "work")
     claim_by_id = _index(claims, "claim_id", "claim")
@@ -459,6 +522,12 @@ def validate_typed_state(document: dict[str, Any]) -> None:
     evidence_by_id = _index(evidence, "evidence_id", "evidence")
     blocker_by_id = _index(blockers, "blocker_id", "blocker")
     effect_by_id = _index(effects, "effect_id", "effect")
+    attempt_by_id = _index(
+        experiment_attempts, "attempt_id", "experiment_attempt"
+    )
+    promotion_by_id = _index(
+        experiment_promotions, "promotion_id", "experiment_promotion"
+    )
 
     all_ids = [
         *work_by_id,
@@ -469,6 +538,8 @@ def validate_typed_state(document: dict[str, Any]) -> None:
         *evidence_by_id,
         *blocker_by_id,
         *effect_by_id,
+        *attempt_by_id,
+        *promotion_by_id,
     ]
     if len(all_ids) != len(set(all_ids)):
         raise TypedStateError("object IDs must be globally unique")
@@ -546,11 +617,11 @@ def validate_typed_state(document: dict[str, Any]) -> None:
         ):
             raise TypedStateError("completed work requires verified evidence")
     _acyclic_supersedes(work_by_id, "supersedes_work_id", "work")
-    if schema_version == SCHEMA_VERSION:
+    if canonical_scopes:
         _validate_work_graph_v2(work_by_id)
 
     actual_active_work_ids = {item["work_id"] for item in works if item["status"] == "active"}
-    if schema_version == SCHEMA_VERSION and any(
+    if canonical_scopes and any(
         work_by_id[work_id]["kind"] not in {"work", "experiment"}
         for work_id in actual_active_work_ids
     ):
@@ -697,6 +768,125 @@ def validate_typed_state(document: dict[str, Any]) -> None:
     if set(active_claims) != actual_active_work_ids:
         raise TypedStateError("every active work requires one active claim")
 
+    attempts_by_work: dict[str, list[dict[str, Any]]] = {}
+    for item in experiment_attempts:
+        work_id = item["work_id"]
+        work = work_by_id.get(work_id)
+        if work is None or work["kind"] != "experiment":
+            raise TypedStateError("experiment attempt requires an Experiment Work")
+        claim_id = item["claim_id"]
+        claim = claim_by_id.get(claim_id)
+        if claim is None or claim["work_id"] != work_id:
+            raise TypedStateError("experiment attempt claim must belong to its Work")
+        _string(item["actor_ref"], "experiment_attempt.actor_ref")
+        if item["actor_ref"] != claim["actor_ref"]:
+            raise TypedStateError("experiment attempt actor must match its Claim")
+        attempt_no = _uint(item["attempt_no"], "experiment_attempt.attempt_no")
+        if attempt_no == 0:
+            raise TypedStateError("experiment attempt number must be positive")
+        contract_digest = item["experiment_contract_sha256"]
+        if not isinstance(contract_digest, str) or not _SHA256_RE.fullmatch(contract_digest):
+            raise TypedStateError("experiment attempt contract digest must be SHA-256")
+        if contract_digest != experiment_contract_sha256(work):
+            raise TypedStateError("experiment attempt contract digest drifted")
+        started_at = _timestamp(item["started_at"], "experiment_attempt.started_at")
+        expires_at = _timestamp(work["expires_at"], "experiment.expires_at")
+        assert started_at is not None and expires_at is not None
+        if started_at >= expires_at:
+            raise TypedStateError("experiment attempt cannot start after expiry")
+        attempts_by_work.setdefault(work_id, []).append(item)
+
+    for work_id, attempts in attempts_by_work.items():
+        if len(attempts) > work_by_id[work_id]["attempt_budget"]:
+            raise TypedStateError("experiment attempt budget is exceeded")
+        numbers = {item["attempt_no"] for item in attempts}
+        if numbers != set(range(1, len(attempts) + 1)):
+            raise TypedStateError("experiment attempt numbers must be contiguous")
+
+    proposal_by_id: dict[str, dict[str, Any]] = {}
+    approved_by_proposal: set[str] = set()
+    for item in experiment_promotions:
+        kind = _enum(item["kind"], _PROMOTION_KINDS, "experiment_promotion.kind")
+        proposal_id = _string(item["proposal_id"], "experiment_promotion.proposal_id")
+        work_id = item["work_id"]
+        work = work_by_id.get(work_id)
+        if work is None or work["kind"] != "experiment":
+            raise TypedStateError("experiment promotion requires an Experiment Work")
+        if item["target_work_id"] != work["promotion_target_work_id"]:
+            raise TypedStateError("experiment promotion target must match its contract")
+        target = work_by_id.get(item["target_work_id"])
+        if target is None or not target["mainline_authority"]:
+            raise TypedStateError("experiment promotion target must retain mainline authority")
+        _string(item["actor_ref"], "experiment_promotion.actor_ref")
+        source_revision = _uint(
+            item["source_work_revision"], "experiment_promotion.source_work_revision"
+        )
+        target_revision = _uint(
+            item["target_work_revision"], "experiment_promotion.target_work_revision"
+        )
+        if source_revision > work["revision"] or target_revision > target["revision"]:
+            raise TypedStateError("experiment promotion work revision is invalid")
+        attempt_id = _string(item["attempt_id"], "experiment_promotion.attempt_id")
+        attempt = attempt_by_id.get(attempt_id)
+        if (
+            attempt is None
+            or attempt["work_id"] != work_id
+            or attempt["experiment_contract_sha256"]
+            != experiment_contract_sha256(work)
+        ):
+            raise TypedStateError("experiment promotion requires a bound attempt")
+        if kind == "proposed" and item["actor_ref"] != attempt["actor_ref"]:
+            raise TypedStateError("promotion proposer must own the bound attempt")
+        contract_digest = item["experiment_contract_sha256"]
+        if not isinstance(contract_digest, str) or not _SHA256_RE.fullmatch(contract_digest):
+            raise TypedStateError("experiment promotion contract digest must be SHA-256")
+        if contract_digest != experiment_contract_sha256(work):
+            raise TypedStateError("experiment promotion contract digest drifted")
+        criteria = item["criterion_evidence"]
+        if not isinstance(criteria, dict) or set(criteria) != set(work["exit_criteria"]):
+            raise TypedStateError("experiment promotion criteria must exactly match the contract")
+        for criterion, evidence_ids in criteria.items():
+            _string(criterion, "experiment promotion criterion")
+            refs = _strings(
+                evidence_ids, "experiment_promotion.criterion_evidence", non_empty=True
+            )
+            _references(refs, evidence_by_id, "experiment_promotion.criterion_evidence")
+            if kind == "approved" and any(
+                evidence_by_id[evidence_id]["validity"] != "verified"
+                for evidence_id in refs
+            ):
+                raise TypedStateError("approved promotion requires verified criterion evidence")
+        created_at = _timestamp(item["created_at"], "experiment_promotion.created_at")
+        expires_at = _timestamp(work["expires_at"], "experiment.expires_at")
+        assert created_at is not None and expires_at is not None
+        if created_at >= expires_at:
+            raise TypedStateError("experiment promotion cannot be created after expiry")
+        if kind == "proposed":
+            if proposal_id in proposal_by_id:
+                raise TypedStateError("experiment promotion proposal_id must be unique")
+            proposal_by_id[proposal_id] = item
+        else:
+            if proposal_id not in proposal_by_id:
+                raise TypedStateError("approved promotion requires its prior proposal")
+            if proposal_id in approved_by_proposal:
+                raise TypedStateError("experiment promotion proposal can approve once")
+            proposal = proposal_by_id[proposal_id]
+            for field in (
+                "proposal_id",
+                "work_id",
+                "target_work_id",
+                "source_work_revision",
+                "target_work_revision",
+                "attempt_id",
+                "experiment_contract_sha256",
+                "criterion_evidence",
+            ):
+                if item[field] != proposal[field]:
+                    raise TypedStateError(
+                        "approved promotion must preserve its proposal lineage"
+                    )
+            approved_by_proposal.add(proposal_id)
+
     effect_keys: set[str] = set()
     sequence_numbers: set[int] = set()
     committed_sequences: list[int] = []
@@ -709,6 +899,23 @@ def validate_typed_state(document: dict[str, Any]) -> None:
         work_id = item["work_id"]
         if work_id not in work_by_id:
             raise TypedStateError("effect.work_id is unknown")
+        if schema_version == EXPERIMENT_LIFECYCLE_SCHEMA_VERSION:
+            attempt_id = _optional_string(item["attempt_id"], "effect.attempt_id")
+            work = work_by_id[work_id]
+            if work["kind"] == "experiment":
+                attempt = attempt_by_id.get(attempt_id) if attempt_id is not None else None
+                if (
+                    attempt is None
+                    or attempt["work_id"] != work_id
+                    or attempt["claim_id"] != item["claim_id"]
+                    or attempt["experiment_contract_sha256"]
+                    != experiment_contract_sha256(work)
+                ):
+                    raise TypedStateError(
+                        "Experiment effect requires a bound attempt provenance"
+                    )
+            elif attempt_id is not None:
+                raise TypedStateError("non-Experiment effect cannot bind an attempt")
         claim_id = _optional_string(item["claim_id"], "effect.claim_id")
         if claim_id is not None and claim_id not in claim_by_id:
             raise TypedStateError("effect.claim_id is unknown")

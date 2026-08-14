@@ -1,6 +1,6 @@
 # Context Control Plane Status
 
-版本：revision 45  
+版本：revision 46  
 日期：2026-08-14  
 canonical plan：`MASTER.md`
 
@@ -9,8 +9,8 @@ canonical plan：`MASTER.md`
 | 字段 | 值 |
 |---|---|
 | 当前 Campaign | M3 任务图与智能切换 |
-| active work | M3-05：experiment promotion gate（🟡） |
-| next action | 为实验 Work 固定 attempt budget、expiry、return point、promotion target 与 mainline authority gate |
+| active work | M3-06：Idea continuity（🟡） |
+| next action | 将新 Idea 记录为 candidate，绑定 parent/return point/expiry，并保持 capture-and-continue 不改变 active leaf |
 | hard blocker | M3-01 已通过 Linux 离线图合同，但最终完成门仍等待 M2-09 的 Windows/macOS 原生 live fixture |
 | repository mode | research / shadow pilot |
 | production state | local-embedded implemented / shadow pilot；shared production pilot planned |
@@ -28,7 +28,7 @@ canonical plan：`MASTER.md`
 | Skill catalog/proposal/source adapters | M4-07、M4-08、M4-10 离线合同已验收；external active 0；DeepSeek/Pi/Cordis adoption 0 |
 | Project dogfood baseline | 27 次 compaction；Continuation Cursor 78/80；首动作不匹配和已确认事项重播各 2 次；provider context/token/latency 仍不可见 |
 | Repository verification | 731 tests 通过；28 个无 DSN PostgreSQL live tests skipped；repository verifier、Python compile、diff check 和文档 lifecycle benchmark 通过 |
-| Governance authority | `MASTER.md` revision 45 |
+| Governance authority | `MASTER.md` revision 46 |
 | Operational router | `STATUS.md` |
 
 ## 恢复入口

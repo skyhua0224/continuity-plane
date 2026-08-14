@@ -358,7 +358,7 @@ class M205StateMCPContractTests(unittest.TestCase):
                 with self.assertRaises(ValidationError):
                     validator.validate(invalid)
 
-    def test_tool_definitions_expose_the_five_versioned_state_tools(self):
+    def test_tool_definitions_expose_the_versioned_state_tools(self):
         definitions = state_mcp_tool_definitions()
 
         self.assertEqual(
@@ -369,13 +369,25 @@ class M205StateMCPContractTests(unittest.TestCase):
                 "context.state.claim",
                 "context.state.effect",
                 "context.state.effect.gate",
+                "context.experiment.attempt",
+                "context.experiment.effect",
+                "context.experiment.promotion.propose",
+                "context.experiment.promotion.approve",
             },
         )
+        schema_versions = {
+            "context.experiment.attempt": "context.experiment-attempt-request/v1alpha1",
+            "context.experiment.effect": "context.experiment-effect-request/v1alpha1",
+            "context.experiment.promotion.propose": "context.experiment-promotion-proposal-request/v1alpha1",
+            "context.experiment.promotion.approve": "context.experiment-promotion-approval-request/v1alpha1",
+        }
         for item in definitions:
             with self.subTest(tool=item["name"]):
                 self.assertEqual(
                     item["inputSchema"]["properties"]["schema_version"]["const"],
-                    "context.state-mcp-request/v1alpha1",
+                    schema_versions.get(
+                        item["name"], "context.state-mcp-request/v1alpha1"
+                    ),
                 )
                 self.assertFalse(item["inputSchema"]["additionalProperties"])
 
