@@ -6,18 +6,20 @@ claim, write, or derive runtime Typed State; every receipt says so explicitly.
 
 from __future__ import annotations
 
-from dataclasses import asdict
-from datetime import datetime
 import hashlib
 import json
 import re
 import subprocess
+from dataclasses import asdict
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from context_control_plane.replay_fixture import ReplayFixtureError, validate_replay_fixture
+from context_control_plane.replay_fixture import (
+    ReplayFixtureError,
+    validate_replay_fixture,
+)
 from context_control_plane.sanitizer import sanitize_text
-
 
 PACKET_SCHEMA_VERSION = "context.git-collaboration-packet/v1alpha1"
 RECEIPT_SCHEMA_VERSION = "context.git-admission-receipt/v1alpha1"
@@ -40,8 +42,14 @@ _INTEGRITY_METADATA_RE = re.compile(
     r"artifact://sha256/"
     r"|(?:verification-run|evidence-bundle)://repository/"
     r"|\"?[A-Za-z][A-Za-z0-9_.-]*sha256\"?\s*[:=]\s*\"?"
+    r"|\"?(?:sha256|master_digest|content_hash)\"?\s*[:=]\s*\"?"
     r"|\"?git_commit\"?\s*[:=]\s*\"?"
+    r"|\"?(?:registry_revision|source_revision)\"?\s*[:=]\s*\"?"
     r")(?P<digest>[0-9a-f]{64}|[0-9a-f]{40})",
+    re.IGNORECASE,
+)
+_PUBLIC_MEASUREMENT_METADATA_RE = re.compile(
+    r"\"?paired_p_value\"?\s*[:=]\s*(?P<value>[0-9]\.[0-9]+e-[0-9]+)",
     re.IGNORECASE,
 )
 _PRIVATE_PATH_RE = re.compile(
@@ -109,6 +117,12 @@ def _reject_private_material(value: str, field: str) -> None:
             match.group("digest"), "x" * len(match.group("digest"))
         ),
         value,
+    )
+    scan_value = _PUBLIC_MEASUREMENT_METADATA_RE.sub(
+        lambda match: match.group(0).replace(
+            match.group("value"), "x" * len(match.group("value"))
+        ),
+        scan_value,
     )
     findings = sanitize_text(scan_value).findings
     disallowed = [
@@ -300,8 +314,7 @@ def _git(root: Path | str, *arguments: str, input_bytes: bytes | None = None) ->
         ["git", *arguments],
         cwd=root,
         input=input_bytes,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        capture_output=True,
         check=False,
     )
     if completed.returncode:

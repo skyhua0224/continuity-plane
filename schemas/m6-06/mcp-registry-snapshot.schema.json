@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m6-06/mcp-registry-snapshot.schema.json",
+  "title": "MCP Registry Snapshot",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "snapshot_id", "registry_kind", "registry_url", "registry_revision", "registry_sha256", "retrieved_at", "servers"],
+  "properties": {
+    "schema_version": {"const": "context.mcp-registry-snapshot/v1alpha1"}, "snapshot_id": {"$ref": "#/$defs/id"}, "registry_kind": {"enum": ["fixture", "official"]}, "registry_url": {"type": "string", "format": "uri", "pattern": "^https://"},
+    "registry_revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "registry_sha256": {"$ref": "#/$defs/sha256"}, "retrieved_at": {"type": "string", "format": "date-time"},
+    "servers": {"type": "array", "minItems": 1, "maxItems": 1024, "items": {"$ref": "#/$defs/server"}}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"}, "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "tool": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "scope", "requires_state_mcp"],
+      "properties": {"name": {"$ref": "#/$defs/id"}, "scope": {"enum": ["read", "evidence_write", "state_write", "external_effect"]}, "requires_state_mcp": {"type": "boolean"}},
+      "allOf": [
+        {"if": {"properties": {"scope": {"enum": ["read", "evidence_write"]}}, "required": ["scope"]}, "then": {"properties": {"requires_state_mcp": {"const": false}}}},
+        {"if": {"properties": {"scope": {"enum": ["state_write", "external_effect"]}}, "required": ["scope"]}, "then": {"properties": {"requires_state_mcp": {"const": true}}}}
+      ]
+    },
+    "server": {"type": "object", "additionalProperties": false, "required": ["server_id", "publisher", "publisher_verified", "license_ref", "license_verified", "source_url", "source_revision", "source_sha256", "auth_kind", "tools"], "properties": {"server_id": {"$ref": "#/$defs/id"}, "publisher": {"type": "string", "minLength": 1, "maxLength": 512}, "publisher_verified": {"type": "boolean"}, "license_ref": {"$ref": "#/$defs/id"}, "license_verified": {"type": "boolean"}, "source_url": {"type": "string", "format": "uri", "pattern": "^https://"}, "source_revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "source_sha256": {"$ref": "#/$defs/sha256"}, "auth_kind": {"enum": ["none", "token", "oauth2", "local_process"]}, "tools": {"type": "array", "minItems": 1, "maxItems": 4096, "items": {"$ref": "#/$defs/tool"}}}}
+  }
+}

@@ -1,9 +1,9 @@
 # Verified State Evidence Index
 
-版本：10
+版本：11
 日期：2026-08-15  
 状态：generated evidence projection  
-source governance revision：55
+source governance revision：56
 state write authority：false
 
 ## 已验收任务
@@ -54,6 +54,14 @@ state write authority：false
 | M5-08 | [`m5-08-durable-continuation-acceptance-2026-08-15.md`](../migrations/m5-08-durable-continuation-acceptance-2026-08-15.md) |
 | M8-04 | [`m8-04-context-trace-acceptance-2026-08-15.md`](../migrations/m8-04-context-trace-acceptance-2026-08-15.md) |
 | M4-10 | [`m4-10-external-skill-source-acceptance-2026-08-12.md`](../migrations/m4-10-external-skill-source-acceptance-2026-08-12.md) |
+| M6-01 | [`m6-retrieval-recall-acceptance-2026-08-15.md`](../migrations/m6-retrieval-recall-acceptance-2026-08-15.md#m6-01-bounded-retrieval-route) |
+| M6-02 | [`m6-retrieval-recall-acceptance-2026-08-15.md`](../migrations/m6-retrieval-recall-acceptance-2026-08-15.md#m6-02-codegraph-verification) |
+| M6-03 | [`m6-retrieval-recall-acceptance-2026-08-15.md`](../migrations/m6-retrieval-recall-acceptance-2026-08-15.md#m6-03-recall-provider-spi) |
+| M6-04 | [`m6-retrieval-recall-acceptance-2026-08-15.md`](../migrations/m6-retrieval-recall-acceptance-2026-08-15.md#m6-04-memory-ablation) |
+| M6-05 | [`m6-retrieval-recall-acceptance-2026-08-15.md`](../migrations/m6-retrieval-recall-acceptance-2026-08-15.md#m6-05-reviewer-adapter) |
+| M6-06 | [`m6-retrieval-recall-acceptance-2026-08-15.md`](../migrations/m6-retrieval-recall-acceptance-2026-08-15.md#m6-06-mcp-admission) |
+| M6-07 | [`m6-retrieval-recall-acceptance-2026-08-15.md`](../migrations/m6-retrieval-recall-acceptance-2026-08-15.md#m6-07-receipt-freshness-and-read-reduction) |
+| M7-01 | [`m6-retrieval-recall-acceptance-2026-08-15.md`](../migrations/m6-retrieval-recall-acceptance-2026-08-15.md#m7-01-provenance-dependency) |
 
 ## 非任务证据
 

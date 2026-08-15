@@ -1,0 +1,24 @@
+{
+  "artifact_refs": [
+    "artifact://sha256/ea4aab19cbd360710802367dd9088f3c59c9e1d1b91967daa5a6e9894cfe6b9a"
+  ],
+  "async_degraded": true,
+  "completion_authority": false,
+  "deadline_at": "2026-08-15T07:20:00Z",
+  "execution_packet_ref": "artifact://sha256/1a5a6c9c137730e1af28bc16be01b59ef11de1437bc003d17255a41d82a772fc",
+  "findings": [],
+  "max_output_bytes": 2048,
+  "observed_at": "2026-08-15T07:21:00Z",
+  "operation_ref": "review-operation/review/m6-05/timeout",
+  "provider_id": "external-reviewer/timeout-v1",
+  "provider_kind": "external",
+  "receipt_id": "receipt/review/m6-05/timeout",
+  "receipt_sha256": "951494f9727e41c346b13e5f3ff43aec6e0e4244b33394d60bfc6357f7f865c0",
+  "request_id": "review/m6-05/timeout",
+  "request_sha256": "7ccf6004302adc735be225eb3d7f68c8893ca588160649f1d8af9d79f279d3ab",
+  "returned_bytes": 0,
+  "schema_version": "context.review-receipt/v1alpha1",
+  "state_write_authority": false,
+  "status": "timed_out",
+  "task_id": "M6-05"
+}

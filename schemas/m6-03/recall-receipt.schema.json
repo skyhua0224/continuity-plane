@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m6-03/recall-receipt.schema.json",
+  "title": "Recall Provider Receipt",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "receipt_id", "request_id", "task_id", "query_sha256", "max_candidates", "max_returned_bytes", "request_sha256", "provider_id", "status", "provider_error_code", "observed_at", "candidates", "returned_bytes", "state_write_authority", "provider_authority", "receipt_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.recall-receipt/v1alpha1"}, "receipt_id": {"$ref": "#/$defs/id"}, "request_id": {"$ref": "#/$defs/id"}, "task_id": {"$ref": "#/$defs/id"}, "provider_id": {"$ref": "#/$defs/id"},
+    "query_sha256": {"$ref": "#/$defs/sha256"}, "max_candidates": {"type": "integer", "minimum": 1, "maximum": 256}, "max_returned_bytes": {"type": "integer", "minimum": 1, "maximum": 1048576}, "request_sha256": {"$ref": "#/$defs/sha256"},
+    "status": {"enum": ["completed", "degraded"]}, "provider_error_code": {"type": ["string", "null"], "maxLength": 256}, "observed_at": {"type": "string", "format": "date-time"},
+    "candidates": {"type": "array", "maxItems": 256, "uniqueItems": true, "items": {"$ref": "#/$defs/candidate"}}, "returned_bytes": {"type": "integer", "minimum": 0, "maximum": 1048576},
+    "state_write_authority": {"const": false}, "provider_authority": {"const": false}, "receipt_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"status": {"const": "degraded"}}, "required": ["status"]},
+      "then": {"properties": {"provider_error_code": {"type": "string", "minLength": 1, "maxLength": 256}, "candidates": {"maxItems": 0}, "returned_bytes": {"const": 0}}},
+      "else": {"properties": {"provider_error_code": {"type": "null"}}}
+    }
+  ],
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"}, "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "candidate": {
+      "$comment": "Runtime validation requires unique candidate IDs, candidate count/bytes within the persisted request budgets, candidate.observed_at <= receipt.observed_at, and candidate.valid_until >= candidate.observed_at; Draft 2020-12 cannot express these cross-field checks.",
+      "type": "object", "additionalProperties": false, "required": ["candidate_id", "content", "content_sha256", "observed_at", "valid_until", "freshness", "source_ref", "source_sha256", "active_state_authority"],
+      "properties": {"candidate_id": {"$ref": "#/$defs/id"}, "content": {"type": "string", "minLength": 1, "maxLength": 16384}, "content_sha256": {"$ref": "#/$defs/sha256"}, "observed_at": {"type": "string", "format": "date-time"}, "valid_until": {"type": "string", "format": "date-time"}, "freshness": {"enum": ["current", "stale"]}, "source_ref": {"type": "string", "minLength": 1, "maxLength": 2048}, "source_sha256": {"$ref": "#/$defs/sha256"}, "active_state_authority": {"const": false}}
+    }
+  }
+}

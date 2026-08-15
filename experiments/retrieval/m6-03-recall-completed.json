@@ -1,0 +1,31 @@
+{
+  "candidates": [
+    {
+      "active_state_authority": false,
+      "candidate_id": "memory/m6-current-retrieval",
+      "content": "M6 bounded retrieval is the current candidate decision.",
+      "content_sha256": "6c4544c7b474059e9eb533daff2a5be1fba5aef26439e6ebd2a2f735275027dc",
+      "freshness": "current",
+      "observed_at": "2026-08-15T07:00:00Z",
+      "source_ref": "event://decision/m6-retrieval",
+      "source_sha256": "6c4544c7b474059e9eb533daff2a5be1fba5aef26439e6ebd2a2f735275027dc",
+      "valid_until": "2026-08-16T07:00:00Z"
+    }
+  ],
+  "max_candidates": 2,
+  "max_returned_bytes": 512,
+  "observed_at": "2026-08-15T07:15:00Z",
+  "provider_authority": false,
+  "provider_error_code": null,
+  "provider_id": "fixture-memory/v1",
+  "query_sha256": "b15acb4cf2deac495a76064b5b2a25fa1905fc3ae27e3dc22d7f0a3fa00e6375",
+  "receipt_id": "receipt/recall/m6-03/acceptance",
+  "receipt_sha256": "4558f225ff54dadc7ff3d03e2c197dbcbe88ec031323fe138bd4e7a0bee6af67",
+  "request_id": "recall/m6-03/acceptance",
+  "request_sha256": "4bc40bab34fcee81bc2daac72c3fff939f7e901a8d751ef62a413e077493f54a",
+  "returned_bytes": 55,
+  "schema_version": "context.recall-receipt/v1alpha1",
+  "state_write_authority": false,
+  "status": "completed",
+  "task_id": "M6-03"
+}

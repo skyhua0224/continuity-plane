@@ -299,6 +299,26 @@ class GitAdmissionTests(unittest.TestCase):
 
         self.assertEqual(receipt["admitted_paths"], ["provenance.yaml"])
 
+    def test_staged_admission_accepts_registry_revision_integrity_fields(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._git(root, "init", "-q")
+            (root / "registry.yaml").write_text(
+                "generated_at: '" + self._date() + "'\n"
+                "registry_revision: " + "1" * 40 + "\n"
+                "source_revision: " + "2" * 40 + "\n"
+                "sha256: " + "a" * 64 + "\n"
+                "master_digest: " + "b" * 64 + "\n"
+                "content_hash: " + "c" * 64 + "\n"
+                "paired_p_value: 9.818186930595453e-91\n",
+                encoding="utf-8",
+            )
+            self._git(root, "add", "registry.yaml")
+
+            receipt = audit_staged_admission(root)
+
+        self.assertEqual(receipt["admitted_paths"], ["registry.yaml"])
+
     def test_staged_admission_rejects_a_bearer_token_with_sha256_shape(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

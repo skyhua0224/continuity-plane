@@ -1,0 +1,81 @@
+{
+  "clues": [
+    {
+      "clue_id": "clue/m6-02/retrieval-to-benchmark",
+      "index_revision": "worktree:m6-codegraph-probe",
+      "index_sha256": "f0cfabd9220e67cdf6f235c7b25c8600e3fd2524d86d2b9c43a805d9826e8688",
+      "relation": "references",
+      "source_repository": "context-control-plane",
+      "source_symbol": "context_control_plane.retrieval_benchmark._plan",
+      "target_repository": "context-control-plane",
+      "target_symbol": "context_control_plane.retrieval_routing.plan_retrieval"
+    }
+  ],
+  "codegraph_authority": false,
+  "receipt_id": "receipt/m6-02/codegraph-verification",
+  "receipt_sha256": "864615ef1c339be58b808f319af1f91cd98c9305f4f615eee506ad38a717af11",
+  "schema_version": "context.codegraph-verification-receipt/v1alpha1",
+  "state_write_authority": false,
+  "verified_at": "2026-08-15T07:15:00Z",
+  "verified_clues": 1,
+  "verifier_counts": {
+    "lsp": 1,
+    "rg": 1
+  },
+  "verifier_evidence": [
+    {
+      "clue_id": "clue/m6-02/retrieval-to-benchmark",
+      "command": [
+        "rg",
+        "--json",
+        "plan_retrieval",
+        "context_control_plane/retrieval_benchmark.py"
+      ],
+      "command_sha256": "353fea32bd5df0bbdf59b6520099e2d15c1116344ae9fd1fac05b4da18e2401f",
+      "output": {
+        "query_column": 11,
+        "query_line": 229,
+        "source_line": 228,
+        "source_path": "context_control_plane/retrieval_benchmark.py",
+        "target_column": 11,
+        "target_line": 229,
+        "target_path": "context_control_plane/retrieval_benchmark.py"
+      },
+      "output_sha256": "260a99503096168cd6f818380015f3fe3d7efadeeb1e57e0799512baaf90590d",
+      "revision": "worktree:m6-codegraph-probe",
+      "source_sha256": "2970905fc4bf6e61b2c3bee416f5efdabb94f19fbecd0563c2052e840e8ec3f1",
+      "source_symbol": "context_control_plane.retrieval_benchmark._plan",
+      "target_sha256": "2970905fc4bf6e61b2c3bee416f5efdabb94f19fbecd0563c2052e840e8ec3f1",
+      "target_symbol": "context_control_plane.retrieval_routing.plan_retrieval",
+      "tool_version": "ripgrep 15.2.0 (rev e89fff89ac)",
+      "verifier": "rg"
+    },
+    {
+      "clue_id": "clue/m6-02/retrieval-to-benchmark",
+      "command": [
+        "pylsp",
+        "textDocument/definition",
+        "context_control_plane/retrieval_benchmark.py",
+        "229:11"
+      ],
+      "command_sha256": "dcd9c46a49364c3a5a89dfb48d4cca8ae3d6217db44e72caa581b51773b299a3",
+      "output": {
+        "query_column": 11,
+        "query_line": 229,
+        "source_line": 228,
+        "source_path": "context_control_plane/retrieval_benchmark.py",
+        "target_column": 4,
+        "target_line": 211,
+        "target_path": "context_control_plane/retrieval_routing.py"
+      },
+      "output_sha256": "b450d03f22d10cae3839f8613b776b60dd67931e7856a1994d32c931456813bb",
+      "revision": "worktree:m6-codegraph-probe",
+      "source_sha256": "2970905fc4bf6e61b2c3bee416f5efdabb94f19fbecd0563c2052e840e8ec3f1",
+      "source_symbol": "context_control_plane.retrieval_benchmark._plan",
+      "target_sha256": "ea4aab19cbd360710802367dd9088f3c59c9e1d1b91967daa5a6e9894cfe6b9a",
+      "target_symbol": "context_control_plane.retrieval_routing.plan_retrieval",
+      "tool_version": "pylsp/1.15.0",
+      "verifier": "lsp"
+    }
+  ]
+}

@@ -845,3 +845,103 @@ schemas:
     status: current
     compatibility_mode: strict-versioned
     migrations: []
+
+  - schema_id: context.retrieval-plan
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.retrieval-plan/v1alpha1
+    supported_wire_versions: [context.retrieval-plan/v1alpha1]
+    artifact_path: schemas/m6-01/retrieval-plan.schema.json
+    content_sha256: 9022769bfc48298d05769c1431713ae19442cde37ca9a3ed782cd8f934c67ff4
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.retrieval-receipt
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.retrieval-receipt/v1alpha1
+    supported_wire_versions: [context.retrieval-receipt/v1alpha1]
+    artifact_path: schemas/m6-01/retrieval-receipt.schema.json
+    content_sha256: 195f7c579e19704f360abfda811da15618a9b08ef55d10a5cc877ef2afd05be2
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.retrieval-benchmark
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.retrieval-benchmark/v1alpha1
+    supported_wire_versions: [context.retrieval-benchmark/v1alpha1]
+    artifact_path: schemas/m6-01/retrieval-benchmark.schema.json
+    content_sha256: 3da3044c39af8a8aa23dcb081eb5b76760e648f75b55b779251683641b923305
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.codegraph-verification-receipt
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.codegraph-verification-receipt/v1alpha1
+    supported_wire_versions: [context.codegraph-verification-receipt/v1alpha1]
+    artifact_path: schemas/m6-02/codegraph-verification-receipt.schema.json
+    content_sha256: 66e1b508241d400dc2618c3530212b0dc60fae123a5bae04012a99d3c1cbe344
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.recall-receipt
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.recall-receipt/v1alpha1
+    supported_wire_versions: [context.recall-receipt/v1alpha1]
+    artifact_path: schemas/m6-03/recall-receipt.schema.json
+    content_sha256: 9dc8985606d12a4c9416dc12371e2d480960c7db8eda056ef969c48a3da3d0ec
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.memory-ablation
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.memory-ablation/v1alpha1
+    supported_wire_versions: [context.memory-ablation/v1alpha1]
+    artifact_path: schemas/m6-04/memory-ablation.schema.json
+    content_sha256: 8721b6998296ba6acc403f8f91c73257b4eda97271d929f0a1f8b5a68fcff63e
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.review-receipt
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.review-receipt/v1alpha1
+    supported_wire_versions: [context.review-receipt/v1alpha1]
+    artifact_path: schemas/m6-05/review-receipt.schema.json
+    content_sha256: 7178e7a4ebeff6e3fef0c30b08d701252a267552f3656af6a4e27b3415ee3d28
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.mcp-registry-snapshot
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.mcp-registry-snapshot/v1alpha1
+    supported_wire_versions: [context.mcp-registry-snapshot/v1alpha1]
+    artifact_path: schemas/m6-06/mcp-registry-snapshot.schema.json
+    content_sha256: 30b11a381f93a5c219791a60e19780d79fa2a716fa8341fbbdd10dded789164a
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.mcp-admission-decision
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.mcp-admission-decision/v1alpha1
+    supported_wire_versions: [context.mcp-admission-decision/v1alpha1]
+    artifact_path: schemas/m6-06/mcp-admission-decision.schema.json
+    content_sha256: b1d2efaf82d004be392a44fbc20448680c9f423c79f9aa14483650c062bf3dfe
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.assertion-provenance
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.assertion-provenance/v1alpha1
+    supported_wire_versions: [context.assertion-provenance/v1alpha1]
+    artifact_path: schemas/m7-01/assertion-provenance.schema.json
+    content_sha256: cf6af24a91de7bf93c33b40fe89e44d333dc26938238a7f9529e62f155e778b2
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []

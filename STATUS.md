@@ -1,6 +1,6 @@
 # Context Control Plane Status
 
-版本：revision 55  
+版本：revision 56  
 日期：2026-08-15  
 canonical plan：`MASTER.md`
 
@@ -8,9 +8,9 @@ canonical plan：`MASTER.md`
 
 | 字段 | 值 |
 |---|---|
-| 当前 Campaign | M6 检索、代码图与 Recall Providers |
-| active work | M6-01：有界检索路由（🟡） |
-| next action | M6-01：为 `rg -> Zoekt -> LSP -> SCIP -> RTFM` 建立问题分类、最小读取预算和 precision/recall/freshness 基线 |
+| 当前 Campaign | M7 幻觉、证据与代码质量 |
+| active work | M7-02：claim-evidence gate（🟡） |
+| next action | M7-02：定义 claim kind、所需 evidence authority，并建立无证据 completion 与伪路径负向门 |
 | hard blocker | 当前叶无；M3-01 的 Windows/macOS 原生 live fixture 保持 conditional |
 | repository mode | research / shadow pilot |
 | production state | local-embedded implemented / shadow pilot；shared production pilot planned |
@@ -20,15 +20,17 @@ canonical plan：`MASTER.md`
 | 对象 | 状态 |
 |---|---|
 | Evidence index | [`docs/reports/verified-state.md`](docs/reports/verified-state.md) |
-| Documentation lifecycle | M0-10 verified；STATUS reduction `79.6651%`；MASTER section reduction `68.9812%`；High/Medium review 0 |
-| Git admission | M0-11 offline contract `25/25`；repository verifier 通过 |
+| Documentation lifecycle | M0-10 verified；STATUS reduction `77.3609%`；MASTER section reduction `68.9812%`；High/Medium review 0 |
+| Git admission | M0-11 offline contract `26/26`；repository verifier 通过 |
 | Skill adapters | M4-07/08/10 done；external=0 |
 | Prior gates | M3-07/M3-08/M4-09 verified；replay and quarantine gates pass；details in evidence index |
 | M5-01..05 | all verified；packet/checkpoint/canary/bounded/accounting receipts pass；provider metrics remain unavailable where unexported |
 | M5-06..08 | all verified；replay `1000/1000`；Idea faults `6000/6000`；dogfood coverage/veto 100%；continuation fields/faults `10000/10000` |
 | M8-04 trace | `1000/1000`；`8000` events；eight-family coverage 100%；OTel unavailable `1000/1000` |
-| Repository verification | focused M5/M8-04 `99/99`；schema governance `23/23`；repository verifier passed |
-| Governance authority | `MASTER.md` revision 55 |
+| M6 retrieval/recall | all verified；五类 route `1000/1000` replay iterations、`5000/5000` decisions；quality/provenance `1.0`；duplicate read bytes `-50%`；reference conformance memory `0.6 -> 0.9`；safety veto `0`；external calls `0` |
+| M7-01 provenance | verified；bearing candidate/expiry/digest faults fail closed；committed coverage `1.0` |
+| Repository verification | full `1158` passed / `30` optional-environment skipped；focused M6/M7-01 `112/112`；repository verifier passed |
+| Governance authority | `MASTER.md` revision 56 |
 
 ## 恢复入口
 

@@ -1,0 +1,257 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m6-04/memory-ablation.schema.json",
+  "title": "Memory Ablation Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "samples",
+    "unique_case_count",
+    "baseline_correct",
+    "candidate_correct",
+    "baseline_accuracy",
+    "candidate_accuracy",
+    "absolute_gain",
+    "relative_gain_percent",
+    "paired_improvements",
+    "paired_regressions",
+    "paired_p_value",
+    "paired_outcomes",
+    "outcomes_sha256",
+    "recall_receipt_artifact",
+    "provider_503_receipt_sha256",
+    "stale_decision_revivals",
+    "authority_violations",
+    "provider_503_state_failures",
+    "provider_admission_status",
+    "external_services",
+    "fixture_sha256",
+    "benchmark_sha256",
+    "subject_sha256"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "context.memory-ablation/v1alpha1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "samples": {
+      "type": "integer",
+      "minimum": 10,
+      "maximum": 10000,
+      "multipleOf": 10
+    },
+    "unique_case_count": {
+      "type": "integer",
+      "minimum": 10
+    },
+    "baseline_correct": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "candidate_correct": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "baseline_accuracy": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "candidate_accuracy": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "absolute_gain": {
+      "type": "number",
+      "exclusiveMinimum": 0,
+      "maximum": 1
+    },
+    "relative_gain_percent": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "paired_improvements": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "paired_regressions": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "paired_p_value": {
+      "type": "number",
+      "minimum": 0,
+      "exclusiveMaximum": 0.05
+    },
+    "paired_outcomes": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 10000,
+      "items": {
+        "$ref": "#/$defs/paired_outcome"
+      }
+    },
+    "outcomes_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "recall_receipt_artifact": {
+      "$ref": "#/$defs/recall_receipt_artifact"
+    },
+    "provider_503_receipt_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "stale_decision_revivals": {
+      "const": 0
+    },
+    "authority_violations": {
+      "const": 0
+    },
+    "provider_503_state_failures": {
+      "const": 0
+    },
+    "provider_admission_status": {
+      "const": "reference_fixture_conformance_only"
+    },
+    "external_services": {
+      "const": 0
+    },
+    "fixture_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "benchmark_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "subject_sha256": {
+      "$ref": "#/$defs/sha256"
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "nullable_sha256": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/sha256"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "nullable_string": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "recall_receipt_artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_ref",
+        "media_type",
+        "encoding",
+        "receipt_count",
+        "uncompressed_bytes",
+        "payload_base64"
+      ],
+      "properties": {
+        "artifact_ref": {
+          "type": "string",
+          "pattern": "^artifact://sha256/[0-9a-f]{64}$"
+        },
+        "media_type": {
+          "const": "application/vnd.context.recall-receipts+json"
+        },
+        "encoding": {
+          "const": "gzip+base64"
+        },
+        "receipt_count": {
+          "type": "integer",
+          "minimum": 11,
+          "maximum": 10001
+        },
+        "uncompressed_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 40964096
+        },
+        "payload_base64": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 81928192,
+          "pattern": "^[A-Za-z0-9+/]+={0,2}$"
+        }
+      }
+    },
+    "paired_outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "case_id",
+        "expected_answer_sha256",
+        "baseline_answer_sha256",
+        "baseline_correct",
+        "candidate_id",
+        "candidate_answer_sha256",
+        "candidate_freshness",
+        "candidate_correct",
+        "recall_receipt_sha256",
+        "recall_state_write_authority",
+        "recall_provider_authority",
+        "candidate_active_state_authority"
+      ],
+      "properties": {
+        "case_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expected_answer_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "baseline_answer_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "baseline_correct": {
+          "type": "boolean"
+        },
+        "candidate_id": {
+          "$ref": "#/$defs/nullable_string"
+        },
+        "candidate_answer_sha256": {
+          "$ref": "#/$defs/nullable_sha256"
+        },
+        "candidate_freshness": {
+          "enum": [
+            "current",
+            "stale",
+            "missing"
+          ]
+        },
+        "candidate_correct": {
+          "type": "boolean"
+        },
+        "recall_receipt_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "recall_state_write_authority": {
+          "type": "boolean"
+        },
+        "recall_provider_authority": {
+          "type": "boolean"
+        },
+        "candidate_active_state_authority": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

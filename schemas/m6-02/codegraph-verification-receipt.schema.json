@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m6-02/codegraph-verification-receipt.schema.json",
+  "title": "CodeGraph Verification Receipt",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "receipt_id", "verified_at", "clues", "verifier_evidence", "verified_clues", "verifier_counts", "codegraph_authority", "state_write_authority", "receipt_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.codegraph-verification-receipt/v1alpha1"}, "receipt_id": {"$ref": "#/$defs/id"}, "verified_at": {"type": "string", "format": "date-time"},
+    "clues": {"type": "array", "minItems": 1, "maxItems": 256, "items": {"$ref": "#/$defs/clue"}},
+    "verifier_evidence": {"type": "array", "minItems": 2, "maxItems": 512, "items": {"$ref": "#/$defs/evidence"}},
+    "verified_clues": {"type": "integer", "minimum": 1},
+    "verifier_counts": {"type": "object", "additionalProperties": false, "required": ["rg", "lsp"], "properties": {"rg": {"type": "integer", "minimum": 1}, "lsp": {"type": "integer", "minimum": 1}}},
+    "codegraph_authority": {"const": false}, "state_write_authority": {"const": false}, "receipt_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 512}, "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "repository": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
+    "qualified_symbol": {"type": "string", "minLength": 3, "maxLength": 512, "pattern": "^[A-Za-z_][A-Za-z0-9_]*(\\.[A-Za-z_][A-Za-z0-9_]*)+$"},
+    "clue": {"type": "object", "additionalProperties": false, "required": ["clue_id", "source_repository", "target_repository", "source_symbol", "target_symbol", "relation", "index_revision", "index_sha256"], "properties": {"clue_id": {"$ref": "#/$defs/id"}, "source_repository": {"$ref": "#/$defs/repository"}, "target_repository": {"$ref": "#/$defs/repository"}, "source_symbol": {"$ref": "#/$defs/qualified_symbol"}, "target_symbol": {"$ref": "#/$defs/qualified_symbol"}, "relation": {"const": "references"}, "index_revision": {"$ref": "#/$defs/id"}, "index_sha256": {"$ref": "#/$defs/sha256"}}},
+    "output": {"type": "object", "additionalProperties": false, "required": ["source_path", "source_line", "query_line", "query_column", "target_path", "target_line", "target_column"], "properties": {"source_path": {"type": "string", "minLength": 1, "maxLength": 2048}, "source_line": {"type": "integer", "minimum": 1}, "query_line": {"type": "integer", "minimum": 1}, "query_column": {"type": "integer", "minimum": 0}, "target_path": {"type": "string", "minLength": 1, "maxLength": 2048}, "target_line": {"type": "integer", "minimum": 1}, "target_column": {"type": "integer", "minimum": 0}}},
+    "evidence": {"type": "object", "additionalProperties": false, "required": ["clue_id", "verifier", "source_symbol", "target_symbol", "revision", "source_sha256", "target_sha256", "tool_version", "command", "command_sha256", "output", "output_sha256"], "properties": {"clue_id": {"$ref": "#/$defs/id"}, "verifier": {"enum": ["rg", "lsp"]}, "source_symbol": {"$ref": "#/$defs/qualified_symbol"}, "target_symbol": {"$ref": "#/$defs/qualified_symbol"}, "revision": {"$ref": "#/$defs/id"}, "source_sha256": {"$ref": "#/$defs/sha256"}, "target_sha256": {"$ref": "#/$defs/sha256"}, "tool_version": {"type": "string", "minLength": 1, "maxLength": 512}, "command": {"type": "array", "minItems": 1, "maxItems": 32, "items": {"type": "string", "minLength": 1, "maxLength": 2048}}, "command_sha256": {"$ref": "#/$defs/sha256"}, "output": {"$ref": "#/$defs/output"}, "output_sha256": {"$ref": "#/$defs/sha256"}}}
+  }
+}

@@ -1,6 +1,6 @@
 # Context Control Plane MASTER
 
-版本：revision 55  
+版本：revision 56  
 日期：2026-08-15  
 状态：研究与 shadow pilot 准备阶段  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
@@ -230,7 +230,7 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | M0-08 | 🧑‍💻 | 建立 ReferenceSource/Snapshot lifecycle、candidate catalog 与 harness 采用评估 | 外部资料可持续发现、固定、刷新、失效和复用 | 让研究证据进入后续 schema、adapter 与实验 | M0-03/M0-06 | Codex/Claude、DeepSeek、Pi 和 Cordis 来源带 URL/revision/hash/license/refresh/adoption；7 个 catalog tests 通过；State/Watcher live integration 待后续阶段 |
 | M0-09 | ✅ | 建立项目 self-dogfood observation protocol 与首个 baseline | 研发过程记录 compaction、Skill 装载、计划演进和质量门后的交付速度 | 以项目自身数据验证逐步优化 | M0-05/M0-07 | 历史 baseline 与自动 `context.*` emitter 均可复核；M5-07 `8000` events、七类覆盖 100%、四类 veto `4000/4000`；provider 原生指标缺失时保持 `unavailable` |
 | M0-10 | ✅ | 建立文档分类、更新触发、容量预算、supersedes 和生成投影生命周期 | MASTER、STATUS、细分文档和投影保持可定位、可更新、可收敛 | 防止长期陈旧与无界扩展 | M0-05/M0-06/M0-07 | policy validator、STATUS 与 evidence 漂移、重复全文、过期引用、容量超限和权限故障测试通过；拆分后恢复字段 100% |
-| M0-11 | ✅ | 建立 Git branch/commit/PR/merge 与 staged admission 合同 | Git 集成边界可回放且不冒充权威状态 | 让单人、多 AI 和多人协作具有一致的审计与发布节奏 | M0-02/M0-03/M0-09 | packet/receipt strict schema、25/25 contract tests、index-only transcript/secret/private-path admission、fixture provenance revalidation、regular-merge replay 和 first-commit tree audit 通过 |
+| M0-11 | ✅ | 建立 Git branch/commit/PR/merge 与 staged admission 合同 | Git 集成边界可回放且不冒充权威状态 | 让单人、多 AI 和多人协作具有一致的审计与发布节奏 | M0-02/M0-03/M0-09 | packet/receipt strict schema、26/26 contract tests、index-only transcript/secret/private-path admission、fixture provenance revalidation、regular-merge replay 和 first-commit tree audit 通过 |
 | M0-12 | ✅ | 建立 provider-neutral CI Verification Profile、统一 verifier 与 Gitea required jobs | push/PR 自动执行 test、compile、data/schema/projection、privacy、benchmark 和 secret gates | 让本地开发、协作者与托管平台使用同一可复现验收边界 | M0-03/M0-07/M0-09 | 14 个 verifier 正反测试、102/102 repository tests、compile 和 Gitleaks 本地通过；push runs 1016/1017 与 pull_request run 1018 通过；`main` 禁止 direct/force push 并要求 4 个实测 status contexts |
 
 ## 7.2 M1 聊天来源与 Replay Corpus
@@ -304,20 +304,20 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 
 | ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
 |---|---|---|---|---|---|---|
-| M6-01 | 🟡 | 固化 `rg -> Zoekt -> LSP -> SCIP -> RTFM` 路由 | 按问题选择最小工具 | 减少重复全仓扫描 | M5-04 | 当前原子步骤：定义问题分类、路由选择字段和最小读取预算；退出条件：strict RetrievalReceipt fixture、三类 precision/recall/freshness 负向门与 E5 baseline 通过 |
-| M6-02 | ⏳ | CodeGraph 跨仓影响线索 | 图关系与精确检索联合使用 | 控制图索引遗漏风险 | M6-01 | 核心符号用 `rg/LSP` 双检 |
-| M6-03 | ⏳ | Recall Provider SPI | Mem0/Hindsight/Graphiti 可替换 | 新技术可消融和替换 | M2-05 | provider 503 不影响权威状态 |
-| M6-04 | ⏳ | memory 消融测试 | Provider 准入依据真实增益 | 建立可重复的组件准入机制 | M6-03 | 相对 no-memory 基线有显著收益且安全指标保持基线 |
-| M6-05 | ⏳ | 外置/本地 reviewer adapter | 难题和 handoff 获得第二意见 | 提高审查强度 | M5-01 | 状态提交权限为 0；超时采用异步降级 |
-| M6-06 | ⏳ | MCP Registry/provider admission adapter | MCP server 发现、publisher、license、auth 和 tool scope 可审计 | 连接器按项目和操作受控启用 | M4-10/M2-05 | registry snapshot 固定 revision；未授权写工具激活率为 0 |
-| M6-07 | ⏳ | RetrievalReceipt、bounded expansion 与 index/cache freshness | 外置资料只按最小范围进入 packet，重复读取可计量 | 减少直接读取并保持 current evidence | M2-04/M5-04/M7-01 | receipt provenance 100%；承重 assertion 通过率 100%；重复读取 bytes 相对 E0 下降 >=30% |
+| M6-01 | ✅ | 固化 `rg -> Zoekt -> LSP -> SCIP -> RTFM` 路由 | 按问题选择最小工具 | 减少重复全仓扫描 | M5-04 | strict plan/receipt/benchmark schema；五类固定 route 完成 `1000/1000` replay iterations、`5000/5000` decisions；precision/recall/freshness `1.0`；验收见 `docs/migrations/m6-retrieval-recall-acceptance-2026-08-15.md#m6-01-bounded-retrieval-route` |
+| M6-02 | ✅ | CodeGraph 跨仓影响线索 | 图关系与精确检索联合使用 | 控制图索引遗漏风险 | M6-01 | 每条 clue 具备 `rg + LSP` qualified-symbol 双检并绑定 trusted repository/path；missing verifier、duplicate、伪 module 和 same-name pollution fail closed；验收见同一 M6 evidence |
+| M6-03 | ✅ | Recall Provider SPI | Mem0/Hindsight/Graphiti 可替换 | 新技术可消融和替换 | M2-05 | candidate-only/current-stale receipt 与 `503` degraded empty receipt 通过；State failure `0`；external active provider `0` |
+| M6-04 | ✅ | memory 消融测试 | Provider 准入依据真实增益 | 建立可重复的组件准入机制 | M6-03 | `reference_fixture_conformance_only` paired fixture `1000` cases：accuracy `0.6 -> 0.9`、p=`9.82e-91`；stale revival/authority/503 State failure `0`；未宣称 external memory 增益 |
+| M6-05 | ✅ | 外置/本地 reviewer adapter | 难题和 handoff 获得第二意见 | 提高审查强度 | M5-01 | local/deferred/timeout fixture 通过且 external call `0`；State/completion authority `0` |
+| M6-06 | ✅ | MCP Registry/provider admission adapter | MCP server 发现、publisher、license、auth 和 tool scope 可审计 | 连接器按项目和操作受控启用 | M4-10/M2-05 | `.invalid` local registry fixture 的 revision/content digest 固定；official registry 与 State MCP route 需外部 trusted anchor；`1000` unauthorized requests 的 write/effect activation `0`；invocation `0` |
+| M6-07 | ✅ | RetrievalReceipt、bounded expansion 与 index/cache freshness | 外置资料只按最小范围进入 packet，重复读取可计量 | 减少直接读取并保持 current evidence | M2-04/M5-04/M7-01 | cache hit 解析并绑定 prior miss receipt lineage；receipt provenance 与 bearing assertion `100%`；fixed E5 bytes `6,720,000 -> 3,360,000`，下降 `50%`；未宣称 provider token 降幅 |
 
 ## 7.8 M7 幻觉、证据与代码质量
 
 | ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
 |---|---|---|---|---|---|---|
-| M7-01 | ⏳ | assertion authority/version/hash/validity | 承重结论可追溯 | 始终参考当前官方与代码证据 | M6-01 | 承重断言 provenance 100% |
-| M7-02 | ⏳ | claim-evidence gate | 无证据完成声明和臆测路径被阻断 | 降低幻觉进入代码 | M7-01 | E6 无证据完成/伪路径为 0 |
+| M7-01 | ✅ | assertion authority/version/hash/validity | 承重结论可追溯 | 始终参考当前官方与代码证据 | M6-01 | strict assertion provenance schema；current code/State 与 retrieval receipt 必须解析并重算 digest；candidate/historical bearing、expiry 与伪路径 fail closed；committed coverage `1.0`；验收见 M6 evidence |
+| M7-02 | 🟡 | claim-evidence gate | 无证据完成声明和臆测路径被阻断 | 降低幻觉进入代码 | M7-01 | 当前原子步骤：定义 claim kind、所需 evidence authority 和 completion/path negative gates；退出条件：E6 无证据完成/伪路径为 0 |
 | M7-03 | ⏳ | 项目化 Verification Profile | 各项目使用匹配的 TDD/build/live 门 | 保持通用协议与项目验证差异 | M2-01 | AlkaidLab 与第二项目 profile 通过 |
 | M7-04 | ⏳ | 同模型同预算 patch A/B 盲评 | 隔离记忆系统对代码质量的真实影响 | 使用客观质量指标评估 | M7-02/M7-03 | build/test/mutation 保持基线，返工下降 |
 | M7-05 | ⏳ | affected graph 与测试选择 | 缩短验证时间并保持完整覆盖 | 提高大项目效率 | M6-01/M7-03 | wall time 下降 >=30%，漏测 0 |
