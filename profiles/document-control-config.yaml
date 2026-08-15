@@ -1,6 +1,6 @@
 schema_version: context.document-control-config/v1alpha1
-generated_at: '2026-08-15T06:00:00Z'
-governance_revision: 56
+generated_at: '2026-08-16T06:00:00Z'
+governance_revision: 57
 documents:
 - document_id: agents
   path: AGENTS.md
@@ -12,7 +12,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/56
+    authority_ref: governance-event://master/revision/57
     supersedes: null
     affected_tasks:
     - M0-10
@@ -21,19 +21,19 @@ documents:
 - document_id: master
   path: MASTER.md
   category: governance
-  document_revision: 18
+  document_revision: 19
   authority:
     governance_authority: true
     active_state_authority: false
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/56
-    supersedes: context.document://master/revision/17
+    authority_ref: governance-event://master/revision/57
+    supersedes: context.document://master/revision/18
     supersedes_provenance:
-      git_commit: cfcf543da0a573c4fdda560038b30bd237fd5510
-      manifest_sha256: 291eafa24ef90dda2be94e43400f4fb797b79a426f1526a843387a533030b39e
-      content_sha256: 5af2f3542bf252187aa3c3023a98ddc8c7e0e536bc92c1c35d6d9f75306887ab
+      git_commit: 981306ebf012143a8fb79e924f1033fd2bb9618f
+      manifest_sha256: a5caeb17b22632b9de2c9de2a98eaf0ae5fda740d43d8f5e19b6af5fa7cc214b
+      content_sha256: d147f173fa45ab9f0d12a1bba002cf8ea5a72a7b72ae9442090258b0c87bd9b1
     affected_tasks:
     - M3-08
     - M4-09
@@ -54,6 +54,7 @@ documents:
     - M6-07
     - M7-01
     - M7-02
+    - M7-03
     - M8-04
     next_review: null
   evidence_refs:
@@ -96,6 +97,9 @@ documents:
   - ref_id: master-evidence-m6
     path: docs/migrations/m6-retrieval-recall-acceptance-2026-08-15.md
     valid_until: null
+  - ref_id: master-evidence-m7-02
+    path: docs/migrations/m7-02-claim-evidence-gate-acceptance-2026-08-16.md
+    valid_until: null
 - document_id: readme
   path: README.md
   category: projection
@@ -106,32 +110,32 @@ documents:
     controlled_action_entry: false
   change:
     change_type: projection
-    authority_ref: state-revision://repository/56
+    authority_ref: state-revision://repository/57
     supersedes: null
     affected_tasks:
     - M0-10
     next_review: null
   evidence_refs: []
   projection_binding:
-    source_state_revision: 56
+    source_state_revision: 57
     template_version: context.document-projection/v1alpha1
     state_write_authority: false
 - document_id: status
   path: STATUS.md
   category: routing
-  document_revision: 19
+  document_revision: 20
   authority:
     governance_authority: false
     active_state_authority: false
     controlled_action_entry: false
   change:
     change_type: status
-    authority_ref: governance-event://master/revision/56
-    supersedes: context.document://status/revision/18
+    authority_ref: governance-event://master/revision/57
+    supersedes: context.document://status/revision/19
     supersedes_provenance:
-      git_commit: cfcf543da0a573c4fdda560038b30bd237fd5510
-      manifest_sha256: 291eafa24ef90dda2be94e43400f4fb797b79a426f1526a843387a533030b39e
-      content_sha256: e64180b50a65f045959960779c7723c5087c4acdc675302885bbc99a6a9cbb3f
+      git_commit: 981306ebf012143a8fb79e924f1033fd2bb9618f
+      manifest_sha256: a5caeb17b22632b9de2c9de2a98eaf0ae5fda740d43d8f5e19b6af5fa7cc214b
+      content_sha256: 08fea483260419eb0fda49afd67bc606de4c5720fb161c85e4fe30b7839f92af
     affected_tasks:
     - M3-08
     - M4-09
@@ -152,6 +156,7 @@ documents:
     - M6-07
     - M7-01
     - M7-02
+    - M7-03
     - M8-04
     next_review: null
   evidence_refs:
@@ -194,6 +199,9 @@ documents:
   - ref_id: status-evidence-m6
     path: docs/migrations/m6-retrieval-recall-acceptance-2026-08-15.md
     valid_until: null
+  - ref_id: status-evidence-m7-02
+    path: docs/migrations/m7-02-claim-evidence-gate-acceptance-2026-08-16.md
+    valid_until: null
 - document_id: docs-architecture-adaptive-information-plane
   path: docs/architecture/adaptive-information-plane.md
   category: architecture
@@ -204,7 +212,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/56
+    authority_ref: governance-event://master/revision/57
     supersedes: null
     affected_tasks:
     - M0-10
@@ -220,7 +228,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/56
+    authority_ref: governance-event://master/revision/57
     supersedes: context.document://docs-architecture-idea-continuity/revision/2
     supersedes_provenance:
       git_commit: 84ac82f3375a39c712e3c98a95f6126753e64199
@@ -241,7 +249,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/56
+    authority_ref: governance-event://master/revision/57
     supersedes: null
     affected_tasks:
     - M0-10
@@ -257,7 +265,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/56
+    authority_ref: governance-event://master/revision/57
     supersedes: context.document://docs-architecture-skill-orchestration/revision/1
     affected_tasks:
     - M0-10
@@ -272,19 +280,19 @@ documents:
 - document_id: docs-architecture-target-state
   path: docs/architecture/target-state.md
   category: architecture
-  document_revision: 17
+  document_revision: 18
   authority:
     governance_authority: false
     active_state_authority: false
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/56
-    supersedes: context.document://docs-architecture-target-state/revision/16
+    authority_ref: governance-event://master/revision/57
+    supersedes: context.document://docs-architecture-target-state/revision/17
     supersedes_provenance:
-      git_commit: cfcf543da0a573c4fdda560038b30bd237fd5510
-      manifest_sha256: 291eafa24ef90dda2be94e43400f4fb797b79a426f1526a843387a533030b39e
-      content_sha256: 6914cfc66fe5b308007a23c4edecba7e0fe0a49e17c68e42e88507604028c9e4
+      git_commit: 981306ebf012143a8fb79e924f1033fd2bb9618f
+      manifest_sha256: a5caeb17b22632b9de2c9de2a98eaf0ae5fda740d43d8f5e19b6af5fa7cc214b
+      content_sha256: ce09ff9c37ddade55faa4e2b015e048152858982e41807850ffff1f56bb1bd87
     affected_tasks:
     - M3-08
     - M4-09
@@ -304,8 +312,10 @@ documents:
     - M6-06
     - M6-07
     - M7-01
+    - M7-02
+    - M7-03
     - M8-04
-    next_review: task:M7-02
+    next_review: task:M7-03
   evidence_refs:
   - ref_id: docs-architecture-target-state-evidence-1
     path: docs/migrations/m0-10-document-lifecycle-acceptance-2026-08-12.md
@@ -345,6 +355,9 @@ documents:
     valid_until: null
   - ref_id: docs-architecture-target-state-evidence-m6
     path: docs/migrations/m6-retrieval-recall-acceptance-2026-08-15.md
+    valid_until: null
+  - ref_id: docs-architecture-target-state-evidence-m7-02
+    path: docs/migrations/m7-02-claim-evidence-gate-acceptance-2026-08-16.md
     valid_until: null
 - document_id: docs-migrations-local-source-inventory-2026-08-09
   path: docs/migrations/local-source-inventory-2026-08-09.md
@@ -973,7 +986,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/56
+    authority_ref: governance-event://master/revision/57
     supersedes: null
     affected_tasks:
     - M0-10
@@ -989,7 +1002,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/56
+    authority_ref: governance-event://master/revision/57
     supersedes: null
     affected_tasks:
     - M0-10
@@ -1005,7 +1018,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/56
+    authority_ref: governance-event://master/revision/57
     supersedes: null
     affected_tasks:
     - M0-10
@@ -1021,7 +1034,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/56
+    authority_ref: governance-event://master/revision/57
     supersedes: null
     affected_tasks:
     - M0-10
@@ -1037,7 +1050,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/56
+    authority_ref: governance-event://master/revision/57
     supersedes: null
     affected_tasks:
     - M0-10
@@ -1053,7 +1066,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/56
+    authority_ref: governance-event://master/revision/57
     supersedes: context.document://docs-policies-git-collaboration/revision/1
     supersedes_provenance:
       git_commit: 51663f3b23a4dc4af31ba4be9e9d3f80066d64ca
@@ -1076,7 +1089,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/56
+    authority_ref: governance-event://master/revision/57
     supersedes: context.document://docs-policies-project-dogfooding-observation/revision/1
     supersedes_provenance:
       git_commit: b8e7da0358b3b3b8c21ebf44d6c50483f80cd0b1
@@ -1101,7 +1114,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/56
+    authority_ref: governance-event://master/revision/57
     supersedes: null
     affected_tasks:
     - M0-10
@@ -1117,7 +1130,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/56
+    authority_ref: governance-event://master/revision/57
     supersedes: null
     affected_tasks:
     - M0-10
@@ -1126,19 +1139,19 @@ documents:
 - document_id: docs-reports-verified-state
   path: docs/reports/verified-state.md
   category: report
-  document_revision: 17
+  document_revision: 18
   authority:
     governance_authority: false
     active_state_authority: false
     controlled_action_entry: false
   change:
     change_type: projection
-    authority_ref: state-revision://repository/56
-    supersedes: context.document://docs-reports-verified-state/revision/16
+    authority_ref: state-revision://repository/57
+    supersedes: context.document://docs-reports-verified-state/revision/17
     supersedes_provenance:
-      git_commit: cfcf543da0a573c4fdda560038b30bd237fd5510
-      manifest_sha256: 291eafa24ef90dda2be94e43400f4fb797b79a426f1526a843387a533030b39e
-      content_sha256: b117a9127dc6743ac2efce7ba8ac5eaaec60a88a978be028ceaf07c5257035fa
+      git_commit: 981306ebf012143a8fb79e924f1033fd2bb9618f
+      manifest_sha256: a5caeb17b22632b9de2c9de2a98eaf0ae5fda740d43d8f5e19b6af5fa7cc214b
+      content_sha256: 3acdca2996fe49e8fb17c3929a749193d144eaf97bdad5e44628c7fa050d9ec7
     affected_tasks:
     - M3-08
     - M4-09
@@ -1159,7 +1172,9 @@ documents:
     - M6-06
     - M6-07
     - M7-01
-    next_review: task:M7-02
+    - M7-02
+    - M7-03
+    next_review: task:M7-03
   evidence_refs:
   - ref_id: docs-reports-verified-state-evidence-1
     path: docs/migrations/m0-07-schema-governance-acceptance-2026-08-09.md
@@ -1293,8 +1308,11 @@ documents:
   - ref_id: docs-reports-verified-state-evidence-m6
     path: docs/migrations/m6-retrieval-recall-acceptance-2026-08-15.md
     valid_until: null
+  - ref_id: docs-reports-verified-state-evidence-m7-02
+    path: docs/migrations/m7-02-claim-evidence-gate-acceptance-2026-08-16.md
+    valid_until: null
   projection_binding:
-    source_state_revision: 56
+    source_state_revision: 57
     template_version: context.document-projection/v1alpha1
     state_write_authority: false
 - document_id: docs-research-agent-harness-assessment-2026-08-09
@@ -1615,5 +1633,23 @@ documents:
     - M6-06
     - M6-07
     - M7-01
-    next_review: task:M7-02
+    next_review: task:M7-03
+  evidence_refs: []
+- document_id: docs-migrations-m7-02-claim-evidence-gate-acceptance-2026-08-16
+  path: docs/migrations/m7-02-claim-evidence-gate-acceptance-2026-08-16.md
+  category: migration
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: verification-run://repository/efe94fee0c926dcc34a09c10b843198c299a98952a75fe2d2e063d8aabda2fbf
+    supersedes: null
+    affected_tasks:
+    - M7-02
+    - M7-03
+    - M7-04
+    next_review: task:M7-03
   evidence_refs: []

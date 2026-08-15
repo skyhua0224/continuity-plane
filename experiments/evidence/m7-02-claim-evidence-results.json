@@ -1,0 +1,14 @@
+{
+  "allowed_count": 250,
+  "benchmark_id": "benchmark/m7-02/claim-evidence",
+  "completion_authority": false,
+  "denied_count": 750,
+  "false_allow_count": 0,
+  "false_deny_count": 0,
+  "outcomes_sha256": "0c91d55a604244a4094b3ee2b9f00511f90efec8fc6827f52ea8528c8c76e6f2",
+  "receipt_sha256": "28a266b4ad7d5438eaedfb73fff34e5adbc387b2c0a4d5d1c04789a6a52cda97",
+  "samples": 1000,
+  "schema_version": "context.claim-evidence-benchmark/v1alpha1",
+  "state_write_authority": false,
+  "successful_samples": 1000
+}

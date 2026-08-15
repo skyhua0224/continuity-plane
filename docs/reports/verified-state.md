@@ -1,9 +1,9 @@
 # Verified State Evidence Index
 
-版本：11
-日期：2026-08-15  
+版本：12
+日期：2026-08-16  
 状态：generated evidence projection  
-source governance revision：56
+source governance revision：57
 state write authority：false
 
 ## 已验收任务
@@ -62,6 +62,7 @@ state write authority：false
 | M6-06 | [`m6-retrieval-recall-acceptance-2026-08-15.md`](../migrations/m6-retrieval-recall-acceptance-2026-08-15.md#m6-06-mcp-admission) |
 | M6-07 | [`m6-retrieval-recall-acceptance-2026-08-15.md`](../migrations/m6-retrieval-recall-acceptance-2026-08-15.md#m6-07-receipt-freshness-and-read-reduction) |
 | M7-01 | [`m6-retrieval-recall-acceptance-2026-08-15.md`](../migrations/m6-retrieval-recall-acceptance-2026-08-15.md#m7-01-provenance-dependency) |
+| M7-02 | [`m7-02-claim-evidence-gate-acceptance-2026-08-16.md`](../migrations/m7-02-claim-evidence-gate-acceptance-2026-08-16.md) |
 
 ## 非任务证据
 

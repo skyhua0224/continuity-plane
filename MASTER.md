@@ -1,7 +1,7 @@
 # Context Control Plane MASTER
 
-版本：revision 56  
-日期：2026-08-15  
+版本：revision 57  
+日期：2026-08-16  
 状态：研究与 shadow pilot 准备阶段  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
 
@@ -317,8 +317,8 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
 |---|---|---|---|---|---|---|
 | M7-01 | ✅ | assertion authority/version/hash/validity | 承重结论可追溯 | 始终参考当前官方与代码证据 | M6-01 | strict assertion provenance schema；current code/State 与 retrieval receipt 必须解析并重算 digest；candidate/historical bearing、expiry 与伪路径 fail closed；committed coverage `1.0`；验收见 M6 evidence |
-| M7-02 | 🟡 | claim-evidence gate | 无证据完成声明和臆测路径被阻断 | 降低幻觉进入代码 | M7-01 | 当前原子步骤：定义 claim kind、所需 evidence authority 和 completion/path negative gates；退出条件：E6 无证据完成/伪路径为 0 |
-| M7-03 | ⏳ | 项目化 Verification Profile | 各项目使用匹配的 TDD/build/live 门 | 保持通用协议与项目验证差异 | M2-01 | AlkaidLab 与第二项目 profile 通过 |
+| M7-02 | ✅ | claim-evidence gate | 无证据完成声明和臆测路径被阻断 | 降低幻觉进入代码 | M7-01 | `context.claim-evidence-gate/v1alpha1` 与 benchmark strict schema；completion/path/verification/decision/constraint authority policy 固定；`1000/1000` replay，750/750 负向样本拒绝，false allow/deny `0`；State/completion authority `0`；验收见 `docs/migrations/m7-02-claim-evidence-gate-acceptance-2026-08-16.md` |
+| M7-03 | 🟡 | 项目化 Verification Profile | 各项目使用匹配的 TDD/build/live 门 | 保持通用协议与项目验证差异 | M2-01 | 当前原子步骤：定义 provider-neutral profile、required/conditional/optional gate 和项目 adapter 合同；退出条件：AlkaidLab 与第二项目 profile 通过 |
 | M7-04 | ⏳ | 同模型同预算 patch A/B 盲评 | 隔离记忆系统对代码质量的真实影响 | 使用客观质量指标评估 | M7-02/M7-03 | build/test/mutation 保持基线，返工下降 |
 | M7-05 | ⏳ | affected graph 与测试选择 | 缩短验证时间并保持完整覆盖 | 提高大项目效率 | M6-01/M7-03 | wall time 下降 >=30%，漏测 0 |
 | M7-06 | ⏳ | ReferenceWatcher、freshness、hash change 与 assertion supersedes | 上游文档和标准变化可审计地使旧证据失效 | 持续吸收新资料并阻止 stale 结论 | M0-08/M7-01 | upstream change fixture 100% stale/quarantine；未复核 assertion 通过完成门为 0 |
