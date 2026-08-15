@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m7-04/patch-ab-quality-evidence.schema.json",
+  "title": "Patch A/B Quality Evidence",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "evidence_kind", "evidence_id", "work_id",
+    "candidate_id", "patch_ref", "fixture_ref", "quality", "status",
+    "evidence_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.patch-ab-quality-evidence/v1alpha1"},
+    "evidence_kind": {"enum": ["verification-decision", "verification-run", "claim-admission"]},
+    "evidence_id": {"$ref": "#/$defs/id"},
+    "work_id": {"$ref": "#/$defs/id"},
+    "candidate_id": {"$ref": "#/$defs/id"},
+    "patch_ref": {"$ref": "#/$defs/artifact"},
+    "fixture_ref": {"$ref": "#/$defs/artifact"},
+    "quality": {"$ref": "#/$defs/quality"},
+    "status": {"enum": ["satisfied", "passed", "allow"]},
+    "evidence_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "artifact": {"type": "string", "pattern": "^artifact://sha256/[0-9a-f]{64}$"},
+    "quality": {
+      "type": "object", "additionalProperties": false,
+      "required": ["build_passed", "test_passed", "mutation_score_basis_points", "rework_count"],
+      "properties": {
+        "build_passed": {"type": "boolean"},
+        "test_passed": {"type": "boolean"},
+        "mutation_score_basis_points": {"type": "integer", "minimum": 0, "maximum": 10000},
+        "rework_count": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

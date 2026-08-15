@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m7-04/patch-ab-experiment.schema.json",
+  "title": "Patch A/B Frozen Experiment",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "experiment_id", "work_id", "frozen_experiment_sha256",
+    "randomization_seed_sha256", "randomizer", "candidates", "verifier_policy",
+    "state_write_authority", "completion_authority", "experiment_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.patch-ab-experiment/v1alpha2"},
+    "experiment_id": {"$ref": "#/$defs/id"},
+    "work_id": {"$ref": "#/$defs/id"},
+    "frozen_experiment_sha256": {"$ref": "#/$defs/sha256"},
+    "randomization_seed_sha256": {"$ref": "#/$defs/sha256"},
+    "randomizer": {
+      "type": "object", "additionalProperties": false,
+      "required": ["randomizer_id", "entropy_ref", "provenance_ref", "frozen_experiment_sha256"],
+      "properties": {
+        "randomizer_id": {"$ref": "#/$defs/id"},
+        "entropy_ref": {"$ref": "#/$defs/artifact"},
+        "provenance_ref": {"$ref": "#/$defs/artifact"},
+        "frozen_experiment_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "candidates": {
+      "type": "array", "minItems": 2, "maxItems": 2,
+      "items": {"$ref": "#/$defs/candidate"},
+      "allOf": [
+        {"contains": {"properties": {"variant": {"const": "control"}}, "required": ["variant"]}, "minContains": 1, "maxContains": 1},
+        {"contains": {"properties": {"variant": {"const": "treatment"}}, "required": ["variant"]}, "minContains": 1, "maxContains": 1}
+      ]
+    },
+    "verifier_policy": {"$ref": "#/$defs/verifierPolicy"},
+    "state_write_authority": {"const": false},
+    "completion_authority": {"const": false},
+    "experiment_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "artifact": {"type": "string", "pattern": "^artifact://sha256/[0-9a-f]{64}$"},
+    "budget": {
+      "type": "object", "additionalProperties": false,
+      "required": ["input_tokens", "output_tokens", "tool_calls", "wall_time_ms"],
+      "properties": {
+        "input_tokens": {"type": "integer", "minimum": 1},
+        "output_tokens": {"type": "integer", "minimum": 1},
+        "tool_calls": {"type": "integer", "minimum": 1},
+        "wall_time_ms": {"type": "integer", "minimum": 1}
+      }
+    },
+    "runContext": {
+      "type": "object", "additionalProperties": false,
+      "required": ["provider_id", "model_id", "fixture_ref", "budget"],
+      "properties": {
+        "provider_id": {"$ref": "#/$defs/id"},
+        "model_id": {"$ref": "#/$defs/id"},
+        "fixture_ref": {"$ref": "#/$defs/artifact"},
+        "budget": {"$ref": "#/$defs/budget"}
+      }
+    },
+    "quality": {
+      "type": "object", "additionalProperties": false,
+      "required": ["build_passed", "test_passed", "mutation_score_basis_points", "rework_count"],
+      "properties": {
+        "build_passed": {"type": "boolean"},
+        "test_passed": {"type": "boolean"},
+        "mutation_score_basis_points": {"type": "integer", "minimum": 0, "maximum": 10000},
+        "rework_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "candidate": {
+      "type": "object", "additionalProperties": false,
+      "required": ["candidate_id", "variant", "producer_id", "patch_ref", "run_context", "quality", "evidence_refs"],
+      "properties": {
+        "candidate_id": {"$ref": "#/$defs/id"},
+        "variant": {"enum": ["control", "treatment"]},
+        "producer_id": {"$ref": "#/$defs/id"},
+        "patch_ref": {"$ref": "#/$defs/artifact"},
+        "run_context": {"$ref": "#/$defs/runContext"},
+        "quality": {"$ref": "#/$defs/quality"},
+        "evidence_refs": {"type": "array", "minItems": 1, "maxItems": 128, "uniqueItems": true, "items": {"$ref": "#/$defs/artifact"}}
+      }
+    },
+    "verifierPolicy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["minimum_independent_verifiers", "rubric_ids", "score_min_basis_points", "score_max_basis_points"],
+      "properties": {
+        "minimum_independent_verifiers": {"type": "integer", "minimum": 2, "maximum": 16},
+        "rubric_ids": {"type": "array", "minItems": 1, "maxItems": 32, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+        "score_min_basis_points": {"const": 0},
+        "score_max_basis_points": {"const": 10000}
+      }
+    }
+  }
+}

@@ -1,0 +1,738 @@
+{
+  "schema_version": "context.affected-test-selection-fixture/v1alpha1",
+  "fixture_id": "fixture/m7-05/affected-test-selection/v2",
+  "golden_id": "golden/m7-05/current-repository/v1",
+  "golden_sha256": "78bdcd8f20b0583bfaa298349f495990aef5299c40293afaef79b0906680ad5b",
+  "project_revision": 58,
+  "repository_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "evaluated_at": "2026-08-16T12:00:00Z",
+  "profile": {
+    "schema_version": "context.verification-profile/v1alpha1",
+    "profile_id": "verification/context-control-plane/m7-05",
+    "project_id": "context-control-plane",
+    "profile_version": "1.0.0-alpha.1",
+    "revision": 1,
+    "valid_from": "2026-08-16T00:00:00Z",
+    "valid_until": null,
+    "gates": [
+      {
+        "gate_id": "build",
+        "gate_kind": "build",
+        "mode": "required",
+        "condition_ref": null,
+        "capability_refs": [
+          "capability/local-python"
+        ],
+        "depends_on_gate_ids": [
+          "tdd"
+        ],
+        "evidence_requirements": [
+          "artifact-digest"
+        ],
+        "thresholds": []
+      },
+      {
+        "gate_id": "static",
+        "gate_kind": "static",
+        "mode": "required",
+        "condition_ref": null,
+        "capability_refs": [
+          "capability/local-python"
+        ],
+        "depends_on_gate_ids": [],
+        "evidence_requirements": [
+          "artifact-digest"
+        ],
+        "thresholds": []
+      },
+      {
+        "gate_id": "tdd",
+        "gate_kind": "tdd",
+        "mode": "required",
+        "condition_ref": null,
+        "capability_refs": [
+          "capability/local-python"
+        ],
+        "depends_on_gate_ids": [
+          "static"
+        ],
+        "evidence_requirements": [
+          "artifact-digest"
+        ],
+        "thresholds": []
+      }
+    ],
+    "state_write_authority": false,
+    "completion_authority": false,
+    "profile_sha256": "5ecec560ca2bb68dbdb0f413968dfe9ed9d71920d0e7dc7eecf889add3230225"
+  },
+  "artifacts": {
+    "artifact://sha256/016793068719cab7fea9cd3f1837ae64ff0562bf70cf85ef2309c79afd6e7da5": "{\"base_repository_revision\":\"b36c89bcd5e288af3500aa22b64c28d3e8f20372\",\"changed_paths\":[\"context_control_plane/affected_test_selection.py\"],\"repository_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}",
+    "artifact://sha256/0f57682e6475287506715cf0918a4f926a8097b65c8dffaa5d405d67917aee41": "{\"base_repository_revision\":\"ac172a27f99768d213c5ac5f69d2ca12558e75f4\",\"changed_paths\":[\"context_control_plane/affected_test_selection.py\"],\"repository_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}",
+    "artifact://sha256/0fede42ca704f1f60c53b604102af4a35841d97ac40c33448e7e336d37171507": "{\"nodes\":[{\"depends_on_node_ids\":[],\"node_id\":\"codegraph-core\",\"path_prefixes\":[\"context_control_plane/codegraph_verification.py\"]},{\"depends_on_node_ids\":[],\"node_id\":\"evidence-core\",\"path_prefixes\":[\"context_control_plane/assertion_provenance.py\"]},{\"depends_on_node_ids\":[\"evidence-core\"],\"node_id\":\"claim-evidence\",\"path_prefixes\":[\"context_control_plane/claim_evidence_gate.py\"]},{\"depends_on_node_ids\":[],\"node_id\":\"selection-core\",\"path_prefixes\":[\"context_control_plane/affected_test_selection.py\"]},{\"depends_on_node_ids\":[\"selection-core\"],\"node_id\":\"selection-benchmark\",\"path_prefixes\":[\"context_control_plane/affected_test_selection_benchmark.py\"]},{\"depends_on_node_ids\":[\"selection-core\",\"selection-benchmark\"],\"node_id\":\"selection-tests\",\"path_prefixes\":[\"tests/test_m7_05\"]}]}",
+    "artifact://sha256/14bdc5846446dca1a7e3f1e51f4fe5ee31581dfbcd40017b3d93d474009f8b90": "context deterministic inventory adapter v1",
+    "artifact://sha256/327fa9c5e48df7a9e70bdb0497af8e68dad10fb46c8047ac4c6e8afb28a1c863": "context graph config v1",
+    "artifact://sha256/3747074d6e75e27182bba5f31c5f006387ccd47b6f3cd64dcb5b66bfedfded76": "{\"tests\":[{\"always_run\":false,\"estimated_input_bytes\":1000000,\"estimated_wall_time_ms\":2700,\"gate_id\":\"tdd\",\"node_ids\":[\"codegraph-core\"],\"test_id\":\"m6-02-unit\"},{\"always_run\":false,\"estimated_input_bytes\":1000000,\"estimated_wall_time_ms\":100,\"gate_id\":\"tdd\",\"node_ids\":[\"evidence-core\"],\"test_id\":\"m7-01-unit\"},{\"always_run\":false,\"estimated_input_bytes\":1000000,\"estimated_wall_time_ms\":700,\"gate_id\":\"tdd\",\"node_ids\":[\"claim-evidence\"],\"test_id\":\"m7-02-unit\"},{\"always_run\":false,\"estimated_input_bytes\":1000000,\"estimated_wall_time_ms\":200,\"gate_id\":\"tdd\",\"node_ids\":[\"selection-core\",\"selection-benchmark\",\"selection-tests\"],\"test_id\":\"m7-05-contract\"},{\"always_run\":true,\"estimated_input_bytes\":1000000,\"estimated_wall_time_ms\":100,\"gate_id\":\"build\",\"node_ids\":[],\"test_id\":\"python-compile\"},{\"always_run\":true,\"estimated_input_bytes\":1000000,\"estimated_wall_time_ms\":100,\"gate_id\":\"static\",\"node_ids\":[],\"test_id\":\"ruff-selection\"}]}",
+    "artifact://sha256/492f0c4a8643c05a2c42abc827753a1c4f41bc961c6bafdebd3b205e39febc0d": "{\"base_repository_revision\":\"0ffe99c29686ffe2ab1fd521fdad29e6a55d3c7f\",\"changed_paths\":[\"context_control_plane/affected_test_selection.py\"],\"repository_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}",
+    "artifact://sha256/4ae2e603b66984f6fb7c7ed841ab44fd5f476175d1c55568d5e2554abcb3f439": "{\"base_repository_revision\":\"dd5298235feed468f3759f6db6f16ad90139e13c\",\"changed_paths\":[\"context_control_plane/assertion_provenance.py\"],\"repository_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}",
+    "artifact://sha256/56ff8a52ef4963a697f50ac5d52a55a4a6acc784579bcb97421d781edd766b36": "{\"base_repository_revision\":\"4098262f7e0db4165aed39425c07d1e8116a3bca\",\"changed_paths\":[\"context_control_plane/affected_test_selection.py\"],\"repository_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}",
+    "artifact://sha256/654e1ab8bc18a686fb9e49f093424eea26be616d2ae28768d5e34237fd429251": "{\"dynamic_edge_status\":\"none\",\"repository_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"unresolved_edge_count\":0}",
+    "artifact://sha256/698b48b13d9a9e87570cf8898ce2888a1403771639b3b9238570c9d6d7435759": "context inventory config v1",
+    "artifact://sha256/99d899a987ca93aeb610d4deb914c76e09f6d1507034c83063e30795de178182": "{\"base_repository_revision\":\"0ce91216993b40d9f9278a7d1a9e6dc3e7eaba35\",\"changed_paths\":[\"context_control_plane/affected_test_selection.py\"],\"repository_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}",
+    "artifact://sha256/b1662b5184ed7983cfa2035a4acaace07b52e5d83ba35864260a0ee8b2766d1c": "{\"base_repository_revision\":\"782bab7502ebabefaf28f4c1ea9de529f8a663ef\",\"changed_paths\":[\"context_control_plane/affected_test_selection.py\",\"generated/unknown.py\"],\"repository_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}",
+    "artifact://sha256/ba70b0c7f4e42a8ebe6b63c07ae56a1321667d915fa5b4ee9d1d187be63af172": "{\"dynamic_edge_status\":\"unknown\",\"repository_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"unresolved_edge_count\":1}",
+    "artifact://sha256/cd27fd76ea59d68a99684697d0b60a595596f9454246bf45bf7ce6900c54d6e3": "{\"base_repository_revision\":\"faf7a6ea366bf839aa163c257bf614fadb6033b2\",\"changed_paths\":[\"generated/unknown.py\"],\"repository_revision\":\"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"}",
+    "artifact://sha256/d2467decea08b637c998005d1f32cca5baca25b04756c20383e75f527e0f981c": "context deterministic graph adapter v1"
+  },
+  "contexts": {
+    "current": {
+      "project_id": "context-control-plane",
+      "repository_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "profile_id": "verification/context-control-plane/m7-05",
+      "profile_sha256": "5ecec560ca2bb68dbdb0f413968dfe9ed9d71920d0e7dc7eecf889add3230225",
+      "derivation_anchors": {
+        "affected-graph": {
+          "subject_kind": "affected-graph",
+          "adapter_id": "adapter/context/graph",
+          "adapter_version": "1.0.0",
+          "adapter_sha256": "d2467decea08b637c998005d1f32cca5baca25b04756c20383e75f527e0f981c",
+          "config_sha256": "327fa9c5e48df7a9e70bdb0497af8e68dad10fb46c8047ac4c6e8afb28a1c863",
+          "source_sha256": "0fede42ca704f1f60c53b604102af4a35841d97ac40c33448e7e336d37171507",
+          "dynamic_edge_sha256": "654e1ab8bc18a686fb9e49f093424eea26be616d2ae28768d5e34237fd429251"
+        },
+        "required-test-inventory": {
+          "subject_kind": "required-test-inventory",
+          "adapter_id": "adapter/context/inventory",
+          "adapter_version": "1.0.0",
+          "adapter_sha256": "14bdc5846446dca1a7e3f1e51f4fe5ee31581dfbcd40017b3d93d474009f8b90",
+          "config_sha256": "698b48b13d9a9e87570cf8898ce2888a1403771639b3b9238570c9d6d7435759",
+          "source_sha256": "3747074d6e75e27182bba5f31c5f006387ccd47b6f3cd64dcb5b66bfedfded76",
+          "dynamic_edge_sha256": null
+        }
+      }
+    },
+    "dynamic": {
+      "project_id": "context-control-plane",
+      "repository_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "profile_id": "verification/context-control-plane/m7-05",
+      "profile_sha256": "5ecec560ca2bb68dbdb0f413968dfe9ed9d71920d0e7dc7eecf889add3230225",
+      "derivation_anchors": {
+        "affected-graph": {
+          "subject_kind": "affected-graph",
+          "adapter_id": "adapter/context/graph",
+          "adapter_version": "1.0.0",
+          "adapter_sha256": "d2467decea08b637c998005d1f32cca5baca25b04756c20383e75f527e0f981c",
+          "config_sha256": "327fa9c5e48df7a9e70bdb0497af8e68dad10fb46c8047ac4c6e8afb28a1c863",
+          "source_sha256": "0fede42ca704f1f60c53b604102af4a35841d97ac40c33448e7e336d37171507",
+          "dynamic_edge_sha256": "ba70b0c7f4e42a8ebe6b63c07ae56a1321667d915fa5b4ee9d1d187be63af172"
+        },
+        "required-test-inventory": {
+          "subject_kind": "required-test-inventory",
+          "adapter_id": "adapter/context/inventory",
+          "adapter_version": "1.0.0",
+          "adapter_sha256": "14bdc5846446dca1a7e3f1e51f4fe5ee31581dfbcd40017b3d93d474009f8b90",
+          "config_sha256": "698b48b13d9a9e87570cf8898ce2888a1403771639b3b9238570c9d6d7435759",
+          "source_sha256": "3747074d6e75e27182bba5f31c5f006387ccd47b6f3cd64dcb5b66bfedfded76",
+          "dynamic_edge_sha256": null
+        }
+      }
+    }
+  },
+  "inventory": {
+    "schema_version": "context.required-test-inventory/v1alpha1",
+    "inventory_id": "test-inventory/m7-05/current",
+    "project_id": "context-control-plane",
+    "repository_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "profile_id": "verification/context-control-plane/m7-05",
+    "profile_sha256": "5ecec560ca2bb68dbdb0f413968dfe9ed9d71920d0e7dc7eecf889add3230225",
+    "generated_at": "2026-08-16T11:00:00Z",
+    "valid_until": "2026-08-16T13:00:00Z",
+    "derivation": {
+      "schema_version": "context.deterministic-derivation-receipt/v1alpha1",
+      "derivation_id": "derivation/m7-05/required-test-inventory/current",
+      "subject_kind": "required-test-inventory",
+      "project_id": "context-control-plane",
+      "repository_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "profile_id": "verification/context-control-plane/m7-05",
+      "profile_sha256": "5ecec560ca2bb68dbdb0f413968dfe9ed9d71920d0e7dc7eecf889add3230225",
+      "generated_at": "2026-08-16T11:00:00Z",
+      "adapter_id": "adapter/context/inventory",
+      "adapter_version": "1.0.0",
+      "adapter_artifact_ref": "artifact://sha256/14bdc5846446dca1a7e3f1e51f4fe5ee31581dfbcd40017b3d93d474009f8b90",
+      "adapter_artifact_sha256": "14bdc5846446dca1a7e3f1e51f4fe5ee31581dfbcd40017b3d93d474009f8b90",
+      "config_artifact_ref": "artifact://sha256/698b48b13d9a9e87570cf8898ce2888a1403771639b3b9238570c9d6d7435759",
+      "config_artifact_sha256": "698b48b13d9a9e87570cf8898ce2888a1403771639b3b9238570c9d6d7435759",
+      "source_artifact_ref": "artifact://sha256/3747074d6e75e27182bba5f31c5f006387ccd47b6f3cd64dcb5b66bfedfded76",
+      "source_artifact_sha256": "3747074d6e75e27182bba5f31c5f006387ccd47b6f3cd64dcb5b66bfedfded76",
+      "dynamic_edge_artifact_ref": null,
+      "dynamic_edge_artifact_sha256": null,
+      "output_sha256": "7bf1a9e50474da30d0e734e4bdec98875850eb412d14727f966046ef80791f1f",
+      "state_write_authority": false,
+      "completion_authority": false,
+      "receipt_sha256": "82d5ac43bd925534f19fe6bd089b1344a2485896a665a66ac8435303e8957fe3"
+    },
+    "tests": [
+      {
+        "always_run": false,
+        "estimated_input_bytes": 1000000,
+        "estimated_wall_time_ms": 2700,
+        "gate_id": "tdd",
+        "node_ids": [
+          "codegraph-core"
+        ],
+        "test_id": "m6-02-unit"
+      },
+      {
+        "always_run": false,
+        "estimated_input_bytes": 1000000,
+        "estimated_wall_time_ms": 100,
+        "gate_id": "tdd",
+        "node_ids": [
+          "evidence-core"
+        ],
+        "test_id": "m7-01-unit"
+      },
+      {
+        "always_run": false,
+        "estimated_input_bytes": 1000000,
+        "estimated_wall_time_ms": 700,
+        "gate_id": "tdd",
+        "node_ids": [
+          "claim-evidence"
+        ],
+        "test_id": "m7-02-unit"
+      },
+      {
+        "always_run": false,
+        "estimated_input_bytes": 1000000,
+        "estimated_wall_time_ms": 200,
+        "gate_id": "tdd",
+        "node_ids": [
+          "selection-benchmark",
+          "selection-core",
+          "selection-tests"
+        ],
+        "test_id": "m7-05-contract"
+      },
+      {
+        "always_run": true,
+        "estimated_input_bytes": 1000000,
+        "estimated_wall_time_ms": 100,
+        "gate_id": "build",
+        "node_ids": [],
+        "test_id": "python-compile"
+      },
+      {
+        "always_run": true,
+        "estimated_input_bytes": 1000000,
+        "estimated_wall_time_ms": 100,
+        "gate_id": "static",
+        "node_ids": [],
+        "test_id": "ruff-selection"
+      }
+    ],
+    "state_write_authority": false,
+    "completion_authority": false,
+    "inventory_sha256": "5d313e2f0b8bdd4011eb692c11ba0ec572b4b2ae1963192088b4ccfb3630328d"
+  },
+  "graphs": {
+    "current": {
+      "schema_version": "context.affected-graph/v1alpha1",
+      "graph_id": "affected-graph/m7-05/current",
+      "project_id": "context-control-plane",
+      "repository_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "profile_id": "verification/context-control-plane/m7-05",
+      "profile_sha256": "5ecec560ca2bb68dbdb0f413968dfe9ed9d71920d0e7dc7eecf889add3230225",
+      "generated_at": "2026-08-16T11:00:00Z",
+      "valid_until": "2026-08-16T13:00:00Z",
+      "derivation": {
+        "schema_version": "context.deterministic-derivation-receipt/v1alpha1",
+        "derivation_id": "derivation/m7-05/affected-graph/current",
+        "subject_kind": "affected-graph",
+        "project_id": "context-control-plane",
+        "repository_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "profile_id": "verification/context-control-plane/m7-05",
+        "profile_sha256": "5ecec560ca2bb68dbdb0f413968dfe9ed9d71920d0e7dc7eecf889add3230225",
+        "generated_at": "2026-08-16T11:00:00Z",
+        "adapter_id": "adapter/context/graph",
+        "adapter_version": "1.0.0",
+        "adapter_artifact_ref": "artifact://sha256/d2467decea08b637c998005d1f32cca5baca25b04756c20383e75f527e0f981c",
+        "adapter_artifact_sha256": "d2467decea08b637c998005d1f32cca5baca25b04756c20383e75f527e0f981c",
+        "config_artifact_ref": "artifact://sha256/327fa9c5e48df7a9e70bdb0497af8e68dad10fb46c8047ac4c6e8afb28a1c863",
+        "config_artifact_sha256": "327fa9c5e48df7a9e70bdb0497af8e68dad10fb46c8047ac4c6e8afb28a1c863",
+        "source_artifact_ref": "artifact://sha256/0fede42ca704f1f60c53b604102af4a35841d97ac40c33448e7e336d37171507",
+        "source_artifact_sha256": "0fede42ca704f1f60c53b604102af4a35841d97ac40c33448e7e336d37171507",
+        "dynamic_edge_artifact_ref": "artifact://sha256/654e1ab8bc18a686fb9e49f093424eea26be616d2ae28768d5e34237fd429251",
+        "dynamic_edge_artifact_sha256": "654e1ab8bc18a686fb9e49f093424eea26be616d2ae28768d5e34237fd429251",
+        "output_sha256": "89a82afded01d6f5d8da4de0d97aea70dc100fa9e17416bac202ea8818e53152",
+        "state_write_authority": false,
+        "completion_authority": false,
+        "receipt_sha256": "ccc2f9d61389a5c54ad65bc15f4cddf644d6f1edacdb52da024d6c7fae3d8f16"
+      },
+      "completeness": "complete",
+      "dynamic_edge_status": "none",
+      "nodes": [
+        {
+          "depends_on_node_ids": [
+            "evidence-core"
+          ],
+          "node_id": "claim-evidence",
+          "path_prefixes": [
+            "context_control_plane/claim_evidence_gate.py"
+          ]
+        },
+        {
+          "depends_on_node_ids": [],
+          "node_id": "codegraph-core",
+          "path_prefixes": [
+            "context_control_plane/codegraph_verification.py"
+          ]
+        },
+        {
+          "depends_on_node_ids": [],
+          "node_id": "evidence-core",
+          "path_prefixes": [
+            "context_control_plane/assertion_provenance.py"
+          ]
+        },
+        {
+          "depends_on_node_ids": [
+            "selection-core"
+          ],
+          "node_id": "selection-benchmark",
+          "path_prefixes": [
+            "context_control_plane/affected_test_selection_benchmark.py"
+          ]
+        },
+        {
+          "depends_on_node_ids": [],
+          "node_id": "selection-core",
+          "path_prefixes": [
+            "context_control_plane/affected_test_selection.py"
+          ]
+        },
+        {
+          "depends_on_node_ids": [
+            "selection-benchmark",
+            "selection-core"
+          ],
+          "node_id": "selection-tests",
+          "path_prefixes": [
+            "tests/test_m7_05"
+          ]
+        }
+      ],
+      "state_write_authority": false,
+      "completion_authority": false,
+      "graph_sha256": "a31738024d0085ddb3b85cc73ebe3391db761521fc6d13e70dd58bb30b9bca4e"
+    },
+    "incomplete": {
+      "schema_version": "context.affected-graph/v1alpha1",
+      "graph_id": "affected-graph/m7-05/incomplete",
+      "project_id": "context-control-plane",
+      "repository_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "profile_id": "verification/context-control-plane/m7-05",
+      "profile_sha256": "5ecec560ca2bb68dbdb0f413968dfe9ed9d71920d0e7dc7eecf889add3230225",
+      "generated_at": "2026-08-16T11:00:00Z",
+      "valid_until": "2026-08-16T13:00:00Z",
+      "derivation": {
+        "schema_version": "context.deterministic-derivation-receipt/v1alpha1",
+        "derivation_id": "derivation/m7-05/affected-graph/current",
+        "subject_kind": "affected-graph",
+        "project_id": "context-control-plane",
+        "repository_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "profile_id": "verification/context-control-plane/m7-05",
+        "profile_sha256": "5ecec560ca2bb68dbdb0f413968dfe9ed9d71920d0e7dc7eecf889add3230225",
+        "generated_at": "2026-08-16T11:00:00Z",
+        "adapter_id": "adapter/context/graph",
+        "adapter_version": "1.0.0",
+        "adapter_artifact_ref": "artifact://sha256/d2467decea08b637c998005d1f32cca5baca25b04756c20383e75f527e0f981c",
+        "adapter_artifact_sha256": "d2467decea08b637c998005d1f32cca5baca25b04756c20383e75f527e0f981c",
+        "config_artifact_ref": "artifact://sha256/327fa9c5e48df7a9e70bdb0497af8e68dad10fb46c8047ac4c6e8afb28a1c863",
+        "config_artifact_sha256": "327fa9c5e48df7a9e70bdb0497af8e68dad10fb46c8047ac4c6e8afb28a1c863",
+        "source_artifact_ref": "artifact://sha256/0fede42ca704f1f60c53b604102af4a35841d97ac40c33448e7e336d37171507",
+        "source_artifact_sha256": "0fede42ca704f1f60c53b604102af4a35841d97ac40c33448e7e336d37171507",
+        "dynamic_edge_artifact_ref": "artifact://sha256/654e1ab8bc18a686fb9e49f093424eea26be616d2ae28768d5e34237fd429251",
+        "dynamic_edge_artifact_sha256": "654e1ab8bc18a686fb9e49f093424eea26be616d2ae28768d5e34237fd429251",
+        "output_sha256": "89a82afded01d6f5d8da4de0d97aea70dc100fa9e17416bac202ea8818e53152",
+        "state_write_authority": false,
+        "completion_authority": false,
+        "receipt_sha256": "ccc2f9d61389a5c54ad65bc15f4cddf644d6f1edacdb52da024d6c7fae3d8f16"
+      },
+      "completeness": "incomplete",
+      "dynamic_edge_status": "none",
+      "nodes": [
+        {
+          "depends_on_node_ids": [
+            "evidence-core"
+          ],
+          "node_id": "claim-evidence",
+          "path_prefixes": [
+            "context_control_plane/claim_evidence_gate.py"
+          ]
+        },
+        {
+          "depends_on_node_ids": [],
+          "node_id": "codegraph-core",
+          "path_prefixes": [
+            "context_control_plane/codegraph_verification.py"
+          ]
+        },
+        {
+          "depends_on_node_ids": [],
+          "node_id": "evidence-core",
+          "path_prefixes": [
+            "context_control_plane/assertion_provenance.py"
+          ]
+        },
+        {
+          "depends_on_node_ids": [
+            "selection-core"
+          ],
+          "node_id": "selection-benchmark",
+          "path_prefixes": [
+            "context_control_plane/affected_test_selection_benchmark.py"
+          ]
+        },
+        {
+          "depends_on_node_ids": [],
+          "node_id": "selection-core",
+          "path_prefixes": [
+            "context_control_plane/affected_test_selection.py"
+          ]
+        },
+        {
+          "depends_on_node_ids": [
+            "selection-benchmark",
+            "selection-core"
+          ],
+          "node_id": "selection-tests",
+          "path_prefixes": [
+            "tests/test_m7_05"
+          ]
+        }
+      ],
+      "state_write_authority": false,
+      "completion_authority": false,
+      "graph_sha256": "06f4c0590cf5b9f150a44a38a44317685f76384ef94c3a2e68a5d06e6e549b74"
+    },
+    "stale": {
+      "schema_version": "context.affected-graph/v1alpha1",
+      "graph_id": "affected-graph/m7-05/stale",
+      "project_id": "context-control-plane",
+      "repository_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "profile_id": "verification/context-control-plane/m7-05",
+      "profile_sha256": "5ecec560ca2bb68dbdb0f413968dfe9ed9d71920d0e7dc7eecf889add3230225",
+      "generated_at": "2026-08-16T11:00:00Z",
+      "valid_until": "2026-08-16T11:30:00Z",
+      "derivation": {
+        "schema_version": "context.deterministic-derivation-receipt/v1alpha1",
+        "derivation_id": "derivation/m7-05/affected-graph/current",
+        "subject_kind": "affected-graph",
+        "project_id": "context-control-plane",
+        "repository_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "profile_id": "verification/context-control-plane/m7-05",
+        "profile_sha256": "5ecec560ca2bb68dbdb0f413968dfe9ed9d71920d0e7dc7eecf889add3230225",
+        "generated_at": "2026-08-16T11:00:00Z",
+        "adapter_id": "adapter/context/graph",
+        "adapter_version": "1.0.0",
+        "adapter_artifact_ref": "artifact://sha256/d2467decea08b637c998005d1f32cca5baca25b04756c20383e75f527e0f981c",
+        "adapter_artifact_sha256": "d2467decea08b637c998005d1f32cca5baca25b04756c20383e75f527e0f981c",
+        "config_artifact_ref": "artifact://sha256/327fa9c5e48df7a9e70bdb0497af8e68dad10fb46c8047ac4c6e8afb28a1c863",
+        "config_artifact_sha256": "327fa9c5e48df7a9e70bdb0497af8e68dad10fb46c8047ac4c6e8afb28a1c863",
+        "source_artifact_ref": "artifact://sha256/0fede42ca704f1f60c53b604102af4a35841d97ac40c33448e7e336d37171507",
+        "source_artifact_sha256": "0fede42ca704f1f60c53b604102af4a35841d97ac40c33448e7e336d37171507",
+        "dynamic_edge_artifact_ref": "artifact://sha256/654e1ab8bc18a686fb9e49f093424eea26be616d2ae28768d5e34237fd429251",
+        "dynamic_edge_artifact_sha256": "654e1ab8bc18a686fb9e49f093424eea26be616d2ae28768d5e34237fd429251",
+        "output_sha256": "89a82afded01d6f5d8da4de0d97aea70dc100fa9e17416bac202ea8818e53152",
+        "state_write_authority": false,
+        "completion_authority": false,
+        "receipt_sha256": "ccc2f9d61389a5c54ad65bc15f4cddf644d6f1edacdb52da024d6c7fae3d8f16"
+      },
+      "completeness": "complete",
+      "dynamic_edge_status": "none",
+      "nodes": [
+        {
+          "depends_on_node_ids": [
+            "evidence-core"
+          ],
+          "node_id": "claim-evidence",
+          "path_prefixes": [
+            "context_control_plane/claim_evidence_gate.py"
+          ]
+        },
+        {
+          "depends_on_node_ids": [],
+          "node_id": "codegraph-core",
+          "path_prefixes": [
+            "context_control_plane/codegraph_verification.py"
+          ]
+        },
+        {
+          "depends_on_node_ids": [],
+          "node_id": "evidence-core",
+          "path_prefixes": [
+            "context_control_plane/assertion_provenance.py"
+          ]
+        },
+        {
+          "depends_on_node_ids": [
+            "selection-core"
+          ],
+          "node_id": "selection-benchmark",
+          "path_prefixes": [
+            "context_control_plane/affected_test_selection_benchmark.py"
+          ]
+        },
+        {
+          "depends_on_node_ids": [],
+          "node_id": "selection-core",
+          "path_prefixes": [
+            "context_control_plane/affected_test_selection.py"
+          ]
+        },
+        {
+          "depends_on_node_ids": [
+            "selection-benchmark",
+            "selection-core"
+          ],
+          "node_id": "selection-tests",
+          "path_prefixes": [
+            "tests/test_m7_05"
+          ]
+        }
+      ],
+      "state_write_authority": false,
+      "completion_authority": false,
+      "graph_sha256": "5d1ea35da777ae24a7f0289b90c0f84811e92fe17d9de8dedb372cad2953e4d1"
+    },
+    "dynamic": {
+      "schema_version": "context.affected-graph/v1alpha1",
+      "graph_id": "affected-graph/m7-05/dynamic",
+      "project_id": "context-control-plane",
+      "repository_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "profile_id": "verification/context-control-plane/m7-05",
+      "profile_sha256": "5ecec560ca2bb68dbdb0f413968dfe9ed9d71920d0e7dc7eecf889add3230225",
+      "generated_at": "2026-08-16T11:00:00Z",
+      "valid_until": "2026-08-16T13:00:00Z",
+      "derivation": {
+        "schema_version": "context.deterministic-derivation-receipt/v1alpha1",
+        "derivation_id": "derivation/m7-05/affected-graph/unknown",
+        "subject_kind": "affected-graph",
+        "project_id": "context-control-plane",
+        "repository_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "profile_id": "verification/context-control-plane/m7-05",
+        "profile_sha256": "5ecec560ca2bb68dbdb0f413968dfe9ed9d71920d0e7dc7eecf889add3230225",
+        "generated_at": "2026-08-16T11:00:00Z",
+        "adapter_id": "adapter/context/graph",
+        "adapter_version": "1.0.0",
+        "adapter_artifact_ref": "artifact://sha256/d2467decea08b637c998005d1f32cca5baca25b04756c20383e75f527e0f981c",
+        "adapter_artifact_sha256": "d2467decea08b637c998005d1f32cca5baca25b04756c20383e75f527e0f981c",
+        "config_artifact_ref": "artifact://sha256/327fa9c5e48df7a9e70bdb0497af8e68dad10fb46c8047ac4c6e8afb28a1c863",
+        "config_artifact_sha256": "327fa9c5e48df7a9e70bdb0497af8e68dad10fb46c8047ac4c6e8afb28a1c863",
+        "source_artifact_ref": "artifact://sha256/0fede42ca704f1f60c53b604102af4a35841d97ac40c33448e7e336d37171507",
+        "source_artifact_sha256": "0fede42ca704f1f60c53b604102af4a35841d97ac40c33448e7e336d37171507",
+        "dynamic_edge_artifact_ref": "artifact://sha256/ba70b0c7f4e42a8ebe6b63c07ae56a1321667d915fa5b4ee9d1d187be63af172",
+        "dynamic_edge_artifact_sha256": "ba70b0c7f4e42a8ebe6b63c07ae56a1321667d915fa5b4ee9d1d187be63af172",
+        "output_sha256": "87e0e9aeb7ff203bb3287b66aadef0afe196071260998cc8003f96d8e192d3e0",
+        "state_write_authority": false,
+        "completion_authority": false,
+        "receipt_sha256": "3886117c949f892602ce21fc95e036db0784d684d415a672c5d3356752751168"
+      },
+      "completeness": "complete",
+      "dynamic_edge_status": "unknown",
+      "nodes": [
+        {
+          "depends_on_node_ids": [
+            "evidence-core"
+          ],
+          "node_id": "claim-evidence",
+          "path_prefixes": [
+            "context_control_plane/claim_evidence_gate.py"
+          ]
+        },
+        {
+          "depends_on_node_ids": [],
+          "node_id": "codegraph-core",
+          "path_prefixes": [
+            "context_control_plane/codegraph_verification.py"
+          ]
+        },
+        {
+          "depends_on_node_ids": [],
+          "node_id": "evidence-core",
+          "path_prefixes": [
+            "context_control_plane/assertion_provenance.py"
+          ]
+        },
+        {
+          "depends_on_node_ids": [
+            "selection-core"
+          ],
+          "node_id": "selection-benchmark",
+          "path_prefixes": [
+            "context_control_plane/affected_test_selection_benchmark.py"
+          ]
+        },
+        {
+          "depends_on_node_ids": [],
+          "node_id": "selection-core",
+          "path_prefixes": [
+            "context_control_plane/affected_test_selection.py"
+          ]
+        },
+        {
+          "depends_on_node_ids": [
+            "selection-benchmark",
+            "selection-core"
+          ],
+          "node_id": "selection-tests",
+          "path_prefixes": [
+            "tests/test_m7_05"
+          ]
+        }
+      ],
+      "state_write_authority": false,
+      "completion_authority": false,
+      "graph_sha256": "792289480dc98b58d30488b6dba8f7161e398ee63d86a65ed1d131f4dcb8f3fd"
+    }
+  },
+  "change_sets": {
+    "dynamic-full": {
+      "schema_version": "context.affected-change-set/v1alpha1",
+      "change_set_id": "change-set/m7-05/dynamic-full",
+      "project_id": "context-control-plane",
+      "base_repository_revision": "0ffe99c29686ffe2ab1fd521fdad29e6a55d3c7f",
+      "repository_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "generated_at": "2026-08-16T11:30:00Z",
+      "diff_artifact_ref": "artifact://sha256/492f0c4a8643c05a2c42abc827753a1c4f41bc961c6bafdebd3b205e39febc0d",
+      "diff_artifact_sha256": "492f0c4a8643c05a2c42abc827753a1c4f41bc961c6bafdebd3b205e39febc0d",
+      "changed_paths": [
+        "context_control_plane/affected_test_selection.py"
+      ],
+      "state_write_authority": false,
+      "completion_authority": false,
+      "change_set_sha256": "b6ca519b3069b962851fb18e1fa3f4757af401f0ea0d405670d78e1cf053cd8d"
+    },
+    "evidence-selected": {
+      "schema_version": "context.affected-change-set/v1alpha1",
+      "change_set_id": "change-set/m7-05/evidence-selected",
+      "project_id": "context-control-plane",
+      "base_repository_revision": "dd5298235feed468f3759f6db6f16ad90139e13c",
+      "repository_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "generated_at": "2026-08-16T11:30:00Z",
+      "diff_artifact_ref": "artifact://sha256/4ae2e603b66984f6fb7c7ed841ab44fd5f476175d1c55568d5e2554abcb3f439",
+      "diff_artifact_sha256": "4ae2e603b66984f6fb7c7ed841ab44fd5f476175d1c55568d5e2554abcb3f439",
+      "changed_paths": [
+        "context_control_plane/assertion_provenance.py"
+      ],
+      "state_write_authority": false,
+      "completion_authority": false,
+      "change_set_sha256": "2766a5cce96f239a74d78f6d8eb7443f49b806184d2dcc7bf1f893a93687f40d"
+    },
+    "incomplete-full": {
+      "schema_version": "context.affected-change-set/v1alpha1",
+      "change_set_id": "change-set/m7-05/incomplete-full",
+      "project_id": "context-control-plane",
+      "base_repository_revision": "4098262f7e0db4165aed39425c07d1e8116a3bca",
+      "repository_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "generated_at": "2026-08-16T11:30:00Z",
+      "diff_artifact_ref": "artifact://sha256/56ff8a52ef4963a697f50ac5d52a55a4a6acc784579bcb97421d781edd766b36",
+      "diff_artifact_sha256": "56ff8a52ef4963a697f50ac5d52a55a4a6acc784579bcb97421d781edd766b36",
+      "changed_paths": [
+        "context_control_plane/affected_test_selection.py"
+      ],
+      "state_write_authority": false,
+      "completion_authority": false,
+      "change_set_sha256": "2d0941de182d598d39c72b65213a5b8e40c42299c2a4d1b22701922560021bbf"
+    },
+    "missing-provenance-full": {
+      "schema_version": "context.affected-change-set/v1alpha1",
+      "change_set_id": "change-set/m7-05/missing-provenance-full",
+      "project_id": "context-control-plane",
+      "base_repository_revision": "ac172a27f99768d213c5ac5f69d2ca12558e75f4",
+      "repository_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "generated_at": "2026-08-16T11:30:00Z",
+      "diff_artifact_ref": "artifact://sha256/0f57682e6475287506715cf0918a4f926a8097b65c8dffaa5d405d67917aee41",
+      "diff_artifact_sha256": "0f57682e6475287506715cf0918a4f926a8097b65c8dffaa5d405d67917aee41",
+      "changed_paths": [
+        "context_control_plane/affected_test_selection.py"
+      ],
+      "state_write_authority": false,
+      "completion_authority": false,
+      "change_set_sha256": "a257f3041c1224636613aa390bd841bb7a18b60ba6f765827184f10dfe59a5fc"
+    },
+    "mixed-unmapped-full": {
+      "schema_version": "context.affected-change-set/v1alpha1",
+      "change_set_id": "change-set/m7-05/mixed-unmapped-full",
+      "project_id": "context-control-plane",
+      "base_repository_revision": "782bab7502ebabefaf28f4c1ea9de529f8a663ef",
+      "repository_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "generated_at": "2026-08-16T11:30:00Z",
+      "diff_artifact_ref": "artifact://sha256/b1662b5184ed7983cfa2035a4acaace07b52e5d83ba35864260a0ee8b2766d1c",
+      "diff_artifact_sha256": "b1662b5184ed7983cfa2035a4acaace07b52e5d83ba35864260a0ee8b2766d1c",
+      "changed_paths": [
+        "context_control_plane/affected_test_selection.py",
+        "generated/unknown.py"
+      ],
+      "state_write_authority": false,
+      "completion_authority": false,
+      "change_set_sha256": "a7b677fe975cee353ae40cd33eb78d3f006cb3e9269c34183fad000548d4030c"
+    },
+    "selection-core-selected": {
+      "schema_version": "context.affected-change-set/v1alpha1",
+      "change_set_id": "change-set/m7-05/selection-core-selected",
+      "project_id": "context-control-plane",
+      "base_repository_revision": "b36c89bcd5e288af3500aa22b64c28d3e8f20372",
+      "repository_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "generated_at": "2026-08-16T11:30:00Z",
+      "diff_artifact_ref": "artifact://sha256/016793068719cab7fea9cd3f1837ae64ff0562bf70cf85ef2309c79afd6e7da5",
+      "diff_artifact_sha256": "016793068719cab7fea9cd3f1837ae64ff0562bf70cf85ef2309c79afd6e7da5",
+      "changed_paths": [
+        "context_control_plane/affected_test_selection.py"
+      ],
+      "state_write_authority": false,
+      "completion_authority": false,
+      "change_set_sha256": "e8d4228960441285a158366f07e135f426feecbc6f1bbd00475dfb19fbf211ab"
+    },
+    "stale-full": {
+      "schema_version": "context.affected-change-set/v1alpha1",
+      "change_set_id": "change-set/m7-05/stale-full",
+      "project_id": "context-control-plane",
+      "base_repository_revision": "0ce91216993b40d9f9278a7d1a9e6dc3e7eaba35",
+      "repository_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "generated_at": "2026-08-16T11:30:00Z",
+      "diff_artifact_ref": "artifact://sha256/99d899a987ca93aeb610d4deb914c76e09f6d1507034c83063e30795de178182",
+      "diff_artifact_sha256": "99d899a987ca93aeb610d4deb914c76e09f6d1507034c83063e30795de178182",
+      "changed_paths": [
+        "context_control_plane/affected_test_selection.py"
+      ],
+      "state_write_authority": false,
+      "completion_authority": false,
+      "change_set_sha256": "a0b3566ac372c040cbb721684e4ce932f73729d419a1da4d4750c2c4def3bcb1"
+    },
+    "unmapped-full": {
+      "schema_version": "context.affected-change-set/v1alpha1",
+      "change_set_id": "change-set/m7-05/unmapped-full",
+      "project_id": "context-control-plane",
+      "base_repository_revision": "faf7a6ea366bf839aa163c257bf614fadb6033b2",
+      "repository_revision": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "generated_at": "2026-08-16T11:30:00Z",
+      "diff_artifact_ref": "artifact://sha256/cd27fd76ea59d68a99684697d0b60a595596f9454246bf45bf7ce6900c54d6e3",
+      "diff_artifact_sha256": "cd27fd76ea59d68a99684697d0b60a595596f9454246bf45bf7ce6900c54d6e3",
+      "changed_paths": [
+        "generated/unknown.py"
+      ],
+      "state_write_authority": false,
+      "completion_authority": false,
+      "change_set_sha256": "ca4a48cc58a84461fa4f8a80a80a391d4a2ec0b16b2a215f6eaa783e3d887458"
+    }
+  },
+  "micro_workload": {
+    "payload_size_bytes": 65536,
+    "repetitions_per_test": 32
+  },
+  "state_write_authority": false,
+  "completion_authority": false,
+  "fixture_sha256": "d42bdd0fa3072a0883c4c3b2d2fe41229702955d92ec3be5766b8c4c8463ecdc"
+}

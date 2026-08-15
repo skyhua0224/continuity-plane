@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m7-05/affected-change-set.schema.json",
+  "title": "Context Control Plane Affected Change Set",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "change_set_id", "project_id", "base_repository_revision", "repository_revision", "generated_at", "diff_artifact_ref", "diff_artifact_sha256", "changed_paths", "state_write_authority", "completion_authority", "change_set_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.affected-change-set/v1alpha1"},
+    "change_set_id": {"$ref": "#/$defs/id"},
+    "project_id": {"$ref": "#/$defs/id"},
+    "base_repository_revision": {"$ref": "#/$defs/revision"},
+    "repository_revision": {"$ref": "#/$defs/revision"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "diff_artifact_ref": {"$ref": "#/$defs/artifact"},
+    "diff_artifact_sha256": {"$ref": "#/$defs/sha256"},
+    "changed_paths": {"type": "array", "minItems": 1, "maxItems": 1024, "uniqueItems": true, "items": {"$ref": "#/$defs/path"}},
+    "state_write_authority": {"const": false},
+    "completion_authority": {"const": false},
+    "change_set_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "revision": {"type": "string", "pattern": "^[0-9a-f]{40,64}$"},
+    "artifact": {"type": "string", "pattern": "^artifact://sha256/[0-9a-f]{64}$"},
+    "path": {"type": "string", "minLength": 1, "maxLength": 1024, "pattern": "^(?!/)(?!.*\\\\)(?!.*(?:^|/)\\.\\.?($|/))(?!.*//).+$"}
+  }
+}

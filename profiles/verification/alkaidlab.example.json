@@ -1,0 +1,224 @@
+{
+  "schema_version": "context.verification-profile/v1alpha1",
+  "profile_id": "verification/alkaidlab/default",
+  "project_id": "alkaidlab",
+  "profile_version": "1.0.0-alpha.1",
+  "revision": 1,
+  "valid_from": "2026-08-16T00:00:00+08:00",
+  "valid_until": null,
+  "gates": [
+    {
+      "gate_id": "build",
+      "gate_kind": "build",
+      "mode": "required",
+      "condition_ref": null,
+      "capability_refs": [
+        "capability/alkaidlab/build"
+      ],
+      "depends_on_gate_ids": [
+        "tdd"
+      ],
+      "evidence_requirements": [
+        "artifact-digest",
+        "exit-status",
+        "invocation"
+      ],
+      "thresholds": []
+    },
+    {
+      "gate_id": "contract",
+      "gate_kind": "contract",
+      "mode": "conditional",
+      "condition_ref": "condition/protocol-or-api-changed",
+      "capability_refs": [
+        "capability/alkaidlab/contract"
+      ],
+      "depends_on_gate_ids": [
+        "build"
+      ],
+      "evidence_requirements": [
+        "artifact-digest",
+        "exit-status",
+        "invocation"
+      ],
+      "thresholds": []
+    },
+    {
+      "gate_id": "fault-recovery",
+      "gate_kind": "fault-recovery",
+      "mode": "conditional",
+      "condition_ref": "condition/durable-workflow-changed",
+      "capability_refs": [
+        "capability/alkaidlab/fault-recovery"
+      ],
+      "depends_on_gate_ids": [
+        "build"
+      ],
+      "evidence_requirements": [
+        "artifact-digest",
+        "exit-status",
+        "invocation"
+      ],
+      "thresholds": []
+    },
+    {
+      "gate_id": "golden",
+      "gate_kind": "golden",
+      "mode": "conditional",
+      "condition_ref": "condition/serialized-output-changed",
+      "capability_refs": [
+        "capability/alkaidlab/golden"
+      ],
+      "depends_on_gate_ids": [
+        "build"
+      ],
+      "evidence_requirements": [
+        "artifact-digest",
+        "exit-status",
+        "invocation"
+      ],
+      "thresholds": []
+    },
+    {
+      "gate_id": "live",
+      "gate_kind": "live",
+      "mode": "conditional",
+      "condition_ref": "condition/os-or-device-path-changed",
+      "capability_refs": [
+        "capability/alkaidlab/live-device"
+      ],
+      "depends_on_gate_ids": [
+        "build"
+      ],
+      "evidence_requirements": [
+        "artifact-digest",
+        "exit-status",
+        "invocation"
+      ],
+      "thresholds": []
+    },
+    {
+      "gate_id": "loopback",
+      "gate_kind": "loopback",
+      "mode": "conditional",
+      "condition_ref": "condition/stream-or-network-path-changed",
+      "capability_refs": [
+        "capability/alkaidlab/loopback"
+      ],
+      "depends_on_gate_ids": [
+        "build"
+      ],
+      "evidence_requirements": [
+        "artifact-digest",
+        "exit-status",
+        "invocation"
+      ],
+      "thresholds": []
+    },
+    {
+      "gate_id": "mutation",
+      "gate_kind": "mutation",
+      "mode": "conditional",
+      "condition_ref": "condition/logic-or-parser-changed",
+      "capability_refs": [
+        "capability/alkaidlab/mutation"
+      ],
+      "depends_on_gate_ids": [
+        "tdd"
+      ],
+      "evidence_requirements": [
+        "artifact-digest",
+        "exit-status",
+        "invocation"
+      ],
+      "thresholds": [
+        {
+          "metric": "mutation_score",
+          "operator": "gte",
+          "value": 8000,
+          "unit": "basis-points"
+        }
+      ]
+    },
+    {
+      "gate_id": "performance",
+      "gate_kind": "performance",
+      "mode": "conditional",
+      "condition_ref": "condition/hot-path-changed",
+      "capability_refs": [
+        "capability/alkaidlab/performance"
+      ],
+      "depends_on_gate_ids": [
+        "build"
+      ],
+      "evidence_requirements": [
+        "artifact-digest",
+        "exit-status",
+        "invocation"
+      ],
+      "thresholds": [
+        {
+          "metric": "regression",
+          "operator": "lte",
+          "value": 0,
+          "unit": "basis-points"
+        }
+      ]
+    },
+    {
+      "gate_id": "static",
+      "gate_kind": "static",
+      "mode": "required",
+      "condition_ref": null,
+      "capability_refs": [
+        "capability/alkaidlab/static"
+      ],
+      "depends_on_gate_ids": [],
+      "evidence_requirements": [
+        "artifact-digest",
+        "exit-status",
+        "invocation"
+      ],
+      "thresholds": []
+    },
+    {
+      "gate_id": "tdd",
+      "gate_kind": "tdd",
+      "mode": "required",
+      "condition_ref": null,
+      "capability_refs": [
+        "capability/alkaidlab/test"
+      ],
+      "depends_on_gate_ids": [
+        "static"
+      ],
+      "evidence_requirements": [
+        "artifact-digest",
+        "exit-status",
+        "invocation"
+      ],
+      "thresholds": []
+    },
+    {
+      "gate_id": "weak-network",
+      "gate_kind": "weak-network",
+      "mode": "conditional",
+      "condition_ref": "condition/transport-or-congestion-changed",
+      "capability_refs": [
+        "capability/alkaidlab/weak-network"
+      ],
+      "depends_on_gate_ids": [
+        "loopback"
+      ],
+      "evidence_requirements": [
+        "artifact-digest",
+        "exit-status",
+        "invocation"
+      ],
+      "thresholds": []
+    }
+  ],
+  "state_write_authority": false,
+  "completion_authority": false,
+  "profile_sha256": "1dfd5a7b32a40b391cf4be6fc62a82ca1bf1eeab7ade2027829bd69d85e3fd29"
+}

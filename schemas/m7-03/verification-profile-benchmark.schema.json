@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m7-03/verification-profile-benchmark.schema.json",
+  "title": "Context Control Plane Verification Profile Benchmark",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "iterations", "fixture_profile_ids", "fixture_profile_sha256s", "scenario_counts", "overall_counts", "optional_failed_gate_count", "false_allow_count", "false_deny_count", "replay_mismatch_count", "external_service_calls", "state_write_authority_count", "completion_authority_count", "benchmark_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.verification-profile-benchmark/v1alpha1"},
+    "iterations": {"type": "integer", "minimum": 1},
+    "fixture_profile_ids": {"type": "array", "minItems": 2, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "fixture_profile_sha256s": {"type": "object", "minProperties": 2, "additionalProperties": {"type": "string", "pattern": "^[0-9a-f]{64}$"}},
+    "scenario_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["required-passed", "required-capability-unavailable", "conditional-not-met", "optional-failed"],
+      "properties": {
+        "required-passed": {"type": "integer", "minimum": 0},
+        "required-capability-unavailable": {"type": "integer", "minimum": 0},
+        "conditional-not-met": {"type": "integer", "minimum": 0},
+        "optional-failed": {"type": "integer", "minimum": 0}
+      }
+    },
+    "overall_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "satisfied": {"type": "integer", "minimum": 0},
+        "failed": {"type": "integer", "minimum": 0},
+        "blocked": {"type": "integer", "minimum": 0}
+      }
+    },
+    "optional_failed_gate_count": {"type": "integer", "minimum": 1},
+    "false_allow_count": {"const": 0},
+    "false_deny_count": {"const": 0},
+    "replay_mismatch_count": {"const": 0},
+    "external_service_calls": {"const": 0},
+    "state_write_authority_count": {"const": 0},
+    "completion_authority_count": {"const": 0},
+    "benchmark_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

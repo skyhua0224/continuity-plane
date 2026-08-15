@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m5-07/continuity-incident.schema.json",
+  "title": "Context Control Plane continuity incident",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "incident_id", "incident_kind", "measurement_scope", "status", "project_id", "campaign_id", "completed_work_id", "active_work_id", "project_revision", "run_ref", "continuation_basis_kind", "continuation_basis_ref", "continuation_basis_sha256", "expected_action", "actual_action", "termination_kind", "termination_evidence_sha256", "remaining_ready_work_ids", "typed_blocker_id", "terminated_at", "termination_time_status", "detected_at", "detection_source", "evidence_refs", "veto_failures", "trace_event_id", "trace_event_name", "trace_event_sha256", "trace_authority", "state_write_authority", "completion_authority", "provider_native_authority", "incident_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.continuity-incident/v1alpha1"},
+    "incident_id": {"$ref": "#/$defs/text"},
+    "incident_kind": {"const": "premature-stop"},
+    "measurement_scope": {"const": "live-observation"},
+    "status": {"const": "regressed"},
+    "project_id": {"$ref": "#/$defs/text"},
+    "campaign_id": {"$ref": "#/$defs/text"},
+    "completed_work_id": {"$ref": "#/$defs/text"},
+    "active_work_id": {"$ref": "#/$defs/text"},
+    "project_revision": {"type": "integer", "minimum": 0},
+    "run_ref": {"$ref": "#/$defs/text"},
+    "continuation_basis_kind": {"enum": ["m3-decision", "governance-obligation"]},
+    "continuation_basis_ref": {"$ref": "#/$defs/text"},
+    "continuation_basis_sha256": {"$ref": "#/$defs/sha256"},
+    "expected_action": {"const": "continue"},
+    "actual_action": {"const": "stop"},
+    "termination_kind": {"enum": ["assistant-final", "worker-exit", "process-exit"]},
+    "termination_evidence_sha256": {"$ref": "#/$defs/sha256"},
+    "remaining_ready_work_ids": {"type": "array", "minItems": 1, "maxItems": 64, "uniqueItems": true, "items": {"$ref": "#/$defs/text"}},
+    "typed_blocker_id": {"type": "null"},
+    "terminated_at": {"type": ["string", "null"], "format": "date-time"},
+    "termination_time_status": {"enum": ["measured", "unavailable"]},
+    "detected_at": {"type": "string", "format": "date-time"},
+    "detection_source": {"enum": ["runtime-detector", "replay-audit", "user-correction"]},
+    "evidence_refs": {"type": "array", "minItems": 1, "maxItems": 64, "uniqueItems": true, "items": {"$ref": "#/$defs/text"}},
+    "veto_failures": {"const": ["premature-stop"]},
+    "trace_event_id": {"$ref": "#/$defs/text"},
+    "trace_event_name": {"const": "context.dogfood.continuity-incident"},
+    "trace_event_sha256": {"$ref": "#/$defs/sha256"},
+    "trace_authority": {"const": false},
+    "state_write_authority": {"const": false},
+    "completion_authority": {"const": false},
+    "provider_native_authority": {"const": false},
+    "incident_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "allOf": [
+    {"if": {"properties": {"termination_time_status": {"const": "unavailable"}}}, "then": {"properties": {"terminated_at": {"type": "null"}}}},
+    {"if": {"properties": {"termination_time_status": {"const": "measured"}}}, "then": {"properties": {"terminated_at": {"type": "string", "format": "date-time"}}}}
+  ],
+  "$defs": {
+    "text": {"type": "string", "minLength": 1, "maxLength": 512, "pattern": ".*\\S.*"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m7-05/deterministic-derivation-receipt.schema.json",
+  "title": "Context Control Plane Deterministic Derivation Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "derivation_id", "subject_kind", "project_id", "repository_revision", "profile_id", "profile_sha256", "generated_at", "adapter_id", "adapter_version", "adapter_artifact_ref", "adapter_artifact_sha256", "config_artifact_ref", "config_artifact_sha256", "source_artifact_ref", "source_artifact_sha256", "dynamic_edge_artifact_ref", "dynamic_edge_artifact_sha256", "output_sha256", "state_write_authority", "completion_authority", "receipt_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.deterministic-derivation-receipt/v1alpha1"},
+    "derivation_id": {"$ref": "#/$defs/id"},
+    "subject_kind": {"enum": ["affected-graph", "required-test-inventory"]},
+    "project_id": {"$ref": "#/$defs/id"},
+    "repository_revision": {"$ref": "#/$defs/revision"},
+    "profile_id": {"$ref": "#/$defs/id"},
+    "profile_sha256": {"$ref": "#/$defs/sha256"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "adapter_id": {"$ref": "#/$defs/id"},
+    "adapter_version": {"type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?(?:\\+[0-9A-Za-z-]+(?:\\.[0-9A-Za-z-]+)*)?$"},
+    "adapter_artifact_ref": {"$ref": "#/$defs/artifact"},
+    "adapter_artifact_sha256": {"$ref": "#/$defs/sha256"},
+    "config_artifact_ref": {"$ref": "#/$defs/artifact"},
+    "config_artifact_sha256": {"$ref": "#/$defs/sha256"},
+    "source_artifact_ref": {"$ref": "#/$defs/artifact"},
+    "source_artifact_sha256": {"$ref": "#/$defs/sha256"},
+    "dynamic_edge_artifact_ref": {"oneOf": [{"$ref": "#/$defs/artifact"}, {"type": "null"}]},
+    "dynamic_edge_artifact_sha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+    "output_sha256": {"$ref": "#/$defs/sha256"},
+    "state_write_authority": {"const": false},
+    "completion_authority": {"const": false},
+    "receipt_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "allOf": [
+    {"if": {"properties": {"subject_kind": {"const": "affected-graph"}}, "required": ["subject_kind"]}, "then": {"properties": {"dynamic_edge_artifact_ref": {"$ref": "#/$defs/artifact"}, "dynamic_edge_artifact_sha256": {"$ref": "#/$defs/sha256"}}}},
+    {"if": {"properties": {"subject_kind": {"const": "required-test-inventory"}}, "required": ["subject_kind"]}, "then": {"properties": {"dynamic_edge_artifact_ref": {"type": "null"}, "dynamic_edge_artifact_sha256": {"type": "null"}}}}
+  ],
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "revision": {"type": "string", "pattern": "^[0-9a-f]{40,64}$"},
+    "artifact": {"type": "string", "pattern": "^artifact://sha256/[0-9a-f]{64}$"}
+  }
+}

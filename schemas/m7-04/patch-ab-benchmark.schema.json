@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m7-04/patch-ab-benchmark.schema.json",
+  "title": "Patch A/B Decision-Branch Replay Benchmark",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "benchmark_id", "samples", "successful_samples",
+    "scenario_counts", "expected_admit_count", "actual_admit_count",
+    "expected_reject_count", "actual_reject_count", "false_admit_count",
+    "false_reject_count", "control_first_count", "treatment_first_count",
+    "admitted_quality_nondegradation_count", "admitted_rework_reduction_count",
+    "outcomes_artifact_ref", "outcomes_sha256", "fixture_sha256",
+    "implementation_sha256", "external_calls", "state_write_authority",
+    "completion_authority", "benchmark_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.patch-ab-benchmark/v1alpha2"},
+    "benchmark_id": {"$ref": "#/$defs/id"},
+    "samples": {"type": "integer", "minimum": 1, "maximum": 10000},
+    "successful_samples": {"$ref": "#/$defs/count"},
+    "scenario_counts": {
+      "type": "object", "additionalProperties": false,
+      "required": ["valid", "build", "test", "mutation", "rework", "verifier"],
+      "properties": {
+        "valid": {"$ref": "#/$defs/count"},
+        "build": {"$ref": "#/$defs/count"},
+        "test": {"$ref": "#/$defs/count"},
+        "mutation": {"$ref": "#/$defs/count"},
+        "rework": {"$ref": "#/$defs/count"},
+        "verifier": {"$ref": "#/$defs/count"}
+      }
+    },
+    "expected_admit_count": {"$ref": "#/$defs/count"},
+    "actual_admit_count": {"$ref": "#/$defs/count"},
+    "expected_reject_count": {"$ref": "#/$defs/count"},
+    "actual_reject_count": {"$ref": "#/$defs/count"},
+    "false_admit_count": {"$ref": "#/$defs/count"},
+    "false_reject_count": {"$ref": "#/$defs/count"},
+    "control_first_count": {"$ref": "#/$defs/count"},
+    "treatment_first_count": {"$ref": "#/$defs/count"},
+    "admitted_quality_nondegradation_count": {"$ref": "#/$defs/count"},
+    "admitted_rework_reduction_count": {"$ref": "#/$defs/count"},
+    "outcomes_artifact_ref": {"$ref": "#/$defs/artifact"},
+    "outcomes_sha256": {"$ref": "#/$defs/sha256"},
+    "fixture_sha256": {"$ref": "#/$defs/sha256"},
+    "implementation_sha256": {"$ref": "#/$defs/sha256"},
+    "external_calls": {"const": 0},
+    "state_write_authority": {"const": false},
+    "completion_authority": {"const": false},
+    "benchmark_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "artifact": {"type": "string", "pattern": "^artifact://sha256/[0-9a-f]{64}$"},
+    "count": {"type": "integer", "minimum": 0, "maximum": 10000}
+  }
+}

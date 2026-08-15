@@ -21,12 +21,12 @@
   "measurement": {
     "active_leaf_change_count": 0,
     "incomplete_escalation_count": 0,
-    "max_decision_latency_ms": 0.2565,
+    "max_decision_latency_ms": 2.768811,
     "negative_fixture_rejections": 125,
     "negative_fixture_samples": 125,
     "nondeterministic_replay_count": 0,
-    "p50_decision_latency_ms": 0.123337,
-    "p95_decision_latency_ms": 0.164576,
+    "p50_decision_latency_ms": 0.147287,
+    "p95_decision_latency_ms": 0.25691,
     "premature_stop_count": 0,
     "profile_mutation_count": 0,
     "ready_required_missed_count": 0,
@@ -36,7 +36,7 @@
     "successful_samples": 1000,
     "untyped_ask_count": 0
   },
-  "observed_at": "2026-08-16T07:45:00+08:00",
+  "observed_at": "2026-08-14T16:00:00+08:00",
   "provenance": {
     "benchmark_runner_sha256": "1decc9aa71672a0244dfa334ed9033a307b147c521bd1aa50ba2dd07fa8a0216",
     "benchmark_schema_sha256": "68de336714fb8fb1cefd746aced9ff33bbe5f45633f5539b15d27572a9be0b6e",
@@ -44,7 +44,7 @@
     "decision_schema_sha256": "97e600efc8c7bf7cb3b874237521561c05f9a2b7d61dfdaf890ff50c32c4f883",
     "governance_profile_sha256": "c58d1d556f8e484ff93c9ef1fa0bf61b3600a95576fc7abce2a5be2e28cf4f9a",
     "implementation_sha256": "5d9619a0b9e1e561f4e58c44861b75159e8578447900e3d69b98f631876e0323",
-    "registry_sha256": "1768f567bc0c77a81e704aed4d99e5e351a31e7747a4dbe2e6511396bbb2497f",
+    "registry_sha256": "2e333ef08d1c0a47fd766465cbf1283f0199d59aaa4731caaf9efd90c1b138d2",
     "request_schema_sha256": "9335032c829090a40a76e9a99fea5f6942f57f12b00e7e16b85e6503ab95da3c",
     "sticky_router_sha256": "ca9d3f7e83dee037c9a5953db1852a0086da0bf8376c972af2f6c00c1852a4d2",
     "typed_state_sha256": "e2c90c68983381d4fdf2757453904c7eddcfcd7388d03fb516e6acfb8504af77"

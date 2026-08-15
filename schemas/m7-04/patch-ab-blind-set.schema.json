@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m7-04/patch-ab-blind-set.schema.json",
+  "title": "Patch A/B Blind Set",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "blind_set_id", "experiment_id", "experiment_sha256",
+    "fixture_ref", "candidates", "order_sha256", "state_write_authority",
+    "completion_authority", "blind_set_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.patch-ab-blind-set/v1alpha2"},
+    "blind_set_id": {"$ref": "#/$defs/id"},
+    "experiment_id": {"$ref": "#/$defs/id"},
+    "experiment_sha256": {"$ref": "#/$defs/sha256"},
+    "fixture_ref": {"$ref": "#/$defs/artifact"},
+    "candidates": {
+      "type": "array", "minItems": 2, "maxItems": 2,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["blind_id", "patch_ref"],
+        "properties": {
+          "blind_id": {"$ref": "#/$defs/id"},
+          "patch_ref": {"$ref": "#/$defs/artifact"}
+        }
+      }
+    },
+    "order_sha256": {"$ref": "#/$defs/sha256"},
+    "state_write_authority": {"const": false},
+    "completion_authority": {"const": false},
+    "blind_set_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "artifact": {"type": "string", "pattern": "^artifact://sha256/[0-9a-f]{64}$"}
+  }
+}

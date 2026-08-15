@@ -15,9 +15,9 @@
   "measurement": {
     "events_per_run": 1,
     "ideas_per_run": 1,
-    "max_total_ms": 5.485457,
-    "p50_total_ms": 3.039875,
-    "p95_total_ms": 4.584093,
+    "max_total_ms": 4.758683,
+    "p50_total_ms": 3.24533,
+    "p95_total_ms": 4.604596,
     "samples": 40,
     "successful_runs": 40
   },
@@ -28,7 +28,7 @@
     "idea_capture_schema_sha256": "57ce195183a8534df1cb075c8d8f8a343545aeba31af30b64fc5bf01e1cf56ca",
     "idea_event_schema_sha256": "7207bf6406bc3827f9eb14b10ed41d1679aebe28802fc1e95c38d83f65ced3c7",
     "implementation_sha256": "3131fb75dc74478ada6c596eb8955cd230fbda80c08fe4460c562d682c0765b9",
-    "registry_sha256": "1768f567bc0c77a81e704aed4d99e5e351a31e7747a4dbe2e6511396bbb2497f",
+    "registry_sha256": "2e333ef08d1c0a47fd766465cbf1283f0199d59aaa4731caaf9efd90c1b138d2",
     "runner_sha256": "1b0f71b2e50014cb31cdc33d8aec4597fb2569d4da42b014654e265cea34544d",
     "sqlite_state_store_sha256": "5dbb5330c83cfe6cef52a787497d7aa817e64e5c2e7e33cb754f104125ebf808",
     "state_events_sha256": "1080a48bcc3cf2ff28fd5e301f21ea2689ccf7c73c75da9c0e067256f602e6aa",

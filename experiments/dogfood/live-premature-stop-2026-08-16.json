@@ -1,0 +1,44 @@
+{
+  "schema_version": "context.continuity-incident/v1alpha1",
+  "incident_id": "incident/premature-stop/23aa6a972f4968b2878c6190",
+  "incident_kind": "premature-stop",
+  "measurement_scope": "live-observation",
+  "status": "regressed",
+  "project_id": "context-control-plane",
+  "campaign_id": "M7",
+  "completed_work_id": "M7-02",
+  "active_work_id": "M7-03",
+  "project_revision": 57,
+  "run_ref": "run/dogfood/2026-08-16/m7-02-stop",
+  "continuation_basis_kind": "governance-obligation",
+  "continuation_basis_ref": "obligation/M7-03/revision-57",
+  "continuation_basis_sha256": "932b53c7818a1101666be9dce6077e3e4007b4d5bffa07d630deaca0d5a35106",
+  "expected_action": "continue",
+  "actual_action": "stop",
+  "termination_kind": "assistant-final",
+  "termination_evidence_sha256": "517fddba92bc261daccb92b305cfef257f973c0768d89b4164aba4cc9f59145b",
+  "remaining_ready_work_ids": [
+    "M7-03"
+  ],
+  "typed_blocker_id": null,
+  "terminated_at": null,
+  "termination_time_status": "unavailable",
+  "detected_at": "2026-08-16T01:27:40+08:00",
+  "detection_source": "user-correction",
+  "evidence_refs": [
+    "STATUS.md@revision-57",
+    "MASTER.md@revision-57",
+    "sha256:517fddba92bc261daccb92b305cfef257f973c0768d89b4164aba4cc9f59145b"
+  ],
+  "veto_failures": [
+    "premature-stop"
+  ],
+  "trace_event_id": "event/continuity/23aa6a972f4968b2878c6190",
+  "trace_event_name": "context.dogfood.continuity-incident",
+  "trace_event_sha256": "8b0a9df1542371d55a0b4acdbd739ff8d627438f99b1ca33cfc197c3bd24b278",
+  "trace_authority": false,
+  "state_write_authority": false,
+  "completion_authority": false,
+  "provider_native_authority": false,
+  "incident_sha256": "0523f356c5089b5d996e8eebeedc8cef4415230d82df1237c0fb3c5887f91ebe"
+}

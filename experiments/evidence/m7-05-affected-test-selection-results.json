@@ -1,0 +1,251 @@
+{
+  "schema_version": "context.affected-test-selection-benchmark/v1alpha1",
+  "iterations": 1000,
+  "fixture_id": "fixture/m7-05/affected-test-selection/v2",
+  "fixture_sha256": "d42bdd0fa3072a0883c4c3b2d2fe41229702955d92ec3be5766b8c4c8463ecdc",
+  "golden_id": "golden/m7-05/current-repository/v1",
+  "golden_sha256": "78bdcd8f20b0583bfaa298349f495990aef5299c40293afaef79b0906680ad5b",
+  "scenario_counts": {
+    "dynamic-full": 125,
+    "evidence-selected": 125,
+    "incomplete-full": 125,
+    "missing-provenance-full": 125,
+    "mixed-unmapped-full": 125,
+    "selection-core-selected": 125,
+    "stale-full": 125,
+    "unmapped-full": 125
+  },
+  "selection_mode_counts": {
+    "full-validation": 750,
+    "selected": 250
+  },
+  "missed_test_count": 0,
+  "unsafe_partial_selection_count": 0,
+  "fallback_mismatch_count": 0,
+  "replay_mismatch_count": 0,
+  "micro_baseline_test_ids": [
+    "m6-02-unit",
+    "m7-01-unit",
+    "m7-02-unit",
+    "m7-05-contract",
+    "python-compile",
+    "ruff-selection"
+  ],
+  "micro_selected_test_ids": [
+    "m7-05-contract",
+    "python-compile",
+    "ruff-selection"
+  ],
+  "micro_wall_time_ns_samples": {
+    "m6-02-unit": [
+      881715
+    ],
+    "m7-01-unit": [
+      855339
+    ],
+    "m7-02-unit": [
+      852515
+    ],
+    "m7-05-contract": [
+      853117
+    ],
+    "python-compile": [
+      853546
+    ],
+    "ruff-selection": [
+      861732
+    ]
+  },
+  "micro_processed_bytes": {
+    "m6-02-unit": 2098176,
+    "m7-01-unit": 2098176,
+    "m7-02-unit": 2098176,
+    "m7-05-contract": 2098176,
+    "python-compile": 2098176,
+    "ruff-selection": 2098176
+  },
+  "micro_workload_outputs": {
+    "m6-02-unit": "f42827e0837bd3b6a23c1508869c29f221432e10c31c5a874916ec56feb33cd7",
+    "m7-01-unit": "c1b40585c3f2f29bc4f10ca010791380b308e9b4c5990c6e23e904cfecc9b6d5",
+    "m7-02-unit": "e71ddde11e29e7b8fce4e9d4b4c19427f18e28b3b28d916fc3d9e89017f81a51",
+    "m7-05-contract": "bf93f43da95822ceddfcf648b3adcc042341d3dc8924eb961ecbd7340c7d55b5",
+    "python-compile": "7ff12ad881dbe00f9d2093ea63047d7b89346bc5f6ec56905bdcbd64b6604308",
+    "ruff-selection": "4ddf5d73802cdab7c45706d981794305dfa259011f8f9dc9c0fc5b2b8a3a47a7"
+  },
+  "micro_baseline_wall_time_ns": 5157964,
+  "micro_selected_wall_time_ns": 2568395,
+  "micro_wall_time_reduction_basis_points": 5020,
+  "micro_bytes_reduction_basis_points": 5000,
+  "micro_workload_outputs_sha256": "8b9ecab9d852080ec48528d5db8136312a913b33c3a14d70f74f874e11afe8db",
+  "real_baseline_test_ids": [
+    "m6-02-unit",
+    "m7-01-unit",
+    "m7-02-unit",
+    "m7-05-contract",
+    "python-compile",
+    "ruff-selection"
+  ],
+  "real_selected_test_ids": [
+    "m7-05-contract",
+    "python-compile",
+    "ruff-selection"
+  ],
+  "real_command_receipts": [
+    {
+      "test_id": "m6-02-unit",
+      "argv": [
+        "/home/skyhua/Projects/context-control-plane/.venv/bin/python",
+        "-m",
+        "unittest",
+        "tests.test_m6_02_codegraph_verification",
+        "-q"
+      ],
+      "cwd": "repository-root",
+      "exit_codes": [
+        0
+      ],
+      "wall_time_ns_samples": [
+        2634060660
+      ],
+      "stdout_sha256_samples": [
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "stderr_sha256_samples": [
+        "2a454950a88ce06a377806f4748c7c47e01d1869b8288ffab5eda894543a301e"
+      ]
+    },
+    {
+      "test_id": "m7-01-unit",
+      "argv": [
+        "/home/skyhua/Projects/context-control-plane/.venv/bin/python",
+        "-m",
+        "unittest",
+        "tests.test_m7_01_assertion_provenance",
+        "-q"
+      ],
+      "cwd": "repository-root",
+      "exit_codes": [
+        0
+      ],
+      "wall_time_ns_samples": [
+        45042925
+      ],
+      "stdout_sha256_samples": [
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "stderr_sha256_samples": [
+        "50e62012c29e63641adce37250e606e304133f072e243a0a8b9eab1baf30a9eb"
+      ]
+    },
+    {
+      "test_id": "m7-02-unit",
+      "argv": [
+        "/home/skyhua/Projects/context-control-plane/.venv/bin/python",
+        "-m",
+        "unittest",
+        "tests.test_m7_02_claim_evidence_gate",
+        "-q"
+      ],
+      "cwd": "repository-root",
+      "exit_codes": [
+        0
+      ],
+      "wall_time_ns_samples": [
+        539258266
+      ],
+      "stdout_sha256_samples": [
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "stderr_sha256_samples": [
+        "09ce39bc0037e2c9e0c63f9246e2987cd1816b91afa53f694881164f61ef32e3"
+      ]
+    },
+    {
+      "test_id": "m7-05-contract",
+      "argv": [
+        "/home/skyhua/Projects/context-control-plane/.venv/bin/python",
+        "-m",
+        "unittest",
+        "tests.test_m7_05_trusted_selection",
+        "-q"
+      ],
+      "cwd": "repository-root",
+      "exit_codes": [
+        0
+      ],
+      "wall_time_ns_samples": [
+        54758025
+      ],
+      "stdout_sha256_samples": [
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "stderr_sha256_samples": [
+        "a83880700ba36750096bbdc5e7ed83c042123aac3ce9fc9d212da2710daffd56"
+      ]
+    },
+    {
+      "test_id": "python-compile",
+      "argv": [
+        "/home/skyhua/Projects/context-control-plane/.venv/bin/python",
+        "-c",
+        "import ast,pathlib,sys;[ast.parse(pathlib.Path(p).read_text(encoding='utf-8')) for p in sys.argv[1:]]",
+        "context_control_plane/affected_test_selection.py",
+        "context_control_plane/affected_test_selection_benchmark.py"
+      ],
+      "cwd": "repository-root",
+      "exit_codes": [
+        0
+      ],
+      "wall_time_ns_samples": [
+        31058036
+      ],
+      "stdout_sha256_samples": [
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ],
+      "stderr_sha256_samples": [
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ]
+    },
+    {
+      "test_id": "ruff-selection",
+      "argv": [
+        "ruff",
+        "check",
+        "context_control_plane/affected_test_selection.py",
+        "context_control_plane/affected_test_selection_benchmark.py",
+        "tests/test_m7_05_trusted_selection.py",
+        "tests/test_m7_05_trusted_benchmark.py"
+      ],
+      "cwd": "repository-root",
+      "exit_codes": [
+        0
+      ],
+      "wall_time_ns_samples": [
+        9057153
+      ],
+      "stdout_sha256_samples": [
+        "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+      ],
+      "stderr_sha256_samples": [
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      ]
+    }
+  ],
+  "real_baseline_wall_time_ns": 3313235065,
+  "real_selected_wall_time_ns": 94873214,
+  "real_wall_time_reduction_basis_points": 9713,
+  "real_command_missed_count": 0,
+  "environment": {
+    "python_implementation": "CPython",
+    "python_version": "3.14.6",
+    "platform_system": "Linux",
+    "platform_machine": "x86_64",
+    "repository_tree_sha256": "5d95a2917ad8e43ba836698e302dbfc095687bf80df09675b6dbe36fb1e48553",
+    "command_catalog_sha256": "50df9190f108e97d70397003200fe19c3d7d14f4c84ddae101a2df0701de47b4",
+    "timing_clock": "perf_counter_ns"
+  },
+  "external_service_calls": 0,
+  "state_write_authority_count": 0,
+  "completion_authority_count": 0,
+  "benchmark_sha256": "45c352369ac6f020bf293a0638742baf8bdbc9f20c2af669a532fdb4cc68e39c"
+}

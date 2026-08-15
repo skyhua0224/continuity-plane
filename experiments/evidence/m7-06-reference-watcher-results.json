@@ -1,0 +1,40 @@
+{
+  "adversarial_allow_counts": {
+    "detached-decision": 0,
+    "detached-observation": 0,
+    "forged-state-matrix": 0,
+    "unresolved-replacement": 0,
+    "unverified-trusted-time": 0
+  },
+  "adversarial_case_counts": {
+    "detached-decision": 400,
+    "detached-observation": 400,
+    "forged-state-matrix": 400,
+    "unresolved-replacement": 400,
+    "unverified-trusted-time": 1000
+  },
+  "authority_violation_count": 0,
+  "benchmark_id": "benchmark/m7-06/reference-watcher",
+  "changed_fixture_count": 400,
+  "changed_fixture_stale_or_quarantined_count": 400,
+  "external_service_calls": 0,
+  "implementation_sha256": "b1c07f23e60cbc386aea34ccbe3c399ca552cb9d40f539a1830f31d281b1db67",
+  "outcome_counts": {
+    "changed": 400,
+    "expired": 200,
+    "unavailable": 200,
+    "unchanged": 200
+  },
+  "outcomes_sha256": "061a1bf3bdd2f83244510b986606b9f1b21b2806d1e3c25c0dbeabfd5e61a9f1",
+  "receipt_sha256": "e1d31c887bd4715c708702dc1cd99a9dc0dfda007d35fb62dca233be3769ead8",
+  "replay_mismatch_count": 0,
+  "reverified_release_allows": 400,
+  "reverified_release_attempts": 400,
+  "samples": 1000,
+  "schema_version": "context.reference-watcher-benchmark/v1alpha1",
+  "successful_samples": 1000,
+  "unreviewed_completion_allows": 0,
+  "unreviewed_completion_attempts": 800,
+  "unsafe_fixture_count": 800,
+  "unsafe_fixture_stale_or_quarantined_count": 800
+}

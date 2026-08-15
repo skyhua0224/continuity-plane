@@ -1,6 +1,6 @@
 schema_version: context.document-control-manifest/v1alpha1
 generated_at: '2026-08-16T06:00:00Z'
-governance_revision: 57
+governance_revision: 58
 documents:
 - document_id: agents
   path: AGENTS.md
@@ -12,7 +12,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/57
+    authority_ref: governance-event://master/revision/58
     supersedes: null
     affected_tasks:
     - M0-10
@@ -28,19 +28,19 @@ documents:
 - document_id: master
   path: MASTER.md
   category: governance
-  document_revision: 19
+  document_revision: 20
   authority:
     governance_authority: true
     active_state_authority: false
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/57
-    supersedes: context.document://master/revision/18
+    authority_ref: governance-event://master/revision/58
+    supersedes: context.document://master/revision/19
     supersedes_provenance:
-      git_commit: 981306ebf012143a8fb79e924f1033fd2bb9618f
-      manifest_sha256: a5caeb17b22632b9de2c9de2a98eaf0ae5fda740d43d8f5e19b6af5fa7cc214b
-      content_sha256: d147f173fa45ab9f0d12a1bba002cf8ea5a72a7b72ae9442090258b0c87bd9b1
+      git_commit: ac962ca30de7da977c7bd22032056bc5553d29cd
+      manifest_sha256: 12b67a6dbeba59c6672a598d6ca9c201689ddeafc766ce3e6e6a2c4cac405207
+      content_sha256: 1d94fea67f5d005e5c103d2eac219ec850e0f578538c42580f6a75a19b8b89ec
     affected_tasks:
     - M3-08
     - M4-09
@@ -63,6 +63,10 @@ documents:
     - M7-02
     - M7-03
     - M8-04
+    - M8-01
+    - M7-04
+    - M7-05
+    - M7-06
     next_review: null
   evidence_refs:
   - ref_id: master-evidence-1
@@ -121,9 +125,25 @@ documents:
     path: docs/migrations/m7-02-claim-evidence-gate-acceptance-2026-08-16.md
     valid_until: null
     content_sha256: efe94fee0c926dcc34a09c10b843198c299a98952a75fe2d2e063d8aabda2fbf
-  content_sha256: 1d94fea67f5d005e5c103d2eac219ec850e0f578538c42580f6a75a19b8b89ec
+  - ref_id: master-evidence-m7-03
+    path: docs/migrations/m7-03-verification-profile-acceptance-2026-08-16.md
+    valid_until: null
+    content_sha256: 349d74052ebeb6bae8e8bb17182624342d6ca02cbc485cd7775ea4393d4ae8fc
+  - ref_id: master-evidence-m7-04
+    path: docs/migrations/m7-04-patch-ab-evaluation-acceptance-2026-08-16.md
+    valid_until: null
+    content_sha256: baa04ce21a1a14553827e14222bb963dfd091fb98319dfe9559d6e4b66fb788c
+  - ref_id: master-evidence-m7-05
+    path: docs/migrations/m7-05-affected-test-selection-acceptance-2026-08-16.md
+    valid_until: null
+    content_sha256: 2decd8ae6e369a0e20fe5ef0f2f36cbb52bae43b0a45b3abe6c4bb54e6ed9681
+  - ref_id: master-evidence-m7-06
+    path: docs/migrations/m7-06-reference-watcher-acceptance-2026-08-16.md
+    valid_until: null
+    content_sha256: eb3b611a8168536a0af7275041f512f3ef3b02709fc665cdc4ef20a9f895c7ad
+  content_sha256: d021dcef1404fbab7334e7cc158d0b2187329d265cbbf28f54198b2865467bd3
   metrics:
-    utf8_bytes: 57371
+    utf8_bytes: 58567
     section_count: 23
     local_link_count: 9
     external_link_count: 0
@@ -138,17 +158,17 @@ documents:
     controlled_action_entry: false
   change:
     change_type: projection
-    authority_ref: state-revision://repository/57
+    authority_ref: state-revision://repository/58
     supersedes: null
     affected_tasks:
     - M0-10
     next_review: null
   evidence_refs: []
   projection_binding:
-    source_state_revision: 57
+    source_state_revision: 58
     template_version: context.document-projection/v1alpha1
     state_write_authority: false
-    master_digest: 1d94fea67f5d005e5c103d2eac219ec850e0f578538c42580f6a75a19b8b89ec
+    master_digest: d021dcef1404fbab7334e7cc158d0b2187329d265cbbf28f54198b2865467bd3
     content_hash: 7122a327da3fb18eb4f12c922865b5f91914eb6181d066bf0bb6f4b4a4662410
   content_sha256: 7122a327da3fb18eb4f12c922865b5f91914eb6181d066bf0bb6f4b4a4662410
   metrics:
@@ -160,19 +180,19 @@ documents:
 - document_id: status
   path: STATUS.md
   category: routing
-  document_revision: 20
+  document_revision: 21
   authority:
     governance_authority: false
     active_state_authority: false
     controlled_action_entry: false
   change:
     change_type: status
-    authority_ref: governance-event://master/revision/57
-    supersedes: context.document://status/revision/19
+    authority_ref: governance-event://master/revision/58
+    supersedes: context.document://status/revision/20
     supersedes_provenance:
-      git_commit: 981306ebf012143a8fb79e924f1033fd2bb9618f
-      manifest_sha256: a5caeb17b22632b9de2c9de2a98eaf0ae5fda740d43d8f5e19b6af5fa7cc214b
-      content_sha256: 08fea483260419eb0fda49afd67bc606de4c5720fb161c85e4fe30b7839f92af
+      git_commit: ac962ca30de7da977c7bd22032056bc5553d29cd
+      manifest_sha256: 12b67a6dbeba59c6672a598d6ca9c201689ddeafc766ce3e6e6a2c4cac405207
+      content_sha256: 6ae2a49e73bd2eb8950f1f221d2765d4fda4a41c66a501d320564e47d5d9aef4
     affected_tasks:
     - M3-08
     - M4-09
@@ -195,6 +215,10 @@ documents:
     - M7-02
     - M7-03
     - M8-04
+    - M8-01
+    - M7-04
+    - M7-05
+    - M7-06
     next_review: null
   evidence_refs:
   - ref_id: status-evidence-1
@@ -253,10 +277,26 @@ documents:
     path: docs/migrations/m7-02-claim-evidence-gate-acceptance-2026-08-16.md
     valid_until: null
     content_sha256: efe94fee0c926dcc34a09c10b843198c299a98952a75fe2d2e063d8aabda2fbf
-  content_sha256: 6ae2a49e73bd2eb8950f1f221d2765d4fda4a41c66a501d320564e47d5d9aef4
+  - ref_id: status-evidence-m7-03
+    path: docs/migrations/m7-03-verification-profile-acceptance-2026-08-16.md
+    valid_until: null
+    content_sha256: 349d74052ebeb6bae8e8bb17182624342d6ca02cbc485cd7775ea4393d4ae8fc
+  - ref_id: status-evidence-m7-04
+    path: docs/migrations/m7-04-patch-ab-evaluation-acceptance-2026-08-16.md
+    valid_until: null
+    content_sha256: baa04ce21a1a14553827e14222bb963dfd091fb98319dfe9559d6e4b66fb788c
+  - ref_id: status-evidence-m7-05
+    path: docs/migrations/m7-05-affected-test-selection-acceptance-2026-08-16.md
+    valid_until: null
+    content_sha256: 2decd8ae6e369a0e20fe5ef0f2f36cbb52bae43b0a45b3abe6c4bb54e6ed9681
+  - ref_id: status-evidence-m7-06
+    path: docs/migrations/m7-06-reference-watcher-acceptance-2026-08-16.md
+    valid_until: null
+    content_sha256: eb3b611a8168536a0af7275041f512f3ef3b02709fc665cdc4ef20a9f895c7ad
+  content_sha256: ba4b9c70ef30f784045547826f07463bb2c04f765a876df732103262a306bb0e
   metrics:
-    utf8_bytes: 3751
-    section_count: 4
+    utf8_bytes: 3744
+    section_count: 3
     local_link_count: 1
     external_link_count: 0
     reference_depth: 2
@@ -270,7 +310,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/57
+    authority_ref: governance-event://master/revision/58
     supersedes: null
     affected_tasks:
     - M0-10
@@ -293,7 +333,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/57
+    authority_ref: governance-event://master/revision/58
     supersedes: context.document://docs-architecture-idea-continuity/revision/2
     supersedes_provenance:
       git_commit: 84ac82f3375a39c712e3c98a95f6126753e64199
@@ -321,7 +361,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/57
+    authority_ref: governance-event://master/revision/58
     supersedes: null
     affected_tasks:
     - M0-10
@@ -344,7 +384,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/57
+    authority_ref: governance-event://master/revision/58
     supersedes: context.document://docs-architecture-skill-orchestration/revision/1
     affected_tasks:
     - M0-10
@@ -366,19 +406,19 @@ documents:
 - document_id: docs-architecture-target-state
   path: docs/architecture/target-state.md
   category: architecture
-  document_revision: 18
+  document_revision: 19
   authority:
     governance_authority: false
     active_state_authority: false
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/57
-    supersedes: context.document://docs-architecture-target-state/revision/17
+    authority_ref: governance-event://master/revision/58
+    supersedes: context.document://docs-architecture-target-state/revision/18
     supersedes_provenance:
-      git_commit: 981306ebf012143a8fb79e924f1033fd2bb9618f
-      manifest_sha256: a5caeb17b22632b9de2c9de2a98eaf0ae5fda740d43d8f5e19b6af5fa7cc214b
-      content_sha256: ce09ff9c37ddade55faa4e2b015e048152858982e41807850ffff1f56bb1bd87
+      git_commit: ac962ca30de7da977c7bd22032056bc5553d29cd
+      manifest_sha256: 12b67a6dbeba59c6672a598d6ca9c201689ddeafc766ce3e6e6a2c4cac405207
+      content_sha256: dad2d2122e298ffea9d84156ebd98fce59c22023107d97abd4f0d16bffe530c5
     affected_tasks:
     - M3-08
     - M4-09
@@ -459,7 +499,7 @@ documents:
     path: docs/migrations/m7-02-claim-evidence-gate-acceptance-2026-08-16.md
     valid_until: null
     content_sha256: efe94fee0c926dcc34a09c10b843198c299a98952a75fe2d2e063d8aabda2fbf
-  content_sha256: dad2d2122e298ffea9d84156ebd98fce59c22023107d97abd4f0d16bffe530c5
+  content_sha256: 7d791b94615a17c318bce1b7102acbe665c6f523f92ae9b47fc03dc78b268bb8
   metrics:
     utf8_bytes: 12524
     section_count: 5
@@ -1345,7 +1385,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/57
+    authority_ref: governance-event://master/revision/58
     supersedes: null
     affected_tasks:
     - M0-10
@@ -1368,7 +1408,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/57
+    authority_ref: governance-event://master/revision/58
     supersedes: null
     affected_tasks:
     - M0-10
@@ -1391,7 +1431,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/57
+    authority_ref: governance-event://master/revision/58
     supersedes: null
     affected_tasks:
     - M0-10
@@ -1414,7 +1454,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/57
+    authority_ref: governance-event://master/revision/58
     supersedes: null
     affected_tasks:
     - M0-10
@@ -1437,7 +1477,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/57
+    authority_ref: governance-event://master/revision/58
     supersedes: null
     affected_tasks:
     - M0-10
@@ -1460,7 +1500,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/57
+    authority_ref: governance-event://master/revision/58
     supersedes: context.document://docs-policies-git-collaboration/revision/1
     supersedes_provenance:
       git_commit: 51663f3b23a4dc4af31ba4be9e9d3f80066d64ca
@@ -1491,7 +1531,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/57
+    authority_ref: governance-event://master/revision/58
     supersedes: context.document://docs-policies-project-dogfooding-observation/revision/1
     supersedes_provenance:
       git_commit: b8e7da0358b3b3b8c21ebf44d6c50483f80cd0b1
@@ -1524,7 +1564,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/57
+    authority_ref: governance-event://master/revision/58
     supersedes: null
     affected_tasks:
     - M0-10
@@ -1547,7 +1587,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/57
+    authority_ref: governance-event://master/revision/58
     supersedes: null
     affected_tasks:
     - M0-10
@@ -1563,19 +1603,19 @@ documents:
 - document_id: docs-reports-verified-state
   path: docs/reports/verified-state.md
   category: report
-  document_revision: 18
+  document_revision: 19
   authority:
     governance_authority: false
     active_state_authority: false
     controlled_action_entry: false
   change:
     change_type: projection
-    authority_ref: state-revision://repository/57
-    supersedes: context.document://docs-reports-verified-state/revision/17
+    authority_ref: state-revision://repository/58
+    supersedes: context.document://docs-reports-verified-state/revision/18
     supersedes_provenance:
-      git_commit: 981306ebf012143a8fb79e924f1033fd2bb9618f
-      manifest_sha256: a5caeb17b22632b9de2c9de2a98eaf0ae5fda740d43d8f5e19b6af5fa7cc214b
-      content_sha256: 3acdca2996fe49e8fb17c3929a749193d144eaf97bdad5e44628c7fa050d9ec7
+      git_commit: ac962ca30de7da977c7bd22032056bc5553d29cd
+      manifest_sha256: 12b67a6dbeba59c6672a598d6ca9c201689ddeafc766ce3e6e6a2c4cac405207
+      content_sha256: 815f6c5bc797d74a809e354785f0d586dcc7b9b6637c71f50f0030094e7b0f3f
     affected_tasks:
     - M3-08
     - M4-09
@@ -1598,7 +1638,7 @@ documents:
     - M7-01
     - M7-02
     - M7-03
-    next_review: task:M7-03
+    next_review: task:M8-01
   evidence_refs:
   - ref_id: docs-reports-verified-state-evidence-1
     path: docs/migrations/m0-07-schema-governance-acceptance-2026-08-09.md
@@ -1780,17 +1820,33 @@ documents:
     path: docs/migrations/m7-02-claim-evidence-gate-acceptance-2026-08-16.md
     valid_until: null
     content_sha256: efe94fee0c926dcc34a09c10b843198c299a98952a75fe2d2e063d8aabda2fbf
+  - ref_id: docs-reports-verified-state-evidence-m7-03
+    path: docs/migrations/m7-03-verification-profile-acceptance-2026-08-16.md
+    valid_until: null
+    content_sha256: 349d74052ebeb6bae8e8bb17182624342d6ca02cbc485cd7775ea4393d4ae8fc
+  - ref_id: docs-reports-verified-state-evidence-m7-04
+    path: docs/migrations/m7-04-patch-ab-evaluation-acceptance-2026-08-16.md
+    valid_until: null
+    content_sha256: baa04ce21a1a14553827e14222bb963dfd091fb98319dfe9559d6e4b66fb788c
+  - ref_id: docs-reports-verified-state-evidence-m7-05
+    path: docs/migrations/m7-05-affected-test-selection-acceptance-2026-08-16.md
+    valid_until: null
+    content_sha256: 2decd8ae6e369a0e20fe5ef0f2f36cbb52bae43b0a45b3abe6c4bb54e6ed9681
+  - ref_id: docs-reports-verified-state-evidence-m7-06
+    path: docs/migrations/m7-06-reference-watcher-acceptance-2026-08-16.md
+    valid_until: null
+    content_sha256: eb3b611a8168536a0af7275041f512f3ef3b02709fc665cdc4ef20a9f895c7ad
   projection_binding:
-    source_state_revision: 57
+    source_state_revision: 58
     template_version: context.document-projection/v1alpha1
     state_write_authority: false
-    master_digest: 1d94fea67f5d005e5c103d2eac219ec850e0f578538c42580f6a75a19b8b89ec
-    content_hash: 815f6c5bc797d74a809e354785f0d586dcc7b9b6637c71f50f0030094e7b0f3f
-  content_sha256: 815f6c5bc797d74a809e354785f0d586dcc7b9b6637c71f50f0030094e7b0f3f
+    master_digest: d021dcef1404fbab7334e7cc158d0b2187329d265cbbf28f54198b2865467bd3
+    content_hash: 6dd61d22ac2793dcd0d4791ecedd247d7699513a86e46eff93a28a3488d48ba0
+  content_sha256: 6dd61d22ac2793dcd0d4791ecedd247d7699513a86e46eff93a28a3488d48ba0
   metrics:
-    utf8_bytes: 8080
+    utf8_bytes: 8618
     section_count: 2
-    local_link_count: 58
+    local_link_count: 62
     external_link_count: 0
     reference_depth: 1
 - document_id: docs-research-agent-harness-assessment-2026-08-09
@@ -2261,6 +2317,134 @@ documents:
   metrics:
     utf8_bytes: 2706
     section_count: 4
+    local_link_count: 1
+    external_link_count: 0
+    reference_depth: 0
+- document_id: docs-migrations-m5-07-continuity-incident-correction-2026-08-16
+  path: docs/migrations/m5-07-continuity-incident-correction-2026-08-16.md
+  category: migration
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: verification-run://repository/75b0954d0f6e79b65771deb5242a3477f73aeea6e87d4120decd8b0d5a202e5a
+    supersedes: null
+    affected_tasks:
+    - M3-08
+    - M5-07
+    - M5-08
+    - M7-03
+    - M8-09
+    next_review: task:M8-09
+  evidence_refs: []
+  content_sha256: 75b0954d0f6e79b65771deb5242a3477f73aeea6e87d4120decd8b0d5a202e5a
+  metrics:
+    utf8_bytes: 2398
+    section_count: 5
+    local_link_count: 1
+    external_link_count: 0
+    reference_depth: 0
+- document_id: docs-migrations-m7-03-verification-profile-acceptance-2026-08-16
+  path: docs/migrations/m7-03-verification-profile-acceptance-2026-08-16.md
+  category: migration
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: verification-run://repository/349d74052ebeb6bae8e8bb17182624342d6ca02cbc485cd7775ea4393d4ae8fc
+    supersedes: null
+    affected_tasks:
+    - M4-08
+    - M7-03
+    - M7-04
+    - M7-05
+    next_review: task:M7-04
+  evidence_refs: []
+  content_sha256: 349d74052ebeb6bae8e8bb17182624342d6ca02cbc485cd7775ea4393d4ae8fc
+  metrics:
+    utf8_bytes: 3086
+    section_count: 4
+    local_link_count: 1
+    external_link_count: 0
+    reference_depth: 0
+- document_id: docs-migrations-m7-04-patch-ab-evaluation-acceptance-2026-08-16
+  path: docs/migrations/m7-04-patch-ab-evaluation-acceptance-2026-08-16.md
+  category: migration
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: verification-run://repository/baa04ce21a1a14553827e14222bb963dfd091fb98319dfe9559d6e4b66fb788c
+    supersedes: null
+    affected_tasks:
+    - M7-04
+    - M8-07
+    - M10-00
+    next_review: task:M8-07
+  evidence_refs: []
+  content_sha256: baa04ce21a1a14553827e14222bb963dfd091fb98319dfe9559d6e4b66fb788c
+  metrics:
+    utf8_bytes: 5489
+    section_count: 6
+    local_link_count: 3
+    external_link_count: 0
+    reference_depth: 0
+- document_id: docs-migrations-m7-05-affected-test-selection-acceptance-2026-08-16
+  path: docs/migrations/m7-05-affected-test-selection-acceptance-2026-08-16.md
+  category: migration
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: verification-run://repository/2decd8ae6e369a0e20fe5ef0f2f36cbb52bae43b0a45b3abe6c4bb54e6ed9681
+    supersedes: null
+    affected_tasks:
+    - M7-03
+    - M7-05
+    - M10-00
+    next_review: task:M10-00
+  evidence_refs: []
+  content_sha256: 2decd8ae6e369a0e20fe5ef0f2f36cbb52bae43b0a45b3abe6c4bb54e6ed9681
+  metrics:
+    utf8_bytes: 6271
+    section_count: 5
+    local_link_count: 1
+    external_link_count: 0
+    reference_depth: 0
+- document_id: docs-migrations-m7-06-reference-watcher-acceptance-2026-08-16
+  path: docs/migrations/m7-06-reference-watcher-acceptance-2026-08-16.md
+  category: migration
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: verification-run://repository/eb3b611a8168536a0af7275041f512f3ef3b02709fc665cdc4ef20a9f895c7ad
+    supersedes: null
+    affected_tasks:
+    - M7-01
+    - M7-02
+    - M7-06
+    next_review: task:M8-07
+  evidence_refs: []
+  content_sha256: eb3b611a8168536a0af7275041f512f3ef3b02709fc665cdc4ef20a9f895c7ad
+  metrics:
+    utf8_bytes: 5598
+    section_count: 6
     local_link_count: 1
     external_link_count: 0
     reference_depth: 0

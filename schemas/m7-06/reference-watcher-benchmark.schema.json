@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m7-06/reference-watcher-benchmark.schema.json",
+  "title": "M7-06 ReferenceWatcher Benchmark",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "benchmark_id", "samples", "successful_samples", "outcome_counts", "changed_fixture_count", "changed_fixture_stale_or_quarantined_count", "unsafe_fixture_count", "unsafe_fixture_stale_or_quarantined_count", "unreviewed_completion_attempts", "unreviewed_completion_allows", "reverified_release_attempts", "reverified_release_allows", "adversarial_case_counts", "adversarial_allow_counts", "replay_mismatch_count", "authority_violation_count", "external_service_calls", "outcomes_sha256", "implementation_sha256", "receipt_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.reference-watcher-benchmark/v1alpha1"},
+    "benchmark_id": {"const": "benchmark/m7-06/reference-watcher"},
+    "samples": {"type": "integer", "minimum": 1},
+    "successful_samples": {"type": "integer", "minimum": 1},
+    "outcome_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unchanged", "changed", "unavailable", "expired"],
+      "properties": {
+        "unchanged": {"type": "integer", "minimum": 0},
+        "changed": {"type": "integer", "minimum": 0},
+        "unavailable": {"type": "integer", "minimum": 0},
+        "expired": {"type": "integer", "minimum": 0}
+      }
+    },
+    "changed_fixture_count": {"type": "integer", "minimum": 1},
+    "changed_fixture_stale_or_quarantined_count": {"type": "integer", "minimum": 1},
+    "unsafe_fixture_count": {"type": "integer", "minimum": 1},
+    "unsafe_fixture_stale_or_quarantined_count": {"type": "integer", "minimum": 1},
+    "unreviewed_completion_attempts": {"type": "integer", "minimum": 1},
+    "unreviewed_completion_allows": {"const": 0},
+    "reverified_release_attempts": {"type": "integer", "minimum": 1},
+    "reverified_release_allows": {"type": "integer", "minimum": 1},
+    "adversarial_case_counts": {"$ref": "#/$defs/adversarialCases"},
+    "adversarial_allow_counts": {"$ref": "#/$defs/adversarialAllows"},
+    "replay_mismatch_count": {"const": 0},
+    "authority_violation_count": {"const": 0},
+    "external_service_calls": {"const": 0},
+    "outcomes_sha256": {"$ref": "#/$defs/sha256"},
+    "implementation_sha256": {"$ref": "#/$defs/sha256"},
+    "receipt_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "adversarialCases": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["detached-decision", "detached-observation", "forged-state-matrix", "unresolved-replacement", "unverified-trusted-time"],
+      "properties": {
+        "detached-decision": {"type": "integer", "minimum": 1},
+        "detached-observation": {"type": "integer", "minimum": 1},
+        "forged-state-matrix": {"type": "integer", "minimum": 1},
+        "unresolved-replacement": {"type": "integer", "minimum": 1},
+        "unverified-trusted-time": {"type": "integer", "minimum": 1}
+      }
+    },
+    "adversarialAllows": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["detached-decision", "detached-observation", "forged-state-matrix", "unresolved-replacement", "unverified-trusted-time"],
+      "properties": {
+        "detached-decision": {"const": 0},
+        "detached-observation": {"const": 0},
+        "forged-state-matrix": {"const": 0},
+        "unresolved-replacement": {"const": 0},
+        "unverified-trusted-time": {"const": 0}
+      }
+    }
+  }
+}

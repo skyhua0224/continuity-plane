@@ -965,3 +965,273 @@ schemas:
     status: current
     compatibility_mode: strict-versioned
     migrations: []
+
+  - schema_id: context.continuation-obligation
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.continuation-obligation/v1alpha1
+    supported_wire_versions: [context.continuation-obligation/v1alpha1]
+    artifact_path: schemas/m5-07/continuation-obligation.schema.json
+    content_sha256: e5c58cee3c2237ca94a5dcf54bb44b13babc4ce759c6b4c56d3b9332168c7d26
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.continuity-incident
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.continuity-incident/v1alpha1
+    supported_wire_versions: [context.continuity-incident/v1alpha1]
+    artifact_path: schemas/m5-07/continuity-incident.schema.json
+    content_sha256: 84d11be595b99a5281413579db932cd01805cc314c739a98ecb9032007f688c0
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.verification-profile
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.verification-profile/v1alpha1
+    supported_wire_versions: [context.verification-profile/v1alpha1]
+    artifact_path: schemas/m7-03/verification-profile.schema.json
+    content_sha256: 0976213bcbd5d49fc0bce1b1f3db792af3f6ecb0bc382eacdf2443516ecbb40b
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.verification-adapter
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.verification-adapter/v1alpha1
+    supported_wire_versions: [context.verification-adapter/v1alpha1]
+    artifact_path: schemas/m7-03/verification-adapter.schema.json
+    content_sha256: 185d76e601278771de9c53cda42950a817caaf12567bef9631f3a87c5367fe05
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.verification-run-receipt
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.verification-run-receipt/v1alpha1
+    supported_wire_versions: [context.verification-run-receipt/v1alpha1]
+    artifact_path: schemas/m7-03/verification-run-receipt.schema.json
+    content_sha256: 44442e812357ba062338e6820c7e9599c790bd5ba019c168fd52ffb74a1ec7b9
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.verification-decision
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.verification-decision/v1alpha1
+    supported_wire_versions: [context.verification-decision/v1alpha1]
+    artifact_path: schemas/m7-03/verification-decision.schema.json
+    content_sha256: 60cdb810126815e98668f0eef4999c3a0de085baa704a08634f095673dc36b47
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.verification-profile-benchmark
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.verification-profile-benchmark/v1alpha1
+    supported_wire_versions: [context.verification-profile-benchmark/v1alpha1]
+    artifact_path: schemas/m7-03/verification-profile-benchmark.schema.json
+    content_sha256: 76fb4eadda30e03ca18b733ad35f82212393174e8ff67267026d100b0bb25ba6
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.patch-ab-experiment
+    current_semver: 1.0.0-alpha.2
+    current_wire_version: context.patch-ab-experiment/v1alpha2
+    supported_wire_versions: [context.patch-ab-experiment/v1alpha2]
+    artifact_path: schemas/m7-04/patch-ab-experiment.schema.json
+    content_sha256: 1fd0989eab3e1ff326215762f6e244cc2cec42f37142e6e7b0cb419358830579
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.patch-ab-blind-set
+    current_semver: 1.0.0-alpha.2
+    current_wire_version: context.patch-ab-blind-set/v1alpha2
+    supported_wire_versions: [context.patch-ab-blind-set/v1alpha2]
+    artifact_path: schemas/m7-04/patch-ab-blind-set.schema.json
+    content_sha256: 4294ac8db23d59e203ab5ebac0b2fce86047e27ca1ba7a8141927bef750572c6
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.patch-ab-verifier-packet
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.patch-ab-verifier-packet/v1alpha1
+    supported_wire_versions: [context.patch-ab-verifier-packet/v1alpha1]
+    artifact_path: schemas/m7-04/patch-ab-verifier-packet.schema.json
+    content_sha256: 5dab2505ece2df91577ccbe7fffa9142053713e9dc6202351e219ba25aaa4c6c
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.patch-ab-verifier-score
+    current_semver: 1.0.0-alpha.2
+    current_wire_version: context.patch-ab-verifier-score/v1alpha2
+    supported_wire_versions: [context.patch-ab-verifier-score/v1alpha2]
+    artifact_path: schemas/m7-04/patch-ab-verifier-score.schema.json
+    content_sha256: d7ccb20ceed490d96214c6d420dd16424f4422048456500c82ccad3f10e522cd
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.patch-ab-result
+    current_semver: 1.0.0-alpha.2
+    current_wire_version: context.patch-ab-result/v1alpha2
+    supported_wire_versions: [context.patch-ab-result/v1alpha2]
+    artifact_path: schemas/m7-04/patch-ab-result.schema.json
+    content_sha256: c8093b31d3f0fa6984e378f7ea6c283701f112caa460cf76e15b58621144015c
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.patch-ab-benchmark
+    current_semver: 1.0.0-alpha.2
+    current_wire_version: context.patch-ab-benchmark/v1alpha2
+    supported_wire_versions: [context.patch-ab-benchmark/v1alpha2]
+    artifact_path: schemas/m7-04/patch-ab-benchmark.schema.json
+    content_sha256: 683aaf1b242c7539eeeb782bdee073dcbc9ae1989eee7fbeef2f2880b6fcf868
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.patch-ab-randomizer-provenance
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.patch-ab-randomizer-provenance/v1alpha1
+    supported_wire_versions: [context.patch-ab-randomizer-provenance/v1alpha1]
+    artifact_path: schemas/m7-04/patch-ab-randomizer-provenance.schema.json
+    content_sha256: d452a77b2fcf375a7212404cd2fce9d14115166b86f11c43dff8b73b75fefcb3
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.patch-ab-score-evidence
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.patch-ab-score-evidence/v1alpha1
+    supported_wire_versions: [context.patch-ab-score-evidence/v1alpha1]
+    artifact_path: schemas/m7-04/patch-ab-score-evidence.schema.json
+    content_sha256: 825f57cf2e9957f943de70c05097723bd32332603a37dfc89dadedc4409d467d
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.patch-ab-quality-evidence
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.patch-ab-quality-evidence/v1alpha1
+    supported_wire_versions: [context.patch-ab-quality-evidence/v1alpha1]
+    artifact_path: schemas/m7-04/patch-ab-quality-evidence.schema.json
+    content_sha256: 19117626448a4e909bac2b2733b91f36cda48efa276dca4ded35b132bb7da132
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.affected-change-set
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.affected-change-set/v1alpha1
+    supported_wire_versions: [context.affected-change-set/v1alpha1]
+    artifact_path: schemas/m7-05/affected-change-set.schema.json
+    content_sha256: 24ab9416554b724a6e4649c14ef78c246043c80c28d71c3eb0f818e800e753e0
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.affected-graph
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.affected-graph/v1alpha1
+    supported_wire_versions: [context.affected-graph/v1alpha1]
+    artifact_path: schemas/m7-05/affected-graph.schema.json
+    content_sha256: 773791b84eb11c42ae7fed2179cc8e4e1c7b50eca3d9685c8a082e94c5f19f71
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.required-test-inventory
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.required-test-inventory/v1alpha1
+    supported_wire_versions: [context.required-test-inventory/v1alpha1]
+    artifact_path: schemas/m7-05/required-test-inventory.schema.json
+    content_sha256: eadba39e269dbc82bd1516692dce8518e5ba480053cad4e8bf3f157455fd0a47
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.deterministic-derivation-receipt
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.deterministic-derivation-receipt/v1alpha1
+    supported_wire_versions: [context.deterministic-derivation-receipt/v1alpha1]
+    artifact_path: schemas/m7-05/deterministic-derivation-receipt.schema.json
+    content_sha256: 3a24a9761ea8068a1a161b2d43ec6ac1ce94a38c6339468c9d4c3d0f75d3b81c
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.affected-test-selection
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.affected-test-selection/v1alpha1
+    supported_wire_versions: [context.affected-test-selection/v1alpha1]
+    artifact_path: schemas/m7-05/affected-test-selection.schema.json
+    content_sha256: 646189e2dee5f9921c8fdf53e26798b24adccd1fd0a09390fdc4aa0d3b286a9d
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.affected-test-selection-fixture
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.affected-test-selection-fixture/v1alpha1
+    supported_wire_versions: [context.affected-test-selection-fixture/v1alpha1]
+    artifact_path: schemas/m7-05/affected-test-selection-fixture.schema.json
+    content_sha256: 32604ece986177b9deafab09ddee420caf4240894879301456c1149d70f87773
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.affected-test-selection-golden
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.affected-test-selection-golden/v1alpha1
+    supported_wire_versions: [context.affected-test-selection-golden/v1alpha1]
+    artifact_path: schemas/m7-05/affected-test-selection-golden.schema.json
+    content_sha256: f0f1ca2f7b05412a003c813723b12596a07f724965486f9652e1d22f6cef405e
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.affected-test-selection-benchmark
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.affected-test-selection-benchmark/v1alpha1
+    supported_wire_versions: [context.affected-test-selection-benchmark/v1alpha1]
+    artifact_path: schemas/m7-05/affected-test-selection-benchmark.schema.json
+    content_sha256: abec7869fbd8cffb77c1971d0a73e73e8994ff9e46616fcb426bca7d1ddf7c63
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.reference-watch-observation
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.reference-watch-observation/v1alpha1
+    supported_wire_versions: [context.reference-watch-observation/v1alpha1]
+    artifact_path: schemas/m7-06/reference-watch-observation.schema.json
+    content_sha256: bf80e5d606223a40e116923046384f6919838b38d403494ceb0c094928e3d1d1
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.reference-watch-decision
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.reference-watch-decision/v1alpha1
+    supported_wire_versions: [context.reference-watch-decision/v1alpha1]
+    artifact_path: schemas/m7-06/reference-watch-decision.schema.json
+    content_sha256: 19c4dc9a9da62f1a0ca2bf543bf0836ae0ea3349dfc5067cc11e0f3458ea9478
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.reference-watcher-benchmark
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.reference-watcher-benchmark/v1alpha1
+    supported_wire_versions: [context.reference-watcher-benchmark/v1alpha1]
+    artifact_path: schemas/m7-06/reference-watcher-benchmark.schema.json
+    content_sha256: a569f97c13b8248b31e894150fae94529b55bf10df2a0f48a7891fb82126c310
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []

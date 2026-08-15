@@ -1,0 +1,237 @@
+{
+  "schema_version": "context.affected-test-selection-golden/v1alpha1",
+  "golden_id": "golden/m7-05/current-repository/v1",
+  "scenarios": [
+    {
+      "scenario_id": "dynamic-full",
+      "graph_key": "dynamic",
+      "changed_paths": [
+        "context_control_plane/affected_test_selection.py"
+      ],
+      "graph_provenance_available": true,
+      "expected_selection_mode": "full-validation",
+      "expected_test_ids": [
+        "m6-02-unit",
+        "m7-01-unit",
+        "m7-02-unit",
+        "m7-05-contract",
+        "python-compile",
+        "ruff-selection"
+      ],
+      "expected_fallback_reasons": [
+        "dynamic-edges-unknown"
+      ]
+    },
+    {
+      "scenario_id": "evidence-selected",
+      "graph_key": "current",
+      "changed_paths": [
+        "context_control_plane/assertion_provenance.py"
+      ],
+      "graph_provenance_available": true,
+      "expected_selection_mode": "selected",
+      "expected_test_ids": [
+        "m7-01-unit",
+        "m7-02-unit",
+        "python-compile",
+        "ruff-selection"
+      ],
+      "expected_fallback_reasons": []
+    },
+    {
+      "scenario_id": "incomplete-full",
+      "graph_key": "incomplete",
+      "changed_paths": [
+        "context_control_plane/affected_test_selection.py"
+      ],
+      "graph_provenance_available": true,
+      "expected_selection_mode": "full-validation",
+      "expected_test_ids": [
+        "m6-02-unit",
+        "m7-01-unit",
+        "m7-02-unit",
+        "m7-05-contract",
+        "python-compile",
+        "ruff-selection"
+      ],
+      "expected_fallback_reasons": [
+        "graph-incomplete"
+      ]
+    },
+    {
+      "scenario_id": "missing-provenance-full",
+      "graph_key": "current",
+      "changed_paths": [
+        "context_control_plane/affected_test_selection.py"
+      ],
+      "graph_provenance_available": false,
+      "expected_selection_mode": "full-validation",
+      "expected_test_ids": [
+        "m6-02-unit",
+        "m7-01-unit",
+        "m7-02-unit",
+        "m7-05-contract",
+        "python-compile",
+        "ruff-selection"
+      ],
+      "expected_fallback_reasons": [
+        "graph-provenance-unavailable"
+      ]
+    },
+    {
+      "scenario_id": "mixed-unmapped-full",
+      "graph_key": "current",
+      "changed_paths": [
+        "context_control_plane/affected_test_selection.py",
+        "generated/unknown.py"
+      ],
+      "graph_provenance_available": true,
+      "expected_selection_mode": "full-validation",
+      "expected_test_ids": [
+        "m6-02-unit",
+        "m7-01-unit",
+        "m7-02-unit",
+        "m7-05-contract",
+        "python-compile",
+        "ruff-selection"
+      ],
+      "expected_fallback_reasons": [
+        "changed-path-unmapped"
+      ]
+    },
+    {
+      "scenario_id": "selection-core-selected",
+      "graph_key": "current",
+      "changed_paths": [
+        "context_control_plane/affected_test_selection.py"
+      ],
+      "graph_provenance_available": true,
+      "expected_selection_mode": "selected",
+      "expected_test_ids": [
+        "m7-05-contract",
+        "python-compile",
+        "ruff-selection"
+      ],
+      "expected_fallback_reasons": []
+    },
+    {
+      "scenario_id": "stale-full",
+      "graph_key": "stale",
+      "changed_paths": [
+        "context_control_plane/affected_test_selection.py"
+      ],
+      "graph_provenance_available": true,
+      "expected_selection_mode": "full-validation",
+      "expected_test_ids": [
+        "m6-02-unit",
+        "m7-01-unit",
+        "m7-02-unit",
+        "m7-05-contract",
+        "python-compile",
+        "ruff-selection"
+      ],
+      "expected_fallback_reasons": [
+        "graph-stale"
+      ]
+    },
+    {
+      "scenario_id": "unmapped-full",
+      "graph_key": "current",
+      "changed_paths": [
+        "generated/unknown.py"
+      ],
+      "graph_provenance_available": true,
+      "expected_selection_mode": "full-validation",
+      "expected_test_ids": [
+        "m6-02-unit",
+        "m7-01-unit",
+        "m7-02-unit",
+        "m7-05-contract",
+        "python-compile",
+        "ruff-selection"
+      ],
+      "expected_fallback_reasons": [
+        "changed-path-unmapped"
+      ]
+    }
+  ],
+  "performance_scenario_id": "selection-core-selected",
+  "real_commands": [
+    {
+      "test_id": "m6-02-unit",
+      "argv": [
+        "/home/skyhua/Projects/context-control-plane/.venv/bin/python",
+        "-m",
+        "unittest",
+        "tests.test_m6_02_codegraph_verification",
+        "-q"
+      ],
+      "cwd": "repository-root",
+      "command_kind": "unittest"
+    },
+    {
+      "test_id": "m7-01-unit",
+      "argv": [
+        "/home/skyhua/Projects/context-control-plane/.venv/bin/python",
+        "-m",
+        "unittest",
+        "tests.test_m7_01_assertion_provenance",
+        "-q"
+      ],
+      "cwd": "repository-root",
+      "command_kind": "unittest"
+    },
+    {
+      "test_id": "m7-02-unit",
+      "argv": [
+        "/home/skyhua/Projects/context-control-plane/.venv/bin/python",
+        "-m",
+        "unittest",
+        "tests.test_m7_02_claim_evidence_gate",
+        "-q"
+      ],
+      "cwd": "repository-root",
+      "command_kind": "unittest"
+    },
+    {
+      "test_id": "m7-05-contract",
+      "argv": [
+        "/home/skyhua/Projects/context-control-plane/.venv/bin/python",
+        "-m",
+        "unittest",
+        "tests.test_m7_05_trusted_selection",
+        "-q"
+      ],
+      "cwd": "repository-root",
+      "command_kind": "unittest"
+    },
+    {
+      "test_id": "python-compile",
+      "argv": [
+        "/home/skyhua/Projects/context-control-plane/.venv/bin/python",
+        "-c",
+        "import ast,pathlib,sys;[ast.parse(pathlib.Path(p).read_text(encoding='utf-8')) for p in sys.argv[1:]]",
+        "context_control_plane/affected_test_selection.py",
+        "context_control_plane/affected_test_selection_benchmark.py"
+      ],
+      "cwd": "repository-root",
+      "command_kind": "build"
+    },
+    {
+      "test_id": "ruff-selection",
+      "argv": [
+        "ruff",
+        "check",
+        "context_control_plane/affected_test_selection.py",
+        "context_control_plane/affected_test_selection_benchmark.py",
+        "tests/test_m7_05_trusted_selection.py",
+        "tests/test_m7_05_trusted_benchmark.py"
+      ],
+      "cwd": "repository-root",
+      "command_kind": "static"
+    }
+  ],
+  "state_write_authority": false,
+  "completion_authority": false,
+  "golden_sha256": "78bdcd8f20b0583bfaa298349f495990aef5299c40293afaef79b0906680ad5b"
+}
