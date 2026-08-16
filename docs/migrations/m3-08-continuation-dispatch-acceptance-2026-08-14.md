@@ -1,15 +1,15 @@
 # M3-08 Continuation Dispatch Acceptance
 
-版本：3  
+版本：4  
 日期：2026-08-14  
 状态：verified local-embedded continuation and bounded escalation contract
 
 ```yaml
 document_id: context.m3-08-continuation-dispatch-acceptance
-document_revision: 3
+document_revision: 4
 change_type: evidence
-authority_ref: verification-run://repository/m3-08-continuation-dispatch-v3
-supersedes: context.document://docs-migrations-m3-08-continuation-dispatch-acceptance-2026-08-14/revision/2
+authority_ref: verification-run://repository/m3-08-continuation-dispatch-v4
+supersedes: context.document://docs-migrations-m3-08-continuation-dispatch-acceptance-2026-08-14/revision/3
 affected_tasks: [M3-08, M4-09, M5-01, M5-03, M5-08, M8-09]
 next_review: M4-09
 ```
@@ -57,9 +57,9 @@ M3-08 增加独立 continuation/dispatch 层。它消费 M3-02 的 canonical rou
 | nondeterministic replay | `0` |
 | request/state/profile mutation | `0/0/0` |
 | external services | `0` |
-| decision p50 | `0.194136 ms` |
-| decision p95 | `0.261423 ms` |
-| decision max | `0.317048 ms` |
+| decision p50 | `0.132634 ms` |
+| decision p95 | `0.230881 ms` |
+| decision max | `0.285398 ms` |
 
 Receipt 通过 `context.continuation-dispatch-benchmark/v1alpha1` strict schema；provenance 固定 continuation implementation、M3-02 router、Typed State、Project Governance Profile、四份 schema 和 registry 的 SHA-256。validator 会在验收时重新计算这些 hash，过期 receipt 拒绝。
 

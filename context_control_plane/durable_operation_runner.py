@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import copy
+import hashlib
+import json
 import re
 from collections.abc import Callable
 from typing import Any
@@ -55,6 +57,24 @@ _ADAPTER_MANIFEST_FIELDS = {
 }
 _ADAPTER_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$")
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+_DISPATCH_RECEIPT_FIELDS = {
+    "schema_version",
+    "request_id",
+    "project_id",
+    "project_revision",
+    "work_id",
+    "claim_id",
+    "claim_revision",
+    "lease_epoch",
+    "fence",
+    "effect_id",
+    "effect_key",
+    "request_sha256",
+    "operation",
+    "scope_ref",
+    "dispatch_started_at",
+    "receipt_sha256",
+}
 
 
 def validate_effect_adapter_manifest(manifest: Any) -> dict[str, Any]:
@@ -101,7 +121,9 @@ def validate_effect_adapter_manifest(manifest: Any) -> dict[str, Any]:
     if normalized["state_write_authority"] is not False:
         raise DurableOperationRunnerError("effect adapter cannot claim State authority")
     if normalized["provider_native_authority"] is not False:
-        raise DurableOperationRunnerError("effect adapter cannot claim provider authority")
+        raise DurableOperationRunnerError(
+            "effect adapter cannot claim provider authority"
+        )
     return normalized
 
 
@@ -112,7 +134,9 @@ def _adapter_result(value: Any, *, allow_absent: bool) -> dict[str, str]:
         return {"status": "absent"}
     fields = {"status", "request_sha256", "result_ref", "settlement_ref"}
     if set(value) != fields or value["status"] != "settled":
-        raise DurableOperationRunnerError("effect adapter returned an invalid settlement")
+        raise DurableOperationRunnerError(
+            "effect adapter returned an invalid settlement"
+        )
     for field in ("request_sha256", "result_ref", "settlement_ref"):
         if not isinstance(value[field], str) or not value[field]:
             raise DurableOperationRunnerError(f"effect adapter {field} is invalid")
@@ -128,6 +152,7 @@ class LocalDurableOperationRunner:
         store: SQLiteDurableOperationStore,
         effect_adapter: Any,
         authority_adapter: Any,
+        dispatch_authority: Any | None = None,
         checkpoint_gate: Any,
         trace_recorder: Any,
         continuation_state: Callable[[dict[str, Any], str], dict[str, Any]],
@@ -143,13 +168,21 @@ class LocalDurableOperationRunner:
         self.effect_adapter_manifest = validate_effect_adapter_manifest(
             getattr(effect_adapter, "capability_manifest", None)
         )
-        if not callable(getattr(authority_adapter, "commit_intent", None)) or not callable(
-            getattr(authority_adapter, "commit_state", None)
+        if not callable(
+            getattr(authority_adapter, "commit_intent", None)
+        ) or not callable(getattr(authority_adapter, "commit_state", None)):
+            raise TypeError(
+                "authority_adapter must provide commit_intent and commit_state"
+            )
+        if dispatch_authority is not None and not callable(
+            getattr(dispatch_authority, "start_dispatch", None)
         ):
-            raise TypeError("authority_adapter must provide commit_intent and commit_state")
+            raise TypeError("dispatch_authority must provide start_dispatch")
         try:
-            self.authority_adapter_manifest = validate_durable_authority_adapter_manifest(
-                getattr(authority_adapter, "capability_manifest", None)
+            self.authority_adapter_manifest = (
+                validate_durable_authority_adapter_manifest(
+                    getattr(authority_adapter, "capability_manifest", None)
+                )
             )
         except DurableStateAuthorityError as exc:
             raise DurableOperationRunnerError(
@@ -183,6 +216,7 @@ class LocalDurableOperationRunner:
         self.store = store
         self.effect_adapter = effect_adapter
         self.authority_adapter = authority_adapter
+        self.dispatch_authority = dispatch_authority
         self.checkpoint_gate = checkpoint_gate
         self.trace_recorder = trace_recorder
         self.continuation_state = continuation_state
@@ -266,6 +300,69 @@ class LocalDurableOperationRunner:
                 "durable authority intent receipt failed"
             ) from exc
 
+    def _start_dispatch(self, operation: dict[str, Any]) -> dict[str, Any]:
+        if self.dispatch_authority is None:
+            raise DurableOperationRunnerError("dispatch authority is unavailable")
+        try:
+            receipt = self.dispatch_authority.start_dispatch(copy.deepcopy(operation))
+        except Exception as exc:
+            raise DurableOperationRunnerError(
+                "dispatch authority denied effect start"
+            ) from exc
+        if not isinstance(receipt, dict) or set(receipt) != _DISPATCH_RECEIPT_FIELDS:
+            raise DurableOperationRunnerError(
+                "dispatch authority receipt fields are invalid"
+            )
+        if receipt["schema_version"] != "context.effect-dispatch-receipt/v1alpha1":
+            raise DurableOperationRunnerError(
+                "dispatch authority receipt version is invalid"
+            )
+        digest = receipt["receipt_sha256"]
+        unsigned = copy.deepcopy(receipt)
+        unsigned.pop("receipt_sha256")
+        computed = hashlib.sha256(
+            json.dumps(
+                unsigned,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+                allow_nan=False,
+            ).encode("utf-8")
+        ).hexdigest()
+        if (
+            not isinstance(digest, str)
+            or _SHA256_RE.fullmatch(digest) is None
+            or digest != computed
+        ):
+            raise DurableOperationRunnerError(
+                "dispatch authority receipt digest is invalid"
+            )
+        effect = operation["effect"]
+        expected = {
+            "project_id": operation["project_id"],
+            "work_id": operation["work_id"],
+            "claim_id": operation["claim_id"],
+            "effect_id": effect["effect_id"],
+            "effect_key": effect["effect_key"],
+            "request_sha256": effect["request_sha256"],
+            "operation": effect["operation"],
+            "scope_ref": effect["scope_ref"],
+        }
+        if any(receipt.get(field) != value for field, value in expected.items()):
+            raise DurableOperationRunnerError(
+                "dispatch authority receipt does not match the operation"
+            )
+        for field in ("project_revision", "claim_revision", "lease_epoch", "fence"):
+            if type(receipt[field]) is not int or receipt[field] < 0:
+                raise DurableOperationRunnerError(
+                    f"dispatch authority receipt {field} is invalid"
+                )
+        if receipt["fence"] != receipt["lease_epoch"]:
+            raise DurableOperationRunnerError(
+                "dispatch authority receipt fence is invalid"
+            )
+        return copy.deepcopy(receipt)
+
     def _append_state_settlement(
         self,
         current: dict[str, Any],
@@ -288,16 +385,16 @@ class LocalDurableOperationRunner:
         self._fault("after-effect-settlement", committed)
         return committed
 
-    def _existing_or_create(
-        self, prepared: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _existing_or_create(self, prepared: dict[str, Any]) -> dict[str, Any]:
         prepared = validate_durable_operation(copy.deepcopy(prepared))
         if prepared["phase"] != "prepared":
             raise DurableOperationRunnerError("runner input must be prepared")
         effect = prepared["effect"]
         manifest = self.effect_adapter_manifest
         if manifest["adapter_id"] != effect["adapter_id"]:
-            raise DurableOperationRunnerError("effect adapter identity does not match operation")
+            raise DurableOperationRunnerError(
+                "effect adapter identity does not match operation"
+            )
         for field, manifest_field in (
             ("idempotency_mode", "idempotency_modes"),
             ("status_lookup", "status_lookups"),
@@ -348,9 +445,7 @@ class LocalDurableOperationRunner:
                     current,
                     phase="intent-committed",
                     observed_at=self.clock(),
-                    continuation_sha256=self._continuation(
-                        current, "intent-committed"
-                    ),
+                    continuation_sha256=self._continuation(current, "intent-committed"),
                     intent_ref=intent_ref,
                 )
                 current = self._append(current, advanced)
@@ -359,20 +454,29 @@ class LocalDurableOperationRunner:
             if phase == "intent-committed":
                 if intent_receipt is None:
                     intent_receipt = self._commit_intent(current)
+                dispatch_receipt = None
+                if (
+                    intent_receipt["effect_status"] != "succeeded"
+                    and self.dispatch_authority is not None
+                ):
+                    dispatch_receipt = self._start_dispatch(current)
                 advanced = advance_durable_operation(
                     current,
                     phase="effect-in-flight",
                     observed_at=self.clock(),
-                    continuation_sha256=self._continuation(
-                        current, "effect-in-flight"
-                    ),
+                    continuation_sha256=self._continuation(current, "effect-in-flight"),
                     start_ref=(
                         "state-reconciliation://sha256/"
                         + intent_receipt["receipt_sha256"]
                         if intent_receipt["effect_status"] == "succeeded"
                         else (
-                            f"attempt://{current['effect']['effect_id']}/"
-                            f"{current['attempt_count'] + 1}"
+                            "state-dispatch://sha256/"
+                            + dispatch_receipt["receipt_sha256"]
+                            if dispatch_receipt is not None
+                            else (
+                                f"attempt://{current['effect']['effect_id']}/"
+                                f"{current['attempt_count'] + 1}"
+                            )
                         )
                     ),
                 )
@@ -389,9 +493,7 @@ class LocalDurableOperationRunner:
                     if intent_receipt is None:
                         intent_receipt = self._commit_intent(current)
                     if intent_receipt["effect_status"] == "succeeded":
-                        current = self._append_state_settlement(
-                            current, intent_receipt
-                        )
+                        current = self._append_state_settlement(current, intent_receipt)
                         intent_receipt = None
                         continue
                     return current
@@ -432,9 +534,7 @@ class LocalDurableOperationRunner:
                     current,
                     phase="effect-in-flight",
                     observed_at=self.clock(),
-                    continuation_sha256=self._continuation(
-                        current, "effect-in-flight"
-                    ),
+                    continuation_sha256=self._continuation(current, "effect-in-flight"),
                     start_ref=(
                         f"attempt://{effect['effect_id']}/"
                         f"{current['attempt_count'] + 1}"
@@ -461,9 +561,7 @@ class LocalDurableOperationRunner:
                     if intent_receipt is None:
                         intent_receipt = self._commit_intent(current)
                     if intent_receipt["effect_status"] == "succeeded":
-                        current = self._append_state_settlement(
-                            current, intent_receipt
-                        )
+                        current = self._append_state_settlement(current, intent_receipt)
                         started_in_this_run = False
                         intent_receipt = None
                         continue
@@ -499,9 +597,7 @@ class LocalDurableOperationRunner:
                     current,
                     phase="effect-settled",
                     observed_at=self.clock(),
-                    continuation_sha256=self._continuation(
-                        current, "effect-settled"
-                    ),
+                    continuation_sha256=self._continuation(current, "effect-settled"),
                     settlement_ref=outcome["settlement_ref"],
                     result_ref=outcome["result_ref"],
                     reconciliation_reason=(

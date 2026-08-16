@@ -26,17 +26,25 @@ class M201TypedStateTests(unittest.TestCase):
             (self.root / "schemas" / "registry.yaml").read_text(encoding="utf-8")
         )
         entry = next(
-            item for item in registry["schemas"] if item["schema_id"] == "context.typed-state"
+            item
+            for item in registry["schemas"]
+            if item["schema_id"] == "context.typed-state"
         )
-        schema = json.loads((self.root / entry["artifact_path"]).read_text(encoding="utf-8"))
+        schema = json.loads(
+            (self.root / entry["artifact_path"]).read_text(encoding="utf-8")
+        )
 
-        self.assertEqual(entry["current_wire_version"], "context.typed-state/v5alpha1")
+        self.assertEqual(entry["current_wire_version"], "context.typed-state/v6alpha1")
         self.assertIn("context.typed-state/v1alpha1", entry["supported_wire_versions"])
         self.assertIn("context.typed-state/v2alpha1", entry["supported_wire_versions"])
         self.assertIn("context.typed-state/v3alpha1", entry["supported_wire_versions"])
         self.assertIn("context.typed-state/v4alpha1", entry["supported_wire_versions"])
         self.assertIn("context.typed-state/v5alpha1", entry["supported_wire_versions"])
-        self.assertEqual(schema["properties"]["schema_version"]["const"], entry["current_wire_version"])
+        self.assertIn("context.typed-state/v6alpha1", entry["supported_wire_versions"])
+        self.assertEqual(
+            schema["properties"]["schema_version"]["const"],
+            entry["current_wire_version"],
+        )
         self.assertFalse(schema["additionalProperties"])
         for object_name in (
             "project",
@@ -103,7 +111,9 @@ class M201TypedStateTests(unittest.TestCase):
     def test_supersedes_graph_must_be_acyclic(self):
         broken = copy.deepcopy(self.cases["superseded-decision-and-constraint"])
         old = next(
-            item for item in broken["decisions"] if item["decision_id"] == "decision-old"
+            item
+            for item in broken["decisions"]
+            if item["decision_id"] == "decision-old"
         )
         old["supersedes_decision_id"] = "decision-current"
 
@@ -112,7 +122,9 @@ class M201TypedStateTests(unittest.TestCase):
 
     def test_uncoordinated_overlap_cannot_become_active(self):
         broken = copy.deepcopy(self.cases["completed-work-overlap-blocked"])
-        repeated = next(item for item in broken["works"] if item["work_id"] == "work-repeat")
+        repeated = next(
+            item for item in broken["works"] if item["work_id"] == "work-repeat"
+        )
         repeated["status"] = "active"
         broken["project"]["active_work_ids"] = ["work-repeat"]
         broken["project"]["primary_work_id"] = "work-repeat"
@@ -164,11 +176,17 @@ class M201TypedStateTests(unittest.TestCase):
 
     def test_completed_work_requires_verified_evidence(self):
         broken = copy.deepcopy(self.cases["completed-work-overlap-blocked"])
-        evidence = next(item for item in broken["evidence"] if item["evidence_id"] == "evidence-done")
+        evidence = next(
+            item
+            for item in broken["evidence"]
+            if item["evidence_id"] == "evidence-done"
+        )
         evidence["validity"] = "candidate"
         evidence["verified_at"] = None
 
-        with self.assertRaisesRegex(TypedStateError, "completed work requires verified evidence"):
+        with self.assertRaisesRegex(
+            TypedStateError, "completed work requires verified evidence"
+        ):
             validate_typed_state(broken)
 
 

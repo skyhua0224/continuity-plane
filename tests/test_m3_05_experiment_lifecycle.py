@@ -259,7 +259,9 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
                 clock=lambda: "2026-08-14T08:30:00+08:00",
                 event_id_factory=lambda request_id: f"event-{request_id}",
             ).call_tool(
-                "context.experiment.attempt", request, context=RequestContext("actor-owner", "authorization-verifier")
+                "context.experiment.attempt",
+                request,
+                context=RequestContext("actor-owner", "authorization-verifier"),
             )
             replay = StateMCPService(
                 store,
@@ -268,7 +270,9 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
                 clock=lambda: "2026-08-14T08:30:00+08:00",
                 event_id_factory=lambda request_id: f"event-{request_id}",
             ).call_tool(
-                "context.experiment.attempt", request, context=RequestContext("actor-owner", "authorization-verifier")
+                "context.experiment.attempt",
+                request,
+                context=RequestContext("actor-owner", "authorization-verifier"),
             )
             events = store.read_events(snapshot["project"]["project_id"])
 
@@ -304,13 +308,19 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
                 event_id_factory=lambda request_id: f"event-{request_id}",
             )
             first = service.call_tool(
-                "context.experiment.attempt", request("attempt-budget-1", 9), context=RequestContext("actor-owner", "authorization-verifier")
+                "context.experiment.attempt",
+                request("attempt-budget-1", 9),
+                context=RequestContext("actor-owner", "authorization-verifier"),
             )
             second = service.call_tool(
-                "context.experiment.attempt", request("attempt-budget-2", 10), context=RequestContext("actor-owner", "authorization-verifier")
+                "context.experiment.attempt",
+                request("attempt-budget-2", 10),
+                context=RequestContext("actor-owner", "authorization-verifier"),
             )
             rejected = service.call_tool(
-                "context.experiment.attempt", request("attempt-budget-3", 11), context=RequestContext("actor-owner", "authorization-verifier")
+                "context.experiment.attempt",
+                request("attempt-budget-3", 11),
+                context=RequestContext("actor-owner", "authorization-verifier"),
             )
             stored = store.read_project(snapshot["project"]["project_id"])
             events = store.read_events(snapshot["project"]["project_id"])
@@ -325,7 +335,9 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
 
     def test_concurrent_final_attempts_persist_exactly_one_budget_slot(self):
         snapshot = self.snapshot()
-        experiment = next(item for item in snapshot["works"] if item["kind"] == "experiment")
+        experiment = next(
+            item for item in snapshot["works"] if item["kind"] == "experiment"
+        )
         experiment["attempt_budget"] = 1
 
         def request(attempt_id):
@@ -364,7 +376,9 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
 
             with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
                 responses = list(
-                    executor.map(submit, ("attempt-concurrent-a", "attempt-concurrent-b"))
+                    executor.map(
+                        submit, ("attempt-concurrent-a", "attempt-concurrent-b")
+                    )
                 )
             stored = store.read_project(snapshot["project"]["project_id"])
             events = store.read_events(snapshot["project"]["project_id"])
@@ -399,7 +413,9 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
                 clock=lambda: "2026-08-14T08:30:00+08:00",
                 event_id_factory=lambda request_id: f"event-{request_id}",
             ).call_tool(
-                "context.experiment.attempt", request, context=RequestContext("actor-owner", "authorization-verifier")
+                "context.experiment.attempt",
+                request,
+                context=RequestContext("actor-owner", "authorization-verifier"),
             )
             stored = store.read_project(snapshot["project"]["project_id"])
             events = store.read_events(snapshot["project"]["project_id"])
@@ -443,7 +459,9 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
                 clock=lambda: "2026-08-14T09:00:00+08:00",
                 event_id_factory=lambda request_id: f"event-{request_id}",
             ).call_tool(
-                "context.state.claim", request, context=RequestContext("actor-owner", "authorization-owner")
+                "context.state.claim",
+                request,
+                context=RequestContext("actor-owner", "authorization-owner"),
             )
             stored = store.read_project(snapshot["project"]["project_id"])
             events = store.read_events(snapshot["project"]["project_id"])
@@ -500,7 +518,9 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
                 clock=lambda: "2026-08-14T08:30:00+08:00",
                 event_id_factory=lambda request_id: f"event-{request_id}",
             ).call_tool(
-                "context.state.claim", request, context=RequestContext("actor-owner", "authorization-owner")
+                "context.state.claim",
+                request,
+                context=RequestContext("actor-owner", "authorization-owner"),
             )
             stored = store.read_project(snapshot["project"]["project_id"])
             events = store.read_events(snapshot["project"]["project_id"])
@@ -522,7 +542,10 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
                 "observed_at": "2026-08-14T08:31:00+08:00",
                 "verified_at": "2026-08-14T08:32:00+08:00",
             }
-            for evidence_id, digest in (("evidence-throughput", "a"), ("evidence-recovery", "b"))
+            for evidence_id, digest in (
+                ("evidence-throughput", "a"),
+                ("evidence-recovery", "b"),
+            )
         ]
         attempt_request = {
             "schema_version": "context.experiment-attempt-request/v1alpha1",
@@ -577,16 +600,24 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
                 event_id_factory=lambda request_id: f"event-{request_id}",
             )
             attempt = service.call_tool(
-                "context.experiment.attempt", attempt_request, context=RequestContext("actor-owner", "authorization-executor")
+                "context.experiment.attempt",
+                attempt_request,
+                context=RequestContext("actor-owner", "authorization-executor"),
             )
             proposal = service.call_tool(
-                "context.experiment.promotion.propose", proposal_request, context=RequestContext("actor-owner", "authorization-executor")
+                "context.experiment.promotion.propose",
+                proposal_request,
+                context=RequestContext("actor-owner", "authorization-executor"),
             )
             self_approval = service.call_tool(
-                "context.experiment.promotion.approve", approval_request, context=RequestContext("actor-owner", "authorization-executor")
+                "context.experiment.promotion.approve",
+                approval_request,
+                context=RequestContext("actor-owner", "authorization-executor"),
             )
             approval = service.call_tool(
-                "context.experiment.promotion.approve", approval_request, context=RequestContext("actor-verifier", "authorization-verifier")
+                "context.experiment.promotion.approve",
+                approval_request,
+                context=RequestContext("actor-verifier", "authorization-verifier"),
             )
             stored = store.read_project(snapshot["project"]["project_id"])
             events = store.read_events(snapshot["project"]["project_id"])
@@ -594,12 +625,21 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
         self.assertTrue(attempt["ok"], attempt["error"])
         self.assertTrue(proposal["ok"], proposal["error"])
         self.assertFalse(self_approval["ok"])
-        self.assertIn("independent_verifier_required", self_approval["error"]["message"])
+        self.assertIn(
+            "independent_verifier_required", self_approval["error"]["message"]
+        )
         self.assertTrue(approval["ok"], approval["error"])
         self.assertEqual(stored["project"]["revision"], 12)
-        self.assertEqual([item["kind"] for item in stored["experiment_promotions"]], ["proposed", "approved"])
-        self.assertEqual(stored["experiment_promotions"][1]["actor_ref"], "actor-verifier")
-        self.assertEqual(events[-1]["experiment_transition"]["operation"], "promotion-approved")
+        self.assertEqual(
+            [item["kind"] for item in stored["experiment_promotions"]],
+            ["proposed", "approved"],
+        )
+        self.assertEqual(
+            stored["experiment_promotions"][1]["actor_ref"], "actor-verifier"
+        )
+        self.assertEqual(
+            events[-1]["experiment_transition"]["operation"], "promotion-approved"
+        )
 
     def test_promotion_approval_replays_after_a_new_service_process(self):
         snapshot = self.snapshot()
@@ -704,7 +744,9 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
         self.assertEqual(replay, first)
         self.assertEqual(len(events), 3)
 
-    def test_promotion_approval_rejects_a_proposal_with_stale_frozen_work_revisions(self):
+    def test_promotion_approval_rejects_a_proposal_with_stale_frozen_work_revisions(
+        self,
+    ):
         snapshot = self.snapshot()
         snapshot["evidence"] = [
             {
@@ -785,7 +827,11 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
             )
             stored_before = store.read_project(snapshot["project"]["project_id"])
             changed_target = copy.deepcopy(
-                next(item for item in stored_before["works"] if item["work_id"] == "mainline-target")
+                next(
+                    item
+                    for item in stored_before["works"]
+                    if item["work_id"] == "mainline-target"
+                )
             )
             changed_target["revision"] += 1
             commit = service.call_tool(
@@ -810,7 +856,11 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
             )
             stale = service.call_tool(
                 "context.experiment.promotion.approve",
-                {**approval_request, "expected_revision": 12, "expected_target_work_revision": 3},
+                {
+                    **approval_request,
+                    "expected_revision": 12,
+                    "expected_target_work_revision": 3,
+                },
                 context=RequestContext("actor-verifier", "authorization-verifier"),
             )
             stored = store.read_project(snapshot["project"]["project_id"])
@@ -821,7 +871,9 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
         self.assertTrue(commit["ok"], commit["error"])
         self.assertFalse(stale["ok"])
         self.assertIn("proposal revisions are stale", stale["error"]["message"])
-        self.assertEqual([item["kind"] for item in stored["experiment_promotions"]], ["proposed"])
+        self.assertEqual(
+            [item["kind"] for item in stored["experiment_promotions"]], ["proposed"]
+        )
         self.assertEqual(len(events), 3)
 
     def test_promotion_approval_rejects_a_pending_experiment_effect(self):
@@ -939,7 +991,9 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
         self.assertTrue(effect["ok"], effect["error"])
         self.assertFalse(approval["ok"])
         self.assertIn("no pending Experiment effect", approval["error"]["message"])
-        self.assertEqual([item["kind"] for item in stored["experiment_promotions"]], ["proposed"])
+        self.assertEqual(
+            [item["kind"] for item in stored["experiment_promotions"]], ["proposed"]
+        )
         self.assertEqual(len(events), 3)
 
     def test_experiment_effect_requires_a_persisted_attempt_provenance(self):
@@ -990,13 +1044,19 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
                 event_id_factory=lambda request_id: f"event-{request_id}",
             )
             attempt = service.call_tool(
-                "context.experiment.attempt", attempt_request, context=RequestContext("actor-owner", "authorization-executor")
+                "context.experiment.attempt",
+                attempt_request,
+                context=RequestContext("actor-owner", "authorization-executor"),
             )
             rejected = service.call_tool(
-                "context.state.effect", generic_effect, context=RequestContext("actor-owner", "authorization-executor")
+                "context.state.effect",
+                generic_effect,
+                context=RequestContext("actor-owner", "authorization-executor"),
             )
             authorized = service.call_tool(
-                "context.experiment.effect", experiment_effect, context=RequestContext("actor-owner", "authorization-executor")
+                "context.experiment.effect",
+                experiment_effect,
+                context=RequestContext("actor-owner", "authorization-executor"),
             )
             stored = store.read_project(snapshot["project"]["project_id"])
 
@@ -1006,7 +1066,9 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
         self.assertTrue(authorized["ok"], authorized["error"])
         self.assertEqual(stored["effects"][0]["attempt_id"], "attempt-for-effect")
 
-    def test_generic_effect_preflight_denies_an_experiment_without_attempt_provenance(self):
+    def test_generic_effect_preflight_denies_an_experiment_without_attempt_provenance(
+        self,
+    ):
         snapshot = self.snapshot()
         request = {
             "schema_version": "context.state-mcp-request/v1alpha1",
@@ -1089,7 +1151,9 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
                 event_id_factory=lambda request_id: f"event-{request_id}",
             )
             attempt = before_expiry.call_tool(
-                "context.experiment.attempt", attempt_request, context=RequestContext("actor-owner", "authorization-executor")
+                "context.experiment.attempt",
+                attempt_request,
+                context=RequestContext("actor-owner", "authorization-executor"),
             )
             response = StateMCPService(
                 store,
@@ -1098,7 +1162,9 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
                 clock=lambda: "2026-08-14T09:00:00+08:00",
                 event_id_factory=lambda request_id: f"event-{request_id}",
             ).call_tool(
-                "context.experiment.effect", effect_request, context=RequestContext("actor-owner", "authorization-executor")
+                "context.experiment.effect",
+                effect_request,
+                context=RequestContext("actor-owner", "authorization-executor"),
             )
             stored = store.read_project(snapshot["project"]["project_id"])
             events = store.read_events(snapshot["project"]["project_id"])
@@ -1185,16 +1251,20 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
         self.assertEqual(migrate_v2alpha1_to_v3alpha1(migrated), migrated)
         self.assertEqual(rollback_v3alpha1_to_v2alpha1(migrated), v2)
         with_history = copy.deepcopy(migrated)
-        experiment = next(item for item in with_history["works"] if item["kind"] == "experiment")
-        with_history["experiment_attempts"] = [{
-            "attempt_id": "rollback-blocker-attempt",
-            "work_id": experiment["work_id"],
-            "claim_id": "claim-experiment",
-            "actor_ref": "actor-owner",
-            "attempt_no": 1,
-            "experiment_contract_sha256": experiment_contract_sha256(experiment),
-            "started_at": "2026-08-14T08:30:00+08:00",
-        }]
+        experiment = next(
+            item for item in with_history["works"] if item["kind"] == "experiment"
+        )
+        with_history["experiment_attempts"] = [
+            {
+                "attempt_id": "rollback-blocker-attempt",
+                "work_id": experiment["work_id"],
+                "claim_id": "claim-experiment",
+                "actor_ref": "actor-owner",
+                "attempt_no": 1,
+                "experiment_contract_sha256": experiment_contract_sha256(experiment),
+                "started_at": "2026-08-14T08:30:00+08:00",
+            }
+        ]
         validate_typed_state(with_history)
         with self.assertRaisesRegex(ValueError, "prevents v2 rollback"):
             rollback_v3alpha1_to_v2alpha1(with_history)
@@ -1230,8 +1300,16 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
             previous_event_sha256=None,
             supersedes_event_id=None,
             changes=[
-                {"collection": "experiment_attempts", "object_id": attempt["attempt_id"], "value": attempt},
-                {"collection": "claims", "object_id": "claim-experiment", "value": after_attempt["claims"][0]},
+                {
+                    "collection": "experiment_attempts",
+                    "object_id": attempt["attempt_id"],
+                    "value": attempt,
+                },
+                {
+                    "collection": "claims",
+                    "object_id": "claim-experiment",
+                    "value": after_attempt["claims"][0],
+                },
             ],
             project_after=after_attempt["project"],
             experiment_transition={
@@ -1265,8 +1343,16 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
             previous_event_sha256=attempt_event["event_sha256"],
             supersedes_event_id=None,
             changes=[
-                {"collection": "experiment_attempts", "object_id": rewritten["attempt_id"], "value": rewritten},
-                {"collection": "claims", "object_id": "claim-experiment", "value": rewrite_after["claims"][0]},
+                {
+                    "collection": "experiment_attempts",
+                    "object_id": rewritten["attempt_id"],
+                    "value": rewritten,
+                },
+                {
+                    "collection": "claims",
+                    "object_id": "claim-experiment",
+                    "value": rewrite_after["claims"][0],
+                },
             ],
             project_after=rewrite_after["project"],
             experiment_transition=None,
@@ -1280,14 +1366,20 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
                 previous_event_sha256=attempt_event["event_sha256"],
             )
 
-        drifted = copy.deepcopy(next(item for item in after_attempt["works"] if item["kind"] == "experiment"))
+        drifted = copy.deepcopy(
+            next(
+                item for item in after_attempt["works"] if item["kind"] == "experiment"
+            )
+        )
         drifted["attempt_budget"] = 3
         drifted["revision"] += 1
         drift_after = copy.deepcopy(after_attempt)
         drift_after["project"]["revision"] = 11
         drift_after["project"]["updated_at"] = "2026-08-14T08:31:00+08:00"
         drift_after["claims"][0]["expected_project_revision"] = 11
-        next(item for item in drift_after["works"] if item["kind"] == "experiment").update(drifted)
+        next(
+            item for item in drift_after["works"] if item["kind"] == "experiment"
+        ).update(drifted)
         drift_event = build_state_event(
             event_id="event-contract-drift",
             event_type="state-transition",
@@ -1301,8 +1393,16 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
             previous_event_sha256=attempt_event["event_sha256"],
             supersedes_event_id=None,
             changes=[
-                {"collection": "works", "object_id": drifted["work_id"], "value": drifted},
-                {"collection": "claims", "object_id": "claim-experiment", "value": drift_after["claims"][0]},
+                {
+                    "collection": "works",
+                    "object_id": drifted["work_id"],
+                    "value": drifted,
+                },
+                {
+                    "collection": "claims",
+                    "object_id": "claim-experiment",
+                    "value": drift_after["claims"][0],
+                },
             ],
             project_after=drift_after["project"],
             schema_version="context.state-event/v4alpha1",
@@ -1320,16 +1420,20 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
         experiment = next(
             item for item in snapshot["works"] if item["kind"] == "experiment"
         )
-        snapshot["experiment_attempts"] = [{
-            "attempt_id": "post-expiry-attempt",
-            "work_id": experiment["work_id"],
-            "claim_id": "claim-experiment",
-            "actor_ref": "actor-owner",
-            "attempt_no": 1,
-            "experiment_contract_sha256": experiment_contract_sha256(experiment),
-            "started_at": "2026-08-14T09:00:00+08:00",
-        }]
-        with self.assertRaisesRegex(ValueError, "experiment attempt cannot start after expiry"):
+        snapshot["experiment_attempts"] = [
+            {
+                "attempt_id": "post-expiry-attempt",
+                "work_id": experiment["work_id"],
+                "claim_id": "claim-experiment",
+                "actor_ref": "actor-owner",
+                "attempt_no": 1,
+                "experiment_contract_sha256": experiment_contract_sha256(experiment),
+                "started_at": "2026-08-14T09:00:00+08:00",
+            }
+        ]
+        with self.assertRaisesRegex(
+            ValueError, "experiment attempt cannot start after expiry"
+        ):
             validate_typed_state(snapshot)
 
     def test_typed_state_rejects_promotion_created_at_experiment_expiry(self):
@@ -1362,23 +1466,25 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
             "started_at": "2026-08-14T08:30:00+08:00",
         }
         snapshot["experiment_attempts"] = [attempt]
-        snapshot["experiment_promotions"] = [{
-            "promotion_id": "expiry-promotion",
-            "kind": "proposed",
-            "proposal_id": "expiry-promotion",
-            "work_id": experiment["work_id"],
-            "target_work_id": experiment["promotion_target_work_id"],
-            "actor_ref": "actor-owner",
-            "source_work_revision": experiment["revision"],
-            "target_work_revision": 2,
-            "attempt_id": attempt["attempt_id"],
-            "experiment_contract_sha256": attempt["experiment_contract_sha256"],
-            "criterion_evidence": {
-                "throughput target": ["expiry-throughput"],
-                "recovery target": ["expiry-recovery"],
-            },
-            "created_at": experiment["expires_at"],
-        }]
+        snapshot["experiment_promotions"] = [
+            {
+                "promotion_id": "expiry-promotion",
+                "kind": "proposed",
+                "proposal_id": "expiry-promotion",
+                "work_id": experiment["work_id"],
+                "target_work_id": experiment["promotion_target_work_id"],
+                "actor_ref": "actor-owner",
+                "source_work_revision": experiment["revision"],
+                "target_work_revision": 2,
+                "attempt_id": attempt["attempt_id"],
+                "experiment_contract_sha256": attempt["experiment_contract_sha256"],
+                "criterion_evidence": {
+                    "throughput target": ["expiry-throughput"],
+                    "recovery target": ["expiry-recovery"],
+                },
+                "created_at": experiment["expires_at"],
+            }
+        ]
 
         with self.assertRaisesRegex(
             ValueError, "experiment promotion cannot be created after expiry"
@@ -1476,13 +1582,23 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
             previous_event_sha256=None,
             supersedes_event_id=None,
             changes=[
-                {"collection": "experiment_attempts", "object_id": attempt["attempt_id"], "value": attempt},
-                {"collection": "claims", "object_id": "claim-experiment", "value": after["claims"][0]},
+                {
+                    "collection": "experiment_attempts",
+                    "object_id": attempt["attempt_id"],
+                    "value": attempt,
+                },
+                {
+                    "collection": "claims",
+                    "object_id": "claim-experiment",
+                    "value": after["claims"][0],
+                },
             ],
             project_after=after["project"],
             schema_version="context.state-event/v4alpha1",
         )
-        with self.assertRaisesRegex(StateEventError, "lifecycle change requires experiment transition"):
+        with self.assertRaisesRegex(
+            StateEventError, "lifecycle change requires experiment transition"
+        ):
             replay_state_events(snapshot, [event])
 
     def test_generic_commit_cannot_append_an_experiment_attempt(self):
@@ -1534,7 +1650,9 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
 
             self.assertFalse(response["ok"])
             self.assertEqual(response["error"]["code"], "invalid_request")
-            self.assertEqual(store.read_project(snapshot["project"]["project_id"]), snapshot)
+            self.assertEqual(
+                store.read_project(snapshot["project"]["project_id"]), snapshot
+            )
             self.assertEqual(store.read_events(snapshot["project"]["project_id"]), [])
 
     def test_event_lifecycle_transition_requires_its_ledger_change(self):
@@ -1646,7 +1764,9 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
 
     def test_v3_v4_and_lifecycle_schemas_are_strict_registered_and_hashed(self):
         root = Path(__file__).parents[1]
-        registry = yaml.safe_load((root / "schemas/registry.yaml").read_text(encoding="utf-8"))
+        registry = yaml.safe_load(
+            (root / "schemas/registry.yaml").read_text(encoding="utf-8")
+        )
         entries = {
             item["schema_id"]: item
             for item in registry["schemas"]
@@ -1659,10 +1779,14 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
         }
         self.assertEqual(
             entries["context.typed-state"]["current_wire_version"],
-            "context.typed-state/v5alpha1",
+            "context.typed-state/v6alpha1",
         )
         self.assertIn(
             "context.typed-state/v3alpha1",
+            entries["context.typed-state"]["supported_wire_versions"],
+        )
+        self.assertIn(
+            "context.typed-state/v5alpha1",
             entries["context.typed-state"]["supported_wire_versions"],
         )
         self.assertEqual(
@@ -1772,7 +1896,11 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
             "actor_ref": "actor-owner",
             "attempt_no": 1,
             "experiment_contract_sha256": experiment_contract_sha256(
-                next(item for item in self.snapshot()["works"] if item["kind"] == "experiment")
+                next(
+                    item
+                    for item in self.snapshot()["works"]
+                    if item["kind"] == "experiment"
+                )
             ),
             "started_at": "2026-08-14T08:30:00+08:00",
         }
@@ -1844,8 +1972,7 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
 
         receipt = json.loads(
             (
-                root
-                / "experiments/routing/m3-05-experiment-lifecycle-results.json"
+                root / "experiments/routing/m3-05-experiment-lifecycle-results.json"
             ).read_text(encoding="utf-8")
         )
         validate_experiment_lifecycle_benchmark_receipt(receipt, root=root)
@@ -1861,7 +1988,8 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
         )
         schema_path = root / entry["artifact_path"]
         self.assertEqual(
-            entry["content_sha256"], hashlib.sha256(schema_path.read_bytes()).hexdigest()
+            entry["content_sha256"],
+            hashlib.sha256(schema_path.read_bytes()).hexdigest(),
         )
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
         Draft202012Validator.check_schema(schema)

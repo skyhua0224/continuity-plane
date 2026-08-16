@@ -16,12 +16,12 @@ from context_control_plane.postgres_state_store import (
     PostgresStateStoreError,
 )
 from context_control_plane.state_store import (
+    StateStore,
     StateStoreCapabilityError,
     StateStoreConflict,
     StateStoreError,
     StateStoreIntegrityError,
     StateStoreNotFound,
-    StateStore,
     invoke_state_store,
     validate_state_store_adapter,
 )
@@ -72,7 +72,9 @@ class M208StateStoreCapabilityTests(unittest.TestCase):
 
         manifest = validate_state_store_adapter(store)
 
-        self.assertEqual(manifest.schema_version, "context.state-store-capabilities/v1alpha1")
+        self.assertEqual(
+            manifest.schema_version, "context.state-store-capabilities/v1alpha1"
+        )
         self.assertEqual(manifest.adapter_id, "context.postgresql")
         self.assertEqual(manifest.authority_mode, "shared")
         self.assertEqual(
@@ -105,15 +107,16 @@ class M208StateStoreCapabilityTests(unittest.TestCase):
         self.assertTrue(issubclass(PostgresStateConflict, PostgresStateStoreError))
         self.assertTrue(issubclass(PostgresStateNotFound, StateStoreNotFound))
         self.assertTrue(issubclass(PostgresStateNotFound, PostgresStateStoreError))
-        self.assertTrue(issubclass(PostgresStateIntegrityError, StateStoreIntegrityError))
-        self.assertTrue(issubclass(PostgresStateIntegrityError, PostgresStateStoreError))
+        self.assertTrue(
+            issubclass(PostgresStateIntegrityError, StateStoreIntegrityError)
+        )
+        self.assertTrue(
+            issubclass(PostgresStateIntegrityError, PostgresStateStoreError)
+        )
 
     def test_capability_schema_is_strict_versioned_and_registered(self):
         schema_path = (
-            self.root
-            / "schemas"
-            / "m2-08"
-            / "state-store-capabilities.schema.json"
+            self.root / "schemas" / "m2-08" / "state-store-capabilities.schema.json"
         )
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
         registry = yaml.safe_load(
@@ -130,11 +133,19 @@ class M208StateStoreCapabilityTests(unittest.TestCase):
         self.assertTrue(schema["properties"]["operations"]["uniqueItems"])
         self.assertEqual(
             entry["current_wire_version"],
-            "context.state-store-capabilities/v1alpha1",
+            "context.state-store-capabilities/v2alpha1",
         )
+        self.assertIn(
+            "context.state-store-capabilities/v1alpha1",
+            entry["supported_wire_versions"],
+        )
+        current_schema_path = self.root / entry["artifact_path"]
         self.assertEqual(
             entry["content_sha256"],
-            hashlib.sha256(schema_path.read_bytes()).hexdigest(),
+            hashlib.sha256(current_schema_path.read_bytes()).hexdigest(),
+        )
+        Draft202012Validator.check_schema(
+            json.loads(current_schema_path.read_text(encoding="utf-8"))
         )
 
     def test_authoritative_commit_requires_expected_revision(self):
@@ -192,7 +203,10 @@ class M208StateStoreCapabilityTests(unittest.TestCase):
 
     def test_manifest_rejects_values_outside_the_schema_domain(self):
         cases = (
-            ({"schema_version": "context.state-store-capabilities/v2"}, "schema_version"),
+            (
+                {"schema_version": "context.state-store-capabilities/v2"},
+                "schema_version",
+            ),
             ({"adapter_id": 1}, "adapter_id"),
             ({"adapter_version": None}, "adapter_version"),
             ({"authority_mode": "unknown"}, "authority_mode"),
@@ -357,10 +371,7 @@ class M208StateStoreCapabilityTests(unittest.TestCase):
         manifest = PostgresStateStore.capability_manifest
         schema = json.loads(
             (
-                self.root
-                / "schemas"
-                / "m2-08"
-                / "state-store-capabilities.schema.json"
+                self.root / "schemas" / "m2-08" / "state-store-capabilities.schema.json"
             ).read_text(encoding="utf-8")
         )
 
@@ -371,7 +382,9 @@ class M208StateStoreCapabilityTests(unittest.TestCase):
         self.assertEqual(from_document(document), manifest)
         self.assertEqual(to_document(from_document(document)), document)
 
-    def test_capability_document_rejects_non_string_operations_with_contract_error(self):
+    def test_capability_document_rejects_non_string_operations_with_contract_error(
+        self,
+    ):
         manifest = PostgresStateStore.capability_manifest
         base_document = {
             **manifest.__dict__,
@@ -394,10 +407,7 @@ class M208StateStoreCapabilityTests(unittest.TestCase):
     def test_json_schema_and_runtime_reject_the_same_cross_field_conflicts(self):
         schema = json.loads(
             (
-                self.root
-                / "schemas"
-                / "m2-08"
-                / "state-store-capabilities.schema.json"
+                self.root / "schemas" / "m2-08" / "state-store-capabilities.schema.json"
             ).read_text(encoding="utf-8")
         )
         validator = Draft202012Validator(schema)

@@ -53,9 +53,9 @@ class M205StateMCPContractTests(unittest.TestCase):
     def setUpClass(cls):
         cls.root = Path(__file__).parents[1]
         fixture_set = yaml.safe_load(
-            (
-                cls.root / "experiments" / "state" / "m2-01-core-fixtures.yaml"
-            ).read_text(encoding="utf-8")
+            (cls.root / "experiments" / "state" / "m2-01-core-fixtures.yaml").read_text(
+                encoding="utf-8"
+            )
         )
         cls.snapshot = copy.deepcopy(
             next(
@@ -115,7 +115,9 @@ class M205StateMCPContractTests(unittest.TestCase):
         snapshot["project"]["updated_at"] = "2026-08-10T04:00:00+08:00"
         snapshot["project"]["open_blocker_ids"] = []
         snapshot["blockers"] = []
-        work = next(item for item in snapshot["works"] if item["work_id"] == "work-repeat")
+        work = next(
+            item for item in snapshot["works"] if item["work_id"] == "work-repeat"
+        )
         work["status"] = "ready"
         work["dedupe_status"] = "clear"
         work["overlap_candidate_ids"] = []
@@ -182,14 +184,22 @@ class M205StateMCPContractTests(unittest.TestCase):
             for item in registry["schemas"]
             if item["schema_id"] == "context.state-mcp"
         )
-        schema_path = self.root / entry["artifact_path"]
-        schema = json.loads(schema_path.read_text(encoding="utf-8"))
+        current_schema_path = self.root / entry["artifact_path"]
+        current_schema = json.loads(current_schema_path.read_text(encoding="utf-8"))
+        legacy_schema_path = (
+            self.root / "schemas" / "m8-01" / "state-mcp-v2alpha1.schema.json"
+        )
+        legacy_schema = json.loads(legacy_schema_path.read_text(encoding="utf-8"))
 
-        self.assertEqual(entry["current_wire_version"], "context.state-mcp/v2alpha1")
+        self.assertEqual(entry["current_wire_version"], "context.state-mcp/v3alpha1")
+        self.assertIn("context.state-mcp/v1alpha1", entry["supported_wire_versions"])
+        self.assertIn("context.state-mcp/v2alpha1", entry["supported_wire_versions"])
+        self.assertIn("context.state-mcp/v3alpha1", entry["supported_wire_versions"])
         self.assertEqual(
             entry["content_sha256"],
-            hashlib.sha256(schema_path.read_bytes()).hexdigest(),
+            hashlib.sha256(current_schema_path.read_bytes()).hexdigest(),
         )
+        Draft202012Validator.check_schema(current_schema)
         for definition_name in (
             "read_request",
             "commit_request",
@@ -201,7 +211,7 @@ class M205StateMCPContractTests(unittest.TestCase):
             "response",
         ):
             with self.subTest(definition_name=definition_name):
-                definition = schema["$defs"][definition_name]
+                definition = legacy_schema["$defs"][definition_name]
                 self.assertFalse(definition["additionalProperties"])
                 self.assertEqual(
                     set(definition["required"]),
@@ -211,9 +221,9 @@ class M205StateMCPContractTests(unittest.TestCase):
 
     def test_effect_gate_response_rejects_a_contradictory_verdict(self):
         schema = json.loads(
-            (
-                self.root / "schemas" / "m2-05" / "state-mcp.schema.json"
-            ).read_text(encoding="utf-8")
+            (self.root / "schemas" / "m2-05" / "state-mcp.schema.json").read_text(
+                encoding="utf-8"
+            )
         )
         contradictory_response = {
             "schema_version": "context.state-mcp-response/v1alpha1",
@@ -238,9 +248,9 @@ class M205StateMCPContractTests(unittest.TestCase):
 
     def test_contract_root_validates_wire_documents_and_response_state(self):
         schema = json.loads(
-            (
-                self.root / "schemas" / "m2-05" / "state-mcp.schema.json"
-            ).read_text(encoding="utf-8")
+            (self.root / "schemas" / "m2-05" / "state-mcp.schema.json").read_text(
+                encoding="utf-8"
+            )
         )
         validator = Draft202012Validator(schema)
         with tempfile.TemporaryDirectory() as directory:
@@ -425,7 +435,8 @@ class M205StateMCPContractTests(unittest.TestCase):
 
     def test_effect_contract_requires_non_null_execution_identity_fields(self):
         definition = next(
-            item for item in state_mcp_tool_definitions()
+            item
+            for item in state_mcp_tool_definitions()
             if item["name"] == "context.state.effect"
         )["inputSchema"]
         for variant in definition["oneOf"]:
@@ -498,7 +509,9 @@ class M205StateMCPContractTests(unittest.TestCase):
             )
         self.assertEqual(response["error"]["code"], "capability")
 
-    def test_postgres_connection_failure_is_busy_without_hiding_programming_errors(self):
+    def test_postgres_connection_failure_is_busy_without_hiding_programming_errors(
+        self,
+    ):
         store = PostgresStateStore(
             "postgresql://context_test@127.0.0.1:1/context_test?connect_timeout=1"
         )
@@ -517,10 +530,13 @@ class M205StateMCPContractTests(unittest.TestCase):
         self.assertFalse(response["ok"])
         self.assertEqual(response["error"]["code"], "busy")
 
-        with patch(
-            "context_control_plane.postgres_state_store.psycopg.connect",
-            side_effect=ValueError("programming failure"),
-        ), self.assertRaisesRegex(ValueError, "programming failure"):
+        with (
+            patch(
+                "context_control_plane.postgres_state_store.psycopg.connect",
+                side_effect=ValueError("programming failure"),
+            ),
+            self.assertRaisesRegex(ValueError, "programming failure"),
+        ):
             store.read_project("project-unavailable")
 
     def test_unknown_tool_version_and_fields_are_rejected_before_backend_access(self):
@@ -539,7 +555,9 @@ class M205StateMCPContractTests(unittest.TestCase):
                 "project_id": self.snapshot["project"]["project_id"],
             }
 
-            unknown_tool = service.call_tool("context.state.drop", valid, context=context)
+            unknown_tool = service.call_tool(
+                "context.state.drop", valid, context=context
+            )
             wrong_version = service.call_tool(
                 "context.state.read",
                 {**valid, "schema_version": "context.state-mcp-request/v2"},
@@ -569,7 +587,10 @@ class M205StateMCPContractTests(unittest.TestCase):
         )
 
         for authorizer in (None, _ExplodingAuthorizer()):
-            with self.subTest(authorizer=type(authorizer).__name__), tempfile.TemporaryDirectory() as directory:
+            with (
+                self.subTest(authorizer=type(authorizer).__name__),
+                tempfile.TemporaryDirectory() as directory,
+            ):
                 store = _CountingSQLiteStore(Path(directory) / "state.db")
                 store.initialize()
                 store.create_project(copy.deepcopy(self.snapshot))
@@ -625,7 +646,9 @@ class M205StateMCPContractTests(unittest.TestCase):
             response = self.make_service(
                 store,
                 authorizer=_AllowAuthorizer(),
-            ).call_tool("context.state.read", request, context={"subject_ref": "forged"})
+            ).call_tool(
+                "context.state.read", request, context={"subject_ref": "forged"}
+            )
 
         self.assertEqual(response["error"]["code"], "permission_denied")
         self.assertEqual(store.read_project_calls, 0)
@@ -663,7 +686,9 @@ class M205StateMCPContractTests(unittest.TestCase):
         self.assertEqual(store.read_project_calls, 2)
         self.assertEqual(store.read_events_calls, 2)
 
-    def test_commit_rejects_invalid_revision_and_dedicated_collections_before_read(self):
+    def test_commit_rejects_invalid_revision_and_dedicated_collections_before_read(
+        self,
+    ):
         context = RequestContext(
             subject_ref="actor-writer",
             authorization_ref="authorization-test",
@@ -678,9 +703,7 @@ class M205StateMCPContractTests(unittest.TestCase):
             "claimed_at": "2026-08-10T05:00:00+08:00",
             "lease_expires_at": "2026-08-10T06:00:00+08:00",
             "released_at": None,
-            "scope_owners": [
-                {"scope_kind": "file", "scope_ref": "src/registry.py"}
-            ],
+            "scope_owners": [{"scope_kind": "file", "scope_ref": "src/registry.py"}],
         }
         dedicated_collection = {
             **self.make_commit_request(request_id="request-forged-claim"),
@@ -839,14 +862,18 @@ class M205StateMCPContractTests(unittest.TestCase):
         self.assertEqual(stored["project"]["revision"], 14)
         self.assertEqual(events, [])
 
-    def test_same_request_id_replays_the_same_receipt_and_different_payload_conflicts(self):
+    def test_same_request_id_replays_the_same_receipt_and_different_payload_conflicts(
+        self,
+    ):
         context = RequestContext(
             subject_ref="actor-writer",
             authorization_ref="authorization-test",
         )
         request = self.make_commit_request(request_id="request-idempotent")
         different = copy.deepcopy(request)
-        different["changes"][0]["value"]["summary"] = "A different intent must conflict."
+        different["changes"][0]["value"]["summary"] = (
+            "A different intent must conflict."
+        )
 
         with tempfile.TemporaryDirectory() as directory:
             store = SQLiteStateStore(Path(directory) / "state.db")
@@ -855,7 +882,9 @@ class M205StateMCPContractTests(unittest.TestCase):
             service = self.make_service(store, authorizer=_AllowAuthorizer())
             first = service.call_tool("context.state.commit", request, context=context)
             replay = service.call_tool("context.state.commit", request, context=context)
-            conflict = service.call_tool("context.state.commit", different, context=context)
+            conflict = service.call_tool(
+                "context.state.commit", different, context=context
+            )
             events = store.read_events(request["project_id"])
 
         self.assertTrue(first["ok"])
@@ -924,8 +953,12 @@ class M205StateMCPContractTests(unittest.TestCase):
         self.assertEqual(response["result"]["revision"], 15)
         self.assertEqual(stored["project"]["active_work_ids"], ["work-repeat"])
         self.assertEqual(stored["project"]["primary_work_id"], "work-repeat")
-        work = next(item for item in stored["works"] if item["work_id"] == "work-repeat")
-        claim = next(item for item in stored["claims"] if item["claim_id"] == request["claim_id"])
+        work = next(
+            item for item in stored["works"] if item["work_id"] == "work-repeat"
+        )
+        claim = next(
+            item for item in stored["claims"] if item["claim_id"] == request["claim_id"]
+        )
         self.assertEqual(work["status"], "active")
         self.assertEqual(claim["actor_ref"], context.subject_ref)
         self.assertEqual(claim["expected_project_revision"], 15)
@@ -1060,7 +1093,9 @@ class M205StateMCPContractTests(unittest.TestCase):
         self.assertTrue(claim_response["ok"])
         self.assertTrue(authorize_response["ok"], authorize_response["error"])
         self.assertTrue(complete_response["ok"], complete_response["error"])
-        effect = next(item for item in stored["effects"] if item["effect_id"] == "effect-mcp-1")
+        effect = next(
+            item for item in stored["effects"] if item["effect_id"] == "effect-mcp-1"
+        )
         self.assertEqual(effect["status"], "succeeded")
         self.assertEqual(effect["sequence_no"], 1)
         self.assertEqual(stored["project"]["effect_high_watermark"], 1)
@@ -1070,7 +1105,9 @@ class M205StateMCPContractTests(unittest.TestCase):
         self.assertEqual(events[2]["actor_ref"], context.subject_ref)
         self.assertNotIn("execution_grant", authorize_response["result"])
 
-    def test_effect_rejects_actor_scope_claim_and_duplicate_key_without_new_events(self):
+    def test_effect_rejects_actor_scope_claim_and_duplicate_key_without_new_events(
+        self,
+    ):
         claim_context = RequestContext(
             subject_ref="actor-second",
             authorization_ref="authorization-test",
@@ -1174,38 +1211,56 @@ class M205StateMCPContractTests(unittest.TestCase):
             authorization_ref="authorization-test",
         )
         requests = (
-            ("context.state.read", {
-                "schema_version": "context.state-mcp-request/v1alpha1",
-                "request_id": "request-parity-read",
-                "project_id": project_id,
-            }),
-            ("context.state.claim", self.make_claim_request(
-                request_id="request-parity-claim",
-                project_id=project_id,
-            )),
-            ("context.state.effect", self.make_effect_request(
-                request_id="request-parity-authorize",
-                project_id=project_id,
-                claim_id="claim-request-parity-claim",
-            )),
-            ("context.state.effect", self.make_effect_request(
-                request_id="request-parity-complete",
-                action="complete",
-                revision=16,
-                result_ref="artifact://sha256/" + "e" * 64,
-                project_id=project_id,
-                claim_id="claim-request-parity-claim",
-            )),
-            ("context.state.commit", self.make_commit_request(
-                request_id="request-parity-commit",
-                revision=17,
-                project_id=project_id,
-            )),
-            ("context.state.commit", self.make_commit_request(
-                request_id="request-parity-stale",
-                revision=17,
-                project_id=project_id,
-            )),
+            (
+                "context.state.read",
+                {
+                    "schema_version": "context.state-mcp-request/v1alpha1",
+                    "request_id": "request-parity-read",
+                    "project_id": project_id,
+                },
+            ),
+            (
+                "context.state.claim",
+                self.make_claim_request(
+                    request_id="request-parity-claim",
+                    project_id=project_id,
+                ),
+            ),
+            (
+                "context.state.effect",
+                self.make_effect_request(
+                    request_id="request-parity-authorize",
+                    project_id=project_id,
+                    claim_id="claim-request-parity-claim",
+                ),
+            ),
+            (
+                "context.state.effect",
+                self.make_effect_request(
+                    request_id="request-parity-complete",
+                    action="complete",
+                    revision=16,
+                    result_ref="artifact://sha256/" + "e" * 64,
+                    project_id=project_id,
+                    claim_id="claim-request-parity-claim",
+                ),
+            ),
+            (
+                "context.state.commit",
+                self.make_commit_request(
+                    request_id="request-parity-commit",
+                    revision=17,
+                    project_id=project_id,
+                ),
+            ),
+            (
+                "context.state.commit",
+                self.make_commit_request(
+                    request_id="request-parity-stale",
+                    revision=17,
+                    project_id=project_id,
+                ),
+            ),
         )
 
         def run_flow(store):
@@ -1221,7 +1276,11 @@ class M205StateMCPContractTests(unittest.TestCase):
                 receipt["result"].pop("capabilities")
             self.assertFalse(receipts[-1]["ok"])
             self.assertEqual(receipts[-1]["error"]["code"], "conflict")
-            return receipts, store.read_project(project_id), store.read_events(project_id)
+            return (
+                receipts,
+                store.read_project(project_id),
+                store.read_events(project_id),
+            )
 
         with tempfile.TemporaryDirectory() as directory:
             sqlite_result = run_flow(SQLiteStateStore(Path(directory) / "state.db"))

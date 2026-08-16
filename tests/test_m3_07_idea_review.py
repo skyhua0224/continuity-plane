@@ -122,7 +122,9 @@ class M307IdeaReviewTests(unittest.TestCase):
         self.assertEqual(receipt["source_revision"], source["project"]["revision"])
         self.assertEqual(receipt["from_schema_version"], "context.typed-state/v3alpha1")
         self.assertEqual(receipt["to_schema_version"], "context.typed-state/v4alpha1")
-        validate_typed_state_v3_to_v4_migration_receipt(receipt, source=source, target=target)
+        validate_typed_state_v3_to_v4_migration_receipt(
+            receipt, source=source, target=target
+        )
 
         tampered = copy.deepcopy(target)
         tampered["project"]["governance_ref"] = "governance://tampered"
@@ -157,7 +159,9 @@ class M307IdeaReviewTests(unittest.TestCase):
                 migration_receipt=receipt,
             )
             self.assertEqual(persisted, receipt)
-            self.assertEqual(store.read_project(source["project"]["project_id"]), target)
+            self.assertEqual(
+                store.read_project(source["project"]["project_id"]), target
+            )
             self.assertEqual(
                 store.read_migration_receipt(
                     source["project"]["project_id"], receipt["migration_id"]
@@ -208,14 +212,18 @@ class M307IdeaReviewTests(unittest.TestCase):
                     target_snapshot=target,
                     migration_receipt=receipt,
                 )
-            self.assertEqual(store.read_project(source["project"]["project_id"]), source)
+            self.assertEqual(
+                store.read_project(source["project"]["project_id"]), source
+            )
             self.assertIsNone(
                 store.read_migration_receipt(
                     source["project"]["project_id"], receipt["migration_id"]
                 )
             )
 
-    def test_v2_capture_converges_same_key_after_restart_without_execution_authority(self):
+    def test_v2_capture_converges_same_key_after_restart_without_execution_authority(
+        self,
+    ):
         snapshot = self.v4_snapshot()
         context = RequestContext("actor-owner", "authorization-owner")
 
@@ -358,7 +366,11 @@ class M307IdeaReviewTests(unittest.TestCase):
         self.assertTrue(authorized["ok"], authorized["error"])
         self.assertTrue(captured["ok"], captured["error"])
         self.assertEqual(stored["project"]["revision"], 11)
-        effect = next(item for item in stored["effects"] if item["effect_id"] == "capture-pending-effect")
+        effect = next(
+            item
+            for item in stored["effects"]
+            if item["effect_id"] == "capture-pending-effect"
+        )
         self.assertEqual(effect["expected_project_revision"], 11)
         self.assertEqual(
             replay_state_events(
@@ -508,7 +520,9 @@ class M307IdeaReviewTests(unittest.TestCase):
             stored = bootstrap.read_project(snapshot["project"]["project_id"])
 
         self.assertTrue(all(response["ok"] for response in responses), responses)
-        canonical_ids = {response["result"]["canonical_idea_id"] for response in responses}
+        canonical_ids = {
+            response["result"]["canonical_idea_id"] for response in responses
+        }
         self.assertEqual(len(canonical_ids), 1)
         self.assertEqual(len(stored["ideas"]), 1)
         self.assertEqual(len(stored["idea_occurrences"]), 2)
@@ -650,7 +664,9 @@ class M307IdeaReviewTests(unittest.TestCase):
         self.assertFalse(response["ok"])
         self.assertEqual(stored, snapshot)
 
-    def test_generic_route_correction_rejects_idea_field_mutation_before_state_access(self):
+    def test_generic_route_correction_rejects_idea_field_mutation_before_state_access(
+        self,
+    ):
         request = {
             "schema_version": "context.task-route-apply-request/v1alpha1",
             "request_id": "forged-route-idea-correction",
@@ -688,7 +704,9 @@ class M307IdeaReviewTests(unittest.TestCase):
                 event_id_factory=lambda request_id: f"event-{request_id}",
             )
 
-    def test_v1_history_and_v2_events_recover_from_the_persisted_migration_boundary(self):
+    def test_v1_history_and_v2_events_recover_from_the_persisted_migration_boundary(
+        self,
+    ):
         initial = build_idea_snapshot()
         context = RequestContext("actor-owner", "authorization-owner")
         v1_request = {
@@ -1025,7 +1043,11 @@ class M307IdeaReviewTests(unittest.TestCase):
                 event_id_factory=lambda request_id: f"event-{request_id}",
             )
             unprotected_work = copy.deepcopy(
-                next(work for work in snapshot["works"] if work["work_id"] == "work-target")
+                next(
+                    work
+                    for work in snapshot["works"]
+                    if work["work_id"] == "work-target"
+                )
             )
             unprotected_work["title"] = "Allowed unrelated update"
             allowed = service.call_tool(
@@ -1035,7 +1057,11 @@ class M307IdeaReviewTests(unittest.TestCase):
             )
             current = store.read_project(snapshot["project"]["project_id"])
             protected_work = copy.deepcopy(
-                next(work for work in current["works"] if work["work_id"] == "work-active")
+                next(
+                    work
+                    for work in current["works"]
+                    if work["work_id"] == "work-active"
+                )
             )
             protected_work["title"] = "Forbidden protected update"
             denied = service.call_tool(
@@ -1094,7 +1120,11 @@ class M307IdeaReviewTests(unittest.TestCase):
             )
             after_release = store.read_project(snapshot["project"]["project_id"])
             work = copy.deepcopy(
-                next(item for item in after_release["works"] if item["work_id"] == "work-active")
+                next(
+                    item
+                    for item in after_release["works"]
+                    if item["work_id"] == "work-active"
+                )
             )
             work["title"] = "Allowed after verified correction release"
             commit = service.call_tool(
@@ -1128,7 +1158,9 @@ class M307IdeaReviewTests(unittest.TestCase):
             protection["release_evidence_ids"], ["evidence-correction-verified"]
         )
         self.assertTrue(commit["ok"], commit["error"])
-        self.assertEqual(events[0]["idea_transition"]["operation"], "correction-released")
+        self.assertEqual(
+            events[0]["idea_transition"]["operation"], "correction-released"
+        )
 
     def test_release_rejects_missing_unverified_and_reused_evidence(self):
         snapshot = self.snapshot_with_release_evidence()
@@ -1153,9 +1185,14 @@ class M307IdeaReviewTests(unittest.TestCase):
             evidence_ids=[],
             opened_at="2026-08-14T09:07:00+08:00",
         )
-        for evidence_ids in ([], ["evidence-missing"], ["evidence-correction-candidate"]):
-            with self.subTest(evidence_ids=evidence_ids), self.assertRaisesRegex(
-                IdeaReviewError, "verified evidence"
+        for evidence_ids in (
+            [],
+            ["evidence-missing"],
+            ["evidence-correction-candidate"],
+        ):
+            with (
+                self.subTest(evidence_ids=evidence_ids),
+                self.assertRaisesRegex(IdeaReviewError, "verified evidence"),
             ):
                 release_correction_protection(
                     snapshot,
@@ -1247,7 +1284,9 @@ class M307IdeaReviewTests(unittest.TestCase):
         self.assertEqual(stored["correction_protections"][0]["status"], "released")
         self.assertEqual(len(events), 1)
 
-    def test_active_correction_protection_denies_effect_preflight_and_authorization(self):
+    def test_active_correction_protection_denies_effect_preflight_and_authorization(
+        self,
+    ):
         snapshot = open_correction_protection(
             self.snapshot_with_idea(),
             protection_id="protection-effect",
@@ -1307,9 +1346,7 @@ class M307IdeaReviewTests(unittest.TestCase):
 
         self.assertTrue(gate["ok"], gate["error"])
         self.assertEqual(gate["result"]["verdict"]["decision"], "deny")
-        self.assertEqual(
-            gate["result"]["verdict"]["reason"], "correction_protection"
-        )
+        self.assertEqual(gate["result"]["verdict"]["reason"], "correction_protection")
         self.assertFalse(denied["ok"])
         self.assertIn("correction protection", denied["error"]["message"])
         self.assertEqual(stored["effects"], [])
@@ -1449,7 +1486,11 @@ class M307IdeaReviewTests(unittest.TestCase):
                 event_id_factory=lambda request_id: f"event-{request_id}",
             )
             target = copy.deepcopy(
-                next(work for work in snapshot["works"] if work["work_id"] == "work-target")
+                next(
+                    work
+                    for work in snapshot["works"]
+                    if work["work_id"] == "work-target"
+                )
             )
             target["title"] = "Seed target state"
             seed = service.call_tool(
@@ -1515,7 +1556,11 @@ class M307IdeaReviewTests(unittest.TestCase):
             }
             decision = route_task_input(route_request, current)
             corrected = copy.deepcopy(
-                next(work for work in current["works"] if work["work_id"] == "work-target")
+                next(
+                    work
+                    for work in current["works"]
+                    if work["work_id"] == "work-target"
+                )
             )
             corrected["title"] = "Forbidden route correction"
             corrected["revision"] += 1
@@ -1563,7 +1608,9 @@ class M307IdeaReviewTests(unittest.TestCase):
                     event_id_factory=lambda request_id: f"event-{request_id}",
                 )
 
-            self.assertEqual(len(store.read_events(snapshot["project"]["project_id"])), 2)
+            self.assertEqual(
+                len(store.read_events(snapshot["project"]["project_id"])), 2
+            )
 
     def test_unprotected_v4_child_route_commits_a_v4_event(self):
         snapshot = self.snapshot_with_idea()
@@ -1597,9 +1644,7 @@ class M307IdeaReviewTests(unittest.TestCase):
                 "title": "V4 child proposal",
                 "status": "proposed",
                 "parent_work_id": "work-active",
-                "scope_refs": [
-                    {"scope_kind": "capability", "scope_ref": "idea/child"}
-                ],
+                "scope_refs": [{"scope_kind": "capability", "scope_ref": "idea/child"}],
             }
         )
         apply_request = {
@@ -1644,7 +1689,9 @@ class M307IdeaReviewTests(unittest.TestCase):
 
         self.assertEqual(response["status"], "applied")
         self.assertEqual(events[0]["schema_version"], "context.state-event/v4alpha1")
-        self.assertEqual(response["snapshot"]["project"]["primary_work_id"], "work-active")
+        self.assertEqual(
+            response["snapshot"]["project"]["primary_work_id"], "work-active"
+        )
 
     def test_dedupe_key_is_stable_for_unicode_case_and_whitespace(self):
         first = compute_idea_dedupe_key(
@@ -1722,7 +1769,11 @@ class M307IdeaReviewTests(unittest.TestCase):
         with self.assertRaisesRegex(IdeaReviewError, "self"):
             add_idea_relationship(
                 linked,
-                **{**kwargs, "relationship_id": "rel-self", "target_idea_id": "idea-first"},
+                **{
+                    **kwargs,
+                    "relationship_id": "rel-self",
+                    "target_idea_id": "idea-first",
+                },
             )
         with self.assertRaisesRegex(IdeaReviewError, "cycle"):
             add_idea_relationship(
@@ -1737,7 +1788,11 @@ class M307IdeaReviewTests(unittest.TestCase):
         with self.assertRaisesRegex(IdeaReviewError, "unknown"):
             add_idea_relationship(
                 snapshot,
-                **{**kwargs, "relationship_id": "rel-unknown", "target_idea_id": "missing"},
+                **{
+                    **kwargs,
+                    "relationship_id": "rel-unknown",
+                    "target_idea_id": "missing",
+                },
             )
 
     def test_occurrences_are_immutable_and_allow_multiple_source_ranges(self):
@@ -1868,7 +1923,9 @@ class M307IdeaReviewTests(unittest.TestCase):
                 event_id_factory=lambda request_id: f"event-{request_id}",
             ).call_tool("context.idea.capture", request, context=context)
             conflicting = copy.deepcopy(request)
-            conflicting["summary"] = "Conflicting payload under the same request identity."
+            conflicting["summary"] = (
+                "Conflicting payload under the same request identity."
+            )
             second = StateMCPService(
                 SQLiteStateStore(database),
                 authorizer=_AllowAuthorizer(),
@@ -1999,10 +2056,14 @@ class M307IdeaReviewTests(unittest.TestCase):
         }
         self.assertEqual(
             entries["context.typed-state"]["current_wire_version"],
-            "context.typed-state/v5alpha1",
+            "context.typed-state/v6alpha1",
         )
         self.assertIn(
             "context.typed-state/v4alpha1",
+            entries["context.typed-state"]["supported_wire_versions"],
+        )
+        self.assertIn(
+            "context.typed-state/v5alpha1",
             entries["context.typed-state"]["supported_wire_versions"],
         )
         self.assertEqual(
@@ -2033,7 +2094,8 @@ class M307IdeaReviewTests(unittest.TestCase):
         for schema_id, entry in entries.items():
             schema_path = root / entry["artifact_path"]
             self.assertEqual(
-                entry["content_sha256"], hashlib.sha256(schema_path.read_bytes()).hexdigest()
+                entry["content_sha256"],
+                hashlib.sha256(schema_path.read_bytes()).hexdigest(),
             )
             schemas[schema_id] = json.loads(schema_path.read_text())
             Draft202012Validator.check_schema(schemas[schema_id])
@@ -2041,9 +2103,14 @@ class M307IdeaReviewTests(unittest.TestCase):
         from context_control_plane.durable_state_migration import (
             migrate_typed_state_v4_to_v5,
         )
+        from context_control_plane.shared_state_migration import (
+            migrate_typed_state_v5_to_v6,
+        )
 
         Draft202012Validator(schemas["context.typed-state"]).validate(
-            migrate_typed_state_v4_to_v5(self.v4_snapshot())
+            migrate_typed_state_v5_to_v6(
+                migrate_typed_state_v4_to_v5(self.v4_snapshot())
+            )
         )
 
     def test_persisted_v2_event_resolves_and_validates_against_v4_schema(self):
@@ -2093,7 +2160,9 @@ class M307IdeaReviewTests(unittest.TestCase):
             response["result"]["event"]
         )
 
-    def test_persisted_v2_review_event_with_pending_effect_validates_against_schema(self):
+    def test_persisted_v2_review_event_with_pending_effect_validates_against_schema(
+        self,
+    ):
         root = Path(__file__).parents[1]
         snapshot = self.snapshot_with_idea()
         context = RequestContext("actor-owner", "authorization-owner")

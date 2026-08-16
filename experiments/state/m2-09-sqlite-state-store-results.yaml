@@ -1,7 +1,7 @@
 schema_version: context.sqlite-state-store-results/v1alpha1
 observed_at: '2026-08-14T00:00:00+08:00'
 provenance:
-  implementation_sha256: 69d179c7272c30c7a89af1c1a23bb2dc81c661fa08cf9a361c52395f397b49a0
+  implementation_sha256: bc80a19b025170dce595489cb06c8f1872f7b1d156447a2615f8b13be5dc2fc7
   benchmark_sha256: 8764425ee2e628fc0e5d3aadf676a27aaa45fd6fc88cec24c2824ad7568079bf
   runner_sha256: 3c627e540fa833e9681a04c4edc1ec8d2eb0e4b995c0255a266383a13a59b8ce
   fixture_sha256: 9be7887519cfed4466436ea6714d48e399d7023281729b3bd8c78cb3a086beab
@@ -20,15 +20,15 @@ environment:
   external_services: 0
 latency_ms:
   samples: 40
-  commit_p50: 0.5964
-  commit_p95: 0.6195
-  commit_max: 0.6387
-  read_p50: 0.253
-  read_p95: 0.2656
-  read_max: 0.2674
-  state_only_restore_p95: 0.2656
+  commit_p50: 0.6069
+  commit_p95: 0.6256
+  commit_max: 0.6562
+  read_p50: 0.2703
+  read_p95: 0.2834
+  read_max: 0.2852
+  state_only_restore_p95: 0.2834
 footprint_bytes:
-  database: 286720
+  database: 307200
   wal: 0
   shared_memory: 0
 stream_scaling:
@@ -37,24 +37,24 @@ stream_scaling:
   initial_revision: 14
   final_revision: 1014
   latency_ms:
-    commit_p50: 20.0049
-    commit_p95: 34.547
-    commit_max: 39.7757
-    total_commit: 18757.4726
-    total_wall: 19559.1649
-    final_restore: 20.9806
+    commit_p50: 19.5446
+    commit_p95: 37.697
+    commit_max: 58.7403
+    total_commit: 19479.0505
+    total_wall: 20295.492
+    final_restore: 24.5653
   milestones:
     '1':
-      last_commit_ms: 0.6007
-      cumulative_commit_ms: 0.6007
+      last_commit_ms: 0.6244
+      cumulative_commit_ms: 0.6244
     '100':
-      last_commit_ms: 4.0569
-      cumulative_commit_ms: 255.0363
+      last_commit_ms: 4.0357
+      cumulative_commit_ms: 237.0174
     '1000':
-      last_commit_ms: 33.9544
-      cumulative_commit_ms: 18757.4726
+      last_commit_ms: 52.4945
+      cumulative_commit_ms: 19479.0505
   footprint_bytes:
-    database: 2945024
+    database: 2965504
 live_platform_gates:
   linux: passed
   windows: blocked
@@ -72,8 +72,8 @@ comparison_to_postgresql:
   same_fixture: true
   same_samples: true
   postgres_samples: 40
-  commit_p95_reduction_percent: 97.1866
-  read_p95_reduction_percent: 97.9146
+  commit_p95_reduction_percent: 97.1589
+  read_p95_reduction_percent: 97.7748
 limitations:
 - Results describe one host and do not predict other devices.
 - Native platform gates require one receipt from each operating system.

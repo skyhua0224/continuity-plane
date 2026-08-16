@@ -1,15 +1,15 @@
 # M2-09 SQLite StateStore Acceptance
 
-版本：2  
+版本：3  
 日期：2026-08-10  
 状态：Linux verified / Windows and macOS collaborator required
 
 ```yaml
 document_id: context.m2-09-sqlite-state-store-acceptance
-document_revision: 2
+document_revision: 3
 change_type: evidence
-authority_ref: verification-run://repository/m2-09-sqlite-state-store-v2
-supersedes: context.document://docs-migrations-m2-09-sqlite-state-store-acceptance-2026-08-10/revision/1
+authority_ref: verification-run://repository/m2-09-sqlite-state-store-v3
+supersedes: context.document://docs-migrations-m2-09-sqlite-state-store-acceptance-2026-08-10/revision/2
 affected_tasks: [M2-04, M2-05, M2-06, M2-09, M10-09]
 next_review: windows-and-macos-live-runner-evidence
 ```
@@ -18,7 +18,7 @@ next_review: windows-and-macos-live-runner-evidence
 
 M2-09 provides the default `local-embedded` StateStore through Python's standard-library SQLite implementation. The adapter persists typed snapshots and complete Event envelopes in one local `context.sqlite` file. It requires no database daemon, container, PostgreSQL installation or network service.
 
-The storage boundary uses WAL, `FULL` synchronous mode, foreign keys, a bounded busy timeout and `BEGIN IMMEDIATE`. Every commit validates the expected revision, Event sequence, adjacent revisions, hash chain, reducer result and project head before publishing the snapshot and Event atomically. SQLite application and schema version identifiers prevent accidental ownership of unrelated database files.
+The storage boundary uses WAL, `FULL` synchronous mode, foreign keys, a bounded busy timeout and `BEGIN IMMEDIATE`. Every commit validates the expected revision, Event sequence, adjacent revisions, hash chain, reducer result and project head before publishing the snapshot and Event atomically. SQLite application and schema version identifiers prevent accidental ownership of unrelated database files. Schema v4 preserves append-only migration receipts across explicit upgrade and rollback cycles without limiting a schema direction to one lifetime occurrence.
 
 ## Verification
 
@@ -36,7 +36,7 @@ The storage boundary uses WAL, `FULL` synchronous mode, foreign keys, a bounded 
 | File lifecycle | Unicode path, checkpoint, close, rename, reopen, WAL/SHM cleanup and delete passed on Linux |
 | Service footprint | managed daemon 0; managed container 0 |
 
-The 40-sample benchmark used the same completed-work fixture, operation boundary, validator path and sample count as the PostgreSQL receipt. SQLite commit p95 was `0.6195 ms`; state-only restore p95 was `0.2656 ms`. The database occupied `286720 bytes` after a truncate checkpoint. Commit p95 was 97.1866% lower and read p95 was 97.9146% lower than the measured optional PostgreSQL backend on this host. The canonical receipt generator records implementation, runner, fixture, PostgreSQL input and fault-test hashes, actual CLI arguments and the complete receipt schema. It is reproducible with:
+The 40-sample benchmark used the same completed-work fixture, operation boundary, validator path and sample count as the PostgreSQL receipt. SQLite commit p95 was `0.6256 ms`; state-only restore p95 was `0.2834 ms`. The database occupied `307200 bytes` after a truncate checkpoint. Commit p95 was 97.1589% lower and read p95 was 97.7748% lower than the measured optional PostgreSQL backend on this host. The canonical receipt generator records implementation, runner, fixture, PostgreSQL input and fault-test hashes, actual CLI arguments and the complete receipt schema. It is reproducible with:
 
 ```bash
 .venv/bin/python tools/run_sqlite_benchmark.py --samples 40 --stream-events 1000 --observed-at 2026-08-14T00:00:00+08:00 --output experiments/state/m2-09-sqlite-state-store-results.yaml
@@ -44,7 +44,7 @@ The 40-sample benchmark used the same completed-work fixture, operation boundary
 
 ## Scaling Boundary
 
-The 1,000-Event stream completed with final restore latency `20.9806 ms` and database size `2945024 bytes`. Commit p95 was `34.547 ms`; cumulative commit time was `18757.4726 ms`. Revalidating the complete Event history on every commit creates observed quadratic cumulative commit growth. M2-06 records the verified Event head in an immutable checkpoint; M5 remains responsible for incremental checkpoint and restore paths while retaining explicit full-chain audit verification. Current performance evidence applies to one Linux x86_64 workstation.
+The 1,000-Event stream completed with final restore latency `24.5653 ms` and database size `2965504 bytes`. Commit p95 was `37.697 ms`; cumulative commit time was `19479.0505 ms`. Revalidating the complete Event history on every commit creates observed quadratic cumulative commit growth. M2-06 records the verified Event head in an immutable checkpoint; M5 remains responsible for incremental checkpoint and restore paths while retaining explicit full-chain audit verification. Current performance evidence applies to one Linux x86_64 workstation.
 
 ## Authority Boundary
 

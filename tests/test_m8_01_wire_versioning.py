@@ -60,7 +60,9 @@ class M801WireVersioningTests(unittest.TestCase):
         Draft202012Validator.check_schema(schema)
         return schema
 
-    def definition_validator(self, schema: dict, definition_name: str) -> Draft202012Validator:
+    def definition_validator(
+        self, schema: dict, definition_name: str
+    ) -> Draft202012Validator:
         definition_schema = {
             "$schema": schema["$schema"],
             "$defs": schema["$defs"],
@@ -72,27 +74,16 @@ class M801WireVersioningTests(unittest.TestCase):
     def test_published_wire_artifacts_retain_their_release_hashes(self) -> None:
         for relative_path, expected_sha256 in self.LEGACY_ARTIFACT_SHA256.items():
             with self.subTest(path=relative_path):
-                actual = hashlib.sha256((self.root / relative_path).read_bytes()).hexdigest()
+                actual = hashlib.sha256(
+                    (self.root / relative_path).read_bytes()
+                ).hexdigest()
                 self.assertEqual(actual, expected_sha256)
 
-    def test_registry_advances_typed_state_and_state_mcp_without_dropping_legacy(self) -> None:
+    def test_registry_retains_m8_01_typed_state_and_state_mcp_wires(self) -> None:
         typed_state = self.registry_entry("context.typed-state")
-        self.assertEqual(typed_state["current_semver"], "5.0.0-alpha.1")
-        self.assertEqual(
-            typed_state["current_wire_version"], "context.typed-state/v5alpha1"
-        )
-        self.assertEqual(
-            typed_state["artifact_path"], "schemas/m8-01/typed-state-v5alpha1.schema.json"
-        )
-        self.assertEqual(
+        self.assertIn(
+            "context.typed-state/v5alpha1",
             typed_state["supported_wire_versions"],
-            [
-                "context.typed-state/v1alpha1",
-                "context.typed-state/v2alpha1",
-                "context.typed-state/v3alpha1",
-                "context.typed-state/v4alpha1",
-                "context.typed-state/v5alpha1",
-            ],
         )
         self.assertIn(
             {
@@ -108,16 +99,9 @@ class M801WireVersioningTests(unittest.TestCase):
         )
 
         state_mcp = self.registry_entry("context.state-mcp")
-        self.assertEqual(state_mcp["current_semver"], "1.1.0-alpha.1")
-        self.assertEqual(
-            state_mcp["current_wire_version"], "context.state-mcp/v2alpha1"
-        )
-        self.assertEqual(
-            state_mcp["artifact_path"], "schemas/m8-01/state-mcp-v2alpha1.schema.json"
-        )
-        self.assertEqual(
+        self.assertIn(
+            "context.state-mcp/v2alpha1",
             state_mcp["supported_wire_versions"],
-            ["context.state-mcp/v1alpha1", "context.state-mcp/v2alpha1"],
         )
         self.assertIn(
             {
@@ -158,19 +142,21 @@ class M801WireVersioningTests(unittest.TestCase):
         self.assertIn("request_sha256", definition["required"])
         validator = self.definition_validator(schema, "effect")
         validator.validate({**copy.deepcopy(self.effect_v3), "request_sha256": None})
-        validator.validate({**copy.deepcopy(self.effect_v3), "request_sha256": "a" * 64})
+        validator.validate(
+            {**copy.deepcopy(self.effect_v3), "request_sha256": "a" * 64}
+        )
         with self.assertRaises(ValidationError):
             validator.validate(self.effect_v3)
 
-    def test_state_mcp_v2_separates_legacy_and_digest_bound_effect_requests(self) -> None:
+    def test_state_mcp_v2_separates_legacy_and_digest_bound_effect_requests(
+        self,
+    ) -> None:
         legacy = self.schema("schemas/m2-05/state-mcp.schema.json")
         legacy_effect = legacy["$defs"]["effect_request"]
         self.assertNotIn("request_sha256", legacy_effect["properties"])
 
         current = self.schema("schemas/m8-01/state-mcp-v2alpha1.schema.json")
-        self.assertEqual(
-            current["$defs"]["effect_request_v1"], legacy_effect
-        )
+        self.assertEqual(current["$defs"]["effect_request_v1"], legacy_effect)
         current_effect = current["$defs"]["effect_request_v2"]
         self.assertEqual(
             current_effect["properties"]["schema_version"]["const"],
@@ -194,9 +180,7 @@ class M801WireVersioningTests(unittest.TestCase):
         self.assertEqual(set(schema["required"]), set(schema["properties"]))
         validator = Draft202012Validator(schema)
         receipt = {
-            "schema_version": (
-                "context.typed-state-v4-v5-migration-receipt/v1alpha1"
-            ),
+            "schema_version": ("context.typed-state-v4-v5-migration-receipt/v1alpha1"),
             "migration_id": "migration-m8-01-v4-v5",
             "project_id": "project-m8-01",
             "direction": "upgrade",

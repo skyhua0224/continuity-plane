@@ -1,15 +1,15 @@
 # M3-05 Experiment Lifecycle Acceptance
 
-版本：4  
+版本：5  
 日期：2026-08-14  
 状态：verified local-embedded experiment lifecycle contract
 
 ```yaml
 document_id: context.m3-05-experiment-lifecycle-acceptance
-document_revision: 4
+document_revision: 5
 change_type: evidence
 authority_ref: verification-run://repository/current-head
-supersedes: context.document://docs-migrations-m3-05-experiment-lifecycle-acceptance-2026-08-14/revision/3
+supersedes: context.document://docs-migrations-m3-05-experiment-lifecycle-acceptance-2026-08-14/revision/4
 affected_tasks: [M3-05, M3-06, M5-01, M8-02]
 next_review: M3-07
 ```
@@ -46,9 +46,9 @@ Promotion 记录冻结 source/target revision、attempt、contract digest 和每
 | events per run | `3` |
 | attempt records per run | `1` |
 | promotion records per run | `2` |
-| total lifecycle p50 | `7.958506 ms` |
-| total lifecycle p95 | `13.095426 ms` |
-| total lifecycle max | `13.149409 ms` |
+| total lifecycle p50 | `8.388333 ms` |
+| total lifecycle p95 | `13.449996 ms` |
+| total lifecycle max | `14.337746 ms` |
 
 Receipt provenance 固定 fixture、lifecycle gate、State MCP、Event reducer、typed-state validator 和 benchmark runner 的 SHA-256；receipt 通过 `context.experiment-lifecycle-benchmark/v1alpha1` strict schema 和独立来源复验。
 

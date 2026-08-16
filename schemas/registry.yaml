@@ -207,11 +207,11 @@ schemas:
     migrations: []
 
   - schema_id: context.typed-state
-    current_semver: 5.0.0-alpha.1
-    current_wire_version: context.typed-state/v5alpha1
-    supported_wire_versions: [context.typed-state/v1alpha1, context.typed-state/v2alpha1, context.typed-state/v3alpha1, context.typed-state/v4alpha1, context.typed-state/v5alpha1]
-    artifact_path: schemas/m8-01/typed-state-v5alpha1.schema.json
-    content_sha256: b1ff8d42c367cbd3e039dd04d41ef28c6f0774ff1282087c54c493eedd0c8160
+    current_semver: 6.0.0-alpha.1
+    current_wire_version: context.typed-state/v6alpha1
+    supported_wire_versions: [context.typed-state/v1alpha1, context.typed-state/v2alpha1, context.typed-state/v3alpha1, context.typed-state/v4alpha1, context.typed-state/v5alpha1, context.typed-state/v6alpha1]
+    artifact_path: schemas/m8-02/typed-state-v6alpha1.schema.json
+    content_sha256: 85fc41357a5469d23208428b7fa4268704821f35377d14ea07dbd3320553e456
     status: current
     compatibility_mode: strict-versioned
     migrations:
@@ -235,6 +235,11 @@ schemas:
         replay_passed: true
         idempotent: true
         rollback_ref: docs/migrations/m8-01-durable-operation-acceptance-2026-08-16.md#rollback
+      - from: context.typed-state/v5alpha1
+        to: context.typed-state/v6alpha1
+        replay_passed: true
+        idempotent: true
+        rollback_ref: docs/migrations/m8-02-shared-work-acceptance-2026-08-16.md#rollback
 
   - schema_id: context.state-event
     current_semver: 4.0.0-alpha.1
@@ -321,6 +326,16 @@ schemas:
     compatibility_mode: strict-versioned
     migrations: []
 
+  - schema_id: context.typed-state-v5-v6-migration-receipt
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.typed-state-v5-v6-migration-receipt/v1alpha1
+    supported_wire_versions: [context.typed-state-v5-v6-migration-receipt/v1alpha1]
+    artifact_path: schemas/m8-02/typed-state-v5-v6-migration-receipt.schema.json
+    content_sha256: e2d2c83841db7ffa0c970c84802cfa5aed537bfd24871254c042ab9b380e8d92
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
   - schema_id: context.idea-review
     current_semver: 1.0.0-alpha.1
     current_wire_version: context.idea-review-request/v1alpha1
@@ -402,14 +417,19 @@ schemas:
     migrations: []
 
   - schema_id: context.state-store-capabilities
-    current_semver: 1.0.0-alpha.1
-    current_wire_version: context.state-store-capabilities/v1alpha1
-    supported_wire_versions: [context.state-store-capabilities/v1alpha1]
-    artifact_path: schemas/m2-08/state-store-capabilities.schema.json
-    content_sha256: 4a618077febbdb91c6f38def657ad65bd883a32df37e701f653900a8b26fff6d
+    current_semver: 2.0.0-alpha.1
+    current_wire_version: context.state-store-capabilities/v2alpha1
+    supported_wire_versions: [context.state-store-capabilities/v1alpha1, context.state-store-capabilities/v2alpha1]
+    artifact_path: schemas/m8-02/state-store-capabilities-v2alpha1.schema.json
+    content_sha256: d6801ea6e3efcf21a3da765e591d409a08510d520fa17cd1c23c77e21c72f3b3
     status: current
     compatibility_mode: strict-versioned
-    migrations: []
+    migrations:
+      - from: context.state-store-capabilities/v1alpha1
+        to: context.state-store-capabilities/v2alpha1
+        replay_passed: true
+        idempotent: true
+        rollback_ref: docs/migrations/m8-02-shared-work-acceptance-2026-08-16.md#capability-boundary
 
   - schema_id: context.artifact-ref
     current_semver: 1.0.0-alpha.1
@@ -422,11 +442,11 @@ schemas:
     migrations: []
 
   - schema_id: context.state-mcp
-    current_semver: 1.1.0-alpha.1
-    current_wire_version: context.state-mcp/v2alpha1
-    supported_wire_versions: [context.state-mcp/v1alpha1, context.state-mcp/v2alpha1]
-    artifact_path: schemas/m8-01/state-mcp-v2alpha1.schema.json
-    content_sha256: b7a2f804c1fc281089bbbda67e2eb8c1469024b2ff2a98f2d1f4841c09def425
+    current_semver: 1.2.0-alpha.1
+    current_wire_version: context.state-mcp/v3alpha1
+    supported_wire_versions: [context.state-mcp/v1alpha1, context.state-mcp/v2alpha1, context.state-mcp/v3alpha1]
+    artifact_path: schemas/m8-02/state-mcp-v3alpha1.schema.json
+    content_sha256: fb2e7a82fece4756a0e29c423304dd54f8cc60bf235f458726e3b9580c63b397
     status: current
     compatibility_mode: strict-versioned
     migrations:
@@ -435,6 +455,11 @@ schemas:
         replay_passed: true
         idempotent: true
         rollback_ref: docs/migrations/m8-01-durable-operation-acceptance-2026-08-16.md#rollback
+      - from: context.state-mcp/v2alpha1
+        to: context.state-mcp/v3alpha1
+        replay_passed: true
+        idempotent: true
+        rollback_ref: docs/migrations/m8-02-shared-work-acceptance-2026-08-16.md#state-mcp-v3
 
   - schema_id: context.checkpoint-manifest
     current_semver: 1.0.0-alpha.1
@@ -1362,6 +1387,16 @@ schemas:
     supported_wire_versions: [context.deepseek-checkpoint-receipt/v1alpha1]
     artifact_path: schemas/m8-01/deepseek-checkpoint-receipt.schema.json
     content_sha256: 8f9a1676d220226d05aa23366c75c563aacd85072590e1f27087ca771059cb2b
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.shared-work-benchmark
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.shared-work-benchmark/v1alpha1
+    supported_wire_versions: [context.shared-work-benchmark/v1alpha1]
+    artifact_path: schemas/m8-02/shared-work-benchmark.schema.json
+    content_sha256: 9a3069074b42f727cdf6c725583d0bfd15d351db24ebd6d6c3e8e8f80687fed7
     status: current
     compatibility_mode: strict-versioned
     migrations: []

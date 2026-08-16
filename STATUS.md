@@ -1,6 +1,6 @@
 # Context Control Plane Status
 
-版本：revision 59  
+版本：revision 60  
 日期：2026-08-16  
 canonical plan：`MASTER.md`
 
@@ -9,8 +9,8 @@ canonical plan：`MASTER.md`
 | 字段 | 值 |
 |---|---|
 | 当前 Campaign | M8 多协作者与耐久执行 |
-| active work | M8-02：共享 Work Ledger、lease、claim、scope ownership、heartbeat 和 expiry（🟡） |
-| next action | 固定 shared Work/claim/lease/heartbeat/expiry 合同与 dispatch-time revocation gate |
+| active work | M8-03：Temporal 长流程与 Continue-As-New（🟡） |
+| next action | 固定 optional Temporal adapter 的 workflow identity、history/replay、patch/versioning、Continue-As-New 和 local fallback 边界 |
 | hard blocker | 无；M3-01 的 Windows/macOS 原生 live fixture 保持 conditional |
 | repository mode | research / shadow pilot |
 | production state | local-embedded implemented / shadow pilot；shared production pilot planned |
@@ -20,7 +20,7 @@ canonical plan：`MASTER.md`
 | 对象 | 状态 |
 |---|---|
 | Evidence index | [`docs/reports/verified-state.md`](docs/reports/verified-state.md) |
-| Documentation lifecycle | M0-10 verified；STATUS reduction `79.4384%`；MASTER section reduction `68.9812%`；High/Medium review 0 |
+| Documentation lifecycle | M0-10 verified；STATUS reduction `77.6253%`；MASTER section reduction `68.9812%`；High/Medium review 0 |
 | Git admission | M0-11 offline contract `26/26`；repository verifier 通过 |
 | Skill adapters | M4-07/08/10 done；external=0 |
 | Prior gates | M3-07/M3-08/M4-09 verified；replay and quarantine gates pass；details in evidence index |
@@ -28,10 +28,11 @@ canonical plan：`MASTER.md`
 | M5-06..08 | all verified；replay `1000/1000`；Idea faults `6000/6000`；dogfood coverage/veto 100%；continuation fields/faults `10000/10000` |
 | M8-04 trace | `1000/1000`；`8000` events；eight-family coverage 100%；OTel unavailable `1000/1000` |
 | M8-01 durability | verified；focused `78/78`；Typed State v5/State MCP v2 与 v4↔v5 migration/rollback 门通过；9 crash points `180/180` recovered；semantic effects `180`，adapter calls `200`，deduplications `20`，duplicates `0`；restore p95 `105.039451 ms`；DeepSeek `2/2` real `SIGKILL` recovery |
+| M8-02 coordination | verified；focused `81/81`；10 类场景 `10000/10000`；orphan reclaim `1000/1000`；八项零损失指标均为 `0`；p95 `0.528895 ms`；SQLite canonical snapshot/Event/revision/receipt 同事务；schema v3->v4 与 upgrade->rollback->upgrade 通过 |
 | M6 retrieval/recall | all verified；五类 route `1000/1000` replay iterations、`5000/5000` decisions；quality/provenance `1.0`；duplicate read bytes `-50%`；reference conformance memory `0.6 -> 0.9`；safety veto `0`；external calls `0` |
 | M7 evidence/quality | M7-01..06 verified；false authority/admission/test omission `0`；affected-test wall time reduction `97.13%`；详见 Evidence index |
-| Repository verification | full `1347` passed / `30` optional-environment skipped；focused M8-01 `78/78`；repository verifier passed |
-| Governance authority | `MASTER.md` revision 59 |
+| Repository verification | full `1428` passed / `30` optional-environment skipped；focused M8-02 `81/81`；repository verifier passed |
+| Governance authority | `MASTER.md` revision 60 |
 
 ## 恢复入口
 
