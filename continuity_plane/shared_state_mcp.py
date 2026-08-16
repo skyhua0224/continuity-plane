@@ -414,6 +414,23 @@ class SharedStateMCPService:
         self._request_receipts: dict[tuple[str, str], tuple[str, dict[str, Any]]] = {}
         self._mutation_lock = threading.Lock()
 
+    def resolve_committed_effect_dispatch(
+        self, project_id: str, request_id: str
+    ) -> dict[str, Any]:
+        """Resolve one effect dispatch previously committed by this authority."""
+        if not _identifier(project_id) or not _identifier(request_id):
+            raise LookupError("committed effect dispatch identity is invalid")
+        with self._mutation_lock:
+            stored = self._request_receipts.get((EFFECT_DISPATCH_TOOL, request_id))
+            if stored is None:
+                raise LookupError("committed effect dispatch is unavailable")
+            response = stored[1]
+            result = response.get("result") if response.get("ok") is True else None
+            receipt = result.get("receipt") if isinstance(result, dict) else None
+            if not isinstance(receipt, dict) or receipt.get("project_id") != project_id:
+                raise LookupError("committed effect dispatch project does not match")
+            return copy.deepcopy(result)
+
     @staticmethod
     def _fingerprint(
         tool: str,
