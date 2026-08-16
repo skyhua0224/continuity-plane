@@ -14,6 +14,7 @@ _CURRENT_TYPED_STATE_VERSIONS = {
     "context.typed-state/v2alpha1",
     "context.typed-state/v3alpha1",
     "context.typed-state/v4alpha1",
+    "context.typed-state/v5alpha1",
 }
 
 

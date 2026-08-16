@@ -53,9 +53,10 @@ from .state_store import (
     invoke_state_store,
     validate_state_store_adapter,
 )
-from .typed_state import TypedStateError
+from .typed_state import DURABLE_EFFECT_SCHEMA_VERSION, TypedStateError
 
 REQUEST_SCHEMA_VERSION = "context.state-mcp-request/v1alpha1"
+EFFECT_REQUEST_SCHEMA_VERSION_V2 = "context.state-mcp-request/v2alpha1"
 RESPONSE_SCHEMA_VERSION = "context.state-mcp-response/v1alpha1"
 
 READ_TOOL = "context.state.read"
@@ -291,6 +292,7 @@ def _event_schema_version(snapshot: dict[str, Any]) -> str:
     if schema_version in {
         "context.typed-state/v3alpha1",
         "context.typed-state/v4alpha1",
+        DURABLE_EFFECT_SCHEMA_VERSION,
     }:
         return EVENT_SCHEMA_VERSION_V4
     if schema_version == "context.typed-state/v2alpha1":
@@ -518,6 +520,16 @@ def _request_properties(tool: str) -> dict[str, Any]:
     }
 
 
+def _effect_v2_request_properties() -> dict[str, Any]:
+    properties = _request_properties(EFFECT_TOOL)
+    properties["schema_version"] = {"const": EFFECT_REQUEST_SCHEMA_VERSION_V2}
+    properties["request_sha256"] = {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$",
+    }
+    return properties
+
+
 def _idea_capture_v2_request_properties() -> dict[str, Any]:
     properties = _request_properties(IDEA_CAPTURE_TOOL)
     properties["schema_version"] = {"const": IDEA_CAPTURE_REQUEST_SCHEMA_VERSION_V2}
@@ -561,7 +573,16 @@ def state_mcp_tool_definitions() -> list[dict[str, Any]]:
                     ]
                 }
                 if tool == IDEA_CAPTURE_TOOL
-                else _object_schema(_request_properties(tool))
+                else (
+                    {
+                        "oneOf": [
+                            _object_schema(_request_properties(EFFECT_TOOL)),
+                            _object_schema(_effect_v2_request_properties()),
+                        ]
+                    }
+                    if tool == EFFECT_TOOL
+                    else _object_schema(_request_properties(tool))
+                )
             ),
         }
         for tool in STATE_MCP_TOOLS
@@ -603,13 +624,20 @@ def _request_id(arguments: Any) -> str | None:
 def _validate_request(tool: str, arguments: Any) -> str | None:
     if not isinstance(arguments, dict):
         return "request fields do not match the tool contract"
-    expected_fields = (
-        _IDEA_CAPTURE_REQUEST_FIELDS_V2
-        if tool == IDEA_CAPTURE_TOOL
+    if (
+        tool == IDEA_CAPTURE_TOOL
         and arguments.get("schema_version") == IDEA_CAPTURE_REQUEST_SCHEMA_VERSION_V2
-        else _REQUEST_FIELDS[tool]
-    )
-    if set(arguments) != expected_fields:
+    ):
+        expected_fields = _IDEA_CAPTURE_REQUEST_FIELDS_V2
+    elif (
+        tool == EFFECT_TOOL
+        and arguments.get("schema_version") == EFFECT_REQUEST_SCHEMA_VERSION_V2
+    ):
+        expected_fields = _REQUEST_FIELDS[tool] | {"request_sha256"}
+    else:
+        expected_fields = _REQUEST_FIELDS[tool]
+    actual_fields = set(arguments)
+    if actual_fields != expected_fields:
         return "request fields do not match the tool contract"
     expected_schema_version = {
         ATTEMPT_TOOL: ATTEMPT_REQUEST_SCHEMA_VERSION,
@@ -617,17 +645,21 @@ def _validate_request(tool: str, arguments: Any) -> str | None:
         PROMOTION_PROPOSE_TOOL: PROMOTION_PROPOSAL_REQUEST_SCHEMA_VERSION,
         PROMOTION_APPROVE_TOOL: PROMOTION_APPROVAL_REQUEST_SCHEMA_VERSION,
         IDEA_CAPTURE_TOOL: arguments.get("schema_version"),
+        EFFECT_TOOL: arguments.get("schema_version"),
         IDEA_REVIEW_TOOL: IDEA_REVIEW_REQUEST_SCHEMA_VERSION,
         IDEA_CORRECTION_PROTECT_TOOL: IDEA_CORRECTION_PROTECTION_REQUEST_SCHEMA_VERSION,
         IDEA_CORRECTION_RELEASE_TOOL: IDEA_CORRECTION_RELEASE_REQUEST_SCHEMA_VERSION,
     }.get(tool, REQUEST_SCHEMA_VERSION)
-    if arguments["schema_version"] != expected_schema_version or (
-        tool == IDEA_CAPTURE_TOOL
-        and expected_schema_version
-        not in {
+    supported_request_versions = {
+        IDEA_CAPTURE_TOOL: {
             IDEA_CAPTURE_REQUEST_SCHEMA_VERSION,
             IDEA_CAPTURE_REQUEST_SCHEMA_VERSION_V2,
-        }
+        },
+        EFFECT_TOOL: {REQUEST_SCHEMA_VERSION, EFFECT_REQUEST_SCHEMA_VERSION_V2},
+    }
+    if arguments["schema_version"] != expected_schema_version or (
+        tool in supported_request_versions
+        and expected_schema_version not in supported_request_versions[tool]
     ):
         return "unsupported request schema_version"
     for field in ("request_id", "project_id"):
@@ -874,6 +906,12 @@ def _validate_request(tool: str, arguments: Any) -> str | None:
             value = arguments[field]
             if not isinstance(value, str) or not value.strip() or len(value) > 300:
                 return f"{field} must be a bounded non-empty string"
+        request_sha256 = arguments.get("request_sha256")
+        if tool == EFFECT_TOOL and arguments["schema_version"] == EFFECT_REQUEST_SCHEMA_VERSION_V2 and (
+            not isinstance(request_sha256, str)
+            or re.fullmatch(r"[0-9a-f]{64}", request_sha256) is None
+        ):
+            return "request_sha256 must be a lowercase SHA-256"
         evidence_ids = arguments["evidence_ids"]
         if not isinstance(evidence_ids, list) or any(
             not isinstance(item, str) or not item.strip() for item in evidence_ids
@@ -1501,7 +1539,10 @@ class StateMCPService:
                 )
                 self._remember_request(IDEA_CAPTURE_TOOL, arguments, context, response)
                 return response
-            if snapshot.get("schema_version") != "context.typed-state/v4alpha1":
+            if snapshot.get("schema_version") not in {
+                "context.typed-state/v4alpha1",
+                DURABLE_EFFECT_SCHEMA_VERSION,
+            }:
                 return _response(
                     tool=IDEA_CAPTURE_TOOL,
                     request_id=request_id,
@@ -1742,7 +1783,10 @@ class StateMCPService:
                 )
                 self._remember_request(tool, arguments, context, response)
                 return response
-            if snapshot.get("schema_version") != "context.typed-state/v4alpha1":
+            if snapshot.get("schema_version") not in {
+                "context.typed-state/v4alpha1",
+                DURABLE_EFFECT_SCHEMA_VERSION,
+            }:
                 return _response(
                     tool=tool,
                     request_id=request_id,
@@ -2545,7 +2589,10 @@ class StateMCPService:
                 request_id=request_id,
                 error=exc,
             )
-        if snapshot.get("schema_version") == "context.typed-state/v4alpha1":
+        if snapshot.get("schema_version") in {
+            "context.typed-state/v4alpha1",
+            DURABLE_EFFECT_SCHEMA_VERSION,
+        }:
             correction_gate = evaluate_correction_write_gate(
                 snapshot,
                 [
@@ -2635,6 +2682,18 @@ class StateMCPService:
         try:
             snapshot = invoke_state_store(self._store, "read_project", project_id)
             events = invoke_state_store(self._store, "read_events", project_id)
+            if (
+                tool == EFFECT_TOOL
+                and arguments["schema_version"] == EFFECT_REQUEST_SCHEMA_VERSION_V2
+                and snapshot.get("schema_version")
+                != DURABLE_EFFECT_SCHEMA_VERSION
+            ):
+                return _response(
+                    tool=tool,
+                    request_id=request_id,
+                    error_code="unsupported",
+                    error_message="effect request v2 requires typed state v5 migration",
+                )
             if snapshot["project"]["revision"] != arguments["expected_revision"]:
                 return _response(
                     tool=tool,
@@ -2644,7 +2703,8 @@ class StateMCPService:
                 )
             if (
                 arguments["action"] == "authorize"
-                and snapshot.get("schema_version") == "context.typed-state/v4alpha1"
+                and snapshot.get("schema_version")
+                in {"context.typed-state/v4alpha1", DURABLE_EFFECT_SCHEMA_VERSION}
             ):
                 correction_gate = evaluate_correction_write_gate(
                     snapshot,
@@ -2838,9 +2898,12 @@ class StateMCPService:
                     "requested_at": observed_at,
                     "completed_at": None,
                 }
+                if snapshot["schema_version"] == DURABLE_EFFECT_SCHEMA_VERSION:
+                    effect["request_sha256"] = arguments.get("request_sha256")
                 if snapshot["schema_version"] in {
                     "context.typed-state/v3alpha1",
                     "context.typed-state/v4alpha1",
+                    DURABLE_EFFECT_SCHEMA_VERSION,
                 }:
                     effect["attempt_id"] = (
                         arguments["attempt_id"]
@@ -2861,12 +2924,15 @@ class StateMCPService:
                     or existing["claim_id"] != claim["claim_id"]
                     or existing["operation"] != arguments["operation"]
                     or existing["scope_ref"] != arguments["scope_ref"]
+                    or existing.get("request_sha256")
+                    != arguments.get("request_sha256")
                     or existing["status"] not in {"authorized", "started"}
                     or (
                         snapshot["schema_version"]
                         in {
                             "context.typed-state/v3alpha1",
                             "context.typed-state/v4alpha1",
+                            DURABLE_EFFECT_SCHEMA_VERSION,
                         }
                         and existing.get("attempt_id")
                         != (
@@ -3214,7 +3280,11 @@ class StateMCPService:
             events = invoke_state_store(self._store, "read_events", project_id)
             if (
                 snapshot.get("schema_version")
-                in {"context.typed-state/v3alpha1", "context.typed-state/v4alpha1"}
+                in {
+                    "context.typed-state/v3alpha1",
+                    "context.typed-state/v4alpha1",
+                    DURABLE_EFFECT_SCHEMA_VERSION,
+                }
                 and any(change["collection"] == "ideas" for change in arguments["changes"])
             ):
                 return _response(
@@ -3223,7 +3293,10 @@ class StateMCPService:
                     error_code="integrity",
                     error_message="typed-state Ideas require a dedicated Idea State MCP tool",
                 )
-            if snapshot.get("schema_version") == "context.typed-state/v4alpha1":
+            if snapshot.get("schema_version") in {
+                "context.typed-state/v4alpha1",
+                DURABLE_EFFECT_SCHEMA_VERSION,
+            }:
                 correction_gate = evaluate_correction_write_gate(
                     snapshot, arguments["changes"]
                 )
