@@ -1,0 +1,68 @@
+{
+  "benchmark_id": "benchmark-m8-03-da9414c7693aaef9730f9183",
+  "command_count": 3000,
+  "external_services": 0,
+  "fault_attempts": 7000,
+  "fault_families": [
+    "event-hash-tamper",
+    "chain-link-tamper",
+    "unsupported-history-version",
+    "unknown-patch-marker",
+    "unsettled-effect-rollover",
+    "unacknowledged-input-rollover",
+    "continuation-payload-tamper"
+  ],
+  "fault_rejections": 7000,
+  "generated_at": "2026-08-16T20:00:00+08:00",
+  "generations_per_chain": 3,
+  "history_event_count": 20500,
+  "latency_ms": {
+    "max": 33.308625,
+    "p50": 18.307415,
+    "p95": 23.12289
+  },
+  "metrics": {
+    "authority_violations": 0,
+    "chain_link_failures": 0,
+    "duplicate_effects": 0,
+    "lost_inputs": 0,
+    "nondeterminism_failures": 0,
+    "replay_mismatches": 0
+  },
+  "provenance": {
+    "benchmark_sha256": "8a80fd247f29d5281dea9219e814e9338653f159e2c05d41fec4e39dd1a13edc",
+    "durable_workflow_sha256": "5455bb60c16e6475fbe1cdbf7c3c27f887069c70bdc5441b576af270e4dfbd56",
+    "orchestration_sha256": "9541fccd8ad6ecd71fb3f0a38ebda2efb193fbe9a5b6e1adc117da93409a29b0",
+    "registry_sha256": "dca120363ddacec7a4e768711158284b1f13b414fbf1cc68e70cafdf1717d293",
+    "temporal_adapter_sha256": "6c8c22756bf3fc28b8553cd994e9417dfa69f273fccbf3979a1a66465e60ac76"
+  },
+  "provider_invocations": 0,
+  "receipt_sha256": "2c3a5bacf9edbf3ddbb2c4799d077fa2d59d3458218c28f57f1f65fd0124f36a",
+  "rollover_count": 2000,
+  "run_count": 3000,
+  "samples": 1000,
+  "schema_version": "context.workflow-orchestration-benchmark/v1alpha1",
+  "shared_authority_claim": false,
+  "successful_chains": 1000,
+  "temporal_sdk_reference": {
+    "release": "1.31.0",
+    "runtime_tested": false,
+    "source_listing_sha256": "44fcd507cce70c1fd4210edcb554c9b0275b849bfe8ac9867aa0af7975f16435",
+    "source_revision": "84b519e0ff407b049da88ac7d1711f110494ff4d",
+    "source_tree": "6ca7d581e9e0bea3f19a0e1bf5f3a5ef9fec6d21",
+    "worker_replayer": "unavailable"
+  },
+  "thresholds": {
+    "fault_rejection_rate_min": 1.0,
+    "latency_p95_ms_max": 50.0,
+    "successful_chain_rate_min": 1.0,
+    "zero_loss_required": true
+  },
+  "verdict": {
+    "decision": "pass",
+    "failed_gates": [],
+    "fault_rejection_rate": 1.0,
+    "latency_p95_within_threshold": true,
+    "successful_chain_rate": 1.0
+  }
+}

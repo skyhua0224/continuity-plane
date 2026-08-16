@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schemas/m8-03/workflow-backend-capabilities.schema.json",
+  "title": "Context Control Plane Workflow Backend Capabilities",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "backend_id",
+    "profile",
+    "requires_sdk",
+    "requires_service",
+    "replay",
+    "patching",
+    "continue_as_new",
+    "state_write_authority",
+    "provider_native_authority"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.workflow-backend-capabilities/v1alpha1"},
+    "backend_id": {"enum": ["local-reference", "temporal"]},
+    "profile": {"enum": ["local-embedded", "temporal"]},
+    "requires_sdk": {"type": "boolean"},
+    "requires_service": {"type": "boolean"},
+    "replay": {"const": true},
+    "patching": {"const": true},
+    "continue_as_new": {"const": true},
+    "state_write_authority": {"const": false},
+    "provider_native_authority": {"const": false}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"profile": {"const": "local-embedded"}}},
+      "then": {
+        "properties": {
+          "backend_id": {"const": "local-reference"},
+          "requires_sdk": {"const": false},
+          "requires_service": {"const": false}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"profile": {"const": "temporal"}}},
+      "then": {
+        "properties": {
+          "backend_id": {"const": "temporal"},
+          "requires_sdk": {"const": true},
+          "requires_service": {"const": true}
+        }
+      }
+    }
+  ]
+}

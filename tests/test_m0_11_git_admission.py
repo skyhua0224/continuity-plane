@@ -307,6 +307,7 @@ class GitAdmissionTests(unittest.TestCase):
                 "generated_at: '" + self._date() + "'\n"
                 "registry_revision: " + "1" * 40 + "\n"
                 "source_revision: " + "2" * 40 + "\n"
+                "source_tree: " + "3" * 40 + "\n"
                 "sha256: " + "a" * 64 + "\n"
                 "master_digest: " + "b" * 64 + "\n"
                 "content_hash: " + "c" * 64 + "\n"

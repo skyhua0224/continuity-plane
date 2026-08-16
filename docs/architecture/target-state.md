@@ -3,7 +3,7 @@
 版本：2  
 日期：2026-08-16  
 状态：current architecture contract  
-governance authority：`MASTER.md` revision 60
+governance authority：`MASTER.md` revision 61
 
 ## 三文档默认投影
 
@@ -26,6 +26,7 @@ Context Control Plane 安装到个人项目、协作项目或公开大型项目�
 | `context.state` | `typed-state-store` | Project、Work、Claim、Idea、Decision、Constraint、Evidence、Blocker、Effect 与 Checkpoint 权威机器状态 | StateStore SPI；SQLite embedded 默认，PostgreSQL optional shared backend | M2 |
 | `context.events` | `hash-chained-event-log` | 追加式事件、revision、supersedes、replay high watermark | StateStore SPI + artifact manifest | M2 |
 | `context.work-coordination` | `shared-work-ledger` | 项目级 active work set、claim/lease、repo/path/symbol/capability/effect ownership、重复工作检测和冲突恢复；支持 modular、monolith 与 mixed topology | local State MCP + Git forge adapter；optional shared service | M2/M3/M8 |
+| `context.collaboration-notification` | `realtime-agent-inbox` | 将 work claim、review、deploy intent、conflict 与 approval Event 按 tenant/project/subscription scope 分发；SSE 提供基线流，WebSocket 按 provider capability 启用；签名、cursor、去重、离线补发和人工批准控制消息进入 Agent 上下文或触发操作 | local event stream + optional shared relay + provider plugins | M8/M9 |
 | `context.forge-coordination` | `forge-work-adapter` | 将 Issue、PR、branch、assignee、review 和 CI 映射为共享 Work/claim/evidence projection；声明离线与未发布工作的保证缺口 | GitHub / Gitea / GitLab adapters | M8 |
 | `context.task-routing` | `sticky-task-router` | 识别 continue、child、interrupt、switch、correction、discussion 和 blocking decision；普通 Idea 以 opaque ref 受控 capture、parking 或 switch proposal 保存，不能改变 active leaf、claim 或副作用权限；选择 next-ready required leaf | deterministic rules + bounded classifier | M3 |
 | `context.workflow` | `durable-execution` | checkpoint、重试、幂等、lease、unattended required-work loop、multi-Agent fan-out/fan-in 和长流程恢复 | DBOS；Temporal 按需启用 | M8 |

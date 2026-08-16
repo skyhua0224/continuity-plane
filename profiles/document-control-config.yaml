@@ -1,6 +1,6 @@
 schema_version: context.document-control-config/v1alpha1
-generated_at: '2026-08-16T09:39:30Z'
-governance_revision: 60
+generated_at: '2026-08-16T12:21:03Z'
+governance_revision: 61
 documents:
 - document_id: agents
   path: AGENTS.md
@@ -12,7 +12,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/60
+    authority_ref: governance-event://master/revision/61
     supersedes: null
     affected_tasks:
     - M0-10
@@ -21,19 +21,19 @@ documents:
 - document_id: master
   path: MASTER.md
   category: governance
-  document_revision: 22
+  document_revision: 23
   authority:
     governance_authority: true
     active_state_authority: false
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/60
-    supersedes: context.document://master/revision/21
+    authority_ref: governance-event://master/revision/61
+    supersedes: context.document://master/revision/22
     supersedes_provenance:
-      git_commit: 60b23179ece2c6bca1707ca7b95dfc5bde96a8ad
-      manifest_sha256: c5ffe49d159f96ff55f93e04e90c2f3986329f5165ccfc65541cb5b1abfaf3fb
-      content_sha256: 45e418a01d679d85b99ab2d7047c0e0c243c61b19377b40e176fae3b447cc96e
+      git_commit: 3d2c20c887de68f12096a8d366ad0949980ce163
+      manifest_sha256: 4b3758259d0fb29da767a81934d8f76be1146857cd43a2cfe0bd6a917625a8b7
+      content_sha256: cd0886855c30cdeda999aa1b46dbd4e1cf69c84f5b578d23029a90ca46f69a6a
     affected_tasks:
     - M3-08
     - M4-09
@@ -59,6 +59,8 @@ documents:
     - M8-01
     - M8-02
     - M8-03
+    - M8-05
+    - M8-10
     - M7-04
     - M7-05
     - M7-06
@@ -124,6 +126,9 @@ documents:
   - ref_id: master-evidence-m8-02
     path: docs/migrations/m8-02-shared-work-acceptance-2026-08-16.md
     valid_until: null
+  - ref_id: master-evidence-m8-03
+    path: docs/migrations/m8-03-temporal-workflow-acceptance-2026-08-16.md
+    valid_until: null
 - document_id: readme
   path: README.md
   category: projection
@@ -134,32 +139,32 @@ documents:
     controlled_action_entry: false
   change:
     change_type: projection
-    authority_ref: state-revision://repository/60
+    authority_ref: state-revision://repository/61
     supersedes: null
     affected_tasks:
     - M0-10
     next_review: null
   evidence_refs: []
   projection_binding:
-    source_state_revision: 60
+    source_state_revision: 61
     template_version: context.document-projection/v1alpha1
     state_write_authority: false
 - document_id: status
   path: STATUS.md
   category: routing
-  document_revision: 23
+  document_revision: 24
   authority:
     governance_authority: false
     active_state_authority: false
     controlled_action_entry: false
   change:
     change_type: status
-    authority_ref: governance-event://master/revision/60
-    supersedes: context.document://status/revision/22
+    authority_ref: governance-event://master/revision/61
+    supersedes: context.document://status/revision/23
     supersedes_provenance:
-      git_commit: 60b23179ece2c6bca1707ca7b95dfc5bde96a8ad
-      manifest_sha256: c5ffe49d159f96ff55f93e04e90c2f3986329f5165ccfc65541cb5b1abfaf3fb
-      content_sha256: c82ca368585c12a19f86ec196cf342522f9e72a2bb8c642695c5263836bab86c
+      git_commit: 3d2c20c887de68f12096a8d366ad0949980ce163
+      manifest_sha256: 4b3758259d0fb29da767a81934d8f76be1146857cd43a2cfe0bd6a917625a8b7
+      content_sha256: 6f672dc128d47291359dd31b46214a432b58c90d1b1925a9a75aab710a0f0c83
     affected_tasks:
     - M3-08
     - M4-09
@@ -185,6 +190,7 @@ documents:
     - M8-01
     - M8-02
     - M8-03
+    - M8-05
     - M7-04
     - M7-05
     - M7-06
@@ -250,6 +256,9 @@ documents:
   - ref_id: status-evidence-m8-02
     path: docs/migrations/m8-02-shared-work-acceptance-2026-08-16.md
     valid_until: null
+  - ref_id: status-evidence-m8-03
+    path: docs/migrations/m8-03-temporal-workflow-acceptance-2026-08-16.md
+    valid_until: null
 - document_id: docs-architecture-adaptive-information-plane
   path: docs/architecture/adaptive-information-plane.md
   category: architecture
@@ -260,7 +269,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/60
+    authority_ref: governance-event://master/revision/61
     supersedes: null
     affected_tasks:
     - M0-10
@@ -276,7 +285,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/60
+    authority_ref: governance-event://master/revision/61
     supersedes: context.document://docs-architecture-idea-continuity/revision/2
     supersedes_provenance:
       git_commit: 84ac82f3375a39c712e3c98a95f6126753e64199
@@ -297,7 +306,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/60
+    authority_ref: governance-event://master/revision/61
     supersedes: null
     affected_tasks:
     - M0-10
@@ -313,7 +322,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/60
+    authority_ref: governance-event://master/revision/61
     supersedes: context.document://docs-architecture-skill-orchestration/revision/1
     affected_tasks:
     - M0-10
@@ -328,19 +337,19 @@ documents:
 - document_id: docs-architecture-target-state
   path: docs/architecture/target-state.md
   category: architecture
-  document_revision: 21
+  document_revision: 22
   authority:
     governance_authority: false
     active_state_authority: false
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/60
-    supersedes: context.document://docs-architecture-target-state/revision/20
+    authority_ref: governance-event://master/revision/61
+    supersedes: context.document://docs-architecture-target-state/revision/21
     supersedes_provenance:
-      git_commit: 60b23179ece2c6bca1707ca7b95dfc5bde96a8ad
-      manifest_sha256: c5ffe49d159f96ff55f93e04e90c2f3986329f5165ccfc65541cb5b1abfaf3fb
-      content_sha256: 3ac02eb65ab416fc3385cf96b3f76fa755bcdd42df27602de4b35f10d87bea9b
+      git_commit: 3d2c20c887de68f12096a8d366ad0949980ce163
+      manifest_sha256: 4b3758259d0fb29da767a81934d8f76be1146857cd43a2cfe0bd6a917625a8b7
+      content_sha256: 6ce57c366dec41af708c8c1e8d7d22755e9783b635a2035ae02bb01f78b59dd3
     affected_tasks:
     - M3-08
     - M4-09
@@ -366,7 +375,8 @@ documents:
     - M8-01
     - M8-02
     - M8-03
-    next_review: task:M8-03
+    - M8-10
+    next_review: task:M8-05
   evidence_refs:
   - ref_id: docs-architecture-target-state-evidence-1
     path: docs/migrations/m0-10-document-lifecycle-acceptance-2026-08-12.md
@@ -415,6 +425,9 @@ documents:
     valid_until: null
   - ref_id: docs-architecture-target-state-evidence-m8-02
     path: docs/migrations/m8-02-shared-work-acceptance-2026-08-16.md
+    valid_until: null
+  - ref_id: docs-architecture-target-state-evidence-m8-03
+    path: docs/migrations/m8-03-temporal-workflow-acceptance-2026-08-16.md
     valid_until: null
 - document_id: docs-migrations-local-source-inventory-2026-08-09
   path: docs/migrations/local-source-inventory-2026-08-09.md
@@ -1047,7 +1060,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/60
+    authority_ref: governance-event://master/revision/61
     supersedes: null
     affected_tasks:
     - M0-10
@@ -1063,7 +1076,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/60
+    authority_ref: governance-event://master/revision/61
     supersedes: null
     affected_tasks:
     - M0-10
@@ -1079,7 +1092,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/60
+    authority_ref: governance-event://master/revision/61
     supersedes: null
     affected_tasks:
     - M0-10
@@ -1095,7 +1108,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/60
+    authority_ref: governance-event://master/revision/61
     supersedes: null
     affected_tasks:
     - M0-10
@@ -1111,7 +1124,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/60
+    authority_ref: governance-event://master/revision/61
     supersedes: null
     affected_tasks:
     - M0-10
@@ -1127,7 +1140,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/60
+    authority_ref: governance-event://master/revision/61
     supersedes: context.document://docs-policies-git-collaboration/revision/1
     supersedes_provenance:
       git_commit: 51663f3b23a4dc4af31ba4be9e9d3f80066d64ca
@@ -1150,7 +1163,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/60
+    authority_ref: governance-event://master/revision/61
     supersedes: context.document://docs-policies-project-dogfooding-observation/revision/1
     supersedes_provenance:
       git_commit: b8e7da0358b3b3b8c21ebf44d6c50483f80cd0b1
@@ -1175,7 +1188,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/60
+    authority_ref: governance-event://master/revision/61
     supersedes: null
     affected_tasks:
     - M0-10
@@ -1191,7 +1204,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/60
+    authority_ref: governance-event://master/revision/61
     supersedes: null
     affected_tasks:
     - M0-10
@@ -1200,19 +1213,19 @@ documents:
 - document_id: docs-reports-verified-state
   path: docs/reports/verified-state.md
   category: report
-  document_revision: 21
+  document_revision: 22
   authority:
     governance_authority: false
     active_state_authority: false
     controlled_action_entry: false
   change:
     change_type: projection
-    authority_ref: state-revision://repository/60
-    supersedes: context.document://docs-reports-verified-state/revision/20
+    authority_ref: state-revision://repository/61
+    supersedes: context.document://docs-reports-verified-state/revision/21
     supersedes_provenance:
-      git_commit: 60b23179ece2c6bca1707ca7b95dfc5bde96a8ad
-      manifest_sha256: c5ffe49d159f96ff55f93e04e90c2f3986329f5165ccfc65541cb5b1abfaf3fb
-      content_sha256: a6b0c9b72f6b7a8762eb898393d4c7979ab84d2634d72d8ffd544513c5a31e85
+      git_commit: 3d2c20c887de68f12096a8d366ad0949980ce163
+      manifest_sha256: 4b3758259d0fb29da767a81934d8f76be1146857cd43a2cfe0bd6a917625a8b7
+      content_sha256: 227d6317565e8cc86942f88bfef345c3766fc7248b30196ff14866a7f096cbd5
     affected_tasks:
     - M3-08
     - M4-09
@@ -1238,7 +1251,7 @@ documents:
     - M8-01
     - M8-02
     - M8-03
-    next_review: task:M8-03
+    next_review: task:M8-05
   evidence_refs:
   - ref_id: docs-reports-verified-state-evidence-1
     path: docs/migrations/m0-07-schema-governance-acceptance-2026-08-09.md
@@ -1393,8 +1406,11 @@ documents:
   - ref_id: docs-reports-verified-state-evidence-m8-02
     path: docs/migrations/m8-02-shared-work-acceptance-2026-08-16.md
     valid_until: null
+  - ref_id: docs-reports-verified-state-evidence-m8-03
+    path: docs/migrations/m8-03-temporal-workflow-acceptance-2026-08-16.md
+    valid_until: null
   projection_binding:
-    source_state_revision: 60
+    source_state_revision: 61
     template_version: context.document-projection/v1alpha1
     state_write_authority: false
 - document_id: docs-research-agent-harness-assessment-2026-08-09
@@ -1879,4 +1895,24 @@ documents:
     - M8-03
     - M8-06
     next_review: task:M8-03
+  evidence_refs: []
+- document_id: docs-migrations-m8-03-temporal-workflow-acceptance-2026-08-16
+  path: docs/migrations/m8-03-temporal-workflow-acceptance-2026-08-16.md
+  category: migration
+  document_revision: 1
+  authority:
+    governance_authority: false
+    active_state_authority: false
+    controlled_action_entry: false
+  change:
+    change_type: evidence
+    authority_ref: verification-run://repository/95f2d5a8c19854357b9af9d7fa597edbe4ef869cda0624189b3b3f8aac63c1b8
+    supersedes: null
+    affected_tasks:
+    - M8-02
+    - M8-03
+    - M8-05
+    - M8-06
+    - M8-08
+    next_review: task:M8-05
   evidence_refs: []

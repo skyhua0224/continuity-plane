@@ -1,0 +1,213 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schemas/m8-03/temporal-workflow-input.schema.json",
+  "title": "Context Control Plane Temporal Workflow Input",
+  "oneOf": [
+    {"$ref": "#/$defs/startInput"},
+    {"$ref": "#/$defs/continueAsNewInput"}
+  ],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "positiveInteger": {"type": "integer", "minimum": 1},
+    "nonNegativeInteger": {"type": "integer", "minimum": 0},
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["project_revision", "event_head"],
+      "properties": {
+        "project_revision": {"type": "integer", "minimum": 0},
+        "event_head": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sequence_no", "event_sha256"],
+          "properties": {
+            "sequence_no": {"type": "integer", "minimum": 0},
+            "event_sha256": {"$ref": "#/$defs/sha256"}
+          }
+        }
+      }
+    },
+    "idSet": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/id"}
+    },
+    "pendingInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input_id", "input_sha256", "status"],
+      "properties": {
+        "input_id": {"$ref": "#/$defs/id"},
+        "input_sha256": {"$ref": "#/$defs/sha256"},
+        "status": {"const": "received"}
+      }
+    },
+    "pendingInputSet": {
+      "type": "array",
+      "maxItems": 128,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/pendingInput"}
+    },
+    "effectStatus": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["effect_id", "effect_key", "request_sha256", "status"],
+      "properties": {
+        "effect_id": {"$ref": "#/$defs/id"},
+        "effect_key": {"$ref": "#/$defs/id"},
+        "request_sha256": {"$ref": "#/$defs/sha256"},
+        "status": {"enum": ["started", "outcome-unknown"]}
+      }
+    },
+    "effectStatusSet": {
+      "type": "array",
+      "maxItems": 128,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/effectStatus"}
+    },
+    "startInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "workflow_id",
+        "chain_id",
+        "run_id",
+        "generation",
+        "previous_run_id",
+        "previous_run_event_sha256",
+        "project_id",
+        "root_work_id",
+        "request_id",
+        "workflow_type",
+        "definition_version",
+        "implementation_sha256",
+        "authority",
+        "checkpoint_ref",
+        "checkpoint_sha256",
+        "continuation_sha256",
+        "active_patch_ids",
+        "pending_inputs",
+        "input_ack_count",
+        "input_ack_sha256",
+        "effect_statuses",
+        "effect_settlement_count",
+        "effect_settlement_sha256",
+        "run_sha256",
+        "state_write_authority",
+        "effect_dispatch_authority",
+        "provider_native_authority",
+        "backend_binding_receipt_sha256"
+      ],
+      "properties": {
+        "schema_version": {"const": "context.temporal-workflow-input/v1alpha1"},
+        "workflow_id": {"$ref": "#/$defs/id"},
+        "chain_id": {"$ref": "#/$defs/id"},
+        "run_id": {"$ref": "#/$defs/id"},
+        "generation": {"$ref": "#/$defs/positiveInteger"},
+        "previous_run_id": {
+          "oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]
+        },
+        "previous_run_event_sha256": {
+          "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        },
+        "project_id": {"$ref": "#/$defs/id"},
+        "root_work_id": {"$ref": "#/$defs/id"},
+        "request_id": {"$ref": "#/$defs/id"},
+        "workflow_type": {"$ref": "#/$defs/id"},
+        "definition_version": {"$ref": "#/$defs/positiveInteger"},
+        "implementation_sha256": {"$ref": "#/$defs/sha256"},
+        "authority": {"$ref": "#/$defs/authority"},
+        "checkpoint_ref": {"$ref": "#/$defs/id"},
+        "checkpoint_sha256": {"$ref": "#/$defs/sha256"},
+        "continuation_sha256": {"$ref": "#/$defs/sha256"},
+        "active_patch_ids": {"$ref": "#/$defs/idSet"},
+        "pending_inputs": {"$ref": "#/$defs/pendingInputSet"},
+        "input_ack_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "input_ack_sha256": {"$ref": "#/$defs/sha256"},
+        "effect_statuses": {"$ref": "#/$defs/effectStatusSet"},
+        "effect_settlement_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "effect_settlement_sha256": {"$ref": "#/$defs/sha256"},
+        "run_sha256": {"$ref": "#/$defs/sha256"},
+        "state_write_authority": {"const": false},
+        "effect_dispatch_authority": {"const": false},
+        "provider_native_authority": {"const": false},
+        "backend_binding_receipt_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "continueAsNewInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "workflow_id",
+        "chain_id",
+        "run_id",
+        "generation",
+        "previous_run_id",
+        "previous_run_event_sha256",
+        "project_id",
+        "root_work_id",
+        "request_id",
+        "workflow_type",
+        "definition_version",
+        "implementation_sha256",
+        "authority",
+        "checkpoint_ref",
+        "checkpoint_sha256",
+        "continuation_sha256",
+        "active_patch_ids",
+        "pending_inputs",
+        "input_ack_count",
+        "input_ack_sha256",
+        "effect_statuses",
+        "effect_settlement_count",
+        "effect_settlement_sha256",
+        "run_sha256",
+        "state_write_authority",
+        "effect_dispatch_authority",
+        "provider_native_authority",
+        "rollover_receipt_sha256"
+      ],
+      "properties": {
+        "schema_version": {"const": "context.temporal-workflow-input/v1alpha1"},
+        "workflow_id": {"$ref": "#/$defs/id"},
+        "chain_id": {"$ref": "#/$defs/id"},
+        "run_id": {"$ref": "#/$defs/id"},
+        "generation": {"$ref": "#/$defs/positiveInteger"},
+        "previous_run_id": {
+          "oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]
+        },
+        "previous_run_event_sha256": {
+          "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        },
+        "project_id": {"$ref": "#/$defs/id"},
+        "root_work_id": {"$ref": "#/$defs/id"},
+        "request_id": {"$ref": "#/$defs/id"},
+        "workflow_type": {"$ref": "#/$defs/id"},
+        "definition_version": {"$ref": "#/$defs/positiveInteger"},
+        "implementation_sha256": {"$ref": "#/$defs/sha256"},
+        "authority": {"$ref": "#/$defs/authority"},
+        "checkpoint_ref": {"$ref": "#/$defs/id"},
+        "checkpoint_sha256": {"$ref": "#/$defs/sha256"},
+        "continuation_sha256": {"$ref": "#/$defs/sha256"},
+        "active_patch_ids": {"$ref": "#/$defs/idSet"},
+        "pending_inputs": {"$ref": "#/$defs/pendingInputSet"},
+        "input_ack_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "input_ack_sha256": {"$ref": "#/$defs/sha256"},
+        "effect_statuses": {"$ref": "#/$defs/effectStatusSet"},
+        "effect_settlement_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "effect_settlement_sha256": {"$ref": "#/$defs/sha256"},
+        "run_sha256": {"$ref": "#/$defs/sha256"},
+        "state_write_authority": {"const": false},
+        "effect_dispatch_authority": {"const": false},
+        "provider_native_authority": {"const": false},
+        "rollover_receipt_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

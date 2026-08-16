@@ -44,7 +44,7 @@ _INTEGRITY_METADATA_RE = re.compile(
     r"|\"?[A-Za-z][A-Za-z0-9_.-]*sha256\"?\s*[:=]\s*\"?"
     r"|\"?(?:sha256|master_digest|content_hash)\"?\s*[:=]\s*\"?"
     r"|\"?git_commit\"?\s*[:=]\s*\"?"
-    r"|\"?(?:registry_revision|source_revision)\"?\s*[:=]\s*\"?"
+    r"|\"?(?:registry_revision|source_revision|source_tree)\"?\s*[:=]\s*\"?"
     r")(?P<digest>[0-9a-f]{64}|[0-9a-f]{40})",
     re.IGNORECASE,
 )

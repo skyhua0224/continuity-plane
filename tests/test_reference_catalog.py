@@ -55,18 +55,31 @@ class ReferenceCatalogTests(unittest.TestCase):
 
     def test_catalog_covers_current_claude_parallel_agent_surfaces(self):
         expected = {
-            "anthropic-claude-code-agents": "ae17a0b90a1b7944030191b31f5d254d8f74d8794faee620f94d9314d2e002bb",
-            "anthropic-claude-code-agent-teams": "c079ade28c18a4f2a48c4e9d47d7e58c09dab1354edc7e16919db40340094449",
-            "anthropic-claude-code-subagents": "2f08d529620dba34468ea6a0b660843f4b7bbe17f50874f11294c1ba6e45c5f8",
-            "anthropic-claude-code-advisor": "14b381a1728b52eeca7445c089cd649a5ca05f20feb95ee8c8708c7971ebdc71",
-            "anthropic-claude-code-worktrees": "c5a85623acef35889ca086313de4ddd3383c9b6ab4b04ff7e0dcfa583c41075d",
+            "anthropic-claude-code-agents": {
+                "content_sha256": "ae17a0b90a1b7944030191b31f5d254d8f74d8794faee620f94d9314d2e002bb"
+            },
+            "anthropic-claude-code-agent-teams": {
+                "content_sha256": "c079ade28c18a4f2a48c4e9d47d7e58c09dab1354edc7e16919db40340094449"
+            },
+            "anthropic-claude-code-subagents": {
+                "content_sha256": "2f08d529620dba34468ea6a0b660843f4b7bbe17f50874f11294c1ba6e45c5f8"
+            },
+            "anthropic-claude-code-advisor": {
+                "content_sha256": "14b381a1728b52eeca7445c089cd649a5ca05f20feb95ee8c8708c7971ebdc71"
+            },
+            "anthropic-claude-code-worktrees": {
+                "content_sha256": "c5a85623acef35889ca086313de4ddd3383c9b6ab4b04ff7e0dcfa583c41075d"
+            },
         }
         entries = {entry["reference_id"]: entry for entry in self.catalog["entries"]}
 
-        for reference_id, content_sha256 in expected.items():
+        for reference_id, fields in expected.items():
             with self.subTest(reference_id=reference_id):
                 self.assertIn(reference_id, entries)
-                self.assertEqual(entries[reference_id]["content_sha256"], content_sha256)
+                self.assertEqual(
+                    entries[reference_id]["content_sha256"],
+                    fields["content_sha256"],
+                )
                 self.assertEqual(entries[reference_id]["acquisition"], "direct-official")
                 self.assertEqual(entries[reference_id]["validity"], "verified-current")
                 self.assertEqual(entries[reference_id]["adoption_status"], "candidate")
@@ -126,6 +139,21 @@ class ReferenceCatalogTests(unittest.TestCase):
                 for field, value in fields.items():
                     self.assertEqual(entries[reference_id][field], value)
                 self.assertEqual(entries[reference_id]["adoption_status"], "candidate")
+
+    def test_catalog_pins_the_m8_03_temporal_sdk_release(self):
+        entries = {entry["reference_id"]: entry for entry in self.catalog["entries"]}
+
+        temporal = entries["temporalio-python-sdk-1-31"]
+        self.assertEqual(temporal["source_revision"], "84b519e0ff407b049da88ac7d1711f110494ff4d")
+        self.assertEqual(temporal["source_tree"], "6ca7d581e9e0bea3f19a0e1bf5f3a5ef9fec6d21")
+        self.assertEqual(
+            temporal["content_sha256"],
+            "44fcd507cce70c1fd4210edcb554c9b0275b849bfe8ac9867aa0af7975f16435",
+        )
+        self.assertEqual(temporal["license_ref"], "MIT")
+        self.assertEqual(temporal["validity"], "verified-current")
+        self.assertEqual(temporal["adoption_status"], "candidate")
+        self.assertIn("M8-03", temporal["supports"])
 
 
 if __name__ == "__main__":

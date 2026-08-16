@@ -171,7 +171,7 @@ schemas:
     current_wire_version: context.reference-catalog/v1alpha1
     supported_wire_versions: [context.reference-catalog/v1alpha1]
     artifact_path: profiles/reference-catalog.example.yaml
-    content_sha256: 2f9abf5ee693a73d12236ce751cc5d566cba4634421ad35148ac367acc3c41b3
+    content_sha256: e5cf52562b788ab658fc5542757b120466567e73dfd2fa0aad89a8242b1d4dea
     status: current
     compatibility_mode: profile-contract
     migrations: []
@@ -1397,6 +1397,126 @@ schemas:
     supported_wire_versions: [context.shared-work-benchmark/v1alpha1]
     artifact_path: schemas/m8-02/shared-work-benchmark.schema.json
     content_sha256: 9a3069074b42f727cdf6c725583d0bfd15d351db24ebd6d6c3e8e8f80687fed7
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.workflow-run
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.workflow-run/v1alpha1
+    supported_wire_versions: [context.workflow-run/v1alpha1]
+    artifact_path: schemas/m8-03/workflow-run.schema.json
+    content_sha256: 10944d6ceaaa85e5cef36c62c5430e6ec1373e10f89794b0aaedf4e43e68d929
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.workflow-history-event
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.workflow-history-event/v1alpha1
+    supported_wire_versions: [context.workflow-history-event/v1alpha1]
+    artifact_path: schemas/m8-03/workflow-history-event.schema.json
+    content_sha256: 46636601617e6ecd82b27af945bdff335c1ff4e70a1d3e607d002398c8857515
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.workflow-definition
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.workflow-definition/v1alpha1
+    supported_wire_versions: [context.workflow-definition/v1alpha1]
+    artifact_path: schemas/m8-03/workflow-definition.schema.json
+    content_sha256: 815fd52d4f75b0270fdb9ca6df251d213e39c849b7ec4a6ead40a6ff0155c094
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.workflow-replay-receipt
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.workflow-replay-receipt/v1alpha1
+    supported_wire_versions: [context.workflow-replay-receipt/v1alpha1]
+    artifact_path: schemas/m8-03/workflow-replay-receipt.schema.json
+    content_sha256: 5a22082ac36a9e12079581a4a0136d6e06f15c0bbf345b07436687575bd796d7
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.workflow-rollover-receipt
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.workflow-rollover-receipt/v1alpha1
+    supported_wire_versions: [context.workflow-rollover-receipt/v1alpha1]
+    artifact_path: schemas/m8-03/workflow-rollover-receipt.schema.json
+    content_sha256: 98f1654edc362ad0aed743829ec3b289c6e49bf7f6fa45f4677e50d83c2bec86
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.workflow-backend-capabilities
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.workflow-backend-capabilities/v1alpha1
+    supported_wire_versions: [context.workflow-backend-capabilities/v1alpha1]
+    artifact_path: schemas/m8-03/workflow-backend-capabilities.schema.json
+    content_sha256: 100e0ca5880becc6b8492bd0a800cc1f6cf9a8a53a1fe93af2759a1f53d769cb
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.workflow-runtime-selection
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.workflow-runtime-selection/v1alpha1
+    supported_wire_versions: [context.workflow-runtime-selection/v1alpha1]
+    artifact_path: schemas/m8-03/workflow-runtime-selection.schema.json
+    content_sha256: 4bfea24093a4ad4bdbe961e4bc69ab0d350467bc2f1864305081aa090861aaff
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.workflow-adapter-manifest
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.workflow-adapter-manifest/v1alpha1
+    supported_wire_versions: [context.workflow-adapter-manifest/v1alpha1]
+    artifact_path: schemas/m8-03/workflow-adapter-manifest.schema.json
+    content_sha256: 8ed6537dd0325bca5ff17cb6f46f9b7f44aa6ae0f14e09f7ad2e1eb13a94a0f1
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.temporal-workflow-input
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.temporal-workflow-input/v1alpha1
+    supported_wire_versions: [context.temporal-workflow-input/v1alpha1]
+    artifact_path: schemas/m8-03/temporal-workflow-input.schema.json
+    content_sha256: 50a29d62f37d80090946fd956627d1b33b016f1b81847ac5d04a964d8a1d34d8
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.workflow-run-receipt
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.workflow-run-receipt/v1alpha1
+    supported_wire_versions: [context.workflow-run-receipt/v1alpha1]
+    artifact_path: schemas/m8-03/workflow-run-receipt.schema.json
+    content_sha256: 044b5dc77b2857bb3fbf9b5746cc6ce63f515e5977425f6759ceda87a28f79cf
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.workflow-backend-binding
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.workflow-backend-binding/v1alpha1
+    supported_wire_versions: [context.workflow-backend-binding/v1alpha1]
+    artifact_path: schemas/m8-03/workflow-backend-binding.schema.json
+    content_sha256: 4eacf9dd5d9484450754ae42a2e91e4a213bfa49ad10c77e6e38fdd68d6bae84
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.workflow-orchestration-benchmark
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.workflow-orchestration-benchmark/v1alpha1
+    supported_wire_versions: [context.workflow-orchestration-benchmark/v1alpha1]
+    artifact_path: schemas/m8-03/workflow-orchestration-benchmark.schema.json
+    content_sha256: c123a8a301fca5fcf1c76599185f9c9d2bf8a92f980f132063f047fec7a30584
     status: current
     compatibility_mode: strict-versioned
     migrations: []

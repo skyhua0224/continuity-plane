@@ -1,6 +1,6 @@
 # Context Control Plane MASTER
 
-版本：revision 60  
+版本：revision 61  
 日期：2026-08-16  
 状态：研究与 shadow pilot 准备阶段  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
@@ -329,13 +329,14 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 |---|---|---|---|---|---|---|
 | M8-01 | ✅ | DBOS checkpoint/effect workflow 与 harness crash fixture | 本地崩溃恢复和幂等；DeepSeek runnable checkpoint 与 Pi effect sandwich 形成对照矩阵 | 单机可靠运行 | M5-03 | local-embedded durable operation 与 14 个 strict schema；Typed State v5/State MCP v2 及 v4↔v5 receipt 的 replay/rollback 边界通过；9 个 crash point、`180/180` terminal recovery、180 semantic effects、200 adapter calls、20 deduplications、重复 semantic effect `0`、restore p95 `105.039451 ms`；DeepSeek pinned fixture `2/2` 与真实 `SIGKILL` `2/2`；Pi 保持 scaffold oracle；验收见 `docs/migrations/m8-01-durable-operation-acceptance-2026-08-16.md` |
 | M8-02 | ✅ | 共享 Work Ledger、lease、claim、scope ownership、heartbeat 和 expiry | 所有协作者看到同 revision active/completed work；过期或撤销 worker 可安全 reclaim | 团队协作并避免无感重复开发 | M3-04/M8-01 | Typed State v6、State MCP v3、capability v2、SQLite local coordinator 和 repeatable migration journal；81/81 focused；10 类场景 `10000/10000`，orphan reclaim `1000/1000`；静默覆盖、重复 claim/effect、post-revoke effect、old-worker admission、Event/revision/hash mismatch 均为 `0`；p95 `0.528895 ms`；验收见 `docs/migrations/m8-02-shared-work-acceptance-2026-08-16.md` |
-| M8-03 | 🟡 | Temporal 长流程与 Continue-As-New | 跨服务、长周期工作可 replay | 大型团队生产化 | M8-02 | 当前原子步骤：固定 optional Temporal adapter 的 workflow identity、history/replay、patch/versioning、Continue-As-New 和 local fallback 边界；退出条件：replay/patch/versioning tests 通过 |
+| M8-03 | ✅ | Temporal 长流程与 Continue-As-New | 跨服务、长周期工作可 replay | 大型团队生产化 | M8-02 | provider-neutral workflow、State MCP backend binding、真实 local runner、跨代时间、event identity、receipt semantics、bounded payload 和 optional Temporal adapter 通过；`43` pass、`1` optional SDK skip；三代链 `1000/1000`、`7000/7000` faults、veto 指标全 `0`、p95 `23.122890 ms`；High/Medium 审查 `0`；验收见 `docs/migrations/m8-03-temporal-workflow-acceptance-2026-08-16.md` |
 | M8-04 | ✅ | OTel `context.*` trace | 切换、压缩、检索、返工可观察 | 持续优化而非凭感觉 | M5-05 | local trace `1000/1000`、`8000` events、八类覆盖 100%；binding/hash/evidence/authority failure `0`；OTel 未配置 `1000/1000 unavailable`；验收见 `docs/migrations/m8-04-context-trace-acceptance-2026-08-15.md` |
-| M8-05 | ⏳ | 权限、审计、tenant/project 隔离 | 协作者访问范围与授权一致 | 安全共享 | M2-05/M8-02 | 越权测试 100% 拒绝 |
+| M8-05 | 🟡 | 权限、审计、tenant/project 隔离 | 协作者访问范围与授权一致 | 安全共享 | M2-05/M8-02 | 当前原子步骤：定义 actor/tenant/project authorization 与 audit Event 合同，先固定越权拒绝和跨项目隔离门；退出条件：越权测试 100% 拒绝 |
 | M8-06 | ⏳ | Provider-neutral Harness Run、durable operation、multi-Agent fan-out/fan-in 与 feedback-loop contract | model、packet、工具、权限、checkpoint、handoff、evidence、effect 和 trace 绑定同一 State revision | 使 Codex/Claude/DeepSeek host 与 worker 能力可替换和可回放 | M2-05/M4-05/M5-03/M8-04 | 双 provider replay 一致；Pi `op.state`、reserved IDs、`safe/never` replay 和 terminal cleanup oracle 通过；executor effect 绑定有效 claim/lease/scope/revision 100%；handoff 首动作匹配 100%；worker loss 与 provider durable log 均不改变 State MCP 权威状态 |
 | M8-07 | ⏳ | ProjectAdaptation observe/propose/shadow/approve/rollback loop | 项目和用户习惯可在安全边界内持续优化 | 使安装后的控制面随实测使用演进 | M5-07/M6-07/M7-04 | 未批准 proposal 激活率 0；相同 fixture/provider/budget 三次 A/B；回滚后 veto 指标恢复 |
 | M8-08 | ⏳ | GitHub/Gitea/GitLab forge collaboration adapter 与显式降级一致性 | 复用 Issue、PR、branch、assignee、review 和 CI 形成共享 Work 投影 | 普通开源团队零新增服务协作 | M2-07/M2-08/M8-02 | 至少 GitHub/Gitea 双 adapter replay；可见 Work/claim/evidence 映射 100%；remote ref 使用显式 expected value CAS；offline/unpublished work 不宣称唯一 claim |
 | M8-09 | ⏳ | unattended campaign dispatcher 与 `required/conditional/optional` obligation | 按 select -> CAS claim/lease -> execute -> verify -> complete/release -> next 持续推进 ready work | 在无人值守时完成所有可自动执行的必需工作并保留治理边界 | M3-08/M5-08/M8-02/M8-06 | 连续至少 3 个 required leaf 完成；automatable required closure 100%；optional 不阻塞；无 typed blocker 的 premature stop/ask 为 0；残留项只有 optional 或带 evidence/resume condition 的 blocker |
+| M8-10 | ⏳ | realtime collaboration event bus、Agent inbox 与受控通知 adapter | work claimed、review requested、deploy intent、conflict 和 approval 在多 Session/多人之间实时可见并可离线补发 | 降低重复开发、部署竞态和跨 Agent 等待 | M8-02/M8-05/M8-06 | append-only notification Event、签名、subscription scope、cursor、SSE baseline、optional WebSocket、去重与离线 catch-up 合同通过；至少两个 Session/provider 在同 revision 收到一致消息；未批准消息注入执行上下文或触发操作为 `0`；插件只显示或提交受控 approval，不绕过 State MCP |
 
 ## 7.10 M9 可选 Docmost 与人类观察
 
