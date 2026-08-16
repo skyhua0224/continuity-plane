@@ -14,16 +14,17 @@ from .effect_scope_gate import (
 )
 from .experiment_lifecycle import experiment_contract_sha256
 
-
 LEGACY_SCHEMA_VERSION = "context.typed-state/v1alpha1"
 SCHEMA_VERSION = "context.typed-state/v2alpha1"
 EXPERIMENT_LIFECYCLE_SCHEMA_VERSION = "context.typed-state/v3alpha1"
 IDEA_REVIEW_SCHEMA_VERSION = "context.typed-state/v4alpha1"
+DURABLE_EFFECT_SCHEMA_VERSION = "context.typed-state/v5alpha1"
 SUPPORTED_SCHEMA_VERSIONS = {
     LEGACY_SCHEMA_VERSION,
     SCHEMA_VERSION,
     EXPERIMENT_LIFECYCLE_SCHEMA_VERSION,
     IDEA_REVIEW_SCHEMA_VERSION,
+    DURABLE_EFFECT_SCHEMA_VERSION,
 }
 
 _DOCUMENT_FIELDS = {
@@ -168,6 +169,7 @@ _EFFECT_FIELDS = {
     "completed_at",
 }
 _EFFECT_FIELDS_V3 = _EFFECT_FIELDS | {"attempt_id"}
+_EFFECT_FIELDS_V5 = _EFFECT_FIELDS_V3 | {"request_sha256"}
 _EXPERIMENT_ATTEMPT_FIELDS = {
     "attempt_id",
     "work_id",
@@ -527,7 +529,10 @@ def validate_typed_state(document: dict[str, Any]) -> None:
     """Validate a complete M2-01 typed state snapshot."""
     if not isinstance(document, dict):
         raise TypedStateError("document fields do not match the contract")
-    if document.get("schema_version") == IDEA_REVIEW_SCHEMA_VERSION:
+    if document.get("schema_version") in {
+        IDEA_REVIEW_SCHEMA_VERSION,
+        DURABLE_EFFECT_SCHEMA_VERSION,
+    }:
         document_fields = _DOCUMENT_FIELDS_V4
     elif document.get("schema_version") == EXPERIMENT_LIFECYCLE_SCHEMA_VERSION:
         document_fields = _DOCUMENT_FIELDS_V3
@@ -583,13 +588,19 @@ def validate_typed_state(document: dict[str, Any]) -> None:
         SCHEMA_VERSION,
         EXPERIMENT_LIFECYCLE_SCHEMA_VERSION,
         IDEA_REVIEW_SCHEMA_VERSION,
+        DURABLE_EFFECT_SCHEMA_VERSION,
     }
     work_fields = _WORK_FIELDS_V2 if canonical_scopes else _WORK_FIELDS_V1
     for item in works:
         _fields(item, work_fields, "work")
     for item in claims:
         _fields(item, _CLAIM_FIELDS, "claim")
-    idea_fields = _IDEA_FIELDS_V4 if schema_version == IDEA_REVIEW_SCHEMA_VERSION else _IDEA_FIELDS
+    idea_fields = (
+        _IDEA_FIELDS_V4
+        if schema_version
+        in {IDEA_REVIEW_SCHEMA_VERSION, DURABLE_EFFECT_SCHEMA_VERSION}
+        else _IDEA_FIELDS
+    )
     for item in ideas:
         _fields(item, idea_fields, "idea")
     for item in decisions:
@@ -600,11 +611,15 @@ def validate_typed_state(document: dict[str, Any]) -> None:
         _fields(item, _EVIDENCE_FIELDS, "evidence")
     for item in blockers:
         _fields(item, _BLOCKER_FIELDS, "blocker")
-    effect_fields = (
-        _EFFECT_FIELDS_V3
-        if schema_version in {EXPERIMENT_LIFECYCLE_SCHEMA_VERSION, IDEA_REVIEW_SCHEMA_VERSION}
-        else _EFFECT_FIELDS
-    )
+    if schema_version == DURABLE_EFFECT_SCHEMA_VERSION:
+        effect_fields = _EFFECT_FIELDS_V5
+    elif schema_version in {
+        EXPERIMENT_LIFECYCLE_SCHEMA_VERSION,
+        IDEA_REVIEW_SCHEMA_VERSION,
+    }:
+        effect_fields = _EFFECT_FIELDS_V3
+    else:
+        effect_fields = _EFFECT_FIELDS
     for item in effects:
         _fields(item, effect_fields, "effect")
     for item in experiment_attempts:
@@ -765,7 +780,10 @@ def validate_typed_state(document: dict[str, Any]) -> None:
         idea_evidence = _strings(item["evidence_ids"], "idea.evidence_ids")
         _references(idea_evidence, evidence_by_id, "idea.evidence_ids")
 
-    if schema_version == IDEA_REVIEW_SCHEMA_VERSION:
+    if schema_version in {
+        IDEA_REVIEW_SCHEMA_VERSION,
+        DURABLE_EFFECT_SCHEMA_VERSION,
+    }:
         seen_dedupe_keys: set[str] = set()
         for item in ideas:
             dedupe_key = item["dedupe_key"]
@@ -1205,7 +1223,13 @@ def validate_typed_state(document: dict[str, Any]) -> None:
         if claim_id is not None and claim_id not in claim_by_id:
             raise TypedStateError("effect.claim_id is unknown")
         status = _enum(item["status"], _EFFECT_STATUSES, "effect.status")
-        operation = _string(item["operation"], "effect.operation")
+        _string(item["operation"], "effect.operation")
+        request_sha256 = item.get("request_sha256")
+        if schema_version == DURABLE_EFFECT_SCHEMA_VERSION and request_sha256 is not None and (
+            not isinstance(request_sha256, str)
+            or _SHA256_RE.fullmatch(request_sha256) is None
+        ):
+            raise TypedStateError("effect.request_sha256 must be SHA-256")
         scope = _scope(
             item["scope_ref"], "effect.scope_ref", canonical=canonical_scopes
         )

@@ -43,6 +43,7 @@ def evaluate_idea_capture_gate(
     if not isinstance(snapshot, dict) or snapshot.get("schema_version") not in {
         "context.typed-state/v3alpha1",
         "context.typed-state/v4alpha1",
+        "context.typed-state/v5alpha1",
     }:
         return _deny("typed_state_version")
     project = snapshot.get("project")
