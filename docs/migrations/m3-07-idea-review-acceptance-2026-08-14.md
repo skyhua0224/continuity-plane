@@ -1,15 +1,15 @@
 # M3-07 Idea Review Acceptance
 
-版本：2  
+版本：3  
 日期：2026-08-14  
 状态：verified local-embedded Idea review and correction contract
 
 ```yaml
 document_id: context.m3-07-idea-review-acceptance
-document_revision: 2
+document_revision: 3
 change_type: evidence
-authority_ref: verification-run://repository/m3-07-idea-review-v2
-supersedes: context.document://docs-migrations-m3-07-idea-review-acceptance-2026-08-14/revision/1
+authority_ref: verification-run://repository/m3-07-idea-review-v3
+supersedes: context.document://docs-migrations-m3-07-idea-review-acceptance-2026-08-14/revision/2
 affected_tasks: [M3-07, M3-08, M5-03, M5-06, M6-02, M8-02]
 next_review: M3-08
 ```
@@ -55,9 +55,9 @@ Idea 操作不改变 active Work、Claim、path ownership 或 effect watermark�
 | unauthorized protected writes | `0` |
 | terminal revival | `0` |
 | unverified release | `0` |
-| total p50 | `12.452181 ms` |
-| total p95 | `12.765558 ms` |
-| total max | `14.286655 ms` |
+| total p50 | `20.608043 ms` |
+| total p95 | `20.793106 ms` |
+| total max | `21.304399 ms` |
 
 Receipt 通过 `context.idea-review-benchmark/v1alpha1` strict schema；provenance 固定 Idea review、State MCP、Event reducer、route/effect gates、Typed State、SQLite、registry、v4 与 v2 schema 以及 benchmark runner 的 SHA-256。每个样本比较完整 execution authority fingerprint，验证 Idea 操作没有改变 active Work、Claim、Decision、Constraint、Evidence、Blocker、Effect、Experiment ledger 或 canonical scope。
 
@@ -68,7 +68,7 @@ Receipt 通过 `context.idea-review-benchmark/v1alpha1` strict schema；provenan
 ## 复现
 
 ```text
-.venv/bin/python tools/run_idea_review_benchmark.py --samples 40 --observed-at 2026-08-14T18:00:00+08:00 --output experiments/routing/m3-07-idea-review-results.json
+.venv/bin/python tools/run_idea_review_benchmark.py --samples 40 --observed-at 2026-08-14T10:00:00+08:00 --output experiments/routing/m3-07-idea-review-results.json
 .venv/bin/python tools/run_idea_continuity_benchmark.py --samples 40 --observed-at 2026-08-14T08:45:00+08:00 --output experiments/routing/m3-06-idea-continuity-results.json
 .venv/bin/python -m unittest tests.test_m3_07_idea_review tests.test_m3_07_idea_review_benchmark -q
 .venv/bin/python -m unittest tests.test_m3_06_idea_continuity tests.test_m2_05_state_mcp tests.test_m2_09_sqlite_state_store tests.test_m2_09_sqlite_benchmark tests.test_m3_03_route_apply -q

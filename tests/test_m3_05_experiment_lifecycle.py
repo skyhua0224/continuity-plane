@@ -1659,7 +1659,7 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
         }
         self.assertEqual(
             entries["context.typed-state"]["current_wire_version"],
-            "context.typed-state/v4alpha1",
+            "context.typed-state/v5alpha1",
         )
         self.assertIn(
             "context.typed-state/v3alpha1",
@@ -1711,7 +1711,8 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
                 definition = schemas["context.typed-state"]["$defs"][object_name]
                 self.assertFalse(definition["additionalProperties"])
                 self.assertEqual(
-                    set(definition["required"]), set(definition["properties"])
+                    set(definition["required"]),
+                    set(definition["properties"]),
                 )
         attempt_request = {
             "schema_version": "context.experiment-attempt-request/v1alpha1",

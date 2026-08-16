@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schemas/m8-01/durable-operation-real-crash-fixture.schema.json",
+  "title": "Context Control Plane Real Authority Crash Fixture Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "phase", "operation_sha256", "history_phases",
+    "authority_backend", "checkpoint_backend", "state_revision", "state_event_count",
+    "effect_state", "apply_attempts", "duplicate_effects", "semantic_effects", "physical_effects",
+    "intent_commits", "state_commits"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.durable-operation-real-crash-fixture/v1alpha1"},
+    "phase": {"const": "terminal"},
+    "operation_sha256": {"$ref": "#/$defs/sha256"},
+    "history_phases": {
+      "type": "array", "minItems": 6, "maxItems": 64,
+      "items": {"enum": ["prepared", "intent-committed", "effect-in-flight", "outcome-unknown", "effect-settled", "response-committed", "terminal", "quarantined"]}
+    },
+    "authority_backend": {"const": "state-mcp-sqlite"},
+    "checkpoint_backend": {"const": "content-addressed-local"},
+    "state_revision": {"const": 10},
+    "state_event_count": {"const": 3},
+    "effect_state": {"const": "succeeded"},
+    "apply_attempts": {"enum": [1, 2]},
+    "duplicate_effects": {"enum": [0, 1]},
+    "semantic_effects": {"const": 1},
+    "physical_effects": {"const": 1},
+    "intent_commits": {"const": 1},
+    "state_commits": {"const": 1}
+  },
+  "allOf": [{"oneOf": [
+    {"properties": {"apply_attempts": {"const": 1}, "duplicate_effects": {"const": 0}}},
+    {"properties": {"apply_attempts": {"const": 2}, "duplicate_effects": {"const": 1}}}
+  ]}],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

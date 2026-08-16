@@ -19,10 +19,10 @@
   "measurement": {
     "dedupe_convergence_rate_millionths": 1000000,
     "events_per_run": 4,
-    "max_total_ms": 27.648858,
+    "max_total_ms": 21.304399,
     "occurrence_retention_rate_millionths": 1000000,
-    "p50_total_ms": 13.958635,
-    "p95_total_ms": 21.476441,
+    "p50_total_ms": 20.608043,
+    "p95_total_ms": 20.793106,
     "packet_exclusion_rate_millionths": 1000000,
     "samples": 40,
     "successful_runs": 40,
@@ -34,21 +34,21 @@
   "provenance": {
     "benchmark_schema_sha256": "18e614f9f2093519a422476cf40187ddfbe3327b73418fe251fac17c1cd4d3a3",
     "benchmark_sha256": "d8e86b4fa98c985af7f4e4f49c2b507f2ff3c4b414ac9200039ebfd7be33950e",
-    "effect_scope_gate_sha256": "4b01d9ee1ed69e2a1cc97e1b909affb661926fee4f4ba3f97abc15ed892cc039",
+    "effect_scope_gate_sha256": "c11f6e15511386aeae3ab1618b9725de92e903d30d144673c76df8633a599ac6",
     "idea_capture_schema_sha256": "aa4533a0458172d520dc3acdae5f0da08f597e54fe6737a72308039a2a12c7b8",
     "idea_event_schema_sha256": "f47ebc466c27af26e6c44407a105102337b3aa07ccc972178db56c869c0369d0",
     "idea_review_schema_sha256": "798f863207a84d51c2961f27fe44628a9cbf07d00d3a14bada3c640ed3348788",
-    "implementation_sha256": "094f645c8ee1f9499e7f02c43d30fd986f09ce8e9d47ac2324ef1b3a03f17a67",
+    "implementation_sha256": "b729df3418371f03e5d9e257742f331fd2a5e92a28d2328539d1959b5da6d97c",
     "protection_schema_sha256": "49a488b75a8566e06e73af78d635f1e07ea8eb708317049ad316de6aad4fbf0b",
-    "registry_sha256": "2e333ef08d1c0a47fd766465cbf1283f0199d59aaa4731caaf9efd90c1b138d2",
+    "registry_sha256": "02ba83c80c090571204ec33e5c08a547da672d3e87cfcdc66159e554f0267865",
     "release_schema_sha256": "cd93ca90c8d2030b630a30211b2c394c38f3530e8b9636c6e128c0135de44244",
-    "route_apply_sha256": "22d29a398937184f2baa43a7c3bd73a523ce8635e526defab9d9800d0ed258df",
+    "route_apply_sha256": "e7a585f3c9a2f7cda04b30c22d9a5f382c16ece874f71d7c6b5351d6f2f9f9dd",
     "runner_sha256": "15a03ec96d1ffdfe097014d726a62f51c8ea8ab65d48768fbe003853e95205d2",
-    "sqlite_state_store_sha256": "5dbb5330c83cfe6cef52a787497d7aa817e64e5c2e7e33cb754f104125ebf808",
-    "state_events_sha256": "1080a48bcc3cf2ff28fd5e301f21ea2689ccf7c73c75da9c0e067256f602e6aa",
-    "state_mcp_sha256": "4cd8ccb87b88e382ec2293d60b738546ceb22a2f11a4d7ff4a9cc8bb45eb57e7",
+    "sqlite_state_store_sha256": "69d179c7272c30c7a89af1c1a23bb2dc81c661fa08cf9a361c52395f397b49a0",
+    "state_events_sha256": "c9101dcddce7848bca17496f3b95375bc1c93e0ee4473850aa7e35e273218f13",
+    "state_mcp_sha256": "d27012ceba1ae410da2b82f131be720c59e4fa22c2c67f59779f9e218348cf0b",
     "typed_state_schema_sha256": "4b4917ed4c18e6298224cd92accde48e5af7d4c5ab98cd0cf9bf68c85e209f8a",
-    "typed_state_sha256": "e2c90c68983381d4fdf2757453904c7eddcfcd7388d03fb516e6acfb8504af77"
+    "typed_state_sha256": "1ac92ffa9eca7b38cf1d09b5d3e3e519c38098dc4bc89ec9df6fb8025909f2c8"
   },
   "schema_version": "context.idea-review-benchmark/v1alpha1"
 }

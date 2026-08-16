@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m8-01/deepseek-checkpoint-receipt.schema.json",
+  "title": "DeepSeek Checkpoint Fixture Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "fixture_id",
+    "generated_at",
+    "reference_id",
+    "source_revision",
+    "source_tree",
+    "source_test_path",
+    "source_test_blob_sha256",
+    "report_sha256",
+    "node_version",
+    "package_manager",
+    "platform",
+    "test_suites",
+    "checkpoint_fixture_runs",
+    "passed_tests",
+    "failed_tests",
+    "skipped_tests",
+    "sigkill_count",
+    "recovery_passes",
+    "signals",
+    "external_provider_invocations",
+    "state_write_authority",
+    "provider_native_authority",
+    "receipt_sha256"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "context.deepseek-checkpoint-receipt/v1alpha1"
+    },
+    "fixture_id": {
+      "const": "fixture/m8-01/deepseek-checkpoint-crash-recovery/v1"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "reference_id": {
+      "const": "deepseek-ai-deepseek-harness"
+    },
+    "source_revision": {
+      "const": "47f943859bef60e4160492346772ded9b24f765a"
+    },
+    "source_tree": {
+      "const": "f904efab9ef435201d6ba4da88a34d6366568272"
+    },
+    "source_test_path": {
+      "const": "packages/session/session-checkpoint-policy/tests/crash-recovery.e2e.ts"
+    },
+    "source_test_blob_sha256": {
+      "const": "f26537de8fe8905b3fc57bec221c1428145a844f90812fe427ece64abaa248de"
+    },
+    "report_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "node_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "package_manager": {
+      "const": "pnpm@11.7.0"
+    },
+    "platform": {
+      "enum": ["linux", "darwin"]
+    },
+    "test_suites": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "checkpoint_fixture_runs": {
+      "const": 2
+    },
+    "passed_tests": {
+      "const": 2
+    },
+    "failed_tests": {
+      "const": 0
+    },
+    "skipped_tests": {
+      "const": 0
+    },
+    "sigkill_count": {
+      "const": 2
+    },
+    "recovery_passes": {
+      "const": 2
+    },
+    "signals": {
+      "const": ["request-interrupted", "TOOL_OUTCOME_UNKNOWN"]
+    },
+    "external_provider_invocations": {
+      "const": 0
+    },
+    "state_write_authority": {
+      "const": false
+    },
+    "provider_native_authority": {
+      "const": false
+    },
+    "receipt_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}

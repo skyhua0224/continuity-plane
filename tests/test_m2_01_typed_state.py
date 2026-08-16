@@ -30,10 +30,12 @@ class M201TypedStateTests(unittest.TestCase):
         )
         schema = json.loads((self.root / entry["artifact_path"]).read_text(encoding="utf-8"))
 
-        self.assertEqual(entry["current_wire_version"], "context.typed-state/v4alpha1")
+        self.assertEqual(entry["current_wire_version"], "context.typed-state/v5alpha1")
         self.assertIn("context.typed-state/v1alpha1", entry["supported_wire_versions"])
         self.assertIn("context.typed-state/v2alpha1", entry["supported_wire_versions"])
         self.assertIn("context.typed-state/v3alpha1", entry["supported_wire_versions"])
+        self.assertIn("context.typed-state/v4alpha1", entry["supported_wire_versions"])
+        self.assertIn("context.typed-state/v5alpha1", entry["supported_wire_versions"])
         self.assertEqual(schema["properties"]["schema_version"]["const"], entry["current_wire_version"])
         self.assertFalse(schema["additionalProperties"])
         for object_name in (
@@ -74,6 +76,15 @@ class M201TypedStateTests(unittest.TestCase):
                 restored = round_trip_typed_state(document)
                 self.assertEqual(restored, document)
                 self.assertEqual(canonical_state_bytes(restored), encoded)
+
+    def test_published_v1_effect_rejects_an_unversioned_digest_field(self):
+        document = copy.deepcopy(self.cases["solo-active-work"])
+        document["effects"][0]["request_sha256"] = "a" * 64
+
+        with self.assertRaisesRegex(
+            TypedStateError, "effect fields do not match the contract"
+        ):
+            validate_typed_state(document)
 
     def test_active_work_projection_must_match_work_status(self):
         broken = copy.deepcopy(self.cases["solo-active-work"])

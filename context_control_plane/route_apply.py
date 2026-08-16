@@ -291,7 +291,8 @@ def _commit_route_event(store: Any, *, project_id: str, current: dict[str, Any],
         task_transition=transition,
         schema_version=(
             EVENT_SCHEMA_VERSION_V4
-            if current.get("schema_version") == "context.typed-state/v4alpha1"
+            if current.get("schema_version")
+            in {"context.typed-state/v4alpha1", "context.typed-state/v5alpha1"}
             else None
         ),
     )
@@ -582,7 +583,10 @@ def apply_route(
             changes.append(copy.deepcopy(change))
         status = "applied"
 
-    if current.get("schema_version") == "context.typed-state/v4alpha1":
+    if current.get("schema_version") in {
+        "context.typed-state/v4alpha1",
+        "context.typed-state/v5alpha1",
+    }:
         correction_gate = evaluate_correction_write_gate(current, changes)
         if correction_gate["decision"] != "allow":
             raise RouteApplyError("route write denied by active correction protection")

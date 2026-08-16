@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schema/context.typed-state-v4-v5-migration-receipt/v1alpha1",
+  "title": "Context Control Plane typed state v4 to v5 migration receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "migration_id",
+    "project_id",
+    "direction",
+    "from_schema_version",
+    "to_schema_version",
+    "source_revision",
+    "source_event_head",
+    "source_snapshot_sha256",
+    "target_snapshot_sha256",
+    "algorithm_id",
+    "algorithm_sha256",
+    "registry_digest",
+    "authorization_ref",
+    "status",
+    "migrated_at",
+    "receipt_sha256"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "context.typed-state-v4-v5-migration-receipt/v1alpha1"
+    },
+    "migration_id": {"$ref": "#/$defs/identifier"},
+    "project_id": {"$ref": "#/$defs/identifier"},
+    "direction": {"enum": ["upgrade", "rollback"]},
+    "from_schema_version": {
+      "enum": ["context.typed-state/v4alpha1", "context.typed-state/v5alpha1"]
+    },
+    "to_schema_version": {
+      "enum": ["context.typed-state/v4alpha1", "context.typed-state/v5alpha1"]
+    },
+    "source_revision": {"type": "integer", "minimum": 0},
+    "source_event_head": {
+      "oneOf": [
+        {"$ref": "#/$defs/eventHead"},
+        {"type": "null"}
+      ]
+    },
+    "source_snapshot_sha256": {"$ref": "#/$defs/sha256"},
+    "target_snapshot_sha256": {"$ref": "#/$defs/sha256"},
+    "algorithm_id": {
+      "const": "context.typed-state.effect-request-digest.v4-v5/v1"
+    },
+    "algorithm_sha256": {"$ref": "#/$defs/sha256"},
+    "registry_digest": {"$ref": "#/$defs/sha256"},
+    "authorization_ref": {"$ref": "#/$defs/reference"},
+    "status": {"const": "committed"},
+    "migrated_at": {"type": "string", "format": "date-time"},
+    "receipt_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "direction": {"const": "upgrade"},
+        "from_schema_version": {"const": "context.typed-state/v4alpha1"},
+        "to_schema_version": {"const": "context.typed-state/v5alpha1"}
+      }
+    },
+    {
+      "properties": {
+        "direction": {"const": "rollback"},
+        "from_schema_version": {"const": "context.typed-state/v5alpha1"},
+        "to_schema_version": {"const": "context.typed-state/v4alpha1"}
+      }
+    }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"
+    },
+    "reference": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2048,
+      "pattern": "^[^\\r\\n\\u0000]+$"
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "eventHead": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sequence_no", "event_sha256"],
+      "properties": {
+        "sequence_no": {"type": "integer", "minimum": 1},
+        "event_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

@@ -1,9 +1,9 @@
 # Verified State Evidence Index
 
-版本：13
+版本：14
 日期：2026-08-16  
 状态：generated evidence projection  
-source governance revision：58
+source governance revision：59
 state write authority：false
 
 ## 已验收任务
@@ -53,6 +53,7 @@ state write authority：false
 | M5-07 | [`m5-07-dogfood-emitter-acceptance-2026-08-15.md`](../migrations/m5-07-dogfood-emitter-acceptance-2026-08-15.md) |
 | M5-08 | [`m5-08-durable-continuation-acceptance-2026-08-15.md`](../migrations/m5-08-durable-continuation-acceptance-2026-08-15.md) |
 | M8-04 | [`m8-04-context-trace-acceptance-2026-08-15.md`](../migrations/m8-04-context-trace-acceptance-2026-08-15.md) |
+| M8-01 | [`m8-01-durable-operation-acceptance-2026-08-16.md`](../migrations/m8-01-durable-operation-acceptance-2026-08-16.md) |
 | M4-10 | [`m4-10-external-skill-source-acceptance-2026-08-12.md`](../migrations/m4-10-external-skill-source-acceptance-2026-08-12.md) |
 | M6-01 | [`m6-retrieval-recall-acceptance-2026-08-15.md`](../migrations/m6-retrieval-recall-acceptance-2026-08-15.md#m6-01-bounded-retrieval-route) |
 | M6-02 | [`m6-retrieval-recall-acceptance-2026-08-15.md`](../migrations/m6-retrieval-recall-acceptance-2026-08-15.md#m6-02-codegraph-verification) |

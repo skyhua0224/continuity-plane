@@ -1999,7 +1999,11 @@ class M307IdeaReviewTests(unittest.TestCase):
         }
         self.assertEqual(
             entries["context.typed-state"]["current_wire_version"],
+            "context.typed-state/v5alpha1",
+        )
+        self.assertIn(
             "context.typed-state/v4alpha1",
+            entries["context.typed-state"]["supported_wire_versions"],
         )
         self.assertEqual(
             entries["context.idea-event"]["current_wire_version"],
@@ -2034,7 +2038,13 @@ class M307IdeaReviewTests(unittest.TestCase):
             schemas[schema_id] = json.loads(schema_path.read_text())
             Draft202012Validator.check_schema(schemas[schema_id])
             self.assertFalse(schemas[schema_id]["additionalProperties"])
-        Draft202012Validator(schemas["context.typed-state"]).validate(self.v4_snapshot())
+        from context_control_plane.durable_state_migration import (
+            migrate_typed_state_v4_to_v5,
+        )
+
+        Draft202012Validator(schemas["context.typed-state"]).validate(
+            migrate_typed_state_v4_to_v5(self.v4_snapshot())
+        )
 
     def test_persisted_v2_event_resolves_and_validates_against_v4_schema(self):
         root = Path(__file__).parents[1]

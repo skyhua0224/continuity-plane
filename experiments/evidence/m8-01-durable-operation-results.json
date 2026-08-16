@@ -1,0 +1,38 @@
+{
+  "applied_effects": 180,
+  "authority_backend": "state-mcp-sqlite",
+  "authority_intent_commits": 180,
+  "authority_state_commits": 180,
+  "benchmark_id": "benchmark-m8-01-86248fb025fc4d43a2e7975a",
+  "checkpoint_backend": "content-addressed-local",
+  "crash_points": [
+    "after-prepared",
+    "after-intent-commit",
+    "after-intent-record",
+    "after-effect-start",
+    "after-external-effect",
+    "after-effect-settlement",
+    "after-state-commit",
+    "after-response-record",
+    "after-terminal"
+  ],
+  "deduplicated_effect_invocations": 20,
+  "deduplicated_provider_invocations": 0,
+  "duplicate_semantic_effects": 0,
+  "effect_adapter_invocations": 200,
+  "generated_at": "2026-08-16T15:36:15+08:00",
+  "provider_invocations": 0,
+  "provider_native_authority": false,
+  "provider_oracle_fixture_sha256": "763caf5506db6e1184c007df74b99e5c295e72d74eb9909c3fdb4644a002847b",
+  "receipt_sha256": "cfc0b6003fa67f51ce42c67c25f6855640d08290dd4fc5103e953c620c058b0b",
+  "restore_latency_ms": {
+    "max": 130.937087,
+    "p50": 82.244484,
+    "p95": 105.039451
+  },
+  "samples": 20,
+  "scenario_count": 180,
+  "schema_version": "context.durable-operation-benchmark/v1alpha1",
+  "state_write_authority": false,
+  "terminal_recoveries": 180
+}

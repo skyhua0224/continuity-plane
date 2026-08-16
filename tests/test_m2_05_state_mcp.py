@@ -174,8 +174,6 @@ class M205StateMCPContractTests(unittest.TestCase):
         }
 
     def test_contract_schema_is_registered_hashed_and_strict(self):
-        schema_path = self.root / "schemas" / "m2-05" / "state-mcp.schema.json"
-        schema = json.loads(schema_path.read_text(encoding="utf-8"))
         registry = yaml.safe_load(
             (self.root / "schemas" / "registry.yaml").read_text(encoding="utf-8")
         )
@@ -184,8 +182,10 @@ class M205StateMCPContractTests(unittest.TestCase):
             for item in registry["schemas"]
             if item["schema_id"] == "context.state-mcp"
         )
+        schema_path = self.root / entry["artifact_path"]
+        schema = json.loads(schema_path.read_text(encoding="utf-8"))
 
-        self.assertEqual(entry["current_wire_version"], "context.state-mcp/v1alpha1")
+        self.assertEqual(entry["current_wire_version"], "context.state-mcp/v2alpha1")
         self.assertEqual(
             entry["content_sha256"],
             hashlib.sha256(schema_path.read_bytes()).hexdigest(),
@@ -194,7 +194,8 @@ class M205StateMCPContractTests(unittest.TestCase):
             "read_request",
             "commit_request",
             "claim_request",
-            "effect_request",
+            "effect_request_v1",
+            "effect_request_v2",
             "effect_gate_request",
             "effect_gate_result",
             "response",
@@ -402,6 +403,18 @@ class M205StateMCPContractTests(unittest.TestCase):
                         ],
                     )
                     continue
+                if item["name"] == "context.state.effect":
+                    self.assertEqual(
+                        [
+                            variant["properties"]["schema_version"]["const"]
+                            for variant in item["inputSchema"]["oneOf"]
+                        ],
+                        [
+                            "context.state-mcp-request/v1alpha1",
+                            "context.state-mcp-request/v2alpha1",
+                        ],
+                    )
+                    continue
                 self.assertEqual(
                     item["inputSchema"]["properties"]["schema_version"]["const"],
                     schema_versions.get(
@@ -415,9 +428,21 @@ class M205StateMCPContractTests(unittest.TestCase):
             item for item in state_mcp_tool_definitions()
             if item["name"] == "context.state.effect"
         )["inputSchema"]
-        for field in ("effect_key", "work_id", "claim_id", "operation", "scope_ref"):
-            with self.subTest(field=field):
-                self.assertNotIn("null", definition["properties"][field].get("type", []))
+        for variant in definition["oneOf"]:
+            for field in (
+                "effect_key",
+                "work_id",
+                "claim_id",
+                "operation",
+                "scope_ref",
+            ):
+                with self.subTest(
+                    version=variant["properties"]["schema_version"]["const"],
+                    field=field,
+                ):
+                    self.assertNotIn(
+                        "null", variant["properties"][field].get("type", [])
+                    )
 
     def test_effect_action_rejects_an_invalid_result_ref_before_backend_access(self):
         requests = (

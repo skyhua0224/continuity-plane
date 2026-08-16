@@ -1,15 +1,15 @@
 # M3-06 Idea Continuity Acceptance
 
-版本：3  
+版本：4  
 日期：2026-08-14  
 状态：verified local-embedded candidate Idea contract
 
 ```yaml
 document_id: context.m3-06-idea-continuity-acceptance
-document_revision: 3
+document_revision: 4
 change_type: evidence
-authority_ref: verification-run://repository/m3-06-idea-continuity-v2
-supersedes: context.document://docs-migrations-m3-06-idea-continuity-acceptance-2026-08-14/revision/2
+authority_ref: verification-run://repository/m3-06-idea-continuity-v3
+supersedes: context.document://docs-migrations-m3-06-idea-continuity-acceptance-2026-08-14/revision/3
 affected_tasks: [M3-06, M3-07, M5-06, M5-08]
 next_review: M3-07
 ```
@@ -43,9 +43,9 @@ M3-06 提供 `context.idea.capture`。`capture-and-continue`、`park` 和 `propo
 | external services | `0` |
 | events per run | `1` |
 | ideas per run | `1` |
-| total p50 | `3.051447 ms` |
-| total p95 | `4.198319 ms` |
-| total max | `4.881152 ms` |
+| total p50 | `4.801306 ms` |
+| total p95 | `4.878556 ms` |
+| total max | `5.455932 ms` |
 
 Receipt provenance 固定 Idea gate、State MCP、Event reducer、Typed State、SQLite StateStore、registry、三个 M3-06 schema 和 benchmark runner 的 SHA-256。每个 run 比较完整执行权威投影，包含 Work、Claim authority、Decision、Constraint、Evidence、Blocker、Effect、Experiment ledger 与除 revision/timestamp 外的 Project 字段；receipt 通过 `context.idea-continuity-benchmark/v1alpha1` strict schema 及独立来源复验。
 

@@ -1,6 +1,6 @@
 # Context Control Plane Status
 
-版本：revision 58  
+版本：revision 59  
 日期：2026-08-16  
 canonical plan：`MASTER.md`
 
@@ -9,9 +9,9 @@ canonical plan：`MASTER.md`
 | 字段 | 值 |
 |---|---|
 | 当前 Campaign | M8 多协作者与耐久执行 |
-| active work | M8-01：DBOS checkpoint/effect workflow 与 harness crash fixture（🟡） |
-| next action | 定义 local-embedded durable operation、intent/effect/settlement crash matrix 和 DeepSeek/Pi harness 对照 fixture |
-| hard blocker | 当前叶无；M3-01 的 Windows/macOS 原生 live fixture 保持 conditional |
+| active work | M8-02：共享 Work Ledger、lease、claim、scope ownership、heartbeat 和 expiry（🟡） |
+| next action | 固定 shared Work/claim/lease/heartbeat/expiry 合同与 dispatch-time revocation gate |
+| hard blocker | 无；M3-01 的 Windows/macOS 原生 live fixture 保持 conditional |
 | repository mode | research / shadow pilot |
 | production state | local-embedded implemented / shadow pilot；shared production pilot planned |
 
@@ -20,22 +20,18 @@ canonical plan：`MASTER.md`
 | 对象 | 状态 |
 |---|---|
 | Evidence index | [`docs/reports/verified-state.md`](docs/reports/verified-state.md) |
-| Documentation lifecycle | M0-10 verified；STATUS reduction `76.4291%`；MASTER section reduction `68.9812%`；High/Medium review 0 |
+| Documentation lifecycle | M0-10 verified；STATUS reduction `79.4384%`；MASTER section reduction `68.9812%`；High/Medium review 0 |
 | Git admission | M0-11 offline contract `26/26`；repository verifier 通过 |
 | Skill adapters | M4-07/08/10 done；external=0 |
 | Prior gates | M3-07/M3-08/M4-09 verified；replay and quarantine gates pass；details in evidence index |
 | M5-01..05 | all verified；packet/checkpoint/canary/bounded/accounting receipts pass；provider metrics remain unavailable where unexported |
 | M5-06..08 | all verified；replay `1000/1000`；Idea faults `6000/6000`；dogfood coverage/veto 100%；continuation fields/faults `10000/10000` |
 | M8-04 trace | `1000/1000`；`8000` events；eight-family coverage 100%；OTel unavailable `1000/1000` |
+| M8-01 durability | verified；focused `78/78`；Typed State v5/State MCP v2 与 v4↔v5 migration/rollback 门通过；9 crash points `180/180` recovered；semantic effects `180`，adapter calls `200`，deduplications `20`，duplicates `0`；restore p95 `105.039451 ms`；DeepSeek `2/2` real `SIGKILL` recovery |
 | M6 retrieval/recall | all verified；五类 route `1000/1000` replay iterations、`5000/5000` decisions；quality/provenance `1.0`；duplicate read bytes `-50%`；reference conformance memory `0.6 -> 0.9`；safety veto `0`；external calls `0` |
-| M7-01 provenance | verified；bearing candidate/expiry/digest faults fail closed；committed coverage `1.0` |
-| M7-02 claim-evidence | verified；`1000/1000` replay；750/750 负向样本拒绝；false allow/deny `0`；State/completion authority `0` |
-| M7-03 Verification Profile | verified；AlkaidLab 与 `portable-python-library`；12/12 focused；`1000/1000` replay；false allow/deny `0/0`；authority `0` |
-| M7-04 patch A/B | verified local contract；25/25 focused；`1000/1000` replay；false admit/reject `0/0`；9 strict schemas；真实 provider A/B 保留 M10 |
-| M7-05 affected tests | verified；21/21 focused；`1000/1000` replay；漏测/unsafe/fallback/replay mismatch `0`；本仓 wall time reduction `97.13%` |
-| M7-06 ReferenceWatcher | verified offline；22/22 focused；`1000/1000` replay；change stale/quarantine `400/400`；adversarial reject `2600/2600`；unreviewed completion `0/800` |
-| Repository verification | full `1175` passed / `30` optional-environment skipped；focused M7-01/M7-02/schema `40/40`；repository verifier passed |
-| Governance authority | `MASTER.md` revision 58 |
+| M7 evidence/quality | M7-01..06 verified；false authority/admission/test omission `0`；affected-test wall time reduction `97.13%`；详见 Evidence index |
+| Repository verification | full `1347` passed / `30` optional-environment skipped；focused M8-01 `78/78`；repository verifier passed |
+| Governance authority | `MASTER.md` revision 59 |
 
 ## 恢复入口
 

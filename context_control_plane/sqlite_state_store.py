@@ -7,23 +7,37 @@ import hashlib
 import json
 import re
 import sqlite3
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Callable, Iterator
+from typing import Any
 
+from .durable_state_migration import (
+    MIGRATION_RECEIPT_SCHEMA_VERSION as DURABLE_MIGRATION_RECEIPT_SCHEMA_VERSION,
+)
+from .durable_state_migration import (
+    V5_SCHEMA_VERSION,
+    DurableStateMigrationError,
+    canonical_typed_state_migration_bytes,
+    validate_durable_state_migration_receipt,
+)
+from .idea_review import (
+    MIGRATION_RECEIPT_SCHEMA_VERSION as IDEA_REVIEW_MIGRATION_RECEIPT_SCHEMA_VERSION,
+)
+from .idea_review import (
+    validate_typed_state_v3_to_v4_migration_receipt,
+)
 from .state_events import StateEventError, replay_state_events, validate_state_event
 from .state_store import (
-    StateStoreCapabilityManifest,
     StateStoreBusy,
+    StateStoreCapabilityManifest,
     StateStoreConflict,
     StateStoreError,
     StateStoreIntegrityError,
     StateStoreNotFound,
 )
 from .typed_state import TypedStateError, canonical_state_bytes, validate_typed_state
-from .idea_review import validate_typed_state_v3_to_v4_migration_receipt
-
 
 SQLITE_APPLICATION_ID = 0x43435031
 SQLITE_SCHEMA_VERSION = 2
@@ -51,8 +65,11 @@ class SQLiteStateBusy(SQLiteStateStoreError, StateStoreBusy):
 
 def _validate_snapshot(snapshot: dict[str, Any]) -> None:
     try:
-        validate_typed_state(snapshot)
-    except TypedStateError as exc:
+        if snapshot.get("schema_version") == V5_SCHEMA_VERSION:
+            canonical_typed_state_migration_bytes(snapshot)
+        else:
+            validate_typed_state(snapshot)
+    except (DurableStateMigrationError, TypedStateError) as exc:
         raise SQLiteStateIntegrityError("typed state validation failed") from exc
 
 
@@ -65,10 +82,29 @@ def _validate_event(event: dict[str, Any]) -> None:
 
 def _snapshot_sha256(snapshot: dict[str, Any]) -> str:
     try:
-        canonical = canonical_state_bytes(snapshot)
-    except TypedStateError as exc:
+        canonical = (
+            canonical_typed_state_migration_bytes(snapshot)
+            if snapshot.get("schema_version") == V5_SCHEMA_VERSION
+            else canonical_state_bytes(snapshot)
+        )
+    except (DurableStateMigrationError, TypedStateError) as exc:
         raise SQLiteStateIntegrityError("typed state validation failed") from exc
     return hashlib.sha256(canonical).hexdigest()
+
+
+def _migration_event_head_sha256(receipt: dict[str, Any]) -> str | None:
+    if receipt.get("schema_version") == DURABLE_MIGRATION_RECEIPT_SCHEMA_VERSION:
+        event_head = receipt.get("source_event_head")
+        if not isinstance(event_head, dict):
+            raise SQLiteStateIntegrityError("migration receipt event head is invalid")
+        value = event_head.get("event_sha256")
+    else:
+        value = receipt.get("source_event_head_sha256")
+    if value is not None and (
+        not isinstance(value, str) or re.fullmatch(r"[0-9a-f]{64}", value) is None
+    ):
+        raise SQLiteStateIntegrityError("migration receipt event head is invalid")
+    return value
 
 
 def _json_text(value: dict[str, Any]) -> str:
@@ -688,7 +724,7 @@ class SQLiteStateStore:
             receipt = _json_object(row[6], field="migration receipt")
             durable = (
                 receipt.get("source_revision"),
-                receipt.get("source_event_head_sha256"),
+                _migration_event_head_sha256(receipt),
                 receipt.get("source_snapshot_sha256"),
                 receipt.get("target_snapshot_sha256"),
                 receipt.get("from_schema_version"),
@@ -708,6 +744,8 @@ class SQLiteStateStore:
         expected_event_head_sha256: str | None,
         target_snapshot: dict[str, Any],
         migration_receipt: dict[str, Any],
+        expected_registry_digest: str | None = None,
+        expected_authorization_ref: str | None = None,
     ) -> dict[str, Any]:
         """Atomically advance a stored snapshot across a versioned schema boundary."""
         target_snapshot = copy.deepcopy(target_snapshot)
@@ -715,8 +753,6 @@ class SQLiteStateStore:
         _validate_snapshot(target_snapshot)
         if target_snapshot["project"]["project_id"] != project_id:
             raise SQLiteStateIntegrityError("migration target project_id mismatch")
-        if target_snapshot["project"]["revision"] != expected_revision:
-            raise SQLiteStateIntegrityError("migration target revision mismatch")
         if not isinstance(expected_event_head_sha256, (str, type(None))):
             raise SQLiteStateIntegrityError("migration event head is invalid")
         if (
@@ -742,18 +778,45 @@ class SQLiteStateStore:
                             "migration identity conflicts with durable receipt"
                         )
                     row = connection.execute(
-                        "SELECT snapshot, snapshot_sha256 FROM projects WHERE project_id = ?",
+                        """
+                        SELECT revision, last_sequence, last_event_sha256,
+                               snapshot, snapshot_sha256
+                        FROM projects WHERE project_id = ?
+                        """,
                         (project_id,),
                     ).fetchone()
                     if row is None:
                         raise SQLiteStateNotFound(f"project does not exist: {project_id}")
                     if (
-                        _snapshot_sha256(target_snapshot) != row[1]
-                        or _json_object(row[0], field="snapshot") != target_snapshot
+                        _snapshot_sha256(target_snapshot) != row[4]
+                        or _json_object(row[3], field="snapshot") != target_snapshot
                     ):
                         raise SQLiteStateConflict(
                             "migration receipt target does not match durable snapshot"
                         )
+                    if (
+                        persisted.get("schema_version")
+                        == DURABLE_MIGRATION_RECEIPT_SCHEMA_VERSION
+                    ):
+                        event_head = persisted.get("source_event_head")
+                        if (
+                            row[0] != expected_revision
+                            or row[2] != expected_event_head_sha256
+                            or persisted.get("source_revision") != expected_revision
+                            or event_head
+                            != {"sequence_no": row[1], "event_sha256": row[2]}
+                        ):
+                            raise SQLiteStateConflict(
+                                "migration replay authority does not match durable state"
+                            )
+                        if (
+                            persisted.get("registry_digest") != expected_registry_digest
+                            or persisted.get("authorization_ref")
+                            != expected_authorization_ref
+                        ):
+                            raise SQLiteStateIntegrityError(
+                                "migration replay authorization does not match durable receipt"
+                            )
                     connection.execute("COMMIT")
                     return persisted
 
@@ -771,25 +834,81 @@ class SQLiteStateStore:
                     raise SQLiteStateConflict(
                         f"expected revision {expected_revision}, actual revision {actual_revision}"
                     )
+                if target_snapshot["project"]["revision"] != actual_revision:
+                    raise SQLiteStateIntegrityError("migration target revision mismatch")
                 if actual_head != expected_event_head_sha256:
                     raise SQLiteStateConflict("migration event head does not match current head")
                 source_snapshot = _json_object(source_text, field="snapshot")
                 _validate_snapshot(source_snapshot)
                 if _snapshot_sha256(source_snapshot) != source_hash:
                     raise SQLiteStateIntegrityError("persisted source snapshot hash mismatch")
+                receipt_schema = migration_receipt.get("schema_version")
+                migration_event_head_sha256: str | None
                 try:
-                    validate_typed_state_v3_to_v4_migration_receipt(
-                        migration_receipt,
-                        source=source_snapshot,
-                        target=target_snapshot,
-                    )
+                    if receipt_schema == DURABLE_MIGRATION_RECEIPT_SCHEMA_VERSION:
+                        if (
+                            migration_receipt.get("from_schema_version") == V5_SCHEMA_VERSION
+                            and migration_receipt.get("to_schema_version")
+                            != V5_SCHEMA_VERSION
+                        ):
+                            upgrade_row = connection.execute(
+                                """
+                                SELECT receipt
+                                FROM typed_state_migrations
+                                WHERE project_id = ?
+                                  AND from_schema_version = ?
+                                  AND to_schema_version = ?
+                                """,
+                                (project_id, "context.typed-state/v4alpha1", V5_SCHEMA_VERSION),
+                            ).fetchone()
+                            if upgrade_row is not None:
+                                upgrade_receipt = _json_object(
+                                    upgrade_row[0], field="migration receipt"
+                                )
+                                if (
+                                    source_hash
+                                    != upgrade_receipt.get("target_snapshot_sha256")
+                                    or upgrade_receipt.get("source_event_head")
+                                    != {
+                                        "sequence_no": last_sequence,
+                                        "event_sha256": actual_head,
+                                    }
+                                ):
+                                    raise SQLiteStateIntegrityError(
+                                        "rollback source advanced beyond the upgrade boundary"
+                                    )
+                        validate_durable_state_migration_receipt(
+                            migration_receipt,
+                            source=source_snapshot,
+                            target=target_snapshot,
+                            expected_source_event_head={
+                                "sequence_no": last_sequence,
+                                "event_sha256": actual_head,
+                            },
+                            expected_registry_digest=expected_registry_digest,
+                            expected_authorization_ref=expected_authorization_ref,
+                        )
+                        migration_event_head_sha256 = (
+                            _migration_event_head_sha256(migration_receipt)
+                        )
+                    elif receipt_schema == IDEA_REVIEW_MIGRATION_RECEIPT_SCHEMA_VERSION:
+                        validate_typed_state_v3_to_v4_migration_receipt(
+                            migration_receipt,
+                            source=source_snapshot,
+                            target=target_snapshot,
+                        )
+                        migration_event_head_sha256 = (
+                            _migration_event_head_sha256(migration_receipt)
+                        )
+                    else:
+                        raise ValueError("typed-state migration receipt version is unsupported")
                 except ValueError as exc:
                     raise SQLiteStateIntegrityError(
                         "typed-state migration receipt is invalid"
                     ) from exc
                 if migration_receipt["project_id"] != project_id:
                     raise SQLiteStateIntegrityError("migration receipt project_id mismatch")
-                if migration_receipt["source_event_head_sha256"] != actual_head:
+                if migration_event_head_sha256 != actual_head:
                     raise SQLiteStateIntegrityError("migration receipt event head mismatch")
 
                 try:
@@ -806,7 +925,7 @@ class SQLiteStateStore:
                             project_id,
                             migration_receipt["migration_id"],
                             migration_receipt["source_revision"],
-                            migration_receipt["source_event_head_sha256"],
+                            migration_event_head_sha256,
                             migration_receipt["source_snapshot_sha256"],
                             migration_receipt["target_snapshot_sha256"],
                             migration_receipt["from_schema_version"],
@@ -834,6 +953,8 @@ class SQLiteStateStore:
                 )
                 if updated.rowcount != 1:
                     raise SQLiteStateConflict("project changed during migration")
+                if self._fault_hook is not None:
+                    self._fault_hook("after_migration_snapshot_update")
                 connection.execute("COMMIT")
                 return migration_receipt
             except BaseException:

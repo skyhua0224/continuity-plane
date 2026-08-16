@@ -16,9 +16,9 @@
   "measurement": {
     "baseline": {
       "allowed": 5000,
-      "max_gate_latency_ms": 0.027255,
-      "p50_gate_latency_ms": 0.005548,
-      "p95_gate_latency_ms": 0.005879,
+      "max_gate_latency_ms": 0.295117,
+      "p50_gate_latency_ms": 0.010386,
+      "p95_gate_latency_ms": 0.011266,
       "read_only_denied": 5000,
       "samples": 10000,
       "state_mutations": 0
@@ -26,9 +26,9 @@
     "conflict_loads": [
       {
         "allowed": 0,
-        "max_gate_latency_ms": 0.016998,
-        "p50_gate_latency_ms": 0.008405,
-        "p95_gate_latency_ms": 0.008656,
+        "max_gate_latency_ms": 0.02898,
+        "p50_gate_latency_ms": 0.016358,
+        "p95_gate_latency_ms": 0.018421,
         "pending_effects": 1,
         "read_only_denied": 1000,
         "reason": "effect_scope_conflict",
@@ -36,9 +36,9 @@
       },
       {
         "allowed": 0,
-        "max_gate_latency_ms": 0.956781,
-        "p50_gate_latency_ms": 0.526382,
-        "p95_gate_latency_ms": 0.537702,
+        "max_gate_latency_ms": 1.579736,
+        "p50_gate_latency_ms": 0.546787,
+        "p95_gate_latency_ms": 1.169848,
         "pending_effects": 100,
         "read_only_denied": 1000,
         "reason": "effect_scope_conflict",
@@ -46,9 +46,9 @@
       },
       {
         "allowed": 0,
-        "max_gate_latency_ms": 12.784328,
-        "p50_gate_latency_ms": 5.290401,
-        "p95_gate_latency_ms": 10.067423,
+        "max_gate_latency_ms": 11.85505,
+        "p50_gate_latency_ms": 5.324557,
+        "p95_gate_latency_ms": 11.514634,
         "pending_effects": 1000,
         "read_only_denied": 1000,
         "reason": "effect_scope_conflict",
@@ -60,7 +60,7 @@
   "provenance": {
     "benchmark_sha256": "851b95ffd24260963a2f4f3804b66f26e40a094e724dabc1815a9f8ac7be6a2c",
     "fixture_sha256": "9be7887519cfed4466436ea6714d48e399d7023281729b3bd8c78cb3a086beab",
-    "implementation_sha256": "4b01d9ee1ed69e2a1cc97e1b909affb661926fee4f4ba3f97abc15ed892cc039"
+    "implementation_sha256": "c11f6e15511386aeae3ab1618b9725de92e903d30d144673c76df8633a599ac6"
   },
   "schema_version": "context.effect-scope-benchmark/v1alpha1"
 }

@@ -1,14 +1,15 @@
 # M5-06 Idea Return Packet Acceptance
 
-Version: 1  
+Version: 2  
 Date: 2026-08-15  
 Status: verified local-embedded shadow adapter
 
 ```yaml
 document_id: context.m5-06-idea-return-packet-acceptance
-document_revision: 1
+document_revision: 2
 change_type: evidence
-authority_ref: verification-run://repository/m5-06-idea-return-packet-v1
+authority_ref: verification-run://repository/m5-06-idea-return-packet-v2
+supersedes: context.document://docs-migrations-m5-06-idea-return-packet-acceptance-2026-08-15/revision/1
 affected_tasks: [M3-03, M3-06, M3-07, M5-03, M5-06, M5-07, M5-08]
 next_review: M5-07
 ```
@@ -43,7 +44,7 @@ self-issued receipt cannot open the return gate.
 | authority | candidate execution, candidate State write, packet State write and external effect authority violations `0` |
 | fault injection | current active Work, checkpoint binding, canary return Work, MASTER digest, registry digest and return revision faults rejected `6000/6000` |
 | packet bound | fixed fixture packet `1983 B`, below the `8192 B` maximum |
-| latency | p50 `0.407976 ms`; p95 `0.721222 ms`; max `0.792974 ms` |
+| latency | p50 `0.404141 ms`; p95 `0.416519 ms`; max `0.557485 ms` |
 | external services | `0` |
 | receipt | [`m5-06-idea-return-packet-results.json`](../../experiments/routing/m5-06-idea-return-packet-results.json) passes strict benchmark, schema and provenance validation |
 

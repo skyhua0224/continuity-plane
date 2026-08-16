@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schemas/m8-01/durable-checkpoint-adapter.schema.json",
+  "title": "Context Control Plane Durable Checkpoint Adapter Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "adapter_id", "adapter_version", "source_ref", "receipt_schema_version", "state_write_authority", "provider_native_authority"],
+  "properties": {
+    "schema_version": {"const": "context.durable-checkpoint-adapter/v1alpha1"},
+    "adapter_id": {"$ref": "#/$defs/id"},
+    "adapter_version": {"$ref": "#/$defs/semver"},
+    "source_ref": {"$ref": "#/$defs/reference"},
+    "receipt_schema_version": {"const": "context.durable-checkpoint-gate/v1alpha1"},
+    "state_write_authority": {"const": false},
+    "provider_native_authority": {"const": false}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"},
+    "semver": {"type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"},
+    "reference": {"type": "string", "minLength": 1, "maxLength": 2048, "pattern": "^[^\\r\\n\\u0000]+$"}
+  }
+}

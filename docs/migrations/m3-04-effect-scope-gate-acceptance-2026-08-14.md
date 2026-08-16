@@ -1,15 +1,15 @@
 # M3-04 Effect Scope Gate Acceptance
 
-版本：2  
+版本：3  
 日期：2026-08-14  
 状态：verified local-embedded effect authorization contract
 
 ```yaml
 document_id: context.m3-04-effect-scope-gate-acceptance
-document_revision: 2
+document_revision: 3
 change_type: evidence
 authority_ref: verification-run://repository/current-head
-supersedes: context.document://docs-migrations-m3-04-effect-scope-gate-acceptance-2026-08-14/revision/1
+supersedes: context.document://docs-migrations-m3-04-effect-scope-gate-acceptance-2026-08-14/revision/2
 affected_tasks: [M3-04, M4-09, M8-02]
 next_review: M3-05
 ```
@@ -36,7 +36,7 @@ State MCP request/response v1 保持 strict error envelope，并公开 `context.
 
 ## 量化结果
 
-[`m3-04-effect-scope-verification.json`](../../experiments/routing/m3-04-effect-scope-verification.json) 记录 baseline 10,000 个本地 gate evaluation：5,000 allow、5,000 out-of-scope read-only deny、state mutation 0。Linux x86_64 / CPython 3.14.6 baseline p50 为 `0.005548 ms`，p95 为 `0.005879 ms`。pending-effect conflict load 各 1,000 个样本：cardinality `1/100/1000` 的 p95 为 `0.008656/0.537702/10.067423 ms`，每组 `1,000/1,000` read-only deny；外部服务为 0。
+[`m3-04-effect-scope-verification.json`](../../experiments/routing/m3-04-effect-scope-verification.json) 记录 baseline 10,000 个本地 gate evaluation：5,000 allow、5,000 out-of-scope read-only deny、state mutation 0。Linux x86_64 / CPython 3.14.6 baseline p50 为 `0.010386 ms`，p95 为 `0.011266 ms`。pending-effect conflict load 各 1,000 个样本：cardinality `1/100/1000` 的 p95 为 `0.018421/1.169848/11.514634 ms`，每组 `1,000/1,000` read-only deny；外部服务为 0。
 
 ## 边界
 

@@ -8,16 +8,16 @@ import json
 import unittest
 
 from context_control_plane.idea_continuity_benchmark import build_idea_snapshot
-from context_control_plane.idea_review import (
-    migrate_typed_state_v3_to_v4,
-    upsert_idea_observation,
-)
 from context_control_plane.idea_return_packet import (
     IdeaReturnPacketError,
     build_return_context_migration_receipt,
     canonical_idea_return_packet_bytes,
     compose_idea_return_packet,
     validate_idea_return_packet,
+)
+from context_control_plane.idea_review import (
+    migrate_typed_state_v3_to_v4,
+    upsert_idea_observation,
 )
 from context_control_plane.typed_state import validate_typed_state
 
@@ -189,6 +189,19 @@ class M506IdeaReturnPacketTests(unittest.TestCase):
         self.assertFalse(packet["state_write_authority"])
         self.assertFalse(packet["external_effect_authority"])
         self.assertEqual(payload, canonical_idea_return_packet_bytes(self.compose()))
+
+    def test_v5_snapshot_preserves_the_v4_return_packet_contract(self):
+        from context_control_plane.durable_state_migration import (
+            migrate_typed_state_v4_to_v5,
+        )
+
+        packet = self.compose(
+            snapshot=migrate_typed_state_v4_to_v5(self.snapshot)
+        )
+
+        validate_idea_return_packet(packet)
+        self.assertEqual(packet["project_revision"], 11)
+        self.assertEqual(packet["active_leaf"]["work_id"], "work-active")
 
     def test_historical_checkpoint_cannot_replace_current_active_authority(self):
         changed = copy.deepcopy(self.snapshot)

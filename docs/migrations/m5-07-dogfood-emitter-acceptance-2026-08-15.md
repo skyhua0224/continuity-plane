@@ -1,14 +1,15 @@
 # M5-07 Project Dogfood Emitter Acceptance
 
-Version: 1  
+Version: 2  
 Date: 2026-08-15  
 Status: verified local-embedded shadow adapter
 
 ```yaml
 document_id: context.m5-07-dogfood-emitter-acceptance
-document_revision: 1
+document_revision: 2
 change_type: evidence
-authority_ref: verification-run://repository/m5-07-dogfood-emitter-v1
+authority_ref: verification-run://repository/m5-07-dogfood-emitter-v2
+supersedes: context.document://docs-migrations-m5-07-dogfood-emitter-acceptance-2026-08-15/revision/1
 affected_tasks: [M5-07, M8-04, M8-07]
 next_review: M6-07
 ```
@@ -32,7 +33,7 @@ receipts have no State MCP or provider authority.
 | event coverage | `8000` emitted events; all seven coverage dimensions `1000000/1000000` |
 | veto detection | missing handoff, late canary, first-action mismatch and acknowledged-input replay `4000/4000` detected |
 | authority | observation, trace and provider authority violations `0` |
-| latency | local emit, trace validation and coverage p50/p95/max `1.335444/1.377223/2.223157 ms` |
+| latency | local emit, trace validation and coverage p50/p95/max `1.347595/2.57533/3.81646 ms` |
 | external services | `0` |
 | receipt | [`m5-07-emitter-results.json`](../../experiments/dogfood/m5-07-emitter-results.json) passes strict benchmark and current implementation hash validation |
 

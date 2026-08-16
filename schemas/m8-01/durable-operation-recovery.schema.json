@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schemas/m8-01/durable-operation-recovery.schema.json",
+  "title": "Context Control Plane Durable Operation Recovery Decision",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "operation_id", "operation_sha256", "phase", "recovery_action", "reason", "effect_id", "effect_key", "automatic_effect_replay", "state_write_authority", "provider_native_authority"],
+  "properties": {
+    "schema_version": {"const": "context.durable-operation-recovery/v1alpha1"},
+    "operation_id": {"$ref": "#/$defs/id"},
+    "operation_sha256": {"$ref": "#/$defs/sha256"},
+    "phase": {"enum": ["prepared", "intent-committed", "effect-in-flight", "outcome-unknown", "effect-settled", "response-committed", "terminal", "quarantined"]},
+    "recovery_action": {"enum": ["commit-intent", "dispatch-effect", "verify-or-retry-idempotent", "manual", "commit-state", "finalize", "terminal"]},
+    "reason": {"enum": ["intent-not-committed", "effect-not-started", "safe-effect-outcome-unknown", "never-effect-outcome-unknown", "external-effect-already-settled", "state-already-committed", "operation-complete", "operation-quarantined"]},
+    "effect_id": {"$ref": "#/$defs/id"},
+    "effect_key": {"$ref": "#/$defs/id"},
+    "automatic_effect_replay": {"type": "boolean"},
+    "state_write_authority": {"const": false},
+    "provider_native_authority": {"const": false}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"automatic_effect_replay": {"const": true}}},
+      "then": {
+        "properties": {
+          "recovery_action": {"const": "verify-or-retry-idempotent"},
+          "reason": {"const": "safe-effect-outcome-unknown"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"reason": {"const": "never-effect-outcome-unknown"}}},
+      "then": {
+        "properties": {
+          "recovery_action": {"const": "manual"},
+          "automatic_effect_replay": {"const": false}
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

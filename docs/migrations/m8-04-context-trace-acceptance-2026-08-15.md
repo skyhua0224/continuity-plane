@@ -1,14 +1,15 @@
 # M8-04 Context Trace Acceptance
 
-Version: 1  
+Version: 2  
 Date: 2026-08-15  
 Status: verified local-embedded trace contract
 
 ```yaml
 document_id: context.m8-04-context-trace-acceptance
-document_revision: 1
+document_revision: 2
 change_type: evidence
-authority_ref: verification-run://repository/m8-04-context-trace-v1
+authority_ref: verification-run://repository/m8-04-context-trace-v2
+supersedes: context.document://docs-migrations-m8-04-context-trace-acceptance-2026-08-15/revision/1
 affected_tasks: [M8-04, M5-07, M8-06, M9-04]
 next_review: M5-07
 ```
@@ -39,7 +40,7 @@ event count and evidence reference before the result can be recorded as
 | binding and evidence | State/run binding failures `0`; source/evidence failures `0` |
 | authority | authority violations `0` |
 | OTel honesty | exporter unavailable `1000/1000`; false exported success `0`; empty export success rejected |
-| latency | p50 `0.830786 ms`; p95 `1.633888 ms`; max `1.69002 ms` for an eight-event local compose/validate cycle |
+| latency | p50 `0.826903 ms`; p95 `1.643596 ms`; max `1.711361 ms` for an eight-event local compose/validate cycle |
 | external services | `0` |
 | receipt | [`m8-04-context-trace-results.json`](../../experiments/observability/m8-04-context-trace-results.json) passes strict benchmark and implementation-hash validation |
 

@@ -1,0 +1,29 @@
+{
+  "checkpoint_fixture_runs": 2,
+  "external_provider_invocations": 0,
+  "failed_tests": 0,
+  "fixture_id": "fixture/m8-01/deepseek-checkpoint-crash-recovery/v1",
+  "generated_at": "2026-08-16T14:34:47+08:00",
+  "node_version": "22.23.2",
+  "package_manager": "pnpm@11.7.0",
+  "passed_tests": 2,
+  "platform": "linux",
+  "provider_native_authority": false,
+  "receipt_sha256": "259df58e3e0b7fadeefae0387e9fa38a7672b9e2d6d7d9c40f8e3f4369bd5dc1",
+  "recovery_passes": 2,
+  "reference_id": "deepseek-ai-deepseek-harness",
+  "report_sha256": "ef1d748a1dd8ac42f9c9f124fb307b30be4f89321da3af3e7c4dc96331e536ea",
+  "schema_version": "context.deepseek-checkpoint-receipt/v1alpha1",
+  "sigkill_count": 2,
+  "signals": [
+    "request-interrupted",
+    "TOOL_OUTCOME_UNKNOWN"
+  ],
+  "skipped_tests": 0,
+  "source_revision": "47f943859bef60e4160492346772ded9b24f765a",
+  "source_test_blob_sha256": "f26537de8fe8905b3fc57bec221c1428145a844f90812fe427ece64abaa248de",
+  "source_test_path": "packages/session/session-checkpoint-policy/tests/crash-recovery.e2e.ts",
+  "source_tree": "f904efab9ef435201d6ba4da88a34d6366568272",
+  "state_write_authority": false,
+  "test_suites": 2
+}

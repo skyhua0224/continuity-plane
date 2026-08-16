@@ -1,0 +1,57 @@
+{
+  "schema_version": "context.durable-provider-oracle-fixture/v1alpha1",
+  "fixture_id": "fixture/m8-01/provider-durability-oracles/v1",
+  "oracles": [
+    {
+      "oracle_id": "deepseek-tool-outcome-unknown",
+      "reference_id": "deepseek-ai-deepseek-harness",
+      "source_revision": "47f943859bef60e4160492346772ded9b24f765a",
+      "source_tree": "f904efab9ef435201d6ba4da88a34d6366568272",
+      "evidence_scope": "provider-session-checkpoint",
+      "observed_events": [
+        "tool/call"
+      ],
+      "missing_events": [
+        "tool/result"
+      ],
+      "recovery_signal": "TOOL_OUTCOME_UNKNOWN",
+      "required_action": "verify-external-settlement",
+      "blind_replay_allowed": false,
+      "implementation_status": "runnable-fixture",
+      "state_write_authority": false,
+      "provider_native_authority": false
+    },
+    {
+      "oracle_id": "pi-effect-sandwich",
+      "reference_id": "earendil-pi-agent-harness",
+      "source_revision": "9d2ec7ffabe927bfad2214c1cee25b6632a78dcf",
+      "source_tree": "9108e8903e1ba009dac694ff8ad6289b8673b1eb",
+      "evidence_scope": "protocol-and-test-oracle",
+      "program_counter": [
+        "prepared",
+        "intent-committed",
+        "effect-in-flight",
+        "effect-settled"
+      ],
+      "transaction_boundaries": [
+        "intent",
+        "effect",
+        "settlement"
+      ],
+      "reserved_identifiers": [
+        "response",
+        "result",
+        "usage"
+      ],
+      "replay_policy": {
+        "never": "verify-only",
+        "safe": "same-key"
+      },
+      "implementation_status": "scaffold",
+      "runnable_dependency": false,
+      "state_write_authority": false,
+      "provider_native_authority": false
+    }
+  ],
+  "fixture_sha256": "763caf5506db6e1184c007df74b99e5c295e72d74eb9909c3fdb4644a002847b"
+}

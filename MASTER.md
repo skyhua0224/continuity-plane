@@ -1,6 +1,6 @@
 # Context Control Plane MASTER
 
-版本：revision 58  
+版本：revision 59  
 日期：2026-08-16  
 状态：研究与 shadow pilot 准备阶段  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
@@ -269,8 +269,8 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 | M3-04 | 🧑‍💻 | active/claim/scope-owner 副作用门 | repo/path/symbol/capability/effect binding 冲突时授予只读权限 | 将副作用绑定至权威任务 | M3-03 | 23/23 定向测试、10,000 gate evaluations 和 pending-effect deny benchmark 通过；验收见 `docs/migrations/m3-04-effect-scope-gate-acceptance-2026-08-14.md` |
 | M3-05 | 🧑‍💻 | attempt budget、expiry、promotion gate | 实验按预算和期限运行 | 实验发现有序回流 MASTER | M3-01 | 27/27 定向测试、40/40 attempt→proposal→approval、3 Event/1 attempt/2 promotion 每样本通过；验收见 `docs/migrations/m3-05-experiment-lifecycle-acceptance-2026-08-14.md` |
 | M3-06 | ✅ | Idea candidate、parking、capture-and-continue 与 switch proposal | 新想法不污染当前 active leaf | 保留价值并控制上下文切换 | M3-03/M3-05 | 15/15 定向测试、40/40 zero-service capture、active execution authority mutation 0；验收见 `docs/migrations/m3-06-idea-continuity-acceptance-2026-08-14.md` |
-| M3-07 | ✅ | Idea relationship、dedupe、correction、urgency 与 impact review | 重复或跨域想法形成有界候选队列 | 支持持续输入并避免 prompt/主线污染 | M3-06/M6-02 | v3→v4 migration receipt、Idea v2 dedupe/occurrence、relationship cycle gate、review/protection/release；40/40 benchmark；dedupe/occurrence/packet `100%`，protected writes/terminal revival/unverified release `0`，p95 `12.765558 ms`；验收见 `docs/migrations/m3-07-idea-review-acceptance-2026-08-14.md` |
-| M3-08 | ✅ | 输入意图、blocking decision、next-ready selector 与 bounded escalation taxonomy | non-blocking input 保持 active leaf，只有可证明的阻塞需要询问或停止 | 防止短消息、Idea、状态问答和分析偏移重置主线 | M3-03/M3-06/M3-07 | 4 份 strict schema 与 current provenance；1,000/1,000 zero-service decision、125/125 负向 fixture；ready required missed、premature stop、untyped ask、incomplete escalation、active leaf change 和 replay mismatch 均为 0；p95 `0.15 ms`；验收见 `docs/migrations/m3-08-continuation-dispatch-acceptance-2026-08-14.md` |
+| M3-07 | ✅ | Idea relationship、dedupe、correction、urgency 与 impact review | 重复或跨域想法形成有界候选队列 | 支持持续输入并避免 prompt/主线污染 | M3-06/M6-02 | v3→v4 migration receipt、Idea v2 dedupe/occurrence、relationship cycle gate、review/protection/release；40/40 benchmark；dedupe/occurrence/packet `100%`，protected writes/terminal revival/unverified release `0`，p95 `20.793106 ms`；验收见 `docs/migrations/m3-07-idea-review-acceptance-2026-08-14.md` |
+| M3-08 | ✅ | 输入意图、blocking decision、next-ready selector 与 bounded escalation taxonomy | non-blocking input 保持 active leaf，只有可证明的阻塞需要询问或停止 | 防止短消息、Idea、状态问答和分析偏移重置主线 | M3-03/M3-06/M3-07 | 4 份 strict schema 与 current provenance；1,000/1,000 zero-service decision、125/125 负向 fixture；ready required missed、premature stop、untyped ask、incomplete escalation、active leaf change 和 replay mismatch 均为 0；p95 `0.261423 ms`；验收见 `docs/migrations/m3-08-continuation-dispatch-acceptance-2026-08-14.md` |
 
 ## 7.5 M4 Skill 控制面
 
@@ -327,8 +327,8 @@ Skill resolver 按以下顺序确定结果：显式的 `Task/Goal/Experiment`、
 
 | ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
 |---|---|---|---|---|---|---|
-| M8-01 | 🟡 | DBOS checkpoint/effect workflow 与 harness crash fixture | 本地崩溃恢复和幂等；DeepSeek runnable checkpoint 与 Pi effect sandwich 形成对照矩阵 | 单机可靠运行 | M5-03 | 当前原子步骤：定义 local-embedded durable operation、intent/effect/settlement crash matrix 和 DeepSeek/Pi harness 对照 fixture；退出条件：SIGKILL/retry 重复副作用 `0`，各 crash point 与 checkpoint fixture 可重放 |
-| M8-02 | ⏳ | 共享 Work Ledger、lease、claim、scope ownership、heartbeat 和 expiry | 所有协作者看到同 revision active/completed work；过期或撤销 worker 可安全 reclaim | 团队协作并避免无感重复开发 | M3-04/M8-01 | 并发静默覆盖和重复 effect 为 0；第二个 claim/effect 前拦截重复 Work 100%；旧 worker revoke 后 effect 为 0；orphan 在 SLO 内 reclaim 100% |
+| M8-01 | ✅ | DBOS checkpoint/effect workflow 与 harness crash fixture | 本地崩溃恢复和幂等；DeepSeek runnable checkpoint 与 Pi effect sandwich 形成对照矩阵 | 单机可靠运行 | M5-03 | local-embedded durable operation 与 14 个 strict schema；Typed State v5/State MCP v2 及 v4↔v5 receipt 的 replay/rollback 边界通过；9 个 crash point、`180/180` terminal recovery、180 semantic effects、200 adapter calls、20 deduplications、重复 semantic effect `0`、restore p95 `105.039451 ms`；DeepSeek pinned fixture `2/2` 与真实 `SIGKILL` `2/2`；Pi 保持 scaffold oracle；验收见 `docs/migrations/m8-01-durable-operation-acceptance-2026-08-16.md` |
+| M8-02 | 🟡 | 共享 Work Ledger、lease、claim、scope ownership、heartbeat 和 expiry | 所有协作者看到同 revision active/completed work；过期或撤销 worker 可安全 reclaim | 团队协作并避免无感重复开发 | M3-04/M8-01 | 当前原子步骤：固定 shared Work/claim/lease/heartbeat/expiry 合同与 dispatch-time revocation gate；退出条件：并发静默覆盖和重复 effect 为 0，第二个 claim/effect 前拦截重复 Work 100%，旧 worker revoke 后 effect 为 0，orphan 在 SLO 内 reclaim 100% |
 | M8-03 | ⏳ | Temporal 长流程与 Continue-As-New | 跨服务、长周期工作可 replay | 大型团队生产化 | M8-02 | replay/patch/versioning tests 通过 |
 | M8-04 | ✅ | OTel `context.*` trace | 切换、压缩、检索、返工可观察 | 持续优化而非凭感觉 | M5-05 | local trace `1000/1000`、`8000` events、八类覆盖 100%；binding/hash/evidence/authority failure `0`；OTel 未配置 `1000/1000 unavailable`；验收见 `docs/migrations/m8-04-context-trace-acceptance-2026-08-15.md` |
 | M8-05 | ⏳ | 权限、审计、tenant/project 隔离 | 协作者访问范围与授权一致 | 安全共享 | M2-05/M8-02 | 越权测试 100% 拒绝 |

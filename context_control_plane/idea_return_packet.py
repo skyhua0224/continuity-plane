@@ -6,8 +6,9 @@ import copy
 import hashlib
 import json
 import re
+from collections.abc import Callable
 from datetime import datetime
-from typing import Any, Callable
+from typing import Any
 
 from .artifact_store import ArtifactRef
 from .idea_review import IdeaReviewError, packet_eligible_ideas
@@ -479,8 +480,11 @@ def compose_idea_return_packet(
         validate_typed_state(source)
     except TypedStateError as exc:
         raise IdeaReturnPacketError("current typed state is invalid") from exc
-    if source.get("schema_version") != "context.typed-state/v4alpha1":
-        raise IdeaReturnPacketError("Idea return packet requires typed state v4")
+    if source.get("schema_version") not in {
+        "context.typed-state/v4alpha1",
+        "context.typed-state/v5alpha1",
+    }:
+        raise IdeaReturnPacketError("Idea return packet requires typed state v4 or later")
     _sha(canonical_plan_sha256, "canonical_plan_sha256")
     _sha(registry_digest, "registry_digest")
     _text(next_action, "next_action", maximum=1024)

@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schemas/m8-01/durable-checkpoint-gate.schema.json",
+  "title": "Context Control Plane Durable Checkpoint Gate Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "operation_id", "project_id", "work_id", "claim_id", "project_revision", "event_head", "checkpoint_ref", "critical_projection_sha256", "recovery_kind", "postcompact_canary_sha256", "execution_gate", "state_write_authority", "provider_native_authority", "receipt_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.durable-checkpoint-gate/v1alpha1"},
+    "operation_id": {"$ref": "#/$defs/id"},
+    "project_id": {"$ref": "#/$defs/id"},
+    "work_id": {"$ref": "#/$defs/id"},
+    "claim_id": {"$ref": "#/$defs/id"},
+    "project_revision": {"type": "integer", "minimum": 0},
+    "event_head": {"$ref": "#/$defs/eventHead"},
+    "checkpoint_ref": {"$ref": "#/$defs/artifactRef"},
+    "critical_projection_sha256": {"$ref": "#/$defs/sha256"},
+    "recovery_kind": {"enum": ["process-restart", "postcompact"]},
+    "postcompact_canary_sha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+    "execution_gate": {"const": "allow"},
+    "state_write_authority": {"const": false},
+    "provider_native_authority": {"const": false},
+    "receipt_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"recovery_kind": {"const": "process-restart"}}},
+      "then": {"properties": {"postcompact_canary_sha256": {"type": "null"}}}
+    },
+    {
+      "if": {"properties": {"recovery_kind": {"const": "postcompact"}}},
+      "then": {"properties": {"postcompact_canary_sha256": {"$ref": "#/$defs/sha256"}}}
+    }
+  ],
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "eventHead": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sequence_no", "event_sha256"],
+      "properties": {"sequence_no": {"type": "integer", "minimum": 1}, "event_sha256": {"$ref": "#/$defs/sha256"}}
+    },
+    "artifactRef": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "digest_algorithm", "digest", "size_bytes", "artifact_uri"],
+      "properties": {
+        "schema_version": {"const": "context.artifact-ref/v1alpha1"},
+        "digest_algorithm": {"const": "sha-256"},
+        "digest": {"$ref": "#/$defs/sha256"},
+        "size_bytes": {"type": "integer", "minimum": 0},
+        "artifact_uri": {"type": "string", "pattern": "^artifact://sha256/[0-9a-f]{64}$"}
+      }
+    }
+  }
+}

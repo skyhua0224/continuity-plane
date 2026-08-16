@@ -9,10 +9,10 @@ import os
 import re
 import uuid
 from collections.abc import Callable, Mapping, Sequence
+from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-
 
 SCHEMA_VERSION = "context.trace-event/v1alpha1"
 OTEL_EXPORT_SCHEMA_VERSION = "context.otel-export/v1alpha1"
@@ -293,6 +293,42 @@ def _binding_from_event(event: Mapping[str, Any]) -> dict[str, Any]:
     return {field: event[field] for field in _BINDING_FIELDS}
 
 
+@contextmanager
+def _exclusive_trace_lock(output_path: Path):
+    """Serialize local JSONL readers and appenders across processes."""
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    lock_path = output_path.with_name(output_path.name + ".lock")
+    stream = lock_path.open("a+b")
+    try:
+        if os.name == "nt":
+            import msvcrt
+
+            stream.seek(0, os.SEEK_END)
+            if stream.tell() == 0:
+                stream.write(b"\0")
+                stream.flush()
+            stream.seek(0)
+            msvcrt.locking(stream.fileno(), msvcrt.LK_LOCK, 1)
+        else:
+            import fcntl
+
+            fcntl.flock(stream.fileno(), fcntl.LOCK_EX)
+        yield
+    finally:
+        try:
+            stream.seek(0)
+            if os.name == "nt":
+                import msvcrt
+
+                msvcrt.locking(stream.fileno(), msvcrt.LK_UNLCK, 1)
+            else:
+                import fcntl
+
+                fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
+        finally:
+            stream.close()
+
+
 class LocalContextTraceEmitter:
     """Append validated trace events to memory and, optionally, a local JSONL file."""
 
@@ -307,18 +343,59 @@ class LocalContextTraceEmitter:
         self._source = _normalize_source(source)
         self._output_path = Path(output_path) if output_path is not None else None
         self._events: list[dict[str, Any]] = []
-        if self._output_path is not None and self._output_path.exists():
-            try:
-                lines = self._output_path.read_text(encoding="utf-8").splitlines()
-                self._events = [json.loads(line) for line in lines if line.strip()]
-            except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-                raise ContextTraceError("local trace file is invalid") from exc
-            validate_context_trace_chain(self._events)
-            if any(_binding_from_event(event) != self._binding for event in self._events):
-                raise ContextTraceError("existing trace binding does not match emitter binding")
+        if self._output_path is not None:
+            with _exclusive_trace_lock(self._output_path):
+                self._events = self._read_persisted_events()
+
+    def _read_persisted_events(self) -> list[dict[str, Any]]:
+        if self._output_path is None or not self._output_path.exists():
+            return []
+        try:
+            lines = self._output_path.read_text(encoding="utf-8").splitlines()
+            events = [json.loads(line) for line in lines if line.strip()]
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            raise ContextTraceError("local trace file is invalid") from exc
+        validate_context_trace_chain(events)
+        if any(_binding_from_event(event) != self._binding for event in events):
+            raise ContextTraceError("existing trace binding does not match emitter binding")
+        return events
+
+    def _matching_event(
+        self,
+        events: Sequence[Mapping[str, Any]],
+        *,
+        event_id: str | None,
+        event_name: str,
+        evidence_refs: Sequence[str],
+        observed_at: str,
+        attributes: Mapping[str, Any] | None,
+    ) -> dict[str, Any] | None:
+        if event_id is None:
+            return None
+        existing = next(
+            (event for event in events if event["event_id"] == event_id),
+            None,
+        )
+        if existing is None:
+            return None
+        expected = {
+            "event_name": event_name,
+            **self._binding,
+            "source": self._source,
+            "evidence_refs": list(evidence_refs),
+            "observed_at": observed_at,
+            "attributes": copy.deepcopy(dict(attributes or {})),
+            "authority": False,
+        }
+        if any(existing[field] != value for field, value in expected.items()):
+            raise ContextTraceError("event_id conflicts with an existing trace event")
+        return copy.deepcopy(existing)
 
     @property
     def events(self) -> tuple[dict[str, Any], ...]:
+        if self._output_path is not None:
+            with _exclusive_trace_lock(self._output_path):
+                self._events = self._read_persisted_events()
         return tuple(copy.deepcopy(self._events))
 
     def emit(
@@ -330,28 +407,64 @@ class LocalContextTraceEmitter:
         attributes: Mapping[str, Any] | None = None,
         event_id: str | None = None,
     ) -> dict[str, Any]:
-        candidate = copy.deepcopy(self._events)
-        event = append_context_trace_event(
-            candidate,
-            event_name=event_name,
-            binding=self._binding,
-            source=self._source,
-            evidence_refs=evidence_refs,
-            observed_at=observed_at,
-            attributes=attributes,
-            event_id=event_id,
-        )
-        if self._output_path is not None:
+        if self._output_path is None:
+            existing = self._matching_event(
+                self._events,
+                event_id=event_id,
+                event_name=event_name,
+                evidence_refs=evidence_refs,
+                observed_at=observed_at,
+                attributes=attributes,
+            )
+            if existing is not None:
+                return existing
+            candidate = copy.deepcopy(self._events)
+            event = append_context_trace_event(
+                candidate,
+                event_name=event_name,
+                binding=self._binding,
+                source=self._source,
+                evidence_refs=evidence_refs,
+                observed_at=observed_at,
+                attributes=attributes,
+                event_id=event_id,
+            )
+            self._events = candidate
+            return copy.deepcopy(event)
+
+        with _exclusive_trace_lock(self._output_path):
+            persisted = self._read_persisted_events()
+            existing = self._matching_event(
+                persisted,
+                event_id=event_id,
+                event_name=event_name,
+                evidence_refs=evidence_refs,
+                observed_at=observed_at,
+                attributes=attributes,
+            )
+            if existing is not None:
+                self._events = persisted
+                return existing
+            candidate = copy.deepcopy(persisted)
+            event = append_context_trace_event(
+                candidate,
+                event_name=event_name,
+                binding=self._binding,
+                source=self._source,
+                evidence_refs=evidence_refs,
+                observed_at=observed_at,
+                attributes=attributes,
+                event_id=event_id,
+            )
             try:
-                self._output_path.parent.mkdir(parents=True, exist_ok=True)
                 with self._output_path.open("ab") as stream:
                     stream.write(canonical_context_trace_event_bytes(event) + b"\n")
                     stream.flush()
                     os.fsync(stream.fileno())
             except OSError as exc:
                 raise ContextTraceError("local trace append failed") from exc
-        self._events = candidate
-        return copy.deepcopy(event)
+            self._events = candidate
+            return copy.deepcopy(event)
 
 
 def _otel_result(
@@ -398,7 +511,7 @@ def export_context_trace_to_otel(
         raise ContextTraceError("OTel exporter cannot report success for an empty trace chain")
     try:
         raw_receipt = exporter(tuple(copy.deepcopy(list(events))))
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - exporter failures become explicit receipts
         reason = str(exc).strip() or exc.__class__.__name__
         return _otel_result(
             status="failed",

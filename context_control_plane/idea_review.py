@@ -10,6 +10,7 @@ from datetime import datetime
 from typing import Any
 
 from .typed_state import (
+    DURABLE_EFFECT_SCHEMA_VERSION,
     EXPERIMENT_LIFECYCLE_SCHEMA_VERSION,
     IDEA_REVIEW_SCHEMA_VERSION,
     TypedStateError,
@@ -51,8 +52,11 @@ class IdeaReviewError(ValueError):
 
 
 def _require_v4(snapshot: dict[str, Any]) -> None:
-    if snapshot.get("schema_version") != IDEA_REVIEW_SCHEMA_VERSION:
-        raise IdeaReviewError("M3-07 requires typed-state v4alpha1")
+    if snapshot.get("schema_version") not in {
+        IDEA_REVIEW_SCHEMA_VERSION,
+        DURABLE_EFFECT_SCHEMA_VERSION,
+    }:
+        raise IdeaReviewError("M3-07 requires typed-state v4alpha1 or later")
     try:
         validate_typed_state(snapshot)
     except TypedStateError as exc:

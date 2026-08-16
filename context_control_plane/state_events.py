@@ -852,6 +852,10 @@ def replay_state_events(
                 EVENT_SCHEMA_VERSION_V4,
                 IDEA_EVENT_SCHEMA_VERSION_V2,
             },
+            "context.typed-state/v5alpha1": {
+                EVENT_SCHEMA_VERSION_V4,
+                IDEA_EVENT_SCHEMA_VERSION_V2,
+            },
         }.get(state["schema_version"], {LEGACY_EVENT_SCHEMA_VERSION})
         if event["schema_version"] not in allowed_event_versions:
             raise StateEventError("event wire version does not match typed state")

@@ -207,11 +207,11 @@ schemas:
     migrations: []
 
   - schema_id: context.typed-state
-    current_semver: 4.0.0-alpha.1
-    current_wire_version: context.typed-state/v4alpha1
-    supported_wire_versions: [context.typed-state/v1alpha1, context.typed-state/v2alpha1, context.typed-state/v3alpha1, context.typed-state/v4alpha1]
-    artifact_path: schemas/m3-07/typed-state-v4alpha1.schema.json
-    content_sha256: 4b4917ed4c18e6298224cd92accde48e5af7d4c5ab98cd0cf9bf68c85e209f8a
+    current_semver: 5.0.0-alpha.1
+    current_wire_version: context.typed-state/v5alpha1
+    supported_wire_versions: [context.typed-state/v1alpha1, context.typed-state/v2alpha1, context.typed-state/v3alpha1, context.typed-state/v4alpha1, context.typed-state/v5alpha1]
+    artifact_path: schemas/m8-01/typed-state-v5alpha1.schema.json
+    content_sha256: b1ff8d42c367cbd3e039dd04d41ef28c6f0774ff1282087c54c493eedd0c8160
     status: current
     compatibility_mode: strict-versioned
     migrations:
@@ -230,6 +230,11 @@ schemas:
         replay_passed: true
         idempotent: true
         rollback_ref: docs/migrations/m3-07-idea-review-acceptance-2026-08-14.md#rollback
+      - from: context.typed-state/v4alpha1
+        to: context.typed-state/v5alpha1
+        replay_passed: true
+        idempotent: true
+        rollback_ref: docs/migrations/m8-01-durable-operation-acceptance-2026-08-16.md#rollback
 
   - schema_id: context.state-event
     current_semver: 4.0.0-alpha.1
@@ -302,6 +307,16 @@ schemas:
     supported_wire_versions: [context.typed-state-migration-receipt/v1alpha1]
     artifact_path: schemas/m3-07/typed-state-migration-receipt.schema.json
     content_sha256: 17c672b358a4ee8653fddf7330f2da533a8de3b37a1a33c1a264fec391a07a54
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.typed-state-v4-v5-migration-receipt
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.typed-state-v4-v5-migration-receipt/v1alpha1
+    supported_wire_versions: [context.typed-state-v4-v5-migration-receipt/v1alpha1]
+    artifact_path: schemas/m8-01/typed-state-v4-v5-migration-receipt.schema.json
+    content_sha256: 3374d4271170845726de005ba09148578a66e35b5dfab2ee613c4588ba3afe84
     status: current
     compatibility_mode: strict-versioned
     migrations: []
@@ -407,14 +422,19 @@ schemas:
     migrations: []
 
   - schema_id: context.state-mcp
-    current_semver: 1.0.0-alpha.1
-    current_wire_version: context.state-mcp/v1alpha1
-    supported_wire_versions: [context.state-mcp/v1alpha1]
-    artifact_path: schemas/m2-05/state-mcp.schema.json
-    content_sha256: d80728c35556d18cc2bd8bd1f9783900b171515b143f615b033ea33314cc24ab
+    current_semver: 1.1.0-alpha.1
+    current_wire_version: context.state-mcp/v2alpha1
+    supported_wire_versions: [context.state-mcp/v1alpha1, context.state-mcp/v2alpha1]
+    artifact_path: schemas/m8-01/state-mcp-v2alpha1.schema.json
+    content_sha256: b7a2f804c1fc281089bbbda67e2eb8c1469024b2ff2a98f2d1f4841c09def425
     status: current
     compatibility_mode: strict-versioned
-    migrations: []
+    migrations:
+      - from: context.state-mcp/v1alpha1
+        to: context.state-mcp/v2alpha1
+        replay_passed: true
+        idempotent: true
+        rollback_ref: docs/migrations/m8-01-durable-operation-acceptance-2026-08-16.md#rollback
 
   - schema_id: context.checkpoint-manifest
     current_semver: 1.0.0-alpha.1
@@ -1232,6 +1252,116 @@ schemas:
     supported_wire_versions: [context.reference-watcher-benchmark/v1alpha1]
     artifact_path: schemas/m7-06/reference-watcher-benchmark.schema.json
     content_sha256: a569f97c13b8248b31e894150fae94529b55bf10df2a0f48a7891fb82126c310
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.durable-operation
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.durable-operation/v1alpha1
+    supported_wire_versions: [context.durable-operation/v1alpha1]
+    artifact_path: schemas/m8-01/durable-operation.schema.json
+    content_sha256: 8164e6014d3f95dab3056e35cc82d8f5456f7410717ddbfbf8115ebb0a37ea1f
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.durable-operation-recovery
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.durable-operation-recovery/v1alpha1
+    supported_wire_versions: [context.durable-operation-recovery/v1alpha1]
+    artifact_path: schemas/m8-01/durable-operation-recovery.schema.json
+    content_sha256: f1e04d87da50641db1bd1bf815450169bc309b662d64db0142674995e42002f5
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.durable-effect-adapter
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.durable-effect-adapter/v1alpha1
+    supported_wire_versions: [context.durable-effect-adapter/v1alpha1]
+    artifact_path: schemas/m8-01/durable-effect-adapter.schema.json
+    content_sha256: a2302296b36e2f0f6513816bb0a88ca6994f604cee62a22cadb4726fb0a231fe
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.durable-state-receipt
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.durable-state-receipt/v1alpha1
+    supported_wire_versions: [context.durable-state-receipt/v1alpha1]
+    artifact_path: schemas/m8-01/durable-state-receipt.schema.json
+    content_sha256: 8babf02b975342cfc9d52aa351e9b43d0639ce979a6498f462121094c301a07b
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.durable-authority-adapter
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.durable-authority-adapter/v1alpha1
+    supported_wire_versions: [context.durable-authority-adapter/v1alpha1]
+    artifact_path: schemas/m8-01/durable-authority-adapter.schema.json
+    content_sha256: 93462f4095255f1efad93726d2d0e22a02f7625f685df447bd31d9544e3e93b9
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.durable-checkpoint-gate
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.durable-checkpoint-gate/v1alpha1
+    supported_wire_versions: [context.durable-checkpoint-gate/v1alpha1]
+    artifact_path: schemas/m8-01/durable-checkpoint-gate.schema.json
+    content_sha256: d67f03a1ee66f3aafc037f556607be4d6dc9b875d3e4f08ac056658e27faec52
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.durable-checkpoint-adapter
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.durable-checkpoint-adapter/v1alpha1
+    supported_wire_versions: [context.durable-checkpoint-adapter/v1alpha1]
+    artifact_path: schemas/m8-01/durable-checkpoint-adapter.schema.json
+    content_sha256: 5719c61f779902777bcb273420cff62edaa2a01f075931ba0e0adef5eae42a45
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.durable-operation-crash-fixture
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.durable-operation-crash-fixture/v1alpha1
+    supported_wire_versions: [context.durable-operation-crash-fixture/v1alpha1]
+    artifact_path: schemas/m8-01/durable-operation-crash-fixture.schema.json
+    content_sha256: e8b0ccfe29a501d0892da37f91ef6ad6ea92a87b67ef1f3ea090ff957dd7fcb8
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.durable-operation-real-crash-fixture
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.durable-operation-real-crash-fixture/v1alpha1
+    supported_wire_versions: [context.durable-operation-real-crash-fixture/v1alpha1]
+    artifact_path: schemas/m8-01/durable-operation-real-crash-fixture.schema.json
+    content_sha256: d409a716f9032c5e6876d427d1f7f014c0402fc48804bfb4e9095979a8982a33
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.durable-operation-benchmark
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.durable-operation-benchmark/v1alpha1
+    supported_wire_versions: [context.durable-operation-benchmark/v1alpha1]
+    artifact_path: schemas/m8-01/durable-operation-benchmark.schema.json
+    content_sha256: dea1bd0ddd4b94981687828bc93fb956dda398d3c04de6e1f67be4c72e3d633e
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.deepseek-checkpoint-receipt
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.deepseek-checkpoint-receipt/v1alpha1
+    supported_wire_versions: [context.deepseek-checkpoint-receipt/v1alpha1]
+    artifact_path: schemas/m8-01/deepseek-checkpoint-receipt.schema.json
+    content_sha256: 8f9a1676d220226d05aa23366c75c563aacd85072590e1f27087ca771059cb2b
     status: current
     compatibility_mode: strict-versioned
     migrations: []

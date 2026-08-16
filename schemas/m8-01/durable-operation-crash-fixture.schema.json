@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schemas/m8-01/durable-operation-crash-fixture.schema.json",
+  "title": "Context Control Plane Durable Operation Crash Fixture Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "phase", "operation_sha256", "history_phases", "apply_attempts", "duplicate_effects", "semantic_effects", "physical_effects", "intent_commits", "state_commits"],
+  "properties": {
+    "schema_version": {"const": "context.durable-operation-crash-fixture/v1alpha1"},
+    "phase": {"const": "terminal"},
+    "operation_sha256": {"$ref": "#/$defs/sha256"},
+    "history_phases": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"enum": ["prepared", "intent-committed", "effect-in-flight", "outcome-unknown", "effect-settled", "response-committed", "terminal", "quarantined"]}},
+    "apply_attempts": {"$ref": "#/$defs/nonNegativeInteger"},
+    "duplicate_effects": {"$ref": "#/$defs/nonNegativeInteger"},
+    "semantic_effects": {"$ref": "#/$defs/nonNegativeInteger"},
+    "physical_effects": {"$ref": "#/$defs/nonNegativeInteger"},
+    "intent_commits": {"$ref": "#/$defs/nonNegativeInteger"},
+    "state_commits": {"$ref": "#/$defs/nonNegativeInteger"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nonNegativeInteger": {"type": "integer", "minimum": 0}
+  }
+}
