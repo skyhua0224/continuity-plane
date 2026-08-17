@@ -1,0 +1,104 @@
+{
+  "description": "Continuity Plane bounded startup and compaction lifecycle.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "continuity-codex-hook \"${PLUGIN_ROOT}/scripts/continuity-hook.py\"",
+            "commandWindows": "continuity-codex-hook \"%PLUGIN_ROOT%\\scripts\\continuity-hook.py\"",
+            "timeout": 10,
+            "statusMessage": "Loading bounded continuity state",
+            "additionalContextLimit": 5000
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "manual|auto",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "continuity-codex-hook \"${PLUGIN_ROOT}/scripts/continuity-hook.py\"",
+            "commandWindows": "continuity-codex-hook \"%PLUGIN_ROOT%\\scripts\\continuity-hook.py\"",
+            "timeout": 10,
+            "statusMessage": "Creating continuity checkpoint"
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "matcher": "manual|auto",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "continuity-codex-hook \"${PLUGIN_ROOT}/scripts/continuity-hook.py\"",
+            "commandWindows": "continuity-codex-hook \"%PLUGIN_ROOT%\\scripts\\continuity-hook.py\"",
+            "timeout": 10,
+            "statusMessage": "Verifying continuity checkpoint"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "continuity-codex-hook \"${PLUGIN_ROOT}/scripts/continuity-advisory-hook.py\"",
+            "commandWindows": "continuity-codex-hook \"%PLUGIN_ROOT%\\scripts\\continuity-advisory-hook.py\"",
+            "timeout": 3,
+            "statusMessage": "Checking continuity boundary"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "continuity-codex-hook \"${PLUGIN_ROOT}/scripts/continuity-advisory-hook.py\"",
+            "commandWindows": "continuity-codex-hook \"%PLUGIN_ROOT%\\scripts\\continuity-advisory-hook.py\"",
+            "timeout": 3,
+            "statusMessage": "Recording continuity use"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "continuity-codex-hook \"${PLUGIN_ROOT}/scripts/continuity-hook.py\"",
+            "commandWindows": "continuity-codex-hook \"%PLUGIN_ROOT%\\scripts\\continuity-hook.py\"",
+            "timeout": 10,
+            "statusMessage": "Restoring continuity entry",
+            "additionalContextLimit": 5000
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "continuity-codex-hook \"${PLUGIN_ROOT}/scripts/continuity-hook.py\"",
+            "commandWindows": "continuity-codex-hook \"%PLUGIN_ROOT%\\scripts\\continuity-hook.py\"",
+            "timeout": 10,
+            "statusMessage": "Continuing active Work when safe"
+          }
+        ]
+      }
+    ]
+  }
+}
