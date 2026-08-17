@@ -1,0 +1,55 @@
+{
+  "consistency_gates": {
+    "authority_violations": 0,
+    "campaign_experiments_passed": 10,
+    "campaign_experiments_total": 10,
+    "dual_session_consistent": 1000,
+    "dual_session_total": 1000,
+    "duplicate_notifications_suppressed": 1000,
+    "duplicate_notifications_total": 1000,
+    "forced_faults_passed": 4,
+    "forced_faults_total": 4,
+    "offline_deliveries_recovered": 2000,
+    "offline_delivery_attempts": 2000
+  },
+  "environment": {
+    "class": "single development workstation",
+    "provider_disclosed": false,
+    "repository_disclosed": false
+  },
+  "limitations": [
+    "single-machine observational reference",
+    "matched tasks with three samples per arm",
+    "not a cross-model or cross-provider guarantee"
+  ],
+  "measurements": {
+    "bounded_packet_input_reduction_percent": 40.2471,
+    "bounded_retrieval_input_reduction_percent": 50.0153,
+    "bounded_retrieval_tool_reduction_percent": 57.8947,
+    "bounded_retrieval_wall_reduction_percent": 27.4126,
+    "collaboration_duplicate_tool_reduction_percent": 55.8824,
+    "collaboration_input_overhead_percent": 10.7464,
+    "collaboration_parallel_wall_reduction_percent": 22.6467,
+    "collaboration_tool_reduction_percent": 47.619,
+    "near_limit_packet_input_reduction_percent": 95.0625,
+    "skill_source_byte_reduction_percent": 96.5409
+  },
+  "method": {
+    "aggregation": "arithmetic mean per arm",
+    "comparison": "matched task and model configuration",
+    "oracle": "exact-required-facts",
+    "quality_rule": "all required facts present and no forbidden assertions"
+  },
+  "public_reproduction_command": "python benchmarks/run_local_state.py --iterations 1000",
+  "quality_rate": 1.0,
+  "receipt_sha256": "a670d59d7f65a7df250d2e7a26892039b82ce8b257d80900d3da66b3ebab5309",
+  "release": "0.1.0-alpha.12",
+  "sample_sizes": {
+    "code_retrieval_per_arm": 3,
+    "collaboration_per_arm": 3,
+    "context_composition_per_arm": 3,
+    "skill_overlay_per_arm": 3
+  },
+  "schema_version": "context.public-benchmark/v1",
+  "state_write_authority": false
+}

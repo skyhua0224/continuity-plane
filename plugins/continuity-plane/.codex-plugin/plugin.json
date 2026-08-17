@@ -1,0 +1,34 @@
+{
+  "name": "continuity-plane",
+  "version": "0.1.0-alpha.12",
+  "description": "Zero-friction bounded recovery and checkpoint canaries for Codex",
+  "author": {
+    "name": "SkyHua"
+  },
+  "homepage": "https://github.com/skyhua0224/continuity-plane",
+  "repository": "https://github.com/skyhua0224/continuity-plane",
+  "license": "Apache-2.0",
+  "keywords": [
+    "context",
+    "recovery",
+    "claims",
+    "checkpoint",
+    "compaction"
+  ],
+  "interface": {
+    "displayName": "Continuity Plane",
+    "shortDescription": "压缩前后保持任务连续 / Preserve work across compaction.",
+    "longDescription": "在压缩前创建 checkpoint，压缩后先验证 canary，再以有界恢复包继续当前 Work。 Creates a checkpoint before compaction, verifies it afterward, and resumes from a bounded packet.",
+    "developerName": "SkyHua",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/skyhua0224/continuity-plane",
+    "defaultPrompt": [
+      "检查当前项目的连续性状态。",
+      "Check this project's continuity state."
+    ]
+  }
+}

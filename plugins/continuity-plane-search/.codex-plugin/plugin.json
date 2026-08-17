@@ -1,0 +1,33 @@
+{
+  "name": "continuity-plane-search",
+  "version": "0.1.0-alpha.12",
+  "description": "Optional bounded current-worktree search guidance for large repositories",
+  "author": {
+    "name": "SkyHua"
+  },
+  "homepage": "https://github.com/skyhua0224/continuity-plane",
+  "repository": "https://github.com/skyhua0224/continuity-plane",
+  "license": "Apache-2.0",
+  "keywords": [
+    "context",
+    "search",
+    "retrieval",
+    "large-repository"
+  ],
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Continuity Plane Search",
+    "shortDescription": "可选有界代码检索 / Optional bounded code search.",
+    "longDescription": "在大型仓库定位陌生符号时优先调用 continuity_context_lookup，再按需使用定额 current-worktree 检索。 Prefer the lookup tool before broad repository reads.",
+    "developerName": "SkyHua",
+    "category": "Productivity",
+    "capabilities": [
+      "Read"
+    ],
+    "websiteURL": "https://github.com/skyhua0224/continuity-plane",
+    "defaultPrompt": [
+      "定位陌生代码时优先调用 continuity_context_lookup。",
+      "Use continuity_context_lookup before broad repository reads."
+    ]
+  }
+}

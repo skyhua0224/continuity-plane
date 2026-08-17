@@ -1,0 +1,97 @@
+{
+  "schema_version": "context.public-schema-registry/v1",
+  "schemas": [
+    {
+      "path": "schemas/m10-01/canonical-attach-proposal.schema.json",
+      "sha256": "e32fdc2766bddefc853f2ff2d1392b3852b4519aaab0fd5a424dd1b83671206f"
+    },
+    {
+      "path": "schemas/m10-11/local-work-activation-request.schema.json",
+      "sha256": "b98da170d95735c2dd2280447e1f2f151c6fecaa3769557c08aae6d2cb87d542"
+    },
+    {
+      "path": "schemas/m10-11/status-projection.schema.json",
+      "sha256": "2b2e9f03791adaaa8eb2160de545f190781686e50e7aa2656d63b1bd21f89963"
+    },
+    {
+      "path": "schemas/m10-15/codex-session-project-bindings.schema.json",
+      "sha256": "569caf4dc0ec137a6e1cb09bd33bef90ef53cf7d68fc04beb292f515b130a7a1"
+    },
+    {
+      "path": "schemas/m10-15/delivery-workspace-registry.schema.json",
+      "sha256": "7bd9963bae868bd03cd5ec1e8b81e909d11cd1fc9651ce1257ac73640233b03b"
+    },
+    {
+      "path": "schemas/m10-16/observability-policy.schema.json",
+      "sha256": "599c8ffd1f2e02b0b3dd82c769f89f7488e574fd4a56ad5a8f93f0b2645dc1ee"
+    },
+    {
+      "path": "schemas/m10-16/state-mcp-observation.schema.json",
+      "sha256": "4844d612f54c263a0c9d7cce88086d0e925d85bb1112f2e228d2c7b7f01667e7"
+    },
+    {
+      "path": "schemas/m2-01/typed-state.schema.json",
+      "sha256": "4a147060f03be415e0f3517c73aa9851c525783ba010927c08d3481795cf9af4"
+    },
+    {
+      "path": "schemas/m2-02/state-event.schema.json",
+      "sha256": "98c582944679395d9a75099a53443a98ad44bc92d35049800d363ccda3dbe8c6"
+    },
+    {
+      "path": "schemas/m2-05/state-mcp.schema.json",
+      "sha256": "4a4df8b11df826bd531277116c155090240a28c8d47156321b5e5d75a7e8a2fc"
+    },
+    {
+      "path": "schemas/m2-06/checkpoint-manifest.schema.json",
+      "sha256": "e9b3217bd41c70cd80c1e0ccd23c52cf7bc1585c54928765a5bc2f5ef5b61d05"
+    },
+    {
+      "path": "schemas/m4-01/skill-manifest-set.schema.json",
+      "sha256": "bc555b399b306cca1a5b2ebdd300399a6be038bcdc05456c67ca5939e190f26d"
+    },
+    {
+      "path": "schemas/m4-01/spdx-license-ids-3.28.0.json",
+      "sha256": "414032545923d3fe184f32cac53b55c884a9f8fba2186df8d082369f4b350c28"
+    },
+    {
+      "path": "schemas/m5-01/execution-packet.schema.json",
+      "sha256": "c4b2721bc24ac1a25d9f45c3764ba235528a6caadc5a10da82042ee8abd49f30"
+    },
+    {
+      "path": "schemas/m7-03/verification-profile.schema.json",
+      "sha256": "3382089a9e7d08d968a2b89bd97e37e4f73601bd8b870bde1cdcf06fffc8ae5e"
+    },
+    {
+      "path": "schemas/m8-02/state-mcp-v3alpha1.schema.json",
+      "sha256": "a814cd3a9e17666a72b6ef75dc170ea1c953531e5f58c24227e7d03019bbc5ba"
+    },
+    {
+      "path": "schemas/m8-10/agent-inbox-item.schema.json",
+      "sha256": "54573bc5dfa933753daf6f908147ee7caff8d7ffd2559f15823ab33df1322b2f"
+    },
+    {
+      "path": "schemas/m8-10/collaboration-delivery-batch.schema.json",
+      "sha256": "bdc8e62df9238a706ad1e836bad7510daf37a99eb3b35a2923119e8a56b5277e"
+    },
+    {
+      "path": "schemas/m8-10/collaboration-notification-publish.schema.json",
+      "sha256": "f4adea5f8169469e994d4457ebb8e0f099b5c5c64397416d2d15014514a69f1f"
+    },
+    {
+      "path": "schemas/m8-10/collaboration-notification.schema.json",
+      "sha256": "909b27405cda75070298965b3de8fa03e373886e76025a5689f77a948545b985"
+    },
+    {
+      "path": "schemas/m8-10/collaboration-subscription-cursor.schema.json",
+      "sha256": "a18de092a1bffff3b7c2230988409e0ddaff3b803f826f883a623fb732767bb6"
+    },
+    {
+      "path": "schemas/m8-10/collaboration-subscription-request.schema.json",
+      "sha256": "e4d0f8bc2c4c152867df1e7cd4db8bd95b2dd8be1f20eea048253fdebcf4c917"
+    },
+    {
+      "path": "schemas/m8-10/collaboration-subscription.schema.json",
+      "sha256": "79610b5ed8473217fc5fe92c56452457ddf8d4c141ea47dfac50052251ffc17f"
+    }
+  ]
+}

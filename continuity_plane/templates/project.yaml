@@ -1,0 +1,16 @@
+schema_version: context.project/v1alpha1
+project_id: __PROJECT_ID__
+display_name: __DISPLAY_NAME__
+runtime_profile: local-embedded
+state_store:
+  adapter: sqlite
+  path: .continuity/state.sqlite3
+collaboration:
+  mode: solo
+  shared_state: false
+governance:
+  master_path: .continuity/MASTER.md
+  status_path: .continuity/STATUS.md
+authority:
+  provider_state_write: false
+  memory_state_write: false

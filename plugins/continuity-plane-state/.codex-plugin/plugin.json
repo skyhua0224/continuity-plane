@@ -1,0 +1,35 @@
+{
+  "name": "continuity-plane-state",
+  "version": "0.1.0-alpha.12",
+  "description": "Optional advanced State MCP tools for Continuity Plane",
+  "author": {
+    "name": "SkyHua"
+  },
+  "homepage": "https://github.com/skyhua0224/continuity-plane",
+  "repository": "https://github.com/skyhua0224/continuity-plane",
+  "license": "Apache-2.0",
+  "keywords": [
+    "context",
+    "state",
+    "mcp",
+    "checkpoint",
+    "collaboration"
+  ],
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Continuity Plane State",
+    "shortDescription": "可选 State MCP 工具 / Optional advanced State MCP tools.",
+    "longDescription": "为显式需要 State 操作的项目提供 resume、checkpoint、claim 和原子 Work transition 工具。 Adds resume, checkpoint, claim, and atomic Work transition tools for projects that explicitly need them.",
+    "developerName": "SkyHua",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/skyhua0224/continuity-plane",
+    "defaultPrompt": [
+      "检查当前项目的 State MCP 状态。",
+      "Inspect this project's State MCP status."
+    ]
+  }
+}

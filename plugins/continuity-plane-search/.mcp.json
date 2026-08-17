@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "continuity-search": {
+      "command": "continuity-search-mcp",
+      "args": []
+    }
+  }
+}
