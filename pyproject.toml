@@ -1,0 +1,55 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "continuity-plane"
+version = "0.1.0a1"
+description = "Durable task state, bounded context, evidence, and collaboration control for long-running AI-assisted work"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md"]
+authors = [{name = "Continuity Plane contributors"}]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+]
+dependencies = [
+  "PyYAML>=6.0.3,<7",
+  "jsonschema>=4.25.1,<5",
+]
+
+[project.optional-dependencies]
+postgres = ["psycopg[binary]>=3.3.4,<4"]
+dev = [
+  "build>=1.3,<2",
+  "psycopg[binary]>=3.3.4,<4",
+  "ruff>=0.12,<1",
+]
+
+[project.scripts]
+continuity = "continuity_plane.cli:main"
+
+[project.urls]
+Documentation = "https://github.com/skyhua0224/continuity-plane#readme"
+Issues = "https://github.com/skyhua0224/continuity-plane/issues"
+Source = "https://github.com/skyhua0224/continuity-plane"
+
+[tool.setuptools.packages.find]
+include = ["continuity_plane", "continuity_plane.*"]
+
+[tool.setuptools.package-data]
+continuity_plane = [
+  "database/**/*.sql",
+  "schemas/**/*.json",
+  "templates/*.md",
+  "templates/*.yaml",
+]
+
+[tool.ruff.lint]
+select = ["E4", "E9", "F"]
