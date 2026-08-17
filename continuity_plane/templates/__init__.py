@@ -1,0 +1,1 @@
+"""Packaged project initialization templates."""
