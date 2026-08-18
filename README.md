@@ -8,6 +8,47 @@ Continuity Plane 是面向长期 AI 辅助软件工作的 provider-neutral 控�
 
 [English README](README.en.md)
 
+## 安装
+
+先安装一份 CLI：
+
+```bash
+python -m pip install continuity-plane==0.1.0a1
+```
+
+### 单项目
+
+适合希望每个仓库独立保存状态和版本的个人项目。
+
+```bash
+continuity init --root . --project-id my-project --display-name "My Project"
+```
+
+### 一个 CLI 管理多个项目
+
+适合在同一台机器上维护多个仓库；每个项目拥有独立的 `.continuity/` 和 SQLite。
+
+```bash
+continuity init --root /path/to/project-a --project-id project-a --display-name "Project A"
+continuity init --root /path/to/project-b --project-id project-b --display-name "Project B"
+```
+
+### 协作项目个人使用
+
+适合加入团队仓库但只想先管理自己的本地 Session，不要求团队部署服务。
+
+```bash
+continuity init --root /path/to/team-repo --project-id team-project --display-name "Team Project"
+```
+
+### 团队共同使用
+
+适合需要共享 Work、claim、PR/CI 和部署状态的团队。先完成本地初始化，再按项目条件
+启用 `forge-coordinated` 或 `shared-strong`；默认安装仍不要求 PostgreSQL 或 Docmost。
+
+常用参数：`--root` 指向目标仓库，`--project-id` 是稳定的小写标识，
+`--display-name` 是人类可读名称。详见[完整安装、使用与模式切换](USAGE.md)。
+
 ## 你可能遇到的事故
 
 | 场景 | 痛点 | 详情 |
@@ -61,11 +102,9 @@ Memory、检索系统、代码图和 reviewer 只能提供候选信息；active 
 
 ## 快速开始
 
-要求 Python 3.11 或更高版本。在目标项目目录执行：
+要求 Python 3.11 或更高版本。在已安装 CLI 的目标项目目录执行：
 
 ```bash
-python -m pip install continuity-plane==0.1.0a1
-continuity init --root . --project-id my-project --display-name "My Project"
 continuity verify --root .
 continuity doctor --root .
 continuity state show --root .

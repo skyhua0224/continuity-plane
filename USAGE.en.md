@@ -163,11 +163,37 @@ Use `shared-strong` only when workers on different machines need one authority
 for claim, lease, ownership, expected revision, and external-effect admission.
 The deployment must provide a State MCP adapter with authorization, CAS,
 append-only events, durable receipts, project isolation, and audit retention.
-PostgreSQL is one possible backend; it is not the only architectural option.
 
+PostgreSQL is one possible backend; it is not the only architectural option.
 Do not put database credentials in `project.yaml`. The current release does not
 turn a local project into shared-strong automatically; this is an explicit
 deployment and adapter task.
+
+## Switch Runtime Profiles
+
+The current alpha initializes only `local-embedded` through the CLI. Other modes
+are enabled through adapters or team workflows; there is no
+`continuity profile switch` command yet.
+
+| Switch from the default to | Use case | Current action | Moves authority state |
+|---|---|---|---|
+| `forge-coordinated` | A team keeps GitHub/Gitea/GitLab and does not want a shared database | Keep local SQLite; commit team-owned governance templates; use Issue/PR/CI adapters for visibility | no |
+| personal PostgreSQL | One user needs SQL inspection, backups, or local workers | Install `continuity-plane[postgres]`; select PostgreSQL through a Python/provider adapter | the current CLI does not migrate |
+| personal Docmost | Graphs, approvals, and history are needed | Keep State MCP authority; connect read projections and controlled governance actions | no |
+| `shared-strong` | Several machines need unique claims, leases, and CAS | Deploy a conformed State MCP service, then validate export/import/rollback | yes; currently preview |
+
+Before switching:
+
+1. Stop workers and Agent Sessions that use the project state.
+2. Run `continuity verify --root /path/to/project`.
+3. Back up the complete `.continuity/` tree; do not copy a live SQLite file alone.
+4. Check the target adapter capability manifest.
+5. Move authority only when export/import preserves the snapshot and event head and rollback hashes match.
+6. Restore the backup and return to `local-embedded` if any gate fails.
+
+M10-09 has completed install, verify, and uninstall probes on Linux, macOS, and
+Windows. Cross-adapter export/import/rollback CLI work is still in progress, so
+do not edit `project.yaml.runtime_profile` by hand to claim a completed switch.
 
 ## Agent Integration
 

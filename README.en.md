@@ -9,6 +9,50 @@ after compaction, task switches, crashes, and handoffs is deterministic.
 
 [中文 README](README.md)
 
+## Install
+
+Install one CLI first:
+
+```bash
+python -m pip install continuity-plane==0.1.0a1
+```
+
+### One Project
+
+Use this when one repository should own its state and pinned control-plane version.
+
+```bash
+continuity init --root . --project-id my-project --display-name "My Project"
+```
+
+### One CLI For Multiple Projects
+
+Use this when one machine manages several repositories. Each project gets its own
+`.continuity/` directory and SQLite state.
+
+```bash
+continuity init --root /path/to/project-a --project-id project-a --display-name "Project A"
+continuity init --root /path/to/project-b --project-id project-b --display-name "Project B"
+```
+
+### Personal Use In A Collaborative Repository
+
+Use this when joining a team repository while keeping coordination local to your own Sessions.
+
+```bash
+continuity init --root /path/to/team-repo --project-id team-project --display-name "Team Project"
+```
+
+### Team-Wide Use
+
+Use this when the team needs shared Work, claims, PR/CI, and deployment state. Initialize
+locally first, then enable `forge-coordinated` or `shared-strong` when the project needs it.
+The default installation still requires neither PostgreSQL nor Docmost.
+
+Common parameters: `--root` selects the repository, `--project-id` is a stable lowercase
+identifier, and `--display-name` is the human-readable name. See the
+[complete installation, usage, and profile switching guide](USAGE.en.md).
+
 ## Incidents You May Recognize
 
 | Scenario | Pain point | Details |
@@ -64,11 +108,9 @@ expected revision or CAS, and validators.
 
 ## Quick Start
 
-Requires Python 3.11 or later. From the target project directory:
+Requires Python 3.11 or later. From an installed CLI in the target project directory:
 
 ```bash
-python -m pip install continuity-plane==0.1.0a1
-continuity init --root . --project-id my-project --display-name "My Project"
 continuity verify --root .
 continuity doctor --root .
 continuity state show --root .

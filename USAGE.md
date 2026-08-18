@@ -138,6 +138,31 @@ project isolation 和 audit retention 的 State MCP adapter。
 PostgreSQL 是一种后端，不是唯一选择。当前 release 不会自动把本地项目切成
 shared-strong。
 
+## 模式切换
+
+当前 alpha 只有 `local-embedded` 能通过 CLI 直接初始化。其他模式通过 adapter 或
+团队流程启用，尚不存在 `continuity profile switch` 命令。
+
+| 从默认模式切换到 | 适合场景 | 当前操作 | 是否移动权威状态 |
+|---|---|---|---|
+| `forge-coordinated` | 团队继续使用 GitHub/Gitea/GitLab，不想部署共享数据库 | 保留本地 SQLite；提交团队认可的治理模板；用 Issue/PR/CI adapter 提供共享可见性 | 否 |
+| 个人 PostgreSQL | 一个人需要 SQL 检查、备份或多个本地 worker | 安装 `continuity-plane[postgres]`，由 Python/provider adapter 显式选择 PostgreSQL | 当前 CLI 不自动迁移 |
+| 个人 Docmost | 需要图表、审批和历史浏览 | 保留 State MCP authority，连接只读 projection 和受控治理入口 | 否 |
+| `shared-strong` | 多台机器需要唯一 claim、lease 和 CAS | 部署 conformed State MCP service，再执行 export/import/rollback 验证 | 是；当前 preview |
+
+切换前执行：
+
+1. 停止使用该项目状态的 worker 和 Agent Session；
+2. 运行 `continuity verify --root /path/to/project`；
+3. 备份完整 `.continuity/`，不要只复制运行中的 SQLite 文件；
+4. 检查目标 adapter 的 capability manifest；
+5. 只有 export/import 后 snapshot、event head 和 rollback hash 一致，才能切换 authority；
+6. 失败时恢复备份并回到 `local-embedded`。
+
+M10-09 已完成 Linux、macOS、Windows 的安装、verify 和卸载；跨 adapter 的
+export/import/rollback CLI 仍在开发，因此当前不要手工修改 `project.yaml` 的
+`runtime_profile` 来冒充已切换。
+
 ## Agent 接入
 
 控制面安装在项目旁边，通过 CLI、Python API 或 provider adapter 使用。核心包不要求
