@@ -407,7 +407,7 @@ documents:
 - document_id: readme-en
   path: README.en.md
   category: policy
-  document_revision: 4
+  document_revision: 5
   authority:
     governance_authority: false
     active_state_authority: false
@@ -415,18 +415,18 @@ documents:
   change:
     change_type: decision
     authority_ref: governance-event://master/revision/79
-    supersedes: context.document://readme-en/revision/3
+    supersedes: context.document://readme-en/revision/4
     affected_tasks:
     - M0-10
     next_review: null
     supersedes_provenance:
-      git_commit: 18ff6bd8e4d35bb5fbf17fdd7d65517db8ba5477
-      manifest_sha256: 2a83733084b608832452bc5997aaf36f5755e58d53fa3299e033ab9a14409383
-      content_sha256: 1fd0ec3849540dcf3a880a3d1b1d44ca0d333d73e41055f3202434adab4ce0c0
+      git_commit: fe2f71ac444666b716c5011f242909042dfc3b7f
+      manifest_sha256: 607ff0f5dd4ee4657c1442a0b730c4849961dfba6f38b3f70a40e886eed6ea23
+      content_sha256: e456eb370c37a9228ca7000c7d2b30a286581c7a65c922b32d32611ea78da017
   evidence_refs: []
-  content_sha256: e456eb370c37a9228ca7000c7d2b30a286581c7a65c922b32d32611ea78da017
+  content_sha256: cbfd33072610c53b22627ef52a5530ec4c235b305cbb2b01039a610b543b6505
   metrics:
-    utf8_bytes: 8250
+    utf8_bytes: 8241
     section_count: 10
     local_link_count: 33
     external_link_count: 2
@@ -434,7 +434,7 @@ documents:
 - document_id: readme
   path: README.md
   category: projection
-  document_revision: 5
+  document_revision: 6
   authority:
     governance_authority: false
     active_state_authority: false
@@ -442,25 +442,25 @@ documents:
   change:
     change_type: projection
     authority_ref: state-revision://repository/79
-    supersedes: context.document://readme/revision/4
+    supersedes: context.document://readme/revision/5
     affected_tasks:
     - M0-10
     - M10-08
     next_review: null
     supersedes_provenance:
-      git_commit: 18ff6bd8e4d35bb5fbf17fdd7d65517db8ba5477
-      manifest_sha256: 2a83733084b608832452bc5997aaf36f5755e58d53fa3299e033ab9a14409383
-      content_sha256: 131caccff77705ba3cc349bd0f0113570c5bbc1a36984a78094d010d3745bd2c
+      git_commit: fe2f71ac444666b716c5011f242909042dfc3b7f
+      manifest_sha256: 607ff0f5dd4ee4657c1442a0b730c4849961dfba6f38b3f70a40e886eed6ea23
+      content_sha256: c81359ade5273dc2111a4e747d4b5433f0b5e1baa685e094a248d1fe1f05adc4
   evidence_refs: []
   projection_binding:
     source_state_revision: 79
     template_version: context.document-projection/v1alpha1
     state_write_authority: false
     master_digest: cd0e67b355c27d9ce765df30ff43160312b3cf8880726731462649b24bd3114a
-    content_hash: c81359ade5273dc2111a4e747d4b5433f0b5e1baa685e094a248d1fe1f05adc4
-  content_sha256: c81359ade5273dc2111a4e747d4b5433f0b5e1baa685e094a248d1fe1f05adc4
+    content_hash: 4685c5a39993717654dc765faabcc927525a0527ff0724036e7a265d69f497e2
+  content_sha256: 4685c5a39993717654dc765faabcc927525a0527ff0724036e7a265d69f497e2
   metrics:
-    utf8_bytes: 7790
+    utf8_bytes: 7787
     section_count: 10
     local_link_count: 34
     external_link_count: 2

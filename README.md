@@ -49,7 +49,7 @@ continuity init --root /path/to/team-repo --project-id team-project --display-na
 常用参数：`--root` 指向目标仓库，`--project-id` 是稳定的小写标识，
 `--display-name` 是人类可读名称。详见[完整安装、使用与模式切换](USAGE.md)。
 
-## 你可能遇到的事故
+## 它解决哪些问题
 
 | 场景 | 痛点 | 详情 |
 |---|---|---|

@@ -53,7 +53,7 @@ Common parameters: `--root` selects the repository, `--project-id` is a stable l
 identifier, and `--display-name` is the human-readable name. See the
 [complete installation, usage, and profile switching guide](USAGE.en.md).
 
-## Incidents You May Recognize
+## Problems It Solves
 
 | Scenario | Pain point | Details |
 |---|---|---|
