@@ -2125,3 +2125,13 @@ schemas:
     status: current
     compatibility_mode: strict-versioned
     migrations: []
+
+  - schema_id: context.local-state-bundle
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.local-state-bundle/v1alpha1
+    supported_wire_versions: [context.local-state-bundle/v1alpha1]
+    artifact_path: schemas/m10-09/local-state-bundle.schema.json
+    content_sha256: d0c1d80dd440dfc6f72566629bd45b78c9c297d20c3c85823f0a4790a051bdfd
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []

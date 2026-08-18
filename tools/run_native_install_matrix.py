@@ -60,12 +60,7 @@ def run_native_install_matrix(
     artifact: Path | None = None,
     package_module: str = "context_control_plane",
 ) -> dict[str, Any]:
-    """Run an offline wheel probe when an artifact is supplied.
-
-    Migration/export/rollback stay explicitly blocked until their CLI contract
-    is implemented. The receipt remains useful for native CI without overstating
-    the current completion gate.
-    """
+    """Run an offline wheel probe including local State migration round-trip."""
     root = root.resolve()
     if artifact is not None:
         artifact = artifact.resolve()
@@ -151,10 +146,83 @@ def run_native_install_matrix(
         else:
             steps["verify"] = _step("blocked", 0, "install did not pass")
 
-        blocked = "export/import/rollback CLI is not implemented"
-        steps["export"] = _step("blocked", 0, blocked)
-        steps["import"] = _step("blocked", 0, blocked)
-        steps["rollback"] = _step("blocked", 0, blocked)
+        migration_output = "migration prerequisites are unavailable"
+        if steps["verify"]["status"] == "passed":
+            bundle = temporary_root / "state.continuity.zip"
+            output, elapsed, returncode = _run(
+                [
+                    sys.executable,
+                    "-m",
+                    f"{package_module}.cli",
+                    "export",
+                    "--root",
+                    str(project),
+                    "--output",
+                    str(bundle),
+                ],
+                env=env,
+            )
+            steps["export"] = _step(
+                "passed" if returncode == 0 else "failed",
+                elapsed,
+                output,
+            )
+            migration_output = output
+            bundle_digest = None
+            if returncode == 0:
+                try:
+                    bundle_digest = json.loads(output)["bundle_sha256"]
+                    steps["export"] = _step("passed", elapsed, bundle_digest)
+                except (json.JSONDecodeError, KeyError, TypeError):
+                    returncode = 1
+                    steps["export"] = _step("failed", elapsed, output)
+            if returncode == 0:
+                output, elapsed, returncode = _run(
+                    [
+                        sys.executable,
+                        "-m",
+                        f"{package_module}.cli",
+                        "import",
+                        "--root",
+                        str(project),
+                        "--bundle",
+                        str(bundle),
+                        "--replace",
+                    ],
+                    env=env,
+                )
+                steps["import"] = _step(
+                    "passed" if returncode == 0 else "failed",
+                    elapsed,
+                    bundle_digest if returncode == 0 else output,
+                )
+                migration_output += output
+            else:
+                steps["import"] = _step("blocked", 0, migration_output)
+            if steps["import"]["status"] == "passed":
+                output, elapsed, returncode = _run(
+                    [
+                        sys.executable,
+                        "-m",
+                        f"{package_module}.cli",
+                        "rollback",
+                        "--root",
+                        str(project),
+                    ],
+                    env=env,
+                )
+                steps["rollback"] = _step(
+                    "passed" if returncode == 0 else "failed",
+                    elapsed,
+                    bundle_digest if returncode == 0 else output,
+                )
+                migration_output += output
+            else:
+                steps["rollback"] = _step("blocked", 0, migration_output)
+        else:
+            steps["export"] = _step("blocked", 0, migration_output)
+            steps["import"] = _step("blocked", 0, migration_output)
+            steps["rollback"] = _step("blocked", 0, migration_output)
 
         started = time.monotonic()
         shutil.rmtree(project, ignore_errors=True)

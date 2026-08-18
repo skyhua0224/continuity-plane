@@ -20,6 +20,12 @@ import yaml
 
 from .artifact_store import ArtifactRef, LocalArtifactStore
 from .checkpoint import CheckpointError, publish_checkpoint, restore_checkpoint
+from .local_state_bundle import (
+    LocalStateBundleError,
+    export_local_state,
+    import_local_state,
+    rollback_local_state,
+)
 from .sqlite_state_store import SQLiteStateStore
 from .canonical_attach import (
     CanonicalAttachError,
@@ -940,6 +946,40 @@ def _work_complete(args: argparse.Namespace) -> int:
     return 0
 
 
+def _export_state(args: argparse.Namespace) -> int:
+    try:
+        receipt = export_local_state(
+            Path(args.root),
+            Path(args.output),
+        )
+    except LocalStateBundleError as exc:
+        raise ValueError(str(exc)) from exc
+    print(json.dumps({"status": "exported", **receipt}, sort_keys=True))
+    return 0
+
+
+def _import_state(args: argparse.Namespace) -> int:
+    try:
+        receipt = import_local_state(
+            Path(args.root),
+            Path(args.bundle),
+            replace=args.replace,
+        )
+    except LocalStateBundleError as exc:
+        raise ValueError(str(exc)) from exc
+    print(json.dumps({"status": "imported", **receipt}, sort_keys=True))
+    return 0
+
+
+def _rollback_state(args: argparse.Namespace) -> int:
+    try:
+        receipt = rollback_local_state(Path(args.root))
+    except LocalStateBundleError as exc:
+        raise ValueError(str(exc)) from exc
+    print(json.dumps({"status": "rolled-back", **receipt}, sort_keys=True))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="continuity")
     parser.add_argument("--version", action="version", version=VERSION)
@@ -1007,6 +1047,22 @@ def build_parser() -> argparse.ArgumentParser:
     work_complete.add_argument("--actor-ref", required=True)
     work_complete.add_argument("--evidence-file", action="append", required=True)
     work_complete.set_defaults(handler=_work_complete)
+    export = commands.add_parser("export", help="export local-embedded State")
+    export.add_argument("--root", default=".")
+    export.add_argument("--output", required=True)
+    export.set_defaults(handler=_export_state)
+    import_command = commands.add_parser(
+        "import", help="import a verified local-embedded State bundle"
+    )
+    import_command.add_argument("--root", default=".")
+    import_command.add_argument("--bundle", required=True)
+    import_command.add_argument("--replace", action="store_true")
+    import_command.set_defaults(handler=_import_state)
+    rollback = commands.add_parser(
+        "rollback", help="swap to the previous verified local State bundle"
+    )
+    rollback.add_argument("--root", default=".")
+    rollback.set_defaults(handler=_rollback_state)
     return parser
 
 
