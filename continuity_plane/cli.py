@@ -6,6 +6,7 @@ import argparse
 import copy
 import hashlib
 import json
+import os
 import re
 import sqlite3
 import sys
@@ -17,13 +18,21 @@ from typing import Any
 
 import yaml
 
+from .artifact_store import ArtifactRef, LocalArtifactStore
+from .checkpoint import CheckpointError, publish_checkpoint, restore_checkpoint
 from .sqlite_state_store import SQLiteStateStore
 from .canonical_attach import (
     CanonicalAttachError,
     build_attach_proposal,
     validate_attach_proposal,
 )
-from .state_mcp import CLAIM_TOOL, COMMIT_TOOL, RequestContext, StateMCPService
+from .state_mcp import (
+    CLAIM_TOOL,
+    COMMIT_TOOL,
+    READ_TOOL,
+    RequestContext,
+    StateMCPService,
+)
 
 VERSION = "0.1.0a1"
 _PROJECT_FIELDS = {
@@ -280,6 +289,76 @@ def _parse_scope(raw: str) -> dict[str, str]:
     if not kind or not reference:
         raise ValueError("scope must use kind:reference")
     return {"scope_kind": kind, "scope_ref": reference}
+
+
+def _load_current_attach_proposal(
+    root: Path,
+    project_id: str,
+    *,
+    verify_sources: bool,
+) -> dict[str, Any]:
+    path = root / ".continuity/attach-proposal.json"
+    try:
+        proposal = json.loads(path.read_text(encoding="utf-8"))
+        validate_attach_proposal(root, proposal, verify_sources=verify_sources)
+    except (OSError, json.JSONDecodeError, CanonicalAttachError) as exc:
+        raise ValueError(str(exc) or "attach proposal is unavailable or invalid") from exc
+    if proposal["project_id"] != project_id:
+        raise ValueError("proposal project_id does not match project profile")
+    return proposal
+
+
+def _canonical_master_sha256(proposal: dict[str, Any]) -> str:
+    sources = [item for item in proposal["sources"] if item["kind"] == "master"]
+    if len(sources) != 1:
+        raise ValueError("attach proposal must bind exactly one canonical master")
+    return sources[0]["content_sha256"]
+
+
+def _read_state_result(
+    store: SQLiteStateStore,
+    project_id: str,
+) -> dict[str, Any]:
+    response = _state_service(store).call_tool(
+        READ_TOOL,
+        {
+            "schema_version": "context.state-mcp-request/v1alpha1",
+            "request_id": f"cli-read-{uuid.uuid4().hex}",
+            "project_id": project_id,
+        },
+        context=RequestContext("local-user", "local-cli"),
+    )
+    if not response["ok"]:
+        raise ValueError(response["error"]["message"])
+    return response["result"]
+
+
+def _checkpoint_store(root: Path) -> LocalArtifactStore:
+    store = LocalArtifactStore(root / ".continuity/artifacts")
+    store.initialize()
+    return store
+
+
+def _checkpoint_ref_file(root: Path) -> Path:
+    return root / ".continuity/checkpoint-ref.json"
+
+
+def _write_json_atomic(path: Path, document: dict[str, Any]) -> None:
+    temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+    payload = json.dumps(
+        document,
+        ensure_ascii=False,
+        indent=2,
+        sort_keys=True,
+    ) + "\n"
+    try:
+        with temporary.open("x", encoding="utf-8") as handle:
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def _attach_plan(args: argparse.Namespace) -> int:
@@ -606,6 +685,89 @@ def _resume(args: argparse.Namespace) -> int:
     return 0
 
 
+def _checkpoint_create(args: argparse.Namespace) -> int:
+    root = Path(args.root).resolve()
+    project = _load_project(root)
+    proposal = _load_current_attach_proposal(
+        root,
+        project["project_id"],
+        verify_sources=True,
+    )
+    store = _open_state_store(root, project)
+    read_result = _read_state_result(store, project["project_id"])
+    artifact_store = _checkpoint_store(root)
+    try:
+        checkpoint_ref = publish_checkpoint(
+            read_result,
+            artifact_store,
+            canonical_plan_sha256=_canonical_master_sha256(proposal),
+        )
+    except CheckpointError as exc:
+        raise ValueError(str(exc)) from exc
+    _write_json_atomic(_checkpoint_ref_file(root), checkpoint_ref.to_document())
+    print(
+        json.dumps(
+            {
+                "status": "created",
+                "project_id": project["project_id"],
+                "revision": read_result["revision"],
+                "event_head": read_result["event_head"],
+                "checkpoint_ref": checkpoint_ref.to_document(),
+            },
+            sort_keys=True,
+        )
+    )
+    return 0
+
+
+def _checkpoint_verify(args: argparse.Namespace) -> int:
+    root = Path(args.root).resolve()
+    project = _load_project(root)
+    proposal = _load_current_attach_proposal(
+        root,
+        project["project_id"],
+        verify_sources=True,
+    )
+    try:
+        checkpoint_ref = ArtifactRef.from_document(
+            json.loads(_checkpoint_ref_file(root).read_text(encoding="utf-8"))
+        )
+    except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
+        raise ValueError("checkpoint ref is unavailable or invalid") from exc
+    state_store = _open_state_store(root, project)
+    read_result = _read_state_result(state_store, project["project_id"])
+    try:
+        restored = restore_checkpoint(
+            checkpoint_ref,
+            _checkpoint_store(root),
+            expected_project_id=project["project_id"],
+            expected_revision=read_result["revision"],
+            expected_event_head=read_result["event_head"],
+            expected_governance_ref=read_result["snapshot"]["project"][
+                "governance_ref"
+            ],
+            expected_plan_sha256=_canonical_master_sha256(proposal),
+            expected_registry_digest=read_result["registry_digest"],
+        )
+    except CheckpointError as exc:
+        raise ValueError(str(exc)) from exc
+    print(
+        json.dumps(
+            {
+                "status": "verified",
+                "project_id": project["project_id"],
+                "revision": restored.manifest["revision"],
+                "event_head": restored.manifest["event_head"],
+                "active_work_ids": restored.manifest["active_work_ids"],
+                "primary_work_id": restored.manifest["primary_work_id"],
+                "checkpoint_ref": checkpoint_ref.to_document(),
+            },
+            sort_keys=True,
+        )
+    )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="continuity")
     parser.add_argument("--version", action="version", version=VERSION)
@@ -646,6 +808,22 @@ def build_parser() -> argparse.ArgumentParser:
     resume = commands.add_parser("resume", help="compose the current bounded resume packet")
     resume.add_argument("--root", default=".")
     resume.set_defaults(handler=_resume)
+    checkpoint = commands.add_parser(
+        "checkpoint", help="create or verify an immutable local checkpoint"
+    )
+    checkpoint_commands = checkpoint.add_subparsers(
+        dest="checkpoint_command", required=True
+    )
+    checkpoint_create = checkpoint_commands.add_parser(
+        "create", help="publish the current State as immutable artifacts"
+    )
+    checkpoint_create.add_argument("--root", default=".")
+    checkpoint_create.set_defaults(handler=_checkpoint_create)
+    checkpoint_verify = checkpoint_commands.add_parser(
+        "verify", help="verify the latest checkpoint against current authority"
+    )
+    checkpoint_verify.add_argument("--root", default=".")
+    checkpoint_verify.set_defaults(handler=_checkpoint_verify)
     return parser
 
 
