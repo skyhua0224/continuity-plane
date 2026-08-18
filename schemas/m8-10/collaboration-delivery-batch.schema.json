@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://continuity.invalid/schemas/m8-10/collaboration-delivery-batch.schema.json",
+  "title": "M8-10 signed collaboration delivery batch",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "subscription_id", "tenant_id", "project_id", "provider", "events", "next_cursor", "has_more", "delivery_authority", "state_write_authority", "batch_sha256", "signature"],
+  "properties": {
+    "schema_version": {"const": "context.collaboration-delivery-batch/v1alpha1"},
+    "subscription_id": {"$ref": "#/$defs/id"},
+    "tenant_id": {"$ref": "#/$defs/id"},
+    "project_id": {"$ref": "#/$defs/id"},
+    "provider": {"$ref": "#/$defs/id"},
+    "events": {"type": "array", "maxItems": 1000, "items": {"$ref": "collaboration-notification.schema.json"}},
+    "next_cursor": {"$ref": "collaboration-subscription-cursor.schema.json"},
+    "has_more": {"type": "boolean"},
+    "delivery_authority": {"const": false},
+    "state_write_authority": {"const": false},
+    "batch_sha256": {"$ref": "#/$defs/sha256"},
+    "signature": {"$ref": "#/$defs/signature"}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "signature": {"type": "object", "additionalProperties": false, "required": ["algorithm", "key_id", "value"], "properties": {"algorithm": {"const": "hmac-sha256"}, "key_id": {"$ref": "#/$defs/id"}, "value": {"$ref": "#/$defs/sha256"}}}
+  }
+}

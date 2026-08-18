@@ -6,32 +6,53 @@ import copy
 import hashlib
 import json
 from contextlib import contextmanager
+from importlib import resources
 from pathlib import Path
 from typing import Any
 
-import psycopg
-from psycopg.errors import UniqueViolation
-from psycopg.rows import dict_row
-from psycopg.types.json import Jsonb
+try:
+    import psycopg
+    from psycopg.errors import UniqueViolation
+    from psycopg.rows import dict_row
+    from psycopg.types.json import Jsonb
+except ModuleNotFoundError:
+    psycopg = None
 
+    class UniqueViolation(Exception):
+        """Placeholder used only when the optional PostgreSQL extra is absent."""
+
+    dict_row = None
+    Jsonb = None
+
+from .state_events import StateEventError, replay_state_events, validate_state_event
 from .state_store import (
-    StateStoreCapabilityManifest,
     StateStoreBusy,
+    StateStoreCapabilityManifest,
     StateStoreConflict,
     StateStoreError,
     StateStoreIntegrityError,
     StateStoreNotFound,
 )
-from .state_events import StateEventError, replay_state_events, validate_state_event
 from .typed_state import TypedStateError, canonical_state_bytes, validate_typed_state
 
+_MIGRATION_RESOURCE = "database/migrations/001_postgres_state.up.sql"
 
-_MIGRATION_PATH = (
-    Path(__file__).parents[1]
-    / "database"
-    / "migrations"
-    / "001_m2_03_postgres_state.up.sql"
-)
+
+def _migration_sql() -> str:
+    try:
+        return (
+            resources.files("continuity_plane")
+            .joinpath(_MIGRATION_RESOURCE)
+            .read_text(encoding="utf-8")
+        )
+    except (FileNotFoundError, ModuleNotFoundError):
+        migration_path = (
+            Path(__file__).parents[1]
+            / "database"
+            / "migrations"
+            / "001_m2_03_postgres_state.up.sql"
+        )
+        return migration_path.read_text(encoding="utf-8")
 
 
 class PostgresStateStoreError(StateStoreError):
@@ -103,6 +124,10 @@ class PostgresStateStore:
     def __init__(self, dsn: str):
         if not isinstance(dsn, str) or not dsn.strip():
             raise ValueError("dsn must be a non-empty string")
+        if psycopg is None:
+            raise ModuleNotFoundError(
+                "PostgreSQL support requires continuity[postgres]"
+            )
         self._dsn = dsn
 
     @contextmanager
@@ -114,7 +139,7 @@ class PostgresStateStore:
             raise PostgresStateBusy("PostgreSQL state store is unavailable") from exc
 
     def initialize(self) -> None:
-        migration = _MIGRATION_PATH.read_text(encoding="utf-8")
+        migration = _migration_sql()
         with self._connect() as connection:
             connection.execute(migration, prepare=False)
 
@@ -239,7 +264,9 @@ class PostgresStateStore:
                     f"expected event sequence {expected_sequence}, got {event['sequence_no']}"
                 )
             if event["previous_event_sha256"] != previous_event_sha256:
-                raise PostgresStateConflict("event hash chain does not match current head")
+                raise PostgresStateConflict(
+                    "event hash chain does not match current head"
+                )
 
             duplicate = connection.execute(
                 """
@@ -274,7 +301,9 @@ class PostgresStateStore:
                 )
             except (StateEventError, TypedStateError) as exc:
                 raise PostgresStateIntegrityError("state Event replay failed") from exc
-            if canonical_state_bytes(restored) != canonical_state_bytes(expected_snapshot):
+            if canonical_state_bytes(restored) != canonical_state_bytes(
+                expected_snapshot
+            ):
                 raise PostgresStateIntegrityError(
                     "event replay does not produce expected snapshot"
                 )
