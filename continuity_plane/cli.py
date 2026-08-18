@@ -1,0 +1,281 @@
+"""Release-neutral command line interface."""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import re
+import sqlite3
+import sys
+import uuid
+from datetime import UTC, datetime
+from importlib import resources
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+from .sqlite_state_store import SQLiteStateStore
+from .state_mcp import RequestContext, StateMCPService
+
+VERSION = "0.1.0a1"
+_PROJECT_FIELDS = {
+    "schema_version",
+    "project_id",
+    "display_name",
+    "runtime_profile",
+    "state_store",
+    "collaboration",
+    "governance",
+    "authority",
+}
+_ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,127}$")
+
+
+def _template(name: str) -> str:
+    return (
+        resources.files("continuity_plane.templates")
+        .joinpath(name)
+        .read_text(encoding="utf-8")
+    )
+
+
+def _project_file(root: Path) -> Path:
+    return root / ".continuity" / "project.yaml"
+
+
+def _load_project(root: Path) -> dict[str, Any]:
+    path = _project_file(root)
+    if not path.is_file():
+        raise FileNotFoundError(f"project profile is missing: {path}")
+    document = yaml.safe_load(path.read_text(encoding="utf-8"))
+    if not isinstance(document, dict) or set(document) != _PROJECT_FIELDS:
+        raise ValueError("project profile fields are invalid")
+    if document["schema_version"] != "context.project/v1alpha1":
+        raise ValueError("project profile schema is unsupported")
+    if (
+        not isinstance(document["project_id"], str)
+        or _ID_RE.fullmatch(document["project_id"]) is None
+    ):
+        raise ValueError("project_id is invalid")
+    if document["runtime_profile"] != "local-embedded":
+        raise ValueError("public default profile must be local-embedded")
+    if document["state_store"] != {
+        "adapter": "sqlite",
+        "path": ".continuity/state.sqlite3",
+    }:
+        raise ValueError("default state store must be local SQLite")
+    return document
+
+
+def _state_file(root: Path, project: dict[str, Any]) -> Path:
+    return root / project["state_store"]["path"]
+
+
+def _open_state_store(root: Path, project: dict[str, Any]) -> SQLiteStateStore:
+    path = _state_file(root, project)
+    if not path.is_file():
+        raise FileNotFoundError(f"state database is missing: {path}")
+    store = SQLiteStateStore(path)
+    store.initialize()
+    return store
+
+
+def _initial_state(project_id: str) -> dict[str, Any]:
+    return {
+        "schema_version": "context.typed-state/v1alpha1",
+        "project": {
+            "project_id": project_id,
+            "revision": 0,
+            "governance_ref": ".continuity/MASTER.md@version-1",
+            "active_work_ids": [],
+            "primary_work_id": None,
+            "current_decision_ids": [],
+            "active_constraint_ids": [],
+            "open_blocker_ids": [],
+            "effect_high_watermark": 0,
+            "updated_at": datetime.now(UTC).isoformat(),
+        },
+        "works": [
+            {
+                "work_id": "work-initial",
+                "kind": "work",
+                "title": "Define the first measurable outcome",
+                "status": "proposed",
+                "parent_work_id": None,
+                "dependency_ids": [],
+                "owner_refs": [],
+                "scope_refs": [
+                    {"scope_kind": "capability", "scope_ref": "project-governance"}
+                ],
+                "overlap_candidate_ids": [],
+                "dedupe_status": "clear",
+                "supersedes_work_id": None,
+                "evidence_ids": [],
+                "blocker_ids": [],
+                "revision": 0,
+            }
+        ],
+        "claims": [],
+        "ideas": [],
+        "decisions": [],
+        "constraints": [],
+        "evidence": [],
+        "blockers": [],
+        "effects": [],
+    }
+
+
+class _LocalCliAuthorizer:
+    def authorize(self, context: RequestContext, action: str, project_id: str) -> bool:
+        return action == "state.read" and context.authorization_ref == "local-cli"
+
+
+def _state_service(store: SQLiteStateStore) -> StateMCPService:
+    registry_digest = hashlib.sha256(b"context.public-runtime/v1").hexdigest()
+    return StateMCPService(
+        store,
+        authorizer=_LocalCliAuthorizer(),
+        registry_digest=registry_digest,
+        clock=lambda: datetime.now(UTC).isoformat(),
+        event_id_factory=lambda request_id: f"event-{request_id}-{uuid.uuid4().hex}",
+    )
+
+
+def _init(args: argparse.Namespace) -> int:
+    root = Path(args.root).resolve()
+    if _ID_RE.fullmatch(args.project_id) is None:
+        raise ValueError("project-id must be a lowercase bounded identifier")
+    target = root / ".continuity"
+    outputs = [
+        target / "project.yaml",
+        target / "MASTER.md",
+        target / "STATUS.md",
+        target / "MASTER.en.md",
+        target / "STATUS.en.md",
+    ]
+    existing = [path for path in outputs if path.exists()]
+    if existing:
+        raise FileExistsError(f"initialization would overwrite: {existing[0]}")
+    target.mkdir(parents=True, exist_ok=True)
+    display_name = args.display_name or args.project_id
+    profile = _template("project.yaml").replace("__PROJECT_ID__", args.project_id)
+    profile = profile.replace("__DISPLAY_NAME__", display_name)
+    (target / "project.yaml").write_text(profile, encoding="utf-8")
+    (target / "MASTER.md").write_text(_template("MASTER.md"), encoding="utf-8")
+    (target / "STATUS.md").write_text(_template("STATUS.md"), encoding="utf-8")
+    (target / "MASTER.en.md").write_text(_template("MASTER.en.md"), encoding="utf-8")
+    (target / "STATUS.en.md").write_text(_template("STATUS.en.md"), encoding="utf-8")
+    project = _load_project(root)
+    store = SQLiteStateStore(_state_file(root, project))
+    store.initialize()
+    store.create_project(_initial_state(args.project_id))
+    print(
+        json.dumps(
+            {
+                "status": "initialized",
+                "project_id": args.project_id,
+                "root": str(root),
+                "profile": "local-embedded",
+            },
+            sort_keys=True,
+        )
+    )
+    return 0
+
+
+def _verify(args: argparse.Namespace) -> int:
+    root = Path(args.root).resolve()
+    project = _load_project(root)
+    for key in ("master_path", "status_path"):
+        path = root / project["governance"][key]
+        if not path.is_file():
+            raise FileNotFoundError(f"governance document is missing: {path}")
+    _open_state_store(root, project)
+    print(json.dumps({"status": "passed", "project_id": project["project_id"]}))
+    return 0
+
+
+def _doctor(args: argparse.Namespace) -> int:
+    root = Path(args.root).resolve()
+    project = _load_project(root)
+    _open_state_store(root, project)
+    sqlite_version = sqlite3.sqlite_version
+    print(
+        json.dumps(
+            {
+                "status": "ready",
+                "project_id": project["project_id"],
+                "python": sys.version.split()[0],
+                "sqlite": sqlite_version,
+                "runtime_profile": project["runtime_profile"],
+                "external_services_required": 0,
+            },
+            sort_keys=True,
+        )
+    )
+    return 0
+
+
+def _state_show(args: argparse.Namespace) -> int:
+    root = Path(args.root).resolve()
+    project = _load_project(root)
+    store = _open_state_store(root, project)
+    response = _state_service(store).call_tool(
+        "context.state.read",
+        {
+            "schema_version": "context.state-mcp-request/v1alpha1",
+            "request_id": f"cli-read-{uuid.uuid4().hex}",
+            "project_id": project["project_id"],
+        },
+        context=RequestContext("local-user", "local-cli"),
+    )
+    if not response["ok"]:
+        raise RuntimeError(response["error"]["message"])
+    result = response["result"]
+    print(
+        json.dumps(
+            {
+                "status": "ok",
+                "project_id": project["project_id"],
+                "revision": result["revision"],
+                "event_head": result["event_head"],
+                "state": result["snapshot"],
+            },
+            sort_keys=True,
+        )
+    )
+    return 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="continuity")
+    parser.add_argument("--version", action="version", version=VERSION)
+    commands = parser.add_subparsers(dest="command", required=True)
+    init = commands.add_parser("init", help="initialize a local project profile")
+    init.add_argument("--root", default=".")
+    init.add_argument("--project-id", required=True)
+    init.add_argument("--display-name")
+    init.set_defaults(handler=_init)
+    verify = commands.add_parser("verify", help="verify the local project profile")
+    verify.add_argument("--root", default=".")
+    verify.set_defaults(handler=_verify)
+    doctor = commands.add_parser("doctor", help="check local runtime prerequisites")
+    doctor.add_argument("--root", default=".")
+    doctor.set_defaults(handler=_doctor)
+    state = commands.add_parser("state", help="read local authoritative state")
+    state_commands = state.add_subparsers(dest="state_command", required=True)
+    show = state_commands.add_parser("show", help="show the current typed snapshot")
+    show.add_argument("--root", default=".")
+    show.set_defaults(handler=_state_show)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    return int(args.handler(args))
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -113,6 +113,10 @@ _SAFE_TEXT_RE = re.compile(r"^[^\r\n\x00]+$")
 class DurableContinuationError(ValueError):
     """Raised when continuation state cannot authorize an exact recovery action."""
 
+    def __init__(self, message: str, *, code: str = "recovery-contract") -> None:
+        super().__init__(message)
+        self.code = code
+
 
 def _canonical(value: Any) -> bytes:
     return json.dumps(
@@ -392,7 +396,9 @@ def _recovery_read_receipt(
         or recovery_budget_bytes <= 0
         or recovery_budget_bytes > MAX_RECOVERY_BYTES
     ):
-        raise DurableContinuationError("recovery read budget is invalid")
+        raise DurableContinuationError(
+            "recovery read budget is invalid", code="read-budget"
+        )
     if not isinstance(recovery_reads, list) or not recovery_reads:
         raise DurableContinuationError("recovery reads must be a non-empty list")
     reads = []
@@ -414,7 +420,9 @@ def _recovery_read_receipt(
     reads.sort(key=lambda item: item["source_ref"])
     total = sum(item["bytes_read"] for item in reads)
     if total > recovery_budget_bytes:
-        raise DurableContinuationError("recovery reads exceed the bounded budget")
+        raise DurableContinuationError(
+            "recovery reads exceed the bounded budget", code="read-budget"
+        )
     return {
         "read_count": len(reads),
         "bytes_read": total,
@@ -448,33 +456,52 @@ def evaluate_durable_recovery(
     observed_at: str,
 ) -> dict[str, Any]:
     """Fail closed unless recovery resumes the exact durable atomic action."""
-    expected = validate_durable_continuation(copy.deepcopy(trusted_state))
-    restored = validate_durable_continuation(copy.deepcopy(restored_state))
-    authority = _validate_authority(copy.deepcopy(trusted_authority))
+    try:
+        expected = validate_durable_continuation(copy.deepcopy(trusted_state))
+        restored = validate_durable_continuation(copy.deepcopy(restored_state))
+        authority = _validate_authority(copy.deepcopy(trusted_authority))
+    except DurableContinuationError as exc:
+        raise DurableContinuationError(str(exc), code="state-binding") from exc
     if canonical_durable_continuation_bytes(restored) != canonical_durable_continuation_bytes(
         expected
     ):
-        raise DurableContinuationError("restored state does not match trusted durable state")
+        raise DurableContinuationError(
+            "restored state does not match trusted durable state", code="state-binding"
+        )
     for field in ("operation_id", "project_id", "project_revision", "task_id", "task_revision"):
         if expected[field] != authority[field]:
-            raise DurableContinuationError(f"{field} does not match trusted authority")
+            raise DurableContinuationError(
+                f"{field} does not match trusted authority", code="state-binding"
+            )
     if expected["event_head"] != authority["event_head"]:
-        raise DurableContinuationError("event head does not match trusted authority")
+        raise DurableContinuationError(
+            "event head does not match trusted authority", code="state-binding"
+        )
 
     if expected["phase"] == "terminal":
         if proposed_first_action is not None:
-            raise DurableContinuationError("terminal operation cannot have a first action")
+            raise DurableContinuationError(
+                "terminal operation cannot have a first action",
+                code="first-action-mismatch",
+            )
     else:
         _text(proposed_first_action, "proposed_first_action")
         if proposed_first_action != expected["next_action"]:
-            raise DurableContinuationError("post-restore first action does not match durable cursor")
+            raise DurableContinuationError(
+                "post-restore first action does not match durable cursor",
+                code="first-action-mismatch",
+            )
 
     if response_input_id is not None:
         response_id = _id(response_input_id, "response_input_id")
         if response_id in expected["acknowledged_input_ids"]:
-            raise DurableContinuationError("acknowledged input cannot be answered again")
+            raise DurableContinuationError(
+                "acknowledged input cannot be answered again", code="input-replay"
+            )
         if expected["response_mode"] != "answer-pending-input":
-            raise DurableContinuationError("response mode does not permit an answer")
+            raise DurableContinuationError(
+                "response mode does not permit an answer", code="input-replay"
+            )
     if type(replay_requested) is not bool:
         raise DurableContinuationError("replay_requested must be boolean")
     effects = {item["effect_id"]: item for item in expected["reserved_effects"]}
@@ -482,14 +509,22 @@ def evaluate_durable_recovery(
         effect_id = _id(requested_effect_id, "requested_effect_id")
         effect = effects.get(effect_id)
         if effect is None:
-            raise DurableContinuationError("requested effect is not reserved")
+            raise DurableContinuationError(
+                "requested effect is not reserved", code="effect-replay"
+            )
         if replay_requested:
             if effect["replay_policy"] == "never":
-                raise DurableContinuationError("never-replay effect cannot be invoked again")
+                raise DurableContinuationError(
+                    "never-replay effect cannot be invoked again", code="effect-replay"
+                )
             if effect["status"] == "settled":
-                raise DurableContinuationError("settled effect cannot be replayed")
+                raise DurableContinuationError(
+                    "settled effect cannot be replayed", code="effect-replay"
+                )
     elif replay_requested:
-        raise DurableContinuationError("effect replay requires a reserved effect ID")
+        raise DurableContinuationError(
+            "effect replay requires a reserved effect ID", code="effect-replay"
+        )
 
     read_receipt = _recovery_read_receipt(
         copy.deepcopy(recovery_reads), recovery_budget_bytes=recovery_budget_bytes

@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://continuity.invalid/schemas/m8-10/collaboration-subscription-cursor.schema.json",
+  "title": "M8-10 signed collaboration subscription cursor",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "subscription_id", "tenant_id", "project_id", "subscriber_ref", "subscription_sha256", "last_sequence_no", "last_event_sha256", "issued_at", "cursor_sha256", "signature"],
+  "properties": {
+    "schema_version": {"const": "context.collaboration-subscription-cursor/v1alpha1"},
+    "subscription_id": {"$ref": "#/$defs/id"},
+    "tenant_id": {"$ref": "#/$defs/id"},
+    "project_id": {"$ref": "#/$defs/id"},
+    "subscriber_ref": {"$ref": "#/$defs/id"},
+    "subscription_sha256": {"$ref": "#/$defs/sha256"},
+    "last_sequence_no": {"type": "integer", "minimum": 0},
+    "last_event_sha256": {"$ref": "#/$defs/sha256"},
+    "issued_at": {"$ref": "#/$defs/timestamp"},
+    "cursor_sha256": {"$ref": "#/$defs/sha256"},
+    "signature": {"$ref": "#/$defs/signature"}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "format": "date-time", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$"},
+    "signature": {"type": "object", "additionalProperties": false, "required": ["algorithm", "key_id", "value"], "properties": {"algorithm": {"const": "hmac-sha256"}, "key_id": {"$ref": "#/$defs/id"}, "value": {"$ref": "#/$defs/sha256"}}}
+  }
+}
