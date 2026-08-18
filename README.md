@@ -10,14 +10,14 @@ Continuity Plane 是面向长期 AI 辅助软件工作的 provider-neutral 控�
 
 ## 你可能遇到的事故
 
-| 场景 | 一句话表现 | 详情 |
+| 场景 | 痛点 | 详情 |
 |---|---|---|
-| 压缩与长 Session | 压缩后重答、重规划，甚至重新执行已经完成的工作 | [场景详情](public/docs/use-cases.md#压缩与长-session) |
-| 多 Session 与部署竞态 | 两个 Session 同时合入、部署、回滚或重试同一个副作用 | [场景详情](public/docs/use-cases.md#多-session多人和部署竞态) |
-| 多人和多 Agent | 看不到 unpublished Work，重复实现或重复检索 | [场景详情](public/docs/use-cases.md#多-agent-重复实现) |
-| Idea 与任务切换 | 一句想法把当前主线带跑，回来后找不到 return point | [场景详情](public/docs/use-cases.md#idea中断与任务切换) |
-| 大型项目 | 目录树无法说明依赖、影响、决定和当前 owner | [场景详情](public/docs/use-cases.md#大型项目定位与影响分析) |
-| Memory、Skill、文档漂移 | 旧路径、旧规则和旧决定重新影响当前工作 | [场景详情](public/docs/use-cases.md#memoryskill-与文档漂移) |
+| 压缩与长 Session | 刚刚还在修测试，压缩后却重答旧问题，甚至把做完的工作重新做一遍 | [场景详情](public/docs/use-cases.md#压缩后像换了一个人) |
+| 多 Session 与部署竞态 | 两边都以为自己可以部署，直到 main、CI 和环境互相覆盖才发现冲突 | [场景详情](public/docs/use-cases.md#同一仓库的多个-session-会互相踩踏) |
+| 多人和多 Agent | 别人已经在本地做完的东西不可见，协作者只能重复实现、重复查资料 | [场景详情](public/docs/use-cases.md#多人和多-agent-不知道别人已经做了什么) |
+| Idea 与任务切换 | 一句临时想法让 Agent 离开主线，回来时找不到原任务的落点 | [场景详情](public/docs/use-cases.md#临时-idea-很容易把主线带跑) |
+| 大型项目 | 几百个模块和跨仓依赖堆在一起，人和 AI 都不知道改动会影响哪里 | [场景详情](public/docs/use-cases.md#大型项目里人和-ai-都不知道哪里是哪里) |
+| Memory、Skill、文档漂移 | 旧路径、旧决定和旧规则在压缩后重新冒出来 | [场景详情](public/docs/use-cases.md#memoryskill-和文档会漂移) |
 
 ## 已测结果
 

@@ -11,14 +11,14 @@ after compaction, task switches, crashes, and handoffs is deterministic.
 
 ## Incidents You May Recognize
 
-| Scenario | Short description | Details |
+| Scenario | Pain point | Details |
 |---|---|---|
-| Compaction and long Sessions | The agent repeats, replans, or redoes completed work | [Use case](public/docs/use-cases.en.md#compaction-and-long-sessions) |
-| Multi-Session and deployment races | Sessions merge, deploy, roll back, or retry the same effect | [Use case](public/docs/use-cases.en.md#multi-session-team-and-deployment-races) |
-| Team and multi-Agent work | Unpublished Work is invisible, so implementation and retrieval are duplicated | [Use case](public/docs/use-cases.en.md#duplicate-work-across-agents) |
-| Ideas and task switches | A side idea displaces the mainline and loses its return point | [Use case](public/docs/use-cases.en.md#ideas-interrupts-and-task-switching) |
-| Large projects | A directory tree cannot show ownership, impact, or decision history | [Use case](public/docs/use-cases.en.md#large-project-orientation-and-impact) |
-| Memory, Skills, and documentation drift | Old paths and rules re-enter current work | [Use case](public/docs/use-cases.en.md#memory-skill-and-documentation-drift) |
+| Compaction and long Sessions | The agent was fixing a test, then repeats an old question and redoes completed work | [Use case](public/docs/use-cases.en.md#compaction-makes-the-agent-look-different) |
+| Multi-Session and deployment races | Both Sessions think they can deploy until main, CI, and the environment conflict | [Use case](public/docs/use-cases.en.md#sessions-step-on-each-other) |
+| Team and multi-Agent work | Unpublished local work is invisible, so collaborators implement and search twice | [Use case](public/docs/use-cases.en.md#people-and-agents-repeat-each-others-work) |
+| Ideas and task switches | A casual idea pulls the agent away from the mainline and loses the return point | [Use case](public/docs/use-cases.en.md#a-casual-idea-pulls-the-mainline-away) |
+| Large projects | Hundreds of modules and cross-repository dependencies hide the impact of a change | [Use case](public/docs/use-cases.en.md#large-projects-lose-their-shape) |
+| Memory, Skills, and documentation drift | Old paths, decisions, and rules return after compaction | [Use case](public/docs/use-cases.en.md#memory-skills-and-documents-drift) |
 
 ## Measured Results
 

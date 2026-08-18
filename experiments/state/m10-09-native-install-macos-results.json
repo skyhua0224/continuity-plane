@@ -1,0 +1,19 @@
+{
+  "consistency": {"artifact_leaks": 0, "external_service_invocations": 0, "rollback_hash_matches_export": true, "state_write_authority": false},
+  "generated_at": "2026-08-18T11:03:50.579643+00:00",
+  "package": {"artifact_sha256": "fcc5653649704891350f9de732fcb10a33dd2fc372a2e01801fac6b0179f03df", "name": "continuity-plane", "version": "0.1.0a1"},
+  "platform": {"machine": "arm64", "python": "3.14.1", "release": "24.6.0", "system": "Darwin"},
+  "profile": {"admin_required": false, "container_required": false, "external_services_required": 0, "requested_profile": "local-embedded", "state_adapter": "sqlite"},
+  "project_id": "native-macos",
+  "receipt_sha256": "d489001e614333058781629c4447ed5394e09c6ea8eba5b5c2f5c6be27e70ac7",
+  "schema_version": "context.native-install-matrix/v1alpha1",
+  "steps": {
+    "export": {"duration_ms": 0, "output_sha256": "cccca5cad875e1776fa9b4d3596064ad427fa27619470b874259aedadcffe0de", "status": "blocked"},
+    "import": {"duration_ms": 0, "output_sha256": "cccca5cad875e1776fa9b4d3596064ad427fa27619470b874259aedadcffe0de", "status": "blocked"},
+    "install": {"duration_ms": 6385.1462, "output_sha256": "e6a120ce29414dcdf62fd6f849c758bdfe7a441628d8cc559ef49a99fe1aff5e", "status": "passed"},
+    "rollback": {"duration_ms": 0, "output_sha256": "cccca5cad875e1776fa9b4d3596064ad427fa27619470b874259aedadcffe0de", "status": "blocked"},
+    "uninstall": {"duration_ms": 24.8827, "output_sha256": "dac59dd2af2ad14f9cb5ad77ef4561b2fc96a78573df3b4d1620871019a7d3ef", "status": "passed"},
+    "verify": {"duration_ms": 155.7239, "output_sha256": "1f31bea13be27ac133916ba4d90ddab18728a164e808be0a6ffc14151a0aeded", "status": "passed"}
+  },
+  "verdict": "blocked"
+}

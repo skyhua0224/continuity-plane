@@ -2,80 +2,87 @@
 
 [English](use-cases.en.md)
 
-Continuity Plane 处理的是长期 AI 辅助开发中反复出现的状态、检索和协作事故。
-每个场景都区分当前已验证的控制面合同和仍需前端或 provider adapter 的部分。
+如果你让 Agent 连续工作数小时，或者同时打开多个 Session，下面这些事故很容易发生。
+这些事故通常源于当前任务、权限和副作用没有一个独立于聊天窗口的稳定状态，
+与代码能力本身无关。
 
-## 压缩与长 Session
+## 压缩后像换了一个人
 
-常见表现：压缩后 Agent 重答已经完成的问题，重新读取大量文件，把已完成或回滚
-的工作重新列为待办，或在恢复后直接执行副作用。
+- 压缩前 Agent 正在修测试，压缩后又回答一次你半小时前已经问过的问题；
+- 你只说“继续”，它重新读取 MASTER、重新规划，甚至重做已经完成的工作；
+- 被拒绝、回滚或已经完成的方案重新出现在待办里；
+- 为了恢复上下文又读了一大堆源码和文档，刚压缩不久窗口再次被填满；
+- 1M context 延缓了压缩，却没有自动解决重复历史和无效输入。
 
-控制面保存 active leaf、latest decision、constraint、return point、acknowledged
-input、continuation cursor 和 effect watermark。PostCompact canary 在写代码、提交、
-部署或其他副作用前验证这些字段；不一致时恢复为只读。
+控制面把 active task、最新决定、约束、return point、已确认输入和首个允许动作
+写入 checkpoint。恢复先过 canary，再允许代码修改、提交或部署。当前匹配任务中，
+冗余历史输入下降 `40.25%`，近上限历史输入下降 `95.06%`，答案质量 `3/3`。
 
-当前实测的匹配任务中，冗余历史输入下降 `40.25%`，近上限历史输入下降 `95.06%`，
-expected-answer quality 为 `3/3`。这组结果暂不代表真实窗口利用率或压缩间隔已普遍
-提高；纵向指标见 [实测方法](benchmarks.md)。
+## 同一仓库的多个 Session 会互相踩踏
 
-## 多 Session、多人和部署竞态
+- Session A 正在部署，Session B 刚把另一个 revision 合入 main；
+- 两个 Session 都判断“没人部署”，同时发布、回滚或更新同一个环境；
+- 一个 Session 修改 PR 或 force-push，另一个仍按旧 branch/head 工作；
+- 失败重试没有 effect identity，重复执行同一个外部操作。
 
-常见表现：Session A 正在部署时，Session B 合入了新的 main；两个 Session 同时发布、
-回滚或修改同一 migration；PR、CI 和本地 branch 各自显示不同 head；失败重试重复
-执行同一个外部操作。
+Work Ledger 记录谁认领了什么范围、哪个 revision 有效、部署是否正在进行。SQLite
+默认支持同一台机器的多 Session；跨设备唯一 claim 使用已有 Git forge 或显式 shared
+State。PostgreSQL 和 Docmost 都是可选项。当前实测 duplicate tool calls 下降
+`55.88%`，双 Session 同 revision `1000/1000`，authority violation `0`。
 
-Work Ledger、claim/lease、path ownership、expected revision、effect identity 和
-通知 cursor 把部署、review、merge 和 rollback 绑定到同一状态。SQLite local profile
-覆盖同一设备的多个 Session；跨设备唯一 claim 使用显式 shared State 或 forge adapter。
-PostgreSQL 和 Docmost 都不是普通 PR 的前置条件。
+## 多人和多 Agent 不知道别人已经做了什么
 
-当前协作实测：重复 tool call 下降 `55.88%`，并行 wall time 下降 `22.65%`；双 Session
-同 revision `1000/1000`，重复通知抑制 `1000/1000`，离线 catch-up `2000/2000`，
-authority violation `0`。
+- 一个人已经在本地实现了模块，另一个人看不到 unpublished work，又实现一遍；
+- reviewer、executor 和部署 Session 反复搜索同一批源码和官方文档；
+- PR 已经验证过的决定没有进入共享证据，下一位协作者重新争论；
+- 交接只剩聊天摘要，blocker、next action 和 return point 丢失。
 
-## 多 Agent 重复实现
+Project Graph、Work Ledger、Decision Timeline 和 Evidence Matrix 让人和 Agent 看到
+当前主线、owner、依赖、证据和影响范围。memory 只能提供候选，不能宣布完成，也不能
+授予副作用权限。
 
-一个协作者在本地实现了模块，另一个协作者看不到 unpublished Work 又实现一遍；
-reviewer 重新检索已经验证过的源码和官方文档；交接只剩摘要，丢失 blocker、next
-action 和 return point。
+## 临时 Idea 很容易把主线带跑
 
-Project Graph、Work Ledger、Evidence Matrix 和 forge projection 记录 owner、scope、
-branch、claim、证据和当前 revision。memory 和模型输出只能产生候选，不能完成
-Work，也不能授予副作用权限。
+- 你在执行中随口补充一个未来想法，Agent 立即停下当前工作去实现它；
+- 实验分支没有 return point、attempt budget 或 promotion gate；
+- 你只是讨论方案，模型却把讨论当成批准后的执行指令；
+- 用户真正要求切换时，原任务没有 checkpoint，只能从头恢复。
 
-## Idea、中断与任务切换
+默认动作是 capture-and-continue：先保存 Idea，继续当前 active task。只有明确切换，
+并通过 review、范围检查、预算和 promotion gate，Idea 才能进入主线。返回原任务时只
+展开相关 checkpoint 和引用，不把整段旁支聊天重新塞进窗口。
 
-执行中出现的想法先进入 candidate/parked 队列。默认动作是 capture-and-continue，
-原 active leaf 不改变。只有明确 switch，或经过 review、CAS、attempt budget、expiry
-和 promotion gate，Idea 才能进入 canonical queue。
+## 大型项目里，人和 AI 都不知道“哪里是哪里”
 
-原任务的 checkpoint 保留 return point 和禁止副作用。恢复时只加载当前 packet 与相关
-Idea ref，避免把旁支讨论重新灌入主线。
+- 几百个模块、几千个任务和跨仓依赖堆在一起，目录树无法表达真实关系；
+- AI 找到了同名 symbol，却不知道它是主线、实验、旧实现还是替代路径；
+- 人类接手时只能翻 Issue、PR、聊天和报告，很难复盘一个决定为什么产生；
+- 修改底层能力后，不知道会影响哪些 Product、Work、Constraint 和测试。
 
-## 大型项目定位与影响分析
+Project Graph 给出确定性的任务地图，Relationship/Impact 用关系图帮助探索影响范围，
+Decision Timeline/Evidence Matrix 说明为什么做、何时推翻、证据在哪里。投影 core 已
+通过规模测试；完整 Docmost 页面、Obsidian Canvas/Bases 和交互验收按
+[图形化产品计划](visual-products.md)推进。
 
-目录树无法表达跨仓依赖、任务关系、决定历史和修改影响。人和 AI 都需要知道当前
-Work 属于哪个 Campaign、谁拥有它、它依赖什么、会影响哪些 Product 和测试。
+## Memory、Skill 和文档会漂移
 
-Project Graph 提供确定性 DAG，Relationship/Impact 提供有界的节点、边、cluster、
-focus 和 impact set。Decision Timeline/Evidence Matrix 解释为什么做、何时推翻以及
-完成声明依赖哪些证据。
+- 旧路径、旧决定和旧限制在压缩后被当成当前事实；
+- Skill 每次都全文重载，既浪费 token，又可能读到错误版本；
+- Skill 路径、digest、依赖或适用范围变化后，没有人发现；
+- MASTER/STATUS 要么长期不更新，要么把所有会话叙事都堆进去；
+- 外部标准、OS 文档和软件文档被反复全量搜索，却没有 revision 和 freshness。
 
-当前 projection core 已通过规模门；完整 Docmost Web UI、Obsidian Canvas/Bases 和
-跨前端交互仍按 [图形化产品计划](visual-products.md) 实施。
+历史 memory 标记为 candidate。Skill 使用版本、hash、rule ID、适用范围和 quarantine；
+MASTER 保存治理主线，STATUS 保存当前路由，报告和投影视图没有权威状态提交权。当前
+Skill source bytes 下降 `96.54%`，但长期 token 和窗口利用率仍需 host trace 才能测量。
 
-## Memory、Skill 与文档漂移
+## 质量不能让位给速度
 
-历史 memory 中的旧路径、旧决定和旧约束只能作为 candidate。Skill 使用 manifest、
-version、hash、rule IDs、applicability、license、dependency 和 expiry；漂移、冲突或
-缺失进入 quarantine。MASTER 保存治理主线，STATUS 保存当前路由，报告和投影视图不能
-直接改变 active state。
+- 为了少读一点，Agent 删掉了承重证据或必要约束；
+- 为了快一点，跳过 affected build/test、故障注入或 live 验证；
+- 模型声称“完成”，却没有测试、artifact hash 或 current provenance；
+- crash、503 或 checkpoint 损坏后恢复失败，却继续执行副作用。
 
-当前 Skill source bytes 下降 `96.54%`。provider token、window utilization 和长期
-压缩间隔只有在 host trace 可见时才计为 measured。
-
-## 质量与故障恢复
-
-系统不以 token 降幅替代质量门。E0-E9 当前 `10/10`，compaction、Idea、interrupt 和
-worker-loss fault `4/4`；stale history revival、静默 CAS 覆盖和 authority violation
-均为 `0`。完整数据、测试方法、verifier 成本和限制见 [实测方法](benchmarks.md)。
+当前 E0-E9 `10/10`，compaction、Idea、interrupt 和 worker-loss fault `4/4`；stale
+history revival、静默 CAS 覆盖和 authority violation 均为 `0`。完整数字、方法和限制
+见 [实测方法](benchmarks.md)。

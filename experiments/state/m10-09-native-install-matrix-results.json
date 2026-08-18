@@ -1,0 +1,63 @@
+{
+  "consistency": {
+    "artifact_leaks": 0,
+    "external_service_invocations": 0,
+    "rollback_hash_matches_export": true,
+    "state_write_authority": false
+  },
+  "generated_at": "2026-08-18T10:26:48.065236+00:00",
+  "package": {
+    "artifact_sha256": "fcc5653649704891350f9de732fcb10a33dd2fc372a2e01801fac6b0179f03df",
+    "name": "continuity-plane",
+    "version": "0.1.0a1"
+  },
+  "platform": {
+    "machine": "x86_64",
+    "python": "3.14.6",
+    "release": "7.1.6-1-cachyos",
+    "system": "Linux"
+  },
+  "profile": {
+    "admin_required": false,
+    "container_required": false,
+    "external_services_required": 0,
+    "requested_profile": "local-embedded",
+    "state_adapter": "sqlite"
+  },
+  "project_id": "native-probe",
+  "receipt_sha256": "167b2336b95357ddbcca20c01cc8557207d658b09427fbaac6488dc6536ab8a3",
+  "schema_version": "context.native-install-matrix/v1alpha1",
+  "steps": {
+    "export": {
+      "duration_ms": 0,
+      "output_sha256": "3241eb4f81a79ccf1149a3345626d5e3e0e2464f66f9f9e4abe89f9f375c3356",
+      "status": "blocked"
+    },
+    "import": {
+      "duration_ms": 0,
+      "output_sha256": "3241eb4f81a79ccf1149a3345626d5e3e0e2464f66f9f9e4abe89f9f375c3356",
+      "status": "blocked"
+    },
+    "install": {
+      "duration_ms": 870.4542,
+      "output_sha256": "9513866a15debc1877956fee0baecd56bc72f4e0761171c82e4a14af5a594059",
+      "status": "passed"
+    },
+    "rollback": {
+      "duration_ms": 0,
+      "output_sha256": "3241eb4f81a79ccf1149a3345626d5e3e0e2464f66f9f9e4abe89f9f375c3356",
+      "status": "blocked"
+    },
+    "uninstall": {
+      "duration_ms": 0.4078,
+      "output_sha256": "dac59dd2af2ad14f9cb5ad77ef4561b2fc96a78573df3b4d1620871019a7d3ef",
+      "status": "passed"
+    },
+    "verify": {
+      "duration_ms": 96.9552,
+      "output_sha256": "dbd85cf8d5f76e849abb7ced9b581c189572532d467d14ee93feb6518aef285b",
+      "status": "passed"
+    }
+  },
+  "verdict": "blocked"
+}

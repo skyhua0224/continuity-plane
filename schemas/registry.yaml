@@ -2085,3 +2085,13 @@ schemas:
     status: current
     compatibility_mode: strict-versioned
     migrations: []
+
+  - schema_id: context.native-install-matrix
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.native-install-matrix/v1alpha1
+    supported_wire_versions: [context.native-install-matrix/v1alpha1]
+    artifact_path: schemas/m10-09/native-install-matrix.schema.json
+    content_sha256: a6f86edc75437be0c7c6fa20c369e25b834ad99c66e0a164196610053e2c7d62
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
