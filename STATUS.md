@@ -1,6 +1,6 @@
 # Continuity Plane Status
 
-版本：revision 79  
+版本：revision 80  
 日期：2026-08-18  
 canonical plan：`MASTER.md`
 
@@ -10,8 +10,8 @@ canonical plan：`MASTER.md`
 |---|---|
 | 当前 Campaign | M10 跨项目发布 |
 | active work | M10-09：native release matrix（🟡） |
-| next action | 实现 checkpoint/resume 与 Codex lifecycle adapter，再完成 export/import/rollback |
-| hard blocker | canonical attach 已通过双 fixture；仍缺自动 Session hook、checkpoint canary 和跨 adapter 迁移/回滚 |
+| next action | 实现 local-embedded export/import/rollback CLI，并复跑 Linux、macOS、Windows native matrix |
+| hard blocker | 当前 Codex plugin manifest 不支持 lifecycle hooks；跨 adapter export/import/rollback 尚未实现 |
 | repository mode | internal development repository + fresh-history public mirror |
 | production state | Continuity Plane local-embedded alpha published；shared production pilot planned |
 
@@ -26,7 +26,8 @@ canonical plan：`MASTER.md`
 | M5/M6/M7 | M5-01..08、M6 retrieval/recall、M7-01..06 verified；量化 receipts 与 provenance 见 Evidence index |
 | M8 | durability、authorization、adaptation、forge、unattended dispatch 与 notifications verified；live Temporal conditional |
 | M9 | projection/governance/vault/impact M9-01..07 verified；graphical product M9-08..11 planned |
-| M10-00/01 pilots | self `M10-09` 与 Platform `N-67` 均已 attach：typed revision `2`、active Work/claim、Event `2`；provider hook gap open |
+| M10-00/01 pilots | self `M10-09` 已 attach 且 active，当前 revision/event 由 `continuity resume` 读取；Platform diagnostic `N-67` 已在 revision/event `3/3` 完成并释放 claim，post-completion checkpoint verified |
+| Local lifecycle adapter | attach/resume/checkpoint/completion focused `65/65`；completion 同一 CAS Event 写 Evidence、完成 Work、释放 claim；重复 Event `0`；Codex MCP tools `3/3` |
 | M10-08 release surface | current compiler tree `115` files；public `5/5`；packaged module graph `43` importable；fresh-history candidate `28` commits；worktree/history/wheel/sdist leak `0` |
 | M10-09 native matrix | receipt `6/6`；Linux `870.4542/96.9552/0.4078 ms`；SkyServer macOS `6385.1462/155.7239/24.8827 ms`；Skyindows Windows `10078.0/156.0/47.0 ms`；export/import/rollback `blocked` |
 | M10-10 publication | GitHub release `v0.1.0-alpha.1`；PyPI `continuity-plane==0.1.0a1`；`28` commits；contributor `skyhua0224`；About/topics/assets verified |
@@ -36,7 +37,7 @@ canonical plan：`MASTER.md`
 | Real code retrieval | input `-50.0153%`；tool calls `-57.8947%`；wall time `-27.4120%`；quality `100%` |
 | Effective 1M | 700K compact `783,628 -> 24,776`；next packet `59,172`；recovery `100%`；M10-11 window/token longitudinal result unavailable |
 | Repository verification | `1824` discovered；`1793` pass；`31` conditional skip；`0` fail；`229.393 s`；verifier passed |
-| Governance authority | `MASTER.md` revision 79 |
+| Governance authority | `MASTER.md` revision 80 |
 
 ## 恢复入口
 
