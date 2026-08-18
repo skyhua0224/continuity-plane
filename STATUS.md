@@ -1,6 +1,6 @@
 # Continuity Plane Status
 
-版本：revision 80  
+版本：revision 81  
 日期：2026-08-18  
 canonical plan：`MASTER.md`
 
@@ -9,9 +9,9 @@ canonical plan：`MASTER.md`
 | 字段 | 值 |
 |---|---|
 | 当前 Campaign | M10 跨项目发布 |
-| active work | M10-09：native release matrix（🟡） |
-| next action | 实现 local-embedded export/import/rollback CLI，并复跑 Linux、macOS、Windows native matrix |
-| hard blocker | 当前 Codex plugin manifest 不支持 lifecycle hooks；跨 adapter export/import/rollback 尚未实现 |
+| active work | M10-01：AlkaidLab 三仓 shadow pilot（🟡） |
+| next action | 激活 M10-01 claim，集成 Platform N-67 诊断提交并建立 `N-67-fix` 子叶 |
+| hard blocker | Codex lifecycle hook 不可用；canonical N-67 estimator correction 尚未认领 |
 | repository mode | internal development repository + fresh-history public mirror |
 | production state | Continuity Plane local-embedded alpha published；shared production pilot planned |
 
@@ -20,24 +20,24 @@ canonical plan：`MASTER.md`
 | 对象 | 状态 |
 |---|---|
 | Evidence index | [`docs/reports/verified-state.md`](docs/reports/verified-state.md) |
-| Documentation lifecycle | `140` documents；STATUS reduction `75.3840%`；recovery `5/5`；validator p95 `<100 ms`；exact receipt governed |
+| Documentation lifecycle | `141` documents；STATUS reduction `>75%` gate passed；recovery `5/5`；validator p95 `<100 ms` |
 | Git admission | M0-11 offline contract `26/26`；repository verifier 通过 |
 | M3/M4 | routing、Idea continuity、Skill resolver/quarantine verified；details in Evidence index |
 | M5/M6/M7 | M5-01..08、M6 retrieval/recall、M7-01..06 verified；量化 receipts 与 provenance 见 Evidence index |
 | M8 | durability、authorization、adaptation、forge、unattended dispatch 与 notifications verified；live Temporal conditional |
 | M9 | projection/governance/vault/impact M9-01..07 verified；graphical product M9-08..11 planned |
-| M10-00/01 pilots | self `M10-09` 已 attach 且 active，当前 revision/event 由 `continuity resume` 读取；Platform diagnostic `N-67` 已在 revision/event `3/3` 完成并释放 claim，post-completion checkpoint verified |
-| Local lifecycle adapter | attach/resume/checkpoint/completion focused `65/65`；completion 同一 CAS Event 写 Evidence、完成 Work、释放 claim；重复 Event `0`；Codex MCP tools `3/3` |
+| M10-00/01 pilots | self `M10-09` active；Platform diagnostic `N-67` completed/released at `3/3` |
+| Local lifecycle adapter | focused `65/65`；Platform duplicate Event `0`；Codex MCP `3/3`；[receipt](docs/migrations/m10-09-local-lifecycle-adapter-acceptance-2026-08-18.md) |
 | M10-08 release surface | current compiler tree `115` files；public `5/5`；packaged module graph `43` importable；fresh-history candidate `28` commits；worktree/history/wheel/sdist leak `0` |
-| M10-09 native matrix | receipt `6/6`；Linux `870.4542/96.9552/0.4078 ms`；SkyServer macOS `6385.1462/155.7239/24.8827 ms`；Skyindows Windows `10078.0/156.0/47.0 ms`；export/import/rollback `blocked` |
+| M10-09 native matrix | Linux/macOS/Windows `18/18` steps passed；migration `54.6-161.3 ms`；external service `0`；admin/container `false` |
 | M10-10 publication | GitHub release `v0.1.0-alpha.1`；PyPI `continuity-plane==0.1.0a1`；`28` commits；contributor `skyhua0224`；About/topics/assets verified |
 | Codex 1M A/B | real provider `3+3+3`；baseline `32,857`、packet `19,633`、large `397,631` input tokens；packet `-40.2471%`；quality `100%`；Skill warning `9/9` |
 | Harness ablation | real provider `4 arms x 3`；bare `19,608`、State `19,649`、full `19,748`、history `32,854`；quality `100%`；full-vs-bare `+0.7140%` |
 | Skill overlay | source bytes `501,543 -> 17,349` (`-96.5409%`)；provider input `19,593 -> 18,469` (`-5.7367%`)；warnings `3/3 -> 0/3` |
 | Real code retrieval | input `-50.0153%`；tool calls `-57.8947%`；wall time `-27.4120%`；quality `100%` |
 | Effective 1M | 700K compact `783,628 -> 24,776`；next packet `59,172`；recovery `100%`；M10-11 window/token longitudinal result unavailable |
-| Repository verification | `1824` discovered；`1793` pass；`31` conditional skip；`0` fail；`229.393 s`；verifier passed |
-| Governance authority | `MASTER.md` revision 80 |
+| Repository verification | `1847` discovered；`1816` pass；`31` conditional skip；`0` fail；`353.594 s`；verifier passed |
+| Governance authority | `MASTER.md` revision 81 |
 
 ## 恢复入口
 

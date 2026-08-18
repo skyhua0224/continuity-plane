@@ -1,6 +1,6 @@
 # Continuity Plane MASTER
 
-版本：revision 80  
+版本：revision 81  
 日期：2026-08-18  
 状态：public alpha publication  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
@@ -13,7 +13,7 @@
 | 产品形态 | 一个内聚产品、统一安装入口与可组合 capability profile |
 | 部署形态 | 默认本地内嵌工具链；现有 Git forge 协作 adapter；PostgreSQL、Docmost、Temporal 和 OTel 按需启用 |
 | 项目集成 | Project Profile、State MCP、CLI 和受控检索接口 |
-| 当前阶段 | alpha release candidate；M10-09 native release matrix |
+| 当前阶段 | alpha cross-project pilot；M10-01 AlkaidLab shadow pilot |
 | Canonical 治理计划 | `MASTER.md` |
 | 日常恢复入口 | `STATUS.md` |
 | 动态执行状态 | Phase M2 完成后由 revisioned Typed State 管理 |
@@ -361,7 +361,7 @@ Docmost 候选实现固定到 [`Yundi339/docmost` 参考评估](docs/research/do
 | ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
 |---|---|---|---|---|---|---|
 | M10-00 | ✅ | Continuity Plane self-dogfood release pilot | 本仓库通过统一产品入口持续使用本项目的状态、路由、Skill、检索、验证和可选增强能力 | 先以自身研发证明连续性、质量与交付速度收益 | M7-05/M8-04/M8-07/M8-09 | strict plan 与 execution-worktree binding；State MCP required leaf `3/3`、automatable closure `100%`、2 worker + independent verifier、forced fault `4/4`、dogfood coverage `100%`、E0-E9 `10/10`；real provider packet `-40.2471%` input、retrieval input/tool/wall `-50.0153%/-57.8947%/-27.4120%`、Skill source bytes `-96.5409%`；700K compaction recovery `100%`；验收见 `docs/migrations/m10-00-self-dogfood-acceptance-2026-08-18.md` |
-| M10-01 | ⏳ | AlkaidLab 三仓 shadow pilot | 用真实超大型项目验证 | 取得生产证据 | M10-00 | 建立三仓 Project Profile、thin Skill overlay、bounded retrieval 和 shadow-only effect policy；退出条件：E0-E9 全门通过且 Product build/runtime 依赖保持 0 |
+| M10-01 | 🟡 | AlkaidLab 三仓 shadow pilot | 用真实超大型项目验证 | 取得生产证据 | M10-00 | 建立三仓 Project Profile、thin Skill overlay、bounded retrieval 和 shadow-only effect policy；退出条件：E0-E9 全门通过且 Product build/runtime 依赖保持 0 |
 | M10-02 | ⏳ | 第二个跨领域项目接入 | 验证核心协议的项目中立性 | 验证可移植性 | M10-01 | 核心代码 fork 数为 0 |
 | M10-03 | ⏳ | 多协作者 pilot | 验证 forge 与 shared-strong profile 的 claim、权限和交接 | 支持不同投入等级的团队 | M8-05/M8-08 | shared-strong 静默覆盖 0；forge profile 对已发布 Work 的冲突可见率 100%；handoff 100% |
 | M10-04 | ⏳ | backup/export/import/disaster recovery | 状态可迁移和恢复 | 长期可持续 | M8-03 | 新实例完整 replay 且 hash 一致 |
@@ -369,7 +369,7 @@ Docmost 候选实现固定到 [`Yundi339/docmost` 参考评估](docs/research/do
 | M10-06 | ⏳ | 跨项目 adaptation/profile migration | 项目升级和 provider 变化保留已验证的个性化配置 | 长期可移植演进 | M2-07/M8-07/M10-02 | 两个项目 profile replay；迁移/回滚 hash 一致；opt-out/reset 可验证 |
 | M10-07 | ⏳ | 默认生成 MASTER、STATUS、目标态架构全表和最小 Project Profile | 人类与不同 Agent 使用一致的项目入口 | 让个人、协作和公开项目开箱获得完整治理投影 | M0-10/M2-07/M10-02 | 两类项目初始化/升级/卸载 replay；三文档字段恢复 100%；公开 Git admission 泄漏 0 |
 | M10-08 | ✅ | 编译 release-neutral 产品表面与公开历史 | 通用产品 MASTER、最小 Profile 和中性脱敏 example 进入公开发行 | 隔离试点名称、私有项目分类和开发期叙事 | M10-00 | latest release compiler tree `115` files；public contracts `5/5`；packaged module graph `43` imports；CLI init/verify/doctor/state read；gitleaks worktree/history/wheel/sdist `0`；专名/路径/thread marker `0`；internal safety gates 通过；历史验收快照见 `docs/migrations/m10-08-public-release-acceptance-2026-08-18.md`，公开历史由 M10-10 取代 |
-| M10-09 | 🟡 | runtime profile 探测、跨平台安装、迁移与卸载 | 默认本地模式无需管理员、容器或数据库运维；增强能力按需启用 | 降低 Windows、低性能设备和开源团队采用成本 | M2-09/M8-08/M10-04/M10-05 | native matrix strict receipt 与三端 install/verify/uninstall 通过，external service `0`、admin/container `false`；local attach/resume/checkpoint/completion adapter focused `65/65`，Platform shadow Work completion revision/event `2/2 -> 3/3` 且重复 Event `0`；export/import/rollback CLI 仍为 `blocked`；验收见 `docs/migrations/m10-09-native-install-matrix-acceptance-2026-08-18.md` 与 `docs/migrations/m10-09-local-lifecycle-adapter-acceptance-2026-08-18.md` |
+| M10-09 | ✅ | runtime profile 探测、跨平台安装、迁移与卸载 | 默认本地模式无需管理员、容器或数据库运维；增强能力按需启用 | 降低 Windows、低性能设备和开源团队采用成本 | M2-09/M8-08/M10-04/M10-05 | local lifecycle adapter focused `65/65`；Platform completion revision/event `2/2 -> 3/3`、duplicate Event `0`；strict export/import/rollback bundle gates `5/5`；Linux/macOS/Windows native steps `18/18`，external service `0`、admin/container `false`、rollback hash consistency `100%`；验收见 `docs/migrations/m10-09-local-lifecycle-adapter-acceptance-2026-08-18.md` 与 `docs/migrations/m10-09-native-install-matrix-completion-2026-08-18.md` |
 | M10-10 | ✅ | Continuity Plane public identity、license、branding 与 GitHub/PyPI publication | 公开发行使用稳定产品名、Apache-2.0、NOTICE、第三方声明和可选 badge | 让下游准确识别、合规使用和引用产品 | M10-08 | `27` 个真实 first-parent public projections + release commit；GitHub `main`/`v0.1.0-alpha.1`、contributor `skyhua0224`、About/topics、wheel/sdist/SHA256SUMS、PyPI `continuity-plane==0.1.0a1`、Apache license/NOTICE、privacy/secret/artifact/install/release API gates 全部通过；内部治理文件不进入公开镜像 |
 | M10-11 | ⏳ | live context-window efficiency、compaction interval 与 user-token benchmark | 按 accepted Work 量化有效窗口利用率、两次压缩之间的有效工作量和实际 billable token 变化 | 证明系统让单一窗口承载更多有效工作且一致性不退化 | M5-05/M5-07/M7-04/M10-00 | 同 provider/model/task class/window 的 baseline 与 candidate 各至少 `3` 段真实会话；报告 useful context utilization、active time/accepted Work per compaction、input/output/cache/reasoning tokens、pricing snapshot 和 consistency vector；history-heavy task class billable token/accepted Work 下降 `>=30%`、accepted Work/compaction 提升 `>=30%`、一致性 veto `0`；host metric 不可见时保持 `unavailable`，不得发布总体节省声明 |
 
