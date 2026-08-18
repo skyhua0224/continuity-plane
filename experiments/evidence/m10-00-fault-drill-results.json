@@ -1,0 +1,653 @@
+{
+  "authority": {
+    "completion_authority": false,
+    "external_effect_authority": 0,
+    "provider_authority": 0,
+    "state_write_authority": false
+  },
+  "campaign_id": "campaign-m10-00",
+  "coverage": {
+    "coverage_millionths": {
+      "agent_dispatch": 1000000,
+      "agent_handoff": 1000000,
+      "delivery": 1000000,
+      "eligible_ingress": 1000000,
+      "plan_revision": 1000000,
+      "skill_selection": 1000000,
+      "visible_compaction": 1000000
+    },
+    "coverage_sha256": "c54884041b0a8b95280dcb32e41fa9584cbd971839d69f0828ce195cb4353e6a",
+    "covered": {
+      "agent_dispatch": 1,
+      "agent_handoff": 1,
+      "delivery": 1,
+      "eligible_ingress": 2,
+      "plan_revision": 1,
+      "skill_selection": 1,
+      "visible_compaction": 1
+    },
+    "denominators": {
+      "agent_dispatch": 1,
+      "agent_handoff": 1,
+      "delivery": 1,
+      "eligible_ingress": 2,
+      "plan_revision": 1,
+      "skill_selection": 1,
+      "visible_compaction": 1
+    },
+    "expectations": {
+      "agent_dispatch_ids": [
+        "worker-execution"
+      ],
+      "delivery_ids": [
+        "M10-00-release-verification"
+      ],
+      "eligible_ingress_ids": [
+        "fault/idea",
+        "fault/interrupt"
+      ],
+      "skill_selection_ids": [
+        "fault/skill-selection"
+      ],
+      "target_revisions": [
+        74
+      ],
+      "visible_compaction_ids": [
+        "fault/compaction"
+      ]
+    },
+    "generated_at": "2026-08-18T02:37:00+08:00",
+    "observation_count": 8,
+    "overall_coverage_millionths": 1000000,
+    "provider_native_authority": false,
+    "schema_version": "context.dogfood-coverage/v1alpha1",
+    "state_write_authority": false,
+    "status": "pass",
+    "veto_failures": []
+  },
+  "faults": [
+    {
+      "acknowledged_input_replayed": false,
+      "canary_before_first_side_effect": true,
+      "fault_id": "fault/m10-00/compaction",
+      "fault_kind": "compaction",
+      "first_action_match": true,
+      "observation_id": "dogfood/compaction/fault/compaction",
+      "status": "passed"
+    },
+    {
+      "active_work_preserved": true,
+      "candidate_only": true,
+      "fault_id": "fault/m10-00/idea",
+      "fault_kind": "idea",
+      "observation_id": "dogfood/input-routing/fault/idea",
+      "status": "passed"
+    },
+    {
+      "active_work_preserved": true,
+      "fault_id": "fault/m10-00/interrupt",
+      "fault_kind": "interrupt",
+      "observation_id": "dogfood/input-routing/fault/interrupt",
+      "return_point_preserved": true,
+      "status": "passed"
+    },
+    {
+      "authority_unchanged": true,
+      "fault_id": "fault/m10-00/worker-loss",
+      "fault_kind": "worker-loss",
+      "handoff_accepted": true,
+      "harness_event_type": "worker-loss",
+      "status": "passed"
+    }
+  ],
+  "harness": {
+    "authority_source": "state-mcp",
+    "effect_count": 0,
+    "event_count": 11,
+    "fan_in_count": 1,
+    "fan_out_count": 2,
+    "handoff_event_count": 2,
+    "handoff_status": "accepted",
+    "provider": "provider-neutral",
+    "worker_ids": [
+      "m10-00-worker-analysis",
+      "m10-00-worker-execution"
+    ],
+    "worker_loss_authority_unchanged": true
+  },
+  "matrix_receipt_sha256": "97ce9d34a124ba3c5add666239dce08cc7b968152d1ec7ab1f9ca0ce2da2e3b9",
+  "observations": [
+    {
+      "acknowledged_input_replayed": false,
+      "active_work_after": "M10-00-fault-drill",
+      "active_work_before": "M10-00-fault-drill",
+      "canary_sequence": null,
+      "candidate_only": true,
+      "event_kind": "input-routing",
+      "evidence_refs": [
+        "artifact://m10-00/pilot-plan",
+        "artifact://m10-00/evidence-matrix"
+      ],
+      "first_action_match": true,
+      "first_side_effect_sequence": null,
+      "interrupted": false,
+      "observation_id": "dogfood/input-routing/fault/idea",
+      "observation_sha256": "a862f7487e6145dcee3cbd0bb08c27a8c66f0b20748c06fef211e47c60a26396",
+      "observed_at": "2026-08-18T02:37:00+08:00",
+      "provider_metrics_status": "unavailable",
+      "provider_native_authority": false,
+      "return_point_work_id": "M10-00-fault-drill",
+      "route": "capture-and-continue",
+      "schema_version": "context.dogfood-event/v1alpha1",
+      "state_write_authority": false,
+      "subject_id": "fault/idea",
+      "target_revision": 74,
+      "trace_event_id": "event/dogfood/input-routing/fault/idea/1",
+      "trace_event_name": "context.dogfood.input-routing",
+      "trace_event_sha256": "ca527215fce5cbbc9bf5941cb9ce656637f944f6de7d05563c5f2fd059654b07"
+    },
+    {
+      "acknowledged_input_replayed": false,
+      "active_work_after": "M10-00-fault-drill",
+      "active_work_before": "M10-00-fault-drill",
+      "canary_sequence": null,
+      "candidate_only": false,
+      "event_kind": "input-routing",
+      "evidence_refs": [
+        "artifact://m10-00/pilot-plan",
+        "artifact://m10-00/evidence-matrix"
+      ],
+      "first_action_match": true,
+      "first_side_effect_sequence": null,
+      "interrupted": true,
+      "observation_id": "dogfood/input-routing/fault/interrupt",
+      "observation_sha256": "ddb1893a11a8753c7948916f45b193a3fc7841eb9a4408052691f45d1d35756c",
+      "observed_at": "2026-08-18T02:37:00+08:00",
+      "provider_metrics_status": "unavailable",
+      "provider_native_authority": false,
+      "return_point_work_id": "M10-00-fault-drill",
+      "route": "interrupt",
+      "schema_version": "context.dogfood-event/v1alpha1",
+      "state_write_authority": false,
+      "subject_id": "fault/interrupt",
+      "target_revision": 74,
+      "trace_event_id": "event/dogfood/input-routing/fault/interrupt/2",
+      "trace_event_name": "context.dogfood.input-routing",
+      "trace_event_sha256": "ec941b724923464c0d616da0aa1f58e64f62ff6d8c4993f725a109b89834d1ae"
+    },
+    {
+      "acknowledged_input_replayed": false,
+      "active_work_after": "M10-00-fault-drill",
+      "active_work_before": "M10-00-fault-drill",
+      "canary_sequence": 1,
+      "candidate_only": false,
+      "event_kind": "compaction",
+      "evidence_refs": [
+        "artifact://m10-00/pilot-plan",
+        "artifact://m10-00/evidence-matrix"
+      ],
+      "first_action_match": true,
+      "first_side_effect_sequence": 2,
+      "interrupted": false,
+      "observation_id": "dogfood/compaction/fault/compaction",
+      "observation_sha256": "380366d39694f53e99858e66b34d2b119b657411643231133f30f6ba62efead7",
+      "observed_at": "2026-08-18T02:37:00+08:00",
+      "provider_metrics_status": "unavailable",
+      "provider_native_authority": false,
+      "return_point_work_id": "M10-00-fault-drill",
+      "route": null,
+      "schema_version": "context.dogfood-event/v1alpha1",
+      "state_write_authority": false,
+      "subject_id": "fault/compaction",
+      "target_revision": 74,
+      "trace_event_id": "event/dogfood/compaction/fault/compaction/3",
+      "trace_event_name": "context.dogfood.compaction",
+      "trace_event_sha256": "ecb4254a84a3f63e51b16eead472522be5ac339507694f4364ddb7bc9d2d8469"
+    },
+    {
+      "acknowledged_input_replayed": false,
+      "active_work_after": "M10-00-fault-drill",
+      "active_work_before": "M10-00-fault-drill",
+      "canary_sequence": null,
+      "candidate_only": false,
+      "event_kind": "skill-selection",
+      "evidence_refs": [
+        "artifact://m10-00/pilot-plan",
+        "artifact://m10-00/evidence-matrix"
+      ],
+      "first_action_match": true,
+      "first_side_effect_sequence": null,
+      "interrupted": false,
+      "observation_id": "dogfood/skill-selection/fault/skill-selection",
+      "observation_sha256": "485b7a2b804fb60a8b3610f069372ffc0916d48a2d1325b39fafd6f43f62de7b",
+      "observed_at": "2026-08-18T02:37:00+08:00",
+      "provider_metrics_status": "unavailable",
+      "provider_native_authority": false,
+      "return_point_work_id": "M10-00-fault-drill",
+      "route": null,
+      "schema_version": "context.dogfood-event/v1alpha1",
+      "state_write_authority": false,
+      "subject_id": "fault/skill-selection",
+      "target_revision": 74,
+      "trace_event_id": "event/dogfood/skill-selection/fault/skill-selection/4",
+      "trace_event_name": "context.dogfood.skill-selection",
+      "trace_event_sha256": "78f351ef510653c7497d566051ad89c392fe1a7f0257329ea8fe138a883f34c0"
+    },
+    {
+      "acknowledged_input_replayed": false,
+      "active_work_after": "M10-00-fault-drill",
+      "active_work_before": "M10-00-fault-drill",
+      "canary_sequence": null,
+      "candidate_only": false,
+      "event_kind": "plan-revision",
+      "evidence_refs": [
+        "artifact://m10-00/pilot-plan",
+        "artifact://m10-00/evidence-matrix"
+      ],
+      "first_action_match": true,
+      "first_side_effect_sequence": null,
+      "interrupted": false,
+      "observation_id": "dogfood/plan-revision/plan/m10-00",
+      "observation_sha256": "b8673d82599d5b0184ad17358c52289ba1962109249d6170b508ba06f28409f8",
+      "observed_at": "2026-08-18T02:37:00+08:00",
+      "provider_metrics_status": "unavailable",
+      "provider_native_authority": false,
+      "return_point_work_id": "M10-00-fault-drill",
+      "route": null,
+      "schema_version": "context.dogfood-event/v1alpha1",
+      "state_write_authority": false,
+      "subject_id": "plan/m10-00",
+      "target_revision": 74,
+      "trace_event_id": "event/dogfood/plan-revision/plan/m10-00/5",
+      "trace_event_name": "context.dogfood.plan-revision",
+      "trace_event_sha256": "a27b50871be912bbe7b853c3242e2a7b4f7796cbacbe3a3121472e99d224b24e"
+    },
+    {
+      "acknowledged_input_replayed": false,
+      "active_work_after": "M10-00-fault-drill",
+      "active_work_before": "M10-00-fault-drill",
+      "canary_sequence": null,
+      "candidate_only": false,
+      "event_kind": "agent-dispatch",
+      "evidence_refs": [
+        "artifact://m10-00/pilot-plan",
+        "artifact://m10-00/evidence-matrix"
+      ],
+      "first_action_match": true,
+      "first_side_effect_sequence": null,
+      "interrupted": false,
+      "observation_id": "dogfood/agent-dispatch/worker-execution",
+      "observation_sha256": "c7edca41c239e95717d9f78ad69a39af904ab45c0bd942c9ffe899f7bbaa4111",
+      "observed_at": "2026-08-18T02:37:00+08:00",
+      "provider_metrics_status": "unavailable",
+      "provider_native_authority": false,
+      "return_point_work_id": "M10-00-fault-drill",
+      "route": null,
+      "schema_version": "context.dogfood-event/v1alpha1",
+      "state_write_authority": false,
+      "subject_id": "worker-execution",
+      "target_revision": 74,
+      "trace_event_id": "event/dogfood/agent-dispatch/worker-execution/6",
+      "trace_event_name": "context.dogfood.agent-dispatch",
+      "trace_event_sha256": "64abb3335bf3de748b871adecd3fa12327a7de67f0912b25c22907fdc32ccea7"
+    },
+    {
+      "acknowledged_input_replayed": false,
+      "active_work_after": "M10-00-fault-drill",
+      "active_work_before": "M10-00-fault-drill",
+      "canary_sequence": null,
+      "candidate_only": false,
+      "event_kind": "agent-handoff",
+      "evidence_refs": [
+        "artifact://m10-00/pilot-plan",
+        "artifact://m10-00/evidence-matrix"
+      ],
+      "first_action_match": true,
+      "first_side_effect_sequence": null,
+      "interrupted": false,
+      "observation_id": "dogfood/agent-handoff/worker-execution",
+      "observation_sha256": "64c1a57df094f97edb246e639a427751ad18951eee6cf90383b1dd6dea3029c8",
+      "observed_at": "2026-08-18T02:37:00+08:00",
+      "provider_metrics_status": "unavailable",
+      "provider_native_authority": false,
+      "return_point_work_id": "M10-00-fault-drill",
+      "route": null,
+      "schema_version": "context.dogfood-event/v1alpha1",
+      "state_write_authority": false,
+      "subject_id": "worker-execution",
+      "target_revision": 74,
+      "trace_event_id": "event/dogfood/agent-handoff/worker-execution/7",
+      "trace_event_name": "context.dogfood.agent-handoff",
+      "trace_event_sha256": "008f041ace13cc87d0dfc1d04a286d3de2de4e0fda489d6deba0192a9f55b72b"
+    },
+    {
+      "acknowledged_input_replayed": false,
+      "active_work_after": "M10-00-fault-drill",
+      "active_work_before": "M10-00-fault-drill",
+      "canary_sequence": null,
+      "candidate_only": false,
+      "event_kind": "delivery",
+      "evidence_refs": [
+        "artifact://m10-00/pilot-plan",
+        "artifact://m10-00/evidence-matrix"
+      ],
+      "first_action_match": true,
+      "first_side_effect_sequence": null,
+      "interrupted": false,
+      "observation_id": "dogfood/delivery/M10-00-release-verification",
+      "observation_sha256": "9a2dcf18dc10502b66f9682ad3fb184ebcec9b764624298388fab9698f31a224",
+      "observed_at": "2026-08-18T02:37:00+08:00",
+      "provider_metrics_status": "unavailable",
+      "provider_native_authority": false,
+      "return_point_work_id": "M10-00-fault-drill",
+      "route": null,
+      "schema_version": "context.dogfood-event/v1alpha1",
+      "state_write_authority": false,
+      "subject_id": "M10-00-release-verification",
+      "target_revision": 74,
+      "trace_event_id": "event/dogfood/delivery/M10-00-release-verification/8",
+      "trace_event_name": "context.dogfood.delivery",
+      "trace_event_sha256": "ddfbc97e699702efd0944755ab77a307d209d5b9a054caed3a59d51dbc69d454"
+    }
+  ],
+  "observed_at": "2026-08-18T02:37:00+08:00",
+  "plan_id": "pilot-plan-m10-00",
+  "plan_sha256": "e79ce4890cd69e12de8167bda54a9052320a72084d6c39c29d7e62a47f9ebf23",
+  "project_id": "context-control-plane",
+  "receipt_sha256": "2a2e39d888496bb19155e046b7779a2195886efe074c43a4225b60ca74a71b35",
+  "schema_version": "context.self-dogfood-fault-drill/v1alpha1",
+  "state_revision": 74,
+  "status": "passed",
+  "trace_events": [
+    {
+      "active_work_id": "M10-00-fault-drill",
+      "attributes": {
+        "active_work_after": "M10-00-fault-drill",
+        "active_work_before": "M10-00-fault-drill",
+        "observation_id": "dogfood/input-routing/fault/idea",
+        "return_point_work_id": "M10-00-fault-drill",
+        "subject_id": "fault/idea",
+        "target_revision": 74
+      },
+      "authority": false,
+      "correlation_id": "correlation-m10-00",
+      "event_id": "event/dogfood/input-routing/fault/idea/1",
+      "event_name": "context.dogfood.input-routing",
+      "event_sha256": "ca527215fce5cbbc9bf5941cb9ce656637f944f6de7d05563c5f2fd059654b07",
+      "evidence_refs": [
+        "artifact://m10-00/pilot-plan",
+        "artifact://m10-00/evidence-matrix"
+      ],
+      "observed_at": "2026-08-18T02:37:00+08:00",
+      "operation_id": "operation-m10-00-fault-drill",
+      "previous_event_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "project_id": "context-control-plane",
+      "run_id": "m10-00-fault-parent",
+      "schema_version": "context.trace-event/v1alpha1",
+      "sequence": 1,
+      "source": {
+        "adapter": "self-dogfood-pilot",
+        "kind": "component",
+        "provider": "local",
+        "source_ref": "component://self-dogfood-pilot"
+      },
+      "span_id": "bbbbbbbbbbbbbbbb",
+      "state_revision": 74,
+      "trace_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "active_work_id": "M10-00-fault-drill",
+      "attributes": {
+        "active_work_after": "M10-00-fault-drill",
+        "active_work_before": "M10-00-fault-drill",
+        "observation_id": "dogfood/input-routing/fault/interrupt",
+        "return_point_work_id": "M10-00-fault-drill",
+        "subject_id": "fault/interrupt",
+        "target_revision": 74
+      },
+      "authority": false,
+      "correlation_id": "correlation-m10-00",
+      "event_id": "event/dogfood/input-routing/fault/interrupt/2",
+      "event_name": "context.dogfood.input-routing",
+      "event_sha256": "ec941b724923464c0d616da0aa1f58e64f62ff6d8c4993f725a109b89834d1ae",
+      "evidence_refs": [
+        "artifact://m10-00/pilot-plan",
+        "artifact://m10-00/evidence-matrix"
+      ],
+      "observed_at": "2026-08-18T02:37:00+08:00",
+      "operation_id": "operation-m10-00-fault-drill",
+      "previous_event_sha256": "ca527215fce5cbbc9bf5941cb9ce656637f944f6de7d05563c5f2fd059654b07",
+      "project_id": "context-control-plane",
+      "run_id": "m10-00-fault-parent",
+      "schema_version": "context.trace-event/v1alpha1",
+      "sequence": 2,
+      "source": {
+        "adapter": "self-dogfood-pilot",
+        "kind": "component",
+        "provider": "local",
+        "source_ref": "component://self-dogfood-pilot"
+      },
+      "span_id": "bbbbbbbbbbbbbbbb",
+      "state_revision": 74,
+      "trace_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "active_work_id": "M10-00-fault-drill",
+      "attributes": {
+        "active_work_after": "M10-00-fault-drill",
+        "active_work_before": "M10-00-fault-drill",
+        "observation_id": "dogfood/compaction/fault/compaction",
+        "return_point_work_id": "M10-00-fault-drill",
+        "subject_id": "fault/compaction",
+        "target_revision": 74
+      },
+      "authority": false,
+      "correlation_id": "correlation-m10-00",
+      "event_id": "event/dogfood/compaction/fault/compaction/3",
+      "event_name": "context.dogfood.compaction",
+      "event_sha256": "ecb4254a84a3f63e51b16eead472522be5ac339507694f4364ddb7bc9d2d8469",
+      "evidence_refs": [
+        "artifact://m10-00/pilot-plan",
+        "artifact://m10-00/evidence-matrix"
+      ],
+      "observed_at": "2026-08-18T02:37:00+08:00",
+      "operation_id": "operation-m10-00-fault-drill",
+      "previous_event_sha256": "ec941b724923464c0d616da0aa1f58e64f62ff6d8c4993f725a109b89834d1ae",
+      "project_id": "context-control-plane",
+      "run_id": "m10-00-fault-parent",
+      "schema_version": "context.trace-event/v1alpha1",
+      "sequence": 3,
+      "source": {
+        "adapter": "self-dogfood-pilot",
+        "kind": "component",
+        "provider": "local",
+        "source_ref": "component://self-dogfood-pilot"
+      },
+      "span_id": "bbbbbbbbbbbbbbbb",
+      "state_revision": 74,
+      "trace_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "active_work_id": "M10-00-fault-drill",
+      "attributes": {
+        "active_work_after": "M10-00-fault-drill",
+        "active_work_before": "M10-00-fault-drill",
+        "observation_id": "dogfood/skill-selection/fault/skill-selection",
+        "return_point_work_id": "M10-00-fault-drill",
+        "subject_id": "fault/skill-selection",
+        "target_revision": 74
+      },
+      "authority": false,
+      "correlation_id": "correlation-m10-00",
+      "event_id": "event/dogfood/skill-selection/fault/skill-selection/4",
+      "event_name": "context.dogfood.skill-selection",
+      "event_sha256": "78f351ef510653c7497d566051ad89c392fe1a7f0257329ea8fe138a883f34c0",
+      "evidence_refs": [
+        "artifact://m10-00/pilot-plan",
+        "artifact://m10-00/evidence-matrix"
+      ],
+      "observed_at": "2026-08-18T02:37:00+08:00",
+      "operation_id": "operation-m10-00-fault-drill",
+      "previous_event_sha256": "ecb4254a84a3f63e51b16eead472522be5ac339507694f4364ddb7bc9d2d8469",
+      "project_id": "context-control-plane",
+      "run_id": "m10-00-fault-parent",
+      "schema_version": "context.trace-event/v1alpha1",
+      "sequence": 4,
+      "source": {
+        "adapter": "self-dogfood-pilot",
+        "kind": "component",
+        "provider": "local",
+        "source_ref": "component://self-dogfood-pilot"
+      },
+      "span_id": "bbbbbbbbbbbbbbbb",
+      "state_revision": 74,
+      "trace_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "active_work_id": "M10-00-fault-drill",
+      "attributes": {
+        "active_work_after": "M10-00-fault-drill",
+        "active_work_before": "M10-00-fault-drill",
+        "observation_id": "dogfood/plan-revision/plan/m10-00",
+        "return_point_work_id": "M10-00-fault-drill",
+        "subject_id": "plan/m10-00",
+        "target_revision": 74
+      },
+      "authority": false,
+      "correlation_id": "correlation-m10-00",
+      "event_id": "event/dogfood/plan-revision/plan/m10-00/5",
+      "event_name": "context.dogfood.plan-revision",
+      "event_sha256": "a27b50871be912bbe7b853c3242e2a7b4f7796cbacbe3a3121472e99d224b24e",
+      "evidence_refs": [
+        "artifact://m10-00/pilot-plan",
+        "artifact://m10-00/evidence-matrix"
+      ],
+      "observed_at": "2026-08-18T02:37:00+08:00",
+      "operation_id": "operation-m10-00-fault-drill",
+      "previous_event_sha256": "78f351ef510653c7497d566051ad89c392fe1a7f0257329ea8fe138a883f34c0",
+      "project_id": "context-control-plane",
+      "run_id": "m10-00-fault-parent",
+      "schema_version": "context.trace-event/v1alpha1",
+      "sequence": 5,
+      "source": {
+        "adapter": "self-dogfood-pilot",
+        "kind": "component",
+        "provider": "local",
+        "source_ref": "component://self-dogfood-pilot"
+      },
+      "span_id": "bbbbbbbbbbbbbbbb",
+      "state_revision": 74,
+      "trace_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "active_work_id": "M10-00-fault-drill",
+      "attributes": {
+        "active_work_after": "M10-00-fault-drill",
+        "active_work_before": "M10-00-fault-drill",
+        "observation_id": "dogfood/agent-dispatch/worker-execution",
+        "return_point_work_id": "M10-00-fault-drill",
+        "subject_id": "worker-execution",
+        "target_revision": 74
+      },
+      "authority": false,
+      "correlation_id": "correlation-m10-00",
+      "event_id": "event/dogfood/agent-dispatch/worker-execution/6",
+      "event_name": "context.dogfood.agent-dispatch",
+      "event_sha256": "64abb3335bf3de748b871adecd3fa12327a7de67f0912b25c22907fdc32ccea7",
+      "evidence_refs": [
+        "artifact://m10-00/pilot-plan",
+        "artifact://m10-00/evidence-matrix"
+      ],
+      "observed_at": "2026-08-18T02:37:00+08:00",
+      "operation_id": "operation-m10-00-fault-drill",
+      "previous_event_sha256": "a27b50871be912bbe7b853c3242e2a7b4f7796cbacbe3a3121472e99d224b24e",
+      "project_id": "context-control-plane",
+      "run_id": "m10-00-fault-parent",
+      "schema_version": "context.trace-event/v1alpha1",
+      "sequence": 6,
+      "source": {
+        "adapter": "self-dogfood-pilot",
+        "kind": "component",
+        "provider": "local",
+        "source_ref": "component://self-dogfood-pilot"
+      },
+      "span_id": "bbbbbbbbbbbbbbbb",
+      "state_revision": 74,
+      "trace_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "active_work_id": "M10-00-fault-drill",
+      "attributes": {
+        "active_work_after": "M10-00-fault-drill",
+        "active_work_before": "M10-00-fault-drill",
+        "observation_id": "dogfood/agent-handoff/worker-execution",
+        "return_point_work_id": "M10-00-fault-drill",
+        "subject_id": "worker-execution",
+        "target_revision": 74
+      },
+      "authority": false,
+      "correlation_id": "correlation-m10-00",
+      "event_id": "event/dogfood/agent-handoff/worker-execution/7",
+      "event_name": "context.dogfood.agent-handoff",
+      "event_sha256": "008f041ace13cc87d0dfc1d04a286d3de2de4e0fda489d6deba0192a9f55b72b",
+      "evidence_refs": [
+        "artifact://m10-00/pilot-plan",
+        "artifact://m10-00/evidence-matrix"
+      ],
+      "observed_at": "2026-08-18T02:37:00+08:00",
+      "operation_id": "operation-m10-00-fault-drill",
+      "previous_event_sha256": "64abb3335bf3de748b871adecd3fa12327a7de67f0912b25c22907fdc32ccea7",
+      "project_id": "context-control-plane",
+      "run_id": "m10-00-fault-parent",
+      "schema_version": "context.trace-event/v1alpha1",
+      "sequence": 7,
+      "source": {
+        "adapter": "self-dogfood-pilot",
+        "kind": "component",
+        "provider": "local",
+        "source_ref": "component://self-dogfood-pilot"
+      },
+      "span_id": "bbbbbbbbbbbbbbbb",
+      "state_revision": 74,
+      "trace_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "active_work_id": "M10-00-fault-drill",
+      "attributes": {
+        "active_work_after": "M10-00-fault-drill",
+        "active_work_before": "M10-00-fault-drill",
+        "observation_id": "dogfood/delivery/M10-00-release-verification",
+        "return_point_work_id": "M10-00-fault-drill",
+        "subject_id": "M10-00-release-verification",
+        "target_revision": 74
+      },
+      "authority": false,
+      "correlation_id": "correlation-m10-00",
+      "event_id": "event/dogfood/delivery/M10-00-release-verification/8",
+      "event_name": "context.dogfood.delivery",
+      "event_sha256": "ddfbc97e699702efd0944755ab77a307d209d5b9a054caed3a59d51dbc69d454",
+      "evidence_refs": [
+        "artifact://m10-00/pilot-plan",
+        "artifact://m10-00/evidence-matrix"
+      ],
+      "observed_at": "2026-08-18T02:37:00+08:00",
+      "operation_id": "operation-m10-00-fault-drill",
+      "previous_event_sha256": "008f041ace13cc87d0dfc1d04a286d3de2de4e0fda489d6deba0192a9f55b72b",
+      "project_id": "context-control-plane",
+      "run_id": "m10-00-fault-parent",
+      "schema_version": "context.trace-event/v1alpha1",
+      "sequence": 8,
+      "source": {
+        "adapter": "self-dogfood-pilot",
+        "kind": "component",
+        "provider": "local",
+        "source_ref": "component://self-dogfood-pilot"
+      },
+      "span_id": "bbbbbbbbbbbbbbbb",
+      "state_revision": 74,
+      "trace_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }
+  ],
+  "verifier_ref": "verifier-independent",
+  "worker_count": 2
+}

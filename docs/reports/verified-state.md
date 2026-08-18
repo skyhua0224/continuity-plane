@@ -1,9 +1,9 @@
 # Verified State Evidence Index
 
-版本：16
-日期：2026-08-16  
+版本：34
+日期：2026-08-18  
 状态：generated evidence projection  
-source governance revision：61
+source governance revision：77
 state write authority：false
 
 ## 已验收任务
@@ -56,6 +56,22 @@ state write authority：false
 | M8-01 | [`m8-01-durable-operation-acceptance-2026-08-16.md`](../migrations/m8-01-durable-operation-acceptance-2026-08-16.md) |
 | M8-02 | [`m8-02-shared-work-acceptance-2026-08-16.md`](../migrations/m8-02-shared-work-acceptance-2026-08-16.md) |
 | M8-03 | [`m8-03-temporal-workflow-acceptance-2026-08-16.md`](../migrations/m8-03-temporal-workflow-acceptance-2026-08-16.md) |
+| M8-05 | [`m8-05-authorization-audit-acceptance-2026-08-16.md`](../migrations/m8-05-authorization-audit-acceptance-2026-08-16.md) |
+| M8-06 | [`m8-06-harness-run-acceptance-2026-08-16.md`](../migrations/m8-06-harness-run-acceptance-2026-08-16.md) |
+| M8-07 | [`m8-07-project-adaptation-acceptance-2026-08-16.md`](../migrations/m8-07-project-adaptation-acceptance-2026-08-16.md) |
+| M8-08 | [`m8-08-forge-collaboration-acceptance-2026-08-17.md`](../migrations/m8-08-forge-collaboration-acceptance-2026-08-17.md) |
+| M8-09 | [`m8-09-unattended-dispatcher-acceptance-2026-08-17.md`](../migrations/m8-09-unattended-dispatcher-acceptance-2026-08-17.md) |
+| M8-10 | [`m8-10-collaboration-notification-acceptance-2026-08-17.md`](../migrations/m8-10-collaboration-notification-acceptance-2026-08-17.md) |
+| M9-01 | [`m9-01-external-state-provider-acceptance-2026-08-17.md`](../migrations/m9-01-external-state-provider-acceptance-2026-08-17.md) |
+| M9-02 | [`m9-02-project-graph-projection-acceptance-2026-08-17.md`](../migrations/m9-02-project-graph-projection-acceptance-2026-08-17.md) |
+| M9-03 | [`m9-03-decision-evidence-acceptance-2026-08-17.md`](../migrations/m9-03-decision-evidence-acceptance-2026-08-17.md) |
+| M9-04 | [`m9-04-context-health-acceptance-2026-08-17.md`](../migrations/m9-04-context-health-acceptance-2026-08-17.md) |
+| M9-05 | [`m9-05-human-governance-acceptance-2026-08-17.md`](../migrations/m9-05-human-governance-acceptance-2026-08-17.md) |
+| M9-06 | [`m9-06-obsidian-vault-acceptance-2026-08-17.md`](../migrations/m9-06-obsidian-vault-acceptance-2026-08-17.md) |
+| M9-07 | [`m9-07-relationship-impact-acceptance-2026-08-17.md`](../migrations/m9-07-relationship-impact-acceptance-2026-08-17.md) |
+| M10-00 | [`m10-00-self-dogfood-acceptance-2026-08-18.md`](../migrations/m10-00-self-dogfood-acceptance-2026-08-18.md) |
+| M10-08 | [`m10-08-public-release-acceptance-2026-08-18.md`](../migrations/m10-08-public-release-acceptance-2026-08-18.md) |
+| M10-10 | [`m10-10-continuity-plane-public-publication-2026-08-18.md`](../migrations/m10-10-continuity-plane-public-publication-2026-08-18.md) |
 | M4-10 | [`m4-10-external-skill-source-acceptance-2026-08-12.md`](../migrations/m4-10-external-skill-source-acceptance-2026-08-12.md) |
 | M6-01 | [`m6-retrieval-recall-acceptance-2026-08-15.md`](../migrations/m6-retrieval-recall-acceptance-2026-08-15.md#m6-01-bounded-retrieval-route) |
 | M6-02 | [`m6-retrieval-recall-acceptance-2026-08-15.md`](../migrations/m6-retrieval-recall-acceptance-2026-08-15.md#m6-02-codegraph-verification) |

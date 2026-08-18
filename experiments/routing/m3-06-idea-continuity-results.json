@@ -15,11 +15,11 @@
   "measurement": {
     "events_per_run": 1,
     "ideas_per_run": 1,
-    "max_total_ms": 6.276167,
-    "p50_total_ms": 5.019239,
-    "p95_total_ms": 5.149733,
-    "samples": 40,
-    "successful_runs": 40
+    "max_total_ms": 15.61601,
+    "p50_total_ms": 3.316133,
+    "p95_total_ms": 4.882851,
+    "samples": 1000,
+    "successful_runs": 1000
   },
   "observed_at": "2026-08-14T08:45:00+08:00",
   "provenance": {
@@ -28,12 +28,12 @@
     "idea_capture_schema_sha256": "57ce195183a8534df1cb075c8d8f8a343545aeba31af30b64fc5bf01e1cf56ca",
     "idea_event_schema_sha256": "7207bf6406bc3827f9eb14b10ed41d1679aebe28802fc1e95c38d83f65ced3c7",
     "implementation_sha256": "186f8caa929e80f6d1afda24f8b073e7fd967c6a87323a2f0046f1c8fa868a91",
-    "registry_sha256": "e3f2a919dd7e303a4af7037643cde446398834b7bb7512aac8aac43b9c455f2c",
+    "registry_sha256": "65cdc1795f4bc5fbca461d7c1cf644a1863a5973cfd090931db72383f10ad846",
     "runner_sha256": "1b0f71b2e50014cb31cdc33d8aec4597fb2569d4da42b014654e265cea34544d",
     "sqlite_state_store_sha256": "bc80a19b025170dce595489cb06c8f1872f7b1d156447a2615f8b13be5dc2fc7",
     "state_events_sha256": "b99078df3a3ad1d74a54debf764980372f097db63bc8579c04fa6b6bde889483",
-    "state_mcp_sha256": "d27012ceba1ae410da2b82f131be720c59e4fa22c2c67f59779f9e218348cf0b",
-    "typed_state_sha256": "3167f4a8b49e8876cd263b221129786a5b6f37d07d824dca5d05e6d81c9a4a9e"
+    "state_mcp_sha256": "9d1b163f12a7867469171efdda790d883bb3766ae53b1ab6001de36173d8767f",
+    "typed_state_sha256": "9151f130c9cbe426e5c8e55fd1f2c42bad5d5c093254a67cfa5ee7e16b9447c4"
   },
   "schema_version": "context.idea-continuity-benchmark/v1alpha1"
 }

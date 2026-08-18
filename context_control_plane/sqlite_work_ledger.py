@@ -24,6 +24,7 @@ _OPERATIONS = {
     "revoke_claim",
     "expire_claim",
     "reclaim_claim",
+    "complete_work",
     "start_effect_dispatch",
 }
 _SNAPSHOT_FIELDS = {

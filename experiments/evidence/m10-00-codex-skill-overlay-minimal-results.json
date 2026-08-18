@@ -1,0 +1,211 @@
+{
+  "benchmark_id": "m10-00-codex-skill-overlay",
+  "completion_authority": false,
+  "external_side_effects": 0,
+  "generated_at": "2026-08-18T01:30:00+08:00",
+  "provider_invocations": 9,
+  "receipt_sha256": "01078b81e5ab51c2d23a9bf21188bcfd71b04accb46ac73542018d3bb7d83707",
+  "samples": [
+    {
+      "condition": "full",
+      "quality": {
+        "correct": true,
+        "next_action": "M10-00",
+        "verdict": "ok"
+      },
+      "sample_id": "full-0",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 3840,
+        "input_tokens": 19593,
+        "output_tokens": 44,
+        "reasoning_output_tokens": 24
+      },
+      "wall_time_ms": 4300.101,
+      "warning_count": 1
+    },
+    {
+      "condition": "full",
+      "quality": {
+        "correct": true,
+        "next_action": "M10-00",
+        "verdict": "ok"
+      },
+      "sample_id": "full-1",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 3840,
+        "input_tokens": 19593,
+        "output_tokens": 67,
+        "reasoning_output_tokens": 47
+      },
+      "wall_time_ms": 5834.019,
+      "warning_count": 1
+    },
+    {
+      "condition": "full",
+      "quality": {
+        "correct": true,
+        "next_action": "M10-00",
+        "verdict": "ok"
+      },
+      "sample_id": "full-2",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 3840,
+        "input_tokens": 19593,
+        "output_tokens": 18,
+        "reasoning_output_tokens": 0
+      },
+      "wall_time_ms": 4248.542,
+      "warning_count": 1
+    },
+    {
+      "condition": "selected",
+      "quality": {
+        "correct": true,
+        "next_action": "M10-00",
+        "verdict": "ok"
+      },
+      "sample_id": "selected-0",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 3840,
+        "input_tokens": 18469,
+        "output_tokens": 18,
+        "reasoning_output_tokens": 0
+      },
+      "wall_time_ms": 4186.58,
+      "warning_count": 0
+    },
+    {
+      "condition": "selected",
+      "quality": {
+        "correct": true,
+        "next_action": "M10-00",
+        "verdict": "ok"
+      },
+      "sample_id": "selected-1",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 3840,
+        "input_tokens": 18469,
+        "output_tokens": 43,
+        "reasoning_output_tokens": 23
+      },
+      "wall_time_ms": 3666.309,
+      "warning_count": 0
+    },
+    {
+      "condition": "selected",
+      "quality": {
+        "correct": true,
+        "next_action": "M10-00",
+        "verdict": "ok"
+      },
+      "sample_id": "selected-2",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 3840,
+        "input_tokens": 18469,
+        "output_tokens": 18,
+        "reasoning_output_tokens": 0
+      },
+      "wall_time_ms": 3539.854,
+      "warning_count": 0
+    },
+    {
+      "condition": "empty",
+      "quality": {
+        "correct": true,
+        "next_action": "M10-00",
+        "verdict": "ok"
+      },
+      "sample_id": "empty-0",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 11008,
+        "input_tokens": 18324,
+        "output_tokens": 18,
+        "reasoning_output_tokens": 0
+      },
+      "wall_time_ms": 3456.399,
+      "warning_count": 0
+    },
+    {
+      "condition": "empty",
+      "quality": {
+        "correct": true,
+        "next_action": "M10-00",
+        "verdict": "ok"
+      },
+      "sample_id": "empty-1",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 3840,
+        "input_tokens": 18324,
+        "output_tokens": 18,
+        "reasoning_output_tokens": 0
+      },
+      "wall_time_ms": 3418.664,
+      "warning_count": 0
+    },
+    {
+      "condition": "empty",
+      "quality": {
+        "correct": true,
+        "next_action": "M10-00",
+        "verdict": "ok"
+      },
+      "sample_id": "empty-2",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 3840,
+        "input_tokens": 18324,
+        "output_tokens": 18,
+        "reasoning_output_tokens": 0
+      },
+      "wall_time_ms": 5055.092,
+      "warning_count": 0
+    }
+  ],
+  "schema_version": "context.codex-skill-overlay-ablation/v1alpha1",
+  "selected_skill_ids": [
+    "human-first-writing",
+    "session-memory-hygiene"
+  ],
+  "skill_inventory": {
+    "full": {
+      "skill_count": 53,
+      "skill_source_bytes": 501543
+    },
+    "selected": {
+      "skill_count": 2,
+      "skill_source_bytes": 17349
+    },
+    "source_bytes_reduction_percent": 96.5409
+  },
+  "state_write_authority": false,
+  "summary": {
+    "empty": {
+      "count": 3,
+      "input_tokens_mean": 18324.0,
+      "quality_rate": 1.0,
+      "reduction_vs_full_percent": 6.4768,
+      "warning_count_total": 0
+    },
+    "full": {
+      "count": 3,
+      "input_tokens_mean": 19593.0,
+      "quality_rate": 1.0,
+      "warning_count_total": 3
+    },
+    "selected": {
+      "count": 3,
+      "input_tokens_mean": 18469.0,
+      "quality_rate": 1.0,
+      "reduction_vs_full_percent": 5.7367,
+      "warning_count_total": 0
+    }
+  }
+}

@@ -218,11 +218,13 @@ class M508DurableContinuationTests(unittest.TestCase):
             self._state(reserved_effects=[None])
 
     def test_recovery_reads_are_strict_unique_and_bounded(self):
-        with self.assertRaisesRegex(DurableContinuationError, "budget"):
+        with self.assertRaisesRegex(DurableContinuationError, "budget") as budget_error:
             self._recover(recovery_budget_bytes=2559)
+        self.assertEqual(budget_error.exception.code, "read-budget")
         duplicate = self._reads() + [self._reads()[0]]
-        with self.assertRaisesRegex(DurableContinuationError, "unique"):
+        with self.assertRaisesRegex(DurableContinuationError, "unique") as duplicate_error:
             self._recover(recovery_reads=duplicate)
+        self.assertEqual(duplicate_error.exception.code, "recovery-contract")
         malformed = self._reads()
         malformed[0]["bytes_read"] = -1
         with self.assertRaises(DurableContinuationError):

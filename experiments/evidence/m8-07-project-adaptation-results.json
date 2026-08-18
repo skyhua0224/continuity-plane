@@ -1,0 +1,53 @@
+{
+  "activation_attempts": 2000,
+  "authority_mutations": 0,
+  "benchmark_id": "benchmark-m8-07-0ed2e11c25dabbb7c3468da8",
+  "deterministic_replays": 2000,
+  "external_services": 0,
+  "generated_at": "2026-08-16T20:00:00+08:00",
+  "latency_ms": {
+    "max_ms": 2.8117410001868848,
+    "p50_ms": 0.7962214997405681,
+    "p95_ms": 1.421192999714549
+  },
+  "provenance": {
+    "benchmark_sha256": "c920de5b49049cb1f82b04c1cd4e7601f2acf93aec4a8ea76d25c91a514df0a8",
+    "implementation_sha256": "5dbc09850c586d7d9b33fb674665cd2122944d407d361a2a127604215691e0fb",
+    "observation_schema_sha256": "1101fd5994dbb3b4d995846af1508289295de793c69eaad353ac81a8d3b6eb9c",
+    "proposal_schema_sha256": "f3ac551f7d7530259a1cf4cb27b8fbdcc0839a81307f6ced3abb252a94fbd28e",
+    "replay_schema_sha256": "218690576ff0f07ac33d1380c3a60cedf9e6874724f4c9ebec2d7524c6f3ae7f",
+    "transition_schema_sha256": "9674e553010357ed75bf999818a65c9fb266fe028e0e8de56ff7a97b35e3efff"
+  },
+  "provider_invocations": 0,
+  "rates": {
+    "activation_success_rate": 1.0,
+    "deterministic_replay_rate": 1.0,
+    "reset_success_rate": 1.0,
+    "rollback_veto_recovery_rate": 1.0,
+    "unauthorized_activation_rejection_rate": 1.0
+  },
+  "receipt_sha256": "7fb769fb43df3b75e1ee177975deed12e4b4ce0ede9755c327f623b3fc83746c",
+  "replay_attempts": 2000,
+  "reset_attempts": 1000,
+  "resets": 1000,
+  "rollback_attempts": 1000,
+  "rollback_veto_recoveries": 1000,
+  "samples": 1000,
+  "schema_version": "context.project-adaptation-benchmark/v1alpha1",
+  "successful_activations": 2000,
+  "thresholds": {
+    "activation_success_rate_min": 1.0,
+    "authority_mutations_max": 0,
+    "deterministic_replay_rate_min": 1.0,
+    "latency_p95_ms_max": 50.0,
+    "reset_success_rate_min": 1.0,
+    "rollback_veto_recovery_rate_min": 1.0,
+    "unauthorized_activation_rejection_rate_min": 1.0
+  },
+  "unauthorized_activation_attempts": 1000,
+  "unauthorized_activation_rejections": 1000,
+  "verdict": {
+    "decision": "pass",
+    "failed_gates": []
+  }
+}

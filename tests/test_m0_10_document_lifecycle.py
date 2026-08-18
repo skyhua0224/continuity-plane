@@ -13,6 +13,7 @@ from jsonschema import Draft202012Validator
 
 from context_control_plane.document_lifecycle import (
     DocumentLifecycleError,
+    _managed_markdown_paths,
     build_document_control_manifest,
     canonical_manifest_bytes,
     validate_document_control_manifest,
@@ -21,6 +22,16 @@ from context_control_plane.document_lifecycle import (
 
 class M010DocumentLifecycleTests(unittest.TestCase):
     maxDiff = None
+
+    def test_document_discovery_excludes_packaging_outputs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._write(root, "README.md", "# Project\n")
+            self._write(root, "build/lib/README.md", "# Build copy\n")
+            self._write(root, "dist/docs/README.md", "# Dist copy\n")
+            self._write(root, "package.egg-info/README.md", "# Metadata copy\n")
+
+            self.assertEqual(_managed_markdown_paths(root), {"README.md"})
 
     def _write(self, root: Path, relative: str, content: str) -> Path:
         path = root / relative

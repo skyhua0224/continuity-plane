@@ -6,7 +6,9 @@ import copy
 import hashlib
 import importlib
 import json
+import tempfile
 import unittest
+from pathlib import Path
 
 from context_control_plane.durable_workflow import (
     DurableWorkflowError,
@@ -22,7 +24,11 @@ from context_control_plane.shared_state_mcp import (
     SharedStateMCPService,
 )
 from context_control_plane.shared_work_ledger import WorkLedger
+from context_control_plane.sqlite_state_store import SQLiteStateStore
 from context_control_plane.state_mcp import RequestContext
+from context_control_plane.state_store_capabilities_v2 import (
+    SQLiteLocalCoordinatorStateStore,
+)
 from context_control_plane.temporal_workflow_adapter import (
     MAX_TEMPORAL_PAYLOAD_BYTES,
     TemporalWorkflowAdapter,
@@ -34,6 +40,7 @@ from context_control_plane.temporal_workflow_adapter import (
     workflow_backend_binding_intent,
 )
 from context_control_plane.workflow_orchestration import WorkflowRuntimeUnavailable
+from tests.test_m8_02_shared_state_mcp import _canonical_coordinator_snapshot
 
 
 class _SDK:
@@ -299,6 +306,103 @@ class M803TemporalAdapterTests(unittest.IsolatedAsyncioTestCase):
             )
         self.assertEqual(client.calls, [])
 
+    async def test_backend_binding_resolver_survives_state_mcp_restart(self) -> None:
+        source = _canonical_coordinator_snapshot()
+        run = create_workflow_run(
+            project_id=source["project"]["project_id"],
+            root_work_id="work-active",
+            request_id="request-m8-03-persistent",
+            workflow_type="context.campaign",
+            definition_version=1,
+            implementation_sha256="a" * 64,
+            authority={
+                "project_revision": source["project"]["revision"] + 1,
+                "event_head": {"sequence_no": 1, "event_sha256": "b" * 64},
+            },
+            checkpoint_ref="artifact://sha256/" + "c" * 64,
+            checkpoint_sha256="c" * 64,
+            continuation_sha256="d" * 64,
+            started_at="2026-08-16T19:00:00+08:00",
+        )
+        scope = {"scope_kind": "capability", "scope_ref": "workflow-backend"}
+        active_work = next(
+            item for item in source["works"] if item["work_id"] == "work-active"
+        )
+        active_work["scope_refs"] = [scope]
+        context = RequestContext("actor-a", "authorization-m8-03")
+        with tempfile.TemporaryDirectory() as directory:
+            database = Path(directory) / "state.sqlite3"
+            base = SQLiteStateStore(database)
+            base.initialize()
+            base.create_project(source)
+            coordinator = SQLiteLocalCoordinatorStateStore(base)
+            coordinator.initialize_work_ledger(
+                project_id=source["project"]["project_id"],
+                project_revision=source["project"]["revision"],
+                works=source["works"],
+                max_ttl_ms=10_000,
+            )
+            service = SharedStateMCPService(
+                coordinator,
+                authorizer=_Authorizer(),
+                clock=lambda: "2026-08-16T11:00:00+00:00",
+            )
+            acquired = service.call_tool(
+                CLAIM_LIFECYCLE_TOOL,
+                {
+                    "schema_version": REQUEST_SCHEMA_VERSION,
+                    "request_id": "request-m8-03-persistent-claim",
+                    "project_id": run["project_id"],
+                    "action": "acquire",
+                    "expected_project_revision": source["project"]["revision"],
+                    "work_id": run["root_work_id"],
+                    "claim_id": "claim-m8-03-persistent",
+                    "requested_ttl_ms": 5_000,
+                    "scope_owners": [scope],
+                },
+                context=context,
+            )
+            self.assertTrue(acquired["ok"], acquired["error"])
+            intent = workflow_backend_binding_intent(run, backend_id="temporal")
+            dispatched = service.call_tool(
+                EFFECT_DISPATCH_TOOL,
+                {
+                    "schema_version": REQUEST_SCHEMA_VERSION,
+                    "request_id": "request-m8-03-persistent-binding",
+                    "project_id": run["project_id"],
+                    "effect_id": intent["effect_id"],
+                    "effect_key": intent["effect_key"],
+                    "request_sha256": intent["request_sha256"],
+                    "claim_id": "claim-m8-03-persistent",
+                    "work_id": run["root_work_id"],
+                    "expected_project_revision": run["authority"]["project_revision"],
+                    "expected_claim_revision": 1,
+                    "lease_epoch": 1,
+                    "fence": 1,
+                    "operation": intent["operation"],
+                    "scope_ref": scope,
+                },
+                context=context,
+            )
+            self.assertTrue(dispatched["ok"], dispatched["error"])
+            restarted = SharedStateMCPService(
+                SQLiteLocalCoordinatorStateStore(SQLiteStateStore(database)),
+                authorizer=_Authorizer(),
+                clock=lambda: "2026-08-16T11:00:01+00:00",
+            )
+
+            binding = build_workflow_backend_binding(
+                run,
+                backend_id="temporal",
+                state_mcp_result=dispatched["result"],
+                state_mcp_resolver=restarted.resolve_committed_effect_dispatch,
+            )
+
+        self.assertEqual(
+            binding["state_mcp_receipt_sha256"],
+            dispatched["result"]["receipt"]["receipt_sha256"],
+        )
+
     async def test_start_rechecks_binding_against_the_trusted_state_mcp(self) -> None:
         run = self.workflow_run()
         binding, resolver = self.backend_authority(run)
@@ -318,6 +422,18 @@ class M803TemporalAdapterTests(unittest.IsolatedAsyncioTestCase):
         forged["state_mcp_receipt_sha256"] = forged["state_mcp_receipt"][
             "receipt_sha256"
         ]
+        forged["binding_id"] = "wfb_" + hashlib.sha256(
+            json.dumps(
+                [
+                    run["workflow_id"],
+                    run["run_id"],
+                    "temporal",
+                    forged["state_mcp_receipt_sha256"],
+                ],
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest()[:32]
         forged["receipt_sha256"] = hashlib.sha256(
             json.dumps(
                 {
@@ -409,6 +525,42 @@ class M803TemporalAdapterTests(unittest.IsolatedAsyncioTestCase):
                 state_mcp_result=forged_result,
                 state_mcp_resolver=resolver,
             )
+
+    async def test_backend_binding_rejects_derived_identity_and_time_tamper(
+        self,
+    ) -> None:
+        run = self.workflow_run()
+        binding, resolver = self.backend_authority(run)
+        for field, value in (
+            ("binding_id", "wfb_" + "0" * 32),
+            ("committed_at", "2026-08-16T11:00:01+00:00"),
+        ):
+            with self.subTest(field=field):
+                forged = copy.deepcopy(binding)
+                forged[field] = value
+                forged["receipt_sha256"] = hashlib.sha256(
+                    json.dumps(
+                        {
+                            key: item
+                            for key, item in forged.items()
+                            if key != "receipt_sha256"
+                        },
+                        sort_keys=True,
+                        separators=(",", ":"),
+                    ).encode("utf-8")
+                ).hexdigest()
+                client = _Client()
+
+                with self.assertRaisesRegex(DurableWorkflowError, "backend binding"):
+                    await self.adapter(
+                        client, state_mcp_resolver=resolver
+                    ).start(
+                        run,
+                        request_id="request-temporal-start",
+                        request_sha256="f" * 64,
+                        binding_receipt=forged,
+                    )
+                self.assertEqual(client.calls, [])
 
     async def test_direct_temporal_start_only_accepts_first_generation(self) -> None:
         rollover = continue_workflow_as_new(
@@ -695,6 +847,24 @@ class M803TemporalAdapterTests(unittest.IsolatedAsyncioTestCase):
         ).hexdigest()
         with self.assertRaisesRegex(DurableWorkflowError, "does not match request"):
             validate_workflow_run_receipt(forged, **validation_arguments)
+
+        forged = dict(receipt)
+        forged["implementation_sha256"] = "e" * 64
+        forged["receipt_sha256"] = hashlib.sha256(
+            json.dumps(
+                {
+                    key: value
+                    for key, value in forged.items()
+                    if key != "receipt_sha256"
+                },
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest()
+        forged_arguments = copy.deepcopy(validation_arguments)
+        forged_arguments["adapter_manifest"]["implementation_sha256"] = "e" * 64
+        with self.assertRaisesRegex(DurableWorkflowError, "implementation"):
+            validate_workflow_run_receipt(forged, **forged_arguments)
 
     async def test_adapter_rejects_client_namespace_mismatch(self) -> None:
         client = _Client()

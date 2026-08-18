@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schema/context.project-adaptation-replay/v1alpha1",
+  "title": "ProjectAdaptation shadow replay receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "replay_id", "proposal_id", "proposal_sha256", "fixture_ref", "provider_id", "budget", "attempts", "projections", "deterministic", "safety_veto_results", "provider_invocations", "external_services", "replay_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.project-adaptation-replay/v1alpha1"},
+    "replay_id": {"$ref": "#/$defs/id"},
+    "proposal_id": {"$ref": "#/$defs/id"},
+    "proposal_sha256": {"$ref": "#/$defs/sha256"},
+    "fixture_ref": {"$ref": "#/$defs/id"},
+    "provider_id": {"$ref": "#/$defs/id"},
+    "budget": {"type": "object", "additionalProperties": false, "required": ["input_tokens", "output_tokens", "tool_calls"], "properties": {"input_tokens": {"type": "integer", "minimum": 0}, "output_tokens": {"type": "integer", "minimum": 0}, "tool_calls": {"type": "integer", "minimum": 0}}},
+    "attempts": {"type": "integer", "minimum": 3, "maximum": 32},
+    "projections": {"type": "array", "minItems": 3, "items": {"type": "object", "additionalProperties": false, "required": ["attempt", "baseline", "candidate"], "properties": {"attempt": {"type": "integer", "minimum": 1}, "baseline": {"$ref": "#/$defs/projection"}, "candidate": {"$ref": "#/$defs/projection"}}}},
+    "deterministic": {"type": "boolean"},
+    "safety_veto_results": {"$ref": "#/$defs/vetoes"},
+    "provider_invocations": {"const": 0},
+    "external_services": {"const": 0},
+    "replay_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "metrics": {"type": "object", "additionalProperties": false, "required": ["bytes_read", "bytes_emitted", "repeated_read_bytes", "verification_failures"], "properties": {"bytes_read": {"type": "integer", "minimum": 0}, "bytes_emitted": {"type": "integer", "minimum": 0}, "repeated_read_bytes": {"type": "integer", "minimum": 0}, "verification_failures": {"type": "integer", "minimum": 0}}},
+    "vetoes": {"type": "object", "additionalProperties": false, "required": ["E1", "E2", "E4", "E6", "E8", "E9"], "properties": {"E1": {"type": "boolean"}, "E2": {"type": "boolean"}, "E4": {"type": "boolean"}, "E6": {"type": "boolean"}, "E8": {"type": "boolean"}, "E9": {"type": "boolean"}}},
+    "projection": {"type": "object", "additionalProperties": false, "required": ["projection_sha256", "metrics", "safety_veto_results"], "properties": {"projection_sha256": {"$ref": "#/$defs/sha256"}, "metrics": {"$ref": "#/$defs/metrics"}, "safety_veto_results": {"$ref": "#/$defs/vetoes"}}}
+  }
+}

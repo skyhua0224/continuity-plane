@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m8-08/forge-collaboration-benchmark.schema.json",
+  "title": "M8-08 forge collaboration benchmark receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "benchmark_id", "generated_at", "samples", "providers", "projection_attempts", "complete_visible_record_mappings", "replay_attempts", "deterministic_replays", "ref_update_intents", "stale_ref_attempts", "stale_ref_rejections", "unpublished_work_attempts", "explicit_unpublished_downgrades", "rates", "latency_ms", "thresholds", "authority_escalations", "provider_invocations", "external_services", "provenance", "verdict", "receipt_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.forge-collaboration-benchmark/v1alpha1"},
+    "benchmark_id": {"type": "string", "pattern": "^benchmark-m8-08-[0-9a-f]{24}$"},
+    "generated_at": {"$ref": "#/$defs/timestamp"},
+    "samples": {"type": "integer", "minimum": 1},
+    "providers": {"const": ["github", "gitea"]},
+    "projection_attempts": {"type": "integer", "minimum": 1},
+    "complete_visible_record_mappings": {"type": "integer", "minimum": 0},
+    "replay_attempts": {"type": "integer", "minimum": 1},
+    "deterministic_replays": {"type": "integer", "minimum": 0},
+    "ref_update_intents": {"type": "integer", "minimum": 1},
+    "stale_ref_attempts": {"type": "integer", "minimum": 1},
+    "stale_ref_rejections": {"type": "integer", "minimum": 0},
+    "unpublished_work_attempts": {"type": "integer", "minimum": 1},
+    "explicit_unpublished_downgrades": {"type": "integer", "minimum": 0},
+    "rates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["visible_record_mapping_rate", "deterministic_replay_rate", "stale_ref_rejection_rate", "unpublished_downgrade_rate"],
+      "properties": {
+        "visible_record_mapping_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "deterministic_replay_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "stale_ref_rejection_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "unpublished_downgrade_rate": {"type": "number", "minimum": 0, "maximum": 1}
+      }
+    },
+    "latency_ms": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["p50_ms", "p95_ms", "max_ms"],
+      "properties": {
+        "p50_ms": {"type": "number", "exclusiveMinimum": 0},
+        "p95_ms": {"type": "number", "exclusiveMinimum": 0},
+        "max_ms": {"type": "number", "exclusiveMinimum": 0}
+      }
+    },
+    "thresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["visible_record_mapping_rate_min", "deterministic_replay_rate_min", "stale_ref_rejection_rate_min", "unpublished_downgrade_rate_min", "authority_escalations_max", "latency_p95_ms_max"],
+      "properties": {
+        "visible_record_mapping_rate_min": {"const": 1.0},
+        "deterministic_replay_rate_min": {"const": 1.0},
+        "stale_ref_rejection_rate_min": {"const": 1.0},
+        "unpublished_downgrade_rate_min": {"const": 1.0},
+        "authority_escalations_max": {"const": 0},
+        "latency_p95_ms_max": {"const": 50.0}
+      }
+    },
+    "authority_escalations": {"const": 0},
+    "provider_invocations": {"const": 0},
+    "external_services": {"const": 0},
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implementation_sha256", "benchmark_sha256", "projection_schema_sha256", "ref_intent_schema_sha256", "unpublished_schema_sha256"],
+      "properties": {
+        "implementation_sha256": {"$ref": "#/$defs/sha256"},
+        "benchmark_sha256": {"$ref": "#/$defs/sha256"},
+        "projection_schema_sha256": {"$ref": "#/$defs/sha256"},
+        "ref_intent_schema_sha256": {"$ref": "#/$defs/sha256"},
+        "unpublished_schema_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "verdict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision", "failed_gates"],
+      "properties": {
+        "decision": {"enum": ["pass", "fail"]},
+        "failed_gates": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}
+      }
+    },
+    "receipt_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "format": "date-time", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$"}
+  }
+}

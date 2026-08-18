@@ -54,7 +54,14 @@ _MASTER_SECTION_MAX_BYTES = 24 * 1024
 _MAX_GIT_PROVENANCE_BLOB_BYTES = 8 * 1024 * 1024
 _GIT_PROVENANCE_TIMEOUT_SECONDS = 2
 _UNMANAGED_MARKDOWN_PATHS = {"replay/fixtures/README.md"}
-_UNMANAGED_MARKDOWN_PARTS = {".git", ".ruff_cache", ".venv", "__pycache__"}
+_UNMANAGED_MARKDOWN_PARTS = {
+    ".git",
+    ".ruff_cache",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+}
 _EXPANDABLE_REFERENCE_CATEGORIES = {"routing", "report", "projection"}
 _PROJECTION_TEMPLATE_VERSION = "context.document-projection/v1alpha1"
 
@@ -836,7 +843,11 @@ def _managed_markdown_paths(root: Path) -> set[str]:
     paths = set()
     for path in root.rglob("*.md"):
         relative = path.relative_to(root)
-        if not path.is_file() or _UNMANAGED_MARKDOWN_PARTS.intersection(relative.parts):
+        if (
+            not path.is_file()
+            or _UNMANAGED_MARKDOWN_PARTS.intersection(relative.parts)
+            or any(part.endswith(".egg-info") for part in relative.parts)
+        ):
             continue
         paths.add(relative.as_posix())
     return paths - _UNMANAGED_MARKDOWN_PATHS

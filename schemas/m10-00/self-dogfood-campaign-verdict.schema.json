@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m10-00/self-dogfood-campaign-verdict.schema.json",
+  "title": "M10-00 self-dogfood campaign verdict",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "campaign_id", "plan_sha256", "completed_work_ids", "required_leaf_count", "required_leaf_completed", "automatable_closure_rate", "campaign_receipt_sha256", "campaign_replay_match", "e0_e9", "failed_experiments", "status", "state_write_authority", "completion_authority", "receipt_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.self-dogfood-campaign-verdict/v1alpha1"},
+    "campaign_id": {"const": "campaign-m10-00"},
+    "plan_sha256": {"$ref": "#/$defs/sha256"},
+    "completed_work_ids": {"type": "array", "const": ["M10-00-evidence-matrix", "M10-00-fault-drill", "M10-00-release-verification"]},
+    "required_leaf_count": {"const": 3},
+    "required_leaf_completed": {"const": 3},
+    "automatable_closure_rate": {"const": 1.0},
+    "campaign_receipt_sha256": {"$ref": "#/$defs/sha256"},
+    "campaign_replay_match": {"const": true},
+    "e0_e9": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 10,
+      "prefixItems": [
+        {"$ref": "#/$defs/e0"}, {"$ref": "#/$defs/e1"},
+        {"$ref": "#/$defs/e2"}, {"$ref": "#/$defs/e3"},
+        {"$ref": "#/$defs/e4"}, {"$ref": "#/$defs/e5"},
+        {"$ref": "#/$defs/e6"}, {"$ref": "#/$defs/e7"},
+        {"$ref": "#/$defs/e8"}, {"$ref": "#/$defs/e9"}
+      ],
+      "items": false
+    },
+    "failed_experiments": {"type": "array", "maxItems": 0},
+    "status": {"const": "passed"},
+    "state_write_authority": {"const": false},
+    "completion_authority": {"const": false},
+    "receipt_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["experiment_id", "passed", "evidence_summary"],
+      "properties": {
+        "experiment_id": {"type": "string"},
+        "passed": {"const": true},
+        "evidence_summary": {"type": "string", "minLength": 1, "maxLength": 512}
+      }
+    },
+    "e0": {"allOf": [{"$ref": "#/$defs/entry"}, {"properties": {"experiment_id": {"const": "E0"}}}]},
+    "e1": {"allOf": [{"$ref": "#/$defs/entry"}, {"properties": {"experiment_id": {"const": "E1"}}}]},
+    "e2": {"allOf": [{"$ref": "#/$defs/entry"}, {"properties": {"experiment_id": {"const": "E2"}}}]},
+    "e3": {"allOf": [{"$ref": "#/$defs/entry"}, {"properties": {"experiment_id": {"const": "E3"}}}]},
+    "e4": {"allOf": [{"$ref": "#/$defs/entry"}, {"properties": {"experiment_id": {"const": "E4"}}}]},
+    "e5": {"allOf": [{"$ref": "#/$defs/entry"}, {"properties": {"experiment_id": {"const": "E5"}}}]},
+    "e6": {"allOf": [{"$ref": "#/$defs/entry"}, {"properties": {"experiment_id": {"const": "E6"}}}]},
+    "e7": {"allOf": [{"$ref": "#/$defs/entry"}, {"properties": {"experiment_id": {"const": "E7"}}}]},
+    "e8": {"allOf": [{"$ref": "#/$defs/entry"}, {"properties": {"experiment_id": {"const": "E8"}}}]},
+    "e9": {"allOf": [{"$ref": "#/$defs/entry"}, {"properties": {"experiment_id": {"const": "E9"}}}]}
+  }
+}

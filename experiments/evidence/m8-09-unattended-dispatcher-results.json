@@ -1,0 +1,51 @@
+{
+  "authority_violations": 0,
+  "benchmark_id": "benchmark-m8-09-adf630db105f7958fe9ee96c",
+  "campaign_closure_attempts": 1000,
+  "campaign_closures": 1000,
+  "duplicate_attempts": 3000,
+  "duplicate_claim_execute_complete_rejections": 3000,
+  "external_services": 0,
+  "generated_at": "2026-08-17T12:00:00+00:00",
+  "latency_ms": {
+    "max_ms": 40.46702300001925,
+    "p50_ms": 25.139579500319087,
+    "p95_ms": 30.820040999969933
+  },
+  "optional_work_per_sample": 1,
+  "provenance": {
+    "benchmark_sha256": "80b39f3750d1bb1b675b7c4e3452fa66f5444f6643b03c443247d5c161ae3418",
+    "cursor_store_sha256": "b947511bbfd84db54d1659056ade2e500be39a9cd01a66ed4777e7816c7f6ff3",
+    "implementation_sha256": "e28b5d3c38ca7a30d6b9e2c7c50d8223faee491ec7782504d0ac0473e8ccf4f1",
+    "receipt_validator_sha256": "7c8e578ed7dadf9897b3eb5a79e34848c890d093b484023e05663a87ef2dce6b",
+    "state_mcp_sha256": "e2e5f221fe068611bd8fbf0a1478cf2d220201d193b3ed87cc53f04c8f316ef4",
+    "work_ledger_sha256": "e9179af866b129b66a4d5dabe8ab9183e7f944cb99c49176f43e28d0807a024c"
+  },
+  "provider_invocations": 0,
+  "rates": {
+    "campaign_closure_rate": 1.0,
+    "duplicate_suppression_rate": 1.0,
+    "replay_match_rate": 1.0,
+    "required_completion_rate": 1.0
+  },
+  "receipt_sha256": "17ce871199e7784c4e564d1afd3b0e87b3a0232a96e22007c53a150099885e3e",
+  "replay_attempts": 1000,
+  "replay_matches": 1000,
+  "required_completion_attempts": 3000,
+  "required_completions": 3000,
+  "required_work_per_sample": 3,
+  "samples": 1000,
+  "schema_version": "context.unattended-dispatcher-benchmark/v1alpha1",
+  "thresholds": {
+    "authority_violations_max": 0,
+    "campaign_closure_rate_min": 1.0,
+    "duplicate_suppression_rate_min": 1.0,
+    "latency_p95_ms_max": 50.0,
+    "replay_match_rate_min": 1.0,
+    "required_completion_rate_min": 1.0
+  },
+  "verdict": {
+    "decision": "pass",
+    "failed_gates": []
+  }
+}

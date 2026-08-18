@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m9-03/decision-evidence-provenance-bundle.schema.json",
+  "title": "Context Decision and Evidence Provenance Bundle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_id",
+    "state_revision",
+    "state_sha256",
+    "source_projection_sha256",
+    "assertion_records",
+    "claims",
+    "claim_verdicts",
+    "bindings",
+    "bundle_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.decision-evidence-provenance-bundle/v1alpha1"},
+    "project_id": {"$ref": "#/$defs/identifier"},
+    "state_revision": {"type": "integer", "minimum": 0},
+    "state_sha256": {"$ref": "#/$defs/sha256"},
+    "source_projection_sha256": {"$ref": "#/$defs/sha256"},
+    "assertion_records": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": {
+        "$ref": "https://context-control-plane.invalid/schemas/m7-01/assertion-provenance.schema.json"
+      }
+    },
+    "claims": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": {"$ref": "#/$defs/claim"}
+    },
+    "claim_verdicts": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": {
+        "$ref": "https://context-control-plane.invalid/schemas/m7-02/claim-evidence-gate.schema.json"
+      }
+    },
+    "bindings": {
+      "type": "array",
+      "maxItems": 50000,
+      "items": {"$ref": "#/$defs/binding"}
+    },
+    "bundle_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"
+    },
+    "m7Identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope_kind", "scope_ref"],
+      "properties": {
+        "scope_kind": {"enum": ["repo", "directory", "file", "symbol", "capability", "effect"]},
+        "scope_ref": {"type": "string", "minLength": 1, "maxLength": 4096}
+      }
+    },
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claim_id", "work_id", "claim_kind", "statement", "evidence_assertion_ids", "scope_refs"],
+      "properties": {
+        "claim_id": {"$ref": "#/$defs/m7Identifier"},
+        "work_id": {"$ref": "#/$defs/m7Identifier"},
+        "claim_kind": {"enum": ["completion", "path", "verification", "decision", "constraint"]},
+        "statement": {"type": "string", "minLength": 1, "maxLength": 16384},
+        "evidence_assertion_ids": {
+          "type": "array",
+          "maxItems": 256,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/m7Identifier"}
+        },
+        "scope_refs": {
+          "type": "array",
+          "maxItems": 256,
+          "items": {"$ref": "#/$defs/scope"}
+        }
+      }
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "object_kind",
+        "object_id",
+        "typed_evidence_id",
+        "assertion_id",
+        "assertion_evidence_id",
+        "assertion_record_sha256",
+        "claim_id",
+        "claim_sha256",
+        "gate_id",
+        "verdict_sha256"
+      ],
+      "properties": {
+        "object_kind": {"enum": ["decision", "constraint", "work"]},
+        "object_id": {"$ref": "#/$defs/identifier"},
+        "typed_evidence_id": {"$ref": "#/$defs/identifier"},
+        "assertion_id": {"$ref": "#/$defs/m7Identifier"},
+        "assertion_evidence_id": {"$ref": "#/$defs/m7Identifier"},
+        "assertion_record_sha256": {"$ref": "#/$defs/sha256"},
+        "claim_id": {"$ref": "#/$defs/m7Identifier"},
+        "claim_sha256": {"$ref": "#/$defs/sha256"},
+        "gate_id": {"$ref": "#/$defs/m7Identifier"},
+        "verdict_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

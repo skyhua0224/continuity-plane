@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m9-01/external-state-projection.schema.json",
+  "title": "M9-01 revision-bound external State projection",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "provider_id", "project_id", "state_revision", "source", "snapshot", "state_sha256", "state_write_authority", "controlled_action_authority", "provider_authority", "external_effect_authority", "projection_sha256", "signature"],
+  "properties": {
+    "schema_version": {"const": "context.external-state-projection/v1alpha1"},
+    "provider_id": {"$ref": "#/$defs/id"},
+    "project_id": {"$ref": "#/$defs/id"},
+    "state_revision": {"type": "integer", "minimum": 0},
+    "source": {"$ref": "#/$defs/source"},
+    "snapshot": {
+      "oneOf": [
+        {"$ref": "../m2-01/typed-state.schema.json"},
+        {"$ref": "../m3-01/typed-state-v2alpha1.schema.json"},
+        {"$ref": "../m3-05/typed-state-v3alpha1.schema.json"},
+        {"$ref": "../m3-07/typed-state-v4alpha1.schema.json"},
+        {"$ref": "../m8-01/typed-state-v5alpha1.schema.json"},
+        {"$ref": "../m8-02/typed-state-v6alpha1.schema.json"}
+      ]
+    },
+    "state_sha256": {"$ref": "#/$defs/sha256"},
+    "state_write_authority": {"const": false},
+    "controlled_action_authority": {"const": false},
+    "provider_authority": {"const": 0},
+    "external_effect_authority": {"const": 0},
+    "projection_sha256": {"$ref": "#/$defs/sha256"},
+    "signature": {"$ref": "#/$defs/signature"}
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "key_id", "value"],
+      "properties": {
+        "algorithm": {"const": "hmac-sha256"},
+        "key_id": {"$ref": "#/$defs/id"},
+        "value": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "eventHead": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sequence_no", "event_sha256"],
+      "properties": {
+        "sequence_no": {"type": "integer", "minimum": 1},
+        "event_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["response_schema_version", "tool", "revision", "event_head", "registry_digest", "capabilities_sha256"],
+      "properties": {
+        "response_schema_version": {"const": "context.state-mcp-response/v1alpha1"},
+        "tool": {"const": "context.state.read"},
+        "revision": {"type": "integer", "minimum": 0},
+        "event_head": {
+          "oneOf": [
+            {"$ref": "#/$defs/eventHead"},
+            {"type": "null"}
+          ]
+        },
+        "registry_digest": {"$ref": "#/$defs/sha256"},
+        "capabilities_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

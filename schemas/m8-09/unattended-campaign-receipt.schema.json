@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m8-09/unattended-campaign-receipt.schema.json",
+  "title": "M8-09 unattended campaign receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "campaign_run_id", "project_id", "profile_id", "governance_revision", "start_project_revision", "end_project_revision", "completed_work_ids", "conditional_not_applicable_work_ids", "remaining_optional_work_ids", "steps", "condition_decisions", "blocker_id", "evidence_ids", "resume_condition", "state_write_authority", "completion_authority", "provider_authority", "external_effect_authority", "receipt_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.unattended-campaign-receipt/v1alpha1"},
+    "status": {"enum": ["completed", "blocked"]},
+    "campaign_run_id": {"$ref": "#/$defs/id"},
+    "project_id": {"$ref": "#/$defs/id"},
+    "profile_id": {"$ref": "#/$defs/id"},
+    "governance_revision": {"type": "integer", "minimum": 1},
+    "start_project_revision": {"type": "integer", "minimum": 0},
+    "end_project_revision": {"type": "integer", "minimum": 0},
+    "completed_work_ids": {"type": "array", "maxItems": 10000, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+    "conditional_not_applicable_work_ids": {"type": "array", "maxItems": 10000, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+    "remaining_optional_work_ids": {"type": "array", "maxItems": 10000, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+    "steps": {"type": "array", "maxItems": 10000, "items": {"$ref": "unattended-dispatch-step.schema.json"}},
+    "condition_decisions": {"type": "array", "maxItems": 10000, "items": {"$ref": "condition-decision.schema.json"}},
+    "blocker_id": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/id"}]},
+    "evidence_ids": {"type": "array", "maxItems": 10000, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+    "resume_condition": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/resumeCondition"}]},
+    "state_write_authority": {"const": false},
+    "completion_authority": {"const": false},
+    "provider_authority": {"const": 0},
+    "external_effect_authority": {"const": 0},
+    "receipt_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "allOf": [
+    {"if": {"properties": {"status": {"const": "completed"}}}, "then": {"properties": {"blocker_id": {"const": null}, "resume_condition": {"const": null}, "evidence_ids": {"maxItems": 0}}}},
+    {"if": {"properties": {"status": {"const": "blocked"}}}, "then": {"properties": {"blocker_id": {"$ref": "#/$defs/id"}, "resume_condition": {"$ref": "#/$defs/resumeCondition"}, "evidence_ids": {"minItems": 1}}}}
+  ],
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "resumeCondition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "refs"],
+      "properties": {
+        "kind": {"type": "string", "minLength": 1, "maxLength": 128},
+        "refs": {"type": "array", "minItems": 1, "maxItems": 10000, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 4096}}
+      }
+    }
+  }
+}

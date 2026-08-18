@@ -1,0 +1,74 @@
+{
+  "benchmark_id": "m9-02-project-graph-projection",
+  "gate": {
+    "failed_gates": [],
+    "status": "passed"
+  },
+  "generated_at": "2026-08-17T20:00:00+08:00",
+  "latency_ms": {
+    "max": 8.320444,
+    "min": 4.094321,
+    "p50": 4.369527,
+    "p95": 6.319825
+  },
+  "parameters": {
+    "iterations": 1000,
+    "large_graph_work_count": 128,
+    "max_nested_items": 50000,
+    "max_scope_comparisons": 50000,
+    "stress_scope_count": 223
+  },
+  "provenance": {
+    "benchmark_sha256": "339c2f7a0b51b71a49a6120acb31acea64eca3550813b42ce3db72548a87494c",
+    "external_state_provider_sha256": "7f8bd729519800c8a9a157b5e4a6d9eab734debb7744596c34f968b51220477c",
+    "fixture_sha256": "9be7887519cfed4466436ea6714d48e399d7023281729b3bd8c78cb3a086beab",
+    "idea_fixture_builder_sha256": "b1659376b595ae6ead23429edd377a35408eeb58e4986e56d27c168033bd0864",
+    "implementation_sha256": "429e96fba18fa85dbf5870d46cd16decffaee4ef41f4aa1c2f10998309a66247",
+    "typed_state_sha256": "9151f130c9cbe426e5c8e55fd1f2c42bad5d5c093254a67cfa5ee7e16b9447c4"
+  },
+  "receipt_sha256": "cb1d0b586db09e561ea62b3f954bec2b907efaa81cad357c5916bdb237502b1c",
+  "results": {
+    "active_work_complete_matches": 1000,
+    "active_work_complete_rate": 1.0,
+    "authority_violations": 0,
+    "bounded_overlap_complete_matches": 1000,
+    "bounded_overlap_complete_rate": 1.0,
+    "claim_conflict_rejected": true,
+    "cycle_visibility_matches": 1000,
+    "cycle_visibility_rate": 1.0,
+    "expired_branch_visibility_matches": 1000,
+    "expired_branch_visibility_rate": 1.0,
+    "external_services": 0,
+    "large_graph_complete_matches": 1000,
+    "large_graph_complete_rate": 1.0,
+    "lease_expiry_visibility_matches": 1000,
+    "lease_expiry_visibility_rate": 1.0,
+    "orphan_visibility_matches": 1000,
+    "orphan_visibility_rate": 1.0,
+    "provider_invocations": 0,
+    "same_revision_matches": 1000,
+    "same_revision_rate": 1.0,
+    "tamper_rejection_rate": 1.0,
+    "tamper_rejections": 1000,
+    "work_scope_overlap_visibility_matches": 1000,
+    "work_scope_overlap_visibility_rate": 1.0
+  },
+  "schema_version": "context.project-graph-projection-benchmark/v1alpha1",
+  "thresholds": {
+    "active_work_complete_rate_min": 1.0,
+    "authority_violations_max": 0,
+    "bounded_overlap_complete_rate_min": 1.0,
+    "claim_conflict_rejection_required": true,
+    "cycle_visibility_rate_min": 1.0,
+    "expired_branch_visibility_rate_min": 1.0,
+    "external_services_max": 0,
+    "large_graph_complete_rate_min": 1.0,
+    "lease_expiry_visibility_rate_min": 1.0,
+    "orphan_visibility_rate_min": 1.0,
+    "projection_latency_p95_ms_max": 50.0,
+    "provider_invocations_max": 0,
+    "same_revision_rate_min": 1.0,
+    "tamper_rejection_rate_min": 1.0,
+    "work_scope_overlap_visibility_rate_min": 1.0
+  }
+}

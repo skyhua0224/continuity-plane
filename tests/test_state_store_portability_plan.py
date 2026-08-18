@@ -81,7 +81,7 @@ class StateStorePortabilityPlanTests(unittest.TestCase):
         self.assertIn("Runtime profiles are not user editions", self.target_state)
         self.assertIn("cohesive monolith", self.target_state)
         self.assertIn("| M10-00 |", self.master)
-        self.assertIn("Context Control Plane self-dogfood", self.master)
+        self.assertIn("Continuity Plane self-dogfood", self.master)
 
     def test_requested_runtime_profile_never_claims_adapter_guarantees(self):
         self.assertIn("requested_runtime_profile", self.target_state)

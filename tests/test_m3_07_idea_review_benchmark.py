@@ -33,7 +33,7 @@ class M307IdeaReviewBenchmarkTests(unittest.TestCase):
             (root / "experiments/routing/m3-07-idea-review-results.json").read_text()
         )
         validate_idea_review_benchmark_receipt(receipt, root=root)
-        self.assertEqual(receipt["measurement"]["samples"], 40)
+        self.assertEqual(receipt["measurement"]["samples"], 1000)
 
         registry = yaml.safe_load((root / "schemas/registry.yaml").read_text())
         entry = next(

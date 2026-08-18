@@ -317,6 +317,96 @@ class WorkLedger:
             changes={"claim_before": current, "claim_after": after},
         )
 
+    def complete_work(
+        self,
+        *,
+        work_id: str,
+        claim_id: str,
+        actor_ref: str,
+        expected_project_revision: int,
+        expected_work_revision: int,
+        expected_claim_revision: int,
+        lease_epoch: int,
+        fence: int,
+        observed_at: str,
+        evidence_ids: list[str],
+        verification_decision_sha256: str,
+        claim_evidence_verdict_sha256: str,
+    ) -> dict[str, Any]:
+        """Atomically complete verified Work and release its fenced Claim."""
+        observed = _parse_timestamp(observed_at, "observed_at")
+        work_id = _identifier(work_id, "work_id")
+        claim_id = _identifier(claim_id, "claim_id")
+        actor_ref = _identifier(actor_ref, "actor_ref")
+        self._check_revision(expected_project_revision)
+        expected_work_revision = _integer(
+            expected_work_revision, "expected_work_revision"
+        )
+        verification_decision_sha256 = _sha256(
+            verification_decision_sha256, "verification_decision_sha256"
+        )
+        claim_evidence_verdict_sha256 = _sha256(
+            claim_evidence_verdict_sha256, "claim_evidence_verdict_sha256"
+        )
+        if (
+            not isinstance(evidence_ids, list)
+            or not evidence_ids
+            or len(evidence_ids) != len(set(evidence_ids))
+        ):
+            raise ClaimLifecycleError("missing_completion_evidence")
+        normalized_evidence = sorted(
+            _identifier(item, "evidence_id") for item in evidence_ids
+        )
+
+        work = self._work(work_id)
+        if work.get("revision") != expected_work_revision:
+            raise ClaimLifecycleError("work_revision_mismatch")
+        if work["status"] not in {"active", "verifying"}:
+            raise ClaimLifecycleError("work_not_completable")
+        current = self._active_claim(claim_id, observed)
+        if current["work_id"] != work_id:
+            raise ClaimLifecycleError("work_mismatch")
+        self._check_actor(current, actor_ref)
+        self._check_tokens(
+            current, expected_claim_revision, lease_epoch, fence
+        )
+
+        work_after = copy.deepcopy(work)
+        work_after["status"] = "completed"
+        work_after["revision"] = expected_work_revision + 1
+        work_after["evidence_ids"] = sorted(
+            set(work_after.get("evidence_ids", [])) | set(normalized_evidence)
+        )
+        claim_after = self._terminal_claim(
+            current,
+            status="released",
+            close_reason="worker_release",
+            actor_ref=actor_ref,
+            observed=observed,
+        )
+        return self._commit(
+            operation="complete_work",
+            actor_ref=actor_ref,
+            observed_at=observed,
+            primary_claim=claim_after,
+            claim_updates={claim_id: claim_after},
+            work_updates={work_id: work_after},
+            changes={
+                "work_before": work,
+                "work_after": work_after,
+                "claim_before": current,
+                "claim_after": claim_after,
+                "evidence_ids": normalized_evidence,
+                "verification_decision_sha256": verification_decision_sha256,
+                "claim_evidence_verdict_sha256": claim_evidence_verdict_sha256,
+            },
+            extra_result={
+                "work": work_after,
+                "verification_decision_sha256": verification_decision_sha256,
+                "claim_evidence_verdict_sha256": claim_evidence_verdict_sha256,
+            },
+        )
+
     def revoke_claim(
         self,
         *,

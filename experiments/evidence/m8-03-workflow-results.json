@@ -13,13 +13,13 @@
     "continuation-payload-tamper"
   ],
   "fault_rejections": 7000,
-  "generated_at": "2026-08-16T20:00:00+08:00",
+  "generated_at": "2026-08-17T23:50:00+08:00",
   "generations_per_chain": 3,
   "history_event_count": 20500,
   "latency_ms": {
-    "max": 33.308625,
-    "p50": 18.307415,
-    "p95": 23.12289
+    "max": 36.024134,
+    "p50": 18.88515,
+    "p95": 27.51575
   },
   "metrics": {
     "authority_violations": 0,
@@ -34,10 +34,10 @@
     "durable_workflow_sha256": "5455bb60c16e6475fbe1cdbf7c3c27f887069c70bdc5441b576af270e4dfbd56",
     "orchestration_sha256": "9541fccd8ad6ecd71fb3f0a38ebda2efb193fbe9a5b6e1adc117da93409a29b0",
     "registry_sha256": "dca120363ddacec7a4e768711158284b1f13b414fbf1cc68e70cafdf1717d293",
-    "temporal_adapter_sha256": "6c8c22756bf3fc28b8553cd994e9417dfa69f273fccbf3979a1a66465e60ac76"
+    "temporal_adapter_sha256": "d6b2cf82266f5e212f0648e99ce4b06a6297b23aadb6de34d768f81ed2ce7141"
   },
   "provider_invocations": 0,
-  "receipt_sha256": "2c3a5bacf9edbf3ddbb2c4799d077fa2d59d3458218c28f57f1f65fd0124f36a",
+  "receipt_sha256": "3db7bcaaf1b0aeb4ab4dbcba211ba13593b93618e13b2b19c67ccedb0753bee5",
   "rollover_count": 2000,
   "run_count": 3000,
   "samples": 1000,

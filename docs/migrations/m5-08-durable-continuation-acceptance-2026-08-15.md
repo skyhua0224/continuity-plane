@@ -1,14 +1,15 @@
 # M5-08 Durable Continuation Acceptance
 
-Version: 1  
+Version: 2  
 Date: 2026-08-15  
 Status: verified local-embedded shadow adapter
 
 ```yaml
 document_id: context.m5-08-durable-continuation-acceptance
-document_revision: 1
+document_revision: 2
 change_type: evidence
-authority_ref: verification-run://repository/m5-08-durable-continuation-v1
+authority_ref: verification-run://repository/m5-08-durable-continuation-v2
+supersedes: context.document://docs-migrations-m5-08-durable-continuation-acceptance-2026-08-15/revision/1
 affected_tasks: [M5-08, M5-07, M8-01, M8-06]
 next_review: M5-07
 ```
@@ -27,7 +28,8 @@ before opening the execution gate. A reset first action, duplicate response to
 an acknowledged input, stale revision/Event head, invalid phase/effect or
 `never` replay is rejected. Recovery reads produce a bounded receipt containing
 source refs, content digests, byte count and budget. State MCP and provider
-native authority remain false.
+native authority remain false. Recovery failures carry stable error codes;
+read-budget failure is distinct from recovery-contract integrity failure.
 
 Pi `op.state` is used as a protocol field oracle for operation state, reserved
 effect IDs and replay policy. The implementation does not depend on Pi or any
@@ -44,7 +46,7 @@ provider runtime.
 | duplicate response | acknowledged input replays `0` |
 | fault injection | `10000/10000` rejected across 10 fault classes; false accepts `0` |
 | bounded recovery | maximum recovery read `3328 B` against `4096 B` budget |
-| latency | local recovery receipt p50/p95/max `0.166354/0.339017/0.383063 ms` |
+| latency | local recovery receipt p50/p95/max `0.169188/0.19953/0.461365 ms` |
 | authority | State write and provider-native authority violations `0` |
 | external services | `0` |
 | receipt | [`m5-08-durable-continuation-results.json`](../../experiments/routing/m5-08-durable-continuation-results.json) passes runtime, hash and schema validation |

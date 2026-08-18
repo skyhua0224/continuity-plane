@@ -72,6 +72,10 @@ IDEA_CAPTURE_TOOL = "context.idea.capture"
 IDEA_REVIEW_TOOL = "context.idea.review"
 IDEA_CORRECTION_PROTECT_TOOL = "context.idea.correction.protect"
 IDEA_CORRECTION_RELEASE_TOOL = "context.idea.correction.release"
+DEFAULT_REQUEST_CACHE_ENTRIES = 1024
+_AUTHORIZATION_GRANTED = "granted"
+_AUTHORIZATION_HISTORICAL_REPLAY = "historical-replay"
+_AUTHORIZATION_DENIED = "denied"
 STATE_MCP_TOOLS = (
     READ_TOOL,
     COMMIT_TOOL,
@@ -1030,7 +1034,10 @@ def _backend_error_response(
         code, message = "busy", "state store is busy"
     elif isinstance(error, StateStoreCapabilityError):
         code, message = "capability", "state-store capability contract rejected the operation"
-    elif isinstance(error, (StateStoreIntegrityError, StateEventError, TypedStateError)):
+    elif isinstance(
+        error,
+        (StateStoreIntegrityError, StateEventError, TypedStateError, ValueError),
+    ):
         code, message = "integrity", "state integrity validation failed"
     else:
         raise error
@@ -1067,9 +1074,19 @@ class StateMCPService:
         self._clock = clock
         self._event_id_factory = event_id_factory
         self._request_receipts: dict[
-            tuple[str, str], tuple[str, dict[str, Any]]
+            tuple[str, str, str], tuple[str, dict[str, Any]]
         ] = {}
+        self._authorization_receipts: dict[
+            tuple[str, str, str, str], dict[str, Any]
+        ] = {}
+        self._request_cache_limit = DEFAULT_REQUEST_CACHE_ENTRIES
         self._mutation_lock = threading.Lock()
+
+    def _cache_put(self, cache: dict[Any, Any], key: Any, value: Any) -> None:
+        cache.pop(key, None)
+        cache[key] = value
+        while len(cache) > self._request_cache_limit:
+            del cache[next(iter(cache))]
 
     @staticmethod
     def _request_fingerprint(
@@ -1098,7 +1115,9 @@ class StateMCPService:
         arguments: dict[str, Any],
         context: RequestContext,
     ) -> dict[str, Any] | None:
-        previous = self._request_receipts.get((tool, arguments["request_id"]))
+        previous = self._request_receipts.get(
+            (arguments["project_id"], tool, arguments["request_id"])
+        )
         if previous is None:
             return None
         if previous[0] != self._request_fingerprint(tool, arguments, context):
@@ -1117,9 +1136,13 @@ class StateMCPService:
         context: RequestContext,
         response: dict[str, Any],
     ) -> None:
-        self._request_receipts[(tool, arguments["request_id"])] = (
-            self._request_fingerprint(tool, arguments, context),
-            copy.deepcopy(response),
+        self._cache_put(
+            self._request_receipts,
+            (arguments["project_id"], tool, arguments["request_id"]),
+            (
+                self._request_fingerprint(tool, arguments, context),
+                copy.deepcopy(response),
+            ),
         )
 
     def _authorize(
@@ -1128,12 +1151,86 @@ class StateMCPService:
         context: RequestContext,
         action: str,
         project_id: str,
-    ) -> bool:
+        request_id: str,
+        request_sha256: str,
+    ) -> str:
         try:
-            return self._authorizer.authorize(context, action, project_id) is True
+            authorize_with_receipt = getattr(
+                self._authorizer, "authorize_with_receipt", None
+            )
+            if callable(authorize_with_receipt):
+                outcome = authorize_with_receipt(
+                    context,
+                    action,
+                    project_id,
+                    request_id=request_id,
+                    request_sha256=request_sha256,
+                )
+                if not isinstance(outcome, dict):
+                    return _AUTHORIZATION_DENIED
+                if set(outcome) == {
+                    "audit_event",
+                    "currently_authorized",
+                    "historical_replay_only",
+                }:
+                    receipt = outcome["audit_event"]
+                    currently_authorized = outcome["currently_authorized"] is True
+                    historical_replay_only = (
+                        outcome["historical_replay_only"] is True
+                    )
+                else:
+                    receipt = outcome
+                    currently_authorized = receipt.get("decision") == "allow"
+                    historical_replay_only = False
+                if not isinstance(receipt, dict) or receipt.get("decision") != "allow":
+                    return _AUTHORIZATION_DENIED
+                self._cache_put(
+                    self._authorization_receipts,
+                    (project_id, action, request_id, request_sha256),
+                    copy.deepcopy(receipt),
+                )
+                if currently_authorized:
+                    return _AUTHORIZATION_GRANTED
+                if historical_replay_only:
+                    return _AUTHORIZATION_HISTORICAL_REPLAY
+                return _AUTHORIZATION_DENIED
+            if self._authorizer.authorize(context, action, project_id) is True:
+                return _AUTHORIZATION_GRANTED
+            return _AUTHORIZATION_DENIED
         except Exception:  # noqa: BLE001
             # Authorization provider failures deny writes.
-            return False
+            return _AUTHORIZATION_DENIED
+
+    def authorization_receipt(
+        self,
+        tool: str,
+        arguments: Any,
+        *,
+        context: RequestContext,
+    ) -> dict[str, Any] | None:
+        """Return exact pre-write authorization evidence for one accepted request."""
+        if (
+            tool not in STATE_MCP_TOOLS
+            or not isinstance(context, RequestContext)
+            or _validate_request(tool, arguments) is not None
+        ):
+            return None
+        if tool == EXPERIMENT_EFFECT_TOOL:
+            action = f"state.experiment.effect.{arguments['action']}"
+        elif tool == EFFECT_TOOL:
+            action = f"state.effect.{arguments['action']}"
+        else:
+            action = _AUTHORIZATION_ACTIONS[tool]
+        request_sha256 = self._request_fingerprint(tool, arguments, context)
+        receipt = self._authorization_receipts.get(
+            (
+                arguments["project_id"],
+                action,
+                arguments["request_id"],
+                request_sha256,
+            )
+        )
+        return copy.deepcopy(receipt) if receipt is not None else None
 
     def call_tool(
         self,
@@ -1174,16 +1271,36 @@ class StateMCPService:
             action = f"state.effect.{arguments['action']}"
         else:
             action = _AUTHORIZATION_ACTIONS[tool]
-        if not self._authorize(
+        request_sha256 = self._request_fingerprint(tool, arguments, context)
+        authorization = self._authorize(
             context=context,
             action=action,
             project_id=arguments["project_id"],
-        ):
+            request_id=arguments["request_id"],
+            request_sha256=request_sha256,
+        )
+        if authorization == _AUTHORIZATION_DENIED:
             return _response(
                 tool=tool,
                 request_id=request_id,
                 error_code="permission_denied",
                 error_message="request is not authorized",
+            )
+
+        historical_replay_only = (
+            authorization == _AUTHORIZATION_HISTORICAL_REPLAY
+        )
+        if historical_replay_only and tool not in {
+            PROMOTION_PROPOSE_TOOL,
+            PROMOTION_APPROVE_TOOL,
+            IDEA_CORRECTION_PROTECT_TOOL,
+            IDEA_CORRECTION_RELEASE_TOOL,
+        }:
+            return _response(
+                tool=tool,
+                request_id=request_id,
+                error_code="permission_denied",
+                error_message="historical authorization requires a committed State event",
             )
 
         if tool == EFFECT_GATE_TOOL:
@@ -1218,9 +1335,19 @@ class StateMCPService:
                     IDEA_CORRECTION_PROTECT_TOOL,
                     IDEA_CORRECTION_RELEASE_TOOL,
                 }:
-                    return self._idea_review_write(tool, arguments, context=context)
+                    return self._idea_review_write(
+                        tool,
+                        arguments,
+                        context=context,
+                        replay_only=historical_replay_only,
+                    )
                 if tool in {PROMOTION_PROPOSE_TOOL, PROMOTION_APPROVE_TOOL}:
-                    return self._promotion(tool, arguments, context=context)
+                    return self._promotion(
+                        tool,
+                        arguments,
+                        context=context,
+                        replay_only=historical_replay_only,
+                    )
                 if tool == EXPERIMENT_EFFECT_TOOL:
                     return self._effect(
                         arguments,
@@ -1738,6 +1865,7 @@ class StateMCPService:
         arguments: dict[str, Any],
         *,
         context: RequestContext,
+        replay_only: bool = False,
     ) -> dict[str, Any]:
         """Persist one review or correction-protection Idea v2 transition."""
         request_id = arguments["request_id"]
@@ -1783,6 +1911,15 @@ class StateMCPService:
                 )
                 self._remember_request(tool, arguments, context, response)
                 return response
+            if replay_only:
+                return _response(
+                    tool=tool,
+                    request_id=request_id,
+                    error_code="permission_denied",
+                    error_message=(
+                        "historical authorization requires a committed State event"
+                    ),
+                )
             if snapshot.get("schema_version") not in {
                 "context.typed-state/v4alpha1",
                 DURABLE_EFFECT_SCHEMA_VERSION,
@@ -2187,6 +2324,7 @@ class StateMCPService:
         arguments: dict[str, Any],
         *,
         context: RequestContext,
+        replay_only: bool = False,
     ) -> dict[str, Any]:
         """Propose or independently approve immutable Experiment promotion records."""
         request_id = arguments["request_id"]
@@ -2210,9 +2348,6 @@ class StateMCPService:
                     not isinstance(transition, dict)
                     or transition.get("operation") != expected_operation
                     or transition.get("request_sha256") != request_fingerprint
-                    or events[-1]["event_id"] != event_id
-                    or snapshot["project"]["revision"]
-                    != existing_event["revision_after"]
                 ):
                     return _response(
                         tool=tool,
@@ -2225,7 +2360,7 @@ class StateMCPService:
                     request_id=request_id,
                     result={
                         "snapshot": snapshot,
-                        "revision": snapshot["project"]["revision"],
+                        "revision": existing_event["revision_after"],
                         "event_head": {
                             "sequence_no": existing_event["sequence_no"],
                             "event_sha256": existing_event["event_sha256"],
@@ -2237,6 +2372,15 @@ class StateMCPService:
                 )
                 self._remember_request(tool, arguments, context, response)
                 return response
+            if replay_only:
+                return _response(
+                    tool=tool,
+                    request_id=request_id,
+                    error_code="permission_denied",
+                    error_message=(
+                        "historical authorization requires a committed State event"
+                    ),
+                )
             if snapshot.get("schema_version") != "context.typed-state/v3alpha1":
                 return _response(
                     tool=tool,
@@ -2429,8 +2573,24 @@ class StateMCPService:
                 evidence_by_id = {
                     item["evidence_id"]: item for item in snapshot["evidence"]
                 }
+                approval_time = datetime.fromisoformat(
+                    observed_at.replace("Z", "+00:00")
+                )
                 if any(
                     evidence_by_id[evidence_id]["validity"] != "verified"
+                    or evidence_by_id[evidence_id]["verified_at"] is None
+                    or datetime.fromisoformat(
+                        evidence_by_id[evidence_id]["observed_at"].replace(
+                            "Z", "+00:00"
+                        )
+                    )
+                    > approval_time
+                    or datetime.fromisoformat(
+                        evidence_by_id[evidence_id]["verified_at"].replace(
+                            "Z", "+00:00"
+                        )
+                    )
+                    > approval_time
                     for evidence_ids in proposal["criterion_evidence"].values()
                     for evidence_id in evidence_ids
                 ):

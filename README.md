@@ -1,41 +1,126 @@
-# Context Control Plane
+# Continuity Plane
 
-Provider-neutral context, task-state, Skill, evidence, replay, and collaboration control plane for long-running software projects.
+[![Managed with Continuity Plane](docs/assets/managed-with-continuity-plane.svg)](https://github.com/skyhua0224/continuity-plane)
 
-The project exists to prevent context compaction, task switching, model changes, and team collaboration from silently changing the active goal, reviving rejected decisions, repeating side effects, or losing verification evidence.
+Continuity Plane 是面向长期 AI 辅助软件工作的 provider-neutral 控制面。它把任务、
+决定、约束、证据、checkpoint、上下文组合和协作状态放在聊天窗口之外，支持压缩、
+任务切换、进程崩溃和多人交接后的确定性恢复。
 
-Current status: research and shadow-pilot scaffolding. No production state service is implemented yet.
+[English README](README.en.md)
 
-## Repository Boundary
+## 你可能遇到的事故
 
-- This repository owns schemas, state-service code, task routing, Skill resolution, context composition, replay validators, provider adapters, project profiles, and human-console integrations.
-- The selected StateStore profile and artifact store own live state, events, checkpoints, and large outputs. SQLite is the default embedded backend; PostgreSQL is an optional shared backend.
-- Provider archives retain raw chat transcripts outside Git.
-- Project repositories contain only small integration manifests and project-owned canonical documents.
-- AlkaidLab Platform, Moonlight, Sunshine, and other products retain independent build and runtime lifecycles.
+| 场景 | 一句话表现 | 详情 |
+|---|---|---|
+| 压缩与长 Session | 压缩后重答、重规划，甚至重新执行已经完成的工作 | [场景详情](public/docs/use-cases.md#压缩与长-session) |
+| 多 Session 与部署竞态 | 两个 Session 同时合入、部署、回滚或重试同一个副作用 | [场景详情](public/docs/use-cases.md#多-session多人和部署竞态) |
+| 多人和多 Agent | 看不到 unpublished Work，重复实现或重复检索 | [场景详情](public/docs/use-cases.md#多-agent-重复实现) |
+| Idea 与任务切换 | 一句想法把当前主线带跑，回来后找不到 return point | [场景详情](public/docs/use-cases.md#idea中断与任务切换) |
+| 大型项目 | 目录树无法说明依赖、影响、决定和当前 owner | [场景详情](public/docs/use-cases.md#大型项目定位与影响分析) |
+| Memory、Skill、文档漂移 | 旧路径、旧规则和旧决定重新影响当前工作 | [场景详情](public/docs/use-cases.md#memoryskill-与文档漂移) |
 
-## Start Here
+## 已测结果
 
-- [`STATUS.md`](STATUS.md): small current-work router; this is the normal agent entry point.
-- [`MASTER.md`](MASTER.md): canonical project goal, dependency graph, work ledger, and acceptance gates.
-- [`docs/architecture/target-state.md`](docs/architecture/target-state.md): default human/Agent target-state table, permissions, delivery phases, and public-project projection boundary.
-- [`docs/policies/conversation-ingestion.md`](docs/policies/conversation-ingestion.md): what can be migrated from chat history and where it belongs.
-- [`docs/policies/documentation-style.md`](docs/policies/documentation-style.md): normative documentation language and information placement.
-- [`docs/policies/archive-lifecycle.md`](docs/policies/archive-lifecycle.md): retention classes, sealed export/import, tombstones, and deletion-proof boundaries.
-- [`docs/policies/reference-evidence-lifecycle.md`](docs/policies/reference-evidence-lifecycle.md): reference discovery, snapshot, freshness, assertion, adoption, and supersedes policy.
-- [`docs/policies/schema-version-release-governance.md`](docs/policies/schema-version-release-governance.md): schema identity, compatibility, migration, replay, release, and rollback gates.
-- [`docs/policies/project-dogfooding-observation.md`](docs/policies/project-dogfooding-observation.md): compaction, Skill-load, plan-evolution, and verification trend protocol.
-- [`docs/policies/git-collaboration.md`](docs/policies/git-collaboration.md): provider-neutral branch, commit, PR, merge, and Git admission contract.
-- [`docs/policies/continuous-integration.md`](docs/policies/continuous-integration.md): Gitea verification jobs, authority boundary, local parity, secret scan, and required-gate contract.
-- [`docs/architecture/idea-continuity.md`](docs/architecture/idea-continuity.md): natural-language Idea capture, correction, controlled switching, compaction, and context return.
-- [`docs/architecture/skill-orchestration.md`](docs/architecture/skill-orchestration.md): Skill 来源、resolver、分层装载、协作角色和验收合同。
-- [`docs/research/agent-harness-assessment-2026-08-09.md`](docs/research/agent-harness-assessment-2026-08-09.md): Codex/Claude harness capabilities, authority boundaries, and adoption matrix.
-- [`docs/research/external-skill-and-mcp-catalog-assessment-2026-08-09.md`](docs/research/external-skill-and-mcp-catalog-assessment-2026-08-09.md): 官方 Skill、Agent Skills 标准、MCP Registry 和市场候选。
-- [`docs/research/context-compression-benchmark-2026-08-09.md`](docs/research/context-compression-benchmark-2026-08-09.md): E0/E1 合成压缩与 Execution Packet 量化结果。
-- [`profiles/skill-catalog.example.yaml`](profiles/skill-catalog.example.yaml): 可供项目初始化和 resolver 使用的外部 Skill 候选与直接来源地址。
-- [`profiles/reference-catalog.example.yaml`](profiles/reference-catalog.example.yaml): Codex/Claude harness reference snapshots, hashes, validity, refresh triggers, and direct source URLs.
-- [`schemas/registry.yaml`](schemas/registry.yaml): machine-readable schema/profile registry and artifact hashes.
-- [`docs/migrations/m0-07-schema-governance-acceptance-2026-08-09.md`](docs/migrations/m0-07-schema-governance-acceptance-2026-08-09.md): M0-07 compatibility, migration, replay, and rollback verification evidence.
-- [`experiments/dogfood/observations-2026-08-09.yaml`](experiments/dogfood/observations-2026-08-09.yaml): first project self-observation baseline.
-- [`docs/research/context-reliability-assessment-2026-08-09.md`](docs/research/context-reliability-assessment-2026-08-09.md): evaluated components and AlkaidLab pilot design.
-- [`replay/fixtures/README.md`](replay/fixtures/README.md): replay corpus contract.
+| 场景 | 结果 | 详情 |
+|---|---|---|
+| 压缩恢复 | input tokens `-40.25%`；近上限历史 `-95.06%`；quality `3/3` | [压缩实测](public/docs/benchmarks.md#压缩与恢复) |
+| 代码检索 | input `-50.02%`；tool calls `-57.89%`；wall time `-27.41%`；quality `3/3` | [检索实测](public/docs/benchmarks.md#代码检索) |
+| Skill 装载 | source bytes `-96.54%`；quality `3/3` | [Skill 实测](public/docs/benchmarks.md#skill-装载) |
+| 多 Session 协调 | duplicate tool calls `-55.88%`；parallel wall time `-22.65%` | [协作实测](public/docs/benchmarks.md#多-session-协作) |
+| 一致性 | E0-E9 `10/10`；双 Session `1000/1000`；authority violation `0` | [一致性实测](public/docs/benchmarks.md#一致性与限制) |
+| 大型项目视图 | 2,000 nodes / 5,000 edges；scale p95 `187.459764 ms` | [图形视图](public/docs/project-views.md) |
+
+这些是匹配任务和当前 fixture 的场景级结果，不能合成为所有用户的统一节省率。
+用户 token、窗口有效利用率和两次压缩之间的有效工作量，按 accepted Work 归一化，
+并在 host trace 可见时计量。[完整方法和限制](public/docs/benchmarks.md)。
+
+## 架构概览
+
+```text
+Agent / IDE / CI / 人类控制台
+              |
+              v
+       Execution Packet
+              |
+     +--------+---------+
+     |                  |
+ Typed State        Evidence index
+ revision + CAS     hash + validity
+     |                  |
+     +--------+---------+
+              |
+      append-only events
+              |
+      checkpoint + replay canary
+              |
+          SQLite 默认
+```
+
+Memory、检索系统、代码图和 reviewer 只能提供候选信息；active task、完成状态和外部
+副作用必须经过 State MCP 的 authorization、expected revision/CAS 和 validator。
+
+## 快速开始
+
+要求 Python 3.11 或更高版本。在目标项目目录执行：
+
+```bash
+python -m pip install .
+continuity init --root . --project-id my-project --display-name "My Project"
+continuity verify --root .
+continuity doctor --root .
+continuity state show --root .
+```
+
+初始化会创建 `.continuity/`、SQLite 状态库以及项目自己的 `MASTER.md`、`STATUS.md`
+和英文模板。项目应自行决定 `project_id` 与 `display_name`。
+
+## 安装模式
+
+| 模式 | 外部服务 | 适用场景 | 详情 |
+|---|---|---|---|
+| `local-embedded` | 无 | 个人项目、离线开发、本机多 Session | [配置](public/docs/configuration.md) |
+| `forge-coordinated` | 已有 Git forge | 普通开源团队协作 | [配置](public/docs/configuration.md#profiles) |
+| 个人 PostgreSQL | 本地或私有 PostgreSQL | SQL 检查、备份、本地 worker | [配置](public/docs/configuration.md#profiles) |
+| 个人 Docmost | Docmost + connector | 图表、审批、历史观察 | [图形化产品](public/docs/visual-products.md) |
+| `shared-strong` | 显式 State MCP 服务 | 跨设备唯一 claim、lease 和 CAS | [配置](public/docs/configuration.md#profiles) |
+
+默认路径是 `local-embedded`。PostgreSQL、Docmost 和 shared-strong 都是可选增强。
+
+## 权威边界
+
+- `Typed State`：当前任务、owner、revision、决定、约束和门禁；
+- `Event Log`：append-only 状态变化、supersedes 和 hash chain；
+- `Checkpoint`：压缩、切换、交接和崩溃后的恢复点；
+- `Evidence`：当前源码、标准、官方文档和测试的 provenance；
+- `MASTER.md`：项目级治理意图；`STATUS.md`：当前恢复路由；
+- Docmost：可选的人类控制台，动作受 State MCP 约束；
+- Obsidian：生成的只读视图；
+- SQLite：默认本地 authority；PostgreSQL：显式选择的 adapter。
+
+## 文档
+
+- [完整使用教程](USAGE.md)
+- [架构说明](docs/architecture.md)
+- [配置说明](docs/configuration.md)
+- [Python API](docs/api.md)
+- [实测方法](public/docs/benchmarks.md)
+- [使用场景](public/docs/use-cases.md)
+- [大型项目视图](public/docs/project-views.md)
+- [Docmost 与 Obsidian 图形化产品计划](public/docs/visual-products.md)
+- [English README](README.en.md)
+- [贡献指南](CONTRIBUTING.md)
+- [安全策略](SECURITY.md)
+
+## Release 与许可证
+
+当前 alpha 通过 [GitHub Releases](https://github.com/skyhua0224/continuity-plane/releases)
+提供 wheel、source archive 和 SHA256SUMS。PyPI Trusted Publishing 尚未配置，因此
+当前不要使用 `pip install continuity-plane`；详见 [发布说明](CHANGELOG.md)。
+
+Continuity Plane 使用 [Apache-2.0](LICENSE)。badge、README 署名、应用 UI 标签和
+telemetry 都是可选的，法律归属以 LICENSE 和 NOTICE 为准。
+
+## 当前状态
+
+Linux x86_64 已完成 clean-room 安装和本地 alpha 验证。Windows/macOS 原生矩阵、
+完整 Docmost connector、Obsidian Canvas/Bases 和 shared-strong 部署仍在后续计划中。

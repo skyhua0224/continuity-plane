@@ -412,3 +412,8 @@ def evaluate_claim_evidence_gate(
 def canonical_claim_evidence_verdict_bytes(verdict: dict[str, Any]) -> bytes:
     validate_claim_evidence_verdict(verdict)
     return _canonical(verdict)
+
+
+def validate_claim_evidence_claim(claim: Any) -> None:
+    """Validate a claim returned with a resolver-backed completion verdict."""
+    _validate_claim(claim)

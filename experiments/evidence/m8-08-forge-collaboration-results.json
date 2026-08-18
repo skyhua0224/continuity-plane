@@ -1,0 +1,53 @@
+{
+  "authority_escalations": 0,
+  "benchmark_id": "benchmark-m8-08-e901e69d451c837758e60864",
+  "complete_visible_record_mappings": 2000,
+  "deterministic_replays": 2000,
+  "explicit_unpublished_downgrades": 1000,
+  "external_services": 0,
+  "generated_at": "2026-08-17T08:00:00+08:00",
+  "latency_ms": {
+    "max_ms": 0.7379689996014349,
+    "p50_ms": 0.16963200005193357,
+    "p95_ms": 0.35143100012646755
+  },
+  "projection_attempts": 2000,
+  "provenance": {
+    "benchmark_sha256": "65b9ac1df8e4c8715becc351952d080e16a07ebfb6847631e884f436fec0053c",
+    "implementation_sha256": "17fe9d395fe8818c15b2891440ec9c7c15a71753afcdfdb8f9ce60029f17c038",
+    "projection_schema_sha256": "8b9232a3c8c279e67a5c8ac025d772ae031aa0fc2e7e8c0bf45bf895630cf98d",
+    "ref_intent_schema_sha256": "76e762cfc360a76ce39adc42a1a19603f2dc3fea9d9d3f96dcec8084f7b20366",
+    "unpublished_schema_sha256": "ed00fcaad86feadfd5dd4d4c5061b46c262b409a79a8bf0410de226283f11509"
+  },
+  "provider_invocations": 0,
+  "providers": [
+    "github",
+    "gitea"
+  ],
+  "rates": {
+    "deterministic_replay_rate": 1.0,
+    "stale_ref_rejection_rate": 1.0,
+    "unpublished_downgrade_rate": 1.0,
+    "visible_record_mapping_rate": 1.0
+  },
+  "receipt_sha256": "e9c0b2ee70ca05e257a65aeccf4b411767aa6e0d21fc103fea0785b2d7e918c6",
+  "ref_update_intents": 2000,
+  "replay_attempts": 2000,
+  "samples": 1000,
+  "schema_version": "context.forge-collaboration-benchmark/v1alpha1",
+  "stale_ref_attempts": 2000,
+  "stale_ref_rejections": 2000,
+  "thresholds": {
+    "authority_escalations_max": 0,
+    "deterministic_replay_rate_min": 1.0,
+    "latency_p95_ms_max": 50.0,
+    "stale_ref_rejection_rate_min": 1.0,
+    "unpublished_downgrade_rate_min": 1.0,
+    "visible_record_mapping_rate_min": 1.0
+  },
+  "unpublished_work_attempts": 1000,
+  "verdict": {
+    "decision": "pass",
+    "failed_gates": []
+  }
+}

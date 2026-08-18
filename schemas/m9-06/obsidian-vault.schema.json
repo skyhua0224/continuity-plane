@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m9-06/obsidian-vault.schema.json",
+  "title": "Read-only generated Obsidian vault",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "template_version",
+    "project_id",
+    "state_revision",
+    "state_sha256",
+    "generated_at",
+    "sources",
+    "files",
+    "authority",
+    "vault_sha256",
+    "signature"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.obsidian-vault/v1alpha1"},
+    "template_version": {"const": "context.obsidian-vault/v1alpha1"},
+    "project_id": {"$ref": "#/$defs/identifier"},
+    "state_revision": {"$ref": "#/$defs/nonNegativeInteger"},
+    "state_sha256": {"$ref": "#/$defs/sha256"},
+    "generated_at": {"$ref": "#/$defs/timestamp"},
+    "sources": {"$ref": "#/$defs/sources"},
+    "files": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {"$ref": "#/$defs/file"}
+    },
+    "authority": {"$ref": "#/$defs/authority"},
+    "vault_sha256": {"$ref": "#/$defs/sha256"},
+    "signature": {"$ref": "#/$defs/signature"}
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"
+    },
+    "nonNegativeInteger": {"type": "integer", "minimum": 0},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$"
+    },
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_graph_projection_sha256",
+        "decision_evidence_projection_sha256",
+        "context_health_projection_sha256"
+      ],
+      "properties": {
+        "project_graph_projection_sha256": {"$ref": "#/$defs/sha256"},
+        "decision_evidence_projection_sha256": {"$ref": "#/$defs/sha256"},
+        "context_health_projection_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "content",
+        "content_sha256",
+        "source_projection_sha256",
+        "utf8_bytes"
+      ],
+      "properties": {
+        "path": {
+          "enum": [
+            "00 Context Control Plane.md",
+            "10 Project Graph.md",
+            "20 Decisions and Evidence.md",
+            "30 Context Health.md"
+          ]
+        },
+        "content": {"type": "string", "minLength": 1, "maxLength": 4194304},
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "source_projection_sha256": {"$ref": "#/$defs/sha256"},
+        "utf8_bytes": {"type": "integer", "minimum": 1, "maximum": 4194304}
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state_write_authority",
+        "completion_authority",
+        "approval_authority",
+        "provider_native_authority",
+        "external_effect_authority"
+      ],
+      "properties": {
+        "state_write_authority": {"const": false},
+        "completion_authority": {"const": false},
+        "approval_authority": {"const": false},
+        "provider_native_authority": {"const": false},
+        "external_effect_authority": {"const": false}
+      }
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "key_id", "value"],
+      "properties": {
+        "algorithm": {"const": "hmac-sha256"},
+        "key_id": {"$ref": "#/$defs/identifier"},
+        "value": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

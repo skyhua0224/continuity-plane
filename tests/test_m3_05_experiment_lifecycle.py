@@ -1976,7 +1976,7 @@ class M305ExperimentLifecycleTests(unittest.TestCase):
             ).read_text(encoding="utf-8")
         )
         validate_experiment_lifecycle_benchmark_receipt(receipt, root=root)
-        self.assertEqual(receipt["measurement"]["samples"], 40)
+        self.assertEqual(receipt["measurement"]["samples"], 1000)
 
         registry = yaml.safe_load(
             (root / "schemas/registry.yaml").read_text(encoding="utf-8")

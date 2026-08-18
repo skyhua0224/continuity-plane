@@ -463,6 +463,21 @@ def _validate_backend_binding(
         raise DurableWorkflowError(
             "workflow backend binding State MCP receipt mismatch"
         )
+    expected_binding_id = "wfb_" + _digest(
+        [
+            current["workflow_id"],
+            current["run_id"],
+            backend_id,
+            state_receipt["receipt_sha256"],
+        ]
+    )[:32]
+    if (
+        receipt["binding_id"] != expected_binding_id
+        or receipt["committed_at"] != state_receipt["dispatch_started_at"]
+    ):
+        raise DurableWorkflowError(
+            "workflow backend binding derived fields do not match receipt"
+        )
     expected_hash = _digest(
         {key: value for key, value in receipt.items() if key != "receipt_sha256"}
     )
@@ -804,6 +819,10 @@ def validate_workflow_run_receipt(
     binding = _validate_backend_binding(
         binding_receipt, run=current, backend_id=adapter_manifest["backend_id"]
     )
+    if adapter_manifest["implementation_sha256"] != current["implementation_sha256"]:
+        raise DurableWorkflowError(
+            "workflow adapter implementation does not match core run"
+        )
     expected = {
         "adapter_id": adapter_manifest["backend_id"],
         "adapter_version": adapter_manifest["adapter_version"],

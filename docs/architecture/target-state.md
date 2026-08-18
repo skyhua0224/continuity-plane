@@ -1,9 +1,9 @@
 # Context Control Plane Target-State Architecture
 
-版本：2  
-日期：2026-08-16  
+版本：7  
+日期：2026-08-18  
 状态：current architecture contract  
-governance authority：`MASTER.md` revision 61
+governance authority：`MASTER.md` revision 78
 
 ## 三文档默认投影
 
@@ -26,10 +26,10 @@ Context Control Plane 安装到个人项目、协作项目或公开大型项目�
 | `context.state` | `typed-state-store` | Project、Work、Claim、Idea、Decision、Constraint、Evidence、Blocker、Effect 与 Checkpoint 权威机器状态 | StateStore SPI；SQLite embedded 默认，PostgreSQL optional shared backend | M2 |
 | `context.events` | `hash-chained-event-log` | 追加式事件、revision、supersedes、replay high watermark | StateStore SPI + artifact manifest | M2 |
 | `context.work-coordination` | `shared-work-ledger` | 项目级 active work set、claim/lease、repo/path/symbol/capability/effect ownership、重复工作检测和冲突恢复；支持 modular、monolith 与 mixed topology | local State MCP + Git forge adapter；optional shared service | M2/M3/M8 |
-| `context.collaboration-notification` | `realtime-agent-inbox` | 将 work claim、review、deploy intent、conflict 与 approval Event 按 tenant/project/subscription scope 分发；SSE 提供基线流，WebSocket 按 provider capability 启用；签名、cursor、去重、离线补发和人工批准控制消息进入 Agent 上下文或触发操作 | local event stream + optional shared relay + provider plugins | M8/M9 |
-| `context.forge-coordination` | `forge-work-adapter` | 将 Issue、PR、branch、assignee、review 和 CI 映射为共享 Work/claim/evidence projection；声明离线与未发布工作的保证缺口 | GitHub / Gitea / GitLab adapters | M8 |
+| `context.collaboration-notification` | `realtime-agent-inbox` | 将 work claim、review、deploy intent、conflict 与 approval Event 按 tenant/project/subscription scope 分发；签名 Event/subscription/cursor/batch、State/evidence source verification、SSE Last-Event-ID、去重与离线补发已验证；WebSocket 按 provider capability 启用；inbox 保持 display-only | SQLite local event stream + optional shared relay + provider plugins | M8-10 local/shadow contract verified；M9 presentation；M10 live relay/key rotation |
+| `context.forge-coordination` | `forge-work-adapter` | 将 Issue、PR、branch、assignee、review 和 CI 映射为共享 Work/claim/evidence projection；声明离线与未发布工作的保证缺口 | GitHub / Gitea / GitLab adapters | M8-08 offline contract verified；M10 live forge pilot |
 | `context.task-routing` | `sticky-task-router` | 识别 continue、child、interrupt、switch、correction、discussion 和 blocking decision；普通 Idea 以 opaque ref 受控 capture、parking 或 switch proposal 保存，不能改变 active leaf、claim 或副作用权限；选择 next-ready required leaf | deterministic rules + bounded classifier | M3 |
-| `context.workflow` | `durable-execution` | checkpoint、重试、幂等、lease、unattended required-work loop、multi-Agent fan-out/fan-in 和长流程恢复 | DBOS；Temporal 按需启用 | M8 |
+| `context.workflow` | `durable-execution` | checkpoint、重试、幂等、lease、unattended required-work loop、multi-Agent fan-out/fan-in 和长流程恢复；长 campaign 采用 append-only step index/replay high watermark | local State MCP + SQLite cursor/port receipt；DBOS；Temporal 按需启用 | M8-09 local-embedded shadow contract verified；M8-10 scale decision verified；M10 step-index implementation/live pilot |
 | `context.skill-resolution` | `versioned-skill-registry` | Skill manifest、五类 source catalog、version/hash 固定外部 adapter policy、pinned Git tree evidence、本地 CAS staging、metadata/admission 分层、offline replay、M4-07 candidate-only projection、M4-01 manifest schema reuse、M4-07 跨 entry dependency/cycle admission、M4-09 role/operation/provider resolver、同 kind OR/跨 kind AND、segment-prefix path、精确 provider contract、priority conflict、expiry quarantine、64 KiB preflight/canonical input、16,384 Unicode scalar/64 KiB UTF-8 content 与 128 KiB output bounded Project/User proposal、strict SemVer/ID/timestamp gate、set-like input canonicalization、Verification Profile license policy、expected-time-bound replay verifier、candidate-only body asset、固定 source/license/provenance、approval/verification evidence、stable rule IDs、dependency-closed compiled packet、drift quarantine、packet-bound S0-S3 load plan、selected manifest digest、exact provider applicability/contract、active-task compatibility lock、live input/adapter surface 重算、evidence-verified replay/rollback migration、gated composition entrypoint、host-owned authorization adapter 和 deterministic loader | Git + local artifact store + selected StateStore metadata | M4 |
 | `context.composition` | `execution-packet-composer` | 组装当前任务、当前 Skill、当前 evidence 与 Continuation Cursor 的有界执行包 | State MCP + artifact store | M5 |
 | `context.replay` | `checkpoint-canary-validator` | 压缩、切任务、换模型、崩溃后的确定性恢复门 | deterministic validator | M1/M5 |
@@ -37,11 +37,11 @@ Context Control Plane 安装到个人项目、协作项目或公开大型项目�
 | `context.code-intelligence` | `bounded-code-retrieval` | 精确搜索、受影响图、跨仓线索和 index freshness | `rg`、Zoekt、LSP、SCIP、CodeGraph | M6 |
 | `context.recall` | `candidate-memory-provider` | 提供偏好、历史讨论和时间性事实候选；权威提交权限为 0 | Hindsight / Mem0 / Graphiti SPI | M6 |
 | `context.information-access` | `bounded-information-plane` | 最小读取范围、artifact range、retrieval receipt 和 freshness | State MCP、artifact store、索引、Recall SPI | M5/M6 |
-| `context.adaptation` | `project-adaptation-loop` | 从已验证运行和明确纠正生成可审批、可回滚的 profile candidate | Typed State、OTel、A/B harness | M8/M10 |
+| `context.adaptation` | `project-adaptation-loop` | 从已验证运行和明确纠正生成可审批、可回滚的 profile candidate；不得改变 active Work、claim、ownership、authorization、validator、evidence gate 或 effect 权限 | Typed State、OTel、A/B harness | M8-07 local/shadow contract verified；M10 production/profile migration |
 | `context.review` | `independent-reviewer` | 冲突检查、阶段 handoff 和承重证据复核；权威提交权限为 0 | 本地或外置模型 | M6/M7 |
 | `context.verification` | `continuous-integration-verifier` | push/PR 执行 test、compile、schema、projection、privacy、benchmark 和 secret gates；权威状态写权限为 0 | local verifier + Gitea Actions + Gitleaks | M0/M7/M8 |
 | `context.observability` | `context-otel` | token、Skill 装载、检索、恢复、输入路由、Agent dispatch/handoff、误切、返工和质量指标 | OTel Collector + 可替换后端 | M8 |
-| `context.presentation` | `docmost-project-graph` | 可选 Project Graph、Decision Timeline、Evidence Matrix、Context Health 和受控审批 | optional Docmost + State MCP provider；Obsidian 只读生成 | M9 |
+| `context.presentation` | `human-visualization-plane` | Project Graph、Work Ledger、Decision Timeline、Constraint/Evidence Matrix、Context Health/Replay、Relationship/Impact 和受控审批共享同一 revisioned projection contract；M9-01..07 的 read、projection、governance、signed Markdown vault 与 force-layout seed 已验证；完整页面、Canvas/Bases 和跨前端 parity 由 Presentation SPI 管理；任何坐标、filter 或人类视图都不授予 State、completion、approval、provider 或 effect 权限 | optional Docmost + verified transport-neutral State MCP read provider；Obsidian generated read-only vault；CLI/Web adapters | M9-01..07 verified projection core；M9-08 Presentation SPI、M9-09 Obsidian graphical vault、M9-10 Docmost console、M9-11 parity planned；公开边界见 [`visual-products.md`](../../public/docs/visual-products.md) |
 | `context.documentation` | `document-lifecycle-validator` | 生成并复验 document manifest、capacity、authority、change receipt、supersedes、evidence hash、duplicate prose 和 recovery fields | Git + repository verifier；外部 freshness 由 ReferenceWatcher | M0/M7 |
 
 ## Runtime Capability Profiles

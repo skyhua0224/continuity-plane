@@ -1,0 +1,208 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schema/context.authorization-isolation-benchmark/v1alpha1",
+  "title": "Context Control Plane authorization isolation benchmark",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "benchmark_id",
+    "generated_at",
+    "samples",
+    "case_ids",
+    "allowed_attempts",
+    "allowed_decisions",
+    "unauthorized_attempts",
+    "unauthorized_rejections",
+    "audit_failure_attempts",
+    "audit_failure_rejections",
+    "audit_event_count",
+    "metrics",
+    "latency_ms",
+    "thresholds",
+    "provider_invocations",
+    "external_services",
+    "shared_authority_claim",
+    "provenance",
+    "verdict",
+    "receipt_sha256"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "context.authorization-isolation-benchmark/v1alpha1"
+    },
+    "benchmark_id": {
+      "type": "string",
+      "pattern": "^benchmark-m8-05-[0-9a-f]{24}$"
+    },
+    "generated_at": {
+      "$ref": "#/$defs/timestamp"
+    },
+    "samples": {
+      "$ref": "#/$defs/positiveInteger"
+    },
+    "case_ids": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 10,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "unknown-credential",
+          "subject-mismatch",
+          "action-not-granted",
+          "same-tenant-project",
+          "cross-tenant-project",
+          "unknown-project",
+          "expired-grant",
+          "revoked-grant",
+          "disabled-project",
+          "policy-not-active"
+        ]
+      }
+    },
+    "allowed_attempts": {
+      "$ref": "#/$defs/nonNegativeInteger"
+    },
+    "allowed_decisions": {
+      "$ref": "#/$defs/nonNegativeInteger"
+    },
+    "unauthorized_attempts": {
+      "$ref": "#/$defs/nonNegativeInteger"
+    },
+    "unauthorized_rejections": {
+      "$ref": "#/$defs/nonNegativeInteger"
+    },
+    "audit_failure_attempts": {
+      "$ref": "#/$defs/nonNegativeInteger"
+    },
+    "audit_failure_rejections": {
+      "$ref": "#/$defs/nonNegativeInteger"
+    },
+    "audit_event_count": {
+      "$ref": "#/$defs/nonNegativeInteger"
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "unauthorized_accepts",
+        "valid_authorization_denials",
+        "cross_tenant_accepts",
+        "same_tenant_project_accepts",
+        "unknown_project_accepts",
+        "stale_grant_accepts",
+        "disabled_project_accepts",
+        "inactive_policy_accepts",
+        "missing_audit_events",
+        "audit_chain_failures",
+        "tenant_chain_collisions",
+        "audit_failure_accepts",
+        "policy_digest_mismatches"
+      ],
+      "properties": {
+        "unauthorized_accepts": {"$ref": "#/$defs/nonNegativeInteger"},
+        "valid_authorization_denials": {"$ref": "#/$defs/nonNegativeInteger"},
+        "cross_tenant_accepts": {"$ref": "#/$defs/nonNegativeInteger"},
+        "same_tenant_project_accepts": {"$ref": "#/$defs/nonNegativeInteger"},
+        "unknown_project_accepts": {"$ref": "#/$defs/nonNegativeInteger"},
+        "stale_grant_accepts": {"$ref": "#/$defs/nonNegativeInteger"},
+        "disabled_project_accepts": {"$ref": "#/$defs/nonNegativeInteger"},
+        "inactive_policy_accepts": {"$ref": "#/$defs/nonNegativeInteger"},
+        "missing_audit_events": {"$ref": "#/$defs/nonNegativeInteger"},
+        "audit_chain_failures": {"$ref": "#/$defs/nonNegativeInteger"},
+        "tenant_chain_collisions": {"$ref": "#/$defs/nonNegativeInteger"},
+        "audit_failure_accepts": {"$ref": "#/$defs/nonNegativeInteger"},
+        "policy_digest_mismatches": {"$ref": "#/$defs/nonNegativeInteger"}
+      }
+    },
+    "latency_ms": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["p50", "p95", "max"],
+      "properties": {
+        "p50": {"type": "number", "exclusiveMinimum": 0},
+        "p95": {"type": "number", "exclusiveMinimum": 0},
+        "max": {"type": "number", "exclusiveMinimum": 0}
+      }
+    },
+    "thresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "unauthorized_rejection_rate_min",
+        "allowed_decision_rate_min",
+        "audit_failure_rejection_rate_min",
+        "zero_veto_metrics_required",
+        "latency_p95_ms_max"
+      ],
+      "properties": {
+        "unauthorized_rejection_rate_min": {"const": 1.0},
+        "allowed_decision_rate_min": {"const": 1.0},
+        "audit_failure_rejection_rate_min": {"const": 1.0},
+        "zero_veto_metrics_required": {"const": true},
+        "latency_p95_ms_max": {"const": 25.0}
+      }
+    },
+    "provider_invocations": {"const": 0},
+    "external_services": {"const": 0},
+    "shared_authority_claim": {"const": false},
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "authorization_core_sha256",
+        "implementation_sha256",
+        "policy_schema_sha256",
+        "audit_event_schema_sha256",
+        "benchmark_schema_sha256",
+        "registry_sha256"
+      ],
+      "properties": {
+        "authorization_core_sha256": {"$ref": "#/$defs/sha256"},
+        "implementation_sha256": {"$ref": "#/$defs/sha256"},
+        "policy_schema_sha256": {"$ref": "#/$defs/sha256"},
+        "audit_event_schema_sha256": {"$ref": "#/$defs/sha256"},
+        "benchmark_schema_sha256": {"$ref": "#/$defs/sha256"},
+        "registry_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "verdict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "decision",
+        "allowed_decision_rate",
+        "unauthorized_rejection_rate",
+        "audit_failure_rejection_rate",
+        "latency_p95_within_threshold",
+        "failed_gates"
+      ],
+      "properties": {
+        "decision": {"enum": ["pass", "fail"]},
+        "allowed_decision_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "unauthorized_rejection_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "audit_failure_rejection_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "latency_p95_within_threshold": {"type": "boolean"},
+        "failed_gates": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "receipt_sha256": {
+      "$ref": "#/$defs/sha256"
+    }
+  },
+  "$defs": {
+    "positiveInteger": {"type": "integer", "minimum": 1},
+    "nonNegativeInteger": {"type": "integer", "minimum": 0},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$"
+    }
+  }
+}

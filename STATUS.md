@@ -1,39 +1,41 @@
-# Context Control Plane Status
+# Continuity Plane Status
 
-版本：revision 61  
-日期：2026-08-16  
+版本：revision 78  
+日期：2026-08-18  
 canonical plan：`MASTER.md`
 
 ## 当前状态
 
 | 字段 | 值 |
 |---|---|
-| 当前 Campaign | M8 多协作者与耐久执行 |
-| active work | M8-05：权限、审计、tenant/project 隔离（🟡） |
-| next action | 定义 actor/tenant/project authorization 与 audit Event 合同，先写越权拒绝和跨项目隔离失败测试 |
-| hard blocker | 无；M3-01 的 Windows/macOS 原生 live fixture 保持 conditional |
-| repository mode | research / shadow pilot |
-| production state | local-embedded implemented / shadow pilot；shared production pilot planned |
+| 当前 Campaign | M10 跨项目发布 |
+| active work | M10-09：native release matrix（🟡） |
+| next action | 执行 Windows/macOS clean-machine install、verify 与 uninstall |
+| hard blocker | Windows/macOS native runner 尚未执行；Linux x86_64 alpha 已公开发布 |
+| repository mode | internal development repository + fresh-history public mirror |
+| production state | Continuity Plane local-embedded alpha published；shared production pilot planned |
 
 ## 已验证摘要
 
 | 对象 | 状态 |
 |---|---|
 | Evidence index | [`docs/reports/verified-state.md`](docs/reports/verified-state.md) |
-| Documentation lifecycle | M0-10 verified；STATUS reduction `75.1637%`；MASTER section reduction `68.9812%`；High/Medium review 0 |
+| Documentation lifecycle | `139` documents；STATUS reduction `77.0209%`；recovery `5/5`；validator p95 `<100 ms`；exact receipt governed |
 | Git admission | M0-11 offline contract `26/26`；repository verifier 通过 |
-| Skill adapters | M4-07/08/10 done；external=0 |
-| Prior gates | M3-07/M3-08/M4-09 verified；replay and quarantine gates pass；details in evidence index |
-| M5-01..05 | all verified；packet/checkpoint/canary/bounded/accounting receipts pass；provider metrics remain unavailable where unexported |
-| M5-06..08 | all verified；replay `1000/1000`；Idea faults `6000/6000`；dogfood coverage/veto 100%；continuation fields/faults `10000/10000` |
-| M8-04 trace | `1000/1000`；`8000` events；eight-family coverage 100%；OTel unavailable `1000/1000` |
-| M8-01 durability | verified；focused `78/78`；Typed State v5/State MCP v2 与 v4↔v5 migration/rollback 门通过；9 crash points `180/180` recovered；semantic effects `180`，adapter calls `200`，deduplications `20`，duplicates `0`；restore p95 `105.039451 ms`；DeepSeek `2/2` real `SIGKILL` recovery |
-| M8-02 coordination | verified；focused `81/81`；10 类场景 `10000/10000`；orphan reclaim `1000/1000`；八项零损失指标均为 `0`；p95 `0.528895 ms`；SQLite canonical snapshot/Event/revision/receipt 同事务；schema v3->v4 与 upgrade->rollback->upgrade 通过 |
-| M8-03 workflow | verified local replay / optional Temporal adapter；`43` pass、`1` optional SDK skip；12 strict schemas；三代链 `1000/1000`、`3000` runs、`2000` rollovers、`7000/7000` faults；veto 指标全 `0`；p95 `23.122890 ms`；`temporalio==1.31.0` API conformance 通过；live service/worker deployment conditional |
-| M6 retrieval/recall | all verified；五类 route `1000/1000` replay iterations、`5000/5000` decisions；quality/provenance `1.0`；duplicate read bytes `-50%`；reference conformance memory `0.6 -> 0.9`；safety veto `0`；external calls `0` |
-| M7 evidence/quality | M7-01..06 verified；false authority/admission/test omission `0`；affected-test wall time reduction `97.13%`；详见 Evidence index |
-| Repository verification | full `1442` passed / `31` conditional skipped；focused M8-02 `81/81`；focused M8-03 `43` pass / `1` optional skip；compile、changed-scope lint 和 repository verifier 通过 |
-| Governance authority | `MASTER.md` revision 61 |
+| M3/M4 | routing、Idea continuity、Skill resolver/quarantine verified；details in Evidence index |
+| M5/M6/M7 | M5-01..08、M6 retrieval/recall、M7-01..06 verified；量化 receipts 与 provenance 见 Evidence index |
+| M8 | durability、authorization、adaptation、forge、unattended dispatch 与 notifications verified；live Temporal conditional |
+| M9 | projection/governance/vault/impact M9-01..07 verified；graphical product M9-08..11 planned |
+| M10-00 pilot | State MCP closure `3/3`；2 workers + verifier；fault `4/4`；coverage `100%`；E0-E9 `10/10`；campaign verdict `passed` |
+| M10-08 release surface | current compiler tree `115` files；public `5/5`；packaged module graph `43` importable；fresh-history candidate `27` commits；worktree/history/wheel/sdist leak `0` |
+| M10-10 publication | <https://github.com/skyhua0224/continuity-plane/releases/tag/v0.1.0-alpha.1>；`27` commits；contributor `skyhua0224`；Apache-2.0/tag/release verified |
+| Codex 1M A/B | real provider `3+3+3`；baseline `32,857`、packet `19,633`、large `397,631` input tokens；packet `-40.2471%`；quality `100%`；Skill warning `9/9` |
+| Harness ablation | real provider `4 arms x 3`；bare `19,608`、State `19,649`、full `19,748`、history `32,854`；quality `100%`；full-vs-bare `+0.7140%` |
+| Skill overlay | source bytes `501,543 -> 17,349` (`-96.5409%`)；provider input `19,593 -> 18,469` (`-5.7367%`)；warnings `3/3 -> 0/3` |
+| Real code retrieval | input `-50.0153%`；tool calls `-57.8947%`；wall time `-27.4120%`；quality `100%` |
+| Effective 1M | 700K compact `783,628 -> 24,776`；next packet `59,172`；recovery `100%`；M10-11 window/token longitudinal result unavailable |
+| Repository verification | `1824` discovered；`1793` pass；`31` conditional skip；`0` fail；`229.393 s`；verifier passed |
+| Governance authority | `MASTER.md` revision 78 |
 
 ## 恢复入口
 

@@ -56,6 +56,20 @@ class RepositoryVerificationCliTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("verify repository governance and admission gates", result.stdout)
 
+    def test_verifier_excludes_local_tool_and_packaging_outputs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._write_valid_repository(root)
+            third_party = root / ".venv/lib/python/site-packages/example"
+            third_party.mkdir(parents=True)
+            (third_party / "README.md").write_text(
+                "[third-party link](../missing.py)\n", encoding="utf-8"
+            )
+            (root / "build/generated").mkdir(parents=True)
+            (root / "build/generated/data.json").write_text("not json\n")
+
+            self.assertEqual(verify_repository(root), [])
+
     def test_ci_virtualenv_installs_dev_requirements(self):
         root = Path(__file__).parents[1]
         workflow = yaml.safe_load(

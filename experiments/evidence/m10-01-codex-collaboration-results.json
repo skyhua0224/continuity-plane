@@ -1,0 +1,125 @@
+{
+  "benchmark_id": "m10-01-codex-collaboration",
+  "completion_authority": false,
+  "external_side_effects": 0,
+  "generated_at": "2026-08-18T03:00:00+08:00",
+  "provider_invocations": 15,
+  "receipt_sha256": "a2a6aa5eea26089793c293090cad99877397c18e5fcf212aae0529d5faa1d295",
+  "repository_revisions": {
+    "foundation": "334816d090f1721bc39a624ea60d6dd0a8f32ecc",
+    "moonlight": "3a2fb884b2ee477dc0e91226ce4b896c139c120c",
+    "platform": "d50bfe6f22efcad528134baa8b8d612ea07ec147"
+  },
+  "samples": [
+    {
+      "condition": "uncoordinated",
+      "metrics": {
+        "cached_input_tokens": 86528,
+        "duplicate_tool_calls": 14,
+        "input_tokens": 124621,
+        "parallel_wall_time_ms": 35658.832236003946,
+        "provider_calls": 2,
+        "tool_calls": 18,
+        "warning_count": 2,
+        "worker_wall_time_ms": 59792.45978399558
+      },
+      "quality": true,
+      "sample_id": "uncoordinated-0"
+    },
+    {
+      "condition": "coordinated",
+      "metrics": {
+        "cached_input_tokens": 53760,
+        "duplicate_tool_calls": 7,
+        "input_tokens": 119151,
+        "parallel_wall_time_ms": 21686.448889005987,
+        "provider_calls": 3,
+        "tool_calls": 10,
+        "warning_count": 3,
+        "worker_wall_time_ms": 32146.70500200009
+      },
+      "quality": true,
+      "sample_id": "coordinated-0"
+    },
+    {
+      "condition": "uncoordinated",
+      "metrics": {
+        "cached_input_tokens": 46080,
+        "duplicate_tool_calls": 10,
+        "input_tokens": 80304,
+        "parallel_wall_time_ms": 22642.944097999134,
+        "provider_calls": 2,
+        "tool_calls": 12,
+        "warning_count": 2,
+        "worker_wall_time_ms": 37438.18611900497
+      },
+      "quality": true,
+      "sample_id": "uncoordinated-1"
+    },
+    {
+      "condition": "coordinated",
+      "metrics": {
+        "cached_input_tokens": 49920,
+        "duplicate_tool_calls": 4,
+        "input_tokens": 98302,
+        "parallel_wall_time_ms": 16830.41016000061,
+        "provider_calls": 3,
+        "tool_calls": 6,
+        "warning_count": 3,
+        "worker_wall_time_ms": 25001.85430100828
+      },
+      "quality": true,
+      "sample_id": "coordinated-1"
+    },
+    {
+      "condition": "uncoordinated",
+      "metrics": {
+        "cached_input_tokens": 69632,
+        "duplicate_tool_calls": 10,
+        "input_tokens": 80361,
+        "parallel_wall_time_ms": 15429.75359900447,
+        "provider_calls": 2,
+        "tool_calls": 12,
+        "warning_count": 2,
+        "worker_wall_time_ms": 27417.994166004064
+      },
+      "quality": true,
+      "sample_id": "uncoordinated-2"
+    },
+    {
+      "condition": "coordinated",
+      "metrics": {
+        "cached_input_tokens": 49920,
+        "duplicate_tool_calls": 4,
+        "input_tokens": 98491,
+        "parallel_wall_time_ms": 18516.916818996833,
+        "provider_calls": 3,
+        "tool_calls": 6,
+        "warning_count": 3,
+        "worker_wall_time_ms": 30651.287277003576
+      },
+      "quality": true,
+      "sample_id": "coordinated-2"
+    }
+  ],
+  "schema_version": "context.codex-collaboration-ablation/v1alpha1",
+  "state_write_authority": false,
+  "summary": {
+    "coordinated": {
+      "duplicate_tool_calls_mean": 5.0,
+      "input_tokens_mean": 105314.66666666667,
+      "parallel_wall_time_ms_mean": 19011.25862266781,
+      "quality_rate": 1.0,
+      "samples": 3,
+      "tool_calls_mean": 7.333333333333333
+    },
+    "uncoordinated": {
+      "duplicate_tool_calls_mean": 11.333333333333334,
+      "input_tokens_mean": 95095.33333333333,
+      "parallel_wall_time_ms_mean": 24577.17664433585,
+      "quality_rate": 1.0,
+      "samples": 3,
+      "tool_calls_mean": 14.0
+    }
+  }
+}

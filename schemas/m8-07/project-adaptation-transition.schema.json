@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schema/context.project-adaptation-transition/v1alpha1",
+  "title": "ProjectAdaptation lifecycle transition receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "transition_id", "transition_type", "proposal_sha256", "from_version", "to_version", "proposal_revision", "activation_revision", "safety_veto_results", "state_write_authority", "completion_authority", "provider_native_authority", "provider_invocations", "external_services", "status", "transition_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.project-adaptation-transition/v1alpha1"},
+    "transition_id": {"$ref": "#/$defs/id"},
+    "transition_type": {"enum": ["activate", "rollback"]},
+    "proposal_sha256": {"$ref": "#/$defs/sha256"},
+    "from_version": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/semver"}]},
+    "to_version": {"$ref": "#/$defs/semver"},
+    "proposal_revision": {"type": "integer", "minimum": 1},
+    "activation_revision": {"type": "integer", "minimum": 1},
+    "safety_veto_results": {"$ref": "#/$defs/vetoes"},
+    "state_write_authority": {"const": false},
+    "completion_authority": {"const": false},
+    "provider_native_authority": {"const": false},
+    "provider_invocations": {"const": 0},
+    "external_services": {"const": 0},
+    "status": {"enum": ["activated", "rolled_back"]},
+    "transition_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "semver": {"type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"},
+    "vetoes": {"type": "object", "additionalProperties": false, "required": ["E1", "E2", "E4", "E6", "E8", "E9"], "properties": {"E1": {"type": "boolean"}, "E2": {"type": "boolean"}, "E4": {"type": "boolean"}, "E6": {"type": "boolean"}, "E8": {"type": "boolean"}, "E9": {"type": "boolean"}}}
+  }
+}

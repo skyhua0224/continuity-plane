@@ -321,6 +321,10 @@ _EFFECT_STATUSES = {
 _PROMOTION_KINDS = {"proposed", "approved"}
 _SCOPE_KINDS = {"repo", "directory", "file", "symbol", "capability", "effect"}
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+_TIMESTAMP_RE = re.compile(
+    r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}"
+    r"(?:\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$"
+)
 
 
 class TypedStateError(ValueError):
@@ -355,6 +359,8 @@ def _timestamp(value: Any, field: str, *, optional: bool = False) -> datetime | 
     if optional and value is None:
         return None
     value = _string(value, field)
+    if _TIMESTAMP_RE.fullmatch(value) is None:
+        raise TypedStateError(f"{field} must be RFC3339")
     try:
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError as exc:

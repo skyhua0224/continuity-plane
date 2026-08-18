@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m8-08/forge-ref-update-intent.schema.json",
+  "title": "M8-08 forge ref update intent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "provider", "instance_id", "repository_ref", "source_revision", "projection_sha256", "branch_ref", "expected_remote_oid", "desired_oid", "status", "authority"],
+  "properties": {
+    "schema_version": {"const": "context.forge-ref-update-intent/v1alpha1"},
+    "provider": {"enum": ["github", "gitea", "gitlab"]},
+    "instance_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
+    "repository_ref": {"type": "string", "pattern": "^forge://(github|gitea|gitlab)/[A-Za-z0-9][A-Za-z0-9._-]{0,127}/[^/]+/[^/]+$", "maxLength": 1024},
+    "source_revision": {"type": "string", "minLength": 1, "maxLength": 4096},
+    "projection_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "branch_ref": {"type": "string", "pattern": "^refs/heads/.+$", "maxLength": 1024},
+    "expected_remote_oid": {"$ref": "#/$defs/gitOid"},
+    "desired_oid": {"$ref": "#/$defs/gitOid"},
+    "status": {"const": "ready-for-authorized-dispatch"},
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state_write_authority", "remote_effect_authority", "provider_invocations", "external_services"],
+      "properties": {
+        "state_write_authority": {"const": false},
+        "remote_effect_authority": {"const": false},
+        "provider_invocations": {"const": 0},
+        "external_services": {"const": 0}
+      }
+    }
+  },
+  "$defs": {
+    "gitOid": {"type": "string", "pattern": "^[0-9a-f]{40}(?:[0-9a-f]{24})?$"}
+  }
+}

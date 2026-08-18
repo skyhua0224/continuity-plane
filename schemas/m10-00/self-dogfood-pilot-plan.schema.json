@@ -1,0 +1,175 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m10-00/self-dogfood-pilot-plan.schema.json",
+  "title": "M10-00 self-dogfood pilot plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "plan_id",
+    "campaign_id",
+    "project_id",
+    "state_revision",
+    "created_at",
+    "capability_profile",
+    "repository_baseline",
+    "required_leaves",
+    "workers",
+    "verifier",
+    "fault_injections",
+    "evidence_matrix",
+    "authority",
+    "plan_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.self-dogfood-pilot-plan/v1alpha1"},
+    "plan_id": {"$ref": "#/$defs/id"},
+    "campaign_id": {"$ref": "#/$defs/id"},
+    "project_id": {"$ref": "#/$defs/id"},
+    "state_revision": {"type": "integer", "minimum": 0},
+    "created_at": {"$ref": "#/$defs/timestamp"},
+    "capability_profile": {"const": "local-embedded"},
+    "repository_baseline": {"$ref": "#/$defs/repositoryBaseline"},
+    "required_leaves": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 64,
+      "items": {"$ref": "#/$defs/requiredLeaf"}
+    },
+    "workers": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 64,
+      "items": {"$ref": "#/$defs/worker"}
+    },
+    "verifier": {"$ref": "#/$defs/verifier"},
+    "fault_injections": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 32,
+      "items": {"$ref": "#/$defs/fault"}
+    },
+    "evidence_matrix": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 10,
+      "items": {"$ref": "#/$defs/evidenceEntry"}
+    },
+    "authority": {"$ref": "#/$defs/authority"},
+    "plan_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,511}$"
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$"
+    },
+    "idList": {
+      "type": "array",
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/id"}
+    },
+    "repositoryBaseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["base_commit", "branch", "dirty", "worktree_file_count", "worktree_sha256", "schema_registry_sha256"],
+      "properties": {
+        "base_commit": {"$ref": "#/$defs/commit"},
+        "branch": {"$ref": "#/$defs/id"},
+        "dirty": {"type": "boolean"},
+        "worktree_file_count": {"type": "integer", "minimum": 1, "maximum": 1000000},
+        "worktree_sha256": {"$ref": "#/$defs/sha256"},
+        "schema_registry_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "requiredLeaf": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["work_id", "dependency_ids", "worker_ref", "verifier_ref", "completion_gate_id"],
+      "properties": {
+        "work_id": {"$ref": "#/$defs/id"},
+        "dependency_ids": {"$ref": "#/$defs/idList"},
+        "worker_ref": {"$ref": "#/$defs/id"},
+        "verifier_ref": {"$ref": "#/$defs/id"},
+        "completion_gate_id": {"$ref": "#/$defs/id"}
+      }
+    },
+    "worker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["worker_ref", "role", "provider_contract_version"],
+      "properties": {
+        "worker_ref": {"$ref": "#/$defs/id"},
+        "role": {"enum": ["thinker", "executor", "reviewer"]},
+        "provider_contract_version": {"$ref": "#/$defs/id"}
+      }
+    },
+    "verifier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verifier_ref", "role", "independent_of_worker_refs"],
+      "properties": {
+        "verifier_ref": {"$ref": "#/$defs/id"},
+        "role": {"const": "independent-verifier"},
+        "independent_of_worker_refs": {"$ref": "#/$defs/idList"}
+      }
+    },
+    "fault": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fault_id", "fault_kind", "required", "expected_veto"],
+      "properties": {
+        "fault_id": {"$ref": "#/$defs/id"},
+        "fault_kind": {"enum": ["compaction", "idea", "interrupt", "worker-loss"]},
+        "required": {"const": true},
+        "expected_veto": {"type": "boolean"}
+      }
+    },
+    "evidenceRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "content_sha256"],
+      "properties": {
+        "path": {"$ref": "#/$defs/id"},
+        "content_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "evidenceEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["experiment_id", "evidence_class", "veto", "applicability", "admission_status", "evidence_refs", "limitation"],
+      "properties": {
+        "experiment_id": {"enum": ["E0", "E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8", "E9"]},
+        "evidence_class": {"enum": ["historical-live-manual", "offline-admitted-replay", "local-runtime-contract", "local-runtime-fault", "synthetic-contract"]},
+        "veto": {"type": "boolean"},
+        "applicability": {"enum": ["applicable", "conditional"]},
+        "admission_status": {"const": "candidate"},
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "items": {"$ref": "#/$defs/evidenceRef"}
+        },
+        "limitation": {"type": "string", "minLength": 1, "maxLength": 4096}
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state_write_authority", "completion_authority", "provider_authority", "external_effect_authority"],
+      "properties": {
+        "state_write_authority": {"const": false},
+        "completion_authority": {"const": false},
+        "provider_authority": {"const": 0},
+        "external_effect_authority": {"const": 0}
+      }
+    }
+  }
+}

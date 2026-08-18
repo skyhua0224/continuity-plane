@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m10-00/self-dogfood-release-verification.schema.json",
+  "title": "M10-00 self-dogfood release verification receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "plan_id", "campaign_id", "project_id", "state_revision", "observed_at", "plan_sha256", "fault_receipt_sha256", "required_leaf_ids", "full_suite", "start_repository", "end_repository", "authority", "status", "receipt_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.self-dogfood-release-verification/v1alpha1"},
+    "plan_id": {"$ref": "#/$defs/id"},
+    "campaign_id": {"$ref": "#/$defs/id"},
+    "project_id": {"$ref": "#/$defs/id"},
+    "state_revision": {"type": "integer", "minimum": 1},
+    "observed_at": {"$ref": "#/$defs/timestamp"},
+    "plan_sha256": {"$ref": "#/$defs/sha256"},
+    "fault_receipt_sha256": {"$ref": "#/$defs/sha256"},
+    "required_leaf_ids": {"type": "array", "minItems": 3, "maxItems": 64, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+    "full_suite": {"$ref": "#/$defs/fullSuite"},
+    "start_repository": {"$ref": "#/$defs/repository"},
+    "end_repository": {"$ref": "#/$defs/repository"},
+    "authority": {"$ref": "#/$defs/authority"},
+    "status": {"const": "passed"},
+    "receipt_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,511}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "format": "date-time", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$"},
+    "repository": {
+      "type": "object", "additionalProperties": false,
+      "required": ["base_commit", "branch", "dirty", "worktree_file_count", "worktree_sha256", "schema_registry_sha256"],
+      "properties": {"base_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "branch": {"$ref": "#/$defs/id"}, "dirty": {"type": "boolean"}, "worktree_file_count": {"type": "integer", "minimum": 1}, "worktree_sha256": {"$ref": "#/$defs/sha256"}, "schema_registry_sha256": {"$ref": "#/$defs/sha256"}}
+    },
+    "fullSuite": {
+      "type": "object", "additionalProperties": false,
+      "required": ["command", "command_sha256", "tests_run", "passed", "failures", "errors", "skipped", "wall_time_seconds", "output_sha256"],
+      "properties": {"command": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"type": "string", "minLength": 1, "maxLength": 1024}}, "command_sha256": {"$ref": "#/$defs/sha256"}, "tests_run": {"type": "integer", "minimum": 3}, "passed": {"type": "integer", "minimum": 3}, "failures": {"const": 0}, "errors": {"const": 0}, "skipped": {"type": "integer", "minimum": 0}, "wall_time_seconds": {"type": "number", "exclusiveMinimum": 0}, "output_sha256": {"$ref": "#/$defs/sha256"}}
+    },
+    "authority": {
+      "type": "object", "additionalProperties": false,
+      "required": ["state_write_authority", "completion_authority", "provider_authority", "external_effect_authority"],
+      "properties": {"state_write_authority": {"const": false}, "completion_authority": {"const": false}, "provider_authority": {"const": 0}, "external_effect_authority": {"const": 0}}
+    }
+  }
+}

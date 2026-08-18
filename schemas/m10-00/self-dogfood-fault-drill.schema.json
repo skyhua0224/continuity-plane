@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m10-00/self-dogfood-fault-drill.schema.json",
+  "title": "M10-00 self-dogfood fault drill receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "plan_id", "campaign_id", "project_id", "state_revision", "observed_at", "plan_sha256", "matrix_receipt_sha256", "worker_count", "verifier_ref", "faults", "observations", "trace_events", "coverage", "harness", "authority", "status", "receipt_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.self-dogfood-fault-drill/v1alpha1"},
+    "plan_id": {"$ref": "#/$defs/id"},
+    "campaign_id": {"$ref": "#/$defs/id"},
+    "project_id": {"$ref": "#/$defs/id"},
+    "state_revision": {"type": "integer", "minimum": 1},
+    "observed_at": {"$ref": "#/$defs/timestamp"},
+    "plan_sha256": {"$ref": "#/$defs/sha256"},
+    "matrix_receipt_sha256": {"$ref": "#/$defs/sha256"},
+    "worker_count": {"const": 2},
+    "verifier_ref": {"$ref": "#/$defs/id"},
+    "faults": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "prefixItems": [
+        {"$ref": "#/$defs/compactionFault"},
+        {"$ref": "#/$defs/ideaFault"},
+        {"$ref": "#/$defs/interruptFault"},
+        {"$ref": "#/$defs/workerLossFault"}
+      ],
+      "items": false
+    },
+    "observations": {"type": "array", "minItems": 8, "maxItems": 8, "items": {"type": "object"}},
+    "trace_events": {"type": "array", "minItems": 8, "maxItems": 8, "items": {"type": "object"}},
+    "coverage": {"$ref": "#/$defs/coverage"},
+    "harness": {"$ref": "#/$defs/harness"},
+    "authority": {"$ref": "#/$defs/authority"},
+    "status": {"const": "passed"},
+    "receipt_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,511}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "format": "date-time", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$"},
+    "compactionFault": {
+      "type": "object", "additionalProperties": false,
+      "required": ["fault_id", "fault_kind", "status", "observation_id", "canary_before_first_side_effect", "first_action_match", "acknowledged_input_replayed"],
+      "properties": {"fault_id": {"const": "fault/m10-00/compaction"}, "fault_kind": {"const": "compaction"}, "status": {"const": "passed"}, "observation_id": {"$ref": "#/$defs/id"}, "canary_before_first_side_effect": {"const": true}, "first_action_match": {"const": true}, "acknowledged_input_replayed": {"const": false}}
+    },
+    "ideaFault": {
+      "type": "object", "additionalProperties": false,
+      "required": ["fault_id", "fault_kind", "status", "observation_id", "active_work_preserved", "candidate_only"],
+      "properties": {"fault_id": {"const": "fault/m10-00/idea"}, "fault_kind": {"const": "idea"}, "status": {"const": "passed"}, "observation_id": {"$ref": "#/$defs/id"}, "active_work_preserved": {"const": true}, "candidate_only": {"const": true}}
+    },
+    "interruptFault": {
+      "type": "object", "additionalProperties": false,
+      "required": ["fault_id", "fault_kind", "status", "observation_id", "active_work_preserved", "return_point_preserved"],
+      "properties": {"fault_id": {"const": "fault/m10-00/interrupt"}, "fault_kind": {"const": "interrupt"}, "status": {"const": "passed"}, "observation_id": {"$ref": "#/$defs/id"}, "active_work_preserved": {"const": true}, "return_point_preserved": {"const": true}}
+    },
+    "workerLossFault": {
+      "type": "object", "additionalProperties": false,
+      "required": ["fault_id", "fault_kind", "status", "harness_event_type", "authority_unchanged", "handoff_accepted"],
+      "properties": {"fault_id": {"const": "fault/m10-00/worker-loss"}, "fault_kind": {"const": "worker-loss"}, "status": {"const": "passed"}, "harness_event_type": {"const": "worker-loss"}, "authority_unchanged": {"const": true}, "handoff_accepted": {"const": true}}
+    },
+    "coverageCounts": {
+      "type": "object", "additionalProperties": false,
+      "required": ["agent_dispatch", "agent_handoff", "delivery", "eligible_ingress", "plan_revision", "skill_selection", "visible_compaction"],
+      "properties": {"agent_dispatch": {"type": "integer", "minimum": 0}, "agent_handoff": {"type": "integer", "minimum": 0}, "delivery": {"type": "integer", "minimum": 0}, "eligible_ingress": {"type": "integer", "minimum": 0}, "plan_revision": {"type": "integer", "minimum": 0}, "skill_selection": {"type": "integer", "minimum": 0}, "visible_compaction": {"type": "integer", "minimum": 0}}
+    },
+    "coverage": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "generated_at", "observation_count", "expectations", "denominators", "covered", "coverage_millionths", "overall_coverage_millionths", "veto_failures", "status", "state_write_authority", "provider_native_authority", "coverage_sha256"],
+      "properties": {"schema_version": {"const": "context.dogfood-coverage/v1alpha1"}, "generated_at": {"$ref": "#/$defs/timestamp"}, "observation_count": {"const": 8}, "expectations": {"type": "object"}, "denominators": {"$ref": "#/$defs/coverageCounts"}, "covered": {"$ref": "#/$defs/coverageCounts"}, "coverage_millionths": {"$ref": "#/$defs/coverageCounts"}, "overall_coverage_millionths": {"const": 1000000}, "veto_failures": {"type": "array", "maxItems": 0}, "status": {"const": "pass"}, "state_write_authority": {"const": false}, "provider_native_authority": {"const": false}, "coverage_sha256": {"$ref": "#/$defs/sha256"}}
+    },
+    "harness": {
+      "type": "object", "additionalProperties": false,
+      "required": ["event_count", "fan_out_count", "fan_in_count", "effect_count", "handoff_event_count", "provider", "authority_source", "worker_loss_authority_unchanged", "handoff_status", "worker_ids"],
+      "properties": {"event_count": {"const": 11}, "fan_out_count": {"const": 2}, "fan_in_count": {"const": 1}, "effect_count": {"const": 0}, "handoff_event_count": {"const": 2}, "provider": {"const": "provider-neutral"}, "authority_source": {"const": "state-mcp"}, "worker_loss_authority_unchanged": {"const": true}, "handoff_status": {"const": "accepted"}, "worker_ids": {"type": "array", "const": ["m10-00-worker-analysis", "m10-00-worker-execution"]}}
+    },
+    "authority": {
+      "type": "object", "additionalProperties": false,
+      "required": ["state_write_authority", "completion_authority", "provider_authority", "external_effect_authority"],
+      "properties": {"state_write_authority": {"const": false}, "completion_authority": {"const": false}, "provider_authority": {"const": 0}, "external_effect_authority": {"const": 0}}
+    }
+  }
+}

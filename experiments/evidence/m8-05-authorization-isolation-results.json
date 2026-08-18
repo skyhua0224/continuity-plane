@@ -1,0 +1,72 @@
+{
+  "allowed_attempts": 1000,
+  "allowed_decisions": 1000,
+  "audit_event_count": 11000,
+  "audit_failure_attempts": 1000,
+  "audit_failure_rejections": 1000,
+  "benchmark_id": "benchmark-m8-05-c216cf3dca93ff0a7fdce858",
+  "case_ids": [
+    "unknown-credential",
+    "subject-mismatch",
+    "action-not-granted",
+    "same-tenant-project",
+    "cross-tenant-project",
+    "unknown-project",
+    "expired-grant",
+    "revoked-grant",
+    "disabled-project",
+    "policy-not-active"
+  ],
+  "external_services": 0,
+  "generated_at": "2026-08-17T23:35:00+08:00",
+  "latency_ms": {
+    "max": 4.412026,
+    "p50": 0.78399,
+    "p95": 1.159996
+  },
+  "metrics": {
+    "audit_chain_failures": 0,
+    "audit_failure_accepts": 0,
+    "cross_tenant_accepts": 0,
+    "disabled_project_accepts": 0,
+    "inactive_policy_accepts": 0,
+    "missing_audit_events": 0,
+    "policy_digest_mismatches": 0,
+    "same_tenant_project_accepts": 0,
+    "stale_grant_accepts": 0,
+    "tenant_chain_collisions": 0,
+    "unauthorized_accepts": 0,
+    "unknown_project_accepts": 0,
+    "valid_authorization_denials": 0
+  },
+  "provenance": {
+    "audit_event_schema_sha256": "c303e87dfba8a03ecc5fb0203c2f01c68866c6d2118a95013b9f069c7c1798b4",
+    "authorization_core_sha256": "08f0e56efcdae84a3f66b1e8d1e79be71b5ed48789f41b13a6238f550d61b97b",
+    "benchmark_schema_sha256": "7025ee15b072aa87c1b5f87d2b887c5cc510ce8782020e3203d8e99d2d47fe50",
+    "implementation_sha256": "4563db2b0fba4a7452b32664616902317fcbeae9c56b3796ed6ae86cb862bfda",
+    "policy_schema_sha256": "3b4ca33d0422430b07e9279d35b439d7766fbc873032887574080ed61f75617d",
+    "registry_sha256": "1c58a1edca30ca211e66320201af5c98de12e5eaf81a02dd1f8ffba6dec1019b"
+  },
+  "provider_invocations": 0,
+  "receipt_sha256": "16260336b6275a3aecc9596903bce0082c541dc6de91566b70afc832a5c435d8",
+  "samples": 1000,
+  "schema_version": "context.authorization-isolation-benchmark/v1alpha1",
+  "shared_authority_claim": false,
+  "thresholds": {
+    "allowed_decision_rate_min": 1.0,
+    "audit_failure_rejection_rate_min": 1.0,
+    "latency_p95_ms_max": 25.0,
+    "unauthorized_rejection_rate_min": 1.0,
+    "zero_veto_metrics_required": true
+  },
+  "unauthorized_attempts": 10000,
+  "unauthorized_rejections": 10000,
+  "verdict": {
+    "allowed_decision_rate": 1.0,
+    "audit_failure_rejection_rate": 1.0,
+    "decision": "pass",
+    "failed_gates": [],
+    "latency_p95_within_threshold": true,
+    "unauthorized_rejection_rate": 1.0
+  }
+}

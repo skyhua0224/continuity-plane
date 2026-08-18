@@ -15,6 +15,7 @@ from context_control_plane.shared_state_mcp import (
     EFFECT_DISPATCH_TOOL,
     REQUEST_SCHEMA_VERSION,
     RESPONSE_SCHEMA_VERSION,
+    WORK_COMPLETION_TOOL,
     SharedStateMCPService,
     shared_state_mcp_tool_definitions,
 )
@@ -320,7 +321,10 @@ class M802SharedStateMCPTests(unittest.TestCase):
         definitions = {
             item["name"]: item for item in shared_state_mcp_tool_definitions()
         }
-        self.assertEqual(set(definitions), {CLAIM_LIFECYCLE_TOOL, EFFECT_DISPATCH_TOOL})
+        self.assertEqual(
+            set(definitions),
+            {CLAIM_LIFECYCLE_TOOL, EFFECT_DISPATCH_TOOL, WORK_COMPLETION_TOOL},
+        )
         lifecycle = definitions[CLAIM_LIFECYCLE_TOOL]["inputSchema"]
         actions = {
             branch["properties"]["action"]["const"] for branch in lifecycle["oneOf"]

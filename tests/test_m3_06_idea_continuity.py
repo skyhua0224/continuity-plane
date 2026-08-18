@@ -605,7 +605,7 @@ class M306IdeaContinuityTests(unittest.TestCase):
             )
         )
         validate_idea_continuity_benchmark_receipt(receipt, root=root)
-        self.assertEqual(receipt["measurement"]["samples"], 40)
+        self.assertEqual(receipt["measurement"]["samples"], 1000)
 
         registry = yaml.safe_load(
             (root / "schemas/registry.yaml").read_text(encoding="utf-8")

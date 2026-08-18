@@ -665,15 +665,23 @@ def release_correction_protection(
         raise IdeaReviewError("release_reason must be non-empty")
     if not release_evidence_ids:
         raise IdeaReviewError("release requires verified evidence")
+    released = _timestamp(released_at, "released_at")
     evidence_by_id = {item["evidence_id"]: item for item in snapshot["evidence"]}
     if any(
         evidence_id not in evidence_by_id
         or evidence_by_id[evidence_id]["validity"] != "verified"
         or evidence_by_id[evidence_id]["verified_at"] is None
+        or _timestamp(
+            evidence_by_id[evidence_id]["observed_at"], "evidence.observed_at"
+        )
+        > released
+        or _timestamp(
+            evidence_by_id[evidence_id]["verified_at"], "evidence.verified_at"
+        )
+        > released
         for evidence_id in release_evidence_ids
     ):
         raise IdeaReviewError("release requires verified evidence")
-    released = _timestamp(released_at, "released_at")
     if released < _timestamp(protection["opened_at"], "opened_at"):
         raise IdeaReviewError("release precedes correction protection")
     candidate = copy.deepcopy(snapshot)

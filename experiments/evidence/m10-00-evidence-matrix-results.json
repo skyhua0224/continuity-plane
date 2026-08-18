@@ -1,0 +1,171 @@
+{
+  "admitted_count": 10,
+  "authority": {
+    "completion_authority": false,
+    "external_effect_authority": 0,
+    "provider_authority": 0,
+    "state_write_authority": false
+  },
+  "campaign_id": "campaign-m10-00",
+  "completion_status": "ready-for-runtime",
+  "entries": [
+    {
+      "admission_status": "candidate",
+      "applicability": "applicable",
+      "evidence_class": "historical-live-manual",
+      "evidence_refs": [
+        {
+          "content_sha256": "637dc3ded3e39d64c4f77bca65b25aa89353a6952fbd8ac781f2c8840a7797d6",
+          "path": "docs/migrations/m5-05-context-accounting-acceptance-2026-08-15.md"
+        }
+      ],
+      "experiment_id": "E0",
+      "limitation": "pilot execution must produce a campaign-bound receipt",
+      "runtime_status": "pending",
+      "veto": false
+    },
+    {
+      "admission_status": "candidate",
+      "applicability": "applicable",
+      "evidence_class": "offline-admitted-replay",
+      "evidence_refs": [
+        {
+          "content_sha256": "e5aa86f4af2ea4b27436190d75646b05c7507b200c65f8c6ff5ffbc60172a224",
+          "path": "docs/migrations/m5-03-postcompact-canary-acceptance-2026-08-15.md"
+        }
+      ],
+      "experiment_id": "E1",
+      "limitation": "pilot execution must produce a campaign-bound receipt",
+      "runtime_status": "pending",
+      "veto": true
+    },
+    {
+      "admission_status": "candidate",
+      "applicability": "applicable",
+      "evidence_class": "local-runtime-contract",
+      "evidence_refs": [
+        {
+          "content_sha256": "5958833f9a0b1ccf875d35aec20cbd9210e81b4dd50f6385f70cb32ae50e6ad9",
+          "path": "docs/migrations/m3-08-continuation-dispatch-acceptance-2026-08-14.md"
+        }
+      ],
+      "experiment_id": "E2",
+      "limitation": "pilot execution must produce a campaign-bound receipt",
+      "runtime_status": "pending",
+      "veto": true
+    },
+    {
+      "admission_status": "candidate",
+      "applicability": "applicable",
+      "evidence_class": "synthetic-contract",
+      "evidence_refs": [
+        {
+          "content_sha256": "7b357f4ae1c996ca4e982efbb019a68538e056ec1fb002bf46205dbb7e02d628",
+          "path": "docs/migrations/m4-04-layered-skill-loading-acceptance-2026-08-11.md"
+        }
+      ],
+      "experiment_id": "E3",
+      "limitation": "pilot execution must produce a campaign-bound receipt",
+      "runtime_status": "pending",
+      "veto": false
+    },
+    {
+      "admission_status": "candidate",
+      "applicability": "applicable",
+      "evidence_class": "local-runtime-contract",
+      "evidence_refs": [
+        {
+          "content_sha256": "39aa7eaf1298a4c96b11f5e6f5ae3ea07d43963924ed5b5d95aabe5312579254",
+          "path": "docs/migrations/m4-03-skill-drift-quarantine-acceptance-2026-08-11.md"
+        }
+      ],
+      "experiment_id": "E4",
+      "limitation": "pilot execution must produce a campaign-bound receipt",
+      "runtime_status": "pending",
+      "veto": true
+    },
+    {
+      "admission_status": "candidate",
+      "applicability": "applicable",
+      "evidence_class": "local-runtime-contract",
+      "evidence_refs": [
+        {
+          "content_sha256": "0d82146d6dd5c9f6fec67452c8f298fb8bcde2a84acdb09f1973d57cabf0b6a0",
+          "path": "docs/migrations/m6-retrieval-recall-acceptance-2026-08-15.md"
+        }
+      ],
+      "experiment_id": "E5",
+      "limitation": "pilot execution must produce a campaign-bound receipt",
+      "runtime_status": "pending",
+      "veto": false
+    },
+    {
+      "admission_status": "candidate",
+      "applicability": "applicable",
+      "evidence_class": "local-runtime-contract",
+      "evidence_refs": [
+        {
+          "content_sha256": "efe94fee0c926dcc34a09c10b843198c299a98952a75fe2d2e063d8aabda2fbf",
+          "path": "docs/migrations/m7-02-claim-evidence-gate-acceptance-2026-08-16.md"
+        }
+      ],
+      "experiment_id": "E6",
+      "limitation": "pilot execution must produce a campaign-bound receipt",
+      "runtime_status": "pending",
+      "veto": true
+    },
+    {
+      "admission_status": "candidate",
+      "applicability": "applicable",
+      "evidence_class": "synthetic-contract",
+      "evidence_refs": [
+        {
+          "content_sha256": "2decd8ae6e369a0e20fe5ef0f2f36cbb52bae43b0a45b3abe6c4bb54e6ed9681",
+          "path": "docs/migrations/m7-05-affected-test-selection-acceptance-2026-08-16.md"
+        }
+      ],
+      "experiment_id": "E7",
+      "limitation": "pilot execution must produce a campaign-bound receipt",
+      "runtime_status": "pending",
+      "veto": false
+    },
+    {
+      "admission_status": "candidate",
+      "applicability": "conditional",
+      "evidence_class": "local-runtime-contract",
+      "evidence_refs": [
+        {
+          "content_sha256": "8f2080ea399d8ac49b5cfbd45b45ddea3a42940ae58ea5735229145356ead01b",
+          "path": "docs/migrations/m8-02-shared-work-acceptance-2026-08-16.md"
+        }
+      ],
+      "experiment_id": "E8",
+      "limitation": "local profile does not prove shared-strong coordination",
+      "runtime_status": "pending",
+      "veto": true
+    },
+    {
+      "admission_status": "candidate",
+      "applicability": "applicable",
+      "evidence_class": "local-runtime-fault",
+      "evidence_refs": [
+        {
+          "content_sha256": "37aaff238687881ebbaefd8da01c4dd7be437b5e7d57755b32523beca34b1de8",
+          "path": "docs/migrations/m8-01-durable-operation-acceptance-2026-08-16.md"
+        }
+      ],
+      "experiment_id": "E9",
+      "limitation": "pilot execution must produce a campaign-bound receipt",
+      "runtime_status": "pending",
+      "veto": true
+    }
+  ],
+  "observed_at": "2026-08-18T02:36:00+08:00",
+  "pending_count": 10,
+  "plan_id": "pilot-plan-m10-00",
+  "plan_sha256": "e79ce4890cd69e12de8167bda54a9052320a72084d6c39c29d7e62a47f9ebf23",
+  "project_id": "context-control-plane",
+  "receipt_sha256": "97ce9d34a124ba3c5add666239dce08cc7b968152d1ec7ab1f9ca0ce2da2e3b9",
+  "schema_version": "context.self-dogfood-evidence-matrix/v1alpha1",
+  "state_revision": 74
+}

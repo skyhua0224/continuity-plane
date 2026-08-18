@@ -1,0 +1,377 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m9-02/project-graph-projection.schema.json",
+  "title": "M9-02 Project Graph and active Work projection",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_id",
+    "state_revision",
+    "state_schema_version",
+    "state_sha256",
+    "source_projection_sha256",
+    "governance_ref",
+    "primary_work_id",
+    "observed_at",
+    "graph",
+    "active_work_set",
+    "work_ledger",
+    "health",
+    "authority",
+    "projection_sha256",
+    "signature"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.project-graph-projection/v1alpha1"},
+    "project_id": {"$ref": "#/$defs/identifier"},
+    "state_revision": {"$ref": "#/$defs/nonNegativeInteger"},
+    "state_schema_version": {
+      "enum": [
+        "context.typed-state/v1alpha1",
+        "context.typed-state/v2alpha1",
+        "context.typed-state/v3alpha1",
+        "context.typed-state/v4alpha1",
+        "context.typed-state/v5alpha1",
+        "context.typed-state/v6alpha1"
+      ]
+    },
+    "state_sha256": {"$ref": "#/$defs/sha256"},
+    "source_projection_sha256": {"$ref": "#/$defs/sha256"},
+    "governance_ref": {"$ref": "#/$defs/nonEmptyString"},
+    "primary_work_id": {"$ref": "#/$defs/nullableIdentifier"},
+    "observed_at": {"$ref": "#/$defs/timestamp"},
+    "graph": {"$ref": "#/$defs/graph"},
+    "active_work_set": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": {"$ref": "#/$defs/activeWork"}
+    },
+    "work_ledger": {"$ref": "#/$defs/workLedger"},
+    "health": {"$ref": "#/$defs/health"},
+    "authority": {"$ref": "#/$defs/authority"},
+    "projection_sha256": {"$ref": "#/$defs/sha256"},
+    "signature": {"$ref": "#/$defs/signature"}
+  },
+  "$defs": {
+    "nonEmptyString": {"type": "string", "minLength": 1, "maxLength": 4096},
+    "identifier": {"type": "string", "minLength": 1, "maxLength": 1024},
+    "nullableIdentifier": {
+      "oneOf": [
+        {"$ref": "#/$defs/identifier"},
+        {"type": "null"}
+      ]
+    },
+    "nonNegativeInteger": {"type": "integer", "minimum": 0},
+    "nullableNonNegativeInteger": {
+      "oneOf": [
+        {"$ref": "#/$defs/nonNegativeInteger"},
+        {"type": "null"}
+      ]
+    },
+    "nullablePositiveInteger": {
+      "oneOf": [
+        {"type": "integer", "minimum": 1},
+        {"type": "null"}
+      ]
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$"
+    },
+    "nullableTimestamp": {
+      "oneOf": [
+        {"$ref": "#/$defs/timestamp"},
+        {"type": "null"}
+      ]
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nullableSha256": {
+      "oneOf": [
+        {"$ref": "#/$defs/sha256"},
+        {"type": "null"}
+      ]
+    },
+    "stringList": {
+      "type": "array",
+      "maxItems": 10000,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/identifier"}
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope_kind", "scope_ref"],
+      "properties": {
+        "scope_kind": {"enum": ["repo", "directory", "file", "symbol", "capability", "effect"]},
+        "scope_ref": {"$ref": "#/$defs/nonEmptyString"}
+      }
+    },
+    "scopeList": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": {"$ref": "#/$defs/scope"}
+    },
+    "workKind": {"enum": ["campaign", "goal", "work", "experiment"]},
+    "workStatus": {"enum": ["proposed", "blocked", "ready", "active", "verifying", "completed", "rejected", "reverted", "superseded"]},
+    "dedupeStatus": {"enum": ["clear", "candidate", "blocked", "coordinated"]},
+    "nullableBoolean": {"type": ["boolean", "null"]},
+    "graphNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "work_id", "kind", "title", "status", "parent_work_id",
+        "dependency_ids", "supersedes_work_id", "owner_refs", "scope_refs",
+        "blocker_ids", "overlap_candidate_ids", "dedupe_status",
+        "return_point_work_id", "exit_criteria", "attempt_budget", "expires_at",
+        "promotion_target_work_id", "mainline_authority", "work_revision",
+        "work_source_ref", "source_revision", "work_identity_sha256",
+        "dedupe_receipt_sha256"
+      ],
+      "properties": {
+        "work_id": {"$ref": "#/$defs/identifier"},
+        "kind": {"$ref": "#/$defs/workKind"},
+        "title": {"$ref": "#/$defs/nonEmptyString"},
+        "status": {"$ref": "#/$defs/workStatus"},
+        "parent_work_id": {"$ref": "#/$defs/nullableIdentifier"},
+        "dependency_ids": {"$ref": "#/$defs/stringList"},
+        "supersedes_work_id": {"$ref": "#/$defs/nullableIdentifier"},
+        "owner_refs": {"$ref": "#/$defs/stringList"},
+        "scope_refs": {"$ref": "#/$defs/scopeList"},
+        "blocker_ids": {"$ref": "#/$defs/stringList"},
+        "overlap_candidate_ids": {"$ref": "#/$defs/stringList"},
+        "dedupe_status": {"$ref": "#/$defs/dedupeStatus"},
+        "return_point_work_id": {"$ref": "#/$defs/nullableIdentifier"},
+        "exit_criteria": {"$ref": "#/$defs/stringList"},
+        "attempt_budget": {"$ref": "#/$defs/nullablePositiveInteger"},
+        "expires_at": {"$ref": "#/$defs/nullableTimestamp"},
+        "promotion_target_work_id": {"$ref": "#/$defs/nullableIdentifier"},
+        "mainline_authority": {"$ref": "#/$defs/nullableBoolean"},
+        "work_revision": {"$ref": "#/$defs/nonNegativeInteger"},
+        "work_source_ref": {"$ref": "#/$defs/nullableIdentifier"},
+        "source_revision": {"$ref": "#/$defs/nullableNonNegativeInteger"},
+        "work_identity_sha256": {"$ref": "#/$defs/nullableSha256"},
+        "dedupe_receipt_sha256": {"$ref": "#/$defs/nullableSha256"}
+      }
+    },
+    "graphEdge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_work_id", "target_work_id", "relation"],
+      "properties": {
+        "source_work_id": {"$ref": "#/$defs/identifier"},
+        "target_work_id": {"$ref": "#/$defs/identifier"},
+        "relation": {"enum": ["parent", "dependency", "supersedes", "return-point", "promotion-target"]}
+      }
+    },
+    "graph": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["root_work_ids", "nodes", "edges"],
+      "properties": {
+        "root_work_ids": {"$ref": "#/$defs/stringList"},
+        "nodes": {"type": "array", "maxItems": 10000, "items": {"$ref": "#/$defs/graphNode"}},
+        "edges": {"type": "array", "maxItems": 50000, "items": {"$ref": "#/$defs/graphEdge"}}
+      }
+    },
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claim_id", "actor_ref", "status", "claimed_at", "lease_expires_at",
+        "lease_expired_at_observation", "scope_owners", "claim_revision",
+        "lease_epoch", "last_heartbeat_at", "closed_at", "closed_by_ref",
+        "close_reason", "reclaimed_from_claim_id"
+      ],
+      "properties": {
+        "claim_id": {"$ref": "#/$defs/identifier"},
+        "actor_ref": {"$ref": "#/$defs/identifier"},
+        "status": {"const": "active"},
+        "claimed_at": {"$ref": "#/$defs/timestamp"},
+        "lease_expires_at": {"$ref": "#/$defs/timestamp"},
+        "lease_expired_at_observation": {"type": "boolean"},
+        "scope_owners": {"$ref": "#/$defs/scopeList"},
+        "claim_revision": {"$ref": "#/$defs/nullableNonNegativeInteger"},
+        "lease_epoch": {"$ref": "#/$defs/nullableNonNegativeInteger"},
+        "last_heartbeat_at": {"$ref": "#/$defs/nullableTimestamp"},
+        "closed_at": {"$ref": "#/$defs/nullableTimestamp"},
+        "closed_by_ref": {"$ref": "#/$defs/nullableIdentifier"},
+        "close_reason": {"$ref": "#/$defs/nullableIdentifier"},
+        "reclaimed_from_claim_id": {"$ref": "#/$defs/nullableIdentifier"}
+      }
+    },
+    "activeWork": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "work_id", "kind", "title", "status", "work_revision", "owner_refs",
+        "scope_refs", "dependency_ids", "blocker_ids", "overlap_candidate_ids",
+        "dedupe_status", "return_point_work_id", "expires_at",
+        "promotion_target_work_id", "mainline_authority", "work_source_ref",
+        "source_revision", "work_identity_sha256", "dedupe_receipt_sha256", "claim"
+      ],
+      "properties": {
+        "work_id": {"$ref": "#/$defs/identifier"},
+        "kind": {"enum": ["work", "experiment"]},
+        "title": {"$ref": "#/$defs/nonEmptyString"},
+        "status": {"const": "active"},
+        "work_revision": {"$ref": "#/$defs/nonNegativeInteger"},
+        "owner_refs": {"$ref": "#/$defs/stringList"},
+        "scope_refs": {"$ref": "#/$defs/scopeList"},
+        "dependency_ids": {"$ref": "#/$defs/stringList"},
+        "blocker_ids": {"$ref": "#/$defs/stringList"},
+        "overlap_candidate_ids": {"$ref": "#/$defs/stringList"},
+        "dedupe_status": {"$ref": "#/$defs/dedupeStatus"},
+        "return_point_work_id": {"$ref": "#/$defs/nullableIdentifier"},
+        "expires_at": {"$ref": "#/$defs/nullableTimestamp"},
+        "promotion_target_work_id": {"$ref": "#/$defs/nullableIdentifier"},
+        "mainline_authority": {"$ref": "#/$defs/nullableBoolean"},
+        "work_source_ref": {"$ref": "#/$defs/nullableIdentifier"},
+        "source_revision": {"$ref": "#/$defs/nullableNonNegativeInteger"},
+        "work_identity_sha256": {"$ref": "#/$defs/nullableSha256"},
+        "dedupe_receipt_sha256": {"$ref": "#/$defs/nullableSha256"},
+        "claim": {"oneOf": [{"$ref": "#/$defs/claim"}, {"type": "null"}]}
+      }
+    },
+    "statusCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["proposed", "blocked", "ready", "active", "verifying", "completed", "rejected", "reverted", "superseded"],
+      "properties": {
+        "proposed": {"$ref": "#/$defs/nonNegativeInteger"},
+        "blocked": {"$ref": "#/$defs/nonNegativeInteger"},
+        "ready": {"$ref": "#/$defs/nonNegativeInteger"},
+        "active": {"$ref": "#/$defs/nonNegativeInteger"},
+        "verifying": {"$ref": "#/$defs/nonNegativeInteger"},
+        "completed": {"$ref": "#/$defs/nonNegativeInteger"},
+        "rejected": {"$ref": "#/$defs/nonNegativeInteger"},
+        "reverted": {"$ref": "#/$defs/nonNegativeInteger"},
+        "superseded": {"$ref": "#/$defs/nonNegativeInteger"}
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claim_fencing", "work_provenance"],
+      "properties": {
+        "claim_fencing": {"type": "boolean"},
+        "work_provenance": {"type": "boolean"}
+      }
+    },
+    "openBlocker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["blocker_id", "reason", "blocked_work_ids", "evidence_ids", "opened_at"],
+      "properties": {
+        "blocker_id": {"$ref": "#/$defs/identifier"},
+        "reason": {"$ref": "#/$defs/nonEmptyString"},
+        "blocked_work_ids": {"$ref": "#/$defs/stringList"},
+        "evidence_ids": {"$ref": "#/$defs/stringList"},
+        "opened_at": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "duplicateCandidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["work_id", "candidate_work_ids", "dedupe_status"],
+      "properties": {
+        "work_id": {"$ref": "#/$defs/identifier"},
+        "candidate_work_ids": {"$ref": "#/$defs/stringList"},
+        "dedupe_status": {"$ref": "#/$defs/dedupeStatus"}
+      }
+    },
+    "experimentBranch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["work_id", "status", "return_point_work_id", "exit_criteria", "attempt_budget", "expires_at", "promotion_target_work_id", "mainline_authority"],
+      "properties": {
+        "work_id": {"$ref": "#/$defs/identifier"},
+        "status": {"$ref": "#/$defs/workStatus"},
+        "return_point_work_id": {"$ref": "#/$defs/identifier"},
+        "exit_criteria": {"$ref": "#/$defs/stringList"},
+        "attempt_budget": {"type": "integer", "minimum": 1},
+        "expires_at": {"$ref": "#/$defs/timestamp"},
+        "promotion_target_work_id": {"$ref": "#/$defs/identifier"},
+        "mainline_authority": {"const": false}
+      }
+    },
+    "workLedger": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["work_count", "status_counts", "active_work_count", "active_claim_count", "open_blocker_count", "overlap_candidate_pair_count", "capabilities", "open_blockers", "duplicate_candidates", "experiment_branches"],
+      "properties": {
+        "work_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "status_counts": {"$ref": "#/$defs/statusCounts"},
+        "active_work_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "active_claim_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "open_blocker_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "overlap_candidate_pair_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "capabilities": {"$ref": "#/$defs/capabilities"},
+        "open_blockers": {"type": "array", "maxItems": 10000, "items": {"$ref": "#/$defs/openBlocker"}},
+        "duplicate_candidates": {"type": "array", "maxItems": 10000, "items": {"$ref": "#/$defs/duplicateCandidate"}},
+        "experiment_branches": {"type": "array", "maxItems": 10000, "items": {"$ref": "#/$defs/experimentBranch"}}
+      }
+    },
+    "workScopeOverlap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["left_work_id", "right_work_id", "left_scope", "right_scope"],
+      "properties": {
+        "left_work_id": {"$ref": "#/$defs/identifier"},
+        "right_work_id": {"$ref": "#/$defs/identifier"},
+        "left_scope": {"$ref": "#/$defs/scope"},
+        "right_scope": {"$ref": "#/$defs/scope"}
+      }
+    },
+    "claimOwnershipOverlap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["left_claim_id", "left_work_id", "right_claim_id", "right_work_id", "left_scope", "right_scope"],
+      "properties": {
+        "left_claim_id": {"$ref": "#/$defs/identifier"},
+        "left_work_id": {"$ref": "#/$defs/identifier"},
+        "right_claim_id": {"$ref": "#/$defs/identifier"},
+        "right_work_id": {"$ref": "#/$defs/identifier"},
+        "left_scope": {"$ref": "#/$defs/scope"},
+        "right_scope": {"$ref": "#/$defs/scope"}
+      }
+    },
+    "health": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["snapshot_updated_at", "snapshot_age_ms", "cycle_work_ids", "orphan_work_ids", "expired_branch_work_ids", "expired_active_claim_ids", "work_scope_overlap_candidates", "claim_ownership_overlaps"],
+      "properties": {
+        "snapshot_updated_at": {"$ref": "#/$defs/timestamp"},
+        "snapshot_age_ms": {"$ref": "#/$defs/nonNegativeInteger"},
+        "cycle_work_ids": {"$ref": "#/$defs/stringList"},
+        "orphan_work_ids": {"$ref": "#/$defs/stringList"},
+        "expired_branch_work_ids": {"$ref": "#/$defs/stringList"},
+        "expired_active_claim_ids": {"$ref": "#/$defs/stringList"},
+        "work_scope_overlap_candidates": {"type": "array", "maxItems": 50000, "items": {"$ref": "#/$defs/workScopeOverlap"}},
+        "claim_ownership_overlaps": {"type": "array", "maxItems": 0, "items": {"$ref": "#/$defs/claimOwnershipOverlap"}}
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state_write_authority", "controlled_action_authority", "provider_authority", "external_effect_authority"],
+      "properties": {
+        "state_write_authority": {"const": false},
+        "controlled_action_authority": {"const": false},
+        "provider_authority": {"const": 0},
+        "external_effect_authority": {"const": 0}
+      }
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "key_id", "value"],
+      "properties": {
+        "algorithm": {"const": "hmac-sha256"},
+        "key_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"},
+        "value": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

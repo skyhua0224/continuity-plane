@@ -19,10 +19,17 @@ from typing import Any, Iterable
 
 
 SCHEMA_VERSION = "m1-02.v1"
-_PROVIDERS = {"codex", "claude", "cursor", "other"}
+_PROVIDER_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
 _SOURCE_KINDS = {"raw_transcript", "handoff", "memory", "other"}
 _RETENTION_CLASSES = {"ephemeral", "project", "audit"}
-_CLASSIFICATIONS = {"decision", "evidence", "constraint", "work", "preference", "replay"}
+_CLASSIFICATIONS = {
+    "decision",
+    "evidence",
+    "constraint",
+    "work",
+    "preference",
+    "replay",
+}
 _VALIDITIES = {"candidate", "verified", "stale", "rejected"}
 _REF_RE = re.compile(r"^(?:thr|rng)_[a-z2-7]{26}$")
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -119,11 +126,17 @@ class SourceRegistry:
         )
 
     @staticmethod
-    def _canonical_identity(project_id: str, source_provider: str, provider_thread_id: str) -> str:
+    def _canonical_identity(
+        project_id: str, source_provider: str, provider_thread_id: str
+    ) -> str:
         project_id = _require_non_empty_string(project_id, "project_id")
-        source_provider = _require_non_empty_string(source_provider, "source_provider").lower()
-        provider_thread_id = _require_non_empty_string(provider_thread_id, "provider_thread_id")
-        if source_provider not in _PROVIDERS:
+        source_provider = _require_non_empty_string(
+            source_provider, "source_provider"
+        ).lower()
+        provider_thread_id = _require_non_empty_string(
+            provider_thread_id, "provider_thread_id"
+        )
+        if _PROVIDER_RE.fullmatch(source_provider) is None:
             raise ValueError(f"unsupported source_provider: {source_provider}")
         return json.dumps(
             {
@@ -136,16 +149,27 @@ class SourceRegistry:
             separators=(",", ":"),
         )
 
-    def thread_ref(self, project_id: str, source_provider: str, provider_thread_id: str) -> str:
+    def thread_ref(
+        self, project_id: str, source_provider: str, provider_thread_id: str
+    ) -> str:
         """Return a deterministic opaque reference for one provider thread."""
-        identity = self._canonical_identity(project_id, source_provider, provider_thread_id)
+        identity = self._canonical_identity(
+            project_id, source_provider, provider_thread_id
+        )
         return _opaque_ref("thr", self._namespace_key, identity)
 
     def range_ref(self, source_thread_ref: str, start: int, end: int) -> str:
         """Return a deterministic opaque reference for an inclusive-exclusive range."""
-        if not _REF_RE.fullmatch(source_thread_ref) or not source_thread_ref.startswith("thr_"):
+        if not _REF_RE.fullmatch(source_thread_ref) or not source_thread_ref.startswith(
+            "thr_"
+        ):
             raise ValueError("source_thread_ref must be a valid thr_ reference")
-        if not isinstance(start, int) or not isinstance(end, int) or start < 0 or end < start:
+        if (
+            not isinstance(start, int)
+            or not isinstance(end, int)
+            or start < 0
+            or end < start
+        ):
             raise ValueError("range must use non-negative start and end >= start")
         return _opaque_ref(
             "rng",
@@ -163,7 +187,9 @@ class SourceRegistry:
         retention_class: str = "project",
     ) -> dict[str, str]:
         """Register a source and return its public, non-sensitive record."""
-        identity = self._canonical_identity(project_id, source_provider, provider_thread_id)
+        identity = self._canonical_identity(
+            project_id, source_provider, provider_thread_id
+        )
         source_provider = source_provider.lower()
         if source_kind not in _SOURCE_KINDS:
             raise ValueError(f"unsupported source_kind: {source_kind}")
@@ -242,7 +268,9 @@ def build_provenance(
     }
 
 
-def validate_provenance(payload: dict[str, Any], *, for_admission: bool = False) -> None:
+def validate_provenance(
+    payload: dict[str, Any], *, for_admission: bool = False
+) -> None:
     """Validate the M1-02 provenance contract and optional admission gate."""
     if not isinstance(payload, dict):
         raise ProvenanceError("provenance must be an object")
@@ -267,22 +295,31 @@ def validate_provenance(payload: dict[str, Any], *, for_admission: bool = False)
         raise ProvenanceError(f"missing fields: {', '.join(sorted(missing))}")
     forbidden = _FORBIDDEN_PUBLIC_KEYS.intersection(payload.keys())
     if forbidden:
-        raise ProvenanceError(f"forbidden public fields: {', '.join(sorted(forbidden))}")
+        raise ProvenanceError(
+            f"forbidden public fields: {', '.join(sorted(forbidden))}"
+        )
     if payload.keys() - required:
         extra = payload.keys() - required
         raise ProvenanceError(f"unknown fields: {', '.join(sorted(extra))}")
 
     if payload["schema_version"] != SCHEMA_VERSION:
         raise ProvenanceError("unsupported schema_version")
-    if payload["source_provider"] not in _PROVIDERS:
+    if (
+        not isinstance(payload["source_provider"], str)
+        or _PROVIDER_RE.fullmatch(payload["source_provider"]) is None
+    ):
         raise ProvenanceError("unsupported source_provider")
-    if not isinstance(payload["source_thread_ref"], str) or not _REF_RE.fullmatch(
-        payload["source_thread_ref"]
-    ) or not payload["source_thread_ref"].startswith("thr_"):
+    if (
+        not isinstance(payload["source_thread_ref"], str)
+        or not _REF_RE.fullmatch(payload["source_thread_ref"])
+        or not payload["source_thread_ref"].startswith("thr_")
+    ):
         raise ProvenanceError("invalid source_thread_ref")
-    if not isinstance(payload["source_range_ref"], str) or not _REF_RE.fullmatch(
-        payload["source_range_ref"]
-    ) or not payload["source_range_ref"].startswith("rng_"):
+    if (
+        not isinstance(payload["source_range_ref"], str)
+        or not _REF_RE.fullmatch(payload["source_range_ref"])
+        or not payload["source_range_ref"].startswith("rng_")
+    ):
         raise ProvenanceError("invalid source_range_ref")
     _require_non_empty_string(payload["project_id"], "project_id")
     _require_non_empty_string(payload["extracted_at"], "extracted_at")
@@ -305,10 +342,13 @@ def validate_provenance(payload: dict[str, Any], *, for_admission: bool = False)
     if payload["validity"] not in _VALIDITIES:
         raise ProvenanceError("unsupported validity")
     if not isinstance(payload["verified_against"], list) or not all(
-        isinstance(ref, str) and (ref.startswith("artifact://") or ref.startswith("assertion:"))
+        isinstance(ref, str)
+        and (ref.startswith("artifact://") or ref.startswith("assertion:"))
         for ref in payload["verified_against"]
     ):
-        raise ProvenanceError("verified_against must contain artifact:// or assertion: refs")
+        raise ProvenanceError(
+            "verified_against must contain artifact:// or assertion: refs"
+        )
     if payload["validity"] == "verified" and not payload["verified_against"]:
         raise ProvenanceError("verified provenance requires current evidence")
     if not isinstance(payload["contains_sensitive_data"], bool):

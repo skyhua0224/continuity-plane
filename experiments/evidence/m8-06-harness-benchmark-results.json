@@ -1,0 +1,59 @@
+{
+  "benchmark_id": "benchmark-m8-06-ec24565a9df523f90353772c",
+  "effect_attempts": 1000,
+  "external_services": 0,
+  "first_action_attempts": 1000,
+  "generated_at": "2026-08-16T20:00:00+08:00",
+  "latency_ms": {
+    "max_ms": 3.518922003422631,
+    "p50_ms": 1.258091500858427,
+    "p95_ms": 1.6755270007706713
+  },
+  "metrics": {
+    "effect_scope_rejections": 1000,
+    "fanin_completions": 1000,
+    "fanout_dispatches": 2000,
+    "first_action_mismatch_rejections": 1000,
+    "provider_drift_rejections": 1000,
+    "replay_matches": 1000,
+    "stale_handoff_rejections": 1000,
+    "worker_loss_authority_unchanged": 1000
+  },
+  "provenance": {
+    "benchmark_sha256": "ac6e0eeeb0fb08e5e18e1dff57121103889b1d9b95f901eabeafe8fb6c31a537",
+    "event_schema_sha256": "d484832b8357297dc137716f3f4588282724b9d4b7bfaa833ed4f7516906f0ff",
+    "handoff_schema_sha256": "3e53b9e089847a0e71a334506bdf730c0a49641226d5a4252c87a658b0b860f4",
+    "implementation_sha256": "4e7765fa8381c98187d7053b1c30ed5258f3970a19f1080a9709467f3ed20d78",
+    "run_schema_sha256": "17b479387ba92e50cfd649b44064008c4cafcb9202323a11840b9c46c700983a"
+  },
+  "provider_drift_attempts": 1000,
+  "provider_invocations": 0,
+  "rates": {
+    "effect_scope_rejection_rate": 1.0,
+    "first_action_rejection_rate": 1.0,
+    "provider_drift_rejection_rate": 1.0,
+    "replay_match_rate": 1.0,
+    "stale_handoff_rejection_rate": 1.0,
+    "worker_loss_unchanged_rate": 1.0
+  },
+  "receipt_sha256": "a38f1fbf5268a954eceaef7713accb6c29ed6b20644e552e70ef9662fae9344d",
+  "replay_attempts": 1000,
+  "samples": 1000,
+  "schema_version": "context.harness-benchmark/v1alpha1",
+  "shared_authority_claim": false,
+  "stale_handoff_attempts": 1000,
+  "thresholds": {
+    "effect_scope_rejection_rate_min": 1.0,
+    "first_action_rejection_rate_min": 1.0,
+    "latency_p95_ms_max": 50.0,
+    "provider_drift_rejection_rate_min": 1.0,
+    "replay_match_rate_min": 1.0,
+    "stale_handoff_rejection_rate_min": 1.0,
+    "worker_loss_unchanged_rate_min": 1.0
+  },
+  "verdict": {
+    "decision": "pass",
+    "failed_gates": []
+  },
+  "worker_loss_attempts": 1000
+}

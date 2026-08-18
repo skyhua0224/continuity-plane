@@ -160,6 +160,13 @@ class M201TypedStateTests(unittest.TestCase):
         with self.assertRaisesRegex(TypedStateError, "active claim lease has expired"):
             validate_typed_state(broken)
 
+    def test_runtime_rejects_non_rfc3339_timestamp_separator(self):
+        broken = copy.deepcopy(self.cases["solo-active-work"])
+        broken["project"]["updated_at"] = "2026-08-09 09:15:00+08:00"
+
+        with self.assertRaisesRegex(TypedStateError, "RFC3339"):
+            validate_typed_state(broken)
+
     def test_authorized_effect_requires_a_current_active_claim(self):
         broken = copy.deepcopy(self.cases["solo-active-work"])
         broken["claims"][0]["expected_project_revision"] -= 1
