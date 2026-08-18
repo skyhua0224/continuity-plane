@@ -2115,3 +2115,13 @@ schemas:
     status: current
     compatibility_mode: strict-versioned
     migrations: []
+
+  - schema_id: context.local-work-completion-request
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.local-work-completion-request/v1alpha1
+    supported_wire_versions: [context.local-work-completion-request/v1alpha1]
+    artifact_path: schemas/m10-09/local-work-completion-request.schema.json
+    content_sha256: e43f5eece8ff675b8aba3a0e08a31e1a92a172ba4891f9e9e89c65dd0b0dc4fa
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []

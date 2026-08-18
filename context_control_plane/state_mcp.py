@@ -72,6 +72,7 @@ IDEA_CAPTURE_TOOL = "context.idea.capture"
 IDEA_REVIEW_TOOL = "context.idea.review"
 IDEA_CORRECTION_PROTECT_TOOL = "context.idea.correction.protect"
 IDEA_CORRECTION_RELEASE_TOOL = "context.idea.correction.release"
+LOCAL_WORK_COMPLETION_TOOL = "context.state.work.complete"
 DEFAULT_REQUEST_CACHE_ENTRIES = 1024
 _AUTHORIZATION_GRANTED = "granted"
 _AUTHORIZATION_HISTORICAL_REPLAY = "historical-replay"
@@ -90,6 +91,7 @@ STATE_MCP_TOOLS = (
     IDEA_REVIEW_TOOL,
     IDEA_CORRECTION_PROTECT_TOOL,
     IDEA_CORRECTION_RELEASE_TOOL,
+    LOCAL_WORK_COMPLETION_TOOL,
 )
 
 ATTEMPT_REQUEST_SCHEMA_VERSION = "context.experiment-attempt-request/v1alpha1"
@@ -108,6 +110,9 @@ IDEA_CORRECTION_PROTECTION_REQUEST_SCHEMA_VERSION = (
 )
 IDEA_CORRECTION_RELEASE_REQUEST_SCHEMA_VERSION = (
     "context.idea-correction-release-request/v1alpha1"
+)
+LOCAL_WORK_COMPLETION_REQUEST_SCHEMA_VERSION = (
+    "context.local-work-completion-request/v1alpha1"
 )
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -254,6 +259,16 @@ _REQUEST_FIELDS = {
         "causation_ref",
         "correlation_ref",
     },
+    LOCAL_WORK_COMPLETION_TOOL: _COMMON_FIELDS
+    | {
+        "expected_revision",
+        "work_id",
+        "claim_id",
+        "checkpoint_ref",
+        "evidence",
+        "causation_ref",
+        "correlation_ref",
+    },
 }
 _IDEA_CAPTURE_REQUEST_FIELDS_V2 = _REQUEST_FIELDS[IDEA_CAPTURE_TOOL] | {
     "scope_ref",
@@ -273,6 +288,7 @@ _AUTHORIZATION_ACTIONS = {
     IDEA_REVIEW_TOOL: "state.idea.review",
     IDEA_CORRECTION_PROTECT_TOOL: "state.idea.correction.protect",
     IDEA_CORRECTION_RELEASE_TOOL: "state.idea.correction.release",
+    LOCAL_WORK_COMPLETION_TOOL: "state.work.complete",
 }
 _COMMIT_COLLECTION_ID_FIELDS = {
     "works": "work_id",
@@ -486,6 +502,25 @@ def _request_properties(tool: str) -> dict[str, Any]:
             "supersedes_event_id": {"type": ["string", "null"]},
             "changes": {"type": "array", "minItems": 1},
         }
+    if tool == LOCAL_WORK_COMPLETION_TOOL:
+        return {
+            **common,
+            "schema_version": {
+                "const": LOCAL_WORK_COMPLETION_REQUEST_SCHEMA_VERSION
+            },
+            "expected_revision": {"type": "integer", "minimum": 0},
+            "work_id": {"type": "string", "minLength": 1, "maxLength": 200},
+            "claim_id": {"type": "string", "minLength": 1, "maxLength": 200},
+            "checkpoint_ref": {"type": "object"},
+            "evidence": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 32,
+                "items": {"type": "object"},
+            },
+            "causation_ref": {"type": ["string", "null"]},
+            "correlation_ref": {"type": ["string", "null"]},
+        }
     if tool == CLAIM_TOOL:
         return {
             **common,
@@ -564,6 +599,7 @@ def state_mcp_tool_definitions() -> list[dict[str, Any]]:
         IDEA_REVIEW_TOOL: "Record a bounded Idea review without granting execution authority.",
         IDEA_CORRECTION_PROTECT_TOOL: "Protect affected writes while an Idea correction is unresolved.",
         IDEA_CORRECTION_RELEASE_TOOL: "Release an Idea correction protection after verified evidence.",
+        LOCAL_WORK_COMPLETION_TOOL: "Atomically complete local Work and release its active claim with verified evidence.",
     }
     return [
         {
@@ -653,6 +689,7 @@ def _validate_request(tool: str, arguments: Any) -> str | None:
         IDEA_REVIEW_TOOL: IDEA_REVIEW_REQUEST_SCHEMA_VERSION,
         IDEA_CORRECTION_PROTECT_TOOL: IDEA_CORRECTION_PROTECTION_REQUEST_SCHEMA_VERSION,
         IDEA_CORRECTION_RELEASE_TOOL: IDEA_CORRECTION_RELEASE_REQUEST_SCHEMA_VERSION,
+        LOCAL_WORK_COMPLETION_TOOL: LOCAL_WORK_COMPLETION_REQUEST_SCHEMA_VERSION,
     }.get(tool, REQUEST_SCHEMA_VERSION)
     supported_request_versions = {
         IDEA_CAPTURE_TOOL: {
@@ -741,6 +778,64 @@ def _validate_request(tool: str, arguments: Any) -> str | None:
             return "lease_expires_at must be a valid RFC3339 timestamp"
         if parsed_lease.tzinfo is None:
             return "lease_expires_at must include a timezone"
+    if tool == LOCAL_WORK_COMPLETION_TOOL:
+        for field in ("work_id", "claim_id"):
+            value = arguments[field]
+            if not isinstance(value, str) or not value.strip() or len(value) > 200:
+                return f"{field} must be a bounded non-empty string"
+        checkpoint_ref = arguments["checkpoint_ref"]
+        checkpoint_fields = {
+            "schema_version",
+            "digest_algorithm",
+            "digest",
+            "size_bytes",
+            "artifact_uri",
+        }
+        if (
+            not isinstance(checkpoint_ref, dict)
+            or set(checkpoint_ref) != checkpoint_fields
+            or checkpoint_ref["schema_version"] != "context.artifact-ref/v1alpha1"
+            or checkpoint_ref["digest_algorithm"] != "sha-256"
+            or not isinstance(checkpoint_ref["digest"], str)
+            or _SHA256_RE.fullmatch(checkpoint_ref["digest"]) is None
+            or type(checkpoint_ref["size_bytes"]) is not int
+            or checkpoint_ref["size_bytes"] <= 0
+            or checkpoint_ref["artifact_uri"]
+            != f"artifact://sha256/{checkpoint_ref['digest']}"
+        ):
+            return "checkpoint_ref is invalid"
+        evidence = arguments["evidence"]
+        evidence_fields = {
+            "evidence_id",
+            "kind",
+            "artifact_ref",
+            "content_sha256",
+            "validity",
+            "observed_at",
+            "verified_at",
+        }
+        if not isinstance(evidence, list) or not evidence or len(evidence) > 32:
+            return "evidence must be a bounded non-empty array"
+        evidence_ids = []
+        for item in evidence:
+            if not isinstance(item, dict) or set(item) != evidence_fields:
+                return "completion evidence fields are invalid"
+            evidence_ids.append(item["evidence_id"])
+        if (
+            any(not isinstance(item, str) or not item.strip() for item in evidence_ids)
+            or len(evidence_ids) != len(set(evidence_ids))
+        ):
+            return "completion evidence IDs must be unique non-empty strings"
+        checkpoint_evidence = [
+            item
+            for item in evidence
+            if item["kind"] == "artifact"
+            and item["artifact_ref"] == checkpoint_ref["artifact_uri"]
+            and item["content_sha256"] == checkpoint_ref["digest"]
+            and item["validity"] == "verified"
+        ]
+        if len(checkpoint_evidence) != 1:
+            return "completion requires one verified checkpoint evidence"
     if tool == ATTEMPT_TOOL:
         for field in ("attempt_id", "work_id", "claim_id"):
             value = arguments[field]
@@ -1317,6 +1412,7 @@ class StateMCPService:
             IDEA_REVIEW_TOOL,
             IDEA_CORRECTION_PROTECT_TOOL,
             IDEA_CORRECTION_RELEASE_TOOL,
+            LOCAL_WORK_COMPLETION_TOOL,
         }:
             with self._mutation_lock:
                 replay = self._request_replay(tool, arguments, context)
@@ -1326,6 +1422,8 @@ class StateMCPService:
                     return self._commit(arguments, context=context)
                 if tool == CLAIM_TOOL:
                     return self._claim(arguments, context=context)
+                if tool == LOCAL_WORK_COMPLETION_TOOL:
+                    return self._complete_local_work(arguments, context=context)
                 if tool == ATTEMPT_TOOL:
                     return self._attempt(arguments, context=context)
                 if tool == IDEA_CAPTURE_TOOL:
@@ -3573,4 +3671,236 @@ class StateMCPService:
             },
         )
         self._remember_request(COMMIT_TOOL, arguments, context, response)
+        return response
+
+    def _complete_local_work(
+        self,
+        arguments: dict[str, Any],
+        *,
+        context: RequestContext,
+    ) -> dict[str, Any]:
+        request_id = arguments["request_id"]
+        project_id = arguments["project_id"]
+        try:
+            snapshot = invoke_state_store(self._store, "read_project", project_id)
+            events = invoke_state_store(self._store, "read_events", project_id)
+            work = next(
+                (
+                    item
+                    for item in snapshot["works"]
+                    if item["work_id"] == arguments["work_id"]
+                ),
+                None,
+            )
+            claim = next(
+                (
+                    item
+                    for item in snapshot["claims"]
+                    if item["claim_id"] == arguments["claim_id"]
+                ),
+                None,
+            )
+            requested_evidence = copy.deepcopy(arguments["evidence"])
+            requested_ids = [item["evidence_id"] for item in requested_evidence]
+            evidence_by_id = {
+                item["evidence_id"]: item for item in snapshot["evidence"]
+            }
+            if (
+                work is not None
+                and claim is not None
+                and work["status"] == "completed"
+                and claim["status"] == "released"
+                and claim["work_id"] == work["work_id"]
+                and claim["actor_ref"] == context.subject_ref
+                and set(requested_ids).issubset(work["evidence_ids"])
+                and all(
+                    item["evidence_id"] in evidence_by_id
+                    and evidence_by_id[item["evidence_id"]]["content_sha256"]
+                    == item["content_sha256"]
+                    for item in requested_evidence
+                )
+            ):
+                event_head = (
+                    None
+                    if not events
+                    else {
+                        "sequence_no": events[-1]["sequence_no"],
+                        "event_sha256": events[-1]["event_sha256"],
+                    }
+                )
+                response = _response(
+                    tool=LOCAL_WORK_COMPLETION_TOOL,
+                    request_id=request_id,
+                    result={
+                        "snapshot": snapshot,
+                        "revision": snapshot["project"]["revision"],
+                        "event_head": event_head,
+                        "event": None,
+                        "already_completed": True,
+                        "evidence_ids": requested_ids,
+                        "registry_digest": self._registry_hash_value,
+                        "capabilities": capability_manifest_to_document(
+                            self._manifest
+                        ),
+                    },
+                )
+                self._remember_request(
+                    LOCAL_WORK_COMPLETION_TOOL, arguments, context, response
+                )
+                return response
+            if snapshot["project"]["revision"] != arguments["expected_revision"]:
+                return _response(
+                    tool=LOCAL_WORK_COMPLETION_TOOL,
+                    request_id=request_id,
+                    error_code="conflict",
+                    error_message="expected revision is stale",
+                )
+            if work is None or claim is None:
+                return _response(
+                    tool=LOCAL_WORK_COMPLETION_TOOL,
+                    request_id=request_id,
+                    error_code="not_found",
+                    error_message="active Work or claim was not found",
+                )
+            if snapshot["schema_version"] == "context.typed-state/v6alpha1":
+                return _response(
+                    tool=LOCAL_WORK_COMPLETION_TOOL,
+                    request_id=request_id,
+                    error_code="capability",
+                    error_message="shared Work requires the fenced completion adapter",
+                )
+            observed_at = self._clock()
+            observed = datetime.fromisoformat(observed_at.replace("Z", "+00:00"))
+            lease_expires = datetime.fromisoformat(
+                claim["lease_expires_at"].replace("Z", "+00:00")
+            )
+            if (
+                work["status"] != "active"
+                or claim["status"] != "active"
+                or claim["work_id"] != work["work_id"]
+                or claim["actor_ref"] != context.subject_ref
+                or claim["expected_project_revision"] != arguments["expected_revision"]
+                or observed >= lease_expires
+            ):
+                return _response(
+                    tool=LOCAL_WORK_COMPLETION_TOOL,
+                    request_id=request_id,
+                    error_code="conflict",
+                    error_message="completion requires the current active Work and claim",
+                )
+            if any(item["evidence_id"] in evidence_by_id for item in requested_evidence):
+                return _response(
+                    tool=LOCAL_WORK_COMPLETION_TOOL,
+                    request_id=request_id,
+                    error_code="conflict",
+                    error_message="completion evidence identity is already in use",
+                )
+
+            candidate = copy.deepcopy(snapshot)
+            changes: list[dict[str, Any]] = []
+            for item in requested_evidence:
+                change = {
+                    "collection": "evidence",
+                    "object_id": item["evidence_id"],
+                    "value": item,
+                }
+                _replace_or_append(candidate, change)
+                changes.append(change)
+            completed_work = next(
+                item
+                for item in candidate["works"]
+                if item["work_id"] == work["work_id"]
+            )
+            completed_work["status"] = "completed"
+            completed_work["revision"] += 1
+            completed_work["evidence_ids"] = list(
+                dict.fromkeys([*completed_work["evidence_ids"], *requested_ids])
+            )
+            completed_claim = next(
+                item
+                for item in candidate["claims"]
+                if item["claim_id"] == claim["claim_id"]
+            )
+            revision_after = arguments["expected_revision"] + 1
+            completed_claim.update(
+                {
+                    "status": "released",
+                    "expected_project_revision": revision_after,
+                    "released_at": observed_at,
+                }
+            )
+            _upsert_change(changes, collection="works", value=completed_work)
+            _upsert_change(changes, collection="claims", value=completed_claim)
+            _derive_project_projection(
+                candidate,
+                revision=revision_after,
+                updated_at=observed_at,
+            )
+            previous_hash = events[-1]["event_sha256"] if events else None
+            sequence_no = events[-1]["sequence_no"] + 1 if events else 1
+            event = build_state_event(
+                event_id=self._event_id_factory(request_id),
+                event_type="state-transition",
+                project_id=project_id,
+                sequence_no=sequence_no,
+                revision_before=arguments["expected_revision"],
+                occurred_at=observed_at,
+                actor_ref=context.subject_ref,
+                causation_ref=arguments["causation_ref"],
+                correlation_ref=arguments["correlation_ref"],
+                previous_event_sha256=previous_hash,
+                supersedes_event_id=None,
+                changes=changes,
+                project_after=candidate["project"],
+                schema_version=_event_schema_version(snapshot),
+            )
+            expected_snapshot = replay_state_events(
+                snapshot,
+                [event],
+                starting_sequence_no=sequence_no,
+                previous_event_sha256=previous_hash,
+            )
+            invoke_state_store(
+                self._store,
+                "commit_event",
+                project_id=project_id,
+                expected_revision=arguments["expected_revision"],
+                event=event,
+                expected_snapshot=expected_snapshot,
+            )
+        except (
+            StateStoreCapabilityError,
+            StateStoreNotFound,
+            StateStoreConflict,
+            StateStoreBusy,
+            StateStoreIntegrityError,
+            StateEventError,
+            TypedStateError,
+            ValueError,
+        ) as exc:
+            return _backend_error_response(
+                tool=LOCAL_WORK_COMPLETION_TOOL,
+                request_id=request_id,
+                error=exc,
+            )
+        response = _response(
+            tool=LOCAL_WORK_COMPLETION_TOOL,
+            request_id=request_id,
+            result={
+                "snapshot": expected_snapshot,
+                "revision": expected_snapshot["project"]["revision"],
+                "event_head": {
+                    "sequence_no": event["sequence_no"],
+                    "event_sha256": event["event_sha256"],
+                },
+                "event": event,
+                "already_completed": False,
+                "evidence_ids": requested_ids,
+                "registry_digest": self._registry_hash_value,
+                "capabilities": capability_manifest_to_document(self._manifest),
+            },
+        )
+        self._remember_request(
+            LOCAL_WORK_COMPLETION_TOOL, arguments, context, response
+        )
         return response

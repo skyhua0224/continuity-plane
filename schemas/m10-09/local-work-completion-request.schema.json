@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.continuity-plane.dev/context.local-work-completion-request/v1alpha1",
+  "title": "Continuity Plane Local Work Completion Request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "request_id",
+    "project_id",
+    "expected_revision",
+    "work_id",
+    "claim_id",
+    "checkpoint_ref",
+    "evidence",
+    "causation_ref",
+    "correlation_ref"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "context.local-work-completion-request/v1alpha1"
+    },
+    "request_id": {
+      "$ref": "#/$defs/identifier"
+    },
+    "project_id": {
+      "$ref": "#/$defs/identifier"
+    },
+    "expected_revision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "work_id": {
+      "$ref": "#/$defs/identifier"
+    },
+    "claim_id": {
+      "$ref": "#/$defs/identifier"
+    },
+    "checkpoint_ref": {
+      "$ref": "#/$defs/artifact_ref"
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 32,
+      "items": {
+        "$ref": "#/$defs/evidence"
+      },
+      "contains": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "artifact"
+          },
+          "validity": {
+            "const": "verified"
+          }
+        },
+        "required": [
+          "kind",
+          "validity"
+        ]
+      },
+      "minContains": 1,
+      "maxContains": 1
+    },
+    "causation_ref": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "correlation_ref": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1,
+      "maxLength": 500
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "artifact_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "digest_algorithm",
+        "digest",
+        "size_bytes",
+        "artifact_uri"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "context.artifact-ref/v1alpha1"
+        },
+        "digest_algorithm": {
+          "const": "sha-256"
+        },
+        "digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "artifact_uri": {
+          "type": "string",
+          "pattern": "^artifact://sha256/[0-9a-f]{64}$"
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id",
+        "kind",
+        "artifact_ref",
+        "content_sha256",
+        "validity",
+        "observed_at",
+        "verified_at"
+      ],
+      "properties": {
+        "evidence_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "kind": {
+          "enum": [
+            "source-code",
+            "standard",
+            "os-official",
+            "software-official",
+            "test",
+            "artifact",
+            "user-decision"
+          ]
+        },
+        "artifact_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "content_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "validity": {
+          "const": "verified"
+        },
+        "observed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "verified_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}
