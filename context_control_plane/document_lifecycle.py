@@ -58,6 +58,7 @@ _UNMANAGED_MARKDOWN_PARTS = {
     ".git",
     ".ruff_cache",
     ".venv",
+    ".continuity",
     "__pycache__",
     "build",
     "dist",

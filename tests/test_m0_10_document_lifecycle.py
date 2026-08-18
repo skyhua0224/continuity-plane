@@ -30,6 +30,8 @@ class M010DocumentLifecycleTests(unittest.TestCase):
             self._write(root, "build/lib/README.md", "# Build copy\n")
             self._write(root, "dist/docs/README.md", "# Dist copy\n")
             self._write(root, "package.egg-info/README.md", "# Metadata copy\n")
+            self._write(root, ".continuity/MASTER.md", "# Runtime bridge\n")
+            self._write(root, ".continuity/STATUS.md", "# Runtime route\n")
 
             self.assertEqual(_managed_markdown_paths(root), {"README.md"})
 
