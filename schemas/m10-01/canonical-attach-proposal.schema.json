@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://continuity.invalid/schemas/m10-01/canonical-attach-proposal.schema.json",
+  "title": "Canonical governance attachment proposal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "project_id", "created_at", "sources", "work", "state_write_authority", "proposal_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.canonical-attach-proposal/v1alpha1"},
+    "project_id": {"type": "string", "pattern": "^[a-z][a-z0-9._-]{0,127}$"},
+    "created_at": {"type": "string", "format": "date-time"},
+    "sources": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {"$ref": "#/$defs/source"}
+    },
+    "work": {"$ref": "#/$defs/work"},
+    "state_write_authority": {"const": false},
+    "proposal_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "path", "content_sha256"],
+      "properties": {
+        "kind": {"enum": ["master", "status"]},
+        "path": {"type": "string", "minLength": 1},
+        "content_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope_kind", "scope_ref"],
+      "properties": {
+        "scope_kind": {"enum": ["repo", "directory", "file", "symbol", "capability", "effect"]},
+        "scope_ref": {"type": "string", "minLength": 1}
+      }
+    },
+    "work": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["work_id", "title", "owner_ref", "scope_refs"],
+      "properties": {
+        "work_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
+        "title": {"type": "string", "minLength": 1, "maxLength": 500},
+        "owner_ref": {"type": "string", "minLength": 1, "maxLength": 200},
+        "scope_refs": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/scope"}}
+      }
+    }
+  }
+}
