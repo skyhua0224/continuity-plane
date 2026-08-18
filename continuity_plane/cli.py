@@ -29,6 +29,8 @@ from .canonical_attach import (
 from .state_mcp import (
     CLAIM_TOOL,
     COMMIT_TOOL,
+    LOCAL_WORK_COMPLETION_REQUEST_SCHEMA_VERSION,
+    LOCAL_WORK_COMPLETION_TOOL,
     READ_TOOL,
     RequestContext,
     StateMCPService,
@@ -46,6 +48,7 @@ _PROJECT_FIELDS = {
     "authority",
 }
 _ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,127}$")
+_STATE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 
 
 def _template(name: str) -> str:
@@ -156,6 +159,16 @@ class _LocalAttachAuthorizer:
             "state.commit",
             "state.claim",
         }
+
+
+class _LocalWorkflowAuthorizer:
+    """Allow an explicit local workflow transition through State MCP."""
+
+    def authorize(self, context: RequestContext, action: str, project_id: str) -> bool:
+        return (
+            context.authorization_ref == "local-workflow-approved"
+            and action in {"state.read", "state.work.complete"}
+        )
 
 
 def _state_service(
@@ -768,6 +781,165 @@ def _checkpoint_verify(args: argparse.Namespace) -> int:
     return 0
 
 
+def _completion_evidence(
+    root: Path,
+    checkpoint_ref: ArtifactRef,
+    evidence_files: list[str],
+    *,
+    observed_at: str,
+) -> list[dict[str, Any]]:
+    artifact_store = _checkpoint_store(root)
+    evidence = [
+        {
+            "evidence_id": f"evidence-checkpoint-{checkpoint_ref.digest[:16]}",
+            "kind": "artifact",
+            "artifact_ref": checkpoint_ref.uri,
+            "content_sha256": checkpoint_ref.digest,
+            "validity": "verified",
+            "observed_at": observed_at,
+            "verified_at": observed_at,
+        }
+    ]
+    seen = {evidence[0]["evidence_id"]}
+    for raw_path in evidence_files:
+        path = Path(raw_path).resolve()
+        if not path.is_file() or path.is_symlink():
+            raise ValueError(f"evidence file is unavailable or invalid: {path}")
+        size = path.stat().st_size
+        if size <= 0 or size > 16 * 1024 * 1024:
+            raise ValueError(f"evidence file is outside the 16 MiB bound: {path}")
+        ref = artifact_store.put_bytes(path.read_bytes())
+        evidence_id = f"evidence-test-{ref.digest[:16]}"
+        if evidence_id in seen:
+            continue
+        seen.add(evidence_id)
+        evidence.append(
+            {
+                "evidence_id": evidence_id,
+                "kind": "test",
+                "artifact_ref": ref.uri,
+                "content_sha256": ref.digest,
+                "validity": "verified",
+                "observed_at": observed_at,
+                "verified_at": observed_at,
+            }
+        )
+    if len(evidence) == 1:
+        raise ValueError("at least one non-checkpoint evidence file is required")
+    return evidence
+
+
+def _work_complete(args: argparse.Namespace) -> int:
+    root = Path(args.root).resolve()
+    project = _load_project(root)
+    for value in (args.work_id, args.claim_id, args.actor_ref):
+        if _STATE_ID_RE.fullmatch(value) is None:
+            raise ValueError("Work, claim, and actor identifiers must be bounded")
+    try:
+        checkpoint_ref = ArtifactRef.from_document(
+            json.loads(_checkpoint_ref_file(root).read_text(encoding="utf-8"))
+        )
+    except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
+        raise ValueError("checkpoint ref is unavailable or invalid") from exc
+    state_store = _open_state_store(root, project)
+    read_result = _read_state_result(state_store, project["project_id"])
+    snapshot = read_result["snapshot"]
+    work = next(
+        (item for item in snapshot["works"] if item["work_id"] == args.work_id),
+        None,
+    )
+    claim = next(
+        (item for item in snapshot["claims"] if item["claim_id"] == args.claim_id),
+        None,
+    )
+    already_completed = (
+        work is not None
+        and claim is not None
+        and work["status"] == "completed"
+        and claim["status"] == "released"
+        and claim["work_id"] == work["work_id"]
+        and claim["actor_ref"] == args.actor_ref
+    )
+    if not already_completed:
+        proposal = _load_current_attach_proposal(
+            root,
+            project["project_id"],
+            verify_sources=True,
+        )
+        try:
+            restore_checkpoint(
+                checkpoint_ref,
+                _checkpoint_store(root),
+                expected_project_id=project["project_id"],
+                expected_revision=read_result["revision"],
+                expected_event_head=read_result["event_head"],
+                expected_governance_ref=snapshot["project"]["governance_ref"],
+                expected_plan_sha256=_canonical_master_sha256(proposal),
+                expected_registry_digest=read_result["registry_digest"],
+            )
+        except CheckpointError as exc:
+            raise ValueError(str(exc)) from exc
+    now_text = datetime.now(UTC).isoformat()
+    evidence = _completion_evidence(
+        root,
+        checkpoint_ref,
+        args.evidence_file,
+        observed_at=now_text,
+    )
+    evidence_digest = hashlib.sha256(
+        json.dumps(
+            [item["content_sha256"] for item in evidence],
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+    request = {
+        "schema_version": LOCAL_WORK_COMPLETION_REQUEST_SCHEMA_VERSION,
+        "request_id": f"complete-{args.work_id}-{evidence_digest[:16]}",
+        "project_id": project["project_id"],
+        "expected_revision": read_result["revision"],
+        "work_id": args.work_id,
+        "claim_id": args.claim_id,
+        "checkpoint_ref": checkpoint_ref.to_document(),
+        "evidence": evidence,
+        "causation_ref": f"verification:{evidence_digest}",
+        "correlation_ref": f"checkpoint:{checkpoint_ref.digest}",
+    }
+    service = _state_service(
+        state_store,
+        authorizer=_LocalWorkflowAuthorizer(),
+        clock=lambda: now_text,
+        event_id_factory=lambda request_id: f"event-{request_id}",
+    )
+    response = service.call_tool(
+        LOCAL_WORK_COMPLETION_TOOL,
+        request,
+        context=RequestContext(args.actor_ref, "local-workflow-approved"),
+    )
+    if not response["ok"]:
+        raise ValueError(response["error"]["message"])
+    result = response["result"]
+    print(
+        json.dumps(
+            {
+                "status": (
+                    "already-completed"
+                    if result["already_completed"]
+                    else "completed"
+                ),
+                "project_id": project["project_id"],
+                "work_id": args.work_id,
+                "claim_id": args.claim_id,
+                "revision": result["revision"],
+                "event_head": result["event_head"],
+                "checkpoint_ref": checkpoint_ref.to_document(),
+                "evidence_ids": result["evidence_ids"],
+            },
+            sort_keys=True,
+        )
+    )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="continuity")
     parser.add_argument("--version", action="version", version=VERSION)
@@ -824,6 +996,17 @@ def build_parser() -> argparse.ArgumentParser:
     )
     checkpoint_verify.add_argument("--root", default=".")
     checkpoint_verify.set_defaults(handler=_checkpoint_verify)
+    work = commands.add_parser("work", help="transition claimed Work")
+    work_commands = work.add_subparsers(dest="work_command", required=True)
+    work_complete = work_commands.add_parser(
+        "complete", help="atomically complete Work and release its claim"
+    )
+    work_complete.add_argument("--root", default=".")
+    work_complete.add_argument("--work-id", required=True)
+    work_complete.add_argument("--claim-id", required=True)
+    work_complete.add_argument("--actor-ref", required=True)
+    work_complete.add_argument("--evidence-file", action="append", required=True)
+    work_complete.set_defaults(handler=_work_complete)
     return parser
 
 
