@@ -332,6 +332,28 @@ def _attach_approve(args: argparse.Namespace) -> int:
 
     store = _open_state_store(root, project)
     current = store.read_project(project["project_id"])
+    now = datetime.now(UTC)
+    now_text = now.isoformat()
+    source_digest = hashlib.sha256(
+        "".join(source["content_sha256"] for source in proposal["sources"]).encode()
+    ).hexdigest()
+    evidence_id = f"evidence-attach-{proposal['proposal_sha256'][:16]}"
+    evidence = {
+        "evidence_id": evidence_id,
+        "kind": "artifact",
+        "artifact_ref": f"artifact://sha256/{source_digest}",
+        "content_sha256": source_digest,
+        "validity": "verified",
+        "observed_at": now_text,
+        "verified_at": now_text,
+    }
+    context = RequestContext(args.actor_ref, "local-attach-approved")
+    service = _state_service(
+        store,
+        authorizer=_LocalAttachAuthorizer(),
+        clock=lambda: now_text,
+        event_id_factory=lambda request: f"event-{request}",
+    )
     if current["project"]["revision"] != 0:
         imported = next(
             (
@@ -350,13 +372,66 @@ def _attach_approve(args: argparse.Namespace) -> int:
             None,
         )
         if imported is not None and claim is not None and claim["status"] == "active":
+            if (
+                imported["title"] != proposal["work"]["title"]
+                or imported["owner_refs"] != [proposal["work"]["owner_ref"]]
+                or imported["scope_refs"] != proposal["work"]["scope_refs"]
+                or claim["actor_ref"] != args.actor_ref
+                or claim["work_id"] != imported["work_id"]
+            ):
+                raise ValueError("active attach identity differs from the new proposal")
+            evidence_by_id = {
+                item["evidence_id"]: item for item in current["evidence"]
+            }
+            source_already_bound = any(
+                evidence_by_id[item_id]["content_sha256"] == source_digest
+                for item_id in imported["evidence_ids"]
+            )
+            if source_already_bound:
+                print(
+                    json.dumps(
+                        {
+                            "status": "already-attached",
+                            "project_id": project["project_id"],
+                            "revision": current["project"]["revision"],
+                            "work_id": imported["work_id"],
+                            "claim_id": claim["claim_id"],
+                        },
+                        sort_keys=True,
+                    )
+                )
+                return 0
+            refreshed_work = copy.deepcopy(imported)
+            refreshed_work["evidence_ids"].append(evidence_id)
+            refreshed_work["revision"] += 1
+            refresh_request = {
+                "schema_version": "context.state-mcp-request/v1alpha1",
+                "request_id": f"attach-refresh-{proposal['proposal_sha256'][:16]}",
+                "project_id": project["project_id"],
+                "expected_revision": current["project"]["revision"],
+                "causation_ref": f"attach:{proposal['proposal_sha256']}",
+                "correlation_ref": f"project:{project['project_id']}",
+                "supersedes_event_id": None,
+                "changes": [
+                    {"collection": "evidence", "object_id": evidence_id, "value": evidence},
+                    {
+                        "collection": "works",
+                        "object_id": refreshed_work["work_id"],
+                        "value": refreshed_work,
+                    },
+                ],
+            }
+            refreshed = service.call_tool(COMMIT_TOOL, refresh_request, context=context)
+            if not refreshed["ok"]:
+                raise ValueError(refreshed["error"]["message"])
             print(
                 json.dumps(
                     {
-                        "status": "already-attached",
+                        "status": "refreshed",
                         "project_id": project["project_id"],
-                        "revision": current["project"]["revision"],
-                        "work_id": imported["work_id"],
+                        "proposal_sha256": proposal["proposal_sha256"],
+                        "revision": refreshed["result"]["revision"],
+                        "work_id": refreshed_work["work_id"],
                         "claim_id": claim["claim_id"],
                     },
                     sort_keys=True,
@@ -365,21 +440,6 @@ def _attach_approve(args: argparse.Namespace) -> int:
             return 0
         raise ValueError("project state has advanced; attach requires a new proposal")
 
-    now = datetime.now(UTC)
-    now_text = now.isoformat()
-    source_digest = hashlib.sha256(
-        "".join(source["content_sha256"] for source in proposal["sources"]).encode()
-    ).hexdigest()
-    evidence_id = f"evidence-attach-{proposal['proposal_sha256'][:16]}"
-    evidence = {
-        "evidence_id": evidence_id,
-        "kind": "artifact",
-        "artifact_ref": f"artifact://sha256/{source_digest}",
-        "content_sha256": source_digest,
-        "validity": "verified",
-        "observed_at": now_text,
-        "verified_at": now_text,
-    }
     initial_work = next(
         item for item in current["works"] if item["work_id"] == "work-initial"
     )
@@ -403,13 +463,6 @@ def _attach_approve(args: argparse.Namespace) -> int:
         "revision": 0,
     }
     request_id = f"attach-{proposal['proposal_sha256'][:16]}"
-    context = RequestContext(args.actor_ref, "local-attach-approved")
-    service = _state_service(
-        store,
-        authorizer=_LocalAttachAuthorizer(),
-        clock=lambda: now_text,
-        event_id_factory=lambda request: f"event-{request}",
-    )
     commit_request = {
         "schema_version": "context.state-mcp-request/v1alpha1",
         "request_id": request_id,
@@ -459,6 +512,100 @@ def _attach_approve(args: argparse.Namespace) -> int:
     return 0
 
 
+def _resume(args: argparse.Namespace) -> int:
+    root = Path(args.root).resolve()
+    project = _load_project(root)
+    proposal_path = root / ".continuity/attach-proposal.json"
+    try:
+        proposal = json.loads(proposal_path.read_text(encoding="utf-8"))
+        validate_attach_proposal(root, proposal, verify_sources=False)
+    except (OSError, json.JSONDecodeError, CanonicalAttachError) as exc:
+        raise ValueError("attach proposal is unavailable or invalid") from exc
+    try:
+        validate_attach_proposal(root, proposal, verify_sources=True)
+        source_fresh = True
+    except CanonicalAttachError:
+        source_fresh = False
+
+    store = _open_state_store(root, project)
+    snapshot = store.read_project(project["project_id"])
+    events = store.read_events(project["project_id"])
+    active_ids = snapshot["project"]["active_work_ids"]
+    if len(active_ids) != 1 or snapshot["project"]["primary_work_id"] != active_ids[0]:
+        raise ValueError("resume requires exactly one primary active Work")
+    work = next(item for item in snapshot["works"] if item["work_id"] == active_ids[0])
+    claims = [
+        item
+        for item in snapshot["claims"]
+        if item["work_id"] == work["work_id"] and item["status"] == "active"
+    ]
+    if len(claims) != 1:
+        raise ValueError("resume requires exactly one active claim")
+    claim = claims[0]
+    now = datetime.now(UTC)
+    lease_expires = datetime.fromisoformat(
+        claim["lease_expires_at"].replace("Z", "+00:00")
+    )
+    lease_valid = lease_expires > now
+    event_head = (
+        None
+        if not events
+        else {
+            "sequence_no": events[-1]["sequence_no"],
+            "event_sha256": events[-1]["event_sha256"],
+        }
+    )
+    packet = {
+        "schema_version": "context.resume-packet/v1alpha1",
+        "project_id": project["project_id"],
+        "revision": snapshot["project"]["revision"],
+        "event_head": event_head,
+        "active_work": {
+            key: copy.deepcopy(work[key])
+            for key in (
+                "work_id",
+                "title",
+                "status",
+                "revision",
+                "scope_refs",
+                "evidence_ids",
+            )
+        },
+        "claim": {
+            key: copy.deepcopy(claim[key])
+            for key in (
+                "claim_id",
+                "actor_ref",
+                "status",
+                "lease_expires_at",
+                "scope_owners",
+            )
+        },
+        "proposal_sha256": proposal["proposal_sha256"],
+        "source_fresh": source_fresh,
+        "lease_valid": lease_valid,
+        "read_only": not source_fresh or not lease_valid,
+        "next_action": "continue-active-work",
+        "packet_sha256": "",
+    }
+    unsigned = {key: value for key, value in packet.items() if key != "packet_sha256"}
+    packet["packet_sha256"] = hashlib.sha256(
+        json.dumps(
+            unsigned,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+    path = root / ".continuity/resume-packet.json"
+    path.write_text(
+        json.dumps(packet, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    print(json.dumps(packet, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="continuity")
     parser.add_argument("--version", action="version", version=VERSION)
@@ -496,6 +643,9 @@ def build_parser() -> argparse.ArgumentParser:
     approve.add_argument("--actor-ref", required=True)
     approve.add_argument("--claim-id", required=True)
     approve.set_defaults(handler=_attach_approve)
+    resume = commands.add_parser("resume", help="compose the current bounded resume packet")
+    resume.add_argument("--root", default=".")
+    resume.set_defaults(handler=_resume)
     return parser
 
 

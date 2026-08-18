@@ -2105,3 +2105,13 @@ schemas:
     status: current
     compatibility_mode: strict-versioned
     migrations: []
+
+  - schema_id: context.resume-packet
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.resume-packet/v1alpha1
+    supported_wire_versions: [context.resume-packet/v1alpha1]
+    artifact_path: schemas/m10-09/resume-packet.schema.json
+    content_sha256: 62e8dbaee29034604ae587d6644888f9a4a23539cf134795d56ed19e1fe8d276
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
