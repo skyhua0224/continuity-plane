@@ -77,6 +77,38 @@ continuity doctor --root /path/to/project
 continuity state show --root /path/to/project
 ```
 
+## 接入已有 MASTER 和 STATUS
+
+已有项目不要直接用模板覆盖原计划。先生成只读 proposal：
+
+```bash
+continuity attach plan \
+  --root /path/to/project \
+  --master /path/to/project/MASTER.md \
+  --status /path/to/project/STATUS.md \
+  --work-id m10-09 \
+  --work-title "Complete export import rollback" \
+  --owner-ref agent-main \
+  --scope capability:context-control-plane
+```
+
+这一步只读取并记录 MASTER/STATUS 的 hash，不写 SQLite。检查
+`.continuity/attach-proposal.json` 后，再显式批准：
+
+```bash
+continuity attach approve \
+  --root /path/to/project \
+  --actor-ref agent-main \
+  --claim-id claim-m10-09
+```
+
+批准会通过 State MCP 产生 revisioned commit 和 claim：初始模板 Work 被标记为
+rejected，现有 Work 进入 active，source evidence 绑定到 proposal hash。源 MASTER 或
+STATUS 在两步之间发生变化会拒绝批准。重复批准返回 `already-attached`，不会产生重复 Event。
+
+已有 canonical MASTER 的长期项目都应使用这个流程；原 MASTER 继续拥有治理权，
+`.continuity/MASTER.md` 只做本地桥接。
+
 ## Profile 选择
 
 ### `local-embedded`：默认

@@ -16,6 +16,179 @@ from context_control_plane.sqlite_state_store import SQLiteStateStore
 
 
 class ReleaseCliTests(unittest.TestCase):
+    def test_attach_plan_binds_existing_master_and_status_without_writing_state(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "MASTER.md").write_text("# Existing Master\n", encoding="utf-8")
+            (root / "STATUS.md").write_text("# Existing Status\n", encoding="utf-8")
+            with redirect_stdout(StringIO()):
+                main(["init", "--root", str(root), "--project-id", "sample-app"])
+            output = StringIO()
+
+            with redirect_stdout(output):
+                result = main(
+                    [
+                        "attach",
+                        "plan",
+                        "--root",
+                        str(root),
+                        "--master",
+                        "MASTER.md",
+                        "--status",
+                        "STATUS.md",
+                        "--work-id",
+                        "M10-09",
+                        "--work-title",
+                        "Continue the existing mainline",
+                        "--owner-ref",
+                        "agent-main",
+                        "--scope",
+                        "repo:repo://sample-app",
+                    ]
+                )
+
+            proposal_path = root / ".continuity/attach-proposal.json"
+            proposal = json.loads(proposal_path.read_text(encoding="utf-8"))
+            state = SQLiteStateStore(root / ".continuity/state.sqlite3").read_project(
+                "sample-app"
+            )
+            self.assertEqual(result, 0)
+            self.assertEqual(json.loads(output.getvalue())["status"], "planned")
+            self.assertEqual(proposal["work"]["work_id"], "M10-09")
+            self.assertEqual(proposal["sources"][0]["kind"], "master")
+            self.assertEqual(proposal["state_write_authority"], False)
+            self.assertEqual(state["project"]["revision"], 0)
+            self.assertEqual(state["project"]["active_work_ids"], [])
+
+    def test_attach_approve_commits_ready_work_then_claims_it(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "MASTER.md").write_text("# Existing Master\n", encoding="utf-8")
+            (root / "STATUS.md").write_text("# Existing Status\n", encoding="utf-8")
+            with redirect_stdout(StringIO()):
+                main(["init", "--root", str(root), "--project-id", "sample-app"])
+                main(
+                    [
+                        "attach",
+                        "plan",
+                        "--root",
+                        str(root),
+                        "--master",
+                        "MASTER.md",
+                        "--status",
+                        "STATUS.md",
+                        "--work-id",
+                        "M10-09",
+                        "--work-title",
+                        "Continue the existing mainline",
+                        "--owner-ref",
+                        "agent-main",
+                        "--scope",
+                        "repo:repo://sample-app",
+                    ]
+                )
+            output = StringIO()
+
+            with redirect_stdout(output):
+                result = main(
+                    [
+                        "attach",
+                        "approve",
+                        "--root",
+                        str(root),
+                        "--actor-ref",
+                        "agent-main",
+                        "--claim-id",
+                        "claim-current",
+                    ]
+                )
+
+            store = SQLiteStateStore(root / ".continuity/state.sqlite3")
+            state = store.read_project("sample-app")
+            events = store.read_events("sample-app")
+            work = next(item for item in state["works"] if item["work_id"] == "M10-09")
+            claim = next(item for item in state["claims"] if item["claim_id"] == "claim-current")
+            initial = next(item for item in state["works"] if item["work_id"] == "work-initial")
+            response = json.loads(output.getvalue())
+            self.assertEqual(result, 0)
+            self.assertEqual(response["status"], "attached")
+            self.assertEqual(response["revision"], 2)
+            self.assertEqual(state["project"]["active_work_ids"], ["M10-09"])
+            self.assertEqual(state["project"]["primary_work_id"], "M10-09")
+            self.assertEqual(work["status"], "active")
+            self.assertEqual(claim["actor_ref"], "agent-main")
+            self.assertEqual(initial["status"], "rejected")
+            self.assertEqual(len(events), 2)
+
+            replay_output = StringIO()
+            with redirect_stdout(replay_output):
+                replay_result = main(
+                    [
+                        "attach",
+                        "approve",
+                        "--root",
+                        str(root),
+                        "--actor-ref",
+                        "agent-main",
+                        "--claim-id",
+                        "claim-current",
+                    ]
+                )
+            self.assertEqual(replay_result, 0)
+            self.assertEqual(
+                json.loads(replay_output.getvalue())["status"], "already-attached"
+            )
+            self.assertEqual(len(store.read_events("sample-app")), 2)
+
+    def test_attach_approve_rejects_stale_source(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            master = root / "MASTER.md"
+            master.write_text("# Existing Master\n", encoding="utf-8")
+            (root / "STATUS.md").write_text("# Existing Status\n", encoding="utf-8")
+            with redirect_stdout(StringIO()):
+                main(["init", "--root", str(root), "--project-id", "sample-app"])
+                main(
+                    [
+                        "attach",
+                        "plan",
+                        "--root",
+                        str(root),
+                        "--master",
+                        "MASTER.md",
+                        "--status",
+                        "STATUS.md",
+                        "--work-id",
+                        "M10-09",
+                        "--work-title",
+                        "Continue the existing mainline",
+                        "--owner-ref",
+                        "agent-main",
+                        "--scope",
+                        "repo:repo://sample-app",
+                    ]
+                )
+            master.write_text("# Changed Master\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "source.*changed"):
+                main(
+                    [
+                        "attach",
+                        "approve",
+                        "--root",
+                        str(root),
+                        "--actor-ref",
+                        "agent-main",
+                        "--claim-id",
+                        "claim-current",
+                    ]
+                )
+
+            state = SQLiteStateStore(root / ".continuity/state.sqlite3").read_project(
+                "sample-app"
+            )
+            self.assertEqual(state["project"]["revision"], 0)
+
     def test_init_creates_neutral_local_embedded_project(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

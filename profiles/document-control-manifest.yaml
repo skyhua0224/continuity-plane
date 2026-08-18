@@ -1,5 +1,5 @@
 schema_version: context.document-control-manifest/v1alpha1
-generated_at: '2026-08-18T20:45:00+08:00'
+generated_at: '2026-08-18T21:50:00+08:00'
 governance_revision: 79
 documents:
 - document_id: agents
@@ -515,7 +515,7 @@ documents:
 - document_id: status
   path: STATUS.md
   category: routing
-  document_revision: 28
+  document_revision: 29
   authority:
     governance_authority: false
     active_state_authority: false
@@ -523,11 +523,11 @@ documents:
   change:
     change_type: status
     authority_ref: governance-event://master/revision/79
-    supersedes: context.document://status/revision/27
+    supersedes: context.document://status/revision/28
     supersedes_provenance:
-      git_commit: 1ad6f48514cb4b71659aebaa4da83ea448765121
-      manifest_sha256: 33f3de4aba1c220970166fd3c650d50884d651ef809e883659ecefbdfdb3463f
-      content_sha256: e68e132af424536a3c17a0e8d6a483a36dc93791c396787fffba756b3ccea586
+      git_commit: 44a88fb9ae45dae565e2756b36a2efaee914e7d3
+      manifest_sha256: f2279382d10b1cef90ebf44dc0ffd3b995570c0b884a4313565c4d412dbecd29
+      content_sha256: bcce1f576eb6e114023384cd56e51ead2f4e464b91ad7ac8ef7db395c8445c83
     affected_tasks:
     - M10-00
     - M10-01
@@ -713,9 +713,9 @@ documents:
     path: docs/migrations/m10-00-self-dogfood-acceptance-2026-08-18.md
     valid_until: null
     content_sha256: 09d4248f7adbebeb8ef40d71a5dfe73fa0e408cabfb60cae242af81e4268a35e
-  content_sha256: bcce1f576eb6e114023384cd56e51ead2f4e464b91ad7ac8ef7db395c8445c83
+  content_sha256: 5914c08bf44f9f3be7238df0b3a0edd9742a287c46653d35a6f2375418411688
   metrics:
-    utf8_bytes: 3923
+    utf8_bytes: 3910
     section_count: 3
     local_link_count: 1
     external_link_count: 0
@@ -769,7 +769,7 @@ documents:
 - document_id: usage-en
   path: USAGE.en.md
   category: policy
-  document_revision: 3
+  document_revision: 4
   authority:
     governance_authority: false
     active_state_authority: false
@@ -777,26 +777,26 @@ documents:
   change:
     change_type: decision
     authority_ref: governance-event://master/revision/79
-    supersedes: context.document://usage-en/revision/2
+    supersedes: context.document://usage-en/revision/3
     affected_tasks:
     - M0-10
     next_review: null
     supersedes_provenance:
-      git_commit: 18ff6bd8e4d35bb5fbf17fdd7d65517db8ba5477
-      manifest_sha256: 2a83733084b608832452bc5997aaf36f5755e58d53fa3299e033ab9a14409383
-      content_sha256: 2c5467613a3be32d91a059e0ed1c79484ecee5475e8b1c8f22a4f9f136f17be8
+      git_commit: 44a88fb9ae45dae565e2756b36a2efaee914e7d3
+      manifest_sha256: f2279382d10b1cef90ebf44dc0ffd3b995570c0b884a4313565c4d412dbecd29
+      content_sha256: df4f01b4f16164bffb6a7d7bc90a084b7b5188afe6e648b3d266ecb47d92d2e3
   evidence_refs: []
-  content_sha256: df4f01b4f16164bffb6a7d7bc90a084b7b5188afe6e648b3d266ecb47d92d2e3
+  content_sha256: 5380326555b89bf9bd2cf4f9b8f2d3001edd70e62ab5e20555fc1a1f0219910f
   metrics:
-    utf8_bytes: 12026
-    section_count: 16
+    utf8_bytes: 13216
+    section_count: 17
     local_link_count: 1
     external_link_count: 0
     reference_depth: 0
 - document_id: usage
   path: USAGE.md
   category: policy
-  document_revision: 3
+  document_revision: 4
   authority:
     governance_authority: false
     active_state_authority: false
@@ -804,20 +804,20 @@ documents:
   change:
     change_type: decision
     authority_ref: governance-event://master/revision/79
-    supersedes: context.document://usage/revision/2
+    supersedes: context.document://usage/revision/3
     affected_tasks:
     - M0-10
     - M10-08
     next_review: null
     supersedes_provenance:
-      git_commit: 18ff6bd8e4d35bb5fbf17fdd7d65517db8ba5477
-      manifest_sha256: 2a83733084b608832452bc5997aaf36f5755e58d53fa3299e033ab9a14409383
-      content_sha256: 20924cdb7bdf1ed8dddc53071f6c0299b01bfbda3792aca222a4cf837402b144
+      git_commit: 44a88fb9ae45dae565e2756b36a2efaee914e7d3
+      manifest_sha256: f2279382d10b1cef90ebf44dc0ffd3b995570c0b884a4313565c4d412dbecd29
+      content_sha256: c76b32ea0371988177c1143ad638437f3e95d9c0f7bb086228c9f6b45b1dabc8
   evidence_refs: []
-  content_sha256: c76b32ea0371988177c1143ad638437f3e95d9c0f7bb086228c9f6b45b1dabc8
+  content_sha256: 2047650281b2d987ef8c5f04baafead0b60a08789475d308bf0997d1590f5e97
   metrics:
-    utf8_bytes: 9254
-    section_count: 15
+    utf8_bytes: 10376
+    section_count: 16
     local_link_count: 1
     external_link_count: 1
     reference_depth: 0

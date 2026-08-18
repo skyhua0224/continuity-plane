@@ -10,8 +10,8 @@ canonical plan：`MASTER.md`
 |---|---|
 | 当前 Campaign | M10 跨项目发布 |
 | active work | M10-09：native release matrix（🟡） |
-| next action | 实现 canonical MASTER importer/projection 与 export/import/rollback CLI，使用本仓和 Platform 双 fixture 验收 |
-| hard blocker | 三端 install/verify/uninstall 已通过；M10-09 仍缺 importer 和跨 adapter 迁移/回滚 |
+| next action | 实现 checkpoint/resume 与 Codex lifecycle adapter，再完成 export/import/rollback |
+| hard blocker | canonical attach 已通过双 fixture；仍缺自动 Session hook、checkpoint canary 和跨 adapter 迁移/回滚 |
 | repository mode | internal development repository + fresh-history public mirror |
 | production state | Continuity Plane local-embedded alpha published；shared production pilot planned |
 
@@ -20,13 +20,13 @@ canonical plan：`MASTER.md`
 | 对象 | 状态 |
 |---|---|
 | Evidence index | [`docs/reports/verified-state.md`](docs/reports/verified-state.md) |
-| Documentation lifecycle | `140` documents；STATUS reduction `75.3022%`；recovery `5/5`；validator p95 `<100 ms`；exact receipt governed |
+| Documentation lifecycle | `140` documents；STATUS reduction `75.3840%`；recovery `5/5`；validator p95 `<100 ms`；exact receipt governed |
 | Git admission | M0-11 offline contract `26/26`；repository verifier 通过 |
 | M3/M4 | routing、Idea continuity、Skill resolver/quarantine verified；details in Evidence index |
 | M5/M6/M7 | M5-01..08、M6 retrieval/recall、M7-01..06 verified；量化 receipts 与 provenance 见 Evidence index |
 | M8 | durability、authorization、adaptation、forge、unattended dispatch 与 notifications verified；live Temporal conditional |
 | M9 | projection/governance/vault/impact M9-01..07 verified；graphical product M9-08..11 planned |
-| M10-00/01 pilots | self campaign `passed`；Platform 真实 shadow 已初始化，typed revision `0`，promoted objects `0`；importer gap open |
+| M10-00/01 pilots | self `M10-09` 与 Platform `N-67` 均已 attach：typed revision `2`、active Work/claim、Event `2`；provider hook gap open |
 | M10-08 release surface | current compiler tree `115` files；public `5/5`；packaged module graph `43` importable；fresh-history candidate `28` commits；worktree/history/wheel/sdist leak `0` |
 | M10-09 native matrix | receipt `6/6`；Linux `870.4542/96.9552/0.4078 ms`；SkyServer macOS `6385.1462/155.7239/24.8827 ms`；Skyindows Windows `10078.0/156.0/47.0 ms`；export/import/rollback `blocked` |
 | M10-10 publication | GitHub release `v0.1.0-alpha.1`；PyPI `continuity-plane==0.1.0a1`；`28` commits；contributor `skyhua0224`；About/topics/assets verified |

@@ -2095,3 +2095,13 @@ schemas:
     status: current
     compatibility_mode: strict-versioned
     migrations: []
+
+  - schema_id: context.canonical-attach-proposal
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.canonical-attach-proposal/v1alpha1
+    supported_wire_versions: [context.canonical-attach-proposal/v1alpha1]
+    artifact_path: schemas/m10-01/canonical-attach-proposal.schema.json
+    content_sha256: 792c1fd095557cb6a4a5b86e8c0eaf887d20157da44a850df65593543aea2f93
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []

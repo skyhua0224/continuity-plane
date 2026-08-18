@@ -87,6 +87,42 @@ continuity doctor --root /path/to/project
 continuity state show --root /path/to/project
 ```
 
+## Attach An Existing MASTER And STATUS
+
+Do not overwrite an existing project's plan with the generated template. Create a
+read-only proposal first:
+
+```bash
+continuity attach plan \
+  --root /path/to/project \
+  --master /path/to/project/MASTER.md \
+  --status /path/to/project/STATUS.md \
+  --work-id m10-09 \
+  --work-title "Complete export import rollback" \
+  --owner-ref agent-main \
+  --scope capability:context-control-plane
+```
+
+This only reads the sources and records their hashes. Inspect
+`.continuity/attach-proposal.json`, then approve explicitly:
+
+```bash
+continuity attach approve \
+  --root /path/to/project \
+  --actor-ref agent-main \
+  --claim-id claim-m10-09
+```
+
+Approval uses State MCP to create a revisioned commit and claim. The initial
+template Work is marked rejected, the existing Work becomes active, and source
+evidence is bound to the proposal digest. A source change between planning and
+approval is rejected. Repeating approval returns `already-attached` without a
+duplicate Event.
+
+Long-running projects with an existing canonical MASTER should use this flow.
+The original MASTER keeps governance authority; `.continuity/MASTER.md` remains
+a local bridge.
+
 `state show` reads the typed snapshot through the same authorization and
 validation boundary used by integrations. The initial snapshot has revision
 zero and one proposed Work item named `work-initial`.

@@ -105,6 +105,7 @@ _PUBLIC_MODULE_ROOTS = {
     "verification_profile",
 }
 _PUBLIC_SCHEMA_FILES = (
+    "m10-01/canonical-attach-proposal.schema.json",
     "m2-01/typed-state.schema.json",
     "m2-02/state-event.schema.json",
     "m2-05/state-mcp.schema.json",
