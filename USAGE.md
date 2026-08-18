@@ -4,8 +4,14 @@
 
 ## 安装
 
-要求 Python 3.11 或更高版本。当前 alpha 在 Linux x86_64 完成验证，
-Windows/macOS 原生矩阵仍在 M10-09。
+要求 Python 3.11 或更高版本。当前 alpha 已在 Linux x86_64、macOS arm64 和
+Windows AMD64 完成安装、verify 和卸载。
+
+### 从 PyPI 安装
+
+```bash
+python -m pip install continuity-plane==0.1.0a1
+```
 
 ### 从 GitHub Release 安装
 
@@ -23,7 +29,7 @@ python -m pip install /path/to/continuity_plane-0.1.0a1-py3-none-any.whl
 ```bash
 python3 -m venv ~/.local/share/continuity-plane/venv
 ~/.local/share/continuity-plane/venv/bin/python \
-  -m pip install /path/to/continuity_plane-0.1.0a1-py3-none-any.whl
+  -m pip install continuity-plane==0.1.0a1
 
 ~/.local/share/continuity-plane/venv/bin/continuity \
   init --root /path/to/project --project-id my-project
@@ -34,7 +40,7 @@ python3 -m venv ~/.local/share/continuity-plane/venv
 ```bash
 cd /path/to/project
 python3 -m venv .venv
-.venv/bin/python -m pip install /path/to/continuity_plane-0.1.0a1-py3-none-any.whl
+.venv/bin/python -m pip install continuity-plane==0.1.0a1
 .venv/bin/continuity init --root . --project-id my-project
 ```
 
@@ -204,13 +210,14 @@ template 和 content-addressed artifact。所有 claim 关闭后，才能归档�
 
 ## Release 与 PyPI
 
-当前可用发行源是 GitHub Release：
+当前版本同时发布到 PyPI 和 GitHub Release：
 
+<https://pypi.org/project/continuity-plane/0.1.0a1/>  
 <https://github.com/skyhua0224/continuity-plane/releases>
 
-`continuity-plane` 的 PyPI 名称已检查为未占用，但当前版本尚未上传 PyPI。本地没有
-可信发布凭据；后续应使用 PyPI Trusted Publishing 的 GitHub Actions workflow，而不是把
-token 写入本机或仓库。文档不会在真正发布前声称 `pip install continuity-plane` 可用。
+首次发布使用受控 PyPI token 完成。后续发布已准备 GitHub Actions OIDC workflow 和
+`pypi` environment；PyPI 项目侧仍需绑定 Trusted Publisher，token 不进入仓库或
+GitHub secret。
 
 ## 公开仓库
 

@@ -12,3 +12,5 @@
 - Added bounded Execution Packets, Skill selection, evidence lineage, and retrieval receipts.
 - Added collaboration claims, notifications, handoffs, and unattended local workflows.
 - Added measured reference benchmarks and a privacy-gated public release builder.
+- Published `continuity-plane==0.1.0a1` on PyPI.
+- Passed install, verify, and uninstall probes on Linux, macOS, and Windows; migration and rollback remain in M10-09.

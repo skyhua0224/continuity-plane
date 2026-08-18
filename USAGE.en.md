@@ -4,14 +4,14 @@
 
 ## Install
 
-Python 3.11 or newer is required. The current release candidate is verified on
-Linux x86_64. Windows and macOS use the same local SQLite profile but have not
-completed the native release matrix.
+Python 3.11 or newer is required. The current alpha has completed installation,
+verification, and uninstall probes on Linux x86_64, macOS arm64, and Windows
+AMD64.
 
-Install from a release checkout:
+Install from PyPI:
 
 ```bash
-python -m pip install .
+python -m pip install continuity-plane==0.1.0a1
 ```
 
 For a source checkout:
@@ -29,7 +29,7 @@ projects:
 ```bash
 python3 -m venv ~/.local/share/continuity-plane/venv
 ~/.local/share/continuity-plane/venv/bin/python \
-  -m pip install /path/to/continuity-plane-release
+  -m pip install continuity-plane==0.1.0a1
 ```
 
 Run the installed CLI with an explicit project root whenever the command is not
@@ -47,7 +47,7 @@ For a project that pins its own control-plane version:
 ```bash
 cd /path/to/project
 python3 -m venv .venv
-.venv/bin/python -m pip install /path/to/continuity-plane-release
+.venv/bin/python -m pip install continuity-plane==0.1.0a1
 .venv/bin/continuity init --root . --project-id my-project
 ```
 
@@ -292,15 +292,15 @@ storage.
 
 ## Release And PyPI
 
-The currently available distribution source is the GitHub Release:
+The current version is available from PyPI and GitHub Releases:
 
+<https://pypi.org/project/continuity-plane/0.1.0a1/>  
 <https://github.com/skyhua0224/continuity-plane/releases>
 
-The `continuity-plane` name is available on PyPI, but this version has not been
-uploaded yet. No trusted publishing credential is configured on the development
-machine. Future PyPI publication should use GitHub Actions Trusted Publishing,
-not a token stored in a repository or workstation. These docs will not claim
-that `pip install continuity-plane` works until an actual PyPI release exists.
+The first release used a controlled PyPI token. Future releases have a GitHub
+Actions OIDC workflow and `pypi` environment ready; the PyPI project still needs
+its Trusted Publisher binding. The token is not stored in the repository or a
+GitHub secret.
 
 ## Verify The Release
 

@@ -20,7 +20,7 @@ canonical plan：`MASTER.md`
 | 对象 | 状态 |
 |---|---|
 | Evidence index | [`docs/reports/verified-state.md`](docs/reports/verified-state.md) |
-| Documentation lifecycle | `140` documents；STATUS reduction `75.5855%`；recovery `5/5`；validator p95 `<100 ms`；exact receipt governed |
+| Documentation lifecycle | `140` documents；STATUS reduction `75.7995%`；recovery `5/5`；validator p95 `<100 ms`；exact receipt governed |
 | Git admission | M0-11 offline contract `26/26`；repository verifier 通过 |
 | M3/M4 | routing、Idea continuity、Skill resolver/quarantine verified；details in Evidence index |
 | M5/M6/M7 | M5-01..08、M6 retrieval/recall、M7-01..06 verified；量化 receipts 与 provenance 见 Evidence index |
@@ -29,7 +29,7 @@ canonical plan：`MASTER.md`
 | M10-00 pilot | State MCP closure `3/3`；2 workers + verifier；fault `4/4`；coverage `100%`；E0-E9 `10/10`；campaign verdict `passed` |
 | M10-08 release surface | current compiler tree `115` files；public `5/5`；packaged module graph `43` importable；fresh-history candidate `28` commits；worktree/history/wheel/sdist leak `0` |
 | M10-09 native matrix | receipt `6/6`；Linux `870.4542/96.9552/0.4078 ms`；SkyServer macOS `6385.1462/155.7239/24.8827 ms`；Skyindows Windows `10078.0/156.0/47.0 ms`；export/import/rollback `blocked` |
-| M10-10 publication | <https://github.com/skyhua0224/continuity-plane/releases/tag/v0.1.0-alpha.1>；GitHub head `ce9c814`；`28` commits；contributor `skyhua0224`；About/topics/assets verified |
+| M10-10 publication | GitHub release `v0.1.0-alpha.1`；PyPI `continuity-plane==0.1.0a1`；`28` commits；contributor `skyhua0224`；About/topics/assets verified |
 | Codex 1M A/B | real provider `3+3+3`；baseline `32,857`、packet `19,633`、large `397,631` input tokens；packet `-40.2471%`；quality `100%`；Skill warning `9/9` |
 | Harness ablation | real provider `4 arms x 3`；bare `19,608`、State `19,649`、full `19,748`、history `32,854`；quality `100%`；full-vs-bare `+0.7140%` |
 | Skill overlay | source bytes `501,543 -> 17,349` (`-96.5409%`)；provider input `19,593 -> 18,469` (`-5.7367%`)；warnings `3/3 -> 0/3` |

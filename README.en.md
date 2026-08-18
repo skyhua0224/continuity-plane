@@ -67,7 +67,7 @@ expected revision or CAS, and validators.
 Requires Python 3.11 or later. From the target project directory:
 
 ```bash
-python -m pip install .
+python -m pip install continuity-plane==0.1.0a1
 continuity init --root . --project-id my-project --display-name "My Project"
 continuity verify --root .
 continuity doctor --root .
@@ -117,9 +117,9 @@ are optional enhancements.
 
 ## Release And License
 
-The current alpha is distributed through [GitHub Releases](https://github.com/skyhua0224/continuity-plane/releases)
-with a wheel, source archive, and SHA256SUMS. PyPI Trusted Publishing is not
-configured yet, so do not use `pip install continuity-plane`; see the
+The current alpha is available from [PyPI](https://pypi.org/project/continuity-plane/0.1.0a1/)
+and [GitHub Releases](https://github.com/skyhua0224/continuity-plane/releases).
+The GitHub release also provides a wheel, source archive, and SHA256SUMS; see the
 [changelog](CHANGELOG.en.md).
 
 Continuity Plane uses [Apache-2.0](LICENSE). Badges, README attribution, UI
@@ -127,6 +127,7 @@ labels, and telemetry are optional; legal attribution follows LICENSE and NOTICE
 
 ## Current Status
 
-Linux x86_64 has clean-room installation and local alpha verification. Native
-Windows/macOS matrices, the complete Docmost connector, Obsidian Canvas/Bases,
-and `shared-strong` deployment remain planned.
+Linux x86_64, macOS arm64, and Windows AMD64 have completed installation,
+verification, and uninstall probes. Cross-platform export/import/rollback, the
+complete Docmost connector, Obsidian Canvas/Bases, and `shared-strong` deployment
+remain planned.

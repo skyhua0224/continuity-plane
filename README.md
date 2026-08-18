@@ -64,7 +64,7 @@ Memory、检索系统、代码图和 reviewer 只能提供候选信息；active 
 要求 Python 3.11 或更高版本。在目标项目目录执行：
 
 ```bash
-python -m pip install .
+python -m pip install continuity-plane==0.1.0a1
 continuity init --root . --project-id my-project --display-name "My Project"
 continuity verify --root .
 continuity doctor --root .
@@ -113,14 +113,15 @@ continuity state show --root .
 
 ## Release 与许可证
 
-当前 alpha 通过 [GitHub Releases](https://github.com/skyhua0224/continuity-plane/releases)
-提供 wheel、source archive 和 SHA256SUMS。PyPI Trusted Publishing 尚未配置，因此
-当前不要使用 `pip install continuity-plane`；详见 [发布说明](CHANGELOG.md)。
+当前 alpha 已发布到 [PyPI](https://pypi.org/project/continuity-plane/0.1.0a1/) 和
+[GitHub Releases](https://github.com/skyhua0224/continuity-plane/releases)。GitHub
+Release 同时提供 wheel、source archive 和 SHA256SUMS；详见 [发布说明](CHANGELOG.md)。
 
 Continuity Plane 使用 [Apache-2.0](LICENSE)。badge、README 署名、应用 UI 标签和
 telemetry 都是可选的，法律归属以 LICENSE 和 NOTICE 为准。
 
 ## 当前状态
 
-Linux x86_64 已完成 clean-room 安装和本地 alpha 验证。Windows/macOS 原生矩阵、
-完整 Docmost connector、Obsidian Canvas/Bases 和 shared-strong 部署仍在后续计划中。
+Linux x86_64、macOS arm64 和 Windows AMD64 已完成安装、verify 和卸载。跨平台
+export/import/rollback、完整 Docmost connector、Obsidian Canvas/Bases 和
+shared-strong 部署仍在后续计划中。
