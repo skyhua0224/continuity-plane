@@ -173,7 +173,8 @@ class _LocalWorkflowAuthorizer:
     def authorize(self, context: RequestContext, action: str, project_id: str) -> bool:
         return (
             context.authorization_ref == "local-workflow-approved"
-            and action in {"state.read", "state.work.complete"}
+            and action
+            in {"state.read", "state.commit", "state.claim", "state.work.complete"}
         )
 
 
@@ -946,6 +947,156 @@ def _work_complete(args: argparse.Namespace) -> int:
     return 0
 
 
+def _work_activate(args: argparse.Namespace) -> int:
+    root = Path(args.root).resolve()
+    project = _load_project(root)
+    for value in (args.work_id, args.owner_ref, args.claim_id):
+        if _STATE_ID_RE.fullmatch(value) is None:
+            raise ValueError("Work, owner, and claim identifiers must be bounded")
+    scope_refs = [_parse_scope(item) for item in args.scope]
+    proposal = _load_current_attach_proposal(
+        root,
+        project["project_id"],
+        verify_sources=True,
+    )
+    state_store = _open_state_store(root, project)
+    snapshot = state_store.read_project(project["project_id"])
+    work = next(
+        (item for item in snapshot["works"] if item["work_id"] == args.work_id),
+        None,
+    )
+    claim = next(
+        (item for item in snapshot["claims"] if item["claim_id"] == args.claim_id),
+        None,
+    )
+    identity_matches = work is not None and (
+        work["title"] == args.work_title
+        and work["owner_refs"] == [args.owner_ref]
+        and work["scope_refs"] == scope_refs
+    )
+    if (
+        identity_matches
+        and work["status"] == "active"
+        and claim is not None
+        and claim["status"] == "active"
+        and claim["work_id"] == work["work_id"]
+        and claim["actor_ref"] == args.owner_ref
+    ):
+        print(
+            json.dumps(
+                {
+                    "status": "already-active",
+                    "project_id": project["project_id"],
+                    "work_id": work["work_id"],
+                    "claim_id": claim["claim_id"],
+                    "revision": snapshot["project"]["revision"],
+                },
+                sort_keys=True,
+            )
+        )
+        return 0
+    if snapshot["project"]["active_work_ids"]:
+        raise ValueError("successor activation requires no current active Work")
+    if work is not None and (not identity_matches or work["status"] != "ready"):
+        raise ValueError("successor Work identity or status conflicts")
+    if claim is not None:
+        raise ValueError("successor claim identity is already in use")
+
+    now = datetime.now(UTC)
+    now_text = now.isoformat()
+    service = _state_service(
+        state_store,
+        authorizer=_LocalWorkflowAuthorizer(),
+        clock=lambda: now_text,
+        event_id_factory=lambda request_id: f"event-{request_id}",
+    )
+    context = RequestContext(args.owner_ref, "local-workflow-approved")
+    revision = snapshot["project"]["revision"]
+    if work is None:
+        source_evidence_id = f"evidence-attach-{proposal['proposal_sha256'][:16]}"
+        if not any(
+            item["evidence_id"] == source_evidence_id
+            and item["validity"] == "verified"
+            for item in snapshot["evidence"]
+        ):
+            raise ValueError("current canonical source evidence is not in State")
+        work = {
+            "work_id": args.work_id,
+            "kind": "work",
+            "title": args.work_title,
+            "status": "ready",
+            "parent_work_id": None,
+            "dependency_ids": [],
+            "owner_refs": [args.owner_ref],
+            "scope_refs": copy.deepcopy(scope_refs),
+            "overlap_candidate_ids": [],
+            "dedupe_status": "clear",
+            "supersedes_work_id": None,
+            "evidence_ids": [source_evidence_id],
+            "blocker_ids": [],
+            "revision": 0,
+        }
+        prepared = service.call_tool(
+            COMMIT_TOOL,
+            {
+                "schema_version": "context.state-mcp-request/v1alpha1",
+                "request_id": (
+                    f"activate-prepare-{args.work_id}-"
+                    f"{proposal['proposal_sha256'][:16]}"
+                ),
+                "project_id": project["project_id"],
+                "expected_revision": revision,
+                "causation_ref": f"source:{proposal['proposal_sha256']}",
+                "correlation_ref": f"work:{args.work_id}",
+                "supersedes_event_id": None,
+                "changes": [
+                    {
+                        "collection": "works",
+                        "object_id": work["work_id"],
+                        "value": work,
+                    }
+                ],
+            },
+            context=context,
+        )
+        if not prepared["ok"]:
+            raise ValueError(prepared["error"]["message"])
+        revision = prepared["result"]["revision"]
+
+    claimed = service.call_tool(
+        CLAIM_TOOL,
+        {
+            "schema_version": "context.state-mcp-request/v1alpha1",
+            "request_id": f"activate-claim-{args.work_id}-{args.claim_id}",
+            "project_id": project["project_id"],
+            "expected_revision": revision,
+            "work_id": args.work_id,
+            "claim_id": args.claim_id,
+            "scope_owners": copy.deepcopy(scope_refs),
+            "lease_expires_at": (now + timedelta(hours=8)).isoformat(),
+            "causation_ref": f"source:{proposal['proposal_sha256']}",
+            "correlation_ref": f"work:{args.work_id}",
+        },
+        context=context,
+    )
+    if not claimed["ok"]:
+        raise ValueError(claimed["error"]["message"])
+    print(
+        json.dumps(
+            {
+                "status": "activated",
+                "project_id": project["project_id"],
+                "work_id": args.work_id,
+                "claim_id": args.claim_id,
+                "revision": claimed["result"]["revision"],
+                "event_head": claimed["result"]["event_head"],
+            },
+            sort_keys=True,
+        )
+    )
+    return 0
+
+
 def _export_state(args: argparse.Namespace) -> int:
     try:
         receipt = export_local_state(
@@ -1047,6 +1198,16 @@ def build_parser() -> argparse.ArgumentParser:
     work_complete.add_argument("--actor-ref", required=True)
     work_complete.add_argument("--evidence-file", action="append", required=True)
     work_complete.set_defaults(handler=_work_complete)
+    work_activate = work_commands.add_parser(
+        "activate", help="add and claim the next source-bound Work"
+    )
+    work_activate.add_argument("--root", default=".")
+    work_activate.add_argument("--work-id", required=True)
+    work_activate.add_argument("--work-title", required=True)
+    work_activate.add_argument("--owner-ref", required=True)
+    work_activate.add_argument("--claim-id", required=True)
+    work_activate.add_argument("--scope", action="append", required=True)
+    work_activate.set_defaults(handler=_work_activate)
     export = commands.add_parser("export", help="export local-embedded State")
     export.add_argument("--root", default=".")
     export.add_argument("--output", required=True)
