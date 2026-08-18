@@ -1,9 +1,9 @@
 # Verified State Evidence Index
 
-版本：36
+版本：37
 日期：2026-08-18  
 状态：generated evidence projection  
-source governance revision：81
+source governance revision：82
 state write authority：false
 
 ## 已验收任务

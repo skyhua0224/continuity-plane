@@ -1,6 +1,6 @@
 # Continuity Plane MASTER
 
-版本：revision 81  
+版本：revision 82  
 日期：2026-08-18  
 状态：public alpha publication  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
@@ -367,7 +367,7 @@ Docmost 候选实现固定到 [`Yundi339/docmost` 参考评估](docs/research/do
 | M10-04 | ⏳ | backup/export/import/disaster recovery | 状态可迁移和恢复 | 长期可持续 | M8-03 | 新实例完整 replay 且 hash 一致 |
 | M10-05 | ⏳ | 版本化发布、升级和回滚 | 新技术通过兼容层与迁移协议接入 | 可持续演进 | M0-07/M10-04 | N-1 compatibility + rollback 通过 |
 | M10-06 | ⏳ | 跨项目 adaptation/profile migration | 项目升级和 provider 变化保留已验证的个性化配置 | 长期可移植演进 | M2-07/M8-07/M10-02 | 两个项目 profile replay；迁移/回滚 hash 一致；opt-out/reset 可验证 |
-| M10-07 | ⏳ | 默认生成 MASTER、STATUS、目标态架构全表和最小 Project Profile | 人类与不同 Agent 使用一致的项目入口 | 让个人、协作和公开项目开箱获得完整治理投影 | M0-10/M2-07/M10-02 | 两类项目初始化/升级/卸载 replay；三文档字段恢复 100%；公开 Git admission 泄漏 0 |
+| M10-07 | ⏳ | 默认生成 MASTER、STATUS、目标态架构全表、最小 Project Profile 和 provider plugin 入口 | 人类与不同 Agent 使用一致的项目入口；用户可见 plugin/Skill/tool 文案提供中文与英文 | 让个人、协作和公开项目开箱获得完整治理投影 | M0-10/M2-07/M4-05/M10-02 | 两类项目初始化/升级/卸载 replay；三文档字段恢复 100%；Codex/Claude 等 provider adapter 的协议 ID 保持 ASCII，zh-CN/en 显示、默认提示、Skill 与 fallback tests 通过；公开 Git admission 泄漏 0 |
 | M10-08 | ✅ | 编译 release-neutral 产品表面与公开历史 | 通用产品 MASTER、最小 Profile 和中性脱敏 example 进入公开发行 | 隔离试点名称、私有项目分类和开发期叙事 | M10-00 | latest release compiler tree `115` files；public contracts `5/5`；packaged module graph `43` imports；CLI init/verify/doctor/state read；gitleaks worktree/history/wheel/sdist `0`；专名/路径/thread marker `0`；internal safety gates 通过；历史验收快照见 `docs/migrations/m10-08-public-release-acceptance-2026-08-18.md`，公开历史由 M10-10 取代 |
 | M10-09 | ✅ | runtime profile 探测、跨平台安装、迁移与卸载 | 默认本地模式无需管理员、容器或数据库运维；增强能力按需启用 | 降低 Windows、低性能设备和开源团队采用成本 | M2-09/M8-08/M10-04/M10-05 | local lifecycle adapter focused `65/65`；Platform completion revision/event `2/2 -> 3/3`、duplicate Event `0`；strict export/import/rollback bundle gates `5/5`；Linux/macOS/Windows native steps `18/18`，external service `0`、admin/container `false`、rollback hash consistency `100%`；验收见 `docs/migrations/m10-09-local-lifecycle-adapter-acceptance-2026-08-18.md` 与 `docs/migrations/m10-09-native-install-matrix-completion-2026-08-18.md` |
 | M10-10 | ✅ | Continuity Plane public identity、license、branding 与 GitHub/PyPI publication | 公开发行使用稳定产品名、Apache-2.0、NOTICE、第三方声明和可选 badge | 让下游准确识别、合规使用和引用产品 | M10-08 | `27` 个真实 first-parent public projections + release commit；GitHub `main`/`v0.1.0-alpha.1`、contributor `skyhua0224`、About/topics、wheel/sdist/SHA256SUMS、PyPI `continuity-plane==0.1.0a1`、Apache license/NOTICE、privacy/secret/artifact/install/release API gates 全部通过；内部治理文件不进入公开镜像 |
