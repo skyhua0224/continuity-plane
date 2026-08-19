@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://continuity-plane.invalid/schemas/m10-11/recovery-envelope.schema.json",
+  "title": "Checkpoint-bound bounded recovery envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "project_id", "revision", "event_head", "checkpoint_ref", "checkpoint_verified", "active_work", "claim", "current_decisions", "current_constraints", "open_blockers", "return_point_work_id", "effect_high_watermark", "proposal_sha256", "source_fresh", "lease_valid", "read_only", "next_action", "first_permitted_action", "interaction_cursor", "skill_lock", "recovery_read_budget_bytes", "state_write_authority", "completion_authority", "packet_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.recovery-envelope/v1alpha1"},
+    "project_id": {"$ref": "#/$defs/id"}, "revision": {"type": "integer", "minimum": 1}, "event_head": {"$ref": "#/$defs/eventHead"},
+    "checkpoint_ref": {"$ref": "#/$defs/artifactRef"}, "checkpoint_verified": {"const": true},
+    "active_work": {"$ref": "#/$defs/activeWork"}, "claim": {"$ref": "#/$defs/claim"},
+    "current_decisions": {"type": "array", "maxItems": 32, "uniqueItems": true, "items": {"$ref": "#/$defs/decision"}},
+    "current_constraints": {"type": "array", "maxItems": 32, "uniqueItems": true, "items": {"$ref": "#/$defs/constraint"}},
+    "open_blockers": {"type": "array", "maxItems": 32, "uniqueItems": true, "items": {"$ref": "#/$defs/blocker"}},
+    "return_point_work_id": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/id"}]}, "effect_high_watermark": {"type": "integer", "minimum": 0},
+    "proposal_sha256": {"$ref": "#/$defs/sha256"}, "source_fresh": {"type": "boolean"}, "lease_valid": {"type": "boolean"}, "read_only": {"type": "boolean"},
+    "next_action": {"$ref": "#/$defs/text"}, "first_permitted_action": {"$ref": "#/$defs/action"},
+    "interaction_cursor": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/cursor"}]}, "skill_lock": {"$ref": "#/$defs/skillLock"},
+    "recovery_read_budget_bytes": {"const": 12288}, "state_write_authority": {"const": false}, "completion_authority": {"const": false}, "packet_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,511}$"}, "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "text": {"type": "string", "minLength": 1, "maxLength": 1024, "pattern": "^[^\\r\\n\\x00]+$"}, "timestamp": {"type": "string", "format": "date-time"},
+    "idList": {"type": "array", "uniqueItems": true, "maxItems": 256, "items": {"$ref": "#/$defs/id"}},
+    "eventHead": {"type": "object", "additionalProperties": false, "required": ["sequence_no", "event_sha256"], "properties": {"sequence_no": {"type": "integer", "minimum": 1}, "event_sha256": {"$ref": "#/$defs/sha256"}}},
+    "artifactRef": {"type": "object", "additionalProperties": false, "required": ["schema_version", "artifact_uri", "digest_algorithm", "digest", "size_bytes"], "properties": {"schema_version": {"const": "context.artifact-ref/v1alpha1"}, "artifact_uri": {"type": "string", "pattern": "^artifact://sha256/[0-9a-f]{64}$"}, "digest_algorithm": {"const": "sha-256"}, "digest": {"$ref": "#/$defs/sha256"}, "size_bytes": {"type": "integer", "minimum": 1}}},
+    "scope": {"type": "object", "additionalProperties": false, "required": ["scope_kind", "scope_ref"], "properties": {"scope_kind": {"type": "string", "minLength": 1, "maxLength": 64}, "scope_ref": {"type": "string", "minLength": 1, "maxLength": 512}}},
+    "scopeList": {"type": "array", "minItems": 1, "maxItems": 128, "items": {"$ref": "#/$defs/scope"}},
+    "activeWork": {"type": "object", "additionalProperties": false, "required": ["work_id", "title", "status", "revision", "scope_refs", "evidence_ids"], "properties": {"work_id": {"$ref": "#/$defs/id"}, "title": {"type": "string", "minLength": 1, "maxLength": 512}, "status": {"const": "active"}, "revision": {"type": "integer", "minimum": 1}, "scope_refs": {"$ref": "#/$defs/scopeList"}, "evidence_ids": {"$ref": "#/$defs/idList"}}},
+    "claim": {"type": "object", "additionalProperties": false, "required": ["claim_id", "actor_ref", "status", "lease_expires_at", "scope_owners"], "properties": {"claim_id": {"$ref": "#/$defs/id"}, "actor_ref": {"$ref": "#/$defs/id"}, "status": {"const": "active"}, "lease_expires_at": {"$ref": "#/$defs/timestamp"}, "scope_owners": {"$ref": "#/$defs/scopeList"}}},
+    "decision": {"type": "object", "additionalProperties": false, "required": ["decision_id", "statement", "evidence_ids"], "properties": {"decision_id": {"$ref": "#/$defs/id"}, "statement": {"$ref": "#/$defs/text"}, "evidence_ids": {"$ref": "#/$defs/idList"}}},
+    "constraint": {"type": "object", "additionalProperties": false, "required": ["constraint_id", "statement", "scope_work_ids", "evidence_ids"], "properties": {"constraint_id": {"$ref": "#/$defs/id"}, "statement": {"$ref": "#/$defs/text"}, "scope_work_ids": {"$ref": "#/$defs/idList"}, "evidence_ids": {"$ref": "#/$defs/idList"}}},
+    "blocker": {"type": "object", "additionalProperties": false, "required": ["blocker_id", "reason", "blocked_work_ids", "evidence_ids"], "properties": {"blocker_id": {"$ref": "#/$defs/id"}, "reason": {"$ref": "#/$defs/text"}, "blocked_work_ids": {"$ref": "#/$defs/idList"}, "evidence_ids": {"$ref": "#/$defs/idList"}}},
+    "action": {"type": "object", "additionalProperties": false, "required": ["kind", "target", "request_sha256"], "properties": {"kind": {"const": "continuation"}, "target": {"$ref": "#/$defs/text"}, "request_sha256": {"$ref": "#/$defs/sha256"}}},
+    "cursor": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "current_input_ref", "current_input_sha256", "current_turn_sha256", "confirmed_input_refs", "visible_output_high_watermark_sha256", "visible_output_phase", "response_mode", "no_restate", "raw_transcript_admission", "state_write_authority", "completion_authority", "cursor_sha256"],
+      "properties": {"schema_version": {"const": "context.interaction-cursor/v1alpha1"}, "current_input_ref": {"$ref": "#/$defs/id"}, "current_input_sha256": {"$ref": "#/$defs/sha256"}, "current_turn_sha256": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/sha256"}]}, "confirmed_input_refs": {"$ref": "#/$defs/idList"}, "visible_output_high_watermark_sha256": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/sha256"}]}, "visible_output_phase": {"enum": [null, "commentary", "final_answer", "other"]}, "response_mode": {"enum": ["answer-current-input", "continue-without-restatement", "continue-silently"]}, "no_restate": {"type": "boolean"}, "raw_transcript_admission": {"const": false}, "state_write_authority": {"const": false}, "completion_authority": {"const": false}, "cursor_sha256": {"$ref": "#/$defs/sha256"}}
+    },
+    "skillLock": {
+      "oneOf": [
+        {"type": "object", "additionalProperties": false, "required": ["status", "selected_rule_ids", "compiled_packet_sha256", "unavailable_reason"], "properties": {"status": {"const": "measured"}, "selected_rule_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}}, "compiled_packet_sha256": {"$ref": "#/$defs/sha256"}, "unavailable_reason": {"type": "null"}}},
+        {"type": "object", "additionalProperties": false, "required": ["status", "selected_rule_ids", "compiled_packet_sha256", "unavailable_reason"], "properties": {"status": {"const": "unavailable"}, "selected_rule_ids": {"type": "array", "maxItems": 0}, "compiled_packet_sha256": {"type": "null"}, "unavailable_reason": {"$ref": "#/$defs/text"}}}
+      ]
+    }
+  }
+}

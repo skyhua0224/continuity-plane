@@ -2145,3 +2145,73 @@ schemas:
     status: current
     compatibility_mode: strict-versioned
     migrations: []
+
+  - schema_id: context.live-continuity-study
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.live-continuity-study/v1alpha1
+    supported_wire_versions: [context.live-continuity-study/v1alpha1]
+    artifact_path: schemas/m10-11/live-continuity-study.schema.json
+    content_sha256: 4b9d5d9b8ea52359ca1b36a9a33d1da8e911d9943e3b519413321f3721c2f63e
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.live-continuity-segment
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.live-continuity-segment/v1alpha1
+    supported_wire_versions: [context.live-continuity-segment/v1alpha1]
+    artifact_path: schemas/m10-11/live-continuity-segment.schema.json
+    content_sha256: 117d430e2c59ae9d57d86cacbc1b6c765e2ae4ad8067d9100737d7852eaa3e4e
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.live-continuity-report
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.live-continuity-report/v1alpha1
+    supported_wire_versions: [context.live-continuity-report/v1alpha1]
+    artifact_path: schemas/m10-11/live-continuity-report.schema.json
+    content_sha256: 42bbf0bf0842635caacd32b9f7b80107da4224f10b71b1cd42355926f7c4ce00
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.provider-continuity-capability
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.provider-continuity-capability/v1alpha1
+    supported_wire_versions: [context.provider-continuity-capability/v1alpha1]
+    artifact_path: schemas/m10-11/provider-continuity-capability.schema.json
+    content_sha256: 4bd4ba7d78030fa4d5b1c02c06270c93dae6174cb074f6615a4ad732ad8ec18b
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.provider-continuity-event
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.provider-continuity-event/v1alpha1
+    supported_wire_versions: [context.provider-continuity-event/v1alpha1]
+    artifact_path: schemas/m10-11/provider-continuity-event.schema.json
+    content_sha256: 50a9838baacb1874edd43f9f403eb667092b1abaff73d6d5692d399daca55d6c
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.interaction-cursor
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.interaction-cursor/v1alpha1
+    supported_wire_versions: [context.interaction-cursor/v1alpha1]
+    artifact_path: schemas/m10-11/interaction-cursor.schema.json
+    content_sha256: 59bcf3ff75384617316530e780c8394911144c40693c650204ddbda657d459ee
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.recovery-envelope
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.recovery-envelope/v1alpha1
+    supported_wire_versions: [context.recovery-envelope/v1alpha1]
+    artifact_path: schemas/m10-11/recovery-envelope.schema.json
+    content_sha256: accaa14a40c1e79fc135bcace3919c1b10fffa4e0fff2300c0f6299419160bff
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []

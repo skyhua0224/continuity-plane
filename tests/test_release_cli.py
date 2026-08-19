@@ -161,6 +161,8 @@ class ReleaseCliTests(unittest.TestCase):
             )
             self.assertEqual(len(store.read_events("sample-app")), 2)
 
+            with redirect_stdout(StringIO()):
+                main(["checkpoint", "create", "--root", str(root)])
             resume_output = StringIO()
             with redirect_stdout(resume_output):
                 resume_result = main(["resume", "--root", str(root)])
@@ -169,7 +171,9 @@ class ReleaseCliTests(unittest.TestCase):
             )
             self.assertEqual(resume_result, 0)
             self.assertEqual(json.loads(resume_output.getvalue()), packet)
-            self.assertEqual(packet["schema_version"], "context.resume-packet/v1alpha1")
+            self.assertEqual(
+                packet["schema_version"], "context.recovery-envelope/v1alpha1"
+            )
             self.assertEqual(packet["revision"], 2)
             self.assertEqual(packet["active_work"]["work_id"], "M10-09")
             self.assertEqual(packet["claim"]["claim_id"], "claim-current")
@@ -179,7 +183,7 @@ class ReleaseCliTests(unittest.TestCase):
             schema = json.loads(
                 (
                     Path(__file__).parents[1]
-                    / "schemas/m10-09/resume-packet.schema.json"
+                    / "schemas/m10-11/recovery-envelope.schema.json"
                 ).read_text(encoding="utf-8")
             )
             validator = Draft202012Validator(schema)
@@ -237,6 +241,8 @@ class ReleaseCliTests(unittest.TestCase):
             self.assertEqual(len(refreshed_work["evidence_ids"]), 2)
             self.assertEqual(len(store.read_events("sample-app")), 3)
 
+            with redirect_stdout(StringIO()):
+                main(["checkpoint", "create", "--root", str(root)])
             refreshed_resume = StringIO()
             with redirect_stdout(refreshed_resume):
                 main(["resume", "--root", str(root)])

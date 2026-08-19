@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://continuity-plane.invalid/schemas/m10-11/live-continuity-study.schema.json",
+  "title": "Pre-registered live continuity study plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "study_id", "created_at", "schedule_kind", "minimum_samples_per_arm", "baseline_feature_manifest_sha256", "candidate_feature_manifest_sha256", "planned_segments", "thresholds", "state_write_authority", "completion_authority", "study_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.live-continuity-study/v1alpha1"},
+    "study_id": {"$ref": "#/$defs/id"},
+    "created_at": {"$ref": "#/$defs/timestamp"},
+    "schedule_kind": {"const": "abba-balanced"},
+    "minimum_samples_per_arm": {"type": "integer", "minimum": 3},
+    "baseline_feature_manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "candidate_feature_manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "planned_segments": {"type": "array", "minItems": 6, "maxItems": 256, "items": {"$ref": "#/$defs/plannedSegment"}},
+    "thresholds": {"$ref": "#/$defs/thresholds"},
+    "state_write_authority": {"const": false},
+    "completion_authority": {"const": false},
+    "study_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,511}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "format": "date-time"},
+    "match": {
+      "type": "object", "additionalProperties": false,
+      "required": ["provider_contract_id", "model_id", "model_revision", "reasoning_effort", "context_window_tokens", "auto_compact_token_limit", "cache_policy", "tool_policy_sha256", "sandbox_policy_sha256", "adapter_sha256", "task_class", "project_profile_sha256", "project_class", "repository_topology", "collaboration_mode", "repository_revision", "state_schema_version", "starting_state_sha256", "verification_profile_sha256"],
+      "properties": {
+        "provider_contract_id": {"$ref": "#/$defs/id"}, "model_id": {"$ref": "#/$defs/id"}, "model_revision": {"$ref": "#/$defs/id"}, "reasoning_effort": {"$ref": "#/$defs/id"},
+        "context_window_tokens": {"type": "integer", "minimum": 1}, "auto_compact_token_limit": {"type": "integer", "minimum": 1},
+        "cache_policy": {"$ref": "#/$defs/id"}, "tool_policy_sha256": {"$ref": "#/$defs/sha256"}, "sandbox_policy_sha256": {"$ref": "#/$defs/sha256"}, "adapter_sha256": {"$ref": "#/$defs/sha256"},
+        "task_class": {"$ref": "#/$defs/id"}, "project_profile_sha256": {"$ref": "#/$defs/sha256"}, "project_class": {"$ref": "#/$defs/id"},
+        "repository_topology": {"$ref": "#/$defs/id"}, "collaboration_mode": {"$ref": "#/$defs/id"}, "repository_revision": {"$ref": "#/$defs/id"}, "state_schema_version": {"$ref": "#/$defs/id"}, "starting_state_sha256": {"$ref": "#/$defs/sha256"}, "verification_profile_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "plannedSegment": {
+      "type": "object", "additionalProperties": false,
+      "required": ["segment_id", "pair_id", "order_index", "arm", "match", "project_revision", "state_schema_version", "work_plan_refs"],
+      "properties": {
+        "segment_id": {"$ref": "#/$defs/id"}, "pair_id": {"$ref": "#/$defs/id"}, "order_index": {"type": "integer", "minimum": 0},
+        "arm": {"enum": ["baseline", "candidate"]}, "match": {"$ref": "#/$defs/match"}, "project_revision": {"$ref": "#/$defs/id"},
+        "state_schema_version": {"$ref": "#/$defs/id"}, "work_plan_refs": {"type": "array", "minItems": 1, "maxItems": 64, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}}
+      }
+    },
+    "thresholds": {
+      "type": "object", "additionalProperties": false,
+      "required": ["input_tokens_per_work_reduction_percent", "output_tokens_per_work_reduction_percent", "total_tokens_per_work_reduction_percent", "accepted_work_per_compaction_improvement_percent", "useful_context_ratio_improvement_percent", "maximum_recovery_read_bytes", "direct_answer_rate"],
+      "properties": {
+        "input_tokens_per_work_reduction_percent": {"const": 30.0}, "output_tokens_per_work_reduction_percent": {"const": 10.0},
+        "total_tokens_per_work_reduction_percent": {"const": 30.0}, "accepted_work_per_compaction_improvement_percent": {"const": 30.0},
+        "useful_context_ratio_improvement_percent": {"const": 30.0}, "maximum_recovery_read_bytes": {"const": 12288}, "direct_answer_rate": {"const": 1.0}
+      }
+    }
+  }
+}

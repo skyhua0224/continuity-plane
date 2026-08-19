@@ -3,7 +3,7 @@
 版本：38
 日期：2026-08-18  
 状态：generated evidence projection  
-source governance revision：83
+source governance revision：84
 state write authority：false
 
 ## 已验收任务

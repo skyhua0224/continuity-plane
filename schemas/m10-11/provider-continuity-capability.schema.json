@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://continuity-plane.invalid/schemas/m10-11/provider-continuity-capability.schema.json",
+  "title": "Open provider continuity capability manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "provider_contract_id", "adapter_id", "adapter_sha256", "usage_counter_mode", "context_window_source", "lifecycle_signals", "raw_transcript_admission", "state_write_authority", "completion_authority", "manifest_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.provider-continuity-capability/v1alpha1"},
+    "provider_contract_id": {"$ref": "#/$defs/id"}, "adapter_id": {"$ref": "#/$defs/id"}, "adapter_sha256": {"$ref": "#/$defs/sha256"},
+    "usage_counter_mode": {"enum": ["delta", "cumulative"]}, "context_window_source": {"enum": ["provider-trace", "provider-config", "unavailable"]},
+    "lifecycle_signals": {"type": "array", "uniqueItems": true, "maxItems": 8, "items": {"enum": ["usage", "ingress", "response", "error", "precompact", "postcompact", "read", "production-action"]}},
+    "raw_transcript_admission": {"const": false}, "state_write_authority": {"const": false}, "completion_authority": {"const": false}, "manifest_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,511}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

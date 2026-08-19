@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://continuity-plane.invalid/schemas/m10-11/provider-continuity-event.schema.json",
+  "title": "Normalized append-only provider continuity event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "event_id", "sequence_no", "previous_event_sha256", "event_type", "occurred_at", "payload", "event_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.provider-continuity-event/v1alpha1"},
+    "event_id": {"$ref": "#/$defs/id"}, "sequence_no": {"type": "integer", "minimum": 1}, "previous_event_sha256": {"$ref": "#/$defs/sha256"},
+    "event_type": {"enum": ["usage", "ingress", "response", "error", "precompact", "postcompact", "read", "production-action"]},
+    "occurred_at": {"type": "string", "format": "date-time"}, "payload": {"type": "object"}, "event_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "allOf": [
+    {"if": {"properties": {"event_type": {"const": "usage"}}}, "then": {"properties": {"payload": {"$ref": "#/$defs/usage"}}}},
+    {"if": {"properties": {"event_type": {"const": "ingress"}}}, "then": {"properties": {"payload": {"$ref": "#/$defs/ingress"}}}},
+    {"if": {"properties": {"event_type": {"const": "response"}}}, "then": {"properties": {"payload": {"$ref": "#/$defs/response"}}}},
+    {"if": {"properties": {"event_type": {"const": "error"}}}, "then": {"properties": {"payload": {"$ref": "#/$defs/error"}}}},
+    {"if": {"properties": {"event_type": {"const": "precompact"}}}, "then": {"properties": {"payload": {"$ref": "#/$defs/precompact"}}}},
+    {"if": {"properties": {"event_type": {"const": "postcompact"}}}, "then": {"properties": {"payload": {"$ref": "#/$defs/postcompact"}}}},
+    {"if": {"properties": {"event_type": {"const": "read"}}}, "then": {"properties": {"payload": {"$ref": "#/$defs/read"}}}},
+    {"if": {"properties": {"event_type": {"const": "production-action"}}}, "then": {"properties": {"payload": {"$ref": "#/$defs/production"}}}}
+  ],
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,511}$"}, "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "idList": {"type": "array", "uniqueItems": true, "maxItems": 1024, "items": {"$ref": "#/$defs/id"}},
+    "action": {"type": "object", "additionalProperties": false, "required": ["kind", "target", "request_sha256"], "properties": {"kind": {"$ref": "#/$defs/id"}, "target": {"$ref": "#/$defs/id"}, "request_sha256": {"$ref": "#/$defs/sha256"}}},
+    "usage": {"type": "object", "additionalProperties": false, "required": ["input_tokens", "cached_input_tokens", "cache_write_input_tokens", "output_tokens", "reasoning_output_tokens"], "properties": {"input_tokens": {"type": "integer", "minimum": 0}, "cached_input_tokens": {"type": "integer", "minimum": 0}, "cache_write_input_tokens": {"type": "integer", "minimum": 0}, "output_tokens": {"type": "integer", "minimum": 0}, "reasoning_output_tokens": {"type": "integer", "minimum": 0}}},
+    "ingress": {"type": "object", "additionalProperties": false, "required": ["input_id", "input_kind", "input_sha256", "table_requested"], "properties": {"input_id": {"$ref": "#/$defs/id"}, "input_kind": {"$ref": "#/$defs/id"}, "input_sha256": {"$ref": "#/$defs/sha256"}, "table_requested": {"type": "boolean"}}},
+    "response": {"type": "object", "additionalProperties": false, "required": ["response_id", "input_id", "boundary_id", "response_sha256", "direct_answer", "table_present", "recovery_narration", "assessment_kind", "assessment_ref"], "properties": {"response_id": {"$ref": "#/$defs/id"}, "input_id": {"$ref": "#/$defs/id"}, "boundary_id": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/id"}]}, "response_sha256": {"$ref": "#/$defs/sha256"}, "direct_answer": {"type": "boolean"}, "table_present": {"type": "boolean"}, "recovery_narration": {"type": "boolean"}, "assessment_kind": {"enum": ["deterministic-contract", "human", "independent-model"]}, "assessment_ref": {"$ref": "#/$defs/id"}}},
+    "error": {"type": "object", "additionalProperties": false, "required": ["error_code", "error_sha256"], "properties": {"error_code": {"$ref": "#/$defs/id"}, "error_sha256": {"$ref": "#/$defs/sha256"}}},
+    "precompact": {"type": "object", "additionalProperties": false, "required": ["boundary_id", "project_revision", "active_work_ref", "claim_ref", "expected_first_action", "acknowledged_input_ids", "packet_ref", "packet_sha256", "packet_bytes"], "properties": {"boundary_id": {"$ref": "#/$defs/id"}, "project_revision": {"type": "integer", "minimum": 1}, "active_work_ref": {"$ref": "#/$defs/id"}, "claim_ref": {"$ref": "#/$defs/id"}, "expected_first_action": {"$ref": "#/$defs/action"}, "acknowledged_input_ids": {"$ref": "#/$defs/idList"}, "packet_ref": {"$ref": "#/$defs/id"}, "packet_sha256": {"$ref": "#/$defs/sha256"}, "packet_bytes": {"type": "integer", "minimum": 1, "maximum": 12288}}},
+    "postcompact": {"type": "object", "additionalProperties": false, "required": ["boundary_id", "project_revision", "active_work_ref", "claim_ref", "canary_passed", "canary_ref", "canary_sha256"], "properties": {"boundary_id": {"$ref": "#/$defs/id"}, "project_revision": {"type": "integer", "minimum": 1}, "active_work_ref": {"$ref": "#/$defs/id"}, "claim_ref": {"$ref": "#/$defs/id"}, "canary_passed": {"type": "boolean"}, "canary_ref": {"$ref": "#/$defs/id"}, "canary_sha256": {"$ref": "#/$defs/sha256"}}},
+    "read": {"type": "object", "additionalProperties": false, "required": ["boundary_id", "source_kind", "source_ref", "content_sha256", "bytes_read"], "properties": {"boundary_id": {"$ref": "#/$defs/id"}, "source_kind": {"enum": ["bootstrap", "execution-packet", "skill", "document", "code", "evidence", "memory", "other"]}, "source_ref": {"$ref": "#/$defs/id"}, "content_sha256": {"$ref": "#/$defs/sha256"}, "bytes_read": {"type": "integer", "minimum": 1}}},
+    "production": {"type": "object", "additionalProperties": false, "required": ["boundary_id", "action"], "properties": {"boundary_id": {"$ref": "#/$defs/id"}, "action": {"$ref": "#/$defs/action"}}}
+  }
+}
