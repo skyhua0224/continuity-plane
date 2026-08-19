@@ -10,8 +10,8 @@ canonical plan：`MASTER.md`
 |---|---|
 | 当前 Campaign | M10 跨项目发布 |
 | active work | M10-01：AlkaidLab 三仓 shadow pilot（🟡） |
-| next action | M10-11：在新 Codex App Session 收集 native hook candidate；建立第二 provider 与 matched `3+3` study |
-| hard blocker | 当前 App Session 未热加载新 plugin；Codex `exec` 不装载 personal plugin candidate；Platform flat v1 Work 缺 canonical DAG |
+| next action | M10-11：在新 Codex App Session 收集 native hook candidate；恢复 Claude live provider 后执行 matched `3+3` study |
+| hard blocker | 当前 App Session 未热加载新 plugin；Codex `exec` 不装载 personal plugin；Claude live provider 403；Platform flat v1 Work 缺 canonical DAG |
 | repository mode | internal development repository + fresh-history public mirror |
 | production state | alpha published；shared pilot planned |
 
@@ -25,9 +25,10 @@ canonical plan：`MASTER.md`
 | Local lifecycle adapter | Recovery Envelope + Pre/PostCompact canary + cursor + 8-rule Skill lock；MCP root/actor/claim binding verified |
 | Platform 20h probe | restore `5/5`；recovery narration `5/5`；post-compact input `54.8-56.8K`；matched gate open |
 | Effective context | configured 1M catalog 的 provider-reported window `950,000`；历史 700K compact `783,628 -> 24,776`，next input `59,172`；新裸 Codex baseline `59,177`；matched candidate unavailable |
+| Claude baseline | `96` deduped messages；auto compact `1,001,838 -> 13,041`；duration `171,480 ms`；live candidate 403/unavailable |
 | M10-11 foundation | `7` strict schemas；local Recovery Envelope `3,037 B`；checkpoint/cursor/Skill lock pass；raw text `0`；cross-project/cross-provider improvement claim `false` |
 | Release baseline | GitHub/PyPI alpha published；Linux/macOS/Windows native matrix `18/18`；public privacy scan `0` findings |
-| Repository verification | `1,895` discovered；`1,864` pass；`31` conditional skip；`0` fail；`443.167 s` |
+| Repository verification | `1,900` discovered；`1,869` pass；`31` conditional skip；`0` fail；`433.160 s` |
 | Governance authority | `MASTER.md` revision 84 |
 
 ## 恢复入口

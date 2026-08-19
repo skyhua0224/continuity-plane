@@ -103,6 +103,33 @@ features enabled, so that surface did not load the personal plugin and cannot
 serve as a candidate arm. This absence is recorded as an adapter capability
 gap rather than a zero-value improvement.
 
+## Claude Baseline
+
+Claude Code `2.1.222` exposes `--autocompact`, `stream-json`, hook events and
+explicit plugin directories. A live print-mode preflight reached the provider
+but returned API status `403` with zero usage. The live candidate is therefore
+`unavailable`; zero tokens are not admitted as a measured result.
+
+The streaming Claude archive adapter was also run against a historical real
+Claude Code session. It deduplicates repeated content-block rows by
+`message.id`, retains only usage/event hashes, and maps cache creation/read
+without retaining message or compaction-summary text:
+
+| Metric | Result |
+|---|---:|
+| unique assistant messages | `96` |
+| explicit compactions | `1` auto `system/compact_boundary` |
+| pre/post compaction | `1,001,838 -> 13,041` tokens |
+| compaction duration | `171,480 ms` |
+| normalized total input | `13,094,365` tokens |
+| cache read/write | `12,854,111 / 226,325` tokens |
+| output | `104,387` tokens |
+| reasoning output | `unavailable` |
+
+This is a second-provider baseline, not a matched candidate. The provider usage
+contract permits an unavailable reasoning-token field rather than fabricating
+zero.
+
 ## Security And Portability
 
 The provider core accepts an open provider contract ID; a new provider can
@@ -122,7 +149,7 @@ tools it exposes.
 - Codex `exec` currently lacks the personal-plugin candidate surface in the
   measured host configuration;
 - matched baseline/candidate runs require at least three segments per exact
-  match key and a second real provider;
+  match key and a second live provider candidate;
 - longitudinal `accepted Work / compaction` and token/Work remain unavailable;
 - the current local legacy State does not yet persist an active compiled Skill
   lock; the Codex plugin supplies a content-bound plugin rule lock;
@@ -135,3 +162,7 @@ Repository verification after the implementation discovered `1,895` tests:
 `1,864` passed, `31` conditional skips, and `0` failures in `443.167 s`. The
 unified repository verifier, Ruff, plugin validator, schema governance, and
 document lifecycle gates also passed.
+
+After adding the streaming Claude adapter and nullable reasoning-token
+capability, the final discovery run contained `1,900` tests: `1,869` passed,
+`31` conditional skips, and `0` failures in `433.160 s`.

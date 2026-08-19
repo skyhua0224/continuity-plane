@@ -318,6 +318,8 @@ def _validate_usage(value: Any) -> None:
     if status != "measured":
         raise LiveContinuityProbeError("provider usage status is invalid")
     for field in token_fields:
+        if field == "reasoning_output_tokens" and usage[field] is None:
+            continue
         _uint(usage[field], f"provider_usage.{field}", positive=field == "input_tokens")
     _identifier(usage["evidence_ref"], "provider_usage.evidence_ref")
 

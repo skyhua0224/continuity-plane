@@ -2161,7 +2161,7 @@ schemas:
     current_wire_version: context.live-continuity-segment/v1alpha1
     supported_wire_versions: [context.live-continuity-segment/v1alpha1]
     artifact_path: schemas/m10-11/live-continuity-segment.schema.json
-    content_sha256: 117d430e2c59ae9d57d86cacbc1b6c765e2ae4ad8067d9100737d7852eaa3e4e
+    content_sha256: b5f4e9f4aa9c6545b531b29358c73d2967436dacf8a3558b0d9484e97299c625
     status: current
     compatibility_mode: strict-versioned
     migrations: []

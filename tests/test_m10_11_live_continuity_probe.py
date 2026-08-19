@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import json
 import unittest
 
 from context_control_plane.live_continuity_probe import (
@@ -392,6 +393,20 @@ class M1011LiveContinuityProbeTests(unittest.TestCase):
         segment["segment_sha256"] = "0" * 64
         with self.assertRaises(LiveContinuityProbeError):
             validate_live_continuity_segment(segment)
+
+    def test_measured_provider_may_report_reasoning_tokens_unavailable(self) -> None:
+        segment = self._qualified_segments()[0]
+        segment["provider_usage"]["reasoning_output_tokens"] = None
+        segment["segment_sha256"] = "0" * 64
+        segment["segment_sha256"] = hashlib.sha256(
+            json.dumps(
+                {key: value for key, value in segment.items() if key != "segment_sha256"},
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode()
+        ).hexdigest()
+        validate_live_continuity_segment(segment)
 
         segment = self._qualified_segments()[0]
         segment["responses"][0]["assessment_kind"] = "provider-under-test"
