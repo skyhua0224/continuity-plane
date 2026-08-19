@@ -26,6 +26,12 @@ from .local_state_bundle import (
     import_local_state,
     rollback_local_state,
 )
+from .recovery_envelope import (
+    RecoveryEnvelopeError,
+    compose_recovery_envelope,
+    load_interaction_cursor,
+    load_recovery_skill_lock,
+)
 from .sqlite_state_store import SQLiteStateStore
 from .canonical_attach import (
     CanonicalAttachError,
@@ -635,8 +641,8 @@ def _resume(args: argparse.Namespace) -> int:
         source_fresh = False
 
     store = _open_state_store(root, project)
-    snapshot = store.read_project(project["project_id"])
-    events = store.read_events(project["project_id"])
+    read_result = _read_state_result(store, project["project_id"])
+    snapshot = read_result["snapshot"]
     active_ids = snapshot["project"]["active_work_ids"]
     if len(active_ids) != 1 or snapshot["project"]["primary_work_id"] != active_ids[0]:
         raise ValueError("resume requires exactly one primary active Work")
@@ -654,20 +660,44 @@ def _resume(args: argparse.Namespace) -> int:
         claim["lease_expires_at"].replace("Z", "+00:00")
     )
     lease_valid = lease_expires > now
-    event_head = (
-        None
-        if not events
-        else {
-            "sequence_no": events[-1]["sequence_no"],
-            "event_sha256": events[-1]["event_sha256"],
-        }
-    )
-    packet = {
-        "schema_version": "context.resume-packet/v1alpha1",
-        "project_id": project["project_id"],
-        "revision": snapshot["project"]["revision"],
-        "event_head": event_head,
-        "active_work": {
+    event_head = read_result["event_head"]
+    if event_head is None:
+        raise ValueError("resume requires an append-only Event head")
+    try:
+        checkpoint_ref = ArtifactRef.from_document(
+            json.loads(_checkpoint_ref_file(root).read_text(encoding="utf-8"))
+        )
+    except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
+        raise ValueError("resume requires a valid checkpoint ref") from exc
+    try:
+        restore_checkpoint(
+            checkpoint_ref,
+            _checkpoint_store(root),
+            expected_project_id=project["project_id"],
+            expected_revision=read_result["revision"],
+            expected_event_head=read_result["event_head"],
+            expected_governance_ref=snapshot["project"]["governance_ref"],
+            expected_plan_sha256=_canonical_master_sha256(proposal),
+            expected_registry_digest=read_result["registry_digest"],
+        )
+        interaction_cursor = load_interaction_cursor(args.interaction_cursor)
+        skill_lock = load_recovery_skill_lock(args.skill_lock)
+    except (CheckpointError, RecoveryEnvelopeError) as exc:
+        raise ValueError(str(exc)) from exc
+    current_decision_ids = set(snapshot["project"]["current_decision_ids"])
+    active_constraint_ids = set(snapshot["project"]["active_constraint_ids"])
+    open_blocker_ids = set(snapshot["project"]["open_blocker_ids"])
+    next_action = "continue-active-work"
+    if interaction_cursor is not None and interaction_cursor["response_mode"] == "answer-current-input":
+        next_action = "answer-current-input"
+    if not source_fresh or not lease_valid:
+        next_action = "remain-read-only"
+    packet = compose_recovery_envelope(
+        project_id=project["project_id"],
+        revision=snapshot["project"]["revision"],
+        event_head=event_head,
+        checkpoint_ref=checkpoint_ref.to_document(),
+        active_work={
             key: copy.deepcopy(work[key])
             for key in (
                 "work_id",
@@ -678,7 +708,7 @@ def _resume(args: argparse.Namespace) -> int:
                 "evidence_ids",
             )
         },
-        "claim": {
+        claim={
             key: copy.deepcopy(claim[key])
             for key in (
                 "claim_id",
@@ -688,22 +718,44 @@ def _resume(args: argparse.Namespace) -> int:
                 "scope_owners",
             )
         },
-        "proposal_sha256": proposal["proposal_sha256"],
-        "source_fresh": source_fresh,
-        "lease_valid": lease_valid,
-        "read_only": not source_fresh or not lease_valid,
-        "next_action": "continue-active-work",
-        "packet_sha256": "",
-    }
-    unsigned = {key: value for key, value in packet.items() if key != "packet_sha256"}
-    packet["packet_sha256"] = hashlib.sha256(
-        json.dumps(
-            unsigned,
-            ensure_ascii=False,
-            sort_keys=True,
-            separators=(",", ":"),
-        ).encode("utf-8")
-    ).hexdigest()
+        current_decisions=[
+            {
+                "decision_id": item["decision_id"],
+                "statement": item["statement"],
+                "evidence_ids": copy.deepcopy(item["evidence_ids"]),
+            }
+            for item in snapshot["decisions"]
+            if item["decision_id"] in current_decision_ids and item["status"] == "accepted"
+        ],
+        current_constraints=[
+            {
+                "constraint_id": item["constraint_id"],
+                "statement": item["statement"],
+                "scope_work_ids": copy.deepcopy(item["scope_work_ids"]),
+                "evidence_ids": copy.deepcopy(item["evidence_ids"]),
+            }
+            for item in snapshot["constraints"]
+            if item["constraint_id"] in active_constraint_ids and item["status"] == "active"
+        ],
+        open_blockers=[
+            {
+                "blocker_id": item["blocker_id"],
+                "reason": item["reason"],
+                "blocked_work_ids": copy.deepcopy(item["blocked_work_ids"]),
+                "evidence_ids": copy.deepcopy(item["evidence_ids"]),
+            }
+            for item in snapshot["blockers"]
+            if item["blocker_id"] in open_blocker_ids and item["status"] == "open"
+        ],
+        return_point_work_id=work.get("return_point_work_id"),
+        effect_high_watermark=snapshot["project"]["effect_high_watermark"],
+        proposal_sha256=proposal["proposal_sha256"],
+        source_fresh=source_fresh,
+        lease_valid=lease_valid,
+        next_action=next_action,
+        interaction_cursor=interaction_cursor,
+        skill_lock=skill_lock,
+    )
     path = root / ".continuity/resume-packet.json"
     path.write_text(
         json.dumps(packet, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
@@ -1240,6 +1292,8 @@ def build_parser() -> argparse.ArgumentParser:
     approve.set_defaults(handler=_attach_approve)
     resume = commands.add_parser("resume", help="compose the current bounded resume packet")
     resume.add_argument("--root", default=".")
+    resume.add_argument("--interaction-cursor", default=None)
+    resume.add_argument("--skill-lock", default=None)
     resume.set_defaults(handler=_resume)
     checkpoint = commands.add_parser(
         "checkpoint", help="create or verify an immutable local checkpoint"
