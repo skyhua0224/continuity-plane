@@ -37,6 +37,8 @@ from .state_mcp import (
     COMMIT_TOOL,
     LOCAL_WORK_COMPLETION_REQUEST_SCHEMA_VERSION,
     LOCAL_WORK_COMPLETION_TOOL,
+    LOCAL_CLAIM_RECOVERY_REQUEST_SCHEMA_VERSION,
+    LOCAL_CLAIM_RECOVERY_TOOL,
     READ_TOOL,
     RequestContext,
     StateMCPService,
@@ -174,7 +176,13 @@ class _LocalWorkflowAuthorizer:
         return (
             context.authorization_ref == "local-workflow-approved"
             and action
-            in {"state.read", "state.commit", "state.claim", "state.work.complete"}
+            in {
+                "state.read",
+                "state.commit",
+                "state.claim",
+                "state.work.complete",
+                "state.claim.recovery",
+            }
         )
 
 
@@ -1097,6 +1105,68 @@ def _work_activate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _work_recover(args: argparse.Namespace) -> int:
+    root = Path(args.root).resolve()
+    project = _load_project(root)
+    for value in (args.claim_id, args.actor_ref):
+        if _STATE_ID_RE.fullmatch(value) is None:
+            raise ValueError("claim and actor identifiers must be bounded")
+    if args.action == "reclaim" and _STATE_ID_RE.fullmatch(args.new_claim_id) is None:
+        raise ValueError("new claim identifier must be bounded")
+    state_store = _open_state_store(root, project)
+    read_result = _read_state_result(state_store, project["project_id"])
+    snapshot = read_result["snapshot"]
+    claim = next(
+        (item for item in snapshot["claims"] if item["claim_id"] == args.claim_id),
+        None,
+    )
+    if claim is None:
+        raise ValueError("claim was not found")
+    now_text = datetime.now(UTC).isoformat()
+    service = _state_service(
+        state_store,
+        authorizer=_LocalWorkflowAuthorizer(),
+        clock=lambda: now_text,
+        event_id_factory=lambda request_id: f"event-{request_id}",
+    )
+    request = {
+        "schema_version": LOCAL_CLAIM_RECOVERY_REQUEST_SCHEMA_VERSION,
+        "request_id": f"{args.action}-{args.claim_id}-{args.new_claim_id or 'live'}",
+        "project_id": project["project_id"],
+        "action": args.action,
+        "expected_revision": read_result["revision"],
+        "claim_id": args.claim_id,
+        "new_claim_id": args.new_claim_id if args.action == "reclaim" else None,
+        "actor_ref": args.actor_ref,
+        "scope_owners": copy.deepcopy(claim["scope_owners"]),
+        "lease_ttl_ms": args.lease_ttl_ms,
+        "causation_ref": f"recovery:{args.claim_id}",
+        "correlation_ref": f"project:{project['project_id']}",
+    }
+    response = service.call_tool(
+        LOCAL_CLAIM_RECOVERY_TOOL,
+        request,
+        context=RequestContext(args.actor_ref, "local-workflow-approved"),
+    )
+    if not response["ok"]:
+        raise ValueError(response["error"]["message"])
+    result = response["result"]
+    print(
+        json.dumps(
+            {
+                "status": args.action,
+                "project_id": project["project_id"],
+                "claim_id": result["claim"]["claim_id"],
+                "revision": result["revision"],
+                "event_head": result["event_head"],
+                "lease_expires_at": result["claim"]["lease_expires_at"],
+            },
+            sort_keys=True,
+        )
+    )
+    return 0
+
+
 def _export_state(args: argparse.Namespace) -> int:
     try:
         receipt = export_local_state(
@@ -1208,6 +1278,16 @@ def build_parser() -> argparse.ArgumentParser:
     work_activate.add_argument("--claim-id", required=True)
     work_activate.add_argument("--scope", action="append", required=True)
     work_activate.set_defaults(handler=_work_activate)
+    work_recover = work_commands.add_parser(
+        "recover", help="heartbeat or reclaim a local legacy claim"
+    )
+    work_recover.add_argument("action", choices=("heartbeat", "reclaim"))
+    work_recover.add_argument("--root", default=".")
+    work_recover.add_argument("--claim-id", required=True)
+    work_recover.add_argument("--actor-ref", required=True)
+    work_recover.add_argument("--new-claim-id", default=None)
+    work_recover.add_argument("--lease-ttl-ms", type=int, default=8 * 60 * 60 * 1000)
+    work_recover.set_defaults(handler=_work_recover)
     export = commands.add_parser("export", help="export local-embedded State")
     export.add_argument("--root", default=".")
     export.add_argument("--output", required=True)

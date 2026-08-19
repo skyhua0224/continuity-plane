@@ -15,9 +15,9 @@
   "measurement": {
     "attempts_per_run": 1,
     "events_per_run": 3,
-    "max_total_ms": 14.496343,
-    "p50_total_ms": 8.695867,
-    "p95_total_ms": 13.057624,
+    "max_total_ms": 15.812574,
+    "p50_total_ms": 8.904238,
+    "p95_total_ms": 13.921839,
     "promotion_records_per_run": 2,
     "samples": 1000,
     "successful_runs": 1000
@@ -28,7 +28,7 @@
     "fixture_sha256": "693a75b9c1bd0fa9aa55cd34e61dda51237e429b4516289818beeecb9aa19aed",
     "implementation_sha256": "633da214297ae8c1c933245d8fc09a2217f10fa53dbd13b2cfbfc7346d59c6e6",
     "state_events_sha256": "b99078df3a3ad1d74a54debf764980372f097db63bc8579c04fa6b6bde889483",
-    "state_mcp_sha256": "88643751a093c4d77f6495e94136048de5afee93c34ac035eaf3501326b48c03",
+    "state_mcp_sha256": "7855349466633ea981c62d3862ce31dc41ecadaec670e0f25c58b7db2185b0af",
     "typed_state_sha256": "9151f130c9cbe426e5c8e55fd1f2c42bad5d5c093254a67cfa5ee7e16b9447c4"
   },
   "schema_version": "context.experiment-lifecycle-benchmark/v1alpha1"

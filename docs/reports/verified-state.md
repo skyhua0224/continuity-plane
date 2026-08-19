@@ -1,9 +1,9 @@
 # Verified State Evidence Index
 
-版本：37
+版本：38
 日期：2026-08-18  
 状态：generated evidence projection  
-source governance revision：82
+source governance revision：83
 state write authority：false
 
 ## 已验收任务
@@ -94,6 +94,7 @@ state write authority：false
 |---|---|
 | Context compression | [`context-compression-real-replay-benchmark-2026-08-09.md`](../research/context-compression-real-replay-benchmark-2026-08-09.md) |
 | Project dogfood | [`project-dogfooding-observation.md`](../policies/project-dogfooding-observation.md) |
+| Platform 20-hour shadow recovery and UX | [`m10-01-platform-claim-recovery-and-ux-probe-2026-08-19.md`](../migrations/m10-01-platform-claim-recovery-and-ux-probe-2026-08-19.md) |
 | Harness sources | [`agent-harness-assessment-2026-08-09.md`](../research/agent-harness-assessment-2026-08-09.md) |
 | Runtime portability | [`state-store-portability-assessment-2026-08-10.md`](../research/state-store-portability-assessment-2026-08-10.md) |
 | External Skill sources | [`external-skill-and-mcp-catalog-assessment-2026-08-09.md`](../research/external-skill-and-mcp-catalog-assessment-2026-08-09.md) |

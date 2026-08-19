@@ -1,6 +1,6 @@
 # Continuity Plane Status
 
-版本：revision 82  
+版本：revision 83  
 日期：2026-08-18  
 canonical plan：`MASTER.md`
 
@@ -10,10 +10,10 @@ canonical plan：`MASTER.md`
 |---|---|
 | 当前 Campaign | M10 跨项目发布 |
 | active work | M10-01：AlkaidLab 三仓 shadow pilot（🟡） |
-| next action | Platform Session 调用 resume/verify，执行 `N-67-fix` bounded research 并提交 evidence receipt |
-| hard blocker | Codex lifecycle hook 不可用；当前已打开的 Session 必须显式 resume；estimator gate 尚未通过 |
+| next action | M10-01：Platform 执行 N-54 backlog 可观测性；控制面补 v1->v6 migration |
+| hard blocker | lifecycle hook 不可用；Platform flat v1 Work 缺 canonical DAG |
 | repository mode | internal development repository + fresh-history public mirror |
-| production state | Continuity Plane local-embedded alpha published；shared production pilot planned |
+| production state | alpha published；shared pilot planned |
 
 ## 已验证摘要
 
@@ -26,8 +26,9 @@ canonical plan：`MASTER.md`
 | M5/M6/M7 | M5-01..08、M6 retrieval/recall、M7-01..06 verified；量化 receipts 与 provenance 见 Evidence index |
 | M8 | durability、authorization、adaptation、forge、unattended dispatch 与 notifications verified；live Temporal conditional |
 | M9 | projection/governance/vault/impact M9-01..07 verified；graphical product M9-08..11 planned |
-| M10-00/01 pilots | self `M10-01` active；Platform `N-67-fix` active/claimed at `5/5`，checkpoint verified |
-| Local lifecycle adapter | focused `65/65`；Platform duplicate Event `0`；Codex MCP `4/4`；zh-CN/en personal plugin validated |
+| M10-00/01 pilots | self M10-01；Platform N-69-03 active at `29/29`，checkpoint verified |
+| Local lifecycle adapter | heartbeat/reclaim `4/4`；Codex MCP `5/5`；zh-CN/en plugin validated |
+| Platform 20h probe | restore `5/5`；UX/token gate open；[receipt](docs/migrations/m10-01-platform-claim-recovery-and-ux-probe-2026-08-19.md) |
 | M10-08 release surface | current compiler tree `115` files；public `5/5`；packaged module graph `43` importable；fresh-history candidate `28` commits；worktree/history/wheel/sdist leak `0` |
 | M10-09 native matrix | Linux/macOS/Windows `18/18` steps passed；migration `54.6-161.3 ms`；external service `0`；admin/container `false` |
 | M10-10 publication | GitHub release `v0.1.0-alpha.1`；PyPI `continuity-plane==0.1.0a1`；`28` commits；contributor `skyhua0224`；About/topics/assets verified |
@@ -36,8 +37,8 @@ canonical plan：`MASTER.md`
 | Skill overlay | source bytes `501,543 -> 17,349` (`-96.5409%`)；provider input `19,593 -> 18,469` (`-5.7367%`)；warnings `3/3 -> 0/3` |
 | Real code retrieval | input `-50.0153%`；tool calls `-57.8947%`；wall time `-27.4120%`；quality `100%` |
 | Effective 1M | 700K compact `783,628 -> 24,776`；next packet `59,172`；recovery `100%`；M10-11 window/token longitudinal result unavailable |
-| Repository verification | `1847` discovered；`1816` pass；`31` conditional skip；`0` fail；`353.594 s`；verifier passed |
-| Governance authority | `MASTER.md` revision 82 |
+| Repository verification | `1851` discovered；`1820` pass；`31` conditional skip；`0` fail；`378.759 s`；verifier passed |
+| Governance authority | `MASTER.md` revision 83 |
 
 ## 恢复入口
 

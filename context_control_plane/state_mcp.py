@@ -9,7 +9,7 @@ import re
 import threading
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Protocol
 
 from .effect_scope_gate import (
@@ -73,6 +73,7 @@ IDEA_REVIEW_TOOL = "context.idea.review"
 IDEA_CORRECTION_PROTECT_TOOL = "context.idea.correction.protect"
 IDEA_CORRECTION_RELEASE_TOOL = "context.idea.correction.release"
 LOCAL_WORK_COMPLETION_TOOL = "context.state.work.complete"
+LOCAL_CLAIM_RECOVERY_TOOL = "context.state.claim.recovery"
 DEFAULT_REQUEST_CACHE_ENTRIES = 1024
 _AUTHORIZATION_GRANTED = "granted"
 _AUTHORIZATION_HISTORICAL_REPLAY = "historical-replay"
@@ -92,6 +93,7 @@ STATE_MCP_TOOLS = (
     IDEA_CORRECTION_PROTECT_TOOL,
     IDEA_CORRECTION_RELEASE_TOOL,
     LOCAL_WORK_COMPLETION_TOOL,
+    LOCAL_CLAIM_RECOVERY_TOOL,
 )
 
 ATTEMPT_REQUEST_SCHEMA_VERSION = "context.experiment-attempt-request/v1alpha1"
@@ -113,6 +115,9 @@ IDEA_CORRECTION_RELEASE_REQUEST_SCHEMA_VERSION = (
 )
 LOCAL_WORK_COMPLETION_REQUEST_SCHEMA_VERSION = (
     "context.local-work-completion-request/v1alpha1"
+)
+LOCAL_CLAIM_RECOVERY_REQUEST_SCHEMA_VERSION = (
+    "context.state-claim-recovery-request/v1alpha1"
 )
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -269,6 +274,18 @@ _REQUEST_FIELDS = {
         "causation_ref",
         "correlation_ref",
     },
+    LOCAL_CLAIM_RECOVERY_TOOL: _COMMON_FIELDS
+    | {
+        "action",
+        "expected_revision",
+        "claim_id",
+        "new_claim_id",
+        "actor_ref",
+        "scope_owners",
+        "lease_ttl_ms",
+        "causation_ref",
+        "correlation_ref",
+    },
 }
 _IDEA_CAPTURE_REQUEST_FIELDS_V2 = _REQUEST_FIELDS[IDEA_CAPTURE_TOOL] | {
     "scope_ref",
@@ -289,6 +306,7 @@ _AUTHORIZATION_ACTIONS = {
     IDEA_CORRECTION_PROTECT_TOOL: "state.idea.correction.protect",
     IDEA_CORRECTION_RELEASE_TOOL: "state.idea.correction.release",
     LOCAL_WORK_COMPLETION_TOOL: "state.work.complete",
+    LOCAL_CLAIM_RECOVERY_TOOL: "state.claim.recovery",
 }
 _COMMIT_COLLECTION_ID_FIELDS = {
     "works": "work_id",
@@ -521,6 +539,39 @@ def _request_properties(tool: str) -> dict[str, Any]:
             "causation_ref": {"type": ["string", "null"]},
             "correlation_ref": {"type": ["string", "null"]},
         }
+    if tool == LOCAL_CLAIM_RECOVERY_TOOL:
+        return {
+            **common,
+            "schema_version": {
+                "const": LOCAL_CLAIM_RECOVERY_REQUEST_SCHEMA_VERSION
+            },
+            "action": {"enum": ["heartbeat", "reclaim"]},
+            "expected_revision": {"type": "integer", "minimum": 0},
+            "claim_id": {"type": "string", "minLength": 1, "maxLength": 256},
+            "new_claim_id": {
+                "type": ["string", "null"],
+                "minLength": 1,
+                "maxLength": 256,
+            },
+            "actor_ref": {"type": "string", "minLength": 1, "maxLength": 256},
+            "scope_owners": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 128,
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": ["scope_kind", "scope_ref"],
+                    "properties": {
+                        "scope_kind": {"type": "string", "minLength": 1},
+                        "scope_ref": {"type": "string", "minLength": 1},
+                    },
+                },
+            },
+            "lease_ttl_ms": {"type": "integer", "minimum": 1},
+            "causation_ref": {"type": ["string", "null"]},
+            "correlation_ref": {"type": ["string", "null"]},
+        }
     if tool == CLAIM_TOOL:
         return {
             **common,
@@ -600,6 +651,7 @@ def state_mcp_tool_definitions() -> list[dict[str, Any]]:
         IDEA_CORRECTION_PROTECT_TOOL: "Protect affected writes while an Idea correction is unresolved.",
         IDEA_CORRECTION_RELEASE_TOOL: "Release an Idea correction protection after verified evidence.",
         LOCAL_WORK_COMPLETION_TOOL: "Atomically complete local Work and release its active claim with verified evidence.",
+        LOCAL_CLAIM_RECOVERY_TOOL: "Heartbeat a live legacy local claim or reclaim an expired claim with a new identity.",
     }
     return [
         {
@@ -690,6 +742,7 @@ def _validate_request(tool: str, arguments: Any) -> str | None:
         IDEA_CORRECTION_PROTECT_TOOL: IDEA_CORRECTION_PROTECTION_REQUEST_SCHEMA_VERSION,
         IDEA_CORRECTION_RELEASE_TOOL: IDEA_CORRECTION_RELEASE_REQUEST_SCHEMA_VERSION,
         LOCAL_WORK_COMPLETION_TOOL: LOCAL_WORK_COMPLETION_REQUEST_SCHEMA_VERSION,
+        LOCAL_CLAIM_RECOVERY_TOOL: LOCAL_CLAIM_RECOVERY_REQUEST_SCHEMA_VERSION,
     }.get(tool, REQUEST_SCHEMA_VERSION)
     supported_request_versions = {
         IDEA_CAPTURE_TOOL: {
@@ -836,6 +889,39 @@ def _validate_request(tool: str, arguments: Any) -> str | None:
         ]
         if len(checkpoint_evidence) != 1:
             return "completion requires one verified checkpoint evidence"
+    if tool == LOCAL_CLAIM_RECOVERY_TOOL:
+        if arguments["action"] not in {"heartbeat", "reclaim"}:
+            return "claim recovery action is unsupported"
+        for field in ("claim_id", "actor_ref"):
+            value = arguments[field]
+            if not isinstance(value, str) or not value.strip() or len(value) > 256:
+                return f"{field} must be a bounded non-empty string"
+        new_claim_id = arguments["new_claim_id"]
+        if arguments["action"] == "reclaim":
+            if (
+                not isinstance(new_claim_id, str)
+                or not new_claim_id.strip()
+                or len(new_claim_id) > 256
+            ):
+                return "new_claim_id is required for reclaim"
+        elif new_claim_id is not None:
+            return "new_claim_id must be null for heartbeat"
+        scopes = arguments["scope_owners"]
+        if not isinstance(scopes, list) or not scopes:
+            return "scope_owners must be a bounded non-empty array"
+        for scope in scopes:
+            if not isinstance(scope, dict) or set(scope) != {"scope_kind", "scope_ref"}:
+                return "scope_owners entry is invalid"
+            if (
+                not isinstance(scope["scope_kind"], str)
+                or not scope["scope_kind"]
+                or not isinstance(scope["scope_ref"], str)
+                or not scope["scope_ref"]
+            ):
+                return "scope_owners entry is invalid"
+        ttl = arguments["lease_ttl_ms"]
+        if type(ttl) is not int or ttl <= 0 or ttl > 7 * 24 * 60 * 60 * 1000:
+            return "lease_ttl_ms is outside the configured bound"
     if tool == ATTEMPT_TOOL:
         for field in ("attempt_id", "work_id", "claim_id"):
             value = arguments[field]
@@ -1413,6 +1499,7 @@ class StateMCPService:
             IDEA_CORRECTION_PROTECT_TOOL,
             IDEA_CORRECTION_RELEASE_TOOL,
             LOCAL_WORK_COMPLETION_TOOL,
+            LOCAL_CLAIM_RECOVERY_TOOL,
         }:
             with self._mutation_lock:
                 replay = self._request_replay(tool, arguments, context)
@@ -1424,6 +1511,8 @@ class StateMCPService:
                     return self._claim(arguments, context=context)
                 if tool == LOCAL_WORK_COMPLETION_TOOL:
                     return self._complete_local_work(arguments, context=context)
+                if tool == LOCAL_CLAIM_RECOVERY_TOOL:
+                    return self._recover_local_claim(arguments, context=context)
                 if tool == ATTEMPT_TOOL:
                     return self._attempt(arguments, context=context)
                 if tool == IDEA_CAPTURE_TOOL:
@@ -3903,4 +3992,218 @@ class StateMCPService:
         self._remember_request(
             LOCAL_WORK_COMPLETION_TOOL, arguments, context, response
         )
+        return response
+
+    def _recover_local_claim(
+        self,
+        arguments: dict[str, Any],
+        *,
+        context: RequestContext,
+    ) -> dict[str, Any]:
+        """Recover a legacy local claim without changing its identity in place."""
+        request_id = arguments["request_id"]
+        project_id = arguments["project_id"]
+        try:
+            snapshot = invoke_state_store(self._store, "read_project", project_id)
+            events = invoke_state_store(self._store, "read_events", project_id)
+            if snapshot.get("schema_version") == "context.typed-state/v6alpha1":
+                return _response(
+                    tool=LOCAL_CLAIM_RECOVERY_TOOL,
+                    request_id=request_id,
+                    error_code="capability",
+                    error_message="v6 claims require the fenced shared lifecycle adapter",
+                )
+            if snapshot["project"]["revision"] != arguments["expected_revision"]:
+                return _response(
+                    tool=LOCAL_CLAIM_RECOVERY_TOOL,
+                    request_id=request_id,
+                    error_code="conflict",
+                    error_message="expected revision is stale",
+                )
+            claim = next(
+                (
+                    item
+                    for item in snapshot["claims"]
+                    if item["claim_id"] == arguments["claim_id"]
+                ),
+                None,
+            )
+            if claim is None:
+                return _response(
+                    tool=LOCAL_CLAIM_RECOVERY_TOOL,
+                    request_id=request_id,
+                    error_code="not_found",
+                    error_message="claim was not found",
+                )
+            if claim["actor_ref"] != context.subject_ref:
+                return _response(
+                    tool=LOCAL_CLAIM_RECOVERY_TOOL,
+                    request_id=request_id,
+                    error_code="permission_denied",
+                    error_message="claim actor does not match trusted context",
+                )
+            now_text = self._clock()
+            now = datetime.fromisoformat(now_text.replace("Z", "+00:00"))
+            lease_expires = datetime.fromisoformat(
+                claim["lease_expires_at"].replace("Z", "+00:00")
+            )
+            if arguments["action"] == "heartbeat":
+                if claim["status"] != "active" or now >= lease_expires:
+                    return _response(
+                        tool=LOCAL_CLAIM_RECOVERY_TOOL,
+                        request_id=request_id,
+                        error_code="conflict",
+                        error_message="expired claim cannot be heartbeated",
+                    )
+                updated_claim = copy.deepcopy(claim)
+                updated_claim["lease_expires_at"] = (
+                    now + timedelta(milliseconds=arguments["lease_ttl_ms"])
+                ).isoformat()
+                revision_after = arguments["expected_revision"] + 1
+                updated_claim["expected_project_revision"] = revision_after
+                changes = [
+                    {
+                        "collection": "claims",
+                        "object_id": updated_claim["claim_id"],
+                        "value": updated_claim,
+                    }
+                ]
+                operation = "heartbeat"
+                result_claim = updated_claim
+            else:
+                if claim["status"] != "active" or now < lease_expires:
+                    return _response(
+                        tool=LOCAL_CLAIM_RECOVERY_TOOL,
+                        request_id=request_id,
+                        error_code="conflict",
+                        error_message="claim is not expired",
+                    )
+                new_claim_id = arguments["new_claim_id"]
+                if any(item["claim_id"] == new_claim_id for item in snapshot["claims"]):
+                    return _response(
+                        tool=LOCAL_CLAIM_RECOVERY_TOOL,
+                        request_id=request_id,
+                        error_code="conflict",
+                        error_message="new claim identity is already in use",
+                    )
+                if arguments["scope_owners"] != claim["scope_owners"]:
+                    return _response(
+                        tool=LOCAL_CLAIM_RECOVERY_TOOL,
+                        request_id=request_id,
+                        error_code="integrity",
+                        error_message="reclaim cannot widen claim scope",
+                    )
+                revision_after = arguments["expected_revision"] + 1
+                expired_claim = copy.deepcopy(claim)
+                expired_claim.update(
+                    {
+                        "status": "expired",
+                        "released_at": now_text,
+                        "expected_project_revision": revision_after,
+                    }
+                )
+                result_claim = {
+                    "claim_id": new_claim_id,
+                    "work_id": claim["work_id"],
+                    "actor_ref": context.subject_ref,
+                    "status": "active",
+                    "expected_project_revision": revision_after,
+                    "claimed_at": now_text,
+                    "lease_expires_at": (
+                        now + timedelta(milliseconds=arguments["lease_ttl_ms"])
+                    ).isoformat(),
+                    "released_at": None,
+                    "scope_owners": copy.deepcopy(claim["scope_owners"]),
+                }
+                changes = [
+                    {
+                        "collection": "claims",
+                        "object_id": expired_claim["claim_id"],
+                        "value": expired_claim,
+                    },
+                    {
+                        "collection": "claims",
+                        "object_id": result_claim["claim_id"],
+                        "value": result_claim,
+                    },
+                ]
+                operation = "reclaim"
+
+            candidate = copy.deepcopy(snapshot)
+            for change in changes:
+                _replace_or_append(candidate, change)
+            if operation == "reclaim":
+                # Other active claims/effects retain the new project revision.
+                for item in candidate["claims"]:
+                    if item["status"] == "active" and item["claim_id"] != result_claim["claim_id"]:
+                        item["expected_project_revision"] = revision_after
+                        _upsert_change(changes, collection="claims", value=item)
+                _derive_project_projection(candidate, revision=revision_after, updated_at=now_text)
+            else:
+                _derive_project_projection(candidate, revision=revision_after, updated_at=now_text)
+            previous_hash = events[-1]["event_sha256"] if events else None
+            sequence_no = events[-1]["sequence_no"] + 1 if events else 1
+            event = build_state_event(
+                event_id=self._event_id_factory(request_id),
+                event_type="state-transition",
+                project_id=project_id,
+                sequence_no=sequence_no,
+                revision_before=arguments["expected_revision"],
+                occurred_at=now_text,
+                actor_ref=context.subject_ref,
+                causation_ref=arguments["causation_ref"],
+                correlation_ref=arguments["correlation_ref"],
+                previous_event_sha256=previous_hash,
+                supersedes_event_id=None,
+                changes=changes,
+                project_after=candidate["project"],
+                schema_version=_event_schema_version(snapshot),
+            )
+            expected_snapshot = replay_state_events(
+                snapshot,
+                [event],
+                starting_sequence_no=sequence_no,
+                previous_event_sha256=previous_hash,
+            )
+            invoke_state_store(
+                self._store,
+                "commit_event",
+                project_id=project_id,
+                expected_revision=arguments["expected_revision"],
+                event=event,
+                expected_snapshot=expected_snapshot,
+            )
+        except (
+            StateStoreCapabilityError,
+            StateStoreNotFound,
+            StateStoreConflict,
+            StateStoreBusy,
+            StateStoreIntegrityError,
+            StateEventError,
+            TypedStateError,
+            ValueError,
+        ) as exc:
+            return _backend_error_response(
+                tool=LOCAL_CLAIM_RECOVERY_TOOL,
+                request_id=request_id,
+                error=exc,
+            )
+        response = _response(
+            tool=LOCAL_CLAIM_RECOVERY_TOOL,
+            request_id=request_id,
+            result={
+                "snapshot": expected_snapshot,
+                "revision": expected_snapshot["project"]["revision"],
+                "event_head": {
+                    "sequence_no": event["sequence_no"],
+                    "event_sha256": event["event_sha256"],
+                },
+                "event": event,
+                "operation": operation,
+                "claim": result_claim,
+                "registry_digest": self._registry_hash_value,
+                "capabilities": capability_manifest_to_document(self._manifest),
+            },
+        )
+        self._remember_request(LOCAL_CLAIM_RECOVERY_TOOL, arguments, context, response)
         return response

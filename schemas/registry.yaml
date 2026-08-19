@@ -2135,3 +2135,13 @@ schemas:
     status: current
     compatibility_mode: strict-versioned
     migrations: []
+
+  - schema_id: context.state-claim-recovery-request
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.state-claim-recovery-request/v1alpha1
+    supported_wire_versions: [context.state-claim-recovery-request/v1alpha1]
+    artifact_path: schemas/m10-09/state-claim-recovery-request.schema.json
+    content_sha256: c6c30d987e2aab833e647273288b8671ca08e050f325bce30b11a8ac3485b43d
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []

@@ -4,12 +4,12 @@
     "failed_gates": [],
     "status": "passed"
   },
-  "generated_at": "2026-08-18T23:20:00+08:00",
+  "generated_at": "2026-08-19T22:55:00+08:00",
   "latency_ms": {
-    "max": 1.4372470031958073,
-    "min": 0.6970209942664951,
-    "p50": 0.7487119873985648,
-    "p95": 1.2397280079312623
+    "max": 2.4662780051585287,
+    "min": 0.6921669992152601,
+    "p50": 0.7604039856232703,
+    "p95": 1.247116015292704
   },
   "parameters": {
     "iterations": 1000
@@ -18,9 +18,9 @@
     "benchmark_sha256": "8c58e16b843ae46aab077a64fe3d5b986612fe25b1e1c4caf06bbe844c4b7a16",
     "fixture_sha256": "9be7887519cfed4466436ea6714d48e399d7023281729b3bd8c78cb3a086beab",
     "implementation_sha256": "7f8bd729519800c8a9a157b5e4a6d9eab734debb7744596c34f968b51220477c",
-    "state_mcp_sha256": "88643751a093c4d77f6495e94136048de5afee93c34ac035eaf3501326b48c03"
+    "state_mcp_sha256": "7855349466633ea981c62d3862ce31dc41ecadaec670e0f25c58b7db2185b0af"
   },
-  "receipt_sha256": "f722e99dea599eef31430cd627043a37f6f19a62e1f4d00075dd1d451b0a2ae2",
+  "receipt_sha256": "d8c1687f049589575a103307b8633c6c83a52dfb846c6902ce0d8043bc853b54",
   "results": {
     "authority_violations": 0,
     "external_services": 0,
