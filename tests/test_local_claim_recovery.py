@@ -87,8 +87,10 @@ class LocalClaimRecoveryTests(unittest.TestCase):
         connection = __import__("sqlite3").connect(root / ".continuity/state.sqlite3")
         try:
             snapshot = store.read_project("sample-app")
+            snapshot["project"]["updated_at"] = "2026-08-19T00:00:00+00:00"
             for claim in snapshot["claims"]:
                 if claim["claim_id"] == "claim-current":
+                    claim["claimed_at"] = "2026-08-19T00:00:00+00:00"
                     claim["lease_expires_at"] = "2026-08-19T21:00:00+00:00"
                     claim["expected_project_revision"] = snapshot["project"]["revision"]
             from context_control_plane.sqlite_state_store import _json_text, _snapshot_sha256
@@ -209,6 +211,106 @@ class LocalClaimRecoveryTests(unittest.TestCase):
                 )
             self.assertEqual(result, 0)
             self.assertIn("claim-current-reclaimed-cli", output.getvalue())
+
+    def test_cli_heartbeat_uses_a_new_id_for_each_expected_revision(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "MASTER.md").write_text("# Master\n", encoding="utf-8")
+            (root / "STATUS.md").write_text("# Status\n", encoding="utf-8")
+            with redirect_stdout(StringIO()):
+                main(["init", "--root", str(root), "--project-id", "sample-app"])
+                main(
+                    [
+                        "attach",
+                        "plan",
+                        "--root",
+                        str(root),
+                        "--master",
+                        "MASTER.md",
+                        "--status",
+                        "STATUS.md",
+                        "--work-id",
+                        "work-current",
+                        "--work-title",
+                        "Current Work",
+                        "--owner-ref",
+                        "agent-main",
+                        "--scope",
+                        "capability:main",
+                    ]
+                )
+                main(
+                    [
+                        "attach",
+                        "approve",
+                        "--root",
+                        str(root),
+                        "--actor-ref",
+                        "agent-main",
+                        "--claim-id",
+                        "claim-current",
+                    ]
+                )
+            store = SQLiteStateStore(root / ".continuity/state.sqlite3")
+            connection = __import__("sqlite3").connect(root / ".continuity/state.sqlite3")
+            try:
+                snapshot = store.read_project("sample-app")
+                snapshot["project"]["updated_at"] = "2026-08-19T00:00:00+00:00"
+                for claim in snapshot["claims"]:
+                    if claim["claim_id"] == "claim-current":
+                        claim["claimed_at"] = "2026-08-19T00:00:00+00:00"
+                        claim["lease_expires_at"] = "2099-01-01T00:00:00+00:00"
+                        claim["expected_project_revision"] = snapshot["project"]["revision"]
+                from context_control_plane.sqlite_state_store import _json_text, _snapshot_sha256
+
+                connection.execute(
+                    "UPDATE projects SET snapshot=?, snapshot_sha256=? WHERE project_id=?",
+                    (_json_text(snapshot), _snapshot_sha256(snapshot), "sample-app"),
+                )
+                connection.commit()
+            finally:
+                connection.close()
+
+            first = StringIO()
+            with redirect_stdout(first):
+                first_result = main(
+                    [
+                        "work",
+                        "recover",
+                        "heartbeat",
+                        "--root",
+                        str(root),
+                        "--claim-id",
+                        "claim-current",
+                        "--actor-ref",
+                        "agent-main",
+                    ]
+                )
+            second = StringIO()
+            with redirect_stdout(second):
+                second_result = main(
+                    [
+                        "work",
+                        "recover",
+                        "heartbeat",
+                        "--root",
+                        str(root),
+                        "--claim-id",
+                        "claim-current",
+                        "--actor-ref",
+                        "agent-main",
+                    ]
+                )
+
+            self.assertEqual(first_result, 0)
+            self.assertEqual(second_result, 0)
+            self.assertEqual(json.loads(first.getvalue())["revision"], 3)
+            self.assertEqual(json.loads(second.getvalue())["revision"], 4)
+            self.assertEqual(len(store.read_events("sample-app")), 4)
+            self.assertNotEqual(
+                store.read_events("sample-app")[-1]["event_id"],
+                store.read_events("sample-app")[-2]["event_id"],
+            )
 
 
 if __name__ == "__main__":

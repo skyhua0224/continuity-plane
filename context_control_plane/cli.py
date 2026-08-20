@@ -1183,7 +1183,10 @@ def _work_recover(args: argparse.Namespace) -> int:
     )
     request = {
         "schema_version": LOCAL_CLAIM_RECOVERY_REQUEST_SCHEMA_VERSION,
-        "request_id": f"{args.action}-{args.claim_id}-{args.new_claim_id or 'live'}",
+        "request_id": (
+            f"{args.action}-{args.claim_id}-r{read_result['revision']}-"
+            f"ttl{args.lease_ttl_ms}-{args.new_claim_id or 'live'}"
+        ),
         "project_id": project["project_id"],
         "action": args.action,
         "expected_revision": read_result["revision"],
