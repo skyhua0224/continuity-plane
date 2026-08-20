@@ -142,6 +142,23 @@ roots, mismatched actor/claim/Work, and read-only envelopes are rejected before
 the CLI runs. The plugin manifest now declares both Read and Write, matching the
 tools it exposes.
 
+## Heartbeat Incident And Repair
+
+Platform reported `state changed concurrently` while `resume` still showed a
+valid writable claim. The State event log showed that revision `35/35` was a
+successful heartbeat, while the local CLI reused the fixed request/event
+identity `heartbeat-claim-n-69-09-live` for later renewals. State MCP correctly
+rejected the reused identity as a different intent. This was an adapter
+idempotency defect, not silent concurrent overwrite or SQLite corruption.
+
+The repair binds each local recovery request to action, claim, expected
+revision, lease TTL, and successor identity. A retry at the same expected
+revision remains idempotent; the next heartbeat creates a new Event. The
+regression test covers two consecutive CLI heartbeats (`revision 2 -> 3 -> 4`)
+and distinct Event IDs. Commit `671e6a4` is deployed to the Skyinux development
+CLI. The expired Platform claim was reclaimed through the normal State path as
+`claim-n-69-09-reclaimed-2` at revision/event `36/36`.
+
 ## Open Gates
 
 - the running Codex App thread must start after the updated plugin installation

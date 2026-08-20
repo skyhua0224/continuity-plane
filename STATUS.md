@@ -21,9 +21,9 @@ canonical plan：`MASTER.md`
 |---|---|
 | Evidence index | [`docs/reports/verified-state.md`](docs/reports/verified-state.md) |
 | Verified campaigns | M0-M8 core 与 M9-01..07 见 Evidence index；M9-08..11 planned |
-| M10-00/01 pilots | self M10-01；Platform N-69-09 active at `33/33`，source/claim valid |
+| M10-00/01 pilots | self M10-01；Platform N-69-09 active at `36/36`，旧 claim 已 reclaim 为 `claim-n-69-09-reclaimed-2`，checkpoint verified |
 | Local lifecycle adapter | Recovery Envelope + Pre/PostCompact canary + cursor + 8-rule Skill lock；MCP root/actor/claim binding verified |
-| Platform 20h probe | restore `5/5`；recovery narration `5/5`；post-compact input `54.8-56.8K`；matched gate open |
+| Platform 20h probe | restore `5/5`；recovery narration `5/5`；post-compact input `54.8-56.8K`；matched gate open；heartbeat identity 修复已部署 |
 | Effective context | configured 1M catalog 的 provider-reported window `950,000`；历史 700K compact `783,628 -> 24,776`，next input `59,172`；新裸 Codex baseline `59,177`；matched candidate unavailable |
 | Claude baseline | `96` deduped messages；auto compact `1,001,838 -> 13,041`；duration `171,480 ms`；live candidate 403/unavailable |
 | M10-11 foundation | `7` strict schemas；local Recovery Envelope `3,037 B`；checkpoint/cursor/Skill lock pass；raw text `0`；cross-project/cross-provider improvement claim `false` |

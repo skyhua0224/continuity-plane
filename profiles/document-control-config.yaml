@@ -1,5 +1,5 @@
 schema_version: context.document-control-config/v1alpha1
-generated_at: '2026-08-20T03:30:00+08:00'
+generated_at: '2026-08-20T04:00:00+08:00'
 governance_revision: 84
 documents:
 - document_id: agents
@@ -387,7 +387,7 @@ documents:
 - document_id: status
   path: STATUS.md
   category: routing
-  document_revision: 35
+  document_revision: 36
   authority:
     governance_authority: false
     active_state_authority: false
@@ -395,11 +395,11 @@ documents:
   change:
     change_type: status
     authority_ref: governance-event://master/revision/84
-    supersedes: context.document://status/revision/34
+    supersedes: context.document://status/revision/35
     supersedes_provenance:
-      git_commit: 93cfec2ae6b4c23cc9e1d1a7fb8b65f3f9185152
-      manifest_sha256: b297fb5c5b61987102561afd81ffa9a701d6c53f0f0f7bb957fb4f4c16e7ac38
-      content_sha256: e28ad97cf0702f43695d742b86dba138acae91c6313f0cf8380492d78c2ce72e
+      git_commit: 671e6a4ef10ba5acc3ab3d8093d3b0aba93073e4
+      manifest_sha256: 0272f1dbdec27edb0baa50898fdfb19d7ce570f046d05c05b2505a99239210a2
+      content_sha256: 0b15c4056043c7759c06074c11bd6cba5ad9d00c82a1a5e9776bf3751c641c7b
     affected_tasks:
     - M10-00
     - M10-01
@@ -1298,22 +1298,22 @@ documents:
 - document_id: docs-migrations-m10-11-live-continuity-foundation-2026-08-20
   path: docs/migrations/m10-11-live-continuity-foundation-2026-08-20.md
   category: migration
-  document_revision: 2
+  document_revision: 3
   authority:
     governance_authority: false
     active_state_authority: false
     controlled_action_entry: false
   change:
     change_type: evidence
-    authority_ref: verification-run://repository/d8a7004871f8259708ee0d17f43e9512a378548c7c24dc8f836679f077666ff7
-    supersedes: context.document://docs-migrations-m10-11-live-continuity-foundation-2026-08-20/revision/1
+    authority_ref: verification-run://repository/e3fd8762e2ba14a3deecbe59895a76d208c3215086aebb72e57d83e2fcc16158
+    supersedes: context.document://docs-migrations-m10-11-live-continuity-foundation-2026-08-20/revision/2
     affected_tasks:
     - M10-11
     next_review: null
     supersedes_provenance:
-      git_commit: 93cfec2ae6b4c23cc9e1d1a7fb8b65f3f9185152
-      manifest_sha256: b297fb5c5b61987102561afd81ffa9a701d6c53f0f0f7bb957fb4f4c16e7ac38
-      content_sha256: 4d28403163088b060adb630ac467c1b97d382a743bd970c6025c81f2dcad6225
+      git_commit: 671e6a4ef10ba5acc3ab3d8093d3b0aba93073e4
+      manifest_sha256: 0272f1dbdec27edb0baa50898fdfb19d7ce570f046d05c05b2505a99239210a2
+      content_sha256: d8a7004871f8259708ee0d17f43e9512a378548c7c24dc8f836679f077666ff7
   evidence_refs: []
 - document_id: docs-migrations-m2-01-typed-state-acceptance-2026-08-09
   path: docs/migrations/m2-01-typed-state-acceptance-2026-08-09.md
