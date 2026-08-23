@@ -15,9 +15,9 @@
   "measurement": {
     "events_per_run": 1,
     "ideas_per_run": 1,
-    "max_total_ms": 19.955812,
-    "p50_total_ms": 3.780286,
-    "p95_total_ms": 6.921261,
+    "max_total_ms": 5.444826,
+    "p50_total_ms": 3.315143,
+    "p95_total_ms": 3.562827,
     "samples": 1000,
     "successful_runs": 1000
   },
@@ -28,11 +28,11 @@
     "idea_capture_schema_sha256": "57ce195183a8534df1cb075c8d8f8a343545aeba31af30b64fc5bf01e1cf56ca",
     "idea_event_schema_sha256": "7207bf6406bc3827f9eb14b10ed41d1679aebe28802fc1e95c38d83f65ced3c7",
     "implementation_sha256": "186f8caa929e80f6d1afda24f8b073e7fd967c6a87323a2f0046f1c8fa868a91",
-    "registry_sha256": "ca2eb93eb80a913ff0d90fb05dba333ee5fb6dd2b8a98e2bff808015aef3f258",
+    "registry_sha256": "d5eb5b99daea38e88e760ee175927cc3efd32572f72d2533024817f6066bac53",
     "runner_sha256": "1b0f71b2e50014cb31cdc33d8aec4597fb2569d4da42b014654e265cea34544d",
     "sqlite_state_store_sha256": "bc80a19b025170dce595489cb06c8f1872f7b1d156447a2615f8b13be5dc2fc7",
     "state_events_sha256": "b99078df3a3ad1d74a54debf764980372f097db63bc8579c04fa6b6bde889483",
-    "state_mcp_sha256": "7855349466633ea981c62d3862ce31dc41ecadaec670e0f25c58b7db2185b0af",
+    "state_mcp_sha256": "c361fe5c558b1bca0c55cc5ef0e046c667b0077ba056282764a7e22813710da4",
     "typed_state_sha256": "9151f130c9cbe426e5c8e55fd1f2c42bad5d5c093254a67cfa5ee7e16b9447c4"
   },
   "schema_version": "context.idea-continuity-benchmark/v1alpha1"

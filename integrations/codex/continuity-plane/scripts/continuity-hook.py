@@ -17,6 +17,7 @@ from typing import Any
 MAX_PACKET_BYTES = 8 * 1024
 MAX_CONTEXT_BYTES = 12 * 1024
 MAX_TRANSCRIPT_TAIL_BYTES = 2 * 1024 * 1024
+COMMAND_TIMEOUT_SECONDS = 3
 RECOVERY_RULE_IDS = [
     "continuity.answer.bounded",
     "continuity.answer.direct",
@@ -35,6 +36,13 @@ def _canonical(value: Any) -> str:
 
 def _hash(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def _file_hash(path: Path) -> str | None:
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError:
+        return None
 
 
 def _message_text(content: Any) -> str:
@@ -173,7 +181,7 @@ def _command(arguments: list[str], root: Path) -> subprocess.CompletedProcess[st
             command,
             capture_output=True,
             text=True,
-            timeout=8,
+            timeout=COMMAND_TIMEOUT_SECONDS,
             check=False,
         )
         last = completed
@@ -274,6 +282,7 @@ def _observe(
     event_type: str,
     success: bool,
     canary_passed: bool | None = None,
+    source_refreshed: bool = False,
 ) -> None:
     path = _observation_path(payload)
     if path is None:
@@ -294,6 +303,14 @@ def _observe(
         "raw_transcript_admission": False,
         "state_write_authority": False,
         "completion_authority": False,
+        "source_refreshed": source_refreshed,
+        "plugin_loaded": True,
+        "plugin_manifest_sha256": _file_hash(
+            Path(os.environ.get("PLUGIN_ROOT", "")) / ".codex-plugin/plugin.json"
+        ),
+        "hook_contract_sha256": _file_hash(
+            Path(os.environ.get("PLUGIN_ROOT", "")) / "hooks/hooks.json"
+        ),
     }
     serialized = _canonical(record) + "\n"
     descriptor = os.open(path, os.O_APPEND | os.O_CREAT | os.O_WRONLY, 0o600)
@@ -313,6 +330,39 @@ def _stop(reason: str) -> None:
             }
         )
     )
+
+
+def _load_resume_packet(encoded: bytes) -> dict[str, Any] | None:
+    if not encoded or len(encoded) > MAX_PACKET_BYTES:
+        return None
+    try:
+        packet = json.loads(encoded)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(packet, dict):
+        return None
+    required = {
+        "project_id",
+        "revision",
+        "active_work",
+        "claim",
+        "next_action",
+        "source_fresh",
+        "read_only",
+    }
+    if not required.issubset(packet):
+        return None
+    if not isinstance(packet["revision"], int) or packet["revision"] < 0:
+        return None
+    if not isinstance(packet["active_work"], dict) or not isinstance(
+        packet["claim"], dict
+    ):
+        return None
+    if not isinstance(packet["source_fresh"], bool) or not isinstance(
+        packet["read_only"], bool
+    ):
+        return None
+    return packet
 
 
 def _precompact(payload: dict[str, Any], root: Path) -> int:
@@ -353,19 +403,49 @@ def _session_start(payload: dict[str, Any], root: Path) -> int:
         arguments.extend(["--skill-lock", str(skill_lock_path)])
     completed = _command(arguments, root)
     success = completed.returncode == 0
-    _observe(payload, root, event_type="session-start", success=success)
     if not success:
+        _observe(payload, root, event_type="session-start", success=False)
         _stop("Continuity resume failed; keep this project read-only.")
         return 0
     encoded = completed.stdout.strip().encode("utf-8")
-    if not encoded or len(encoded) > MAX_PACKET_BYTES:
-        _stop("Continuity resume packet is missing or exceeds its byte budget.")
+    packet = _load_resume_packet(encoded)
+    if packet is None:
+        _observe(payload, root, event_type="session-start", success=False)
+        _stop("Continuity resume packet is invalid or exceeds its byte budget.")
         return 0
-    try:
-        packet = json.loads(encoded)
-    except json.JSONDecodeError:
-        _stop("Continuity resume packet is not valid JSON.")
+    source_refreshed = False
+    if packet.get("source_fresh") is False:
+        refreshed = _command(["attach", "refresh"], root)
+        if refreshed.returncode != 0:
+            _observe(
+                payload,
+                root,
+                event_type="session-start",
+                success=False,
+                source_refreshed=False,
+            )
+            _stop("Continuity source refresh failed; keep this project read-only.")
+            return 0
+        source_refreshed = True
+        _observe(
+            payload,
+            root,
+            event_type="session-start",
+            success=False,
+            source_refreshed=True,
+        )
+        _stop(
+            "Continuity source proposal refreshed. Explicit governance approval is required "
+            "before checkpoint creation; keep this project read-only."
+        )
         return 0
+    _observe(
+        payload,
+        root,
+        event_type="session-start",
+        success=True,
+        source_refreshed=source_refreshed,
+    )
     context = (
         "Continuity recovery contract. Continue silently: do not mention recovery, "
         "compaction, hooks, or reloading. Do not answer acknowledged input again. "

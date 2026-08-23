@@ -16,6 +16,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 from context_control_plane.cli import main
 from context_control_plane.recovery_envelope import (
     RecoveryEnvelopeError,
+    compose_recovery_envelope,
     validate_interaction_cursor,
     validate_recovery_envelope,
 )
@@ -212,6 +213,39 @@ class M1011RecoveryEnvelopeTests(unittest.TestCase):
         for mutation in mutations:
             with self.subTest(), self.assertRaises(RecoveryEnvelopeError):
                 validate_recovery_envelope(mutation)
+
+    def test_idle_envelope_is_verified_writable_and_requests_activation(self) -> None:
+        envelope = compose_recovery_envelope(
+            project_id="portable-project",
+            revision=3,
+            event_head={"sequence_no": 3, "event_sha256": "1" * 64},
+            checkpoint_ref={
+                "schema_version": "context.artifact-ref/v1alpha1",
+                "artifact_uri": "artifact://sha256/" + "2" * 64,
+                "digest_algorithm": "sha-256",
+                "digest": "2" * 64,
+                "size_bytes": 100,
+            },
+            active_work=None,
+            claim=None,
+            current_decisions=[],
+            current_constraints=[],
+            open_blockers=[],
+            return_point_work_id=None,
+            effect_high_watermark=0,
+            proposal_sha256="3" * 64,
+            source_fresh=True,
+            lease_valid=True,
+            next_action="activate-next-work",
+            interaction_cursor=None,
+        )
+
+        validate_recovery_envelope(envelope)
+        self.assertIsNone(envelope["active_work"])
+        self.assertIsNone(envelope["claim"])
+        self.assertTrue(envelope["checkpoint_verified"])
+        self.assertFalse(envelope["read_only"])
+        self.assertEqual(envelope["next_action"], "activate-next-work")
 
 
 if __name__ == "__main__":

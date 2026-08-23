@@ -1,0 +1,310 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.continuity-plane.dev/context.local-work-transition-request/v1alpha1",
+  "title": "Continuity Plane Local Work Transition Request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "request_id",
+    "project_id",
+    "expected_revision",
+    "work_id",
+    "claim_id",
+    "checkpoint_ref",
+    "evidence",
+    "return_point_work_id",
+    "resolved_blocker_id",
+    "successor_claim_id",
+    "successor_scope_owners",
+    "lease_expires_at",
+    "source_proposal_sha256",
+    "workspace_verification",
+    "remaining_blocker",
+    "causation_ref",
+    "correlation_ref"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "context.local-work-transition-request/v1alpha1"
+    },
+    "request_id": {
+      "$ref": "#/$defs/identifier"
+    },
+    "project_id": {
+      "$ref": "#/$defs/identifier"
+    },
+    "expected_revision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "work_id": {
+      "$ref": "#/$defs/identifier"
+    },
+    "claim_id": {
+      "$ref": "#/$defs/identifier"
+    },
+    "checkpoint_ref": {
+      "$ref": "#/$defs/artifact_ref"
+    },
+    "evidence": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 32,
+      "items": {
+        "$ref": "#/$defs/evidence"
+      },
+      "contains": {
+        "type": "object",
+        "properties": {
+          "kind": {
+            "const": "artifact"
+          },
+          "validity": {
+            "const": "verified"
+          }
+        },
+        "required": [
+          "kind",
+          "validity"
+        ]
+      },
+      "minContains": 1
+    },
+    "return_point_work_id": {
+      "$ref": "#/$defs/identifier"
+    },
+    "resolved_blocker_id": {
+      "$ref": "#/$defs/identifier"
+    },
+    "successor_claim_id": {
+      "$ref": "#/$defs/identifier"
+    },
+    "successor_scope_owners": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 128,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/scope"
+      }
+    },
+    "lease_expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "source_proposal_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "workspace_verification": {
+      "$ref": "#/$defs/workspace_verification"
+    },
+    "remaining_blocker": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/remaining_blocker"
+        }
+      ]
+    },
+    "causation_ref": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "correlation_ref": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1,
+      "maxLength": 500
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,199}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "git_sha1": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "artifact_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "digest_algorithm",
+        "digest",
+        "size_bytes",
+        "artifact_uri"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "context.artifact-ref/v1alpha1"
+        },
+        "digest_algorithm": {
+          "const": "sha-256"
+        },
+        "digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "artifact_uri": {
+          "type": "string",
+          "pattern": "^artifact://sha256/[0-9a-f]{64}$"
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id",
+        "kind",
+        "artifact_ref",
+        "content_sha256",
+        "validity",
+        "observed_at",
+        "verified_at"
+      ],
+      "properties": {
+        "evidence_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "kind": {
+          "enum": [
+            "source-code",
+            "standard",
+            "os-official",
+            "software-official",
+            "test",
+            "artifact",
+            "user-decision"
+          ]
+        },
+        "artifact_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "content_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "validity": {
+          "const": "verified"
+        },
+        "observed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "verified_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scope_kind",
+        "scope_ref"
+      ],
+      "properties": {
+        "scope_kind": {
+          "enum": [
+            "repo",
+            "directory",
+            "file",
+            "symbol",
+            "capability",
+            "effect"
+          ]
+        },
+        "scope_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        }
+      }
+    },
+    "workspace_verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "head_commit",
+        "clean",
+        "expected_ref",
+        "expected_ref_commit"
+      ],
+      "properties": {
+        "head_commit": {
+          "$ref": "#/$defs/git_sha1"
+        },
+        "clean": {
+          "const": true
+        },
+        "expected_ref": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "expected_ref_commit": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/git_sha1"
+            }
+          ]
+        }
+      }
+    },
+    "remaining_blocker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "blocker_id",
+        "reason",
+        "evidence_ids"
+      ],
+      "properties": {
+        "blocker_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "evidence_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/identifier"
+          }
+        }
+      }
+    }
+  }
+}

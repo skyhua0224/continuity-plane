@@ -4,12 +4,12 @@
     "failed_gates": [],
     "status": "passed"
   },
-  "generated_at": "2026-08-17T20:00:00+08:00",
+  "generated_at": "2026-08-21T15:00:00+08:00",
   "latency_ms": {
-    "max": 8.320444,
-    "min": 4.094321,
-    "p50": 4.369527,
-    "p95": 6.319825
+    "max": 14.784935,
+    "min": 4.109988,
+    "p50": 4.206953,
+    "p95": 7.388756
   },
   "parameters": {
     "iterations": 1000,
@@ -26,7 +26,7 @@
     "implementation_sha256": "429e96fba18fa85dbf5870d46cd16decffaee4ef41f4aa1c2f10998309a66247",
     "typed_state_sha256": "9151f130c9cbe426e5c8e55fd1f2c42bad5d5c093254a67cfa5ee7e16b9447c4"
   },
-  "receipt_sha256": "cb1d0b586db09e561ea62b3f954bec2b907efaa81cad357c5916bdb237502b1c",
+  "receipt_sha256": "51f29ae010300dd103074103c730f3bb484f235e54af6b5bee9eb1a43fed08ab",
   "results": {
     "active_work_complete_matches": 1000,
     "active_work_complete_rate": 1.0,

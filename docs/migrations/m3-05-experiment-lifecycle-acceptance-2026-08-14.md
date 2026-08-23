@@ -37,7 +37,7 @@ Promotion 记录冻结 source/target revision、attempt、contract digest 和每
 
 ## 量化结果
 
-[`m3-05-experiment-lifecycle-results.json`](../../experiments/routing/m3-05-experiment-lifecycle-results.json) 使用 [`m3-05-experiment-lifecycle.yaml`](../../experiments/routing/m3-05-experiment-lifecycle.yaml) 运行 40 个完整 attempt -> proposal -> approval 样本。每个样本写入 3 个 Event、1 个 attempt 和 2 条 promotion 记录。
+[`m3-05-experiment-lifecycle-results.json`](../../experiments/routing/m3-05-experiment-lifecycle-results.json) 使用 [`m3-05-experiment-lifecycle.yaml`](../../experiments/routing/m3-05-experiment-lifecycle.yaml) 运行 1,000 个完整 attempt -> proposal -> approval 样本。每个样本写入 3 个 Event、1 个 attempt 和 2 条 promotion 记录。
 
 | 指标 | 结果 |
 |---|---:|
@@ -63,6 +63,6 @@ Receipt provenance 固定 fixture、lifecycle gate、State MCP、Event reducer�
 ## 复现
 
 ```text
-.venv/bin/python tools/run_experiment_lifecycle_benchmark.py --samples 40 --observed-at 2026-08-14T08:35:00+08:00 --output experiments/routing/m3-05-experiment-lifecycle-results.json
+.venv/bin/python tools/run_experiment_lifecycle_benchmark.py --samples 1000 --observed-at 2026-08-14T08:35:00+08:00 --output experiments/routing/m3-05-experiment-lifecycle-results.json
 .venv/bin/python -m unittest tests.test_m3_05_experiment_lifecycle -q
 ```

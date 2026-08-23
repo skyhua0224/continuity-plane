@@ -8,11 +8,13 @@ import json
 from contextlib import redirect_stdout
 from io import StringIO
 from pathlib import Path
+from unittest.mock import patch
 
 import yaml
 from jsonschema import Draft202012Validator
 
 from context_control_plane.cli import main
+from context_control_plane.checkpoint import CheckpointError
 from context_control_plane.sqlite_state_store import SQLiteStateStore
 from context_control_plane.state_mcp import (
     LOCAL_CLAIM_RECOVERY_REQUEST_SCHEMA_VERSION,
@@ -212,6 +214,37 @@ class LocalClaimRecoveryTests(unittest.TestCase):
             self.assertEqual(result, 0)
             self.assertIn("claim-current-reclaimed-cli", output.getvalue())
 
+    def test_cli_reclaim_checkpoint_failure_keeps_state_unchanged(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            store = self._attached(root)
+            before = store.read_project("sample-app")
+            before_events = store.read_events("sample-app")
+
+            with patch(
+                "context_control_plane.cli.publish_checkpoint",
+                side_effect=CheckpointError("injected checkpoint failure"),
+            ):
+                with self.assertRaises((CheckpointError, ValueError)):
+                    main(
+                        [
+                            "work",
+                            "recover",
+                            "reclaim",
+                            "--root",
+                            str(root),
+                            "--claim-id",
+                            "claim-current",
+                            "--new-claim-id",
+                            "claim-current-reclaimed-fault",
+                            "--actor-ref",
+                            "agent-main",
+                        ]
+                    )
+
+            self.assertEqual(store.read_project("sample-app"), before)
+            self.assertEqual(store.read_events("sample-app"), before_events)
+
     def test_cli_heartbeat_uses_a_new_id_for_each_expected_revision(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -305,12 +338,25 @@ class LocalClaimRecoveryTests(unittest.TestCase):
             self.assertEqual(first_result, 0)
             self.assertEqual(second_result, 0)
             self.assertEqual(json.loads(first.getvalue())["revision"], 3)
-            self.assertEqual(json.loads(second.getvalue())["revision"], 4)
+            second_response = json.loads(second.getvalue())
+            self.assertEqual(second_response["revision"], 4)
+            self.assertTrue(second_response["checkpoint_verified"])
+            self.assertEqual(
+                second_response["checkpoint_ref"]["artifact_uri"],
+                f"artifact://sha256/{second_response['checkpoint_ref']['digest']}",
+            )
             self.assertEqual(len(store.read_events("sample-app")), 4)
             self.assertNotEqual(
                 store.read_events("sample-app")[-1]["event_id"],
                 store.read_events("sample-app")[-2]["event_id"],
             )
+            resumed = StringIO()
+            with redirect_stdout(resumed):
+                self.assertEqual(main(["resume", "--root", str(root)]), 0)
+            packet = json.loads(resumed.getvalue())
+            self.assertEqual(packet["revision"], 4)
+            self.assertTrue(packet["checkpoint_verified"])
+            self.assertFalse(packet["read_only"])
 
 
 if __name__ == "__main__":

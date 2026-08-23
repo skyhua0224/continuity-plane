@@ -59,7 +59,7 @@ contract.
 | provider invocations / external services | `0 / 0` |
 | projection latency | p50 `0.761533 ms`; p95 `1.908619 ms`; max `4.549670 ms` |
 | benchmark verdict | `passed`; failed gates `[]` |
-| receipt | [`m9-01-external-state-projection-results.json`](../../experiments/evidence/m9-01-external-state-projection-results.json), receipt SHA-256 `7c06f2c92a321fecdf0f89d0f0ff15e695ae95558203ed0cccd8e9f0ffea4fc3`, file SHA-256 `b0922487816db3a7dab0b4b463d869a0d77925a33b58c2d95f4339c4a0b9fc26` |
+| receipt | [`m9-01-external-state-projection-results.json`](../../experiments/evidence/m9-01-external-state-projection-results.json), receipt SHA-256 `a83001f44215edb52c2590c46cb5e5554b7f8728d5137170700b41c3a7b343e7`, file SHA-256 `d65f012d31b3a878fde94551f2f80791c9af45c6b3428bc151006330a854ce94` |
 
 Focused fault coverage includes malformed and torn State MCP success responses,
 malformed source error responses, longest valid provider/request identities,
@@ -95,7 +95,7 @@ remains a candidate reference.
 ## Reproduction
 
 ```text
-.venv/bin/python tools/run_external_state_projection_benchmark.py --root . --iterations 1000 --generated-at 2026-08-17T17:00:00+08:00
+.venv/bin/python tools/run_external_state_projection_benchmark.py --root . --iterations 1000 --generated-at 2026-08-19T22:55:00+08:00
 .venv/bin/python -m unittest tests.test_m9_01_external_state_provider tests.test_m9_01_benchmark tests.test_m9_01_contract_schemas -v
 ruff check context_control_plane/external_state_provider.py context_control_plane/external_state_provider_benchmark.py tests/test_m9_01_external_state_provider.py tests/test_m9_01_benchmark.py tests/test_m9_01_contract_schemas.py tools/run_external_state_projection_benchmark.py
 ```

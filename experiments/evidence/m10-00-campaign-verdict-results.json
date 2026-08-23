@@ -62,8 +62,8 @@
     }
   ],
   "failed_experiments": [],
-  "plan_sha256": "e79ce4890cd69e12de8167bda54a9052320a72084d6c39c29d7e62a47f9ebf23",
-  "receipt_sha256": "a17bbd307f28a41f2972f126f87b7aeeff626a018363b2c101bd9655997dfd0e",
+  "plan_sha256": "d4f856b0287d9cf170653ba7bf6b911e1c711c127d17cd6c6dd3d6d5440da087",
+  "receipt_sha256": "e1da02b93a9dd469d9f7fb37be8d316eae14b4c48202426e477303b1a48a945f",
   "required_leaf_completed": 3,
   "required_leaf_count": 3,
   "schema_version": "context.self-dogfood-campaign-verdict/v1alpha1",

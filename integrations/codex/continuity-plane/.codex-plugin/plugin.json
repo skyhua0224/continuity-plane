@@ -1,6 +1,6 @@
 {
   "name": "continuity-plane",
-  "version": "0.1.0-alpha.2",
+  "version": "0.1.0-alpha.6+codex.20260823220129",
   "description": "Bounded recovery, checkpoint canaries, and local continuity tools for Codex",
   "author": {
     "name": "SkyHua"
@@ -8,19 +8,28 @@
   "homepage": "https://github.com/skyhua0224/continuity-plane",
   "repository": "https://github.com/skyhua0224/continuity-plane",
   "license": "Apache-2.0",
-  "keywords": ["context", "recovery", "claims", "checkpoint", "compaction"],
+  "keywords": [
+    "context",
+    "recovery",
+    "claims",
+    "checkpoint",
+    "compaction"
+  ],
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Continuity Plane",
-    "shortDescription": "压缩前后保持任务连续 / Preserve work across compaction.",
-    "longDescription": "在压缩前创建 checkpoint，压缩后先验证 canary，再以有界恢复包继续当前 Work。 Creates a checkpoint before compaction, verifies it afterward, and resumes from a bounded packet.",
+    "shortDescription": "\u538b\u7f29\u524d\u540e\u4fdd\u6301\u4efb\u52a1\u8fde\u7eed / Preserve work across compaction.",
+    "longDescription": "\u5728\u538b\u7f29\u524d\u521b\u5efa checkpoint\uff0c\u538b\u7f29\u540e\u5148\u9a8c\u8bc1 canary\uff0c\u518d\u4ee5\u6709\u754c\u6062\u590d\u5305\u7ee7\u7eed\u5f53\u524d Work\u3002 Creates a checkpoint before compaction, verifies it afterward, and resumes from a bounded packet.",
     "developerName": "SkyHua",
     "category": "Productivity",
-    "capabilities": ["Read", "Write"],
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
     "websiteURL": "https://github.com/skyhua0224/continuity-plane",
     "defaultPrompt": [
-      "检查当前项目的连续性状态。",
+      "\u68c0\u67e5\u5f53\u524d\u9879\u76ee\u7684\u8fde\u7eed\u6027\u72b6\u6001\u3002",
       "Check this project's continuity state."
     ]
   }

@@ -388,6 +388,8 @@ class M205StateMCPContractTests(unittest.TestCase):
                 "context.idea.correction.protect",
                 "context.idea.correction.release",
                 "context.state.work.complete",
+                "context.state.work.activate",
+                "context.state.work.transition",
                 "context.state.claim.recovery",
             },
         )
@@ -401,6 +403,8 @@ class M205StateMCPContractTests(unittest.TestCase):
             "context.idea.correction.protect": "context.idea-correction-protection-request/v1alpha1",
             "context.idea.correction.release": "context.idea-correction-release-request/v1alpha1",
             "context.state.work.complete": "context.local-work-completion-request/v1alpha1",
+            "context.state.work.activate": "context.local-work-activation-request/v1alpha1",
+            "context.state.work.transition": "context.local-work-transition-request/v1alpha1",
             "context.state.claim.recovery": "context.state-claim-recovery-request/v1alpha1",
         }
         for item in definitions:

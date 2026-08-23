@@ -9,7 +9,7 @@
     "schema_version": {"const": "context.recovery-envelope/v1alpha1"},
     "project_id": {"$ref": "#/$defs/id"}, "revision": {"type": "integer", "minimum": 1}, "event_head": {"$ref": "#/$defs/eventHead"},
     "checkpoint_ref": {"$ref": "#/$defs/artifactRef"}, "checkpoint_verified": {"const": true},
-    "active_work": {"$ref": "#/$defs/activeWork"}, "claim": {"$ref": "#/$defs/claim"},
+    "active_work": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/activeWork"}]}, "claim": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/claim"}]},
     "current_decisions": {"type": "array", "maxItems": 32, "uniqueItems": true, "items": {"$ref": "#/$defs/decision"}},
     "current_constraints": {"type": "array", "maxItems": 32, "uniqueItems": true, "items": {"$ref": "#/$defs/constraint"}},
     "open_blockers": {"type": "array", "maxItems": 32, "uniqueItems": true, "items": {"$ref": "#/$defs/blocker"}},

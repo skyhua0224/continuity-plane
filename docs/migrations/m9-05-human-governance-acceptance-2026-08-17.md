@@ -82,7 +82,7 @@ access.
 | unauthorized State calls, authority violations, provider invocations and external services | `0 / 0 / 0 / 0` |
 | local facade-contract latency | 1,000 samples; p50 `1.615073 ms`; p95 `3.068316 ms`; max `4.923184 ms`; threshold p95 `<50 ms` |
 | benchmark verdict | `passed`; failed gates `[]` |
-| receipt | [`m9-05-human-governance-results.json`](../../experiments/evidence/m9-05-human-governance-results.json), receipt SHA-256 `5f627996192ba903c8cf12bdc8cf95ac063126c912a3de5b9e8a88600262b851`, file SHA-256 `1adffcfe7e123fcb0bee7194b86ac8e2cbef014e7bda998566c41a4e97a22850` |
+| receipt | [`m9-05-human-governance-results.json`](../../experiments/evidence/m9-05-human-governance-results.json), receipt SHA-256 `10ca55c87b3da10609dd81bba139435c2d8cd485d9e0362f0513edf6a8091379`, file SHA-256 `f8a65ff885f561dc4b1979ac5e73505020f702a43ea5088438b6112155f55a6b` |
 
 The benchmark uses a local strict State probe to measure facade contract work.
 It does not measure Docmost browser rendering, PostgreSQL, SQLite transactions,
@@ -114,7 +114,7 @@ quarantined.
 ## Reproduction
 
 ```text
-.venv/bin/python tools/run_human_governance_benchmark.py --root . --iterations 1000 --generated-at 2026-08-17T23:30:00+08:00 --output experiments/evidence/m9-05-human-governance-results.json
+.venv/bin/python tools/run_human_governance_benchmark.py --root . --iterations 1000 --generated-at 2026-08-19T22:55:00+08:00 --output experiments/evidence/m9-05-human-governance-results.json
 .venv/bin/python -m unittest tests.test_m9_05_human_governance tests.test_m9_05_contract_schemas tests.test_m9_05_human_governance_benchmark -v
 .venv/bin/python -m unittest tests.test_m8_05_authorization_audit tests.test_m8_05_authorization_benchmark tests.test_m8_05_contract_schemas tests.test_m8_05_state_mcp_isolation tests.test_m2_05_state_mcp -v
 ruff check context_control_plane/authorization_audit.py context_control_plane/state_mcp.py context_control_plane/human_governance.py context_control_plane/human_governance_benchmark.py tests/test_m9_05_human_governance.py tests/test_m9_05_contract_schemas.py tests/test_m9_05_human_governance_benchmark.py tools/run_human_governance_benchmark.py

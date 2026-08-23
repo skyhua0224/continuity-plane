@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "context-control-plane"
-version = "0.1.0a1"
+version = "0.1.0a6"
 description = "Durable context, task state, evidence, and collaboration control for AI-assisted software work"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -35,6 +35,7 @@ dev = [
 [project.scripts]
 context-control-plane = "context_control_plane.cli:main"
 continuity = "context_control_plane.cli:main"
+continuity-mcp = "context_control_plane.codex_mcp_server:main"
 
 [tool.setuptools.packages.find]
 include = ["context_control_plane", "context_control_plane.*"]

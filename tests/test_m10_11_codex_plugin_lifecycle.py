@@ -35,7 +35,18 @@ class M1011CodexPluginLifecycleTests(unittest.TestCase):
             """#!/bin/sh
 printf '%s\\n' \"$*\" >> \"$FAKE_CONTINUITY_CALLS\"
 if [ \"$1\" = \"resume\" ]; then
-  printf '%s\\n' '{"schema_version":"context.resume-packet/v1alpha1","project_id":"portable-project","revision":7,"active_work":{"work_id":"work-active","title":"Continue active work"},"claim":{"claim_id":"claim-active"},"next_action":"continue-active-work","read_only":false}'
+  if [ \"${ALWAYS_STALE:-0}\" = \"1\" ]; then
+    printf '%s\\n' '{"schema_version":"context.resume-packet/v1alpha1","project_id":"portable-project","revision":7,"active_work":{"work_id":"work-active","title":"Continue active work"},"claim":{"claim_id":"claim-active","actor_ref":"actor-active"},"next_action":"remain-read-only","source_fresh":false,"read_only":true}'
+  elif [ \"${AUTO_REFRESH:-0}\" = \"1\" ] && [ ! -f \"$FAKE_CONTINUITY_REFRESHED\" ]; then
+    printf '%s\\n' '{"schema_version":"context.resume-packet/v1alpha1","project_id":"portable-project","revision":7,"active_work":{"work_id":"work-active","title":"Continue active work"},"claim":{"claim_id":"claim-active","actor_ref":"actor-active"},"next_action":"remain-read-only","source_fresh":false,"read_only":true}'
+  else
+    printf '%s\\n' '{"schema_version":"context.resume-packet/v1alpha1","project_id":"portable-project","revision":8,"active_work":{"work_id":"work-active","title":"Continue active work"},"claim":{"claim_id":"claim-active","actor_ref":"actor-active"},"next_action":"continue-active-work","source_fresh":true,"read_only":false}'
+  fi
+  exit 0
+fi
+if [ \"$1 $2\" = \"attach refresh\" ]; then
+  touch \"$FAKE_CONTINUITY_REFRESHED\"
+  printf '%s\\n' '{"status":"refreshed"}'
   exit 0
 fi
 if [ \"${FAIL_CHECKPOINT_VERIFY:-0}\" = \"1\" ] && [ \"$1 $2\" = \"checkpoint verify\" ]; then
@@ -54,6 +65,8 @@ printf '%s\\n' '{"status":"ok"}'
         *,
         fail_verify: bool = False,
         with_project: bool = True,
+        auto_refresh: bool = False,
+        always_stale: bool = False,
     ) -> tuple[subprocess.CompletedProcess[str], list[str], str]:
         with tempfile.TemporaryDirectory() as directory:
             temp = Path(directory)
@@ -88,6 +101,9 @@ printf '%s\\n' '{"status":"ok"}'
                 "PLUGIN_ROOT": str(self.plugin),
                 "FAKE_CONTINUITY_CALLS": str(calls),
                 "FAIL_CHECKPOINT_VERIFY": "1" if fail_verify else "0",
+                "AUTO_REFRESH": "1" if auto_refresh else "0",
+                "FAKE_CONTINUITY_REFRESHED": str(temp / "refreshed"),
+                "ALWAYS_STALE": "1" if always_stale else "0",
             }
             completed = subprocess.run(
                 ["python3", str(self.script)],
@@ -115,7 +131,18 @@ printf '%s\\n' '{"status":"ok"}'
             handler = groups[0]["hooks"][0]
             self.assertIn("command", handler)
             self.assertIn("commandWindows", handler)
-            self.assertLessEqual(handler.get("additionalContextLimit", 2000), 2000)
+        self.assertEqual(
+            hooks["SessionStart"][0]["hooks"][0]["additionalContextLimit"],
+            5000,
+        )
+
+    def test_hook_observation_binds_installed_manifest_and_hook_contract(self) -> None:
+        completed, _, observations = self._run_hook("SessionStart")
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        record = json.loads(observations.splitlines()[-1])
+        self.assertRegex(record["plugin_manifest_sha256"], r"^[0-9a-f]{64}$")
+        self.assertRegex(record["hook_contract_sha256"], r"^[0-9a-f]{64}$")
+        self.assertEqual(record["plugin_loaded"], True)
 
     def test_precompact_creates_checkpoint_without_model_visible_narration(self) -> None:
         completed, calls, observations = self._run_hook("PreCompact")
@@ -154,6 +181,23 @@ printf '%s\\n' '{"status":"ok"}'
         self.assertNotIn("private-session-id", observations)
         self.assertNotIn("private-turn-id", observations)
         self.assertNotIn("raw-rollout", observations)
+
+    def test_compact_session_start_refreshes_stale_sources_before_resume(self) -> None:
+        completed, calls, _ = self._run_hook("SessionStart", auto_refresh=True)
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(len(calls), 2)
+        self.assertTrue(calls[0].startswith("resume "))
+        self.assertTrue(calls[1].startswith("attach refresh "))
+        self.assertIn("explicit governance approval", completed.stdout.lower())
+
+    def test_compact_session_start_stops_if_refresh_does_not_make_source_fresh(self) -> None:
+        completed, calls, observations = self._run_hook(
+            "SessionStart", auto_refresh=True, always_stale=True
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(len(calls), 2)
+        self.assertIn("read-only", completed.stdout)
+        self.assertIn('"success":false', observations)
 
     def test_non_continuity_project_is_a_zero_output_noop(self) -> None:
         completed, calls, observations = self._run_hook(

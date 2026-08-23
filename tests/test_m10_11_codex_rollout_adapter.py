@@ -85,6 +85,12 @@ class M1011CodexRolloutAdapterTests(unittest.TestCase):
         self.assertEqual(receipt["compaction_count"], 1)
         self.assertEqual(receipt["provider_usage"]["input_tokens"], 60_000)
         self.assertEqual(receipt["provider_usage"]["output_tokens"], 4_000)
+        self.assertEqual(receipt["provider_request_usage"]["status"], "measured")
+        self.assertEqual(receipt["provider_request_usage"]["sample_count"], 2)
+        self.assertEqual(receipt["provider_request_usage"]["input_tokens"], 2)
+        self.assertEqual(receipt["provider_request_usage"]["cached_input_tokens"], 0)
+        self.assertEqual(receipt["provider_request_usage"]["last_input_tokens"], 1)
+        self.assertEqual(receipt["provider_request_usage"]["peak_input_tokens"], 1)
         self.assertEqual(receipt["context_window_tokens"], 1_000_000)
         self.assertEqual(receipt["user_message_count"], 1)
         self.assertEqual(receipt["assistant_message_count"], 1)
@@ -152,6 +158,70 @@ class M1011CodexRolloutAdapterTests(unittest.TestCase):
         self.assertIsNone(receipt["provider_usage"]["input_tokens"])
         self.assertIn("legacy", receipt["provider_usage"]["unavailable_reason"])
         self.assertIsNone(receipt["context_window_tokens"])
+
+    def test_interval_uses_prior_cumulative_sample_and_only_interval_requests(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "interval.jsonl"
+            before = self._token(input_tokens=1_000, output_tokens=100)
+            before["timestamp"] = "2026-08-20T11:59:00Z"
+            inside = self._token(input_tokens=1_600, output_tokens=150)
+            inside["timestamp"] = "2026-08-20T12:01:00Z"
+            inside["payload"]["info"]["last_token_usage"]["input_tokens"] = 600
+            after = self._token(input_tokens=2_500, output_tokens=200)
+            after["timestamp"] = "2026-08-20T13:01:00Z"
+            after["payload"]["info"]["last_token_usage"]["input_tokens"] = 900
+            self._write(path, [before, inside, after])
+            receipt = inspect_codex_rollout(
+                path,
+                started_at="2026-08-20T12:00:00Z",
+                ended_at="2026-08-20T13:00:00Z",
+            )
+        self.assertEqual(receipt["provider_usage"]["input_tokens"], 600)
+        self.assertEqual(receipt["provider_usage"]["output_tokens"], 50)
+        self.assertEqual(receipt["provider_request_usage"]["sample_count"], 1)
+        self.assertEqual(receipt["provider_request_usage"]["input_tokens"], 600)
+        self.assertEqual(
+            receipt["observation_interval"],
+            {
+                "started_at": "2026-08-20T12:00:00Z",
+                "ended_at": "2026-08-20T13:00:00Z",
+            },
+        )
+
+    def test_interval_is_half_open_and_rejects_missing_time_or_counter_reset(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "interval-errors.jsonl"
+            before = self._token(input_tokens=1_000, output_tokens=100)
+            before["timestamp"] = "2026-08-20T11:59:00Z"
+            boundary = self._token(input_tokens=1_600, output_tokens=150)
+            boundary["timestamp"] = "2026-08-20T13:00:00Z"
+            self._write(path, [before, boundary])
+            with self.assertRaisesRegex(CodexRolloutAdapterError, "no token_count"):
+                inspect_codex_rollout(
+                    path,
+                    started_at="2026-08-20T12:00:00Z",
+                    ended_at="2026-08-20T13:00:00Z",
+                )
+
+            missing = self._token(input_tokens=1_600, output_tokens=150)
+            missing.pop("timestamp")
+            self._write(path, [before, missing])
+            with self.assertRaisesRegex(CodexRolloutAdapterError, "timestamp"):
+                inspect_codex_rollout(
+                    path,
+                    started_at="2026-08-20T12:00:00Z",
+                    ended_at="2026-08-20T13:00:00Z",
+                )
+
+            reset = self._token(input_tokens=900, output_tokens=150)
+            reset["timestamp"] = "2026-08-20T12:01:00Z"
+            self._write(path, [before, reset])
+            with self.assertRaisesRegex(CodexRolloutAdapterError, "counter reset"):
+                inspect_codex_rollout(
+                    path,
+                    started_at="2026-08-20T12:00:00Z",
+                    ended_at="2026-08-20T13:00:00Z",
+                )
 
 
 if __name__ == "__main__":

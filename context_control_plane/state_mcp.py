@@ -73,6 +73,8 @@ IDEA_REVIEW_TOOL = "context.idea.review"
 IDEA_CORRECTION_PROTECT_TOOL = "context.idea.correction.protect"
 IDEA_CORRECTION_RELEASE_TOOL = "context.idea.correction.release"
 LOCAL_WORK_COMPLETION_TOOL = "context.state.work.complete"
+LOCAL_WORK_ACTIVATION_TOOL = "context.state.work.activate"
+LOCAL_WORK_TRANSITION_TOOL = "context.state.work.transition"
 LOCAL_CLAIM_RECOVERY_TOOL = "context.state.claim.recovery"
 DEFAULT_REQUEST_CACHE_ENTRIES = 1024
 _AUTHORIZATION_GRANTED = "granted"
@@ -93,6 +95,8 @@ STATE_MCP_TOOLS = (
     IDEA_CORRECTION_PROTECT_TOOL,
     IDEA_CORRECTION_RELEASE_TOOL,
     LOCAL_WORK_COMPLETION_TOOL,
+    LOCAL_WORK_ACTIVATION_TOOL,
+    LOCAL_WORK_TRANSITION_TOOL,
     LOCAL_CLAIM_RECOVERY_TOOL,
 )
 
@@ -115,6 +119,12 @@ IDEA_CORRECTION_RELEASE_REQUEST_SCHEMA_VERSION = (
 )
 LOCAL_WORK_COMPLETION_REQUEST_SCHEMA_VERSION = (
     "context.local-work-completion-request/v1alpha1"
+)
+LOCAL_WORK_ACTIVATION_REQUEST_SCHEMA_VERSION = (
+    "context.local-work-activation-request/v1alpha1"
+)
+LOCAL_WORK_TRANSITION_REQUEST_SCHEMA_VERSION = (
+    "context.local-work-transition-request/v1alpha1"
 )
 LOCAL_CLAIM_RECOVERY_REQUEST_SCHEMA_VERSION = (
     "context.state-claim-recovery-request/v1alpha1"
@@ -274,6 +284,39 @@ _REQUEST_FIELDS = {
         "causation_ref",
         "correlation_ref",
     },
+    LOCAL_WORK_ACTIVATION_TOOL: _COMMON_FIELDS
+    | {
+        "expected_revision",
+        "work_id",
+        "work_title",
+        "owner_ref",
+        "claim_id",
+        "scope_owners",
+        "source_evidence_id",
+        "source_proposal_sha256",
+        "checkpoint_ref",
+        "lease_expires_at",
+        "causation_ref",
+        "correlation_ref",
+    },
+    LOCAL_WORK_TRANSITION_TOOL: _COMMON_FIELDS
+    | {
+        "expected_revision",
+        "work_id",
+        "claim_id",
+        "checkpoint_ref",
+        "evidence",
+        "return_point_work_id",
+        "resolved_blocker_id",
+        "successor_claim_id",
+        "successor_scope_owners",
+        "lease_expires_at",
+        "source_proposal_sha256",
+        "workspace_verification",
+        "remaining_blocker",
+        "causation_ref",
+        "correlation_ref",
+    },
     LOCAL_CLAIM_RECOVERY_TOOL: _COMMON_FIELDS
     | {
         "action",
@@ -306,6 +349,8 @@ _AUTHORIZATION_ACTIONS = {
     IDEA_CORRECTION_PROTECT_TOOL: "state.idea.correction.protect",
     IDEA_CORRECTION_RELEASE_TOOL: "state.idea.correction.release",
     LOCAL_WORK_COMPLETION_TOOL: "state.work.complete",
+    LOCAL_WORK_ACTIVATION_TOOL: "state.work.activate",
+    LOCAL_WORK_TRANSITION_TOOL: "state.work.transition",
     LOCAL_CLAIM_RECOVERY_TOOL: "state.claim.recovery",
 }
 _COMMIT_COLLECTION_ID_FIELDS = {
@@ -539,6 +584,84 @@ def _request_properties(tool: str) -> dict[str, Any]:
             "causation_ref": {"type": ["string", "null"]},
             "correlation_ref": {"type": ["string", "null"]},
         }
+    if tool == LOCAL_WORK_ACTIVATION_TOOL:
+        return {
+            **common,
+            "schema_version": {
+                "const": LOCAL_WORK_ACTIVATION_REQUEST_SCHEMA_VERSION
+            },
+            "expected_revision": {"type": "integer", "minimum": 0},
+            "work_id": {"type": "string", "minLength": 1, "maxLength": 200},
+            "work_title": {"type": "string", "minLength": 1, "maxLength": 512},
+            "owner_ref": {"type": "string", "minLength": 1, "maxLength": 200},
+            "claim_id": {"type": "string", "minLength": 1, "maxLength": 200},
+            "scope_owners": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 128,
+                "items": {"type": "object"},
+            },
+            "source_evidence_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+            },
+            "source_proposal_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$",
+            },
+            "checkpoint_ref": {"type": "object"},
+            "lease_expires_at": {"type": "string", "format": "date-time"},
+            "causation_ref": {"type": ["string", "null"]},
+            "correlation_ref": {"type": ["string", "null"]},
+        }
+    if tool == LOCAL_WORK_TRANSITION_TOOL:
+        return {
+            **common,
+            "schema_version": {
+                "const": LOCAL_WORK_TRANSITION_REQUEST_SCHEMA_VERSION
+            },
+            "expected_revision": {"type": "integer", "minimum": 0},
+            "work_id": {"type": "string", "minLength": 1, "maxLength": 200},
+            "claim_id": {"type": "string", "minLength": 1, "maxLength": 200},
+            "checkpoint_ref": {"type": "object"},
+            "evidence": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 32,
+                "items": {"type": "object"},
+            },
+            "return_point_work_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+            },
+            "resolved_blocker_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+            },
+            "successor_claim_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+            },
+            "successor_scope_owners": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 128,
+                "items": {"type": "object"},
+            },
+            "lease_expires_at": {"type": "string", "format": "date-time"},
+            "source_proposal_sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$",
+            },
+            "workspace_verification": {"type": "object"},
+            "remaining_blocker": {"type": ["object", "null"]},
+            "causation_ref": {"type": ["string", "null"]},
+            "correlation_ref": {"type": ["string", "null"]},
+        }
     if tool == LOCAL_CLAIM_RECOVERY_TOOL:
         return {
             **common,
@@ -651,6 +774,8 @@ def state_mcp_tool_definitions() -> list[dict[str, Any]]:
         IDEA_CORRECTION_PROTECT_TOOL: "Protect affected writes while an Idea correction is unresolved.",
         IDEA_CORRECTION_RELEASE_TOOL: "Release an Idea correction protection after verified evidence.",
         LOCAL_WORK_COMPLETION_TOOL: "Atomically complete local Work and release its active claim with verified evidence.",
+        LOCAL_WORK_ACTIVATION_TOOL: "Atomically create or activate one source-bound Work, issue its claim, and publish its checkpoint.",
+        LOCAL_WORK_TRANSITION_TOOL: "Atomically complete one dependency Work, resolve its declared blocker, and claim its predeclared return point.",
         LOCAL_CLAIM_RECOVERY_TOOL: "Heartbeat a live legacy local claim or reclaim an expired claim with a new identity.",
     }
     return [
@@ -742,6 +867,8 @@ def _validate_request(tool: str, arguments: Any) -> str | None:
         IDEA_CORRECTION_PROTECT_TOOL: IDEA_CORRECTION_PROTECTION_REQUEST_SCHEMA_VERSION,
         IDEA_CORRECTION_RELEASE_TOOL: IDEA_CORRECTION_RELEASE_REQUEST_SCHEMA_VERSION,
         LOCAL_WORK_COMPLETION_TOOL: LOCAL_WORK_COMPLETION_REQUEST_SCHEMA_VERSION,
+        LOCAL_WORK_ACTIVATION_TOOL: LOCAL_WORK_ACTIVATION_REQUEST_SCHEMA_VERSION,
+        LOCAL_WORK_TRANSITION_TOOL: LOCAL_WORK_TRANSITION_REQUEST_SCHEMA_VERSION,
         LOCAL_CLAIM_RECOVERY_TOOL: LOCAL_CLAIM_RECOVERY_REQUEST_SCHEMA_VERSION,
     }.get(tool, REQUEST_SCHEMA_VERSION)
     supported_request_versions = {
@@ -831,7 +958,61 @@ def _validate_request(tool: str, arguments: Any) -> str | None:
             return "lease_expires_at must be a valid RFC3339 timestamp"
         if parsed_lease.tzinfo is None:
             return "lease_expires_at must include a timezone"
-    if tool == LOCAL_WORK_COMPLETION_TOOL:
+    if tool == LOCAL_WORK_ACTIVATION_TOOL:
+        for field in (
+            "work_id",
+            "owner_ref",
+            "claim_id",
+            "source_evidence_id",
+        ):
+            value = arguments[field]
+            if not isinstance(value, str) or not value.strip() or len(value) > 200:
+                return f"{field} must be a bounded non-empty string"
+        title = arguments["work_title"]
+        if not isinstance(title, str) or not title.strip() or len(title) > 512:
+            return "work_title must be bounded and non-empty"
+        scopes = arguments["scope_owners"]
+        if not isinstance(scopes, list) or not scopes or len(scopes) > 128:
+            return "scope_owners must be a bounded non-empty array"
+        try:
+            for scope in scopes:
+                validate_scope(scope)
+        except (TypeError, ValueError):
+            return "scope_owners entry is invalid"
+        source_sha256 = arguments["source_proposal_sha256"]
+        if not isinstance(source_sha256, str) or _SHA256_RE.fullmatch(source_sha256) is None:
+            return "source_proposal_sha256 must be lowercase SHA-256"
+        lease = arguments["lease_expires_at"]
+        if not isinstance(lease, str) or not lease.strip():
+            return "lease_expires_at must be a non-empty RFC3339 string"
+        try:
+            parsed_lease = datetime.fromisoformat(lease.replace("Z", "+00:00"))
+        except ValueError:
+            return "lease_expires_at must be a valid RFC3339 timestamp"
+        if parsed_lease.tzinfo is None:
+            return "lease_expires_at must include a timezone"
+        checkpoint_ref = arguments["checkpoint_ref"]
+        checkpoint_fields = {
+            "schema_version",
+            "digest_algorithm",
+            "digest",
+            "size_bytes",
+            "artifact_uri",
+        }
+        if (
+            not isinstance(checkpoint_ref, dict)
+            or set(checkpoint_ref) != checkpoint_fields
+            or checkpoint_ref["schema_version"] != "context.artifact-ref/v1alpha1"
+            or checkpoint_ref["digest_algorithm"] != "sha-256"
+            or not isinstance(checkpoint_ref["digest"], str)
+            or _SHA256_RE.fullmatch(checkpoint_ref["digest"]) is None
+            or type(checkpoint_ref["size_bytes"]) is not int
+            or checkpoint_ref["size_bytes"] <= 0
+            or checkpoint_ref["artifact_uri"]
+            != f"artifact://sha256/{checkpoint_ref['digest']}"
+        ):
+            return "checkpoint_ref is invalid"
+    if tool in {LOCAL_WORK_COMPLETION_TOOL, LOCAL_WORK_TRANSITION_TOOL}:
         for field in ("work_id", "claim_id"):
             value = arguments[field]
             if not isinstance(value, str) or not value.strip() or len(value) > 200:
@@ -889,6 +1070,95 @@ def _validate_request(tool: str, arguments: Any) -> str | None:
         ]
         if len(checkpoint_evidence) != 1:
             return "completion requires one verified checkpoint evidence"
+    if tool == LOCAL_WORK_TRANSITION_TOOL:
+        for field in (
+            "return_point_work_id",
+            "resolved_blocker_id",
+            "successor_claim_id",
+        ):
+            value = arguments[field]
+            if not isinstance(value, str) or not value.strip() or len(value) > 200:
+                return f"{field} must be a bounded non-empty string"
+        if arguments["work_id"] == arguments["return_point_work_id"]:
+            return "return point must differ from completed Work"
+        scopes = arguments["successor_scope_owners"]
+        if not isinstance(scopes, list) or not scopes or len(scopes) > 128:
+            return "successor_scope_owners must be a bounded non-empty array"
+        for scope in scopes:
+            if not isinstance(scope, dict) or set(scope) != {
+                "scope_kind",
+                "scope_ref",
+            }:
+                return "successor scope fields are invalid"
+            try:
+                validate_scope(scope)
+            except (TypeError, ValueError):
+                return "successor scope is invalid"
+        lease = arguments["lease_expires_at"]
+        if not isinstance(lease, str) or not lease.strip():
+            return "lease_expires_at must be a non-empty RFC3339 string"
+        try:
+            parsed_lease = datetime.fromisoformat(lease.replace("Z", "+00:00"))
+        except ValueError:
+            return "lease_expires_at must be a valid RFC3339 timestamp"
+        if parsed_lease.tzinfo is None:
+            return "lease_expires_at must include a timezone"
+        source_sha256 = arguments["source_proposal_sha256"]
+        if not isinstance(source_sha256, str) or _SHA256_RE.fullmatch(source_sha256) is None:
+            return "source_proposal_sha256 must be lowercase SHA-256"
+        workspace = arguments["workspace_verification"]
+        if not isinstance(workspace, dict) or set(workspace) != {
+            "head_commit",
+            "clean",
+            "expected_ref",
+            "expected_ref_commit",
+        }:
+            return "workspace_verification fields are invalid"
+        if (
+            not isinstance(workspace["head_commit"], str)
+            or re.fullmatch(r"[0-9a-f]{40}", workspace["head_commit"]) is None
+            or workspace["clean"] is not True
+        ):
+            return "workspace_verification is not clean or content-bound"
+        expected_ref = workspace["expected_ref"]
+        expected_ref_commit = workspace["expected_ref_commit"]
+        if (expected_ref is None) != (expected_ref_commit is None):
+            return "workspace expected ref and commit must be supplied together"
+        if expected_ref is not None and (
+            not isinstance(expected_ref, str)
+            or not expected_ref.strip()
+            or len(expected_ref) > 500
+            or not isinstance(expected_ref_commit, str)
+            or re.fullmatch(r"[0-9a-f]{40}", expected_ref_commit) is None
+            or expected_ref_commit != workspace["head_commit"]
+        ):
+            return "workspace expected ref does not match HEAD"
+        remaining = arguments["remaining_blocker"]
+        if remaining is not None:
+            if not isinstance(remaining, dict) or set(remaining) != {
+                "blocker_id",
+                "reason",
+                "evidence_ids",
+            }:
+                return "remaining_blocker fields are invalid"
+            if (
+                not isinstance(remaining["blocker_id"], str)
+                or not remaining["blocker_id"].strip()
+                or len(remaining["blocker_id"]) > 200
+                or not isinstance(remaining["reason"], str)
+                or not remaining["reason"].strip()
+                or len(remaining["reason"]) > 2_000
+            ):
+                return "remaining_blocker identity or reason is invalid"
+            evidence_ids = remaining["evidence_ids"]
+            if (
+                not isinstance(evidence_ids, list)
+                or not evidence_ids
+                or len(evidence_ids) > 32
+                or any(not isinstance(item, str) or not item.strip() for item in evidence_ids)
+                or len(evidence_ids) != len(set(evidence_ids))
+            ):
+                return "remaining blocker evidence IDs are invalid"
     if tool == LOCAL_CLAIM_RECOVERY_TOOL:
         if arguments["action"] not in {"heartbeat", "reclaim"}:
             return "claim recovery action is unsupported"
@@ -1241,6 +1511,8 @@ class StateMCPService:
         registry_digest: str,
         clock: Callable[[], str],
         event_id_factory: Callable[[str], str],
+        transition_checkpoint_publisher: Callable[[dict[str, Any]], dict[str, Any]]
+        | None = None,
     ) -> None:
         self._manifest = validate_state_store_adapter(store)
         if not isinstance(registry_digest, str) or not _SHA256_RE.fullmatch(
@@ -1249,11 +1521,16 @@ class StateMCPService:
             raise ValueError("registry_digest must be lowercase SHA-256")
         if not callable(clock) or not callable(event_id_factory):
             raise TypeError("clock and event_id_factory must be callable")
+        if transition_checkpoint_publisher is not None and not callable(
+            transition_checkpoint_publisher
+        ):
+            raise TypeError("transition_checkpoint_publisher must be callable")
         self._store = store
         self._authorizer = authorizer or _DenyAllAuthorizer()
         self._registry_hash_value = registry_digest
         self._clock = clock
         self._event_id_factory = event_id_factory
+        self._transition_checkpoint_publisher = transition_checkpoint_publisher
         self._request_receipts: dict[
             tuple[str, str, str], tuple[str, dict[str, Any]]
         ] = {}
@@ -1499,6 +1776,8 @@ class StateMCPService:
             IDEA_CORRECTION_PROTECT_TOOL,
             IDEA_CORRECTION_RELEASE_TOOL,
             LOCAL_WORK_COMPLETION_TOOL,
+            LOCAL_WORK_ACTIVATION_TOOL,
+            LOCAL_WORK_TRANSITION_TOOL,
             LOCAL_CLAIM_RECOVERY_TOOL,
         }:
             with self._mutation_lock:
@@ -1511,6 +1790,10 @@ class StateMCPService:
                     return self._claim(arguments, context=context)
                 if tool == LOCAL_WORK_COMPLETION_TOOL:
                     return self._complete_local_work(arguments, context=context)
+                if tool == LOCAL_WORK_ACTIVATION_TOOL:
+                    return self._activate_local_work(arguments, context=context)
+                if tool == LOCAL_WORK_TRANSITION_TOOL:
+                    return self._transition_local_work(arguments, context=context)
                 if tool == LOCAL_CLAIM_RECOVERY_TOOL:
                     return self._recover_local_claim(arguments, context=context)
                 if tool == ATTEMPT_TOOL:
@@ -3994,6 +4277,671 @@ class StateMCPService:
         )
         return response
 
+    def _activate_local_work(
+        self,
+        arguments: dict[str, Any],
+        *,
+        context: RequestContext,
+    ) -> dict[str, Any]:
+        """Create or activate one source-bound Work and claim it in one Event."""
+        request_id = arguments["request_id"]
+        project_id = arguments["project_id"]
+
+        def denied(gate: str, *, code: str = "integrity") -> dict[str, Any]:
+            return _response(
+                tool=LOCAL_WORK_ACTIVATION_TOOL,
+                request_id=request_id,
+                error_code=code,
+                error_message=f"activation_gate:{gate}",
+            )
+
+        try:
+            snapshot = invoke_state_store(self._store, "read_project", project_id)
+            events = invoke_state_store(self._store, "read_events", project_id)
+            work = next(
+                (
+                    item
+                    for item in snapshot["works"]
+                    if item["work_id"] == arguments["work_id"]
+                ),
+                None,
+            )
+            existing_claim = next(
+                (
+                    item
+                    for item in snapshot["claims"]
+                    if item["claim_id"] == arguments["claim_id"]
+                ),
+                None,
+            )
+            identity_matches = work is not None and (
+                work["title"] == arguments["work_title"]
+                and work["owner_refs"] == [arguments["owner_ref"]]
+                and work["scope_refs"] == arguments["scope_owners"]
+            )
+            if (
+                identity_matches
+                and work["status"] == "active"
+                and existing_claim is not None
+                and existing_claim["status"] == "active"
+                and existing_claim["work_id"] == work["work_id"]
+                and existing_claim["actor_ref"] == context.subject_ref
+            ):
+                event_head = (
+                    None
+                    if not events
+                    else {
+                        "sequence_no": events[-1]["sequence_no"],
+                        "event_sha256": events[-1]["event_sha256"],
+                    }
+                )
+                response = _response(
+                    tool=LOCAL_WORK_ACTIVATION_TOOL,
+                    request_id=request_id,
+                    result={
+                        "snapshot": snapshot,
+                        "revision": snapshot["project"]["revision"],
+                        "event_head": event_head,
+                        "event": None,
+                        "checkpoint_ref": copy.deepcopy(arguments["checkpoint_ref"]),
+                        "already_activated": True,
+                        "claim": copy.deepcopy(existing_claim),
+                        "registry_digest": self._registry_hash_value,
+                        "capabilities": capability_manifest_to_document(self._manifest),
+                    },
+                )
+                self._remember_request(
+                    LOCAL_WORK_ACTIVATION_TOOL, arguments, context, response
+                )
+                return response
+            if snapshot["project"]["revision"] != arguments["expected_revision"]:
+                return denied("expected_revision", code="conflict")
+            if snapshot["schema_version"] == "context.typed-state/v6alpha1":
+                return denied("shared_state_adapter", code="capability")
+            if (
+                snapshot["project"]["active_work_ids"]
+                or snapshot["project"]["primary_work_id"] is not None
+                or any(item["status"] == "active" for item in snapshot["claims"])
+            ):
+                return denied("idle_state", code="conflict")
+            if context.subject_ref != arguments["owner_ref"]:
+                return denied("owner", code="permission_denied")
+            if existing_claim is not None:
+                return denied("claim_identity", code="conflict")
+            if work is not None and (not identity_matches or work["status"] != "ready"):
+                return denied("work_identity", code="conflict")
+            if any(
+                item["status"] in {"authorized", "started"}
+                for item in snapshot["effects"]
+            ):
+                return denied("pending_effects", code="conflict")
+            source_evidence_id = arguments["source_evidence_id"]
+            if source_evidence_id != (
+                f"evidence-attach-{arguments['source_proposal_sha256'][:16]}"
+            ):
+                return denied("source_identity")
+            source_evidence = next(
+                (
+                    item
+                    for item in snapshot["evidence"]
+                    if item["evidence_id"] == source_evidence_id
+                ),
+                None,
+            )
+            if source_evidence is None or source_evidence["validity"] != "verified":
+                return denied("source_fresh")
+            observed_at = self._clock()
+            observed = datetime.fromisoformat(observed_at.replace("Z", "+00:00"))
+            lease_expires = datetime.fromisoformat(
+                arguments["lease_expires_at"].replace("Z", "+00:00")
+            )
+            if lease_expires <= observed:
+                return denied("lease")
+
+            candidate = copy.deepcopy(snapshot)
+            changes: list[dict[str, Any]] = []
+            if work is None:
+                activated_work = {
+                    "work_id": arguments["work_id"],
+                    "kind": "work",
+                    "title": arguments["work_title"],
+                    "status": "active",
+                    "parent_work_id": None,
+                    "dependency_ids": [],
+                    "owner_refs": [arguments["owner_ref"]],
+                    "scope_refs": copy.deepcopy(arguments["scope_owners"]),
+                    "overlap_candidate_ids": [],
+                    "dedupe_status": "clear",
+                    "supersedes_work_id": None,
+                    "evidence_ids": [source_evidence_id],
+                    "blocker_ids": [],
+                    "revision": 1,
+                }
+                candidate["works"].append(activated_work)
+            else:
+                activated_work = next(
+                    item
+                    for item in candidate["works"]
+                    if item["work_id"] == work["work_id"]
+                )
+                activated_work["status"] = "active"
+                activated_work["revision"] += 1
+                activated_work["evidence_ids"] = list(
+                    dict.fromkeys(
+                        [*activated_work["evidence_ids"], source_evidence_id]
+                    )
+                )
+            revision_after = arguments["expected_revision"] + 1
+            claim = {
+                "claim_id": arguments["claim_id"],
+                "work_id": activated_work["work_id"],
+                "actor_ref": context.subject_ref,
+                "status": "active",
+                "expected_project_revision": revision_after,
+                "claimed_at": observed_at,
+                "lease_expires_at": arguments["lease_expires_at"],
+                "released_at": None,
+                "scope_owners": copy.deepcopy(arguments["scope_owners"]),
+            }
+            candidate["claims"].append(claim)
+            _upsert_change(changes, collection="works", value=activated_work)
+            _upsert_change(changes, collection="claims", value=claim)
+            for effect in candidate["effects"]:
+                if effect["status"] in {"authorized", "started"}:
+                    effect["expected_project_revision"] = revision_after
+                    _upsert_change(changes, collection="effects", value=effect)
+            _derive_project_projection(
+                candidate,
+                revision=revision_after,
+                updated_at=observed_at,
+            )
+            previous_hash = events[-1]["event_sha256"] if events else None
+            sequence_no = events[-1]["sequence_no"] + 1 if events else 1
+            event = build_state_event(
+                event_id=self._event_id_factory(request_id),
+                event_type="state-transition",
+                project_id=project_id,
+                sequence_no=sequence_no,
+                revision_before=arguments["expected_revision"],
+                occurred_at=observed_at,
+                actor_ref=context.subject_ref,
+                causation_ref=arguments["causation_ref"],
+                correlation_ref=arguments["correlation_ref"],
+                previous_event_sha256=previous_hash,
+                supersedes_event_id=None,
+                changes=changes,
+                project_after=candidate["project"],
+                schema_version=_event_schema_version(snapshot),
+            )
+            expected_snapshot = replay_state_events(
+                snapshot,
+                [event],
+                starting_sequence_no=sequence_no,
+                previous_event_sha256=previous_hash,
+            )
+            if self._transition_checkpoint_publisher is None:
+                return denied("checkpoint_publisher", code="capability")
+            checkpoint_input = {
+                "snapshot": expected_snapshot,
+                "revision": revision_after,
+                "event_head": {
+                    "sequence_no": event["sequence_no"],
+                    "event_sha256": event["event_sha256"],
+                },
+                "registry_digest": self._registry_hash_value,
+                "capabilities": capability_manifest_to_document(self._manifest),
+            }
+            try:
+                checkpoint_ref = self._transition_checkpoint_publisher(
+                    checkpoint_input
+                )
+            except Exception:  # noqa: BLE001
+                return denied("checkpoint_publication")
+            checkpoint_fields = {
+                "schema_version",
+                "digest_algorithm",
+                "digest",
+                "size_bytes",
+                "artifact_uri",
+            }
+            if (
+                not isinstance(checkpoint_ref, dict)
+                or set(checkpoint_ref) != checkpoint_fields
+                or checkpoint_ref["schema_version"] != "context.artifact-ref/v1alpha1"
+                or checkpoint_ref["digest_algorithm"] != "sha-256"
+                or not isinstance(checkpoint_ref["digest"], str)
+                or _SHA256_RE.fullmatch(checkpoint_ref["digest"]) is None
+                or type(checkpoint_ref["size_bytes"]) is not int
+                or checkpoint_ref["size_bytes"] <= 0
+                or checkpoint_ref["artifact_uri"]
+                != f"artifact://sha256/{checkpoint_ref['digest']}"
+            ):
+                return denied("checkpoint_publication")
+            invoke_state_store(
+                self._store,
+                "commit_event",
+                project_id=project_id,
+                expected_revision=arguments["expected_revision"],
+                event=event,
+                expected_snapshot=expected_snapshot,
+            )
+        except (
+            StateStoreCapabilityError,
+            StateStoreNotFound,
+            StateStoreConflict,
+            StateStoreBusy,
+            StateStoreIntegrityError,
+            StateEventError,
+            TypedStateError,
+            ValueError,
+        ) as exc:
+            return _backend_error_response(
+                tool=LOCAL_WORK_ACTIVATION_TOOL,
+                request_id=request_id,
+                error=exc,
+            )
+
+        response = _response(
+            tool=LOCAL_WORK_ACTIVATION_TOOL,
+            request_id=request_id,
+            result={
+                "snapshot": expected_snapshot,
+                "revision": revision_after,
+                "event_head": {
+                    "sequence_no": event["sequence_no"],
+                    "event_sha256": event["event_sha256"],
+                },
+                "event": event,
+                "checkpoint_ref": checkpoint_ref,
+                "already_activated": False,
+                "claim": claim,
+                "registry_digest": self._registry_hash_value,
+                "capabilities": capability_manifest_to_document(self._manifest),
+            },
+        )
+        self._remember_request(
+            LOCAL_WORK_ACTIVATION_TOOL, arguments, context, response
+        )
+        return response
+
+    def _transition_local_work(
+        self,
+        arguments: dict[str, Any],
+        *,
+        context: RequestContext,
+    ) -> dict[str, Any]:
+        """Complete a dependency and claim its declared return point in one Event."""
+        request_id = arguments["request_id"]
+        project_id = arguments["project_id"]
+
+        def denied(
+            gate: str,
+            *,
+            code: str = "integrity",
+        ) -> dict[str, Any]:
+            return _response(
+                tool=LOCAL_WORK_TRANSITION_TOOL,
+                request_id=request_id,
+                error_code=code,
+                error_message=f"transition_gate:{gate}",
+            )
+
+        try:
+            snapshot = invoke_state_store(self._store, "read_project", project_id)
+            events = invoke_state_store(self._store, "read_events", project_id)
+            if snapshot["project"]["revision"] != arguments["expected_revision"]:
+                return denied("expected_revision", code="conflict")
+            if snapshot["schema_version"] == "context.typed-state/v6alpha1":
+                return denied("shared_state_adapter", code="capability")
+
+            work = next(
+                (
+                    item
+                    for item in snapshot["works"]
+                    if item["work_id"] == arguments["work_id"]
+                ),
+                None,
+            )
+            claim = next(
+                (
+                    item
+                    for item in snapshot["claims"]
+                    if item["claim_id"] == arguments["claim_id"]
+                ),
+                None,
+            )
+            return_work = next(
+                (
+                    item
+                    for item in snapshot["works"]
+                    if item["work_id"] == arguments["return_point_work_id"]
+                ),
+                None,
+            )
+            blocker = next(
+                (
+                    item
+                    for item in snapshot["blockers"]
+                    if item["blocker_id"] == arguments["resolved_blocker_id"]
+                ),
+                None,
+            )
+            if work is None or claim is None or return_work is None or blocker is None:
+                return denied("declared_transition_objects", code="not_found")
+            if (
+                work["status"] != "active"
+                or snapshot["project"]["primary_work_id"] != work["work_id"]
+                or snapshot["project"]["active_work_ids"] != [work["work_id"]]
+            ):
+                return denied("active_work")
+
+            observed_at = self._clock()
+            observed = datetime.fromisoformat(observed_at.replace("Z", "+00:00"))
+            lease_expires = datetime.fromisoformat(
+                claim["lease_expires_at"].replace("Z", "+00:00")
+            )
+            successor_lease = datetime.fromisoformat(
+                arguments["lease_expires_at"].replace("Z", "+00:00")
+            )
+            if (
+                claim["status"] != "active"
+                or claim["work_id"] != work["work_id"]
+                or claim["actor_ref"] != context.subject_ref
+                or claim["expected_project_revision"] != arguments["expected_revision"]
+            ):
+                return denied("active_claim_owner", code="conflict")
+            if observed >= lease_expires:
+                return denied("lease_valid", code="conflict")
+            if successor_lease <= observed:
+                return denied("successor_lease")
+            if work["parent_work_id"] != return_work["work_id"]:
+                return denied("predeclared_return_point")
+            if (
+                return_work["status"] != "ready"
+                or context.subject_ref not in return_work["owner_refs"]
+            ):
+                return denied("return_point_ready_owner")
+            if return_work["scope_refs"] != arguments["successor_scope_owners"]:
+                return denied("scope_no_expansion")
+            if any(
+                item["claim_id"] == arguments["successor_claim_id"]
+                for item in snapshot["claims"]
+            ):
+                return denied("successor_claim_identity", code="conflict")
+            if any(
+                item["status"] in {"authorized", "started"}
+                and item["work_id"] == work["work_id"]
+                for item in snapshot["effects"]
+            ):
+                return denied("pending_effects", code="conflict")
+            if (
+                blocker["status"] != "open"
+                or return_work["work_id"] not in blocker["blocked_work_ids"]
+                or blocker["blocker_id"] not in return_work["blocker_ids"]
+                or not set(blocker["evidence_ids"]).issubset(work["evidence_ids"])
+            ):
+                return denied("declared_dependency_blocker")
+
+            source_evidence_id = (
+                f"evidence-attach-{arguments['source_proposal_sha256'][:16]}"
+            )
+            source_evidence = next(
+                (
+                    item
+                    for item in snapshot["evidence"]
+                    if item["evidence_id"] == source_evidence_id
+                ),
+                None,
+            )
+            if (
+                source_evidence is None
+                or source_evidence["validity"] != "verified"
+                or source_evidence_id not in return_work["evidence_ids"]
+            ):
+                return denied("source_fresh")
+            workspace = arguments["workspace_verification"]
+            if workspace["clean"] is not True:
+                return denied("workspace_clean")
+            if (
+                workspace["expected_ref"] is not None
+                and workspace["expected_ref_commit"] != workspace["head_commit"]
+            ):
+                return denied("workspace_ref")
+
+            requested_evidence = copy.deepcopy(arguments["evidence"])
+            requested_ids = [item["evidence_id"] for item in requested_evidence]
+            evidence_by_id = {
+                item["evidence_id"]: item for item in snapshot["evidence"]
+            }
+            if any(item["evidence_id"] in evidence_by_id for item in requested_evidence):
+                return denied("evidence_identity", code="conflict")
+            remaining = copy.deepcopy(arguments["remaining_blocker"])
+            if remaining is not None:
+                if remaining["blocker_id"] == blocker["blocker_id"] or any(
+                    item["blocker_id"] == remaining["blocker_id"]
+                    for item in snapshot["blockers"]
+                ):
+                    return denied("remaining_blocker_identity", code="conflict")
+                if not set(remaining["evidence_ids"]).issubset(requested_ids):
+                    return denied("remaining_blocker_evidence")
+
+            candidate = copy.deepcopy(snapshot)
+            changes: list[dict[str, Any]] = []
+            for item in requested_evidence:
+                change = {
+                    "collection": "evidence",
+                    "object_id": item["evidence_id"],
+                    "value": item,
+                }
+                _replace_or_append(candidate, change)
+                changes.append(change)
+
+            completed_work = next(
+                item for item in candidate["works"] if item["work_id"] == work["work_id"]
+            )
+            completed_work["status"] = "completed"
+            completed_work["revision"] += 1
+            completed_work["evidence_ids"] = list(
+                dict.fromkeys([*completed_work["evidence_ids"], *requested_ids])
+            )
+            completed_claim = next(
+                item
+                for item in candidate["claims"]
+                if item["claim_id"] == claim["claim_id"]
+            )
+            revision_after = arguments["expected_revision"] + 1
+            completed_claim.update(
+                {
+                    "status": "released",
+                    "expected_project_revision": revision_after,
+                    "released_at": observed_at,
+                }
+            )
+            resolved_blocker = next(
+                item
+                for item in candidate["blockers"]
+                if item["blocker_id"] == blocker["blocker_id"]
+            )
+            resolved_blocker["status"] = "resolved"
+            resolved_blocker["resolved_at"] = observed_at
+            returned_work = next(
+                item
+                for item in candidate["works"]
+                if item["work_id"] == return_work["work_id"]
+            )
+            returned_work["status"] = "active"
+            returned_work["revision"] += 1
+            returned_work["blocker_ids"] = [
+                item
+                for item in returned_work["blocker_ids"]
+                if item != blocker["blocker_id"]
+            ]
+            if remaining is not None:
+                remaining_blocker = {
+                    "blocker_id": remaining["blocker_id"],
+                    "status": "open",
+                    "reason": remaining["reason"],
+                    "blocked_work_ids": [returned_work["work_id"]],
+                    "evidence_ids": sorted(remaining["evidence_ids"]),
+                    "opened_at": observed_at,
+                    "resolved_at": None,
+                    "supersedes_blocker_id": None,
+                }
+                candidate["blockers"].append(remaining_blocker)
+                returned_work["blocker_ids"] = sorted(
+                    {*returned_work["blocker_ids"], remaining_blocker["blocker_id"]}
+                )
+                _upsert_change(
+                    changes,
+                    collection="blockers",
+                    value=remaining_blocker,
+                )
+            successor_claim = {
+                "claim_id": arguments["successor_claim_id"],
+                "work_id": returned_work["work_id"],
+                "actor_ref": context.subject_ref,
+                "status": "active",
+                "expected_project_revision": revision_after,
+                "claimed_at": observed_at,
+                "lease_expires_at": arguments["lease_expires_at"],
+                "released_at": None,
+                "scope_owners": copy.deepcopy(arguments["successor_scope_owners"]),
+            }
+            candidate["claims"].append(successor_claim)
+            _upsert_change(changes, collection="works", value=completed_work)
+            _upsert_change(changes, collection="claims", value=completed_claim)
+            _upsert_change(changes, collection="blockers", value=resolved_blocker)
+            _upsert_change(changes, collection="works", value=returned_work)
+            _upsert_change(changes, collection="claims", value=successor_claim)
+            for effect in candidate["effects"]:
+                if effect["status"] in {"authorized", "started"}:
+                    effect["expected_project_revision"] = revision_after
+                    _upsert_change(changes, collection="effects", value=effect)
+            _derive_project_projection(
+                candidate,
+                revision=revision_after,
+                updated_at=observed_at,
+            )
+            previous_hash = events[-1]["event_sha256"] if events else None
+            sequence_no = events[-1]["sequence_no"] + 1 if events else 1
+            event = build_state_event(
+                event_id=self._event_id_factory(request_id),
+                event_type="state-transition",
+                project_id=project_id,
+                sequence_no=sequence_no,
+                revision_before=arguments["expected_revision"],
+                occurred_at=observed_at,
+                actor_ref=context.subject_ref,
+                causation_ref=arguments["causation_ref"],
+                correlation_ref=arguments["correlation_ref"],
+                previous_event_sha256=previous_hash,
+                supersedes_event_id=None,
+                changes=changes,
+                project_after=candidate["project"],
+                schema_version=_event_schema_version(snapshot),
+            )
+            expected_snapshot = replay_state_events(
+                snapshot,
+                [event],
+                starting_sequence_no=sequence_no,
+                previous_event_sha256=previous_hash,
+            )
+            if self._transition_checkpoint_publisher is None:
+                return denied("checkpoint_publisher", code="capability")
+            checkpoint_input = {
+                "snapshot": expected_snapshot,
+                "revision": revision_after,
+                "event_head": {
+                    "sequence_no": event["sequence_no"],
+                    "event_sha256": event["event_sha256"],
+                },
+                "registry_digest": self._registry_hash_value,
+                "capabilities": capability_manifest_to_document(self._manifest),
+            }
+            try:
+                checkpoint_ref = self._transition_checkpoint_publisher(
+                    checkpoint_input
+                )
+            except Exception:  # noqa: BLE001
+                return denied("checkpoint_publication")
+            checkpoint_fields = {
+                "schema_version",
+                "digest_algorithm",
+                "digest",
+                "size_bytes",
+                "artifact_uri",
+            }
+            if (
+                not isinstance(checkpoint_ref, dict)
+                or set(checkpoint_ref) != checkpoint_fields
+                or checkpoint_ref["schema_version"] != "context.artifact-ref/v1alpha1"
+                or checkpoint_ref["digest_algorithm"] != "sha-256"
+                or not isinstance(checkpoint_ref["digest"], str)
+                or _SHA256_RE.fullmatch(checkpoint_ref["digest"]) is None
+                or type(checkpoint_ref["size_bytes"]) is not int
+                or checkpoint_ref["size_bytes"] <= 0
+                or checkpoint_ref["artifact_uri"]
+                != f"artifact://sha256/{checkpoint_ref['digest']}"
+            ):
+                return denied("checkpoint_publication")
+
+            invoke_state_store(
+                self._store,
+                "commit_event",
+                project_id=project_id,
+                expected_revision=arguments["expected_revision"],
+                event=event,
+                expected_snapshot=expected_snapshot,
+            )
+        except (
+            StateStoreCapabilityError,
+            StateStoreNotFound,
+            StateStoreConflict,
+            StateStoreBusy,
+            StateStoreIntegrityError,
+            StateEventError,
+            TypedStateError,
+            ValueError,
+        ) as exc:
+            return _backend_error_response(
+                tool=LOCAL_WORK_TRANSITION_TOOL,
+                request_id=request_id,
+                error=exc,
+            )
+
+        response = _response(
+            tool=LOCAL_WORK_TRANSITION_TOOL,
+            request_id=request_id,
+            result={
+                "snapshot": expected_snapshot,
+                "revision": expected_snapshot["project"]["revision"],
+                "event_head": {
+                    "sequence_no": event["sequence_no"],
+                    "event_sha256": event["event_sha256"],
+                },
+                "event": event,
+                "checkpoint_ref": checkpoint_ref,
+                "already_transitioned": False,
+                "evidence_ids": requested_ids,
+                "successor_claim": successor_claim,
+                "completion_policy": {
+                    "status": "granted",
+                    "authority": "checkpoint-bound-local-transition",
+                    "actor_ref": context.subject_ref,
+                    "scope_expanded": False,
+                },
+                "registry_digest": self._registry_hash_value,
+                "capabilities": capability_manifest_to_document(self._manifest),
+            },
+        )
+        self._remember_request(
+            LOCAL_WORK_TRANSITION_TOOL,
+            arguments,
+            context,
+            response,
+        )
+        return response
+
     def _recover_local_claim(
         self,
         arguments: dict[str, Any],
@@ -4165,6 +5113,55 @@ class StateMCPService:
                 starting_sequence_no=sequence_no,
                 previous_event_sha256=previous_hash,
             )
+            checkpoint_ref = None
+            if self._transition_checkpoint_publisher is not None:
+                checkpoint_input = {
+                    "snapshot": expected_snapshot,
+                    "revision": revision_after,
+                    "event_head": {
+                        "sequence_no": event["sequence_no"],
+                        "event_sha256": event["event_sha256"],
+                    },
+                    "registry_digest": self._registry_hash_value,
+                    "capabilities": capability_manifest_to_document(self._manifest),
+                }
+                try:
+                    checkpoint_ref = self._transition_checkpoint_publisher(
+                        checkpoint_input
+                    )
+                except Exception:  # noqa: BLE001
+                    return _response(
+                        tool=LOCAL_CLAIM_RECOVERY_TOOL,
+                        request_id=request_id,
+                        error_code="checkpoint",
+                        error_message="claim recovery checkpoint publication failed",
+                    )
+                checkpoint_fields = {
+                    "schema_version",
+                    "digest_algorithm",
+                    "digest",
+                    "size_bytes",
+                    "artifact_uri",
+                }
+                if (
+                    not isinstance(checkpoint_ref, dict)
+                    or set(checkpoint_ref) != checkpoint_fields
+                    or checkpoint_ref["schema_version"]
+                    != "context.artifact-ref/v1alpha1"
+                    or checkpoint_ref["digest_algorithm"] != "sha-256"
+                    or not isinstance(checkpoint_ref["digest"], str)
+                    or _SHA256_RE.fullmatch(checkpoint_ref["digest"]) is None
+                    or type(checkpoint_ref["size_bytes"]) is not int
+                    or checkpoint_ref["size_bytes"] <= 0
+                    or checkpoint_ref["artifact_uri"]
+                    != f"artifact://sha256/{checkpoint_ref['digest']}"
+                ):
+                    return _response(
+                        tool=LOCAL_CLAIM_RECOVERY_TOOL,
+                        request_id=request_id,
+                        error_code="checkpoint",
+                        error_message="claim recovery checkpoint publication failed",
+                    )
             invoke_state_store(
                 self._store,
                 "commit_event",
@@ -4203,6 +5200,11 @@ class StateMCPService:
                 "claim": result_claim,
                 "registry_digest": self._registry_hash_value,
                 "capabilities": capability_manifest_to_document(self._manifest),
+                **(
+                    {"checkpoint_ref": checkpoint_ref}
+                    if checkpoint_ref is not None
+                    else {}
+                ),
             },
         )
         self._remember_request(LOCAL_CLAIM_RECOVERY_TOOL, arguments, context, response)

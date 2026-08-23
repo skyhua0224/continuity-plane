@@ -2211,7 +2211,37 @@ schemas:
     current_wire_version: context.recovery-envelope/v1alpha1
     supported_wire_versions: [context.recovery-envelope/v1alpha1]
     artifact_path: schemas/m10-11/recovery-envelope.schema.json
-    content_sha256: accaa14a40c1e79fc135bcace3919c1b10fffa4e0fff2300c0f6299419160bff
+    content_sha256: a566453ade3d3d5cdaedf901da28fd741a4fe6ce56ad73088014a2e3269536b6
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.status-projection
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.status-projection/v1alpha1
+    supported_wire_versions: [context.status-projection/v1alpha1]
+    artifact_path: schemas/m10-11/status-projection.schema.json
+    content_sha256: 2b2e9f03791adaaa8eb2160de545f190781686e50e7aa2656d63b1bd21f89963
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.local-work-transition-request
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.local-work-transition-request/v1alpha1
+    supported_wire_versions: [context.local-work-transition-request/v1alpha1]
+    artifact_path: schemas/m10-11/local-work-transition-request.schema.json
+    content_sha256: 0f909b7e2c4558d3efed3e45957505504373616ba91046b5b787976b4ffee4df
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.local-work-activation-request
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.local-work-activation-request/v1alpha1
+    supported_wire_versions: [context.local-work-activation-request/v1alpha1]
+    artifact_path: schemas/m10-11/local-work-activation-request.schema.json
+    content_sha256: f0e0c07599915622cf6223b0537985ad8c6a2a932ae69da9fd7182e8c03ac7ad
     status: current
     compatibility_mode: strict-versioned
     migrations: []

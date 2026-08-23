@@ -1,14 +1,14 @@
 {
   "authority_violations": 0,
-  "benchmark_id": "benchmark-m8-10-6e77a6a786f6995929cacf62",
+  "benchmark_id": "benchmark-m8-10-d8715e221d1d94e2acb5ee15",
   "campaign_scale": {
     "adoption_decision": "adopt-append-only-step-index",
     "expected_quadratic_attempts": 32896,
     "incremental_index_attempts": 256,
     "latency_ms": {
-      "max_ms": 5.412354999862146,
-      "p50_ms": 1.7655800002103206,
-      "p95_ms": 3.406242001801729
+      "max_ms": 6.7046129843220115,
+      "p50_ms": 2.209113969001919,
+      "p95_ms": 4.881921980995685
     },
     "observed_complexity": "quadratic",
     "projected_1000_step_validation_attempts": 500500,
@@ -25,13 +25,13 @@
   "duplicate_suppressions": 1000,
   "event_count": 1000,
   "external_services": 0,
-  "generated_at": "2026-08-17T13:30:00+08:00",
+  "generated_at": "2026-08-21T15:00:00+08:00",
   "latency_ms": {
-    "catch_up_total_ms": 199.68324000001303,
+    "catch_up_total_ms": 193.81050998345017,
     "publish": {
-      "max_ms": 0.4873119978583418,
-      "p50_ms": 0.25258399909944274,
-      "p95_ms": 0.38553900230908766
+      "max_ms": 0.7749309879727662,
+      "p50_ms": 0.25891599943861365,
+      "p95_ms": 0.46287302393466234
     }
   },
   "offline_catch_up_attempts": 2000,
@@ -58,7 +58,7 @@
     "same_revision_delivery_rate": 1.0,
     "signed_event_validation_rate": 1.0
   },
-  "receipt_sha256": "0fb4a4bbd3d0c00dc3600bc3e4dff0bbcd97194f8e31f5c618944e2aa895df49",
+  "receipt_sha256": "e02a2aa167f05b076e90045aafe93186425eea9a9e21aaad8b5fa75805e007be",
   "same_revision_deliveries": 2000,
   "same_revision_delivery_attempts": 2000,
   "schema_version": "context.collaboration-notification-benchmark/v1alpha1",

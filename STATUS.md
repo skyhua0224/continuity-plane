@@ -1,7 +1,7 @@
 # Continuity Plane Status
 
-版本：revision 84  
-日期：2026-08-20  
+版本：revision 90  
+日期：2026-08-23  
 canonical plan：`MASTER.md`
 
 ## 当前状态
@@ -10,8 +10,8 @@ canonical plan：`MASTER.md`
 |---|---|
 | 当前 Campaign | M10 跨项目发布 |
 | active work | M10-01：AlkaidLab 三仓 shadow pilot（🟡） |
-| next action | M10-11：在新 Codex App Session 收集 native hook candidate；恢复 Claude live provider 后执行 matched `3+3` study |
-| hard blocker | 当前 App Session 未热加载新 plugin；Codex `exec` 不装载 personal plugin；Claude live provider 403；Platform flat v1 Work 缺 canonical DAG |
+| next action | Platform task 热重载 alpha.6 MCP，在 revision 111 对 N-69-08 执行同 Session expired-claim reclaim；成功后继续原 Work，不由控制面接手产品开发 |
+| hard blocker | Platform N-69-08 alpha.6 live reclaim 待执行；matched compaction 尚未发生；Claude live provider 403；Codex arbitrary shell effect 尚无 active-claim 自动 preflight；Platform Windows 物理路径双向零 ALTP packet；Platform flat v1 Work 缺 canonical DAG |
 | repository mode | internal development repository + fresh-history public mirror |
 | production state | alpha published；shared pilot planned |
 
@@ -21,15 +21,13 @@ canonical plan：`MASTER.md`
 |---|---|
 | Evidence index | [`docs/reports/verified-state.md`](docs/reports/verified-state.md) |
 | Verified campaigns | M0-M8 core 与 M9-01..07 见 Evidence index；M9-08..11 planned |
-| M10-00/01 pilots | self M10-01；Platform N-69-09 active at `36/36`，旧 claim 已 reclaim 为 `claim-n-69-09-reclaimed-2`，checkpoint verified |
-| Local lifecycle adapter | Recovery Envelope + Pre/PostCompact canary + cursor + 8-rule Skill lock；MCP root/actor/claim binding verified |
-| Platform 20h probe | restore `5/5`；recovery narration `5/5`；post-compact input `54.8-56.8K`；matched gate open；heartbeat identity 修复已部署 |
-| Effective context | configured 1M catalog 的 provider-reported window `950,000`；历史 700K compact `783,628 -> 24,776`，next input `59,172`；新裸 Codex baseline `59,177`；matched candidate unavailable |
-| Claude baseline | `96` deduped messages；auto compact `1,001,838 -> 13,041`；duration `171,480 ms`；live candidate 403/unavailable |
-| M10-11 foundation | `7` strict schemas；local Recovery Envelope `3,037 B`；checkpoint/cursor/Skill lock pass；raw text `0`；cross-project/cross-provider improvement claim `false` |
+| M10-00/01 pilots | self M10-01 active；Platform idle activation `95/95 -> 96/96` live gate passed；latest reported revision `111`、Work N-69-08、claim `claim-n-69-08` lease expired；alpha.6 same-Session reclaim repair installed，live retry pending |
+| M10-11 foundation | CLI `0.1.0a6` wheel `0080270f…` + plugin `0.1.0-alpha.6+codex.20260823220129` installed；read-only binding 仅对 source/checkpoint verified、lease expired、actor/claim 精确匹配的 reclaim 开放；candidate checkpoint 在 State CAS 前发布验证，失败保持 revision/Event/claim 不变；successor replay 幂等，其他写入 fail closed；matched improvement remains open |
+| ProjectCompute pilot | 950K / `23.649 h` / `1.219B` input / `4` compactions baseline retained；CLI `0.1.0a4` active；无 claim 时发生 merge/install effect `2`，turn steer 后 revision/event `26/26`，delivery Work/claim/checkpoint/source/lease valid，`read_only=false`；既有 effect evidence 待 completion receipt |
+| Coordination/views | shared Work、forge、notification、Project Graph、2,000-node Impact gates passed；authority violation `0` |
 | Release baseline | GitHub/PyPI alpha published；Linux/macOS/Windows native matrix `18/18`；public privacy scan `0` findings |
-| Repository verification | `1,900` discovered；`1,869` pass；`31` conditional skip；`0` fail；`433.160 s` |
-| Governance authority | `MASTER.md` revision 84 |
+| Repository verification | alpha.6 targeted MCP/recovery/activation/transition `57/57`；full discovery `1,934` run、failure/error `0`、conditional skip `31`、`348.445 s`；wheel/sdist build、repository gate 与 targeted Ruff pass |
+| Governance authority | `MASTER.md` revision 90 |
 
 ## 恢复入口
 

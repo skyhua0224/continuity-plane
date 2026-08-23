@@ -71,7 +71,7 @@ class WorkActivationCliTests(unittest.TestCase):
             )
         return SQLiteStateStore(root / ".continuity/state.sqlite3")
 
-    def test_successor_activation_adds_ready_work_then_claims_it(self) -> None:
+    def test_successor_activation_creates_work_claim_and_checkpoint_in_one_event(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             store = self._completed_project(root)
@@ -104,13 +104,13 @@ class WorkActivationCliTests(unittest.TestCase):
             )
             self.assertEqual(result, 0)
             self.assertIn('"status": "activated"', output.getvalue())
-            self.assertEqual(state["project"]["revision"], 5)
+            self.assertEqual(state["project"]["revision"], 4)
             self.assertEqual(state["project"]["active_work_ids"], ["M10-01"])
             self.assertEqual(work["status"], "active")
             self.assertEqual(len(work["evidence_ids"]), 1)
             self.assertTrue(work["evidence_ids"][0].startswith("evidence-attach-"))
             self.assertEqual(claim["status"], "active")
-            self.assertEqual(len(events), 5)
+            self.assertEqual(len(events), 4)
 
             with redirect_stdout(StringIO()) as replay:
                 replay_result = main(
@@ -133,7 +133,7 @@ class WorkActivationCliTests(unittest.TestCase):
                 )
             self.assertEqual(replay_result, 0)
             self.assertIn('"status": "already-active"', replay.getvalue())
-            self.assertEqual(len(store.read_events("sample-app")), 5)
+            self.assertEqual(len(store.read_events("sample-app")), 4)
 
 
 if __name__ == "__main__":

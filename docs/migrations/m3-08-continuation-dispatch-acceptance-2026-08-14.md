@@ -70,7 +70,7 @@ Receipt 通过 `context.continuation-dispatch-benchmark/v1alpha1` strict schema�
 ## 复现
 
 ```text
-.venv/bin/python tools/run_input_progression_benchmark.py --samples 1000 --observed-at 2026-08-14T16:00:00+08:00 --output experiments/routing/m3-08-input-progression-results.json
+.venv/bin/python tools/run_input_progression_benchmark.py --samples 1000 --observed-at 2026-08-21T16:30:00+08:00 --output experiments/routing/m3-08-input-progression-results.json
 .venv/bin/python -m unittest tests.test_m3_08_input_progression tests.test_m3_08_input_progression_benchmark -q
 ruff check context_control_plane/input_progression.py context_control_plane/input_progression_benchmark.py tests/test_m3_08_input_progression.py tests/test_m3_08_input_progression_benchmark.py tools/run_input_progression_benchmark.py
 .venv/bin/python tools/verify_repository.py --root .

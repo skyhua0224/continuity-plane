@@ -42,7 +42,7 @@ Idea 操作不改变 active Work、Claim、path ownership 或 effect watermark�
 
 ## 量化结果
 
-[`m3-07-idea-review-results.json`](../../experiments/routing/m3-07-idea-review-results.json) 在独立 SQLite StateStore 上运行 40 个样本，每个样本执行 capture、dedupe occurrence、review、correction protection，并验证拒绝与终态边界。
+[`m3-07-idea-review-results.json`](../../experiments/routing/m3-07-idea-review-results.json) 在独立 SQLite StateStore 上运行 1,000 个样本，每个样本执行 capture、dedupe occurrence、review、correction protection，并验证拒绝与终态边界。
 
 | 指标 | 结果 |
 |---|---:|
@@ -68,8 +68,8 @@ Receipt 通过 `context.idea-review-benchmark/v1alpha1` strict schema；provenan
 ## 复现
 
 ```text
-.venv/bin/python tools/run_idea_review_benchmark.py --samples 40 --observed-at 2026-08-14T10:00:00+08:00 --output experiments/routing/m3-07-idea-review-results.json
-.venv/bin/python tools/run_idea_continuity_benchmark.py --samples 40 --observed-at 2026-08-14T08:45:00+08:00 --output experiments/routing/m3-06-idea-continuity-results.json
+.venv/bin/python tools/run_idea_review_benchmark.py --samples 1000 --observed-at 2026-08-14T16:00:00+08:00 --output experiments/routing/m3-07-idea-review-results.json
+.venv/bin/python tools/run_idea_continuity_benchmark.py --samples 1000 --observed-at 2026-08-14T08:30:00+08:00 --output experiments/routing/m3-06-idea-continuity-results.json
 .venv/bin/python -m unittest tests.test_m3_07_idea_review tests.test_m3_07_idea_review_benchmark -q
 .venv/bin/python -m unittest tests.test_m3_06_idea_continuity tests.test_m2_05_state_mcp tests.test_m2_09_sqlite_state_store tests.test_m2_09_sqlite_benchmark tests.test_m3_03_route_apply -q
 .venv/bin/python tools/verify_repository.py --root .

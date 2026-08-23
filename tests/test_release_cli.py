@@ -297,6 +297,126 @@ class ReleaseCliTests(unittest.TestCase):
             )
             self.assertEqual(state["project"]["revision"], 0)
 
+    def test_suspend_dependency_preserves_incomplete_work_and_activates_prerequisite(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "MASTER.md").write_text("# Existing Master\n", encoding="utf-8")
+            (root / "STATUS.md").write_text("# Existing Status\n", encoding="utf-8")
+            with redirect_stdout(StringIO()):
+                main(["init", "--root", str(root), "--project-id", "sample-app"])
+                main(
+                    [
+                        "attach", "plan", "--root", str(root),
+                        "--master", "MASTER.md", "--status", "STATUS.md",
+                        "--work-id", "M10-09", "--work-title", "Finish the throughput gate",
+                        "--owner-ref", "agent-main", "--scope", "capability:network-cc",
+                    ]
+                )
+                main(
+                    [
+                        "attach", "approve", "--root", str(root),
+                        "--actor-ref", "agent-main", "--claim-id", "claim-current",
+                    ]
+                )
+                main(["checkpoint", "create", "--root", str(root)])
+
+            output = StringIO()
+            with redirect_stdout(output):
+                result = main(
+                    [
+                        "work", "suspend-dependency", "--root", str(root),
+                        "--work-id", "M10-09", "--claim-id", "claim-current",
+                        "--actor-ref", "agent-main",
+                        "--dependency-work-id", "M10-09-IO",
+                        "--dependency-work-title", "Remove the file I/O bottleneck",
+                        "--dependency-scope", "capability:filetransfer-transfer",
+                        "--reason", "The final network gate requires async durable file I/O",
+                    ]
+                )
+
+            response = json.loads(output.getvalue())
+            store = SQLiteStateStore(root / ".continuity/state.sqlite3")
+            state = store.read_project("sample-app")
+            old_work = next(item for item in state["works"] if item["work_id"] == "M10-09")
+            dependency = next(
+                item for item in state["works"] if item["work_id"] == "M10-09-IO"
+            )
+            old_claim = next(
+                item for item in state["claims"] if item["claim_id"] == "claim-current"
+            )
+            active_claim = next(item for item in state["claims"] if item["status"] == "active")
+            blocker = next(
+                item for item in state["blockers"] if item["blocker_id"] == response["blocker_id"]
+            )
+
+            self.assertEqual(result, 0)
+            self.assertEqual(response["status"], "dependency-transitioned")
+            self.assertEqual(response["revision"], 4)
+            self.assertEqual(response["active_work_id"], "M10-09-IO")
+            self.assertEqual(response["claim_id"], active_claim["claim_id"])
+            self.assertEqual(response["next_action"], "continue-active-work")
+            self.assertEqual(old_work["status"], "ready")
+            self.assertNotEqual(old_work["status"], "completed")
+            self.assertIn(blocker["blocker_id"], old_work["blocker_ids"])
+            self.assertEqual(blocker["status"], "open")
+            self.assertEqual(blocker["blocked_work_ids"], ["M10-09"])
+            self.assertEqual(old_claim["status"], "released")
+            self.assertEqual(dependency["status"], "active")
+            self.assertEqual(dependency["parent_work_id"], "M10-09")
+            self.assertEqual(
+                dependency["scope_refs"],
+                [{"scope_kind": "capability", "scope_ref": "filetransfer-transfer"}],
+            )
+            self.assertEqual(state["project"]["primary_work_id"], "M10-09-IO")
+            self.assertEqual(state["project"]["active_work_ids"], ["M10-09-IO"])
+
+            resume = StringIO()
+            with redirect_stdout(resume):
+                main(["resume", "--root", str(root)])
+            packet = json.loads(resume.getvalue())
+            self.assertEqual(packet["active_work"]["work_id"], "M10-09-IO")
+            self.assertEqual(packet["claim"]["claim_id"], active_claim["claim_id"])
+            self.assertEqual(packet["open_blockers"][0]["blocker_id"], blocker["blocker_id"])
+            self.assertEqual(packet["return_point_work_id"], "M10-09")
+            self.assertTrue(packet["checkpoint_verified"])
+            self.assertFalse(packet["read_only"])
+
+    def test_attach_refresh_rebinds_changed_sources_without_state_write(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            master = root / "MASTER.md"
+            status = root / "STATUS.md"
+            master.write_text("# Existing Master\n", encoding="utf-8")
+            status.write_text("# Existing Status\n", encoding="utf-8")
+            with redirect_stdout(StringIO()):
+                main(["init", "--root", str(root), "--project-id", "sample-app"])
+                main(
+                    [
+                        "attach", "plan", "--root", str(root),
+                        "--master", "MASTER.md", "--status", "STATUS.md",
+                        "--work-id", "M10-09", "--work-title", "Continue the mainline",
+                        "--owner-ref", "agent-main", "--scope", "repo:repo://sample-app",
+                    ]
+                )
+            status.write_text("# Updated Status\n", encoding="utf-8")
+            output = StringIO()
+            with redirect_stdout(output):
+                result = main(["attach", "refresh", "--root", str(root)])
+            proposal = json.loads(
+                (root / ".continuity/attach-proposal.json").read_text(encoding="utf-8")
+            )
+            state = SQLiteStateStore(root / ".continuity/state.sqlite3").read_project(
+                "sample-app"
+            )
+            self.assertEqual(result, 0)
+            self.assertEqual(json.loads(output.getvalue())["status"], "refreshed")
+            self.assertEqual(proposal["work"]["work_id"], "M10-09")
+            self.assertNotEqual(
+                proposal["sources"][1]["content_sha256"],
+                "0" * 64,
+            )
+            self.assertEqual(state["project"]["revision"], 0)
+
     def test_init_creates_neutral_local_embedded_project(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -318,6 +438,11 @@ class ReleaseCliTests(unittest.TestCase):
             self.assertTrue((root / ".continuity/MASTER.en.md").is_file())
             self.assertTrue((root / ".continuity/STATUS.en.md").is_file())
             self.assertTrue((root / ".continuity/state.sqlite3").is_file())
+            ignore = (root / ".continuity/.gitignore").read_text(encoding="utf-8")
+            self.assertIn("STATUS.current.md", ignore)
+            self.assertIn("state.sqlite3", ignore)
+            self.assertNotIn("MASTER.md", ignore)
+            self.assertNotIn("project.yaml", ignore)
             state = SQLiteStateStore(
                 root / ".continuity/state.sqlite3"
             ).read_project("sample-app")
@@ -355,6 +480,48 @@ class ReleaseCliTests(unittest.TestCase):
 
             with self.assertRaises(FileNotFoundError):
                 main(["verify", "--root", str(root)])
+
+    def test_status_render_writes_current_only_bilingual_projection(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with redirect_stdout(StringIO()):
+                main(["init", "--root", str(root), "--project-id", "sample-app"])
+                main(
+                    [
+                        "attach", "plan", "--root", str(root),
+                        "--master", ".continuity/MASTER.md", "--status", ".continuity/STATUS.md",
+                        "--work-id", "M10-09", "--work-title", "Continue the mainline",
+                        "--owner-ref", "agent-main", "--scope", "repo:repo://sample-app",
+                    ]
+                )
+                main(
+                    [
+                        "attach", "approve", "--root", str(root),
+                        "--actor-ref", "agent-main", "--claim-id", "claim-current",
+                    ]
+                )
+                main(["checkpoint", "create", "--root", str(root)])
+            output = StringIO()
+            with redirect_stdout(output):
+                result = main(["status", "render", "--root", str(root)])
+            self.assertEqual(result, 0)
+            response = json.loads(output.getvalue())
+            self.assertEqual(response["status"], "rendered")
+            chinese = (root / ".continuity/STATUS.current.md").read_text(encoding="utf-8")
+            english = (root / ".continuity/STATUS.current.en.md").read_text(encoding="utf-8")
+            self.assertIn("M10-09", chinese)
+            self.assertIn("claim-current", english)
+            self.assertNotIn("work-initial", chinese)
+            projection = json.loads(
+                (root / ".continuity/status-projection.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(projection["state_write_authority"], False)
+            schema = json.loads(
+                (Path(__file__).parents[1] / "schemas/m10-11/status-projection.schema.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            Draft202012Validator(schema).validate(projection)
 
     def test_state_show_reads_the_authoritative_snapshot(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

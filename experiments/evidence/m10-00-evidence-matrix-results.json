@@ -45,7 +45,7 @@
       "evidence_class": "local-runtime-contract",
       "evidence_refs": [
         {
-          "content_sha256": "5958833f9a0b1ccf875d35aec20cbd9210e81b4dd50f6385f70cb32ae50e6ad9",
+          "content_sha256": "acee82d8d9ff16b8b5019f446fa330d8bccd61abc6de90f61fd0538bcde9f3a8",
           "path": "docs/migrations/m3-08-continuation-dispatch-acceptance-2026-08-14.md"
         }
       ],
@@ -163,9 +163,9 @@
   "observed_at": "2026-08-18T02:36:00+08:00",
   "pending_count": 10,
   "plan_id": "pilot-plan-m10-00",
-  "plan_sha256": "e79ce4890cd69e12de8167bda54a9052320a72084d6c39c29d7e62a47f9ebf23",
+  "plan_sha256": "d4f856b0287d9cf170653ba7bf6b911e1c711c127d17cd6c6dd3d6d5440da087",
   "project_id": "context-control-plane",
-  "receipt_sha256": "97ce9d34a124ba3c5add666239dce08cc7b968152d1ec7ab1f9ca0ce2da2e3b9",
+  "receipt_sha256": "1159b77f8f5171fb5521a7ee86ecf4d99f20d7d1d38f471724a0471e2591dc61",
   "schema_version": "context.self-dogfood-evidence-matrix/v1alpha1",
   "state_revision": 74
 }

@@ -115,7 +115,7 @@
     ],
     "worker_loss_authority_unchanged": true
   },
-  "matrix_receipt_sha256": "97ce9d34a124ba3c5add666239dce08cc7b968152d1ec7ab1f9ca0ce2da2e3b9",
+  "matrix_receipt_sha256": "1159b77f8f5171fb5521a7ee86ecf4d99f20d7d1d38f471724a0471e2591dc61",
   "observations": [
     {
       "acknowledged_input_replayed": false,
@@ -352,9 +352,9 @@
   ],
   "observed_at": "2026-08-18T02:37:00+08:00",
   "plan_id": "pilot-plan-m10-00",
-  "plan_sha256": "e79ce4890cd69e12de8167bda54a9052320a72084d6c39c29d7e62a47f9ebf23",
+  "plan_sha256": "d4f856b0287d9cf170653ba7bf6b911e1c711c127d17cd6c6dd3d6d5440da087",
   "project_id": "context-control-plane",
-  "receipt_sha256": "2a2e39d888496bb19155e046b7779a2195886efe074c43a4225b60ca74a71b35",
+  "receipt_sha256": "fc8321fb749571a0734cbe7eb713b251714c3840491408e64bf2973b2e32194d",
   "schema_version": "context.self-dogfood-fault-drill/v1alpha1",
   "state_revision": 74,
   "status": "passed",

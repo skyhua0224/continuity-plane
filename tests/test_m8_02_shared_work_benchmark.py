@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -16,6 +17,7 @@ from context_control_plane.shared_work_benchmark import (
     benchmark_shared_work,
     validate_shared_work_benchmark,
 )
+from tools import run_shared_work_benchmark
 
 
 class M802SharedWorkBenchmarkTests(unittest.TestCase):
@@ -146,6 +148,16 @@ class M802SharedWorkBenchmarkTests(unittest.TestCase):
                     samples=samples,
                     generated_at="2026-08-16T17:00:00+08:00",
                 )
+
+    def test_runner_persists_and_prints_a_valid_receipt(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "receipt.json"
+            result = run_shared_work_benchmark.main(
+                ["--samples", "1", "--output", str(output)]
+            )
+            receipt = json.loads(output.read_text(encoding="utf-8"))
+        self.assertEqual(result, 0)
+        self.assertEqual(receipt["verdict"]["decision"], "pass")
         for threshold in (0, -1, True):
             with (
                 self.subTest(threshold=threshold),

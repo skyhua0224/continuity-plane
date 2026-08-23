@@ -1,15 +1,15 @@
 {
   "authority_escalations": 0,
-  "benchmark_id": "benchmark-m8-08-e901e69d451c837758e60864",
+  "benchmark_id": "benchmark-m8-08-9f53b5515e4943a559951d2d",
   "complete_visible_record_mappings": 2000,
   "deterministic_replays": 2000,
   "explicit_unpublished_downgrades": 1000,
   "external_services": 0,
-  "generated_at": "2026-08-17T08:00:00+08:00",
+  "generated_at": "2026-08-21T15:00:00+08:00",
   "latency_ms": {
-    "max_ms": 0.7379689996014349,
-    "p50_ms": 0.16963200005193357,
-    "p95_ms": 0.35143100012646755
+    "max_ms": 0.43176300823688507,
+    "p50_ms": 0.25767600163817406,
+    "p95_ms": 0.3043129690922797
   },
   "projection_attempts": 2000,
   "provenance": {
@@ -30,7 +30,7 @@
     "unpublished_downgrade_rate": 1.0,
     "visible_record_mapping_rate": 1.0
   },
-  "receipt_sha256": "e9c0b2ee70ca05e257a65aeccf4b411767aa6e0d21fc103fea0785b2d7e918c6",
+  "receipt_sha256": "ab3b4624c0c911c612a1035df681b9c17c74772ac59fd111470d5073969883d6",
   "ref_update_intents": 2000,
   "replay_attempts": 2000,
   "samples": 1000,

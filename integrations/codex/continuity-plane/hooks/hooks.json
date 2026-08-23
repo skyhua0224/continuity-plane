@@ -11,7 +11,7 @@
             "commandWindows": "py -3 \"%PLUGIN_ROOT%\\scripts\\continuity-hook.py\"",
             "timeout": 10,
             "statusMessage": "Loading bounded continuity state",
-            "additionalContextLimit": 2000
+            "additionalContextLimit": 5000
           }
         ]
       }

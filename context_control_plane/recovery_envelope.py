@@ -263,14 +263,16 @@ def _validate_checkpoint_ref(value: Any) -> None:
 
 
 def _expected_action_sha(envelope: dict[str, Any]) -> str:
+    work = envelope["active_work"]
+    claim = envelope["claim"]
     body = {
         "project_id": envelope["project_id"],
         "revision": envelope["revision"],
         "event_head": envelope["event_head"],
         "checkpoint_digest": envelope["checkpoint_ref"]["digest"],
-        "work_id": envelope["active_work"]["work_id"],
-        "work_revision": envelope["active_work"]["revision"],
-        "claim_id": envelope["claim"]["claim_id"],
+        "work_id": None if work is None else work["work_id"],
+        "work_revision": None if work is None else work["revision"],
+        "claim_id": None if claim is None else claim["claim_id"],
         "next_action": envelope["next_action"],
         "cursor_sha256": (
             envelope["interaction_cursor"]["cursor_sha256"]
@@ -319,21 +321,27 @@ def validate_recovery_envelope(value: Any, *, verify_digest: bool = True) -> Non
     _validate_checkpoint_ref(envelope["checkpoint_ref"])
     if envelope["checkpoint_verified"] is not True:
         raise RecoveryEnvelopeError("recovery envelope requires a verified checkpoint")
-    work = _object(envelope["active_work"], _ACTIVE_WORK_FIELDS, "active_work")
-    _id(work["work_id"], "active_work.work_id")
-    _text(work["title"], "active_work.title", maximum=512)
-    if work["status"] != "active":
-        raise RecoveryEnvelopeError("active_work status is invalid")
-    _uint(work["revision"], "active_work.revision", positive=True)
-    _validate_scopes(work["scope_refs"], "active_work.scope_refs")
-    _ids(work["evidence_ids"], "active_work.evidence_ids")
-    claim = _object(envelope["claim"], _CLAIM_FIELDS, "claim")
-    for field in ("claim_id", "actor_ref"):
-        _id(claim[field], f"claim.{field}")
-    if claim["status"] != "active":
-        raise RecoveryEnvelopeError("claim status is invalid")
-    _timestamp(claim["lease_expires_at"], "claim.lease_expires_at")
-    _validate_scopes(claim["scope_owners"], "claim.scope_owners")
+    work = envelope["active_work"]
+    claim = envelope["claim"]
+    idle = work is None and claim is None
+    if (work is None) != (claim is None):
+        raise RecoveryEnvelopeError("active_work and claim must both be null or active")
+    if not idle:
+        work = _object(work, _ACTIVE_WORK_FIELDS, "active_work")
+        _id(work["work_id"], "active_work.work_id")
+        _text(work["title"], "active_work.title", maximum=512)
+        if work["status"] != "active":
+            raise RecoveryEnvelopeError("active_work status is invalid")
+        _uint(work["revision"], "active_work.revision", positive=True)
+        _validate_scopes(work["scope_refs"], "active_work.scope_refs")
+        _ids(work["evidence_ids"], "active_work.evidence_ids")
+        claim = _object(claim, _CLAIM_FIELDS, "claim")
+        for field in ("claim_id", "actor_ref"):
+            _id(claim[field], f"claim.{field}")
+        if claim["status"] != "active":
+            raise RecoveryEnvelopeError("claim status is invalid")
+        _timestamp(claim["lease_expires_at"], "claim.lease_expires_at")
+        _validate_scopes(claim["scope_owners"], "claim.scope_owners")
     _validate_summary_items(envelope["current_decisions"], "decision")
     _validate_summary_items(envelope["current_constraints"], "constraint")
     _validate_summary_items(envelope["open_blockers"], "blocker")
@@ -349,6 +357,10 @@ def validate_recovery_envelope(value: Any, *, verify_digest: bool = True) -> Non
     ):
         raise RecoveryEnvelopeError("read_only does not match source and lease status")
     _text(envelope["next_action"], "next_action")
+    if idle and envelope["next_action"] != "activate-next-work":
+        raise RecoveryEnvelopeError("idle recovery must activate the next Work")
+    if idle and (envelope["return_point_work_id"] is not None or not envelope["lease_valid"]):
+        raise RecoveryEnvelopeError("idle recovery authority fields are invalid")
     action = _object(envelope["first_permitted_action"], _ACTION_FIELDS, "first action")
     if action["kind"] != "continuation" or action["target"] != envelope["next_action"]:
         raise RecoveryEnvelopeError("first permitted action does not match next_action")
@@ -375,8 +387,8 @@ def compose_recovery_envelope(
     revision: int,
     event_head: dict[str, Any],
     checkpoint_ref: dict[str, Any],
-    active_work: dict[str, Any],
-    claim: dict[str, Any],
+    active_work: dict[str, Any] | None,
+    claim: dict[str, Any] | None,
     current_decisions: list[dict[str, Any]],
     current_constraints: list[dict[str, Any]],
     open_blockers: list[dict[str, Any]],

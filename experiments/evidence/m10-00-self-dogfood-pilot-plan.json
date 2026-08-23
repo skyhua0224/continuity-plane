@@ -43,7 +43,7 @@
       "evidence_class": "local-runtime-contract",
       "evidence_refs": [
         {
-          "content_sha256": "5958833f9a0b1ccf875d35aec20cbd9210e81b4dd50f6385f70cb32ae50e6ad9",
+          "content_sha256": "acee82d8d9ff16b8b5019f446fa330d8bccd61abc6de90f61fd0538bcde9f3a8",
           "path": "docs/migrations/m3-08-continuation-dispatch-acceptance-2026-08-14.md"
         }
       ],
@@ -177,15 +177,15 @@
     }
   ],
   "plan_id": "pilot-plan-m10-00",
-  "plan_sha256": "e79ce4890cd69e12de8167bda54a9052320a72084d6c39c29d7e62a47f9ebf23",
+  "plan_sha256": "d4f856b0287d9cf170653ba7bf6b911e1c711c127d17cd6c6dd3d6d5440da087",
   "project_id": "context-control-plane",
   "repository_baseline": {
-    "base_commit": "a750a2ca5fa4d16c7d1a368746a91afc7f1fc245",
+    "base_commit": "4dc34b5ddd96071f96929ff85be490dceb4a0324",
     "branch": "feat/m8-01-durable-operation",
     "dirty": true,
-    "schema_registry_sha256": "65cdc1795f4bc5fbca461d7c1cf644a1863a5973cfd090931db72383f10ad846",
-    "worktree_file_count": 759,
-    "worktree_sha256": "e18180e728cc2908a2c92f9aca2460416c6124fcbce83fddf5ed9a6649edcc70"
+    "schema_registry_sha256": "edc3a081162c51aa6edb37a34400f99aa2e8735f67cc2c6bec629f582253e331",
+    "worktree_file_count": 869,
+    "worktree_sha256": "4bc2078c5f3d8756e7fd0af4e4f20339a4cabc3b48f9b2200a62eec60b1f065e"
   },
   "required_leaves": [
     {

@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "continuity": {
-      "command": "python3",
-      "args": ["${PLUGIN_ROOT}/scripts/continuity-mcp-server.py"]
+      "command": "continuity-mcp",
+      "args": []
     }
   }
 }

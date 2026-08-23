@@ -35,7 +35,7 @@ M3-06 提供 `context.idea.capture`。`capture-and-continue`、`park` 和 `propo
 
 ## 量化结果
 
-[`m3-06-idea-continuity-results.json`](../../experiments/routing/m3-06-idea-continuity-results.json) 使用独立 SQLite StateStore 执行 40 个 capture-and-continue 样本。每个样本追加一个 Idea Event，并检查 active execution authority 未改变。
+[`m3-06-idea-continuity-results.json`](../../experiments/routing/m3-06-idea-continuity-results.json) 使用独立 SQLite StateStore 执行 1,000 个 capture-and-continue 样本。每个样本追加一个 Idea Event，并检查 active execution authority 未改变。
 
 | 指标 | 结果 |
 |---|---:|
@@ -62,6 +62,6 @@ M3-06 不实现 relationship、dedupe key、correction 写保护、urgency/impac
 ## 复现
 
 ```text
-.venv/bin/python tools/run_idea_continuity_benchmark.py --samples 40 --observed-at 2026-08-14T08:45:00+08:00 --output experiments/routing/m3-06-idea-continuity-results.json
+.venv/bin/python tools/run_idea_continuity_benchmark.py --samples 1000 --observed-at 2026-08-14T08:30:00+08:00 --output experiments/routing/m3-06-idea-continuity-results.json
 .venv/bin/python -m unittest tests.test_m3_06_idea_continuity -q
 ```

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -35,14 +36,61 @@ def _usage(info: dict[str, Any]) -> dict[str, int]:
     return {field: total[field] for field in fields}
 
 
-def inspect_codex_rollout(path: str | Path) -> dict[str, Any]:
+def _request_usage(info: dict[str, Any]) -> dict[str, int] | None:
+    last = info.get("last_token_usage")
+    if not isinstance(last, dict):
+        return None
+    fields = {
+        "input_tokens",
+        "cached_input_tokens",
+        "cache_write_input_tokens",
+        "output_tokens",
+        "reasoning_output_tokens",
+    }
+    if set(last) < fields or any(
+        type(last[field]) is not int or last[field] < 0 for field in fields
+    ):
+        return None
+    return {field: last[field] for field in fields}
+
+
+def _boundary(value: str | None, field: str) -> datetime | None:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise CodexRolloutAdapterError(f"{field} is invalid")
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise CodexRolloutAdapterError(f"{field} is invalid") from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise CodexRolloutAdapterError(f"{field} requires a timezone")
+    return parsed
+
+
+def inspect_codex_rollout(
+    path: str | Path,
+    *,
+    started_at: str | None = None,
+    ended_at: str | None = None,
+) -> dict[str, Any]:
     """Derive hashed interaction counts and cumulative usage from a rollout JSONL."""
     source = Path(path)
     if not source.is_file() or source.is_symlink():
         raise CodexRolloutAdapterError("rollout path is unavailable")
+    if (started_at is None) != (ended_at is None):
+        raise CodexRolloutAdapterError(
+            "started_at and ended_at must be provided together"
+        )
+    started = _boundary(started_at, "started_at")
+    ended = _boundary(ended_at, "ended_at")
+    if started is not None and ended is not None and ended <= started:
+        raise CodexRolloutAdapterError("observation interval is invalid")
     source_hasher = hashlib.sha256()
     interaction_hasher = hashlib.sha256()
     token_samples: list[dict[str, int]] = []
+    request_samples: list[dict[str, int]] = []
+    baseline_sample: dict[str, int] | None = None
     windows: set[int] = set()
     missing_window = False
     compactions: list[dict[str, Any]] = []
@@ -65,12 +113,41 @@ def inspect_codex_rollout(path: str | Path) -> dict[str, Any]:
                     raise CodexRolloutAdapterError("rollout event must be an object")
                 event_count += 1
                 payload = value.get("payload")
+                timestamp = value.get("timestamp")
+                if started is not None or ended is not None:
+                    if not isinstance(timestamp, str):
+                        raise CodexRolloutAdapterError(
+                            "event timestamp is required for interval evidence"
+                        )
+                    observed = _boundary(timestamp, "event timestamp")
+                else:
+                    observed = None
+                before_interval = started is not None and (
+                    observed is None or observed < started
+                )
+                after_interval = ended is not None and observed >= ended
+                if before_interval:
+                    if (
+                        value.get("type") == "event_msg"
+                        and isinstance(payload, dict)
+                        and payload.get("type") == "token_count"
+                    ):
+                        info = payload.get("info")
+                        if not isinstance(info, dict):
+                            raise CodexRolloutAdapterError("token_count info is missing")
+                        baseline_sample = _usage(info)
+                    continue
+                if after_interval:
+                    continue
                 if value.get("type") == "event_msg" and isinstance(payload, dict):
                     if payload.get("type") == "token_count":
                         info = payload.get("info")
                         if not isinstance(info, dict):
                             raise CodexRolloutAdapterError("token_count info is missing")
                         token_samples.append(_usage(info))
+                        request = _request_usage(info)
+                        if request is not None:
+                            request_samples.append(request)
                         window = info.get("model_context_window")
                         if window is None:
                             missing_window = True
@@ -118,10 +195,11 @@ def inspect_codex_rollout(path: str | Path) -> dict[str, Any]:
         raise CodexRolloutAdapterError("rollout has no token_count evidence")
     if len(windows) > 1 or (windows and missing_window):
         raise CodexRolloutAdapterError("rollout context window changed")
-    for previous, current in zip(token_samples, token_samples[1:]):
+    monotonic_samples = ([baseline_sample] if baseline_sample is not None else []) + token_samples
+    for previous, current in zip(monotonic_samples, monotonic_samples[1:]):
         if any(current[field] < previous[field] for field in previous):
             raise CodexRolloutAdapterError("cumulative token counter reset")
-    first = token_samples[0]
+    first = baseline_sample or token_samples[0]
     last = token_samples[-1]
     usage = {
         field: last[field] - first[field]
@@ -133,7 +211,7 @@ def inspect_codex_rollout(path: str | Path) -> dict[str, Any]:
             "reasoning_output_tokens",
         )
     }
-    if len(token_samples) == 1:
+    if len(token_samples) == 1 and baseline_sample is None:
         usage = {
             field: first[field]
             for field in (
@@ -143,6 +221,38 @@ def inspect_codex_rollout(path: str | Path) -> dict[str, Any]:
                 "output_tokens",
                 "reasoning_output_tokens",
             )
+        }
+    if request_samples:
+        provider_request_usage: dict[str, Any] = {
+            "status": "measured",
+            "sample_count": len(request_samples),
+            **{
+                field: sum(sample[field] for sample in request_samples)
+                for field in (
+                    "input_tokens",
+                    "cached_input_tokens",
+                    "cache_write_input_tokens",
+                    "output_tokens",
+                    "reasoning_output_tokens",
+                )
+            },
+            "last_input_tokens": request_samples[-1]["input_tokens"],
+            "last_cached_input_tokens": request_samples[-1]["cached_input_tokens"],
+            "peak_input_tokens": max(sample["input_tokens"] for sample in request_samples),
+        }
+    else:
+        provider_request_usage = {
+            "status": "unavailable",
+            "sample_count": 0,
+            "input_tokens": None,
+            "cached_input_tokens": None,
+            "cache_write_input_tokens": None,
+            "output_tokens": None,
+            "reasoning_output_tokens": None,
+            "last_input_tokens": None,
+            "last_cached_input_tokens": None,
+            "peak_input_tokens": None,
+            "unavailable_reason": "last_token_usage telemetry is missing or invalid",
         }
     total_delta = last["total_tokens"] - first["total_tokens"]
     if total_delta > 0 and usage["input_tokens"] + usage["output_tokens"] == 0:
@@ -161,6 +271,12 @@ def inspect_codex_rollout(path: str | Path) -> dict[str, Any]:
         "schema_version": "context.codex-rollout-observation/v1alpha1",
         "source_sha256": source_hasher.hexdigest(),
         "provider_usage": provider_usage,
+        "provider_request_usage": provider_request_usage,
+        "observation_interval": (
+            {"started_at": started_at, "ended_at": ended_at}
+            if started_at is not None
+            else None
+        ),
         "context_window_tokens": next(iter(windows)) if windows else None,
         "compaction_count": len(compactions),
         "compactions": compactions,

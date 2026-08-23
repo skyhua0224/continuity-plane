@@ -1,0 +1,124 @@
+{
+  "schema_version": "context.autonomous-work-transition-results/v1alpha1",
+  "generated_at": "2026-08-23T13:45:00+08:00",
+  "implementation": {
+    "state_mcp_tool": "context.state.work.transition",
+    "cli_command": "continuity work transition",
+    "codex_mcp_tool": "continuity_work_transition",
+    "cli_version": "0.1.0a5",
+    "cli_wheel_sha256": "d0690c751eb83dc06e7243c6690fbb2ff973c13301088c11982c9333c76f4a75",
+    "plugin_version": "0.1.0-alpha.5+codex.20260823152725",
+    "stable_mcp_entrypoint": "continuity-mcp"
+  },
+  "atomic_fixture": {
+    "source_work_id": "N-69-06",
+    "dependency_work_id": "N-69-09-IO",
+    "revision_before": 4,
+    "revision_after": 5,
+    "event_count_delta": 1,
+    "active_work_count": 1,
+    "active_claim_count": 1,
+    "scope_expanded": false,
+    "remaining_gate_passed": false
+  },
+  "failure_injection": {
+    "checkpoint_publication": "rolled-back",
+    "workspace_clean": "rejected-before-state-write",
+    "sqlite_after_event_insert": "rolled-back",
+    "state_or_event_split_count": 0,
+    "ready_without_claim_count": 0,
+    "released_without_successor_count": 0
+  },
+  "focused_verification": {
+    "tests_passed": 120,
+    "tests_failed": 0,
+    "conditional_skips": 1,
+    "ruff_errors": 0
+  },
+  "full_repository_verification": {
+    "tests_run": 1932,
+    "failures": 0,
+    "errors": 0,
+    "wall_time_seconds": 353.121698,
+    "release_receipt_sha256": "2a7cbe608a99e2e43c92bc8a040bbb93e4414772551bfc1fa8d3484b0a70391e"
+  },
+  "live_platform_replay": {
+    "executing_session": "business-session",
+    "plugin_version": "0.1.0-alpha.3+codex.20260823132119",
+    "status": "already-transitioned",
+    "completion_policy_status": "granted",
+    "authority": "checkpoint-bound-local-transition",
+    "scope_expanded": false,
+    "revision_before": 88,
+    "revision_after": 88,
+    "event_before": 88,
+    "event_after": 88,
+    "active_work_id": "N-69-06",
+    "claim_id": "claim-n-69-06-return-io-1",
+    "checkpoint_verified": true,
+    "source_fresh": true,
+    "lease_valid": true,
+    "read_only": false,
+    "state_write_count": 0,
+    "legacy_complete_activate_calls": 0,
+    "product_code_writes": 0,
+    "sqlite_direct_writes": 0,
+    "remaining_blocker_id": "blocker-external-5488c30201d6ab03",
+    "remaining_gate_passed": false
+  },
+  "live_platform_idle_activation": {
+    "executing_session": "business-session",
+    "plugin_version": "0.1.0-alpha.5+codex.20260823152725",
+    "idle_revision": 95,
+    "idle_event": 95,
+    "idle_active_work": null,
+    "idle_claim": null,
+    "idle_next_action": "activate-next-work",
+    "idle_checkpoint_verified": true,
+    "idle_source_fresh": true,
+    "idle_lease_valid": true,
+    "idle_read_only": false,
+    "activation_status": "activated",
+    "activation_event_count_delta": 1,
+    "active_revision": 96,
+    "active_event": 96,
+    "active_work_id": "N-69-07",
+    "claim_id": "claim-n-69-07",
+    "scope_refs": [
+      "capability:network-cc-reliable",
+      "capability:network-transport-diagnostics"
+    ],
+    "checkpoint_verified": true,
+    "source_fresh": true,
+    "lease_valid": true,
+    "read_only": false,
+    "external_state_session_writes": 0,
+    "sqlite_direct_writes": 0
+  },
+  "projectcompute_supervision": {
+    "cli_version": "0.1.0a4",
+    "pre_correction_revision": 24,
+    "pre_correction_active_work_count": 0,
+    "preclaim_external_effect_count": 2,
+    "preclaim_effects": [
+      "merge",
+      "installation"
+    ],
+    "automatic_shell_effect_preflight": false,
+    "correction_channel": "active-turn-steer",
+    "post_correction_revision": 26,
+    "post_correction_active_work_id": "pr-687-phase-a-delivery",
+    "post_correction_claim_id": "claim-pr-687-phase-a-delivery",
+    "checkpoint_verified": true,
+    "source_fresh": true,
+    "lease_valid": true,
+    "read_only": false,
+    "remaining_gap": "arbitrary terminal effects require active-claim preflight"
+  },
+  "authority": {
+    "state_write_authority": false,
+    "completion_authority": false,
+    "policy_grant_source": "State MCP checkpoint-bound local transition",
+    "manual_control_plane_approval_required": false
+  }
+}
