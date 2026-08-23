@@ -15,6 +15,7 @@ from .experiment_lifecycle import evaluate_experiment_activation_gate
 from .idea_review import evaluate_correction_write_gate
 from .state_events import (
     EVENT_SCHEMA_VERSION_V4,
+    LEGACY_EVENT_SCHEMA_VERSION,
     build_state_event,
     replay_state_events,
 )
@@ -210,6 +211,25 @@ def _response(snapshot: dict[str, Any], event: dict[str, Any] | None, *, status:
 
 def _event_matches_request(event: dict[str, Any], request: dict[str, Any]) -> bool:
     transition = event.get("task_transition")
+    if transition is None and event.get("schema_version") == LEGACY_EVENT_SCHEMA_VERSION:
+        if (
+            request["operation"] not in {"interrupt", "switch"}
+            or event["revision_before"] != request["expected_project_revision"]
+            or event["causation_ref"] != request["causation_ref"]
+            or event["correlation_ref"] != request["correlation_ref"]
+        ):
+            return False
+        changed_works = {
+            change["object_id"]: change["value"]
+            for change in event["changes"]
+            if change["collection"] == "works"
+        }
+        return (
+            changed_works.get(request["expected_active_work_id"], {}).get("status")
+            == "ready"
+            and changed_works.get(request["target_work_id"], {}).get("status")
+            == "active"
+        )
     if not isinstance(transition, dict):
         return False
     if (
@@ -274,6 +294,7 @@ def _commit_route_event(store: Any, *, project_id: str, current: dict[str, Any],
     changes = list(unique_changes.values())
     previous_hash = events[-1]["event_sha256"] if events else None
     sequence_no = events[-1]["sequence_no"] + 1 if events else 1
+    legacy_transition = current.get("schema_version") == "context.typed-state/v1alpha1"
     event = build_state_event(
         event_id=event_id,
         event_type="correction" if request["operation"] == "correction" else "state-transition",
@@ -288,12 +309,20 @@ def _commit_route_event(store: Any, *, project_id: str, current: dict[str, Any],
         supersedes_event_id=request["supersedes_event_id"],
         changes=changes,
         project_after=candidate["project"],
-        task_transition=transition,
+        task_transition=None if legacy_transition else transition,
         schema_version=(
             EVENT_SCHEMA_VERSION_V4
             if current.get("schema_version")
-            in {"context.typed-state/v4alpha1", "context.typed-state/v5alpha1"}
-            else None
+            in {
+                "context.typed-state/v4alpha1",
+                "context.typed-state/v5alpha1",
+                "context.typed-state/v6alpha1",
+            }
+            else (
+                LEGACY_EVENT_SCHEMA_VERSION
+                if legacy_transition
+                else None
+            )
         ),
     )
     expected = replay_state_events(
@@ -386,9 +415,14 @@ def apply_route(
         raise RouteApplyError("event_id_factory returned an invalid ID")
     existing = next((event for event in events if event["event_id"] == event_id), None)
     if existing is not None:
+        existing_transition = existing.get("task_transition")
+        proposal_matches = (
+            existing_transition.get("route_decision_sha256") == proposal_hash
+            if isinstance(existing_transition, dict)
+            else existing.get("schema_version") == LEGACY_EVENT_SCHEMA_VERSION
+        )
         if (
-            existing.get("task_transition", {}).get("route_decision_sha256")
-            != proposal_hash
+            not proposal_matches
             or not _event_matches_request(existing, request)
         ):
             raise RouteApplyError("request identity conflicts with a different route proposal")
@@ -601,6 +635,17 @@ def _return_frame(event: dict[str, Any], request: dict[str, Any]) -> dict[str, A
     events = event.get("task_transition", {}).get("task_events", [])
     route_kind = event.get("task_transition", {}).get("route_kind")
     proposal_sha256 = event.get("task_transition", {}).get("route_decision_sha256")
+    if not events and request["operation"] in {"interrupt", "switch"}:
+        return {
+            "checkpoint_ref": copy.deepcopy(request["checkpoint_ref"]),
+            "old_work_id": request["expected_active_work_id"],
+            "old_work_revision": request["expected_active_work_revision"],
+            "old_project_revision": event["revision_before"],
+            "return_work_id": request["expected_active_work_id"],
+            "return_work_revision": request["expected_active_work_revision"],
+            "current_work_id": request["target_work_id"],
+            "proposal_sha256": request["proposal_sha256"],
+        }
     if route_kind == "child":
         child = events[0]
         return {
