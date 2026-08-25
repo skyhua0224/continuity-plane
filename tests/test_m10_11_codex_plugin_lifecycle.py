@@ -604,6 +604,16 @@ printf '%s\\n' '{"status":"ok"}'
         self.assertEqual(decision["permissionDecision"], "deny")
         self.assertIn("source-control.push", decision["permissionDecisionReason"])
 
+        deployed, _, _ = self._run_hook(
+            "PreToolUse",
+            tool_name="Bash",
+            tool_input={"command": "DEPLOY_PROFILE=prod deploy/deploy.sh --backend"},
+            resume_packet=packet,
+        )
+        deploy_decision = json.loads(deployed.stdout)["hookSpecificOutput"]
+        self.assertEqual(deploy_decision["permissionDecision"], "deny")
+        self.assertIn("deployment.deploy", deploy_decision["permissionDecisionReason"])
+
     def test_postcompact_verifies_canary_before_continuation(self) -> None:
         completed, calls, observations = self._run_hook("PostCompact")
         self.assertEqual(completed.returncode, 0, completed.stderr)

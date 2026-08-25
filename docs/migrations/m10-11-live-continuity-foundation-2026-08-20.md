@@ -534,7 +534,7 @@ The final repository discovery ran `1,951` tests in `406.527 s`: `1,920`
 passed, `31` conditional skips, and `0` failures or errors. The installed wheel
 SHA-256 is `cd6192a17fc651067a4a7c162858497ecace068d33b6bce66db7770db57d78df`;
 the installed plugin version is
-`0.1.0-alpha.7+codex.20260825164840`. Source and installed hook hashes match.
+`0.1.0-alpha.7+codex.20260825165330`. Source and installed hook hashes match.
 
 These results establish control correctness. Platform and ProjectCompute still
 require three matched baseline/candidate segments per exact match key before

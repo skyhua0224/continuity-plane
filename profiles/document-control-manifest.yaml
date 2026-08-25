@@ -515,7 +515,7 @@ documents:
 - document_id: status
   path: STATUS.md
   category: routing
-  document_revision: 38
+  document_revision: 39
   authority:
     governance_authority: false
     active_state_authority: false
@@ -523,11 +523,11 @@ documents:
   change:
     change_type: status
     authority_ref: governance-event://master/revision/91
-    supersedes: context.document://status/revision/37
+    supersedes: context.document://status/revision/38
     supersedes_provenance:
-      git_commit: 963334552b8873d3d865228c2340d7af9d7e3d63
-      manifest_sha256: 7ec35886b6617bb09e858e36a1c89017a82116e79404e0ec34f21e13cb899d49
-      content_sha256: e91af2123bd3276bc668d0598a8ca21e4c1b68fee31fff88d0df524429079790
+      git_commit: 666b49ecca85b5f2a25ad33ea8267c41cf7d092a
+      manifest_sha256: 8a441cf32506c519a2b43418ee3b46e458a48ae8121574bed4220ea2c658c38e
+      content_sha256: 5e5bd0dc3eb768755241c234ba44c4b62f508f0d9ef7bb1700aa514958cb7d46
     affected_tasks:
     - M10-00
     - M10-01
@@ -713,7 +713,7 @@ documents:
     path: docs/migrations/m10-00-self-dogfood-acceptance-2026-08-18.md
     valid_until: null
     content_sha256: 09d4248f7adbebeb8ef40d71a5dfe73fa0e408cabfb60cae242af81e4268a35e
-  content_sha256: 5e5bd0dc3eb768755241c234ba44c4b62f508f0d9ef7bb1700aa514958cb7d46
+  content_sha256: f800d62e02cb031b3a4f1caa87973a9005cf6dcedc465947f956c7d153c09131
   metrics:
     utf8_bytes: 3038
     section_count: 3
@@ -1755,24 +1755,24 @@ documents:
 - document_id: docs-migrations-m10-11-live-continuity-foundation-2026-08-20
   path: docs/migrations/m10-11-live-continuity-foundation-2026-08-20.md
   category: migration
-  document_revision: 5
+  document_revision: 6
   authority:
     governance_authority: false
     active_state_authority: false
     controlled_action_entry: false
   change:
     change_type: evidence
-    authority_ref: verification-run://repository/bce1eb9a3ccc168254492a38477cc4c512471e20339908e1c0be6a83e0fa16d7
-    supersedes: context.document://docs-migrations-m10-11-live-continuity-foundation-2026-08-20/revision/4
+    authority_ref: verification-run://repository/85362d41cb35c0478c2f71b8e5f17271a1a8d8a9b9a76899899870df64ce1fe0
+    supersedes: context.document://docs-migrations-m10-11-live-continuity-foundation-2026-08-20/revision/5
     affected_tasks:
     - M10-11
     next_review: null
     supersedes_provenance:
-      git_commit: 963334552b8873d3d865228c2340d7af9d7e3d63
-      manifest_sha256: 7ec35886b6617bb09e858e36a1c89017a82116e79404e0ec34f21e13cb899d49
-      content_sha256: c199fd1de271205ccd76ffbb8d83870041bb33cb3f25b96157957e9dedc1eacc
+      git_commit: 666b49ecca85b5f2a25ad33ea8267c41cf7d092a
+      manifest_sha256: 8a441cf32506c519a2b43418ee3b46e458a48ae8121574bed4220ea2c658c38e
+      content_sha256: bce1eb9a3ccc168254492a38477cc4c512471e20339908e1c0be6a83e0fa16d7
   evidence_refs: []
-  content_sha256: bce1eb9a3ccc168254492a38477cc4c512471e20339908e1c0be6a83e0fa16d7
+  content_sha256: 85362d41cb35c0478c2f71b8e5f17271a1a8d8a9b9a76899899870df64ce1fe0
   metrics:
     utf8_bytes: 29832
     section_count: 15

@@ -55,7 +55,9 @@ _EFFECT_PATTERNS = (
             r"docker\s+compose\s+(?:up|down|restart)|"
             r"systemctl\s+(?:start|stop|restart|enable|disable)|"
             r"terraform\s+(?:apply|destroy|import)|ansible-playbook\b|"
-            r"azd\s+(?:up|deploy)|wrangler\s+deploy|vercel\s+(?:deploy|--prod))\b",
+            r"azd\s+(?:up|deploy)|wrangler\s+deploy|vercel\s+(?:deploy|--prod)|"
+            r"(?:[A-Za-z_][A-Za-z0-9_]*=\S+\s+)*"
+            r"(?:\S*/)?deploy(?:[-_][a-z0-9.-]+)?\.sh\b)",
             re.IGNORECASE,
         ),
     ),
