@@ -533,9 +533,30 @@ resolves to its execution worktree through the local Git binding.
 The final repository discovery ran `1,951` tests in `406.527 s`: `1,920`
 passed, `31` conditional skips, and `0` failures or errors. The installed wheel
 SHA-256 is `cd6192a17fc651067a4a7c162858497ecace068d33b6bce66db7770db57d78df`;
-the installed plugin version is
-`0.1.0-alpha.7+codex.20260825165330`. Source and installed hook hashes match.
+the installed plugin baseline was
+`0.1.0-alpha.7+codex.20260825165330`. The new-session activation candidate is
+`0.1.0-alpha.7+codex.20260825174056`; its source lifecycle suite passes, while
+Desktop startup acceptance remains pending.
 
 These results establish control correctness. Platform and ProjectCompute still
 require three matched baseline/candidate segments per exact match key before
 token, compaction interval, or useful-context improvement can be claimed.
+
+## New-session Activation Receipt
+
+A ProjectCompute audit found two new root-directory Sessions with no Continuity
+startup observation. Both were created before the Git common-dir root binding
+candidate was installed, so the root checkout could not discover the canonical
+control root. A post-fix ephemeral startup probe resolved the root checkout to
+the shared execution state and emitted exactly one successful `startup` event.
+
+The Codex hook now returns one bounded startup receipt containing only the
+project identifier and authoritative revision. It does not expose the active
+Work, packet, source text, transcript path, or Session identifier. Compact
+continuation remains silent. A local-to-local `rsync` is also excluded from the
+remote-effect classifier; SSH/SCP and rsync remote endpoints remain gated.
+
+The focused lifecycle suite contains `21` passing tests, including startup
+receipt privacy and local/remote rsync classification. Real Desktop validation
+in the next newly created ProjectCompute or Platform Session remains required;
+the source test and CLI probe do not replace that host-surface acceptance.

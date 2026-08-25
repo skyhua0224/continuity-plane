@@ -78,6 +78,7 @@ printf '%s\\n' '{"status":"ok"}'
         tool_input: dict | None = None,
         resume_packet: dict | None = None,
         slow_resume: bool = False,
+        session_source: str = "compact",
     ) -> tuple[subprocess.CompletedProcess[str], list[str], str]:
         with tempfile.TemporaryDirectory() as directory:
             temp = Path(directory)
@@ -104,7 +105,7 @@ printf '%s\\n' '{"status":"ok"}'
             if event in {"PreCompact", "PostCompact"}:
                 payload["trigger"] = "auto"
             if event == "SessionStart":
-                payload["source"] = "compact"
+                payload["source"] = session_source
             if event == "PreToolUse":
                 payload["tool_name"] = tool_name or "Bash"
                 payload["tool_use_id"] = "private-tool-use-id"
@@ -164,6 +165,21 @@ printf '%s\\n' '{"status":"ok"}'
         self.assertEqual(
             hooks["SessionStart"][0]["hooks"][0]["additionalContextLimit"],
             5000,
+        )
+
+    def test_local_rsync_is_not_classified_as_a_remote_effect(self) -> None:
+        module = self._hook_module()
+
+        self.assertIsNone(
+            module._effect_class("rsync -a ./plugin/ /home/user/plugins/plugin/")
+        )
+        self.assertEqual(
+            module._effect_class("rsync -a ./plugin/ host:/srv/plugins/plugin/"),
+            "remote-effect",
+        )
+        self.assertEqual(
+            module._effect_class("rsync -a rsync://host/module/plugin ./plugin"),
+            "remote-effect",
         )
 
     def test_pretooluse_denies_external_effect_without_a_writable_claim(self) -> None:
@@ -643,6 +659,21 @@ printf '%s\\n' '{"status":"ok"}'
         self.assertNotIn("private-session-id", observations)
         self.assertNotIn("private-turn-id", observations)
         self.assertNotIn("raw-rollout", observations)
+
+    def test_new_session_start_reports_that_continuity_is_active_once(self) -> None:
+        completed, calls, _ = self._run_hook(
+            "SessionStart", session_source="startup"
+        )
+
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(len(calls), 1)
+        output = json.loads(completed.stdout)
+        self.assertEqual(
+            output["systemMessage"],
+            "Continuity active · portable-project · revision 8",
+        )
+        self.assertNotIn("work-active", output["systemMessage"])
+        self.assertNotIn("packet", output["systemMessage"].lower())
 
     def test_compact_session_start_refreshes_stale_sources_before_resume(self) -> None:
         completed, calls, _ = self._run_hook("SessionStart", auto_refresh=True)

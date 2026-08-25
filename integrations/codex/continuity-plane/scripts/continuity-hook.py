@@ -63,7 +63,7 @@ _EFFECT_PATTERNS = (
     ),
     (
         "remote-effect",
-        re.compile(r"(?:^|[;&|]\s*)(?:ssh|scp|rsync)\b", re.IGNORECASE),
+        re.compile(r"(?:^|[;&|]\s*)(?:ssh|scp)\b", re.IGNORECASE),
     ),
     (
         "package-publish",
@@ -793,7 +793,36 @@ def _effect_class(command: str) -> str | None:
     for effect_class, pattern in _EFFECT_PATTERNS:
         if pattern.search(command):
             return effect_class
+        if effect_class == "remote-effect" and _rsync_has_remote_endpoint(command):
+            return effect_class
     return None
+
+
+def _rsync_has_remote_endpoint(command: str) -> bool:
+    try:
+        tokens = shlex.split(command)
+    except ValueError:
+        return bool(re.search(r"(?:^|[;&|]\s*)rsync\b", command, re.IGNORECASE))
+    in_rsync = False
+    for token in tokens:
+        if token in {";", "&&", "||", "|"}:
+            in_rsync = False
+            continue
+        if Path(token).name.lower() == "rsync":
+            in_rsync = True
+            continue
+        if not in_rsync or token.startswith("-"):
+            continue
+        if token.lower().startswith("rsync://"):
+            return True
+        if re.match(r"^[A-Za-z]:[\\/]", token):
+            continue
+        if ":" not in token:
+            continue
+        authority = token.split(":", 1)[0]
+        if authority and "/" not in authority and "\\" not in authority:
+            return True
+    return False
 
 
 def _effect_action(command: str, effect_class: str) -> str:
@@ -1105,17 +1134,21 @@ def _session_start(payload: dict[str, Any], root: Path) -> int:
     if len(context.encode("utf-8")) > MAX_CONTEXT_BYTES:
         _stop("Continuity recovery context exceeds its byte budget.")
         return 0
-    print(
-        _canonical(
-            {
-                "continue": True,
-                "hookSpecificOutput": {
-                    "hookEventName": "SessionStart",
-                    "additionalContext": context,
-                },
-            }
+    response = {
+        "continue": True,
+        "hookSpecificOutput": {
+            "hookEventName": "SessionStart",
+            "additionalContext": context,
+        },
+    }
+    if payload.get("source") == "startup":
+        project_id = packet.get("project_id")
+        if not isinstance(project_id, str) or not project_id:
+            project_id = "project"
+        response["systemMessage"] = (
+            f"Continuity active · {project_id} · revision {packet['revision']}"
         )
-    )
+    print(_canonical(response))
     return 0
 
 
