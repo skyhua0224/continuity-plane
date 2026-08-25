@@ -253,7 +253,7 @@ def main() -> int:
                 {
                     "protocolVersion": request.get("params", {}).get("protocolVersion", "2024-11-05"),
                     "capabilities": {"tools": {}},
-                    "serverInfo": {"name": "continuity", "version": "0.1.0-alpha.6"},
+                    "serverInfo": {"name": "continuity", "version": "0.1.0-alpha.7"},
                 },
             )
         elif method == "notifications/initialized":

@@ -119,6 +119,115 @@ class M1011CodexRolloutAdapterTests(unittest.TestCase):
             receipt = inspect_codex_rollout(path)
         self.assertEqual(receipt["compaction_count"], 0)
 
+    def test_tool_output_and_post_compaction_rereads_are_measured_without_content(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "tool-output.jsonl"
+            first = self._token(input_tokens=1_000, output_tokens=100)
+            first["timestamp"] = "2026-08-20T12:00:00Z"
+            second = self._token(input_tokens=2_000, output_tokens=200)
+            second["timestamp"] = "2026-08-20T12:04:00Z"
+            events = [
+                first,
+                {
+                    "timestamp": "2026-08-20T12:01:00Z",
+                    "type": "event_msg",
+                    "payload": {"type": "context_compacted"},
+                },
+                {
+                    "timestamp": "2026-08-20T12:01:10Z",
+                    "type": "response_item",
+                    "payload": {
+                        "type": "custom_tool_call",
+                        "name": "exec",
+                        "call_id": "call-private-skill",
+                        "input": "sed -n '1,220p' /private/project/SKILL.md",
+                    },
+                },
+                {
+                    "timestamp": "2026-08-20T12:01:11Z",
+                    "type": "response_item",
+                    "payload": {
+                        "type": "custom_tool_call_output",
+                        "call_id": "call-private-skill",
+                        "output": [
+                            {
+                                "type": "text",
+                                "text": "private skill body" * 100,
+                            }
+                        ],
+                    },
+                },
+                {
+                    "timestamp": "2026-08-20T12:02:10Z",
+                    "type": "response_item",
+                    "payload": {
+                        "type": "custom_tool_call",
+                        "name": "exec",
+                        "call_id": "call-private-status",
+                        "input": "cat /private/project/STATUS.md",
+                    },
+                },
+                {
+                    "timestamp": "2026-08-20T12:02:11Z",
+                    "type": "response_item",
+                    "payload": {
+                        "type": "custom_tool_call_output",
+                        "call_id": "call-private-status",
+                        "output": [{"type": "text", "text": "private status"}],
+                    },
+                },
+                {
+                    "timestamp": "2026-08-20T12:03:00Z",
+                    "type": "response_item",
+                    "payload": {
+                        "type": "message",
+                        "role": "assistant",
+                        "content": [{"type": "output_text", "text": "same answer"}],
+                    },
+                },
+                {
+                    "timestamp": "2026-08-20T12:03:10Z",
+                    "type": "response_item",
+                    "payload": {
+                        "type": "message",
+                        "role": "assistant",
+                        "content": [{"type": "output_text", "text": "same answer"}],
+                    },
+                },
+                second,
+            ]
+            self._write(path, events)
+
+            receipt = inspect_codex_rollout(path)
+
+        efficiency = receipt["context_efficiency"]
+        self.assertEqual(efficiency["local_tool_call_count"], 2)
+        self.assertEqual(efficiency["local_tool_output_count"], 2)
+        self.assertGreater(efficiency["local_tool_output_bytes"], 1000)
+        self.assertEqual(efficiency["skill_read_calls"], 1)
+        self.assertEqual(efficiency["governed_document_read_calls"], 2)
+        self.assertGreater(efficiency["skill_output_bytes"], 1000)
+        self.assertGreater(
+            efficiency["governed_document_output_bytes"],
+            efficiency["skill_output_bytes"],
+        )
+        self.assertEqual(efficiency["exact_duplicate_assistant_messages"], 1)
+        recovery = efficiency["post_compaction_windows"][0]
+        self.assertEqual(recovery["tool_call_count"], 2)
+        self.assertEqual(recovery["skill_read_calls"], 1)
+        self.assertEqual(recovery["governed_document_read_calls"], 2)
+        self.assertEqual(
+            recovery["skill_output_bytes"], efficiency["skill_output_bytes"]
+        )
+        self.assertEqual(
+            recovery["governed_document_output_bytes"],
+            efficiency["governed_document_output_bytes"],
+        )
+        self.assertGreater(recovery["tool_output_bytes"], 1000)
+        encoded = json.dumps(efficiency, sort_keys=True)
+        self.assertNotIn("private", encoded)
+        self.assertNotIn("same answer", encoded)
+
     def test_counter_reset_mixed_windows_and_malformed_lines_fail_closed(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "rollout.jsonl"

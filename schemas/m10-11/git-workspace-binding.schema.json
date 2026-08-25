@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.continuity-plane.dev/context.git-workspace-binding/v1alpha1",
+  "title": "Continuity Plane Git workspace binding",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_id",
+    "control_root",
+    "profile_sha256",
+    "binding_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.git-workspace-binding/v1alpha1"},
+    "project_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$"},
+    "control_root": {"type": "string", "minLength": 1, "maxLength": 4096},
+    "profile_sha256": {"$ref": "#/$defs/sha256"},
+    "binding_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

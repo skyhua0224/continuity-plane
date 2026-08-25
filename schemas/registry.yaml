@@ -2231,7 +2231,7 @@ schemas:
     current_wire_version: context.local-work-transition-request/v1alpha1
     supported_wire_versions: [context.local-work-transition-request/v1alpha1]
     artifact_path: schemas/m10-11/local-work-transition-request.schema.json
-    content_sha256: 0f909b7e2c4558d3efed3e45957505504373616ba91046b5b787976b4ffee4df
+    content_sha256: 3b9cf49f5b902c6b72813df516a0e120e786d388a5ad4b0c263ea1452c479869
     status: current
     compatibility_mode: strict-versioned
     migrations: []
@@ -2242,6 +2242,26 @@ schemas:
     supported_wire_versions: [context.local-work-activation-request/v1alpha1]
     artifact_path: schemas/m10-11/local-work-activation-request.schema.json
     content_sha256: f0e0c07599915622cf6223b0537985ad8c6a2a932ae69da9fd7182e8c03ac7ad
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.git-workspace-binding
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.git-workspace-binding/v1alpha1
+    supported_wire_versions: [context.git-workspace-binding/v1alpha1]
+    artifact_path: schemas/m10-11/git-workspace-binding.schema.json
+    content_sha256: e8a372e79d57eec0ec2528ad554dbefe5027594ffcad0e4f92a4fab0255b97c1
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.delivery-activation
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.delivery-activation/v1alpha1
+    supported_wire_versions: [context.delivery-activation/v1alpha1]
+    artifact_path: schemas/m10-11/delivery-activation.schema.json
+    content_sha256: 3fca15541fa4caa941bb5b97dbc7ccefe9713aa069015d7e528454835c0e7acb
     status: current
     compatibility_mode: strict-versioned
     migrations: []

@@ -35,6 +35,13 @@ class M1011CodexPluginLifecycleTests(unittest.TestCase):
             """#!/bin/sh
 printf '%s\\n' \"$*\" >> \"$FAKE_CONTINUITY_CALLS\"
 if [ \"$1\" = \"resume\" ]; then
+  if [ \"${SLOW_RESUME:-0}\" = \"1\" ]; then
+    sleep 4
+  fi
+  if [ -n \"${MCP_BINDING_ENVELOPE:-}\" ]; then
+    printf '%s\\n' \"$MCP_BINDING_ENVELOPE\"
+    exit 0
+  fi
   if [ \"${ALWAYS_STALE:-0}\" = \"1\" ]; then
     printf '%s\\n' '{"schema_version":"context.resume-packet/v1alpha1","project_id":"portable-project","revision":7,"active_work":{"work_id":"work-active","title":"Continue active work"},"claim":{"claim_id":"claim-active","actor_ref":"actor-active"},"next_action":"remain-read-only","source_fresh":false,"read_only":true}'
   elif [ \"${AUTO_REFRESH:-0}\" = \"1\" ] && [ ! -f \"$FAKE_CONTINUITY_REFRESHED\" ]; then
@@ -67,6 +74,10 @@ printf '%s\\n' '{"status":"ok"}'
         with_project: bool = True,
         auto_refresh: bool = False,
         always_stale: bool = False,
+        tool_name: str | None = None,
+        tool_input: dict | None = None,
+        resume_packet: dict | None = None,
+        slow_resume: bool = False,
     ) -> tuple[subprocess.CompletedProcess[str], list[str], str]:
         with tempfile.TemporaryDirectory() as directory:
             temp = Path(directory)
@@ -94,6 +105,10 @@ printf '%s\\n' '{"status":"ok"}'
                 payload["trigger"] = "auto"
             if event == "SessionStart":
                 payload["source"] = "compact"
+            if event == "PreToolUse":
+                payload["tool_name"] = tool_name or "Bash"
+                payload["tool_use_id"] = "private-tool-use-id"
+                payload["tool_input"] = tool_input or {"command": "git status"}
             environment = {
                 **os.environ,
                 "PATH": f"{bin_dir}:{os.environ['PATH']}",
@@ -104,6 +119,10 @@ printf '%s\\n' '{"status":"ok"}'
                 "AUTO_REFRESH": "1" if auto_refresh else "0",
                 "FAKE_CONTINUITY_REFRESHED": str(temp / "refreshed"),
                 "ALWAYS_STALE": "1" if always_stale else "0",
+                "MCP_BINDING_ENVELOPE": json.dumps(resume_packet)
+                if resume_packet is not None
+                else "",
+                "SLOW_RESUME": "1" if slow_resume else "0",
             }
             completed = subprocess.run(
                 ["python3", str(self.script)],
@@ -123,10 +142,21 @@ printf '%s\\n' '{"status":"ok"}'
     def test_hook_config_registers_real_pre_post_and_compact_start_events(self) -> None:
         config = json.loads(self.hooks_path.read_text(encoding="utf-8"))
         hooks = config["hooks"]
-        self.assertEqual(set(hooks), {"SessionStart", "PreCompact", "PostCompact"})
+        self.assertEqual(
+            set(hooks),
+            {
+                "SessionStart",
+                "PreCompact",
+                "PostCompact",
+                "PreToolUse",
+                "PostToolUse",
+            },
+        )
         self.assertEqual(hooks["PreCompact"][0]["matcher"], "manual|auto")
         self.assertEqual(hooks["PostCompact"][0]["matcher"], "manual|auto")
         self.assertIn("compact", hooks["SessionStart"][0]["matcher"])
+        self.assertEqual(hooks["PreToolUse"][0]["matcher"], "Bash")
+        self.assertEqual(hooks["PostToolUse"][0]["matcher"], "Bash")
         for groups in hooks.values():
             handler = groups[0]["hooks"][0]
             self.assertIn("command", handler)
@@ -135,6 +165,397 @@ printf '%s\\n' '{"status":"ok"}'
             hooks["SessionStart"][0]["hooks"][0]["additionalContextLimit"],
             5000,
         )
+
+    def test_pretooluse_denies_external_effect_without_a_writable_claim(self) -> None:
+        idle = {
+            "schema_version": "context.recovery-envelope/v1alpha1",
+            "project_id": "portable-project",
+            "revision": 8,
+            "active_work": None,
+            "claim": None,
+            "next_action": "activate-next-work",
+            "source_fresh": True,
+            "lease_valid": True,
+            "checkpoint_verified": True,
+            "read_only": False,
+        }
+        completed, calls, observations = self._run_hook(
+            "PreToolUse",
+            tool_name="Bash",
+            tool_input={"command": "git push origin main"},
+            resume_packet=idle,
+        )
+
+        output = json.loads(completed.stdout)
+        decision = output["hookSpecificOutput"]
+        self.assertEqual(decision["permissionDecision"], "deny")
+        self.assertIn("active Work", decision["permissionDecisionReason"])
+        self.assertEqual(len(calls), 1)
+        self.assertTrue(calls[0].startswith("resume "))
+        self.assertIn('"event_type":"pretooluse"', observations)
+
+    def test_pretooluse_denies_effect_outside_the_claim_scope(self) -> None:
+        active = {
+            "schema_version": "context.recovery-envelope/v1alpha1",
+            "project_id": "portable-project",
+            "revision": 8,
+            "active_work": {
+                "work_id": "work-active",
+                "title": "Continue active work",
+                "scope_refs": [
+                    {"scope_kind": "capability", "scope_ref": "code-edit"}
+                ],
+            },
+            "claim": {
+                "claim_id": "claim-active",
+                "actor_ref": "actor-active",
+                "scope_owners": [
+                    {"scope_kind": "capability", "scope_ref": "code-edit"}
+                ],
+            },
+            "next_action": "continue-active-work",
+            "source_fresh": True,
+            "lease_valid": True,
+            "checkpoint_verified": True,
+            "read_only": False,
+        }
+        completed, _, _ = self._run_hook(
+            "PreToolUse",
+            tool_name="Bash",
+            tool_input={"command": "kubectl apply -f deploy.yaml"},
+            resume_packet=active,
+        )
+
+        decision = json.loads(completed.stdout)["hookSpecificOutput"]
+        self.assertEqual(decision["permissionDecision"], "deny")
+        self.assertIn("deployment", decision["permissionDecisionReason"])
+
+    def test_pretooluse_fails_closed_when_authority_lookup_times_out(self) -> None:
+        completed, _, _ = self._run_hook(
+            "PreToolUse",
+            tool_name="Bash",
+            tool_input={"command": "git push origin main"},
+            slow_resume=True,
+        )
+
+        decision = json.loads(completed.stdout)["hookSpecificOutput"]
+        self.assertEqual(decision["hookEventName"], "PreToolUse")
+        self.assertEqual(decision["permissionDecision"], "deny")
+        self.assertIn("unavailable", decision["permissionDecisionReason"])
+
+    def test_source_control_delivery_accepts_an_opaque_active_work_scope(self) -> None:
+        packet = {
+            "schema_version": "context.recovery-envelope/v1alpha1",
+            "project_id": "portable-project",
+            "revision": 8,
+            "active_work": {"work_id": "work-active"},
+            "claim": {
+                "claim_id": "claim-active",
+                "actor_ref": "actor-active",
+                "status": "active",
+                "scope_owners": [
+                    {
+                        "scope_kind": "capability",
+                        "scope_ref": "project-shadow-pilot",
+                    }
+                ],
+            },
+            "next_action": "continue-active-work",
+            "source_fresh": True,
+            "lease_valid": True,
+            "checkpoint_verified": True,
+            "read_only": False,
+        }
+        completed, _, _ = self._run_hook(
+            "PreToolUse",
+            tool_name="Bash",
+            tool_input={"command": "git commit -m bounded-change"},
+            resume_packet=packet,
+        )
+
+        self.assertEqual(completed.stdout, "")
+
+    def test_delivery_effect_scopes_allow_only_the_declared_action(self) -> None:
+        packet = {
+            "schema_version": "context.recovery-envelope/v1alpha1",
+            "project_id": "portable-project",
+            "revision": 8,
+            "active_work": {"work_id": "work-delivery"},
+            "claim": {
+                "claim_id": "claim-delivery",
+                "actor_ref": "actor-active",
+                "status": "active",
+                "scope_owners": [
+                    {"scope_kind": "capability", "scope_ref": "release-delivery"},
+                    {"scope_kind": "effect", "scope_ref": "source-control.push"},
+                ],
+            },
+            "next_action": "continue-active-work",
+            "source_fresh": True,
+            "lease_valid": True,
+            "checkpoint_verified": True,
+            "read_only": False,
+        }
+        pushed, _, _ = self._run_hook(
+            "PreToolUse",
+            tool_name="Bash",
+            tool_input={"command": "git push origin HEAD"},
+            resume_packet=packet,
+        )
+        merged, _, _ = self._run_hook(
+            "PreToolUse",
+            tool_name="Bash",
+            tool_input={"command": "tea pulls merge 10"},
+            resume_packet=packet,
+        )
+
+        self.assertEqual(pushed.stdout, "")
+        decision = json.loads(merged.stdout)["hookSpecificOutput"]
+        self.assertEqual(decision["permissionDecision"], "deny")
+        self.assertIn("source-control.merge", decision["permissionDecisionReason"])
+
+    def test_pretooluse_allows_read_only_shell_and_claimed_deployment(self) -> None:
+        deployment = {
+            "schema_version": "context.recovery-envelope/v1alpha1",
+            "project_id": "portable-project",
+            "revision": 8,
+            "active_work": {
+                "work_id": "work-active",
+                "title": "Deploy verified release",
+                "scope_refs": [
+                    {"scope_kind": "capability", "scope_ref": "deployment"}
+                ],
+            },
+            "claim": {
+                "claim_id": "claim-active",
+                "actor_ref": "actor-active",
+                "scope_owners": [
+                    {"scope_kind": "capability", "scope_ref": "deployment"},
+                    {"scope_kind": "effect", "scope_ref": "deployment.deploy"},
+                ],
+            },
+            "next_action": "continue-active-work",
+            "source_fresh": True,
+            "lease_valid": True,
+            "checkpoint_verified": True,
+            "read_only": False,
+        }
+        read, read_calls, read_observations = self._run_hook(
+            "PreToolUse",
+            tool_name="Bash",
+            tool_input={"command": "git status --short"},
+            resume_packet=deployment,
+        )
+        deploy, _, _ = self._run_hook(
+            "PreToolUse",
+            tool_name="Bash",
+            tool_input={"command": "kubectl apply -f deploy.yaml"},
+            resume_packet=deployment,
+        )
+
+        self.assertEqual(read.stdout, "")
+        self.assertEqual(read_calls, [])
+        self.assertNotIn("git status", read_observations)
+        self.assertEqual(deploy.stdout, "")
+
+    def test_compact_recovery_enforces_and_accounts_the_actual_read_budget(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            project = temp / "portable-project"
+            project.mkdir()
+            (project / ".continuity").mkdir()
+            (project / ".continuity/project.yaml").write_text(
+                "schema_version: context.project/v1alpha1\n",
+                encoding="utf-8",
+            )
+            (project / ".continuity/STATUS.current.md").write_text(
+                "active Work: work-active\nnext action: continue\n",
+                encoding="utf-8",
+            )
+            (project / "MASTER.md").write_text("governance\n" * 4096, encoding="utf-8")
+            bin_dir = temp / "bin"
+            bin_dir.mkdir()
+            _, calls = self._fake_continuity(bin_dir)
+            plugin_data = temp / "plugin-data"
+            environment = {
+                **os.environ,
+                "PATH": f"{bin_dir}:{os.environ['PATH']}",
+                "PLUGIN_DATA": str(plugin_data),
+                "PLUGIN_ROOT": str(self.plugin),
+                "FAKE_CONTINUITY_CALLS": str(calls),
+                "MCP_BINDING_ENVELOPE": "",
+            }
+            common = {
+                "session_id": "private-session-id",
+                "transcript_path": None,
+                "cwd": str(project),
+                "model": "provider-model",
+                "turn_id": "private-turn-id",
+            }
+
+            def invoke(payload: dict) -> subprocess.CompletedProcess[str]:
+                return subprocess.run(
+                    ["python3", str(self.script)],
+                    input=json.dumps({**common, **payload}),
+                    text=True,
+                    capture_output=True,
+                    env=environment,
+                    check=False,
+                )
+
+            started = invoke(
+                {"hook_event_name": "SessionStart", "source": "compact"}
+            )
+            denied = invoke(
+                {
+                    "hook_event_name": "PreToolUse",
+                    "tool_name": "Bash",
+                    "tool_use_id": "read-unbounded",
+                    "tool_input": {"command": "cat MASTER.md"},
+                }
+            )
+            allowed = invoke(
+                {
+                    "hook_event_name": "PreToolUse",
+                    "tool_name": "Bash",
+                    "tool_use_id": "read-bounded",
+                    "tool_input": {
+                        "command": "sed -n '1,20p' .continuity/STATUS.current.md"
+                    },
+                }
+            )
+            measured = invoke(
+                {
+                    "hook_event_name": "PostToolUse",
+                    "tool_name": "Bash",
+                    "tool_use_id": "read-bounded",
+                    "tool_input": {
+                        "command": "sed -n '1,20p' .continuity/STATUS.current.md"
+                    },
+                    "tool_response": "x" * 1024,
+                }
+            )
+            exceeded = invoke(
+                {
+                    "hook_event_name": "PostToolUse",
+                    "tool_name": "Bash",
+                    "tool_use_id": "read-second",
+                    "tool_input": {
+                        "command": "sed -n '21,240p' .continuity/STATUS.current.md"
+                    },
+                    "tool_response": "y" * (12 * 1024),
+                }
+            )
+
+            self.assertEqual(started.returncode, 0, started.stderr)
+            self.assertEqual(
+                json.loads(denied.stdout)["hookSpecificOutput"]["permissionDecision"],
+                "deny",
+            )
+            self.assertIn("bounded", denied.stdout.lower())
+            self.assertEqual(allowed.stdout, "")
+            self.assertEqual(measured.stdout, "")
+            self.assertEqual(json.loads(exceeded.stdout)["continue"], False)
+            self.assertNotIn("y" * 128, exceeded.stdout)
+            records = [
+                json.loads(line)
+                for path in (plugin_data / "live-events").glob("*.jsonl")
+                for line in path.read_text(encoding="utf-8").splitlines()
+            ]
+            reads = [item for item in records if item["event_type"] == "recovery-read"]
+            self.assertEqual(reads[-1]["recovery_read_bytes"], 1024)
+            self.assertEqual(reads[-1]["recovery_read_budget_bytes"], 12 * 1024)
+            self.assertEqual(reads[-1]["tool_output_bytes"], 12 * 1024)
+            self.assertEqual(reads[-1]["context_admitted"], False)
+            encoded = json.dumps(reads, sort_keys=True)
+            self.assertNotIn("MASTER.md", encoded)
+            self.assertNotIn("STATUS.current.md", encoded)
+            self.assertNotIn("private-session-id", encoded)
+
+    def test_same_repository_sessions_serialize_external_effects(self) -> None:
+        deployment = {
+            "schema_version": "context.recovery-envelope/v1alpha1",
+            "project_id": "portable-project",
+            "revision": 8,
+            "active_work": {"work_id": "work-active"},
+            "claim": {
+                "claim_id": "claim-active",
+                "actor_ref": "actor-active",
+                "status": "active",
+                "scope_owners": [
+                    {"scope_kind": "capability", "scope_ref": "deployment"},
+                    {"scope_kind": "effect", "scope_ref": "deployment.deploy"},
+                ],
+            },
+            "next_action": "continue-active-work",
+            "source_fresh": True,
+            "lease_valid": True,
+            "checkpoint_verified": True,
+            "read_only": False,
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            project = temp / "portable-project"
+            project.mkdir()
+            (project / ".continuity").mkdir()
+            (project / ".continuity/project.yaml").write_text(
+                "schema_version: context.project/v1alpha1\n",
+                encoding="utf-8",
+            )
+            bin_dir = temp / "bin"
+            bin_dir.mkdir()
+            _, calls = self._fake_continuity(bin_dir)
+            plugin_data = temp / "plugin-data"
+            environment = {
+                **os.environ,
+                "PATH": f"{bin_dir}:{os.environ['PATH']}",
+                "PLUGIN_DATA": str(plugin_data),
+                "PLUGIN_ROOT": str(self.plugin),
+                "FAKE_CONTINUITY_CALLS": str(calls),
+                "MCP_BINDING_ENVELOPE": json.dumps(deployment),
+            }
+
+            def invoke(session: str, event: str) -> subprocess.CompletedProcess[str]:
+                payload = {
+                    "session_id": session,
+                    "transcript_path": None,
+                    "cwd": str(project),
+                    "hook_event_name": event,
+                    "model": "provider-model",
+                    "turn_id": f"turn-{session}",
+                    "tool_name": "Bash",
+                    "tool_use_id": f"deploy-{session}",
+                    "tool_input": {"command": "kubectl apply -f deploy.yaml"},
+                }
+                if event == "PostToolUse":
+                    payload["tool_response"] = {"output": "applied", "exit_code": 0}
+                return subprocess.run(
+                    ["python3", str(self.script)],
+                    input=json.dumps(payload),
+                    text=True,
+                    capture_output=True,
+                    env=environment,
+                    check=False,
+                )
+
+            first = invoke("session-a", "PreToolUse")
+            conflict = invoke("session-b", "PreToolUse")
+            released = invoke("session-a", "PostToolUse")
+            successor = invoke("session-b", "PreToolUse")
+
+            self.assertEqual(first.stdout, "")
+            decision = json.loads(conflict.stdout)["hookSpecificOutput"]
+            self.assertEqual(decision["permissionDecision"], "deny")
+            self.assertIn("another active session", decision["permissionDecisionReason"])
+            self.assertEqual(released.stdout, "")
+            self.assertEqual(successor.stdout, "")
+            observations = "\n".join(
+                path.read_text(encoding="utf-8")
+                for path in (plugin_data / "live-events").glob("*.jsonl")
+            )
+            self.assertNotIn("kubectl apply", observations)
+            self.assertNotIn("session-a", observations)
+            self.assertNotIn("session-b", observations)
 
     def test_hook_observation_binds_installed_manifest_and_hook_contract(self) -> None:
         completed, _, observations = self._run_hook("SessionStart")
@@ -151,6 +572,37 @@ printf '%s\\n' '{"status":"ok"}'
         self.assertEqual(len(calls), 1)
         self.assertTrue(calls[0].startswith("checkpoint create --root "))
         self.assertIn('"event_type":"precompact"', observations)
+
+    def test_implementation_claim_cannot_push_without_a_delivery_effect_scope(self) -> None:
+        packet = {
+            "schema_version": "context.recovery-envelope/v1alpha1",
+            "project_id": "portable-project",
+            "revision": 8,
+            "active_work": {"work_id": "work-implementation"},
+            "claim": {
+                "claim_id": "claim-implementation",
+                "actor_ref": "actor-active",
+                "status": "active",
+                "scope_owners": [
+                    {"scope_kind": "capability", "scope_ref": "code-edit"}
+                ],
+            },
+            "next_action": "continue-active-work",
+            "source_fresh": True,
+            "lease_valid": True,
+            "checkpoint_verified": True,
+            "read_only": False,
+        }
+        completed, _, _ = self._run_hook(
+            "PreToolUse",
+            tool_name="Bash",
+            tool_input={"command": "git push origin HEAD"},
+            resume_packet=packet,
+        )
+
+        decision = json.loads(completed.stdout)["hookSpecificOutput"]
+        self.assertEqual(decision["permissionDecision"], "deny")
+        self.assertIn("source-control.push", decision["permissionDecisionReason"])
 
     def test_postcompact_verifies_canary_before_continuation(self) -> None:
         completed, calls, observations = self._run_hook("PostCompact")
@@ -207,6 +659,75 @@ printf '%s\\n' '{"status":"ok"}'
         self.assertEqual(completed.stdout, "")
         self.assertEqual(calls, [])
         self.assertEqual(observations, "")
+
+    def test_git_main_root_discovers_the_canonical_worktree_control_root(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            main_root = temp / "repo"
+            control_root = temp / "control"
+            main_root.mkdir()
+            subprocess.run(["git", "init", "-q", str(main_root)], check=True)
+            subprocess.run(
+                ["git", "-C", str(main_root), "config", "user.email", "test@example.invalid"],
+                check=True,
+            )
+            subprocess.run(
+                ["git", "-C", str(main_root), "config", "user.name", "Continuity Test"],
+                check=True,
+            )
+            (main_root / "README.md").write_text("fixture\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(main_root), "add", "README.md"], check=True)
+            subprocess.run(
+                ["git", "-C", str(main_root), "commit", "-qm", "test: initialize"],
+                check=True,
+            )
+            subprocess.run(
+                [
+                    "git", "-C", str(main_root), "worktree", "add", "-q",
+                    "--detach", str(control_root),
+                ],
+                check=True,
+            )
+            (control_root / ".continuity").mkdir()
+            (control_root / ".continuity/project.yaml").write_text(
+                "schema_version: context.project/v1alpha1\n",
+                encoding="utf-8",
+            )
+            bin_dir = temp / "bin"
+            bin_dir.mkdir()
+            _, calls = self._fake_continuity(bin_dir)
+            plugin_data = temp / "plugin-data"
+            payload = {
+                "session_id": "private-session-id",
+                "transcript_path": None,
+                "cwd": str(main_root),
+                "hook_event_name": "SessionStart",
+                "source": "compact",
+                "model": "provider-model",
+                "turn_id": "private-turn-id",
+            }
+            completed = subprocess.run(
+                ["python3", str(self.script)],
+                input=json.dumps(payload),
+                text=True,
+                capture_output=True,
+                env={
+                    **os.environ,
+                    "PATH": f"{bin_dir}:{os.environ['PATH']}",
+                    "PLUGIN_DATA": str(plugin_data),
+                    "PLUGIN_ROOT": str(self.plugin),
+                    "FAKE_CONTINUITY_CALLS": str(calls),
+                    "MCP_BINDING_ENVELOPE": "",
+                },
+                check=False,
+            )
+
+            context = json.loads(completed.stdout)["hookSpecificOutput"][
+                "additionalContext"
+            ]
+            call_lines = calls.read_text(encoding="utf-8").splitlines()
+            self.assertIn("work-active", context)
+            self.assertIn(f"--root {control_root}", call_lines[0])
 
     def test_codex_tail_parser_records_hash_cursor_without_raw_text(self) -> None:
         hook = self._hook_module()

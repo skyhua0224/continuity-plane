@@ -498,3 +498,44 @@ document lifecycle gates also passed.
 After adding the streaming Claude adapter and nullable reasoning-token
 capability, the final discovery run contained `1,900` tests: `1,869` passed,
 `31` conditional skips, and `0` failures in `433.160 s`.
+
+## Alpha.7 Cross-project Control Repair
+
+The local `0.1.0a7` candidate closes four live control defects without claiming
+the M10-11 matched improvement gate:
+
+- `resume` verifies the projection receipt, packet digest, revision, and both
+  current STATUS files. Missing, stale, or tampered projections are rebuilt;
+  an unverifiable rebuild stops resume.
+- A content-equivalent attach refresh preserves its source identity. A nested
+  dependency transition may bind an existing verified attach evidence with the
+  same source-content digest to its declared return Work in the same Event.
+- A delivery activation binds an opaque source, completed predecessor, verified
+  implementation evidence, Git head/ref, and an allowlist of effect scopes.
+  An implementation claim without effect scopes may create local commits but
+  cannot push, create or merge a PR, deploy, perform remote installation, or
+  publish a package.
+- A local Git common-dir binding resolves the repository root and sibling
+  worktrees to one canonical control root. Multiple unbound candidates fail
+  closed.
+
+ProjectCompute reproduced the nested source failure at revision/event `78/78`.
+The business Session used the new CLI to return `issue-776` to `issue-774` at
+`79/79`, verified independent issue-774 evidence, and returned to `issue-773`
+at `80/80`. Both transitions returned verified checkpoints and writable current
+packets; no direct SQLite edit or split complete/activate sequence occurred.
+
+The same installed CLI repaired Platform `STATUS.current` from `122/N-69-08`
+to authoritative `162/N-69-14` and ProjectCompute from `7/issue-681` to
+`80/issue-773`. ProjectCompute's main checkout contains no second State and
+resolves to its execution worktree through the local Git binding.
+
+The final repository discovery ran `1,951` tests in `406.527 s`: `1,920`
+passed, `31` conditional skips, and `0` failures or errors. The installed wheel
+SHA-256 is `cd6192a17fc651067a4a7c162858497ecace068d33b6bce66db7770db57d78df`;
+the installed plugin version is
+`0.1.0-alpha.7+codex.20260825164840`. Source and installed hook hashes match.
+
+These results establish control correctness. Platform and ProjectCompute still
+require three matched baseline/candidate segments per exact match key before
+token, compaction interval, or useful-context improvement can be claimed.

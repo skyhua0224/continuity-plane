@@ -44,6 +44,11 @@ from .route_apply import apply_route
 from .status_projection import render_status_projection
 from .sticky_router import canonical_route_decision_bytes, route_task_input
 from .sqlite_state_store import SQLiteStateStore
+from .workspace_binding import (
+    WorkspaceBindingError,
+    register_control_root,
+    resolve_control_root,
+)
 from .canonical_attach import (
     CanonicalAttachError,
     build_attach_proposal,
@@ -65,7 +70,7 @@ from .state_mcp import (
     StateMCPService,
 )
 
-VERSION = "0.1.0a6"
+VERSION = "0.1.0a7"
 _PROJECT_FIELDS = {
     "schema_version",
     "project_id",
@@ -78,6 +83,16 @@ _PROJECT_FIELDS = {
 }
 _ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,127}$")
 _STATE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+_SOURCE_REF_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*://[^\s]{1,960}$")
+_DELIVERY_EFFECTS = {
+    "source-control.push",
+    "source-control.pr",
+    "source-control.merge",
+    "source-control.release",
+    "deployment.deploy",
+    "remote-effect.install-verification",
+    "package-publish.publish",
+}
 
 
 def _template(name: str) -> str:
@@ -343,22 +358,16 @@ def _state_show(args: argparse.Namespace) -> int:
     return 0
 
 
-def _status_render(args: argparse.Namespace) -> int:
-    root = Path(args.root).resolve()
-    with contextlib.redirect_stdout(io.StringIO()):
-        _resume(argparse.Namespace(root=str(root), interaction_cursor=None, skill_lock=None))
-    packet = json.loads((root / ".continuity/resume-packet.json").read_text(encoding="utf-8"))
-    status_path = root / ".continuity/STATUS.current.md"
-    status_en_path = root / ".continuity/STATUS.current.en.md"
-    _write_text_atomic(status_path, render_status_projection(packet, language="zh-CN"))
-    _write_text_atomic(status_en_path, render_status_projection(packet, language="en"))
+def _status_projection_document(
+    root: Path, packet: dict[str, Any], status_text: str, status_en_text: str
+) -> dict[str, Any]:
     projection = {
         "schema_version": "context.status-projection/v1alpha1",
         "project_id": packet["project_id"],
         "revision": packet["revision"],
         "source_packet_sha256": packet["packet_sha256"],
-        "status_sha256": hashlib.sha256(status_path.read_bytes()).hexdigest(),
-        "status_en_sha256": hashlib.sha256(status_en_path.read_bytes()).hexdigest(),
+        "status_sha256": hashlib.sha256(status_text.encode("utf-8")).hexdigest(),
+        "status_en_sha256": hashlib.sha256(status_en_text.encode("utf-8")).hexdigest(),
         "state_write_authority": False,
         "completion_authority": False,
         "projection_sha256": "0" * 64,
@@ -374,7 +383,52 @@ def _status_render(args: argparse.Namespace) -> int:
             separators=(",", ":"),
         ).encode("utf-8")
     ).hexdigest()
-    _write_json_atomic(root / ".continuity/status-projection.json", projection)
+    return projection
+
+
+def _status_projection_is_current(
+    root: Path, expected: dict[str, Any], status_text: str, status_en_text: str
+) -> bool:
+    try:
+        current = json.loads(
+            (root / ".continuity/status-projection.json").read_text(encoding="utf-8")
+        )
+        actual_status = (root / ".continuity/STATUS.current.md").read_text(
+            encoding="utf-8"
+        )
+        actual_status_en = (root / ".continuity/STATUS.current.en.md").read_text(
+            encoding="utf-8"
+        )
+    except (OSError, json.JSONDecodeError):
+        return False
+    return current == expected and actual_status == status_text and actual_status_en == status_en_text
+
+
+def _ensure_status_projection(root: Path, packet: dict[str, Any]) -> dict[str, Any]:
+    status_text = render_status_projection(packet, language="zh-CN")
+    status_en_text = render_status_projection(packet, language="en")
+    projection = _status_projection_document(root, packet, status_text, status_en_text)
+    if not _status_projection_is_current(root, projection, status_text, status_en_text):
+        _write_text_atomic(root / ".continuity/STATUS.current.md", status_text)
+        _write_text_atomic(root / ".continuity/STATUS.current.en.md", status_en_text)
+        _write_json_atomic(root / ".continuity/status-projection.json", projection)
+        if not _status_projection_is_current(
+            root, projection, status_text, status_en_text
+        ):
+            raise ValueError("status projection refresh could not be verified")
+    return projection
+
+
+def _status_render(args: argparse.Namespace) -> int:
+    root = Path(args.root).resolve()
+    with contextlib.redirect_stdout(io.StringIO()):
+        _resume(argparse.Namespace(root=str(root), interaction_cursor=None, skill_lock=None))
+    packet = json.loads(
+        (root / ".continuity/resume-packet.json").read_text(encoding="utf-8")
+    )
+    _ensure_status_projection(root, packet)
+    status_path = root / ".continuity/STATUS.current.md"
+    status_en_path = root / ".continuity/STATUS.current.en.md"
     print(
         json.dumps(
             {
@@ -421,6 +475,32 @@ def _canonical_master_sha256(proposal: dict[str, Any]) -> str:
     if len(sources) != 1:
         raise ValueError("attach proposal must bind exactly one canonical master")
     return sources[0]["content_sha256"]
+
+
+def _attach_source_digest(proposal: dict[str, Any]) -> str:
+    return hashlib.sha256(
+        "".join(source["content_sha256"] for source in proposal["sources"]).encode()
+    ).hexdigest()
+
+
+def _verified_attach_evidence(
+    snapshot: dict[str, Any], proposal: dict[str, Any]
+) -> dict[str, Any]:
+    source_digest = _attach_source_digest(proposal)
+    candidates = sorted(
+        (
+            item
+            for item in snapshot["evidence"]
+            if item["evidence_id"].startswith("evidence-attach-")
+            and item["kind"] == "artifact"
+            and item["content_sha256"] == source_digest
+            and item["validity"] == "verified"
+        ),
+        key=lambda item: item["evidence_id"],
+    )
+    if not candidates:
+        raise ValueError("current canonical source evidence is not in State")
+    return candidates[0]
 
 
 def _read_state_result(
@@ -543,7 +623,6 @@ def _attach_refresh(args: argparse.Namespace) -> int:
         scope_refs=copy.deepcopy(old["work"]["scope_refs"]),
         created_at=datetime.now(UTC).isoformat(),
     )
-    _write_json_atomic(proposal_path, refreshed)
     changed = sorted(
         source["kind"]
         for source in refreshed["sources"]
@@ -551,6 +630,22 @@ def _attach_refresh(args: argparse.Namespace) -> int:
         if source["kind"] == previous["kind"]
         and source["content_sha256"] != previous["content_sha256"]
     )
+    if not changed:
+        print(
+            json.dumps(
+                {
+                    "status": "unchanged",
+                    "project_id": project["project_id"],
+                    "old_proposal_sha256": old["proposal_sha256"],
+                    "proposal_sha256": old["proposal_sha256"],
+                    "changed_sources": [],
+                    "state_write_authority": False,
+                },
+                sort_keys=True,
+            )
+        )
+        return 0
+    _write_json_atomic(proposal_path, refreshed)
     print(
         json.dumps(
             {
@@ -585,9 +680,7 @@ def _attach_approve(args: argparse.Namespace) -> int:
     current = store.read_project(project["project_id"])
     now = datetime.now(UTC)
     now_text = now.isoformat()
-    source_digest = hashlib.sha256(
-        "".join(source["content_sha256"] for source in proposal["sources"]).encode()
-    ).hexdigest()
+    source_digest = _attach_source_digest(proposal)
     evidence_id = f"evidence-attach-{proposal['proposal_sha256'][:16]}"
     evidence = {
         "evidence_id": evidence_id,
@@ -946,12 +1039,30 @@ def _resume(args: argparse.Namespace) -> int:
         skill_lock=skill_lock,
     )
     path = root / ".continuity/resume-packet.json"
-    path.write_text(
-        json.dumps(packet, ensure_ascii=False, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
+    _write_json_atomic(path, packet)
+    try:
+        _ensure_status_projection(root, packet)
+    except (OSError, ValueError) as exc:
+        raise ValueError("status projection refresh failed") from exc
     print(json.dumps(packet, ensure_ascii=False, sort_keys=True))
     return 0
+
+
+def _refresh_projection_after_state_change(root: Path) -> dict[str, Any]:
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        _resume(
+            argparse.Namespace(
+                root=str(root), interaction_cursor=None, skill_lock=None
+            )
+        )
+    packet = json.loads(output.getvalue())
+    projection = _ensure_status_projection(root, packet)
+    return {
+        "projection_revision": projection["revision"],
+        "projection_path": str(root / ".continuity/STATUS.current.md"),
+        "projection_stale": False,
+    }
 
 
 def _checkpoint_create(args: argparse.Namespace) -> int:
@@ -1200,6 +1311,7 @@ def _work_complete(args: argparse.Namespace) -> int:
         _write_json_atomic(
             _checkpoint_ref_file(root), final_checkpoint.to_document()
         )
+        projection_receipt = _refresh_projection_after_state_change(root)
         print(
             json.dumps(
                 {
@@ -1212,6 +1324,7 @@ def _work_complete(args: argparse.Namespace) -> int:
                     "checkpoint_ref": final_checkpoint.to_document(),
                     "checkpoint_verified": True,
                     "evidence_ids": work["evidence_ids"],
+                    **projection_receipt,
                 },
                 sort_keys=True,
             )
@@ -1292,6 +1405,7 @@ def _work_complete(args: argparse.Namespace) -> int:
         expected_registry_digest=result["registry_digest"],
     )
     _write_json_atomic(_checkpoint_ref_file(root), final_checkpoint.to_document())
+    projection_receipt = _refresh_projection_after_state_change(root)
     print(
         json.dumps(
             {
@@ -1308,6 +1422,7 @@ def _work_complete(args: argparse.Namespace) -> int:
                 "checkpoint_ref": final_checkpoint.to_document(),
                 "checkpoint_verified": True,
                 "evidence_ids": result["evidence_ids"],
+                **projection_receipt,
             },
             sort_keys=True,
         )
@@ -1412,6 +1527,10 @@ def _work_transition(args: argparse.Namespace) -> int:
         ),
         None,
     )
+    try:
+        source_evidence = _verified_attach_evidence(snapshot, proposal)
+    except ValueError as exc:
+        return deny("source_fresh", message=str(exc))
     resolved_blocker = next(
         (
             item
@@ -1532,6 +1651,7 @@ def _work_transition(args: argparse.Namespace) -> int:
                         "authority": "checkpoint-bound-local-transition",
                         "scope_expanded": False,
                     },
+                    "source_evidence_rebound": False,
                     "completion_authority": False,
                 },
                 sort_keys=True,
@@ -1591,6 +1711,7 @@ def _work_transition(args: argparse.Namespace) -> int:
         "checkpoint_digest": current_checkpoint.digest,
         "evidence_ids": evidence_ids,
         "source_proposal_sha256": proposal["proposal_sha256"],
+        "source_evidence_id": source_evidence["evidence_id"],
         "workspace_verification": workspace,
         "remaining_blocker": remaining,
     }
@@ -1646,6 +1767,7 @@ def _work_transition(args: argparse.Namespace) -> int:
             "successor_scope_owners": successor_scopes,
             "lease_expires_at": (now + timedelta(hours=8)).isoformat(),
             "source_proposal_sha256": proposal["proposal_sha256"],
+            "source_evidence_id": source_evidence["evidence_id"],
             "workspace_verification": workspace,
             "remaining_blocker": remaining,
             "causation_ref": f"checkpoint:{current_checkpoint.digest}",
@@ -1712,6 +1834,7 @@ def _work_transition(args: argparse.Namespace) -> int:
                 "read_only": packet["read_only"],
                 "resume_packet": packet,
                 "completion_policy": result["completion_policy"],
+                "source_evidence_rebound": result["source_evidence_rebound"],
                 "completion_authority": False,
             },
             sort_keys=True,
@@ -2419,6 +2542,60 @@ def _work_activate_atomic(args: argparse.Namespace) -> int:
         if _STATE_ID_RE.fullmatch(value) is None:
             raise ValueError("Work, owner, and claim identifiers must be bounded")
     scope_refs = [_parse_scope(item) for item in args.scope]
+    execution_class = args.execution_class
+    delivery_values = (
+        args.source_ref,
+        args.predecessor_work_id,
+        args.implementation_evidence_id,
+        args.workspace_root,
+        args.expected_head,
+        args.expected_ref,
+        args.allow_effect,
+    )
+    if execution_class == "standard" and any(value is not None for value in delivery_values):
+        raise ValueError("standard activation cannot carry a delivery binding")
+    if execution_class == "delivery":
+        if (
+            args.source_ref is None
+            or args.predecessor_work_id is None
+            or not args.implementation_evidence_id
+            or args.workspace_root is None
+            or args.expected_head is None
+            or not args.allow_effect
+        ):
+            raise ValueError(
+                "delivery activation requires source, predecessor, implementation "
+                "evidence, workspace head, and allowed effects"
+            )
+        if _SOURCE_REF_RE.fullmatch(args.source_ref) is None:
+            raise ValueError("delivery source-ref must be one bounded opaque URI")
+        if _STATE_ID_RE.fullmatch(args.predecessor_work_id) is None:
+            raise ValueError("delivery predecessor Work identifier is invalid")
+        implementation_evidence_ids = sorted(set(args.implementation_evidence_id))
+        if len(implementation_evidence_ids) != len(args.implementation_evidence_id) or any(
+            _STATE_ID_RE.fullmatch(item) is None for item in implementation_evidence_ids
+        ):
+            raise ValueError("delivery implementation evidence IDs are invalid")
+        allowed_effects = sorted(set(args.allow_effect))
+        if (
+            len(allowed_effects) != len(args.allow_effect)
+            or not set(allowed_effects) <= _DELIVERY_EFFECTS
+        ):
+            raise ValueError("delivery allowed effects are invalid")
+        workspace_verification = _verified_workspace(
+            root,
+            args.workspace_root,
+            expected_head=args.expected_head,
+            expected_ref=args.expected_ref,
+        )
+        scope_refs.extend(
+            {"scope_kind": "effect", "scope_ref": item}
+            for item in allowed_effects
+        )
+    else:
+        implementation_evidence_ids = []
+        allowed_effects = []
+        workspace_verification = None
     proposal = _load_current_attach_proposal(
         root,
         project["project_id"],
@@ -2427,13 +2604,7 @@ def _work_activate_atomic(args: argparse.Namespace) -> int:
     state_store = _open_state_store(root, project)
     read_result = _read_state_result(state_store, project["project_id"])
     snapshot = read_result["snapshot"]
-    source_evidence_id = f"evidence-attach-{proposal['proposal_sha256'][:16]}"
-    if not any(
-        item["evidence_id"] == source_evidence_id
-        and item["validity"] == "verified"
-        for item in snapshot["evidence"]
-    ):
-        raise ValueError("current canonical source evidence is not in State")
+    source_evidence_id = _verified_attach_evidence(snapshot, proposal)["evidence_id"]
     try:
         checkpoint_ref = ArtifactRef.from_document(
             json.loads(_checkpoint_ref_file(root).read_text(encoding="utf-8"))
@@ -2460,6 +2631,155 @@ def _work_activate_atomic(args: argparse.Namespace) -> int:
 
     now = datetime.now(UTC)
     now_text = now.isoformat()
+    delivery_contract_sha256: str | None = None
+    if execution_class == "delivery":
+        predecessor = next(
+            (
+                item
+                for item in snapshot["works"]
+                if item["work_id"] == args.predecessor_work_id
+            ),
+            None,
+        )
+        if predecessor is None or predecessor["status"] != "completed":
+            raise ValueError("delivery predecessor Work must be completed")
+        evidence_by_id = {
+            item["evidence_id"]: item for item in snapshot["evidence"]
+        }
+        if any(
+            item not in predecessor["evidence_ids"]
+            or item not in evidence_by_id
+            or evidence_by_id[item]["validity"] != "verified"
+            for item in implementation_evidence_ids
+        ):
+            raise ValueError(
+                "delivery implementation evidence must be verified on the predecessor"
+            )
+        contract = {
+            "schema_version": "context.delivery-activation/v1alpha1",
+            "project_id": project["project_id"],
+            "work_id": args.work_id,
+            "source_ref": args.source_ref,
+            "predecessor_work_id": predecessor["work_id"],
+            "implementation_evidence_ids": implementation_evidence_ids,
+            "workspace_verification": workspace_verification,
+            "allowed_effects": allowed_effects,
+            "source_evidence_id": source_evidence_id,
+            "source_proposal_sha256": proposal["proposal_sha256"],
+            "state_write_authority": False,
+            "completion_authority": False,
+        }
+        contract_bytes = json.dumps(
+            contract,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        delivery_contract_sha256 = hashlib.sha256(contract_bytes).hexdigest()
+        contract_ref = _checkpoint_store(root).put_bytes(contract_bytes)
+        delivery_evidence_id = (
+            f"evidence-delivery-{delivery_contract_sha256[:16]}"
+        )
+        delivery_evidence = {
+            "evidence_id": delivery_evidence_id,
+            "kind": "artifact",
+            "artifact_ref": contract_ref.uri,
+            "content_sha256": contract_ref.digest,
+            "validity": "verified",
+            "observed_at": now_text,
+            "verified_at": now_text,
+        }
+        delivery_work = next(
+            (item for item in snapshot["works"] if item["work_id"] == args.work_id),
+            None,
+        )
+        delivery_evidence_ids = [
+            source_evidence_id,
+            *implementation_evidence_ids,
+            delivery_evidence_id,
+        ]
+        if delivery_work is None:
+            delivery_work = {
+                "work_id": args.work_id,
+                "kind": "work",
+                "title": args.work_title,
+                "status": "ready",
+                "parent_work_id": predecessor["work_id"],
+                "dependency_ids": [],
+                "owner_refs": [args.owner_ref],
+                "scope_refs": copy.deepcopy(scope_refs),
+                "overlap_candidate_ids": [],
+                "dedupe_status": "clear",
+                "supersedes_work_id": None,
+                "evidence_ids": delivery_evidence_ids,
+                "blocker_ids": [],
+                "revision": 0,
+            }
+            prepare_service = _state_service(
+                state_store,
+                authorizer=_LocalWorkflowAuthorizer(),
+                clock=lambda: now_text,
+                event_id_factory=lambda request_id: f"event-{request_id}",
+            )
+            prepared = prepare_service.call_tool(
+                COMMIT_TOOL,
+                {
+                    "schema_version": "context.state-mcp-request/v1alpha1",
+                    "request_id": (
+                        f"activate-delivery-prepare-{delivery_contract_sha256[:16]}"
+                    ),
+                    "project_id": project["project_id"],
+                    "expected_revision": read_result["revision"],
+                    "causation_ref": args.source_ref,
+                    "correlation_ref": f"delivery:{args.work_id}",
+                    "supersedes_event_id": None,
+                    "changes": [
+                        {
+                            "collection": "evidence",
+                            "object_id": delivery_evidence_id,
+                            "value": delivery_evidence,
+                        },
+                        {
+                            "collection": "works",
+                            "object_id": delivery_work["work_id"],
+                            "value": delivery_work,
+                        },
+                    ],
+                },
+                context=RequestContext(args.owner_ref, "local-workflow-approved"),
+            )
+            if not prepared["ok"]:
+                raise ValueError(prepared["error"]["message"])
+            read_result = _read_state_result(state_store, project["project_id"])
+            snapshot = read_result["snapshot"]
+            checkpoint_ref = publish_checkpoint(
+                read_result,
+                _checkpoint_store(root),
+                canonical_plan_sha256=_canonical_master_sha256(proposal),
+            )
+            restore_checkpoint(
+                checkpoint_ref,
+                _checkpoint_store(root),
+                expected_project_id=project["project_id"],
+                expected_revision=read_result["revision"],
+                expected_event_head=read_result["event_head"],
+                expected_governance_ref=snapshot["project"]["governance_ref"],
+                expected_plan_sha256=_canonical_master_sha256(proposal),
+                expected_registry_digest=read_result["registry_digest"],
+            )
+            _write_json_atomic(
+                _checkpoint_ref_file(root), checkpoint_ref.to_document()
+            )
+        elif not (
+            delivery_work["status"] in {"ready", "active"}
+            and delivery_work["title"] == args.work_title
+            and delivery_work["parent_work_id"] == predecessor["work_id"]
+            and delivery_work["owner_refs"] == [args.owner_ref]
+            and delivery_work["scope_refs"] == scope_refs
+            and delivery_work["evidence_ids"] == delivery_evidence_ids
+            and delivery_evidence_id in evidence_by_id
+        ):
+            raise ValueError("delivery activation binding conflicts with existing Work")
     pending_checkpoint_path = _transition_pending_checkpoint_file(root)
 
     def publish_and_verify(candidate: dict[str, Any]) -> dict[str, Any]:
@@ -2489,6 +2809,8 @@ def _work_activate_atomic(args: argparse.Namespace) -> int:
         "owner_ref": args.owner_ref,
         "claim_id": args.claim_id,
         "scope_owners": scope_refs,
+        "execution_class": execution_class,
+        "delivery_contract_sha256": delivery_contract_sha256,
         "source_proposal_sha256": proposal["proposal_sha256"],
         "checkpoint_digest": checkpoint_ref.digest,
     }
@@ -2555,6 +2877,7 @@ def _work_activate_atomic(args: argparse.Namespace) -> int:
         os.replace(pending_checkpoint_path, _checkpoint_ref_file(root))
     else:
         _write_json_atomic(_checkpoint_ref_file(root), final_checkpoint.to_document())
+    projection_receipt = _refresh_projection_after_state_change(root)
     print(
         json.dumps(
             {
@@ -2568,6 +2891,9 @@ def _work_activate_atomic(args: argparse.Namespace) -> int:
                 "event_head": result["event_head"],
                 "checkpoint_ref": final_checkpoint.to_document(),
                 "checkpoint_verified": True,
+                "execution_class": execution_class,
+                "delivery_contract_sha256": delivery_contract_sha256,
+                **projection_receipt,
             },
             sort_keys=True,
         )
@@ -2885,6 +3211,16 @@ def build_parser() -> argparse.ArgumentParser:
     work_activate.add_argument("--owner-ref", required=True)
     work_activate.add_argument("--claim-id", required=True)
     work_activate.add_argument("--scope", action="append", required=True)
+    work_activate.add_argument(
+        "--execution-class", choices=("standard", "delivery"), default="standard"
+    )
+    work_activate.add_argument("--source-ref", default=None)
+    work_activate.add_argument("--predecessor-work-id", default=None)
+    work_activate.add_argument("--implementation-evidence-id", action="append")
+    work_activate.add_argument("--workspace-root", default=None)
+    work_activate.add_argument("--expected-head", default=None)
+    work_activate.add_argument("--expected-ref", default=None)
+    work_activate.add_argument("--allow-effect", action="append")
     work_activate.set_defaults(handler=_work_activate_atomic)
     work_recover = work_commands.add_parser(
         "recover", help="heartbeat or reclaim a local legacy claim"
@@ -2917,7 +3253,15 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    return int(args.handler(args))
+    if hasattr(args, "root"):
+        try:
+            args.root = str(resolve_control_root(args.root))
+        except WorkspaceBindingError as exc:
+            raise ValueError(str(exc)) from exc
+    result = int(args.handler(args))
+    if result == 0 and getattr(args, "command", None) == "init":
+        register_control_root(args.root)
+    return result
 
 
 if __name__ == "__main__":

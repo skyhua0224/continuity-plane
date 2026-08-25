@@ -6,9 +6,13 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
+import shlex
 import shutil
+import sqlite3
 import subprocess
 import sys
+import time
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -18,6 +22,9 @@ MAX_PACKET_BYTES = 8 * 1024
 MAX_CONTEXT_BYTES = 12 * 1024
 MAX_TRANSCRIPT_TAIL_BYTES = 2 * 1024 * 1024
 COMMAND_TIMEOUT_SECONDS = 3
+RECOVERY_WINDOW_SECONDS = 5 * 60
+RECOVERY_READ_BUDGET_BYTES = 12 * 1024
+EFFECT_INTENT_SECONDS = 2 * 60
 RECOVERY_RULE_IDS = [
     "continuity.answer.bounded",
     "continuity.answer.direct",
@@ -28,6 +35,51 @@ RECOVERY_RULE_IDS = [
     "continuity.resume.current-state",
     "continuity.work.sticky",
 ]
+
+_EFFECT_PATTERNS = (
+    (
+        "source-control",
+        re.compile(
+            r"(?:^|[;&|]\s*)(?:git\s+(?:commit|push|tag|merge|rebase|reset)|"
+            r"tea\s+(?:pulls?\s+(?:create|merge)|releases?)|"
+            r"gh\s+(?:pr\s+(?:create|merge)|release)|"
+            r"glab\s+(?:mr\s+(?:create|merge)|release))\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "deployment",
+        re.compile(
+            r"(?:^|[;&|]\s*)(?:kubectl\s+(?:apply|delete|patch|replace|rollout|scale|set)|"
+            r"helm\s+(?:install|upgrade|uninstall|rollback)|"
+            r"docker\s+compose\s+(?:up|down|restart)|"
+            r"systemctl\s+(?:start|stop|restart|enable|disable)|"
+            r"terraform\s+(?:apply|destroy|import)|ansible-playbook\b|"
+            r"azd\s+(?:up|deploy)|wrangler\s+deploy|vercel\s+(?:deploy|--prod))\b",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "remote-effect",
+        re.compile(r"(?:^|[;&|]\s*)(?:ssh|scp|rsync)\b", re.IGNORECASE),
+    ),
+    (
+        "package-publish",
+        re.compile(
+            r"(?:^|[;&|]\s*)(?:npm\s+publish|pnpm\s+publish|yarn\s+npm\s+publish|"
+            r"twine\s+upload|cargo\s+publish|python\s+-m\s+twine\s+upload)\b",
+            re.IGNORECASE,
+        ),
+    ),
+)
+
+_RECOVERY_SOURCE_RE = re.compile(
+    r"(?:^|[/\\\s'\"])(?:MASTER|STATUS(?:\.current)?|AGENTS)\.md"
+    r"(?:$|[/\\\s'\"])|"
+    r"(?:^|[/\\\s'\"])SKILL\.md(?:$|[/\\\s'\"])",
+    re.IGNORECASE,
+)
+_WHOLE_FILE_READERS = {"cat", "less", "more"}
 
 
 def _canonical(value: Any) -> str:
@@ -135,18 +187,91 @@ def derive_recent_interaction_cursor(path: Path) -> dict[str, Any] | None:
 def _project_root(cwd: str) -> Path | None:
     start = Path(cwd).resolve()
     candidates = [start, *start.parents]
+    common_dir: Path | None = None
     try:
         completed = subprocess.run(
-            ["git", "-C", str(start), "rev-parse", "--show-toplevel"],
+            [
+                "git", "-C", str(start), "rev-parse", "--path-format=absolute",
+                "--show-toplevel", "--git-common-dir",
+            ],
             capture_output=True,
             text=True,
             timeout=2,
             check=False,
         )
         if completed.returncode == 0:
-            candidates.insert(0, Path(completed.stdout.strip()).resolve())
+            lines = completed.stdout.splitlines()
+            candidates.insert(0, Path(lines[0]).resolve())
+            common_dir = Path(lines[1]).resolve()
     except (OSError, subprocess.SubprocessError):
         pass
+    if common_dir is not None:
+        binding_path = common_dir / "continuity-plane/project-root.json"
+        try:
+            binding = json.loads(binding_path.read_text(encoding="utf-8"))
+            digest = binding.get("binding_sha256")
+            expected = _hash(
+                json.dumps(
+                    {
+                        key: value
+                        for key, value in binding.items()
+                        if key != "binding_sha256"
+                    },
+                    sort_keys=True,
+                    separators=(",", ":"),
+                )
+            )
+            bound_root = Path(binding["control_root"]).resolve()
+            profile = bound_root / ".continuity/project.yaml"
+            if (
+                binding.get("schema_version")
+                == "context.git-workspace-binding/v1alpha1"
+                and digest == expected
+                and profile.is_file()
+                and _file_hash(profile) == binding.get("profile_sha256")
+            ):
+                bound_common = subprocess.run(
+                    [
+                        "git", "-C", str(bound_root), "rev-parse",
+                        "--path-format=absolute", "--git-common-dir",
+                    ],
+                    capture_output=True,
+                    text=True,
+                    timeout=2,
+                    check=False,
+                )
+                if (
+                    bound_common.returncode == 0
+                    and Path(bound_common.stdout.strip()).resolve() == common_dir
+                ):
+                    return bound_root
+        except (OSError, KeyError, TypeError, ValueError, json.JSONDecodeError):
+            pass
+        try:
+            listed = subprocess.run(
+                ["git", "-C", str(start), "worktree", "list", "--porcelain"],
+                capture_output=True,
+                text=True,
+                timeout=2,
+                check=False,
+            )
+            discovered = [
+                Path(line.removeprefix("worktree ")).resolve()
+                for line in listed.stdout.splitlines()
+                if line.startswith("worktree ")
+                and (
+                    Path(line.removeprefix("worktree ")).resolve()
+                    / ".continuity/project.yaml"
+                ).is_file()
+            ]
+            if len(discovered) == 1:
+                return discovered[0]
+            if len(discovered) > 1:
+                raise RuntimeError(
+                    "multiple Continuity roots share this Git repository"
+                )
+        except OSError:
+            pass
     seen: set[Path] = set()
     for candidate in candidates:
         if candidate in seen:
@@ -283,6 +408,13 @@ def _observe(
     success: bool,
     canary_passed: bool | None = None,
     source_refreshed: bool = False,
+    tool_name: str | None = None,
+    effect_class: str | None = None,
+    decision: str | None = None,
+    recovery_read_bytes: int | None = None,
+    recovery_read_budget_bytes: int | None = None,
+    tool_output_bytes: int | None = None,
+    context_admitted: bool | None = None,
 ) -> None:
     path = _observation_path(payload)
     if path is None:
@@ -305,6 +437,13 @@ def _observe(
         "completion_authority": False,
         "source_refreshed": source_refreshed,
         "plugin_loaded": True,
+        "tool_name": tool_name,
+        "effect_class": effect_class,
+        "decision": decision,
+        "recovery_read_bytes": recovery_read_bytes,
+        "recovery_read_budget_bytes": recovery_read_budget_bytes,
+        "tool_output_bytes": tool_output_bytes,
+        "context_admitted": context_admitted,
         "plugin_manifest_sha256": _file_hash(
             Path(os.environ.get("PLUGIN_ROOT", "")) / ".codex-plugin/plugin.json"
         ),
@@ -354,8 +493,12 @@ def _load_resume_packet(encoded: bytes) -> dict[str, Any] | None:
         return None
     if not isinstance(packet["revision"], int) or packet["revision"] < 0:
         return None
-    if not isinstance(packet["active_work"], dict) or not isinstance(
-        packet["claim"], dict
+    active = packet["active_work"]
+    claim = packet["claim"]
+    if (active is None) != (claim is None):
+        return None
+    if active is not None and (
+        not isinstance(active, dict) or not isinstance(claim, dict)
     ):
         return None
     if not isinstance(packet["source_fresh"], bool) or not isinstance(
@@ -363,6 +506,500 @@ def _load_resume_packet(encoded: bytes) -> dict[str, Any] | None:
     ):
         return None
     return packet
+
+
+def _shell_command(payload: dict[str, Any]) -> str:
+    tool_input = payload.get("tool_input")
+    if not isinstance(tool_input, dict):
+        return ""
+    command = tool_input.get("command")
+    if isinstance(command, str):
+        return command
+    if isinstance(command, list) and all(isinstance(item, str) for item in command):
+        return " ".join(command)
+    return ""
+
+
+def _recovery_database_path() -> Path | None:
+    data = os.environ.get("PLUGIN_DATA")
+    if not data:
+        return None
+    directory = Path(data)
+    directory.mkdir(parents=True, exist_ok=True)
+    return directory / "recovery-budget.sqlite3"
+
+
+def _recovery_database() -> sqlite3.Connection | None:
+    path = _recovery_database_path()
+    if path is None:
+        return None
+    connection = sqlite3.connect(path, timeout=1.0)
+    connection.execute("PRAGMA busy_timeout = 1000")
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS recovery_windows (
+            session_sha256 TEXT PRIMARY KEY,
+            project_root_sha256 TEXT NOT NULL,
+            started_at REAL NOT NULL,
+            expires_at REAL NOT NULL,
+            budget_bytes INTEGER NOT NULL,
+            admitted_bytes INTEGER NOT NULL
+        )
+        """
+    )
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS effect_intents (
+            repository_sha256 TEXT PRIMARY KEY,
+            session_sha256 TEXT NOT NULL,
+            tool_use_sha256 TEXT NOT NULL,
+            claim_sha256 TEXT NOT NULL,
+            effect_class TEXT NOT NULL,
+            expires_at REAL NOT NULL
+        )
+        """
+    )
+    try:
+        os.chmod(path, 0o600)
+    except OSError:
+        pass
+    return connection
+
+
+def _start_recovery_window(
+    payload: dict[str, Any], root: Path, *, budget_bytes: int
+) -> None:
+    session_id = payload.get("session_id")
+    if not isinstance(session_id, str) or not session_id:
+        return
+    connection = _recovery_database()
+    if connection is None:
+        return
+    now = time.time()
+    with connection:
+        connection.execute(
+            """
+            INSERT OR REPLACE INTO recovery_windows (
+                session_sha256, project_root_sha256, started_at, expires_at,
+                budget_bytes, admitted_bytes
+            ) VALUES (?, ?, ?, ?, ?, 0)
+            """,
+            (
+                _hash(session_id),
+                _hash(str(root)),
+                now,
+                now + RECOVERY_WINDOW_SECONDS,
+                budget_bytes,
+            ),
+        )
+    connection.close()
+
+
+def _active_recovery_budget(
+    payload: dict[str, Any], root: Path
+) -> tuple[int, int] | None:
+    session_id = payload.get("session_id")
+    if not isinstance(session_id, str) or not session_id:
+        return None
+    connection = _recovery_database()
+    if connection is None:
+        return None
+    row = connection.execute(
+        """
+        SELECT budget_bytes, admitted_bytes, expires_at, project_root_sha256
+        FROM recovery_windows WHERE session_sha256 = ?
+        """,
+        (_hash(session_id),),
+    ).fetchone()
+    connection.close()
+    if row is None or row[2] < time.time() or row[3] != _hash(str(root)):
+        return None
+    return int(row[0]), int(row[1])
+
+
+def _admit_recovery_output(
+    payload: dict[str, Any], root: Path, *, output_bytes: int
+) -> tuple[bool, int, int] | None:
+    session_id = payload.get("session_id")
+    if not isinstance(session_id, str) or not session_id:
+        return None
+    connection = _recovery_database()
+    if connection is None:
+        return None
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+        row = connection.execute(
+            """
+            SELECT budget_bytes, admitted_bytes, expires_at, project_root_sha256
+            FROM recovery_windows WHERE session_sha256 = ?
+            """,
+            (_hash(session_id),),
+        ).fetchone()
+        if row is None or row[2] < time.time() or row[3] != _hash(str(root)):
+            connection.rollback()
+            return None
+        budget = int(row[0])
+        admitted = int(row[1])
+        if admitted + output_bytes > budget:
+            connection.rollback()
+            return False, budget, admitted
+        admitted += output_bytes
+        connection.execute(
+            "UPDATE recovery_windows SET admitted_bytes = ? WHERE session_sha256 = ?",
+            (admitted, _hash(session_id)),
+        )
+        connection.commit()
+        return True, budget, admitted
+    finally:
+        connection.close()
+
+
+def _is_recovery_read(command: str) -> bool:
+    return bool(_RECOVERY_SOURCE_RE.search(command))
+
+
+def _is_unbounded_recovery_read(command: str) -> bool:
+    if not _is_recovery_read(command):
+        return False
+    for segment in re.split(r"(?:&&|\|\||[;|])", command):
+        try:
+            words = shlex.split(segment)
+        except ValueError:
+            continue
+        while words and ("=" in words[0] or words[0] in {"command", "env", "sudo"}):
+            words.pop(0)
+        if words and Path(words[0]).name in _WHOLE_FILE_READERS:
+            return True
+    return False
+
+
+def _tool_response_bytes(payload: dict[str, Any]) -> int:
+    response = payload.get("tool_response")
+    if isinstance(response, str):
+        return len(response.encode("utf-8"))
+    return len(_canonical(response).encode("utf-8"))
+
+
+def _repository_sha256(root: Path) -> str:
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "--git-common-dir"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        completed = None
+    if completed is not None and completed.returncode == 0:
+        value = Path(completed.stdout.strip())
+        if not value.is_absolute():
+            value = root / value
+        try:
+            return _hash(str(value.resolve()))
+        except OSError:
+            pass
+    return _hash(str(root.resolve()))
+
+
+def _effect_identity(payload: dict[str, Any]) -> tuple[str, str] | None:
+    session_id = payload.get("session_id")
+    tool_use_id = payload.get("tool_use_id")
+    if not isinstance(session_id, str) or not session_id:
+        return None
+    if not isinstance(tool_use_id, str) or not tool_use_id:
+        tool_use_id = _hash(_shell_command(payload))
+    return _hash(session_id), _hash(tool_use_id)
+
+
+def _acquire_effect_intent(
+    payload: dict[str, Any],
+    root: Path,
+    *,
+    effect_class: str,
+    claim: dict[str, Any],
+) -> bool:
+    identity = _effect_identity(payload)
+    claim_id = claim.get("claim_id")
+    if identity is None or not isinstance(claim_id, str) or not claim_id:
+        return False
+    session_sha256, tool_use_sha256 = identity
+    repository_sha256 = _repository_sha256(root)
+    connection = _recovery_database()
+    if connection is None:
+        return False
+    now = time.time()
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+        row = connection.execute(
+            """
+            SELECT session_sha256, tool_use_sha256, expires_at
+            FROM effect_intents WHERE repository_sha256 = ?
+            """,
+            (repository_sha256,),
+        ).fetchone()
+        if (
+            row is not None
+            and row[2] >= now
+            and (row[0], row[1]) != (session_sha256, tool_use_sha256)
+        ):
+            connection.rollback()
+            return False
+        connection.execute(
+            """
+            INSERT OR REPLACE INTO effect_intents (
+                repository_sha256, session_sha256, tool_use_sha256,
+                claim_sha256, effect_class, expires_at
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                repository_sha256,
+                session_sha256,
+                tool_use_sha256,
+                _hash(claim_id),
+                effect_class,
+                now + EFFECT_INTENT_SECONDS,
+            ),
+        )
+        connection.commit()
+        return True
+    finally:
+        connection.close()
+
+
+def _release_effect_intent(payload: dict[str, Any], root: Path) -> None:
+    identity = _effect_identity(payload)
+    if identity is None:
+        return
+    session_sha256, tool_use_sha256 = identity
+    connection = _recovery_database()
+    if connection is None:
+        return
+    with connection:
+        connection.execute(
+            """
+            DELETE FROM effect_intents
+            WHERE repository_sha256 = ? AND session_sha256 = ?
+                AND tool_use_sha256 = ?
+            """,
+            (_repository_sha256(root), session_sha256, tool_use_sha256),
+        )
+    connection.close()
+
+
+def _effect_class(command: str) -> str | None:
+    for effect_class, pattern in _EFFECT_PATTERNS:
+        if pattern.search(command):
+            return effect_class
+    return None
+
+
+def _effect_action(command: str, effect_class: str) -> str:
+    lowered = command.lower()
+    if effect_class == "source-control":
+        if re.search(r"\bgit\s+push\b", lowered):
+            return "source-control.push"
+        if re.search(
+            r"\b(?:tea\s+pulls?\s+create|gh\s+pr\s+create|glab\s+mr\s+create)\b",
+            lowered,
+        ):
+            return "source-control.pr"
+        if re.search(
+            r"\b(?:git\s+merge|tea\s+pulls?\s+merge|gh\s+pr\s+merge|glab\s+mr\s+merge)\b",
+            lowered,
+        ):
+            return "source-control.merge"
+        if re.search(r"\b(?:git\s+tag|tea\s+releases?|gh\s+release|glab\s+release)\b", lowered):
+            return "source-control.release"
+        return "source-control.local"
+    if effect_class == "deployment":
+        return "deployment.deploy"
+    if effect_class == "remote-effect":
+        return "remote-effect.install-verification"
+    if effect_class == "package-publish":
+        return "package-publish.publish"
+    return effect_class
+
+
+def _scope_allows(
+    effect_class: str, effect_action: str, claim: dict[str, Any]
+) -> bool:
+    scopes = claim.get("scope_owners")
+    if not isinstance(scopes, list) or not scopes:
+        return False
+    effect_scopes = {
+        scope.get("scope_ref")
+        for scope in scopes
+        if isinstance(scope, dict) and scope.get("scope_kind") == "effect"
+    }
+    if effect_scopes:
+        return effect_action in effect_scopes
+    if effect_action == "source-control.local":
+        return all(
+            isinstance(scope, dict)
+            and isinstance(scope.get("scope_kind"), str)
+            and isinstance(scope.get("scope_ref"), str)
+            and bool(scope["scope_ref"])
+            for scope in scopes
+        )
+    return False
+
+
+def _deny_tool(reason: str) -> None:
+    print(
+        _canonical(
+            {
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "deny",
+                    "permissionDecisionReason": reason,
+                }
+            }
+        )
+    )
+
+
+def _pretooluse(payload: dict[str, Any], root: Path) -> int:
+    tool_name = payload.get("tool_name")
+    if tool_name != "Bash":
+        return 0
+    command = _shell_command(payload)
+    recovery_budget = _active_recovery_budget(payload, root)
+    if recovery_budget is not None and _is_unbounded_recovery_read(command):
+        budget, admitted = recovery_budget
+        _observe(
+            payload,
+            root,
+            event_type="recovery-read",
+            success=False,
+            tool_name="Bash",
+            decision="deny",
+            recovery_read_bytes=admitted,
+            recovery_read_budget_bytes=budget,
+            tool_output_bytes=0,
+            context_admitted=False,
+        )
+        _deny_tool(
+            "Continuity blocked an unbounded recovery read; use the current bounded "
+            "projection or an explicit line/range limit."
+        )
+        return 0
+    effect_class = _effect_class(command)
+    if effect_class is None:
+        return 0
+    effect_action = _effect_action(command, effect_class)
+    completed = _command(["resume"], root)
+    packet = (
+        _load_resume_packet(completed.stdout.strip().encode("utf-8"))
+        if completed.returncode == 0
+        else None
+    )
+    active = packet.get("active_work") if packet is not None else None
+    claim = packet.get("claim") if packet is not None else None
+    writable = (
+        packet is not None
+        and packet.get("read_only") is False
+        and packet.get("source_fresh") is True
+        and packet.get("checkpoint_verified") is True
+        and packet.get("lease_valid") is True
+        and isinstance(active, dict)
+        and isinstance(claim, dict)
+        and claim.get("status", "active") == "active"
+    )
+    if not writable:
+        reason = (
+            f"Continuity blocked {effect_class}: an active Work, active claim, "
+            "fresh source, valid lease, and verified checkpoint are required."
+        )
+        _observe(
+            payload,
+            root,
+            event_type="pretooluse",
+            success=False,
+            tool_name="Bash",
+            effect_class=effect_class,
+            decision="deny",
+        )
+        _deny_tool(reason)
+        return 0
+    assert isinstance(claim, dict)
+    if not _scope_allows(effect_class, effect_action, claim):
+        reason = (
+            f"Continuity blocked {effect_class}: the active claim scope does not "
+            f"authorize {effect_action}."
+        )
+        _observe(
+            payload,
+            root,
+            event_type="pretooluse",
+            success=False,
+            tool_name="Bash",
+            effect_class=effect_class,
+            decision="deny",
+        )
+        _deny_tool(reason)
+        return 0
+    if not _acquire_effect_intent(
+        payload, root, effect_class=effect_class, claim=claim
+    ):
+        reason = (
+            f"Continuity blocked {effect_class}: another active session holds the "
+            "repository effect intent; wait for its result or coordinate the action."
+        )
+        _observe(
+            payload,
+            root,
+            event_type="pretooluse",
+            success=False,
+            tool_name="Bash",
+            effect_class=effect_class,
+            decision="deny-conflict",
+        )
+        _deny_tool(reason)
+        return 0
+    _observe(
+        payload,
+        root,
+        event_type="pretooluse",
+        success=True,
+        tool_name="Bash",
+        effect_class=effect_class,
+        decision="allow",
+    )
+    return 0
+
+
+def _posttooluse(payload: dict[str, Any], root: Path) -> int:
+    if payload.get("tool_name") != "Bash":
+        return 0
+    command = _shell_command(payload)
+    if _effect_class(command) is not None:
+        _release_effect_intent(payload, root)
+    if not _is_recovery_read(command):
+        return 0
+    output_bytes = _tool_response_bytes(payload)
+    result = _admit_recovery_output(payload, root, output_bytes=output_bytes)
+    if result is None:
+        return 0
+    admitted, budget, cumulative = result
+    _observe(
+        payload,
+        root,
+        event_type="recovery-read",
+        success=admitted,
+        tool_name="Bash",
+        decision="allow" if admitted else "deny",
+        recovery_read_bytes=cumulative,
+        recovery_read_budget_bytes=budget,
+        tool_output_bytes=output_bytes,
+        context_admitted=admitted,
+    )
+    if not admitted:
+        _stop(
+            "Continuity recovery read budget exceeded; use the current bounded "
+            "projection or a smaller explicit range."
+        )
+    return 0
 
 
 def _precompact(payload: dict[str, Any], root: Path) -> int:
@@ -446,6 +1083,15 @@ def _session_start(payload: dict[str, Any], root: Path) -> int:
         success=True,
         source_refreshed=source_refreshed,
     )
+    if payload.get("source") == "compact":
+        requested_budget = packet.get("recovery_read_budget_bytes")
+        budget = (
+            requested_budget
+            if isinstance(requested_budget, int)
+            and 0 < requested_budget <= RECOVERY_READ_BUDGET_BYTES
+            else RECOVERY_READ_BUDGET_BYTES
+        )
+        _start_recovery_window(payload, root, budget_bytes=budget)
     context = (
         "Continuity recovery contract. Continue silently: do not mention recovery, "
         "compaction, hooks, or reloading. Do not answer acknowledged input again. "
@@ -489,8 +1135,17 @@ def main() -> int:
             return _postcompact(payload, root)
         if event == "SessionStart":
             return _session_start(payload, root)
+        if event == "PreToolUse":
+            return _pretooluse(payload, root)
+        if event == "PostToolUse":
+            return _posttooluse(payload, root)
     except (OSError, RuntimeError, subprocess.SubprocessError):
         _observe(payload, root, event_type="hook-error", success=False)
+        if event == "PreToolUse":
+            _deny_tool(
+                "Continuity authority is unavailable; external effects remain blocked."
+            )
+            return 0
         _stop("Continuity lifecycle hook failed; keep this project read-only.")
     return 0
 

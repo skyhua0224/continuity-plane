@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -180,6 +181,21 @@ class ReleaseCliTests(unittest.TestCase):
             self.assertEqual(packet["source_fresh"], True)
             self.assertEqual(packet["read_only"], False)
             self.assertRegex(packet["packet_sha256"], r"^[0-9a-f]{64}$")
+            projection_path = root / ".continuity/status-projection.json"
+            projection = json.loads(projection_path.read_text(encoding="utf-8"))
+            self.assertEqual(projection["revision"], 2)
+            self.assertEqual(
+                projection["source_packet_sha256"], packet["packet_sha256"]
+            )
+            current_status = root / ".continuity/STATUS.current.md"
+            self.assertIn("M10-09", current_status.read_text(encoding="utf-8"))
+
+            current_status.write_text("# stale projection\n", encoding="utf-8")
+            with redirect_stdout(StringIO()):
+                main(["resume", "--root", str(root)])
+            repaired = current_status.read_text(encoding="utf-8")
+            self.assertIn("M10-09", repaired)
+            self.assertNotIn("stale projection", repaired)
             schema = json.loads(
                 (
                     Path(__file__).parents[1]
@@ -417,6 +433,36 @@ class ReleaseCliTests(unittest.TestCase):
             )
             self.assertEqual(state["project"]["revision"], 0)
 
+    def test_attach_refresh_without_source_change_preserves_source_identity(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "MASTER.md").write_text("# Existing Master\n", encoding="utf-8")
+            (root / "STATUS.md").write_text("# Existing Status\n", encoding="utf-8")
+            with redirect_stdout(StringIO()):
+                main(["init", "--root", str(root), "--project-id", "sample-app"])
+                main(
+                    [
+                        "attach", "plan", "--root", str(root),
+                        "--master", "MASTER.md", "--status", "STATUS.md",
+                        "--work-id", "M10-09", "--work-title", "Continue the mainline",
+                        "--owner-ref", "agent-main", "--scope", "repo:repo://sample-app",
+                    ]
+                )
+            proposal_path = root / ".continuity/attach-proposal.json"
+            before = proposal_path.read_bytes()
+            before_sha256 = json.loads(before)["proposal_sha256"]
+            output = StringIO()
+
+            with redirect_stdout(output):
+                result = main(["attach", "refresh", "--root", str(root)])
+
+            response = json.loads(output.getvalue())
+            self.assertEqual(result, 0)
+            self.assertEqual(response["status"], "unchanged")
+            self.assertEqual(response["proposal_sha256"], before_sha256)
+            self.assertEqual(response["changed_sources"], [])
+            self.assertEqual(proposal_path.read_bytes(), before)
+
     def test_init_creates_neutral_local_embedded_project(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -462,6 +508,95 @@ class ReleaseCliTests(unittest.TestCase):
             with self.assertRaises(FileExistsError):
                 main(["init", "--root", str(root), "--project-id", "sample-app"])
             self.assertEqual(project.read_text(), "owned: true\n")
+
+    def test_git_main_root_and_sibling_worktree_share_one_continuity_state(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            main_root = base / "repo"
+            execution_root = base / "execution"
+            sibling_root = base / "sibling"
+            main_root.mkdir()
+            subprocess.run(["git", "init", "-q", str(main_root)], check=True)
+            subprocess.run(
+                ["git", "-C", str(main_root), "config", "user.email", "test@example.invalid"],
+                check=True,
+            )
+            subprocess.run(
+                ["git", "-C", str(main_root), "config", "user.name", "Continuity Test"],
+                check=True,
+            )
+            (main_root / "README.md").write_text("fixture\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(main_root), "add", "README.md"], check=True)
+            subprocess.run(
+                ["git", "-C", str(main_root), "commit", "-qm", "test: initialize"],
+                check=True,
+            )
+            subprocess.run(
+                [
+                    "git", "-C", str(main_root), "worktree", "add", "-q",
+                    "--detach", str(execution_root),
+                ],
+                check=True,
+            )
+            subprocess.run(
+                [
+                    "git", "-C", str(main_root), "worktree", "add", "-q",
+                    "--detach", str(sibling_root),
+                ],
+                check=True,
+            )
+            (execution_root / "MASTER.md").write_text("# Master\n", encoding="utf-8")
+            (execution_root / "STATUS.md").write_text("# Status\n", encoding="utf-8")
+            with redirect_stdout(StringIO()):
+                main(["init", "--root", str(execution_root), "--project-id", "sample-app"])
+                main(
+                    [
+                        "attach", "plan", "--root", str(execution_root),
+                        "--master", "MASTER.md", "--status", "STATUS.md",
+                        "--work-id", "M10-09", "--work-title", "Continue mainline",
+                        "--owner-ref", "agent-main", "--scope", "repo:repo://sample-app",
+                    ]
+                )
+                main(
+                    [
+                        "attach", "approve", "--root", str(execution_root),
+                        "--actor-ref", "agent-main", "--claim-id", "claim-current",
+                    ]
+                )
+                main(["checkpoint", "create", "--root", str(execution_root)])
+
+            main_output = StringIO()
+            sibling_output = StringIO()
+            with redirect_stdout(main_output):
+                main(["resume", "--root", str(main_root)])
+            with redirect_stdout(sibling_output):
+                main(["state", "show", "--root", str(sibling_root)])
+
+            packet = json.loads(main_output.getvalue())
+            state = json.loads(sibling_output.getvalue())
+            common_dir = Path(
+                subprocess.run(
+                    [
+                        "git", "-C", str(main_root), "rev-parse",
+                        "--path-format=absolute", "--git-common-dir",
+                    ],
+                    text=True,
+                    capture_output=True,
+                    check=True,
+                ).stdout.strip()
+            )
+            binding = json.loads(
+                (common_dir / "continuity-plane/project-root.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+
+            self.assertEqual(packet["project_id"], "sample-app")
+            self.assertEqual(packet["revision"], 2)
+            self.assertEqual(state["revision"], 2)
+            self.assertEqual(Path(binding["control_root"]), execution_root.resolve())
+            self.assertFalse((main_root / ".continuity").exists())
+            self.assertFalse((sibling_root / ".continuity").exists())
 
     def test_verify_accepts_initialized_project(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

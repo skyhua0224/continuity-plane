@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -247,6 +248,16 @@ class WorkCompletionCliTests(unittest.TestCase):
             completed = json.loads(completed_output.getvalue())
             self.assertEqual(completed["revision"], 3)
             self.assertTrue(completed["checkpoint_verified"])
+            completed_projection = json.loads(
+                (root / ".continuity/status-projection.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(completed_projection["revision"], 3)
+            self.assertIn(
+                "active Work | none",
+                (root / ".continuity/STATUS.current.md").read_text(encoding="utf-8"),
+            )
 
             idle_output = StringIO()
             with redirect_stdout(idle_output):
@@ -296,6 +307,16 @@ class WorkCompletionCliTests(unittest.TestCase):
             self.assertEqual(activated["status"], "activated")
             self.assertEqual(activated["revision"], 4)
             self.assertTrue(activated["checkpoint_verified"])
+            activated_projection = json.loads(
+                (root / ".continuity/status-projection.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(activated_projection["revision"], 4)
+            self.assertIn(
+                "N-69-07",
+                (root / ".continuity/STATUS.current.md").read_text(encoding="utf-8"),
+            )
             self.assertEqual(len(events), 4)
             self.assertEqual(events[-1]["revision_before"], 3)
             self.assertEqual(events[-1]["revision_after"], 4)
@@ -352,6 +373,153 @@ class WorkCompletionCliTests(unittest.TestCase):
             self.assertEqual(denied["status"], "denied")
             self.assertEqual(denied["failed_gate"], "checkpoint_publication")
             self.assertFalse(denied["state_changed"])
+            self.assertEqual(store.read_project("sample-app"), before)
+            self.assertEqual(store.read_events("sample-app"), before_events)
+
+    def test_delivery_activation_binds_source_predecessor_head_evidence_and_effects(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "repo"
+            root.mkdir()
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            subprocess.run(
+                ["git", "-C", str(root), "config", "user.email", "test@example.invalid"],
+                check=True,
+            )
+            subprocess.run(
+                ["git", "-C", str(root), "config", "user.name", "Continuity Test"],
+                check=True,
+            )
+            (root / "README.md").write_text("fixture\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(root), "add", "README.md"], check=True)
+            subprocess.run(
+                ["git", "-C", str(root), "commit", "-qm", "test: initialize"],
+                check=True,
+            )
+            (root / ".git/info/exclude").write_text(".continuity/\n", encoding="utf-8")
+            store = self._attached_project(root)
+            subprocess.run(
+                ["git", "-C", str(root), "add", "MASTER.md", "STATUS.md"],
+                check=True,
+            )
+            subprocess.run(
+                ["git", "-C", str(root), "commit", "-qm", "test: bind governance"],
+                check=True,
+            )
+            implementation = Path(directory) / "implementation.json"
+            implementation.write_text('{"tests":"passed"}\n', encoding="utf-8")
+            completed_output = StringIO()
+            with redirect_stdout(completed_output):
+                main(
+                    [
+                        "work", "complete", "--root", str(root),
+                        "--work-id", "M10-09", "--claim-id", "claim-current",
+                        "--actor-ref", "agent-main",
+                        "--evidence-file", str(implementation),
+                    ]
+                )
+            completed = json.loads(completed_output.getvalue())
+            implementation_evidence_id = next(
+                item
+                for item in completed["evidence_ids"]
+                if item.startswith("evidence-test-")
+            )
+            head = subprocess.run(
+                ["git", "-C", str(root), "rev-parse", "HEAD"],
+                text=True,
+                capture_output=True,
+                check=True,
+            ).stdout.strip()
+            output = StringIO()
+
+            with redirect_stdout(output):
+                result = main(
+                    [
+                        "work", "activate", "--root", str(root),
+                        "--work-id", "M10-09-delivery",
+                        "--work-title", "Deliver the verified M10-09 change",
+                        "--owner-ref", "agent-main",
+                        "--claim-id", "claim-m10-09-delivery",
+                        "--scope", "capability:release-delivery",
+                        "--execution-class", "delivery",
+                        "--source-ref", "issue://sample-app/10",
+                        "--predecessor-work-id", "M10-09",
+                        "--implementation-evidence-id", implementation_evidence_id,
+                        "--workspace-root", str(root),
+                        "--expected-head", head,
+                        "--expected-ref", "HEAD",
+                        "--allow-effect", "source-control.push",
+                        "--allow-effect", "source-control.pr",
+                        "--allow-effect", "source-control.merge",
+                        "--allow-effect", "deployment.deploy",
+                        "--allow-effect", "remote-effect.install-verification",
+                    ]
+                )
+
+            response = json.loads(output.getvalue())
+            state = store.read_project("sample-app")
+            delivery = next(
+                item for item in state["works"] if item["work_id"] == "M10-09-delivery"
+            )
+            claim = next(
+                item
+                for item in state["claims"]
+                if item["claim_id"] == "claim-m10-09-delivery"
+            )
+
+            self.assertEqual(result, 0)
+            self.assertEqual(response["execution_class"], "delivery")
+            self.assertRegex(response["delivery_contract_sha256"], r"^[0-9a-f]{64}$")
+            self.assertEqual(delivery["parent_work_id"], "M10-09")
+            self.assertIn(implementation_evidence_id, delivery["evidence_ids"])
+            self.assertTrue(
+                any(item.startswith("evidence-delivery-") for item in delivery["evidence_ids"])
+            )
+            effect_refs = {
+                item["scope_ref"]
+                for item in claim["scope_owners"]
+                if item["scope_kind"] == "effect"
+            }
+            self.assertEqual(
+                effect_refs,
+                {
+                    "source-control.push",
+                    "source-control.pr",
+                    "source-control.merge",
+                    "deployment.deploy",
+                    "remote-effect.install-verification",
+                },
+            )
+
+    def test_delivery_activation_missing_binding_fails_before_state_write(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            store = self._attached_project(root)
+            receipt = root / "verification.json"
+            receipt.write_text('{"status":"passed"}\n', encoding="utf-8")
+            with redirect_stdout(StringIO()):
+                main(
+                    [
+                        "work", "complete", "--root", str(root),
+                        "--work-id", "M10-09", "--claim-id", "claim-current",
+                        "--actor-ref", "agent-main", "--evidence-file", str(receipt),
+                    ]
+                )
+            before = store.read_project("sample-app")
+            before_events = store.read_events("sample-app")
+
+            with self.assertRaisesRegex(ValueError, "delivery activation requires"):
+                main(
+                    [
+                        "work", "activate", "--root", str(root),
+                        "--work-id", "M10-09-delivery",
+                        "--work-title", "Deliver M10-09",
+                        "--owner-ref", "agent-main",
+                        "--claim-id", "claim-m10-09-delivery",
+                        "--scope", "capability:release-delivery",
+                        "--execution-class", "delivery",
+                    ]
+                )
+
             self.assertEqual(store.read_project("sample-app"), before)
             self.assertEqual(store.read_events("sample-app"), before_events)
             self.assertFalse(

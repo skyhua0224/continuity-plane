@@ -19,6 +19,7 @@
     "successor_scope_owners",
     "lease_expires_at",
     "source_proposal_sha256",
+    "source_evidence_id",
     "workspace_verification",
     "remaining_blocker",
     "causation_ref",
@@ -95,6 +96,10 @@
     },
     "source_proposal_sha256": {
       "$ref": "#/$defs/sha256"
+    },
+    "source_evidence_id": {
+      "type": "string",
+      "pattern": "^evidence-attach-[A-Za-z0-9._:/-]{1,183}$"
     },
     "workspace_verification": {
       "$ref": "#/$defs/workspace_verification"

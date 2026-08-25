@@ -6,10 +6,10 @@
   },
   "generated_at": "2026-08-23T22:30:00+08:00",
   "latency_ms": {
-    "max": 1.3493170008587185,
-    "min": 0.7033010006125551,
-    "p50": 0.7524339998781215,
-    "p95": 0.8549039994250052
+    "max": 1.3938900083303452,
+    "min": 0.697382987709716,
+    "p50": 0.7554260082542896,
+    "p95": 1.0974650213029236
   },
   "parameters": {
     "iterations": 1000
@@ -18,9 +18,9 @@
     "benchmark_sha256": "8c58e16b843ae46aab077a64fe3d5b986612fe25b1e1c4caf06bbe844c4b7a16",
     "fixture_sha256": "9be7887519cfed4466436ea6714d48e399d7023281729b3bd8c78cb3a086beab",
     "implementation_sha256": "7f8bd729519800c8a9a157b5e4a6d9eab734debb7744596c34f968b51220477c",
-    "state_mcp_sha256": "c361fe5c558b1bca0c55cc5ef0e046c667b0077ba056282764a7e22813710da4"
+    "state_mcp_sha256": "11817f42b498845d26948568e621fd51566a6f42b172344d9124510dfd8aa303"
   },
-  "receipt_sha256": "987dd307f7d224f226f809623b361da8616344e9eb9387f68bcfdcce72ccb9b4",
+  "receipt_sha256": "38dd52da594b34361fdce4b4e7bdd072cfd343cf42bb1cb18bb9460409033359",
   "results": {
     "authority_violations": 0,
     "external_services": 0,

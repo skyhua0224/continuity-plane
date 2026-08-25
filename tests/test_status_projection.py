@@ -46,11 +46,18 @@ class StatusProjectionTests(unittest.TestCase):
         self.assertNotIn("completed", rendered)
         self.assertNotIn("return point", rendered.lower())
 
-    def test_projection_rejects_unknown_language_and_missing_current_work(self) -> None:
+    def test_projection_supports_idle_state_and_rejects_partial_route(self) -> None:
         with self.assertRaises(ValueError):
             render_status_projection(self._packet(), language="fr")
         packet = self._packet()
         packet["active_work"] = None
+        packet["claim"] = None
+        packet["next_action"] = "activate-next-work"
+        rendered = render_status_projection(packet, language="en")
+        self.assertIn("Active Work | none", rendered)
+        self.assertIn("Claim | none", rendered)
+
+        packet["claim"] = {"claim_id": "claim-stale"}
         with self.assertRaises(ValueError):
             render_status_projection(packet, language="en")
 

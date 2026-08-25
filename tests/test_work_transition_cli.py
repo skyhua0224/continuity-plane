@@ -209,6 +209,77 @@ class WorkTransitionCliTests(unittest.TestCase):
             self.assertEqual(len(store.read_events("sample-app")), len(events))
             self.assertEqual(replay["revision"], 5)
 
+    def test_nested_dependency_return_atomically_rebinds_verified_source(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root, _, store, fixture = self._repository(directory)
+            nested = StringIO()
+            with redirect_stdout(nested):
+                main(
+                    [
+                        "work", "suspend-dependency", "--root", str(root),
+                        "--work-id", "N-69-09-IO",
+                        "--claim-id", fixture["dependency_claim_id"],
+                        "--actor-ref", "agent-main",
+                        "--dependency-work-id", "N-69-10-CORRECTNESS",
+                        "--dependency-work-title", "Close the nested correctness gate",
+                        "--dependency-scope", "capability:filetransfer-correctness",
+                        "--reason", "The I/O return requires one nested correctness fix",
+                    ]
+                )
+            nested_receipt = Path(directory) / "nested-evidence.json"
+            nested_receipt.write_text(
+                json.dumps({"commit": "e" * 40, "tests": "passed"}),
+                encoding="utf-8",
+            )
+            nested_response = json.loads(nested.getvalue())
+            output = StringIO()
+            with redirect_stdout(output):
+                result = main(
+                    [
+                        "work", "transition", "--root", str(root),
+                        "--work-id", "N-69-10-CORRECTNESS",
+                        "--claim-id", nested_response["claim_id"],
+                        "--actor-ref", "agent-main",
+                        "--return-work-id", "N-69-09-IO",
+                        "--successor-claim-id", "claim-io-returned",
+                        "--successor-scope", "capability:filetransfer-transfer",
+                        "--resolved-blocker-id", nested_response["blocker_id"],
+                        "--workspace-root", str(root),
+                        "--expected-head", fixture["head"],
+                        "--expected-ref", "HEAD",
+                        "--evidence-file", str(nested_receipt),
+                    ]
+                )
+
+            response = json.loads(output.getvalue())
+            state = store.read_project("sample-app")
+            returned = next(
+                item for item in state["works"] if item["work_id"] == "N-69-09-IO"
+            )
+            source_ids = {
+                item["evidence_id"]
+                for item in state["evidence"]
+                if item["evidence_id"].startswith("evidence-attach-")
+                and item["validity"] == "verified"
+            }
+
+            self.assertEqual(result, 0)
+            self.assertEqual(response["status"], "transitioned")
+            self.assertTrue(response["source_evidence_rebound"])
+            self.assertTrue(source_ids & set(returned["evidence_ids"]))
+            self.assertEqual(returned["status"], "active")
+            self.assertEqual(response["active_work_id"], "N-69-09-IO")
+            projection = json.loads(
+                (root / ".continuity/status-projection.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            self.assertEqual(projection["revision"], response["revision"])
+            self.assertIn(
+                "N-69-09-IO",
+                (root / ".continuity/STATUS.current.md").read_text(encoding="utf-8"),
+            )
+
     def test_checkpoint_publication_failure_rolls_back_the_whole_transition(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root, receipt, store, fixture = self._repository(directory)

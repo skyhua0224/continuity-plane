@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -11,6 +12,20 @@ from typing import Any
 
 class CodexRolloutAdapterError(ValueError):
     """Raised when a Codex rollout cannot provide trustworthy usage evidence."""
+
+
+_RECOVERY_WINDOW_SECONDS = 5 * 60
+_READ_INPUT_RE = re.compile(
+    r"\b(?:cat|less|more|sed|head|tail|rg|grep|read_text|read_bytes|open)\b",
+    re.IGNORECASE,
+)
+_SKILL_PATH_RE = re.compile(r"(?:^|[/\\\s'\"])SKILL\.md(?:$|[/\\\s'\"])", re.IGNORECASE)
+_GOVERNED_PATH_RE = re.compile(
+    r"(?:^|[/\\\s'\"])(?:MASTER|STATUS(?:\.current)?|AGENTS)\.md"
+    r"(?:$|[/\\\s'\"])|"
+    r"(?:^|[/\\\s'\"])SKILL\.md(?:$|[/\\\s'\"])",
+    re.IGNORECASE,
+)
 
 
 def _sha(value: str) -> str:
@@ -96,6 +111,18 @@ def inspect_codex_rollout(
     compactions: list[dict[str, Any]] = []
     user_messages = 0
     assistant_messages = 0
+    assistant_message_hashes: set[str] = set()
+    duplicate_assistant_messages = 0
+    local_tool_calls = 0
+    local_tool_outputs = 0
+    local_tool_output_bytes = 0
+    peak_tool_output_bytes = 0
+    skill_read_calls = 0
+    governed_document_read_calls = 0
+    skill_output_bytes = 0
+    governed_document_output_bytes = 0
+    tool_calls: dict[str, dict[str, Any]] = {}
+    post_compaction_windows: list[dict[str, Any]] = []
     event_count = 0
     try:
         with source.open("rb") as stream:
@@ -166,9 +193,103 @@ def inspect_codex_rollout(
                                 ),
                             }
                         )
+                        post_compaction_windows.append(
+                            {
+                                "compaction_sha256": compactions[-1]["event_sha256"],
+                                "started_at": timestamp
+                                if isinstance(timestamp, str)
+                                else None,
+                                "window_seconds": _RECOVERY_WINDOW_SECONDS,
+                                "tool_call_count": 0,
+                                "tool_output_count": 0,
+                                "tool_output_bytes": 0,
+                                "skill_read_calls": 0,
+                                "governed_document_read_calls": 0,
+                                "skill_output_bytes": 0,
+                                "governed_document_output_bytes": 0,
+                            }
+                        )
                 if value.get("type") != "response_item" or not isinstance(payload, dict):
                     continue
-                if payload.get("type") != "message":
+                payload_type = payload.get("type")
+                if payload_type in {"custom_tool_call", "function_call"}:
+                    local_tool_calls += 1
+                    call_id = payload.get("call_id")
+                    tool_input = payload.get("input") or payload.get("arguments")
+                    is_skill_read = (
+                        isinstance(tool_input, str)
+                        and _READ_INPUT_RE.search(tool_input) is not None
+                        and _SKILL_PATH_RE.search(tool_input) is not None
+                    )
+                    is_governed_read = (
+                        isinstance(tool_input, str)
+                        and _READ_INPUT_RE.search(tool_input) is not None
+                        and _GOVERNED_PATH_RE.search(tool_input) is not None
+                    )
+                    skill_read_calls += int(is_skill_read)
+                    governed_document_read_calls += int(is_governed_read)
+                    recovery_window_index = None
+                    timestamp = value.get("timestamp")
+                    if isinstance(timestamp, str) and post_compaction_windows:
+                        call_time = _boundary(timestamp, "tool call timestamp")
+                        window_start_value = post_compaction_windows[-1]["started_at"]
+                        window_start = (
+                            _boundary(window_start_value, "compaction timestamp")
+                            if isinstance(window_start_value, str)
+                            else None
+                        )
+                        if (
+                            call_time is not None
+                            and window_start is not None
+                            and 0
+                            <= (call_time - window_start).total_seconds()
+                            <= _RECOVERY_WINDOW_SECONDS
+                        ):
+                            recovery_window_index = len(post_compaction_windows) - 1
+                            window = post_compaction_windows[recovery_window_index]
+                            window["tool_call_count"] += 1
+                            window["skill_read_calls"] += int(is_skill_read)
+                            window["governed_document_read_calls"] += int(
+                                is_governed_read
+                            )
+                    if isinstance(call_id, str) and call_id:
+                        tool_calls[call_id] = {
+                            "recovery_window_index": recovery_window_index,
+                            "is_skill_read": is_skill_read,
+                            "is_governed_read": is_governed_read,
+                        }
+                    continue
+                if payload_type in {"custom_tool_call_output", "function_call_output"}:
+                    local_tool_outputs += 1
+                    output_bytes = len(
+                        json.dumps(
+                            payload.get("output"),
+                            ensure_ascii=False,
+                            sort_keys=True,
+                            separators=(",", ":"),
+                            allow_nan=False,
+                        ).encode("utf-8")
+                    )
+                    local_tool_output_bytes += output_bytes
+                    peak_tool_output_bytes = max(peak_tool_output_bytes, output_bytes)
+                    call_id = payload.get("call_id")
+                    call = tool_calls.get(call_id) if isinstance(call_id, str) else None
+                    if call is not None and call["is_skill_read"]:
+                        skill_output_bytes += output_bytes
+                    if call is not None and call["is_governed_read"]:
+                        governed_document_output_bytes += output_bytes
+                    if call is not None and call["recovery_window_index"] is not None:
+                        window = post_compaction_windows[
+                            call["recovery_window_index"]
+                        ]
+                        window["tool_output_count"] += 1
+                        window["tool_output_bytes"] += output_bytes
+                        if call["is_skill_read"]:
+                            window["skill_output_bytes"] += output_bytes
+                        if call["is_governed_read"]:
+                            window["governed_document_output_bytes"] += output_bytes
+                    continue
+                if payload_type != "message":
                     continue
                 role = payload.get("role")
                 content = payload.get("content")
@@ -186,6 +307,11 @@ def inspect_codex_rollout(
                     interaction_hasher.update(_sha(text).encode("ascii") + b"\n")
                 elif role == "assistant":
                     assistant_messages += 1
+                    message_sha256 = _sha(text)
+                    if message_sha256 in assistant_message_hashes:
+                        duplicate_assistant_messages += 1
+                    else:
+                        assistant_message_hashes.add(message_sha256)
     except OSError as exc:
         raise CodexRolloutAdapterError("rollout cannot be read") from exc
     if event_count == 0:
@@ -282,6 +408,21 @@ def inspect_codex_rollout(
         "compactions": compactions,
         "user_message_count": user_messages,
         "assistant_message_count": assistant_messages,
+        "context_efficiency": {
+            "status": "measured",
+            "local_tool_call_count": local_tool_calls,
+            "local_tool_output_count": local_tool_outputs,
+            "local_tool_output_bytes": local_tool_output_bytes,
+            "peak_tool_output_bytes": peak_tool_output_bytes,
+            "skill_read_calls": skill_read_calls,
+            "governed_document_read_calls": governed_document_read_calls,
+            "skill_output_bytes": skill_output_bytes,
+            "governed_document_output_bytes": governed_document_output_bytes,
+            "exact_duplicate_assistant_messages": duplicate_assistant_messages,
+            "post_compaction_windows": post_compaction_windows,
+            "raw_tool_input_admission": False,
+            "raw_tool_output_admission": False,
+        },
         "interaction_refs_sha256": interaction_hasher.hexdigest(),
         "raw_transcript_admission": False,
         "state_write_authority": False,
