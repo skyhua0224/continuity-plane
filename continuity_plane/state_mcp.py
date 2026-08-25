@@ -312,6 +312,7 @@ _REQUEST_FIELDS = {
         "successor_scope_owners",
         "lease_expires_at",
         "source_proposal_sha256",
+        "source_evidence_id",
         "workspace_verification",
         "remaining_blocker",
         "causation_ref",
@@ -657,6 +658,11 @@ def _request_properties(tool: str) -> dict[str, Any]:
                 "type": "string",
                 "pattern": "^[0-9a-f]{64}$",
             },
+            "source_evidence_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200,
+            },
             "workspace_verification": {"type": "object"},
             "remaining_blocker": {"type": ["object", "null"]},
             "causation_ref": {"type": ["string", "null"]},
@@ -982,6 +988,13 @@ def _validate_request(tool: str, arguments: Any) -> str | None:
         source_sha256 = arguments["source_proposal_sha256"]
         if not isinstance(source_sha256, str) or _SHA256_RE.fullmatch(source_sha256) is None:
             return "source_proposal_sha256 must be lowercase SHA-256"
+        source_evidence_id = arguments["source_evidence_id"]
+        if (
+            not isinstance(source_evidence_id, str)
+            or not source_evidence_id.startswith("evidence-attach-")
+            or len(source_evidence_id) > 200
+        ):
+            return "source_evidence_id must identify bounded attach evidence"
         lease = arguments["lease_expires_at"]
         if not isinstance(lease, str) or not lease.strip():
             return "lease_expires_at must be a non-empty RFC3339 string"
@@ -1106,6 +1119,13 @@ def _validate_request(tool: str, arguments: Any) -> str | None:
         source_sha256 = arguments["source_proposal_sha256"]
         if not isinstance(source_sha256, str) or _SHA256_RE.fullmatch(source_sha256) is None:
             return "source_proposal_sha256 must be lowercase SHA-256"
+        source_evidence_id = arguments["source_evidence_id"]
+        if (
+            not isinstance(source_evidence_id, str)
+            or not source_evidence_id.startswith("evidence-attach-")
+            or len(source_evidence_id) > 200
+        ):
+            return "source_evidence_id must identify bounded attach evidence"
         workspace = arguments["workspace_verification"]
         if not isinstance(workspace, dict) or set(workspace) != {
             "head_commit",
@@ -4376,10 +4396,6 @@ class StateMCPService:
             ):
                 return denied("pending_effects", code="conflict")
             source_evidence_id = arguments["source_evidence_id"]
-            if source_evidence_id != (
-                f"evidence-attach-{arguments['source_proposal_sha256'][:16]}"
-            ):
-                return denied("source_identity")
             source_evidence = next(
                 (
                     item
@@ -4682,9 +4698,7 @@ class StateMCPService:
             ):
                 return denied("declared_dependency_blocker")
 
-            source_evidence_id = (
-                f"evidence-attach-{arguments['source_proposal_sha256'][:16]}"
-            )
+            source_evidence_id = arguments["source_evidence_id"]
             source_evidence = next(
                 (
                     item
@@ -4696,9 +4710,9 @@ class StateMCPService:
             if (
                 source_evidence is None
                 or source_evidence["validity"] != "verified"
-                or source_evidence_id not in return_work["evidence_ids"]
             ):
                 return denied("source_fresh")
+            source_evidence_rebound = source_evidence_id not in return_work["evidence_ids"]
             workspace = arguments["workspace_verification"]
             if workspace["clean"] is not True:
                 return denied("workspace_clean")
@@ -4771,6 +4785,9 @@ class StateMCPService:
             )
             returned_work["status"] = "active"
             returned_work["revision"] += 1
+            returned_work["evidence_ids"] = list(
+                dict.fromkeys([*returned_work["evidence_ids"], source_evidence_id])
+            )
             returned_work["blocker_ids"] = [
                 item
                 for item in returned_work["blocker_ids"]
@@ -4930,6 +4947,7 @@ class StateMCPService:
                     "actor_ref": context.subject_ref,
                     "scope_expanded": False,
                 },
+                "source_evidence_rebound": source_evidence_rebound,
                 "registry_digest": self._registry_hash_value,
                 "capabilities": capability_manifest_to_document(self._manifest),
             },
