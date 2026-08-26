@@ -1,6 +1,6 @@
 # Continuity Plane Status
 
-版本：revision 92  
+版本：revision 93  
 日期：2026-08-26  
 canonical plan：`MASTER.md`
 
@@ -10,7 +10,7 @@ canonical plan：`MASTER.md`
 |---|---|
 | 当前 Campaign | M10 跨项目发布 |
 | active work | M10-01：AlkaidLab 三仓 shadow pilot（🟡） |
-| next action | 在 Platform 与 ProjectCompute 的下一新 Session 验收 alpha.7 根目录自动绑定与一次性 startup attestation；随后执行 effect preflight 与真实 compaction candidate，形成 matched segment 1/3 |
+| next action | Platform 业务 Session 用 alpha.7 stale-source heartbeat 自助恢复 N-69-08；随后验收新 Session 自动绑定、effect preflight 与真实 compaction candidate，形成 matched segment 1/3 |
 | hard blocker | Platform N-69-14 claim 已过期；两个项目 matched candidate 均未达到 `3` 段；Claude live provider 403；Platform Windows 物理路径双向零 ALTP packet；Platform flat v1 Work 缺 canonical DAG |
 | repository mode | internal development repository + fresh-history public mirror |
 | production state | alpha published；shared pilot planned |
@@ -22,12 +22,12 @@ canonical plan：`MASTER.md`
 | Evidence index | [`docs/reports/verified-state.md`](docs/reports/verified-state.md) |
 | Verified campaigns | M0-M8 core 与 M9-01..07 见 Evidence index；M9-08..11 planned |
 | M10-00/01 pilots | self M10-01 active；Platform 当前 State/projection `162/162`、Work N-69-14、checkpoint/source valid、lease expired、`read_only=true`；ProjectCompute nested return `78 -> 79 -> 80` 由业务 Session 自主完成，未修改 SQLite |
-| M10-11 foundation | CLI `0.1.0a7` wheel `cd6192a1…` + plugin candidate `0.1.0-alpha.7+codex.20260825174056`；resume 自动校验并修复 current STATUS；content-equal attach refresh 保持 source identity；nested return 原子补绑 verified source；delivery contract 与 exact effect scopes 已实现；Git common-dir 统一主目录/worktree；新 Session startup 输出一次性 bounded attestation；matched improvement remains open |
+| M10-11 foundation | CLI `0.1.0a7` + plugin candidate `0.1.0-alpha.7+codex.20260826175851`；resume 自动修复 current STATUS；stale-source owner heartbeat 在单一 Event 重绑 current canonical source evidence、续租并刷新 checkpoint；nested return、delivery contract、exact effect scopes、Git common-dir 与 startup attestation 已实现；matched improvement remains open |
 | ProjectCompute pilot | 主目录无独立 `.continuity`，通过 Git common-dir 绑定 execution root；State/projection `80/80`、active issue-773、claim/checkpoint/source/lease valid；950K baseline 保留；alpha.7 live effect/compaction candidate 待采集 |
 | Coordination/views | shared Work、forge、notification、Project Graph、2,000-node Impact gates passed；authority violation `0` |
 | Release baseline | GitHub/PyPI alpha published；Linux/macOS/Windows native matrix `18/18`；public privacy scan `0` findings |
 | Repository verification | alpha.7 full discovery `1,951` run、failure/error `0`、conditional skip `31`、`406.527 s`；targeted Ruff、schema registry、plugin validator、wheel install 与 two-project resume pass |
-| Governance authority | `MASTER.md` revision 92 |
+| Governance authority | `MASTER.md` revision 93 |
 
 ## 恢复入口
 

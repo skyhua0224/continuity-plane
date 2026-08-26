@@ -200,12 +200,23 @@ def _claim_recovery_binding_error(
         _error(request_id, -32003, "actor binding does not match the session claim")
         return True
     if action == "heartbeat":
-        if binding["read_only"]:
-            _error(request_id, -32002, "session binding is read-only; write tools are disabled")
-            return True
         if claim_id != binding["claim_id"]:
             _error(request_id, -32003, "claim binding does not match the session claim")
             return True
+        if binding["read_only"]:
+            stale_source_recovery = (
+                not binding["source_fresh"]
+                and binding["checkpoint_verified"]
+                and binding["lease_valid"]
+                and binding["next_action"] == "remain-read-only"
+            )
+            if not stale_source_recovery:
+                _error(
+                    request_id,
+                    -32002,
+                    "read-only heartbeat requires only a stale canonical source with a valid bound claim and verified checkpoint",
+                )
+                return True
         return False
     if binding["read_only"]:
         expired_reclaim = (
@@ -394,7 +405,7 @@ def main() -> int:
                         },
                         {
                             "name": "continuity_claim_recover",
-                            "description": "续租或恢复 claim，并在同一调用内刷新 checkpoint；任一步失败均保持只读 / Heartbeat or reclaim and refresh the checkpoint in one call; any failure keeps work read-only.",
+                            "description": "续租或恢复 claim，并在同一调用内受控刷新已变更的 canonical source 与 checkpoint；任一步失败均保持只读 / Heartbeat or reclaim and, when narrowly authorized, refresh changed canonical sources and the checkpoint in one call.",
                             "inputSchema": {
                                 "type": "object",
                                 "additionalProperties": False,

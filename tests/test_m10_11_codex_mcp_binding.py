@@ -421,6 +421,119 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
         self.assertIn("read-only", denied[0]["error"]["message"].lower())
         self.assertEqual(sum("work recover heartbeat" in line for line in denied_calls), 0)
 
+    def test_source_stale_owner_heartbeat_recovers_source_and_checkpoint(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            project = Path(directory) / "project"
+            project.mkdir()
+            master = project / "MASTER.md"
+            status = project / "STATUS.md"
+            master.write_text("# Master\n\n- active plan\n", encoding="utf-8")
+            status.write_text("# Status\n", encoding="utf-8")
+            with redirect_stdout(StringIO()):
+                self.assertEqual(
+                    continuity_main(
+                        ["init", "--root", str(project), "--project-id", "project-test"]
+                    ),
+                    0,
+                )
+                self.assertEqual(
+                    continuity_main(
+                        [
+                            "attach", "plan", "--root", str(project),
+                            "--master", "MASTER.md", "--status", "STATUS.md",
+                            "--work-id", "work-active", "--work-title", "Active Work",
+                            "--owner-ref", "actor-bound", "--scope", "capability:main",
+                        ]
+                    ),
+                    0,
+                )
+                self.assertEqual(
+                    continuity_main(
+                        [
+                            "attach", "approve", "--root", str(project),
+                            "--actor-ref", "actor-bound", "--claim-id", "claim-active",
+                        ]
+                    ),
+                    0,
+                )
+                self.assertEqual(
+                    continuity_main(["checkpoint", "create", "--root", str(project)]),
+                    0,
+                )
+
+            master.write_text(
+                "# Master\n\n- active plan\n- in-scope progress\n", encoding="utf-8"
+            )
+            dirty = project / "implementation-progress.txt"
+            dirty.write_text("preserve this active work\n", encoding="utf-8")
+            bin_dir = Path(directory) / "bin"
+            bin_dir.mkdir()
+            launcher = bin_dir / "continuity"
+            launcher.write_text(
+                f"#!{sys.executable}\n"
+                "from context_control_plane.cli import main\n"
+                "raise SystemExit(main())\n",
+                encoding="utf-8",
+            )
+            launcher.chmod(launcher.stat().st_mode | stat.S_IXUSR)
+            requests = [
+                self._tool_call(1, "continuity_resume", {"root": str(project)}),
+                self._tool_call(
+                    2,
+                    "continuity_claim_recover",
+                    {
+                        "root": str(project),
+                        "action": "heartbeat",
+                        "claim_id": "claim-active",
+                        "actor_ref": "actor-bound",
+                        "lease_ttl_ms": 3_600_000,
+                    },
+                ),
+                self._tool_call(3, "continuity_resume", {"root": str(project)}),
+            ]
+            completed = subprocess.run(
+                [sys.executable, str(self.server)],
+                cwd=project,
+                input="\n".join(json.dumps(item) for item in requests) + "\n",
+                text=True,
+                capture_output=True,
+                env={
+                    **os.environ,
+                    "PATH": f"{bin_dir}:{os.environ['PATH']}",
+                    "PYTHONPATH": os.pathsep.join(
+                        filter(None, [str(self.root), os.environ.get("PYTHONPATH", "")])
+                    ),
+                },
+                check=True,
+            )
+            responses = {
+                response["id"]: response
+                for response in map(json.loads, completed.stdout.splitlines())
+            }
+
+            initial = self._tool_text(responses[1])
+            self.assertFalse(initial["source_fresh"])
+            self.assertTrue(initial["lease_valid"])
+            self.assertTrue(initial["checkpoint_verified"])
+            self.assertTrue(initial["read_only"])
+            recovered = self._tool_text(responses[2])
+            self.assertEqual(recovered["status"], "heartbeat")
+            self.assertTrue(recovered["source_recovered"])
+            self.assertTrue(recovered["checkpoint_verified"])
+            self.assertEqual(recovered["revision"], initial["revision"] + 1)
+            resumed = self._tool_text(responses[3])
+            self.assertEqual(resumed["revision"], recovered["revision"])
+            self.assertTrue(resumed["source_fresh"])
+            self.assertTrue(resumed["lease_valid"])
+            self.assertTrue(resumed["checkpoint_verified"])
+            self.assertFalse(resumed["read_only"])
+            self.assertEqual(resumed["claim"]["claim_id"], "claim-active")
+            self.assertIn(
+                f"evidence-attach-{recovered['source_proposal_sha256'][:16]}",
+                resumed["active_work"]["evidence_ids"],
+            )
+            self.assertEqual(dirty.read_text(encoding="utf-8"), "preserve this active work\n")
+
     def test_expired_read_only_binding_allows_only_reclaim_then_heartbeat(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             temp = Path(directory)

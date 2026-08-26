@@ -599,22 +599,15 @@ def _attach_plan(args: argparse.Namespace) -> int:
     return 0
 
 
-def _attach_refresh(args: argparse.Namespace) -> int:
-    """Rebind an existing proposal to current sources without State writes."""
-    root = Path(args.root).resolve()
-    project = _load_project(root)
-    proposal_path = root / args.proposal
-    try:
-        old = json.loads(proposal_path.read_text(encoding="utf-8"))
-        validate_attach_proposal(root, old, verify_sources=False)
-    except (OSError, json.JSONDecodeError, CanonicalAttachError) as exc:
-        raise ValueError(str(exc) or "attach proposal is unavailable or invalid") from exc
-    if old["project_id"] != project["project_id"]:
-        raise ValueError("proposal project_id does not match project profile")
+def _refreshed_attach_proposal(
+    root: Path,
+    project_id: str,
+    old: dict[str, Any],
+) -> tuple[dict[str, Any], list[str]]:
     paths = {item["kind"]: item["path"] for item in old["sources"]}
     refreshed = build_attach_proposal(
         root=root,
-        project_id=project["project_id"],
+        project_id=project_id,
         master_path=paths["master"],
         status_path=paths["status"],
         work_id=old["work"]["work_id"],
@@ -629,6 +622,24 @@ def _attach_refresh(args: argparse.Namespace) -> int:
         for previous in old["sources"]
         if source["kind"] == previous["kind"]
         and source["content_sha256"] != previous["content_sha256"]
+    )
+    return refreshed, changed
+
+
+def _attach_refresh(args: argparse.Namespace) -> int:
+    """Rebind an existing proposal to current sources without State writes."""
+    root = Path(args.root).resolve()
+    project = _load_project(root)
+    proposal_path = root / args.proposal
+    try:
+        old = json.loads(proposal_path.read_text(encoding="utf-8"))
+        validate_attach_proposal(root, old, verify_sources=False)
+    except (OSError, json.JSONDecodeError, CanonicalAttachError) as exc:
+        raise ValueError(str(exc) or "attach proposal is unavailable or invalid") from exc
+    if old["project_id"] != project["project_id"]:
+        raise ValueError("proposal project_id does not match project profile")
+    refreshed, changed = _refreshed_attach_proposal(
+        root, project["project_id"], old
     )
     if not changed:
         print(
@@ -2912,8 +2923,13 @@ def _work_recover(args: argparse.Namespace) -> int:
     proposal = _load_current_attach_proposal(
         root,
         project["project_id"],
-        verify_sources=True,
+        verify_sources=False,
     )
+    try:
+        validate_attach_proposal(root, proposal, verify_sources=True)
+        source_fresh = True
+    except CanonicalAttachError:
+        source_fresh = False
     state_store = _open_state_store(root, project)
     read_result = _read_state_result(state_store, project["project_id"])
     snapshot = read_result["snapshot"]
@@ -2923,6 +2939,66 @@ def _work_recover(args: argparse.Namespace) -> int:
     )
     if claim is None:
         raise ValueError("claim was not found")
+    source_recovery = None
+    original_proposal = proposal
+    proposal_path = root / ".continuity/attach-proposal.json"
+    if not source_fresh:
+        if args.action != "heartbeat":
+            raise ValueError("stale canonical source recovery requires heartbeat")
+        active_ids = snapshot["project"]["active_work_ids"]
+        primary_work_id = snapshot["project"]["primary_work_id"]
+        if active_ids != [claim["work_id"]] or primary_work_id != claim["work_id"]:
+            raise ValueError("source recovery requires the primary active Work")
+        if claim["status"] != "active" or claim["actor_ref"] != args.actor_ref:
+            raise ValueError("source recovery claim does not match the active owner")
+        lease_expires = datetime.fromisoformat(
+            claim["lease_expires_at"].replace("Z", "+00:00")
+        )
+        if lease_expires <= datetime.now(UTC):
+            raise ValueError("source recovery requires a valid claim lease")
+        try:
+            prior_checkpoint = ArtifactRef.from_document(
+                json.loads(_checkpoint_ref_file(root).read_text(encoding="utf-8"))
+            )
+            restore_checkpoint(
+                prior_checkpoint,
+                _checkpoint_store(root),
+                expected_project_id=project["project_id"],
+                expected_revision=read_result["revision"],
+                expected_event_head=read_result["event_head"],
+                expected_governance_ref=snapshot["project"]["governance_ref"],
+                expected_plan_sha256=_canonical_master_sha256(original_proposal),
+                expected_registry_digest=read_result["registry_digest"],
+            )
+        except (OSError, json.JSONDecodeError, TypeError, ValueError, CheckpointError) as exc:
+            raise ValueError(
+                "source recovery requires the verified pre-change checkpoint"
+            ) from exc
+        refreshed, changed_sources = _refreshed_attach_proposal(
+            root, project["project_id"], original_proposal
+        )
+        if not changed_sources:
+            raise ValueError("source recovery found no changed canonical source")
+        validate_attach_proposal(root, refreshed, verify_sources=True)
+        source_digest = _attach_source_digest(refreshed)
+        observed_at = datetime.now(UTC).isoformat()
+        evidence_id = f"evidence-attach-{refreshed['proposal_sha256'][:16]}"
+        source_recovery = {
+            "work_id": claim["work_id"],
+            "proposal_sha256": refreshed["proposal_sha256"],
+            "changed_sources": changed_sources,
+            "evidence": {
+                "evidence_id": evidence_id,
+                "kind": "artifact",
+                "artifact_ref": f"artifact://sha256/{source_digest}",
+                "content_sha256": source_digest,
+                "validity": "verified",
+                "observed_at": observed_at,
+                "verified_at": observed_at,
+            },
+        }
+        proposal = refreshed
+        _write_json_atomic(proposal_path, proposal)
     if args.action == "reclaim" and claim["status"] == "expired":
         successor = next(
             (
@@ -3022,6 +3098,8 @@ def _work_recover(args: argparse.Namespace) -> int:
         "causation_ref": f"recovery:{args.claim_id}",
         "correlation_ref": f"project:{project['project_id']}",
     }
+    if source_recovery is not None:
+        request["source_recovery"] = source_recovery
     response = service.call_tool(
         LOCAL_CLAIM_RECOVERY_TOOL,
         request,
@@ -3029,6 +3107,8 @@ def _work_recover(args: argparse.Namespace) -> int:
     )
     if not response["ok"]:
         pending_checkpoint_path.unlink(missing_ok=True)
+        if source_recovery is not None:
+            _write_json_atomic(proposal_path, original_proposal)
         raise ValueError(response["error"]["message"])
     result = response["result"]
     checkpoint_ref = ArtifactRef.from_document(result["checkpoint_ref"])
@@ -3047,6 +3127,8 @@ def _work_recover(args: argparse.Namespace) -> int:
                 "lease_expires_at": result["claim"]["lease_expires_at"],
                 "checkpoint_ref": checkpoint_ref.to_document(),
                 "checkpoint_verified": True,
+                "source_recovered": result.get("source_recovered", False),
+                "source_proposal_sha256": proposal["proposal_sha256"],
             },
             sort_keys=True,
         )

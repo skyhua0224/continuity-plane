@@ -560,3 +560,19 @@ The focused lifecycle suite contains `21` passing tests, including startup
 receipt privacy and local/remote rsync classification. Real Desktop validation
 in the next newly created ProjectCompute or Platform Session remains required;
 the source test and CLI probe do not replace that host-surface acceptance.
+
+## Stale-source Owner Heartbeat
+
+Platform reproduced a fail-closed cycle at revision/event `187/187`: the active
+claim and checkpoint were valid, while an in-scope canonical MASTER update made
+`source_fresh=false`. The MCP adapter rejected heartbeat solely because the
+binding was read-only, and the CLI required fresh sources before claim recovery.
+
+The alpha.7 candidate now admits a narrow heartbeat exception only when the
+bound actor and claim match, the lease remains valid, the prior checkpoint is
+verified, and the read-only reason is canonical source staleness. The operation
+re-hashes the current registered sources, adds verified attach evidence to the
+primary active Work, renews the same claim, and publishes the new checkpoint in
+one append-only State Event. Product worktree dirtiness and unrelated notes are
+preserved. Wrong actor/claim, expired lease, unverified checkpoint, non-primary
+Work, scope expansion, and other read-only causes remain denied.

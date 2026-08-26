@@ -700,6 +700,7 @@ def _request_properties(tool: str) -> dict[str, Any]:
             "lease_ttl_ms": {"type": "integer", "minimum": 1},
             "causation_ref": {"type": ["string", "null"]},
             "correlation_ref": {"type": ["string", "null"]},
+            "source_recovery": {"type": "object"},
         }
     if tool == CLAIM_TOOL:
         return {
@@ -857,6 +858,8 @@ def _validate_request(tool: str, arguments: Any) -> str | None:
         and arguments.get("schema_version") == EFFECT_REQUEST_SCHEMA_VERSION_V2
     ):
         expected_fields = _REQUEST_FIELDS[tool] | {"request_sha256"}
+    elif tool == LOCAL_CLAIM_RECOVERY_TOOL and "source_recovery" in arguments:
+        expected_fields = _REQUEST_FIELDS[tool] | {"source_recovery"}
     else:
         expected_fields = _REQUEST_FIELDS[tool]
     actual_fields = set(arguments)
@@ -1212,6 +1215,58 @@ def _validate_request(tool: str, arguments: Any) -> str | None:
         ttl = arguments["lease_ttl_ms"]
         if type(ttl) is not int or ttl <= 0 or ttl > 7 * 24 * 60 * 60 * 1000:
             return "lease_ttl_ms is outside the configured bound"
+        source_recovery = arguments.get("source_recovery")
+        if source_recovery is not None:
+            if arguments["action"] != "heartbeat":
+                return "source recovery is supported only for heartbeat"
+            if not isinstance(source_recovery, dict) or set(source_recovery) != {
+                "work_id",
+                "proposal_sha256",
+                "changed_sources",
+                "evidence",
+            }:
+                return "source recovery fields are invalid"
+            if (
+                not isinstance(source_recovery["work_id"], str)
+                or not source_recovery["work_id"].strip()
+                or len(source_recovery["work_id"]) > 200
+                or not isinstance(source_recovery["proposal_sha256"], str)
+                or _SHA256_RE.fullmatch(source_recovery["proposal_sha256"]) is None
+            ):
+                return "source recovery identity is invalid"
+            changed_sources = source_recovery["changed_sources"]
+            if (
+                not isinstance(changed_sources, list)
+                or not changed_sources
+                or len(changed_sources) != len(set(changed_sources))
+                or not set(changed_sources) <= {"master", "status"}
+            ):
+                return "source recovery changed sources are invalid"
+            evidence = source_recovery["evidence"]
+            evidence_fields = {
+                "evidence_id",
+                "kind",
+                "artifact_ref",
+                "content_sha256",
+                "validity",
+                "observed_at",
+                "verified_at",
+            }
+            if not isinstance(evidence, dict) or set(evidence) != evidence_fields:
+                return "source recovery evidence fields are invalid"
+            if (
+                not isinstance(evidence["evidence_id"], str)
+                or not evidence["evidence_id"].startswith("evidence-attach-")
+                or evidence["kind"] != "artifact"
+                or evidence["validity"] != "verified"
+                or not isinstance(evidence["content_sha256"], str)
+                or _SHA256_RE.fullmatch(evidence["content_sha256"]) is None
+                or evidence["artifact_ref"]
+                != f"artifact://sha256/{evidence['content_sha256']}"
+                or not isinstance(evidence["observed_at"], str)
+                or not isinstance(evidence["verified_at"], str)
+            ):
+                return "source recovery evidence is invalid"
     if tool == ATTEMPT_TOOL:
         for field in ("attempt_id", "work_id", "claim_id"):
             value = arguments[field]
@@ -5008,6 +5063,68 @@ class StateMCPService:
                     error_code="permission_denied",
                     error_message="claim actor does not match trusted context",
                 )
+            source_recovery = arguments.get("source_recovery")
+            source_changes: list[dict[str, Any]] = []
+            source_recovered = source_recovery is not None
+            if source_recovery is not None:
+                source_work = next(
+                    (
+                        item
+                        for item in snapshot["works"]
+                        if item["work_id"] == source_recovery["work_id"]
+                    ),
+                    None,
+                )
+                if (
+                    source_work is None
+                    or source_work["status"] != "active"
+                    or source_work["work_id"] != claim["work_id"]
+                    or snapshot["project"]["primary_work_id"] != source_work["work_id"]
+                ):
+                    return _response(
+                        tool=LOCAL_CLAIM_RECOVERY_TOOL,
+                        request_id=request_id,
+                        error_code="conflict",
+                        error_message="source recovery Work does not match the active claim",
+                    )
+                evidence = source_recovery["evidence"]
+                existing_evidence = next(
+                    (
+                        item
+                        for item in snapshot["evidence"]
+                        if item["evidence_id"] == evidence["evidence_id"]
+                    ),
+                    None,
+                )
+                if existing_evidence is not None and existing_evidence != evidence:
+                    return _response(
+                        tool=LOCAL_CLAIM_RECOVERY_TOOL,
+                        request_id=request_id,
+                        error_code="integrity",
+                        error_message="source recovery evidence identity conflicts",
+                    )
+                if evidence["evidence_id"] not in source_work["evidence_ids"]:
+                    updated_work = copy.deepcopy(source_work)
+                    updated_work["evidence_ids"] = [
+                        *updated_work["evidence_ids"],
+                        evidence["evidence_id"],
+                    ]
+                    updated_work["revision"] += 1
+                    if existing_evidence is None:
+                        source_changes.append(
+                            {
+                                "collection": "evidence",
+                                "object_id": evidence["evidence_id"],
+                                "value": copy.deepcopy(evidence),
+                            }
+                        )
+                    source_changes.append(
+                        {
+                            "collection": "works",
+                            "object_id": updated_work["work_id"],
+                            "value": updated_work,
+                        }
+                    )
             now_text = self._clock()
             now = datetime.fromisoformat(now_text.replace("Z", "+00:00"))
             lease_expires = datetime.fromisoformat(
@@ -5027,7 +5144,7 @@ class StateMCPService:
                 ).isoformat()
                 revision_after = arguments["expected_revision"] + 1
                 updated_claim["expected_project_revision"] = revision_after
-                changes = [
+                claim_changes = [
                     {
                         "collection": "claims",
                         "object_id": updated_claim["claim_id"],
@@ -5081,7 +5198,7 @@ class StateMCPService:
                     "released_at": None,
                     "scope_owners": copy.deepcopy(claim["scope_owners"]),
                 }
-                changes = [
+                claim_changes = [
                     {
                         "collection": "claims",
                         "object_id": expired_claim["claim_id"],
@@ -5094,6 +5211,8 @@ class StateMCPService:
                     },
                 ]
                 operation = "reclaim"
+
+            changes = [*source_changes, *claim_changes]
 
             candidate = copy.deepcopy(snapshot)
             for change in changes:
@@ -5216,6 +5335,12 @@ class StateMCPService:
                 "event": event,
                 "operation": operation,
                 "claim": result_claim,
+                "source_recovered": source_recovered,
+                "source_proposal_sha256": (
+                    source_recovery["proposal_sha256"]
+                    if source_recovery is not None
+                    else None
+                ),
                 "registry_digest": self._registry_hash_value,
                 "capabilities": capability_manifest_to_document(self._manifest),
                 **(
