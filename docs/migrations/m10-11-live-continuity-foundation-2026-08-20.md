@@ -576,3 +576,9 @@ primary active Work, renews the same claim, and publishes the new checkpoint in
 one append-only State Event. Product worktree dirtiness and unrelated notes are
 preserved. Wrong actor/claim, expired lease, unverified checkpoint, non-primary
 Work, scope expansion, and other read-only causes remain denied.
+
+If the lease expires before the owner retries, the same source-recovery payload
+is accepted only with `reclaim` and a new claim identity. Source evidence,
+expired-claim release, successor claim, and checkpoint publication remain one
+State Event; the owner does not need an external Session to refresh sources
+first.

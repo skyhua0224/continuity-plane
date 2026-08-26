@@ -222,7 +222,6 @@ def _claim_recovery_binding_error(
         expired_reclaim = (
             claim_id == binding["claim_id"]
             and new_claim_id != claim_id
-            and binding["source_fresh"]
             and binding["checkpoint_verified"]
             and not binding["lease_valid"]
             and binding["next_action"] == "remain-read-only"

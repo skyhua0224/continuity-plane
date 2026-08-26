@@ -2943,8 +2943,6 @@ def _work_recover(args: argparse.Namespace) -> int:
     original_proposal = proposal
     proposal_path = root / ".continuity/attach-proposal.json"
     if not source_fresh:
-        if args.action != "heartbeat":
-            raise ValueError("stale canonical source recovery requires heartbeat")
         active_ids = snapshot["project"]["active_work_ids"]
         primary_work_id = snapshot["project"]["primary_work_id"]
         if active_ids != [claim["work_id"]] or primary_work_id != claim["work_id"]:
@@ -2954,8 +2952,11 @@ def _work_recover(args: argparse.Namespace) -> int:
         lease_expires = datetime.fromisoformat(
             claim["lease_expires_at"].replace("Z", "+00:00")
         )
-        if lease_expires <= datetime.now(UTC):
-            raise ValueError("source recovery requires a valid claim lease")
+        lease_is_valid = lease_expires > datetime.now(UTC)
+        if args.action == "heartbeat" and not lease_is_valid:
+            raise ValueError("stale source heartbeat requires a valid claim lease")
+        if args.action == "reclaim" and lease_is_valid:
+            raise ValueError("stale source reclaim requires an expired claim lease")
         try:
             prior_checkpoint = ArtifactRef.from_document(
                 json.loads(_checkpoint_ref_file(root).read_text(encoding="utf-8"))

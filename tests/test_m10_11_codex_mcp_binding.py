@@ -75,6 +75,9 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
         idle: bool = False,
         start_from_plugin_cache: bool = False,
         checkpoint_failure: bool = False,
+        source_fresh: bool | None = None,
+        checkpoint_verified: bool | None = None,
+        lease_valid: bool | None = None,
     ) -> tuple[list[dict], list[str]]:
         with tempfile.TemporaryDirectory() as directory:
             temp = Path(directory)
@@ -106,7 +109,24 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
                     "actor_ref": "actor-bound",
                 },
                 "read_only": read_only,
-                "next_action": "activate-next-work" if idle else "continue-active-work",
+                "source_fresh": (
+                    not read_only if source_fresh is None else source_fresh
+                ),
+                "checkpoint_verified": (
+                    not read_only
+                    if checkpoint_verified is None
+                    else checkpoint_verified
+                ),
+                "lease_valid": (
+                    not read_only if lease_valid is None else lease_valid
+                ),
+                "next_action": (
+                    "activate-next-work"
+                    if idle
+                    else "remain-read-only"
+                    if read_only
+                    else "continue-active-work"
+                ),
             }
             binary.write_text(
                 "#!/bin/sh\n"
@@ -533,6 +553,30 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
                 resumed["active_work"]["evidence_ids"],
             )
             self.assertEqual(dirty.read_text(encoding="utf-8"), "preserve this active work\n")
+
+    def test_source_stale_expired_claim_can_reclaim_in_the_same_path(self) -> None:
+        request = self._tool_call(
+            1,
+            "continuity_claim_recover",
+            {
+                "root": "$PROJECT_ROOT",
+                "action": "reclaim",
+                "claim_id": "claim-active",
+                "new_claim_id": "claim-reclaimed",
+                "actor_ref": "actor-bound",
+            },
+        )
+
+        responses, calls = self._run(
+            [request],
+            read_only=True,
+            source_fresh=False,
+            checkpoint_verified=True,
+            lease_valid=False,
+        )
+
+        self.assertNotIn("error", responses[0])
+        self.assertEqual(sum("work recover reclaim" in line for line in calls), 1)
 
     def test_expired_read_only_binding_allows_only_reclaim_then_heartbeat(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
