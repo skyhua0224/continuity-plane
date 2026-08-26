@@ -1217,8 +1217,6 @@ def _validate_request(tool: str, arguments: Any) -> str | None:
             return "lease_ttl_ms is outside the configured bound"
         source_recovery = arguments.get("source_recovery")
         if source_recovery is not None:
-            if arguments["action"] != "heartbeat":
-                return "source recovery is supported only for heartbeat"
             if not isinstance(source_recovery, dict) or set(source_recovery) != {
                 "work_id",
                 "proposal_sha256",
