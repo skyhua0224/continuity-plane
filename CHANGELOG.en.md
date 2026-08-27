@@ -4,6 +4,22 @@
 
 ## Unreleased
 
+- Added the `continuity autorun` CLI and `continuity_autorun` MCP tool. After a
+  verified checkpoint and valid permissions, the same Session re-enters its
+  current Work. A local idempotency record prevents duplicate State Events for
+  one checkpoint; leases are heartbeated near expiry and reclaimed with a new
+  claim after expiry.
+- MCP/plugin transient `transport closed`, connection-reset, and timeout errors
+  retry on the same project root and return an explicit `failed_gate` when the
+  retry budget is exhausted.
+- Successor activation after `attach refresh` can atomically bind the new
+  canonical source evidence in the same State Event instead of rejecting an
+  evidence ID that has not yet entered State.
+- Effect intent resources now distinguish provider, host, repository, worktree,
+  and branch. Sessions on one resource remain mutually exclusive while different
+  repositories cannot block one another.
+- The public wheel now installs both `continuity` and `continuity-mcp`, so the
+  Codex plugin MCP entry does not depend on a manually placed host script.
 - A source-control push, PR, merge, or release scope now covers its required local
   commit prerequisite without granting any unrelated external effect.
 - Read-only queries such as `git tag --list` and `gh release view` no longer enter

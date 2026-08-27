@@ -4,6 +4,17 @@
 
 ## 未发布
 
+- 新增 `continuity autorun` 与 `continuity_autorun` MCP 工具：checkpoint 已验证且
+  权限有效时，同一 Session 自动回到当前 Work；同一 checkpoint 使用本地幂等记录，
+  不重复产生 State Event；lease 临近自动 heartbeat，过期按受控 reclaim 换发 claim；
+- MCP/插件遇到短暂 transport closed、connection reset 或 timeout 时，在同一项目根
+  重试并保持绑定；耗尽重试后返回明确 `failed_gate`；
+- attach refresh 后的 successor activation 可以在同一 State Event 原子绑定新的
+  canonical source evidence，不再因 evidence 尚未进入 State 而拒绝激活；
+- effect intent 资源键现在区分 provider、host、repository、worktree 和 branch，
+  同一资源的不同 Session 仍互斥，不同仓库不会互相阻塞；
+- public wheel 现在同时安装 `continuity` 和 `continuity-mcp`，Codex plugin 的 MCP
+  入口不再依赖用户手工放置宿主脚本；
 - source-control 的 push、PR、merge 或 release 权限现在覆盖其必需的本地 commit
   前置动作，但不会扩张为其他外部副作用权限；
 - `git tag --list`、`gh release view` 等只读查询不再进入副作用门；
