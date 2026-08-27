@@ -42,7 +42,6 @@ _BANNED = tuple(
         r"alkaidlab",
         r"projectcompute",
         r"deepseek",
-        r"codex",
         r"claude",
         r"provider://cursor",
         r"moonlight",
@@ -270,6 +269,65 @@ def _copy_public_text(source: Path, destination: Path) -> None:
     destination.write_text(text, encoding="utf-8")
 
 
+def _copy_public_plugin(source: Path, destination: Path) -> None:
+    """Project the Codex adapter as a standalone public marketplace plugin."""
+    files = [
+        source / ".codex-plugin/plugin.json",
+        source / ".mcp.json",
+        source / "hooks/hooks.json",
+        source / "scripts/continuity-hook.py",
+        source / "scripts/continuity-mcp-server.py",
+        source / "skills/continuity-plane/SKILL.md",
+    ]
+    for path in files:
+        if not path.is_file():
+            raise RuntimeError(f"public Codex plugin file is unavailable: {path}")
+        relative = path.relative_to(source)
+        target = destination / relative
+        if path.name == "plugin.json":
+            manifest = json.loads(path.read_text(encoding="utf-8"))
+            manifest["version"] = "0.1.0-alpha.7"
+            manifest["description"] = (
+                "Bounded recovery, checkpoint canaries, and local continuity tools for Codex"
+            )
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(
+                json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
+        elif path.suffix.lower() in _TEXT_SUFFIXES:
+            _copy_public_text(path, target)
+        else:
+            _copy(path, target)
+
+
+def _write_public_plugin_marketplace(output: Path) -> None:
+    marketplace = {
+        "name": "continuity-plane",
+        "interface": {"displayName": "Continuity Plane"},
+        "plugins": [
+            {
+                "name": "continuity-plane",
+                "source": {
+                    "source": "local",
+                    "path": "./plugins/continuity-plane",
+                },
+                "policy": {
+                    "installation": "AVAILABLE",
+                    "authentication": "ON_INSTALL",
+                },
+                "category": "Productivity",
+            }
+        ],
+    }
+    path = output / ".agents/plugins/marketplace.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(marketplace, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
 def _normalize_public_identity(text: str) -> str:
     # Source documentation lives under public/docs; the projected mirror flattens it to docs.
     text = text.replace("public/docs/", "docs/")
@@ -301,7 +359,7 @@ def _public_benchmark(source: Path) -> dict[str, Any]:
     )
     raw: dict[str, Any] = {
         "schema_version": "context.public-benchmark/v1",
-        "release": "0.1.0-alpha.1",
+        "release": "0.1.0-alpha.7",
         "quality_rate": 1.0,
         "sample_sizes": {
             "context_composition_per_arm": 3,
@@ -481,6 +539,11 @@ def build_public_release(
         source / "public/github-publish.yml",
         output / ".github/workflows/publish.yml",
     )
+    _copy_public_plugin(
+        source / "integrations/codex/continuity-plane",
+        output / "plugins/continuity-plane",
+    )
+    _write_public_plugin_marketplace(output)
     for section in ("benchmarks", "docs", "examples", "tests"):
         for path in sorted((source / "public" / section).rglob("*")):
             relative_path = path.relative_to(source / "public" / section)
@@ -553,7 +616,7 @@ def build_public_release(
     ]
     manifest = {
         "schema_version": "context.public-release-manifest/v1",
-        "version": "0.1.0-alpha.1",
+        "version": "0.1.0-alpha.7",
         "file_count": len(files),
         "files": files,
     }

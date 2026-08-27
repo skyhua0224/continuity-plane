@@ -43,6 +43,28 @@ class PublicReleaseBuilderTests(unittest.TestCase):
             self.assertTrue((output / "templates/STATUS.md").is_file())
             self.assertTrue((output / "README.md").is_file())
             self.assertTrue((output / "README.en.md").is_file())
+            public_plugin_manifest = output / "plugins/continuity-plane/.codex-plugin/plugin.json"
+            public_plugin_marketplace = output / ".agents/plugins/marketplace.json"
+            self.assertTrue(public_plugin_manifest.is_file())
+            self.assertTrue(public_plugin_marketplace.is_file())
+            self.assertTrue(
+                (output / "plugins/continuity-plane/hooks/hooks.json").is_file()
+            )
+            self.assertTrue(
+                (output / "plugins/continuity-plane/scripts/continuity-mcp-server.py").is_file()
+            )
+            self.assertEqual(
+                json.loads(public_plugin_manifest.read_text(encoding="utf-8"))["version"],
+                "0.1.0-alpha.7",
+            )
+            marketplace = json.loads(public_plugin_marketplace.read_text(encoding="utf-8"))
+            self.assertEqual(marketplace["name"], "continuity-plane")
+            self.assertEqual(
+                marketplace["plugins"][0]["source"]["path"],
+                "./plugins/continuity-plane",
+            )
+            self.assertIn("Codex plugin", (output / "README.md").read_text(encoding="utf-8"))
+            self.assertIn("Codex plugin", (output / "README.en.md").read_text(encoding="utf-8"))
             self.assertIn("## 它解决哪些问题", (output / "README.md").read_text())
             self.assertIn("## Problems It Solves", (output / "README.en.md").read_text())
             public_readme = (output / "README.md").read_text(encoding="utf-8")

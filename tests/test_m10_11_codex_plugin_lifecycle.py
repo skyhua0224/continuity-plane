@@ -318,6 +318,12 @@ printf '%s\\n' '{"status":"ok"}'
             tool_input={"command": "git push origin HEAD"},
             resume_packet=packet,
         )
+        committed, _, _ = self._run_hook(
+            "PreToolUse",
+            tool_name="Bash",
+            tool_input={"command": "git commit -m release-boundary"},
+            resume_packet=packet,
+        )
         merged, _, _ = self._run_hook(
             "PreToolUse",
             tool_name="Bash",
@@ -326,6 +332,7 @@ printf '%s\\n' '{"status":"ok"}'
         )
 
         self.assertEqual(pushed.stdout, "")
+        self.assertEqual(committed.stdout, "")
         decision = json.loads(merged.stdout)["hookSpecificOutput"]
         self.assertEqual(decision["permissionDecision"], "deny")
         self.assertIn("source-control.merge", decision["permissionDecisionReason"])

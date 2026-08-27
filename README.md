@@ -13,8 +13,21 @@ Continuity Plane 是面向长期 AI 辅助软件工作的 provider-neutral 控�
 先安装一份 CLI：
 
 ```bash
-python -m pip install continuity-plane==0.1.0a1
+python -m pip install continuity-plane==0.1.0a7
 ```
+
+### Codex 插件（可选）
+
+核心包不依赖插件；需要自动加载恢复包、压缩前后 checkpoint、恢复 canary 和副作用
+预检时，可以从本项目的公开 GitHub marketplace 安装 Codex plugin：
+
+```bash
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.7
+codex plugin add continuity-plane@continuity-plane
+```
+
+安装后新建一个 Session，插件会按当前项目根目录自动绑定 `.continuity/` 状态。插件
+只负责 provider 接入，权威状态仍由本地 CLI/State MCP 管理。
 
 ### 单项目
 
@@ -152,9 +165,10 @@ continuity state show --root .
 
 ## Release 与许可证
 
-当前 alpha 已发布到 [PyPI](https://pypi.org/project/continuity-plane/0.1.0a1/) 和
+当前 alpha 已发布到 [PyPI](https://pypi.org/project/continuity-plane/0.1.0a7/) 和
 [GitHub Releases](https://github.com/skyhua0224/continuity-plane/releases)。GitHub
-Release 同时提供 wheel、source archive 和 SHA256SUMS；详见 [发布说明](CHANGELOG.md)。
+Release 同时提供核心 wheel、source archive、Codex plugin marketplace 和 SHA256SUMS；
+详见 [发布说明](CHANGELOG.md)。
 
 Continuity Plane 使用 [Apache-2.0](LICENSE)。badge、README 署名、应用 UI 标签和
 telemetry 都是可选的，法律归属以 LICENSE 和 NOTICE 为准。

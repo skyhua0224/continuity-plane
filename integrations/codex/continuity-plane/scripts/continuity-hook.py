@@ -864,7 +864,12 @@ def _scope_allows(
         if isinstance(scope, dict) and scope.get("scope_kind") == "effect"
     }
     if effect_scopes:
-        return effect_action in effect_scopes
+        if effect_action in effect_scopes:
+            return True
+        return effect_action == "source-control.local" and any(
+            isinstance(scope_ref, str) and scope_ref.startswith("source-control.")
+            for scope_ref in effect_scopes
+        )
     if effect_action == "source-control.local":
         return all(
             isinstance(scope, dict)

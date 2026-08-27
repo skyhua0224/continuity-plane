@@ -14,8 +14,23 @@ after compaction, task switches, crashes, and handoffs is deterministic.
 Install one CLI first:
 
 ```bash
-python -m pip install continuity-plane==0.1.0a1
+python -m pip install continuity-plane==0.1.0a7
 ```
+
+### Codex plugin (optional)
+
+The core package does not depend on a plugin. To enable automatic bounded packet loading,
+pre/post-compaction checkpoints, recovery canaries, and external-effect preflight, install the
+Codex plugin from this repository's public GitHub marketplace:
+
+```bash
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.7
+codex plugin add continuity-plane@continuity-plane
+```
+
+Start a new Session after installation. The plugin discovers the current project root and binds
+the local `.continuity/` state automatically. It is only a provider integration; authoritative
+state remains managed by the CLI/State MCP.
 
 ### One Project
 
@@ -159,9 +174,9 @@ are optional enhancements.
 
 ## Release And License
 
-The current alpha is available from [PyPI](https://pypi.org/project/continuity-plane/0.1.0a1/)
+The current alpha is available from [PyPI](https://pypi.org/project/continuity-plane/0.1.0a7/)
 and [GitHub Releases](https://github.com/skyhua0224/continuity-plane/releases).
-The GitHub release also provides a wheel, source archive, and SHA256SUMS; see the
+The GitHub release also provides the core wheel, source archive, Codex plugin marketplace, and SHA256SUMS; see the
 [changelog](CHANGELOG.en.md).
 
 Continuity Plane uses [Apache-2.0](LICENSE). Badges, README attribution, UI
