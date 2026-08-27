@@ -1,7 +1,7 @@
 # Continuity Plane Status
 
-版本：revision 94  
-日期：2026-08-26  
+版本：revision 95  
+日期：2026-08-27  
 canonical plan：`MASTER.md`
 
 ## 当前状态
@@ -9,11 +9,11 @@ canonical plan：`MASTER.md`
 | 字段 | 值 |
 |---|---|
 | 当前 Campaign | M10 跨项目发布 |
-| active work | M10-01：AlkaidLab 三仓 shadow pilot（🟡） |
-| next action | Platform 业务 Session 用 alpha.7 stale-source reclaim 自助恢复 N-69-08；ProjectCompute idle Session 用 delivery activation 绑定未提交实现 delta 后自行执行 commit/PR/CI/deploy，随后形成 matched segment 1/3 |
-| hard blocker | Platform N-69-14 claim 已过期；两个项目 matched candidate 均未达到 `3` 段；Claude live provider 403；Platform Windows 物理路径双向零 ALTP packet；Platform flat v1 Work 缺 canonical DAG |
+| active work | M10-01：跨项目 shadow pilot（🟡） |
+| next action | 完成中英文公开文档、CHANGELOG 与 GitHub Release Note 校准；运行公开构建、隐私、链接和安装门；原子返回 M10-11，再恢复 M10-01 shadow pilot |
+| hard blocker | PyPI Trusted Publisher 尚未绑定；alpha.7 标签后的三项 Codex effect-gate 修复尚未进入公开预发行版；matched live A/B 每臂仍未达到 `3` 段 |
 | repository mode | internal development repository + fresh-history public mirror |
-| production state | alpha published；shared pilot planned |
+| production state | GitHub/PyPI alpha.7 published；shared pilot planned |
 
 ## 已验证摘要
 
@@ -21,19 +21,20 @@ canonical plan：`MASTER.md`
 |---|---|
 | Evidence index | [`docs/reports/verified-state.md`](docs/reports/verified-state.md) |
 | Verified campaigns | M0-M8 core 与 M9-01..07 见 Evidence index；M9-08..11 planned |
-| M10-00/01 pilots | self M10-01 active；Platform 当前 State/projection `162/162`、Work N-69-14、checkpoint/source valid、lease expired、`read_only=true`；ProjectCompute nested return `78 -> 79 -> 80` 由业务 Session 自主完成，未修改 SQLite |
-| M10-11 foundation | CLI `0.1.0a7` + plugin candidate `0.1.0-alpha.7+codex.20260827062834`；resume 自动修复 current STATUS；stale-source owner heartbeat/reclaim 在单一 Event 重绑 current canonical source evidence、续租或换签 claim 并刷新 checkpoint；idle delivery activation 绑定 source/predecessor/evidence、基线 HEAD 与未提交 worktree delta；nested return、exact effect scopes、Git common-dir 与 startup attestation 已实现；matched improvement remains open |
-| ProjectCompute pilot | 主目录无独立 `.continuity`，通过 Git common-dir 绑定 execution root；State/projection `80/80`、active issue-773、claim/checkpoint/source/lease valid；950K baseline 保留；alpha.7 live effect/compaction candidate 待采集 |
+| alpha.7 publication | GitHub `v0.1.0-alpha.7` 与 PyPI `continuity-plane==0.1.0a7` 已发布；wheel/sdist SHA-256 与 GitHub `SHA256SUMS` 一致；从 PyPI 与 GitHub asset 的独立安装、init、verify、doctor 通过 |
+| alpha.1 → alpha.7 audit | immutable tag tree 差异 `28` files（`16` added、`12` modified、`+10,282/-94`）；tag source 对应 `27` 个开发提交；公开 release history 为脱敏 projection，功能差异以标签树、artifact 和测试为准 |
+| M10-11 foundation | CLI `0.1.0a7` + plugin candidate `0.1.0-alpha.7+codex.20260827062834`；current-only STATUS、Git common-dir、source refresh、dependency return、idle delivery activation 和 exact effect scopes 已实现；matched improvement remains open |
+| post-tag boundary | downstream source-control local prerequisite、只读 forge/release 查询和同 Session 连续 effect intent 三项修复已在开发分支验证，明确标为 unreleased |
 | Coordination/views | shared Work、forge、notification、Project Graph、2,000-node Impact gates passed；authority violation `0` |
-| Release baseline | GitHub/PyPI alpha published；Linux/macOS/Windows native matrix `18/18`；public privacy scan `0` findings |
-| Repository verification | alpha.7 full discovery `1,951` run、failure/error `0`、conditional skip `31`、`406.527 s`；targeted Ruff、schema registry、plugin validator、wheel install 与 two-project resume pass |
-| Governance authority | `MASTER.md` revision 94 |
+| Release baseline | Linux/macOS/Windows native matrix `18/18`；local state bundle export/import/rollback available；public privacy scan `0` findings |
+| Documentation audit | README、USAGE、CHANGELOG、public docs、templates 与 policy 全文审阅；公开 Markdown 内部阶段标记 `0`，本地链接缺失 `0`；最终 repository verification 待本 Work 完成前刷新 |
+| Governance authority | `MASTER.md` revision 95 |
 
 ## 恢复入口
 
 1. 普通任务先读本文件。
 2. 根据 task ID 只展开 `MASTER.md` 对应章节。
 3. 聊天迁移与组件结论分别读 conversation-ingestion policy 和 context-reliability assessment。
-5. 当前代码或官方证据与历史 memory 冲突时，以当前证据为准。
-6. 需要历史完成证据时按 `docs/reports/verified-state.md` 的 task/evidence ref 有界展开。
-7. 压缩、Skill 选择、文档更新和 supersedes 走对应 event/lifecycle contract；恢复只展开当前任务的最小引用。
+4. 当前代码或官方证据与历史 memory 冲突时，以当前证据为准。
+5. 需要历史完成证据时按 `docs/reports/verified-state.md` 的 task/evidence ref 有界展开。
+6. 压缩、Skill 选择、文档更新和 supersedes 走对应 event/lifecycle contract；恢复只展开当前任务的最小引用。

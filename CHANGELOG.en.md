@@ -2,20 +2,101 @@
 
 [中文](CHANGELOG.md)
 
+## Unreleased
+
+- A source-control push, PR, merge, or release scope now covers its required local
+  commit prerequisite without granting any unrelated external effect.
+- Read-only queries such as `git tag --list` and `gh release view` no longer enter
+  the effect gate.
+- Sequential effects from one Session no longer conflict with each other; other
+  Sessions remain fenced by the repository-level intent.
+
+These fixes were made after the `v0.1.0-alpha.7` tag was generated. They are not
+part of `continuity-plane==0.1.0a7` or the Codex plugin under that tag and will be
+included in the next prerelease.
+
 ## 0.1.0-alpha.7
 
-### Changes Since 0.1.0-alpha.1
+### Audit Scope
 
-- Completed the local SQLite runtime boundaries for typed state, checkpoints, event replay, claims/leases, and evidence gates.
-- Added a public Codex plugin bundle with SessionStart, PreCompact, PostCompact, PreToolUse, and PostToolUse hooks, an MCP server, and the continuity Skill.
-- New Sessions discover the project root automatically and show a one-time startup receipt; compact recovery remains bounded and free of recovery narration.
-- Added Git common-dir binding so the main checkout and sibling worktrees resolve to one project state and cannot bypass it.
-- Added atomic source-stale owner heartbeat/reclaim recovery, guarded by actor, claim, checkpoint, and scope validation.
-- Added atomic idle-to-delivery activation binding source, predecessor Work, implementation evidence, baseline HEAD, pending worktree delta, and exact effect scopes.
-- Fixed local `rsync` being classified as a remote effect; real remote transfers remain effect-gated.
-- The public release compiler now emits the Python wheel, Codex plugin, and public marketplace together.
-- Preserved public benchmarks, privacy scans, and cross-platform installation verification; cache-hit rate is not presented as token savings.
-- `0.1.0-alpha.7` is a public alpha. The complete Docmost connector, Canvas/Bases, and shared-strong deployment remain planned.
+- The public tag-tree diff from `v0.1.0-alpha.1` to `v0.1.0-alpha.7` contains
+  `28` files: `16` added, `12` modified, and `+10,282/-94` lines.
+- The corresponding development source from the alpha.1 candidate boundary to
+  the alpha.7 tag source contains `27` commits. Their user-visible results are
+  grouped below as installation and release, existing-project attachment, state
+  and Work lifecycle, host integration, delivery gates, and documentation governance.
+- The public repository is a sanitized release projection, so tag history may
+  not form one linear chain. Immutable tag trees, release artifacts, and test
+  results are the authority for the functional delta; commit count is not used
+  as feature evidence.
+
+### Local Runtime And CLI
+
+- The default `local-embedded` profile keeps SQLite inside the project and
+  requires no PostgreSQL, container runtime, Docmost, or network service.
+- The public CLI adds the `status`, `attach`, `resume`, `checkpoint`, `work`,
+  `export`, `import`, and `rollback` lifecycles.
+- `attach plan/refresh/approve` imports an existing canonical MASTER/STATUS with
+  source hashes, evidence, and idempotent approval; a changed source rejects a
+  stale proposal.
+- Local state-bundle export/import/rollback is implemented and tested for tamper
+  rejection, atomic replacement, and lossless rollback. One-command cross-adapter
+  profile switching is still unavailable.
+- Current-only STATUS projections, bounded resume packets, immutable checkpoints,
+  and sticky route application preserve the active Work, first action, return
+  point, effect watermark, and acknowledged input.
+- Work completion, dependency suspend/return transition, idle successor
+  activation, and claim heartbeat/reclaim refresh and verify a checkpoint at one
+  revisioned boundary without leaving a partial state on failure.
+
+### Project Roots, Collaboration, And Delivery Gates
+
+- Git common-dir binding resolves the main checkout and sibling worktrees to one
+  project state instead of allowing a side Session to use another `.continuity/`.
+- An active owner can atomically rebind evidence after a legitimate canonical
+  source change only after actor, claim, lease, scope, and checkpoint validation.
+- Delivery activation binds the source, predecessor Work, implementation evidence,
+  expected Git head/ref, pending worktree delta, and exact effect set.
+- Push, PR, merge, deploy, remote install, and package publication are checked for
+  an active Work, claim, lease, fresh source, verified checkpoint, and scope before
+  the shell action runs.
+- Local `rsync` is no longer classified as a remote operation; transfers with a
+  remote endpoint remain gated.
+
+### Codex Plugin
+
+- Added a public marketplace and plugin bundle with project-root discovery,
+  bounded state injection, lifecycle checkpoints, state tools, and effect preflight.
+- A new Session displays one project and authoritative revision receipt without
+  exposing the complete Work, packet, or raw conversation.
+- The plugin never writes the database directly. A write can only use State MCP
+  tools guarded by authorization, revision/CAS, validators, claims, and checkpoints.
+
+### Distribution, Documentation, And Verification
+
+- Added bilingual README, usage, architecture, configuration, API, use-case,
+  benchmark, large-project view, visual-product, contribution, security, branding,
+  and third-party documentation.
+- The release compiler emits the Python wheel, source archive, Codex plugin
+  marketplace, `SHA256SUMS`, neutral templates, and privacy-scanned public history.
+- Public smoke/contracts/benchmark passed `5/5`; wheel and sdist passed `twine
+  check`; the public privacy scan reported `0` violations. The Linux, macOS, and
+  Windows install/verify/uninstall matrix remains `18/18`.
+- Benchmarks remain matched-scenario and sanitized-fixture results. Real-session
+  token use, window utilization, and Work completed per compaction do not yet
+  establish one universal savings rate.
+- The complete Docmost connector, Obsidian Canvas/Bases, provider-neutral Context
+  Health export, and one-command shared-strong deployment are not in alpha.7.
+
+### Upgrading From Alpha.1
+
+1. Back up the complete `.continuity/` directory.
+2. Install `continuity-plane==0.1.0a7`.
+3. Run `continuity verify --root .` and `continuity doctor --root .`.
+4. For an existing canonical MASTER/STATUS, use `attach plan` and `attach approve`
+   instead of replacing the project files with generated templates.
+5. The Codex plugin is optional and new in alpha.7; core-only projects can continue
+   without it.
 
 ### Installation
 
@@ -32,8 +113,8 @@ codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.7
 codex plugin add continuity-plane@continuity-plane
 ```
 
-Start a new Session after installing or upgrading the plugin. The core package works alone; the
-plugin is a host integration layer and has no authority to write canonical state.
+Start a new Session after installing or upgrading the plugin. The core package works alone;
+plugin state changes can only be submitted through controlled State MCP tools.
 
 ## 0.1.0-alpha.1
 
@@ -46,4 +127,5 @@ plugin is a host integration layer and has no authority to write canonical state
 - Added collaboration claims, notifications, handoffs, and unattended local workflows.
 - Added measured reference benchmarks and a privacy-gated public release builder.
 - Published `continuity-plane==0.1.0a1` on PyPI.
-- Passed install, verify, and uninstall probes on Linux, macOS, and Windows; migration and rollback remain in M10-09.
+- Passed install, verify, and uninstall probes on Linux, macOS, and Windows;
+  local state-bundle export/import/rollback was not available in alpha.1.

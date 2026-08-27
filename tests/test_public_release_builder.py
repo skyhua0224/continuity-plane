@@ -175,6 +175,18 @@ class PublicReleaseBuilderTests(unittest.TestCase):
                 ".context-control-plane",
             ):
                 self.assertNotIn(legacy, public_text)
+            public_markdown = "\n".join(
+                path.read_text(encoding="utf-8", errors="ignore")
+                for path in output.rglob("*.md")
+                if ".git" not in path.parts
+            )
+            for internal_plan_marker in ("M10-", "M10_", "E0-E9"):
+                self.assertNotIn(internal_plan_marker, public_markdown)
+            changelog = (output / "CHANGELOG.md").read_text(encoding="utf-8")
+            self.assertIn("28", changelog)
+            self.assertIn("10,282", changelog)
+            self.assertIn("标签生成之后", changelog)
+            self.assertIn("## 未发布", changelog)
             self.assertGreater(manifest["file_count"], 20)
             count = subprocess.run(
                 ["git", "rev-list", "--count", "HEAD"],
