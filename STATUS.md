@@ -1,6 +1,6 @@
 # Continuity Plane Status
 
-版本：revision 96  
+版本：revision 97  
 日期：2026-08-28  
 canonical plan：`MASTER.md`
 
@@ -9,9 +9,9 @@ canonical plan：`MASTER.md`
 | 字段 | 值 |
 |---|---|
 | 当前 Campaign | M10 跨项目发布 |
-| active work | M10-12：continuation、source rebind 与 effect isolation（🟡） |
-| next action | 完成 M10-12 的公开候选发布与 Platform/ProjectCompute 自主验收；随后 M10-01 按 exact match key 采集每臂至少 `3` 段 live A/B |
-| hard blocker | M10-12 尚未进入公开预发行版；PyPI Trusted Publisher 尚未绑定；matched live A/B 每臂仍未达到 `3` 段 |
+| active work | M10-01：跨项目 shadow pilot（🟡） |
+| next action | 按 exact match key 采集 Platform、ProjectCompute 等至少两个项目/协作 profile 的 matched live A/B，每臂至少 `3` 段；M10-12 修复在下一预发行版发布 |
+| hard blocker | PyPI Trusted Publisher 尚未绑定；matched live A/B 每臂仍未达到 `3` 段；Foundation Account 尚未初始化 Continuity 状态 |
 | repository mode | internal development repository + fresh-history public mirror |
 | production state | GitHub/PyPI alpha.7 published；shared pilot planned |
 
@@ -26,10 +26,11 @@ canonical plan：`MASTER.md`
 | M10-11 foundation | CLI `0.1.0a7` + plugin candidate `0.1.0-alpha.7+codex.20260827062834`；current-only STATUS、Git common-dir、source refresh、dependency return、idle delivery activation 和 exact effect scopes 已实现；matched improvement remains open |
 | post-tag boundary | downstream source-control local prerequisite、只读 forge/release 查询和同 Session 连续 effect intent 三项修复已在开发分支验证，明确标为 unreleased |
 | M10-12 control-plane fix | `continuity autorun`、MCP retry、source-evidence activation rebind 与 provider/host/repository/worktree/branch intent isolation 已通过 `61` 项聚焦测试；N-69-08 snapshot MCP continued/already-continued，原 Platform revision/event `202/202`、N-69-08、Windows blocker 保持不变 |
+| M10-12 completion | M10-12 已通过 checkpoint-bound autorun、source evidence activation、跨仓 intent isolation、N-69-08 snapshot 和 `61/61` focused tests；当前公开 alpha.7 不含该修复，需下一预发行版验收 |
 | Coordination/views | shared Work、forge、notification、Project Graph、2,000-node Impact gates passed；authority violation `0` |
 | Release baseline | Linux/macOS/Windows native matrix `18/18`；local state bundle export/import/rollback available；public privacy scan `0` findings |
 | Documentation audit | README、USAGE、CHANGELOG、public docs、templates 与 policy 全文审阅；公开 Markdown 内部阶段标记 `0`，本地链接缺失 `0`，外部链接 `8/8` 可达；repository verification passed |
-| Governance authority | `MASTER.md` revision 96 |
+| Governance authority | `MASTER.md` revision 97 |
 
 ## 恢复入口
 

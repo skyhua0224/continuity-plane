@@ -1,9 +1,9 @@
 # Context Control Plane Target-State Architecture
 
-版本：9  
+版本：10  
 日期：2026-08-28  
 状态：current architecture contract  
-governance authority：`MASTER.md` revision 96
+governance authority：`MASTER.md` revision 97
 
 ## 三文档默认投影
 
