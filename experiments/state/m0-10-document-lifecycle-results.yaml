@@ -1,5 +1,5 @@
 schema_version: context.document-lifecycle-benchmark/v1alpha1
-generated_at: '2026-08-28T02:20:10Z'
+generated_at: '2026-08-28T02:55:00Z'
 metrics:
   baseline_status_utf8_bytes: 15884
   current_status_utf8_bytes: 3606
@@ -16,7 +16,7 @@ provenance:
   baseline_master_path: MASTER.md
   current_status_sha256: c6cc83a4484feb41f8523d906f24df58194ea90fb2ce69fa1b711848b156976e
   current_master_sha256: 0da3dc24fa2f2f158d1f5a71fc45ca1d36e79ea1b722dc02f3bf26b3d56378e5
-  manifest_sha256: 2c212150423fe9e574dcace5410ea8640ccb12eb8b3c4b88301cc9db1f2a5b57
+  manifest_sha256: 3ce066d61a7334bf238a28ccec656fa75b459163927c2fd844bc7e2e3238c302
   implementation_sha256: 47a2ec899737bd38b3e039b12a97e20f53be7447bb58daeee841c88ddaa738fe
   benchmark_implementation_sha256: ca6b7994cb79cbf7fc2d5c993a613b656d63c6cf509426dfe46c56d4f986d97a
   benchmark_config_sha256: bf7d78a7e313a71e47b6eb9a052bddcbfa02e0a56e7f5735505f562720b94bd6

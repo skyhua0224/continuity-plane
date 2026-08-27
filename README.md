@@ -13,7 +13,7 @@ Continuity Plane 是面向长期 AI 辅助软件工作的 provider-neutral 控�
 先安装一份 CLI：
 
 ```bash
-python -m pip install continuity-plane==0.1.0a7
+python -m pip install continuity-plane==0.1.0a8
 ```
 
 ### Codex 插件（可选）
@@ -22,7 +22,7 @@ python -m pip install continuity-plane==0.1.0a7
 预检时，可以从本项目的公开 GitHub marketplace 安装 Codex plugin：
 
 ```bash
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.7
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.8
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -152,7 +152,7 @@ continuity state show --root .
 ## 文档
 
 - [完整使用教程](USAGE.md)
-- [alpha.7 完整变更与升级说明](CHANGELOG.md#010-alpha7)
+- [alpha.8 完整变更与升级说明](CHANGELOG.md#010-alpha8)
 - [架构说明](docs/architecture.md)
 - [配置说明](docs/configuration.md)
 - [Python API](docs/api.md)
@@ -166,7 +166,7 @@ continuity state show --root .
 
 ## Release 与许可证
 
-当前 alpha 已发布到 [PyPI](https://pypi.org/project/continuity-plane/0.1.0a7/) 和
+当前 alpha 已发布到 [PyPI](https://pypi.org/project/continuity-plane/0.1.0a8/) 和
 [GitHub Releases](https://github.com/skyhua0224/continuity-plane/releases)。GitHub
 Release 同时提供核心 wheel、source archive、Codex plugin marketplace 和 SHA256SUMS；
 详见 [发布说明](CHANGELOG.md)。

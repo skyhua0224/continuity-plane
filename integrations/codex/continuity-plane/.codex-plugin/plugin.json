@@ -1,6 +1,6 @@
 {
   "name": "continuity-plane",
-  "version": "0.1.0-alpha.7+codex.20260827175441",
+  "version": "0.1.0-alpha.8+codex.20260827183210",
   "description": "Bounded recovery, checkpoint canaries, and local continuity tools for Codex",
   "author": {
     "name": "SkyHua"

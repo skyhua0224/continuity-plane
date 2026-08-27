@@ -288,7 +288,7 @@ def _copy_public_plugin(source: Path, destination: Path) -> None:
         target = destination / relative
         if path.name == "plugin.json":
             manifest = json.loads(path.read_text(encoding="utf-8"))
-            manifest["version"] = "0.1.0-alpha.7"
+            manifest["version"] = "0.1.0-alpha.8"
             manifest["description"] = (
                 "Bounded recovery, checkpoint canaries, and local continuity tools for Codex"
             )
@@ -361,7 +361,7 @@ def _public_benchmark(source: Path) -> dict[str, Any]:
     )
     raw: dict[str, Any] = {
         "schema_version": "context.public-benchmark/v1",
-        "release": "0.1.0-alpha.7",
+        "release": "0.1.0-alpha.8",
         "quality_rate": 1.0,
         "sample_sizes": {
             "context_composition_per_arm": 3,
@@ -618,7 +618,7 @@ def build_public_release(
     ]
     manifest = {
         "schema_version": "context.public-release-manifest/v1",
-        "version": "0.1.0-alpha.7",
+        "version": "0.1.0-alpha.8",
         "file_count": len(files),
         "files": files,
     }
