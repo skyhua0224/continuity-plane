@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import subprocess
 import sys
 from pathlib import Path
@@ -106,6 +107,39 @@ def _requested_root(value: object, session_root: Path | None) -> Path | None:
     if not (resolved / ".continuity/project.yaml").is_file():
         return None
     return resolved if session_root is None or resolved == session_root else None
+
+
+def _run_cli_with_retry(command: list[str], root: Path) -> subprocess.CompletedProcess[str]:
+    last = subprocess.CompletedProcess(command, 1, "", "operation failed")
+    for attempt in range(3):
+        try:
+            last = subprocess.run(
+                command,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=10,
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            last = subprocess.CompletedProcess(command, 1, "", str(exc))
+        if last.returncode == 0:
+            return last
+        message = f"{last.stdout}\n{last.stderr}".lower()
+        transient = any(
+            marker in message
+            for marker in (
+                "transport closed",
+                "connection reset",
+                "broken pipe",
+                "timed out",
+                "temporarily unavailable",
+            )
+        )
+        if not transient or attempt == 2:
+            break
+        if _binding(root) is None:
+            break
+    return last
 
 
 def _write_binding_error(
@@ -276,6 +310,16 @@ def main() -> int:
                         {
                             "name": "continuity_resume",
                             "description": "读取有界恢复包并绑定本 MCP Session 的项目根；全局插件首次调用需传绝对路径 / Read the bounded packet and bind this MCP session to the project root; use an absolute path for the first global-plugin call.",
+                            "inputSchema": {
+                                "type": "object",
+                                "additionalProperties": False,
+                                "required": ["root"],
+                                "properties": {"root": {"type": "string", "minLength": 1}},
+                            },
+                        },
+                        {
+                            "name": "continuity_autorun",
+                            "description": "从已验证 checkpoint 继续当前 Work；同一 checkpoint 幂等，lease 临近或过期时按受控路径续租或换签 / Continue the current Work from a verified checkpoint; idempotent per checkpoint with controlled heartbeat or reclaim.",
                             "inputSchema": {
                                 "type": "object",
                                 "additionalProperties": False,
@@ -465,6 +509,7 @@ def main() -> int:
             tool_name = params.get("name")
             if tool_name not in {
                 "continuity_resume",
+                "continuity_autorun",
                 "continuity_checkpoint",
                 "continuity_work_complete",
                 "continuity_work_transition",
@@ -494,7 +539,18 @@ def main() -> int:
             canonical_root = str(session_root)
             binding = None if tool_name == "continuity_resume" else _binding(session_root)
             command = ["continuity", "resume", "--root", canonical_root]
-            if tool_name == "continuity_checkpoint":
+            if tool_name == "continuity_autorun":
+                if _write_binding_error(request_id, binding=binding):
+                    continue
+                command = [
+                    "continuity",
+                    "autorun",
+                    "--root",
+                    canonical_root,
+                    "--session-id",
+                    "mcp-" + hashlib.sha256(canonical_root.encode()).hexdigest()[:32],
+                ]
+            elif tool_name == "continuity_checkpoint":
                 action = arguments.get("action")
                 if action not in {"create", "verify"}:
                     _error(request_id, -32602, "action must be create or verify")
@@ -807,12 +863,7 @@ def main() -> int:
                 ]
                 if action == "reclaim":
                     command.extend(["--new-claim-id", new_claim_id])
-            result = subprocess.run(
-                command,
-                capture_output=True,
-                text=True,
-                check=False,
-            )
+            result = _run_cli_with_retry(command, session_root)
             results = [result]
             failed = any(item.returncode != 0 for item in results)
             output = [item.stdout or item.stderr for item in results]

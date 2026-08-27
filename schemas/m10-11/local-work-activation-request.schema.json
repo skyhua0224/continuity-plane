@@ -15,6 +15,7 @@
     "claim_id",
     "scope_owners",
     "source_evidence_id",
+    "source_evidence",
     "source_proposal_sha256",
     "checkpoint_ref",
     "lease_expires_at",
@@ -38,6 +39,12 @@
       "items": {"$ref": "#/$defs/scope"}
     },
     "source_evidence_id": {"$ref": "#/$defs/id"},
+    "source_evidence": {
+      "anyOf": [
+        {"$ref": "#/$defs/evidence"},
+        {"type": "null"}
+      ]
+    },
     "source_proposal_sha256": {"$ref": "#/$defs/sha256"},
     "checkpoint_ref": {"$ref": "#/$defs/artifactRef"},
     "lease_expires_at": {"type": "string", "format": "date-time"},
@@ -66,6 +73,28 @@
         "digest_algorithm": {"const": "sha-256"},
         "digest": {"$ref": "#/$defs/sha256"},
         "size_bytes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id",
+        "kind",
+        "artifact_ref",
+        "content_sha256",
+        "validity",
+        "observed_at",
+        "verified_at"
+      ],
+      "properties": {
+        "evidence_id": {"$ref": "#/$defs/id"},
+        "kind": {"const": "artifact"},
+        "artifact_ref": {"type": "string", "pattern": "^artifact://sha256/[0-9a-f]{64}$"},
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "validity": {"const": "verified"},
+        "observed_at": {"type": "string", "format": "date-time"},
+        "verified_at": {"type": "string", "format": "date-time"}
       }
     }
   }

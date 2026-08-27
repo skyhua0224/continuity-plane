@@ -293,6 +293,7 @@ _REQUEST_FIELDS = {
         "claim_id",
         "scope_owners",
         "source_evidence_id",
+        "source_evidence",
         "source_proposal_sha256",
         "checkpoint_ref",
         "lease_expires_at",
@@ -607,6 +608,7 @@ def _request_properties(tool: str) -> dict[str, Any]:
                 "minLength": 1,
                 "maxLength": 200,
             },
+            "source_evidence": {"type": ["object", "null"]},
             "source_proposal_sha256": {
                 "type": "string",
                 "pattern": "^[0-9a-f]{64}$",
@@ -998,6 +1000,33 @@ def _validate_request(tool: str, arguments: Any) -> str | None:
             or len(source_evidence_id) > 200
         ):
             return "source_evidence_id must identify bounded attach evidence"
+        source_evidence = arguments.get("source_evidence")
+        if source_evidence is not None:
+            evidence_fields = {
+                "evidence_id",
+                "kind",
+                "artifact_ref",
+                "content_sha256",
+                "validity",
+                "observed_at",
+                "verified_at",
+            }
+            if not isinstance(source_evidence, dict) or set(source_evidence) != evidence_fields:
+                return "source evidence fields are invalid"
+            if (
+                source_evidence["evidence_id"] != source_evidence_id
+                or source_evidence_id
+                != f"evidence-attach-{source_sha256[:16]}"
+                or source_evidence["kind"] != "artifact"
+                or source_evidence["validity"] != "verified"
+                or not isinstance(source_evidence["content_sha256"], str)
+                or _SHA256_RE.fullmatch(source_evidence["content_sha256"]) is None
+                or source_evidence["artifact_ref"]
+                != f"artifact://sha256/{source_evidence['content_sha256']}"
+                or not isinstance(source_evidence["observed_at"], str)
+                or not isinstance(source_evidence["verified_at"], str)
+            ):
+                return "source evidence is invalid"
         lease = arguments["lease_expires_at"]
         if not isinstance(lease, str) or not lease.strip():
             return "lease_expires_at must be a non-empty RFC3339 string"
@@ -4457,7 +4486,10 @@ class StateMCPService:
                 ),
                 None,
             )
-            if source_evidence is None or source_evidence["validity"] != "verified":
+            supplied_source_evidence = arguments.get("source_evidence")
+            if source_evidence is not None and source_evidence["validity"] != "verified":
+                return denied("source_fresh")
+            if source_evidence is None and supplied_source_evidence is None:
                 return denied("source_fresh")
             observed_at = self._clock()
             observed = datetime.fromisoformat(observed_at.replace("Z", "+00:00"))
@@ -4469,6 +4501,23 @@ class StateMCPService:
 
             candidate = copy.deepcopy(snapshot)
             changes: list[dict[str, Any]] = []
+            if source_evidence is None:
+                source_evidence = copy.deepcopy(supplied_source_evidence)
+                _replace_or_append(
+                    candidate,
+                    {
+                        "collection": "evidence",
+                        "object_id": source_evidence_id,
+                        "value": source_evidence,
+                    },
+                )
+                changes.append(
+                    {
+                        "collection": "evidence",
+                        "object_id": source_evidence_id,
+                        "value": source_evidence,
+                    }
+                )
             if work is None:
                 activated_work = {
                     "work_id": arguments["work_id"],
