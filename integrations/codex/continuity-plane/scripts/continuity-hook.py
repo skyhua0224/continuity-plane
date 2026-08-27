@@ -40,10 +40,12 @@ _EFFECT_PATTERNS = (
     (
         "source-control",
         re.compile(
-            r"(?:^|[;&|]\s*)(?:git\s+(?:commit|push|tag|merge|rebase|reset)|"
+            r"(?:^|[;&|]\s*)(?:git\s+(?:commit|push|merge|rebase|reset)\b|"
+            r"git\s+tag\s+(?!(?:-l|--list|--contains|--points-at|--merged|"
+            r"--no-merged|--sort|--format)\b)|"
             r"tea\s+(?:pulls?\s+(?:create|merge)|releases?)|"
-            r"gh\s+(?:pr\s+(?:create|merge)|release)|"
-            r"glab\s+(?:mr\s+(?:create|merge)|release))\b",
+            r"gh\s+(?:pr\s+(?:create|merge)|release\s+(?:create|delete|edit|upload))|"
+            r"glab\s+(?:mr\s+(?:create|merge)|release\s+(?:create|delete|update|upload)))\b",
             re.IGNORECASE,
         ),
     ),

@@ -369,6 +369,18 @@ printf '%s\\n' '{"status":"ok"}'
             tool_input={"command": "git status --short"},
             resume_packet=deployment,
         )
+        release_read, release_read_calls, _ = self._run_hook(
+            "PreToolUse",
+            tool_name="Bash",
+            tool_input={"command": "gh release view v0.1.0-alpha.7"},
+            resume_packet=deployment,
+        )
+        tag_read, tag_read_calls, _ = self._run_hook(
+            "PreToolUse",
+            tool_name="Bash",
+            tool_input={"command": "git tag --list 'v*'"},
+            resume_packet=deployment,
+        )
         deploy, _, _ = self._run_hook(
             "PreToolUse",
             tool_name="Bash",
@@ -379,6 +391,10 @@ printf '%s\\n' '{"status":"ok"}'
         self.assertEqual(read.stdout, "")
         self.assertEqual(read_calls, [])
         self.assertNotIn("git status", read_observations)
+        self.assertEqual(release_read.stdout, "")
+        self.assertEqual(release_read_calls, [])
+        self.assertEqual(tag_read.stdout, "")
+        self.assertEqual(tag_read_calls, [])
         self.assertEqual(deploy.stdout, "")
 
     def test_compact_recovery_enforces_and_accounts_the_actual_read_budget(self) -> None:
