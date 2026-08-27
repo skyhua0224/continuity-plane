@@ -13,6 +13,7 @@ import sqlite3
 import subprocess
 import sys
 import time
+import socket
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -475,6 +476,68 @@ def _stop(reason: str) -> None:
     )
 
 
+def _continuation_context(packet: dict[str, Any]) -> str | None:
+    context = (
+        "Continuity recovery contract. Continue silently: do not mention recovery, "
+        "compaction, hooks, or reloading. Do not answer acknowledged input again. "
+        "Do not restate text already visible before this continuation. "
+        "Use the packet as the current authority boundary; perform only its next_action "
+        "after the checkpoint canary. Packet: "
+        + _canonical(packet)
+    )
+    if len(context.encode("utf-8")) > MAX_CONTEXT_BYTES:
+        return None
+    return context
+
+
+def _autorun_command(payload: dict[str, Any], root: Path) -> subprocess.CompletedProcess[str]:
+    session_id = payload.get("session_id")
+    suffix = _hash(str(session_id))[:32]
+    command = ["autorun", "--session-id", f"hook-{suffix}"]
+    last = subprocess.CompletedProcess(command, 1, "", "autorun failed")
+    for attempt in range(3):
+        last = _command(command, root)
+        if last.returncode == 0:
+            return last
+        message = f"{last.stdout}\n{last.stderr}".lower()
+        if attempt == 2 or not any(
+            marker in message
+            for marker in (
+                "transport closed",
+                "connection reset",
+                "broken pipe",
+                "timed out",
+                "temporarily unavailable",
+            )
+        ):
+            return last
+    return last
+
+
+def _autorun_packet(payload: dict[str, Any], root: Path) -> dict[str, Any] | None:
+    completed = _autorun_command(payload, root)
+    if completed.returncode != 0:
+        return None
+    try:
+        result = json.loads(completed.stdout.strip())
+    except json.JSONDecodeError:
+        return None
+    packet = result.get("resume_packet") if isinstance(result, dict) else None
+    return packet if _load_resume_packet(_canonical(packet).encode("utf-8")) else None
+
+
+def _is_stage_test_command(command: str) -> bool:
+    return bool(
+        re.search(
+            r"(?:^|[;&|]\s*)(?:pytest\b|python(?:3)?\s+-m\s+(?:unittest|pytest)\b|"
+            r"(?:npm|pnpm|yarn)\s+test\b|cargo\s+test\b|go\s+test\b|"
+            r"cmake\s+--build\b)",
+            command,
+            re.IGNORECASE,
+        )
+    )
+
+
 def _load_resume_packet(encoded: bytes) -> dict[str, Any] | None:
     if not encoded or len(encoded) > MAX_PACKET_BYTES:
         return None
@@ -553,15 +616,26 @@ def _recovery_database() -> sqlite3.Connection | None:
     )
     connection.execute(
         """
-        CREATE TABLE IF NOT EXISTS effect_intents (
-            repository_sha256 TEXT PRIMARY KEY,
+        CREATE TABLE IF NOT EXISTS effect_intents_v2 (
+            intent_key TEXT PRIMARY KEY,
+            resource_key TEXT NOT NULL,
             session_sha256 TEXT NOT NULL,
             tool_use_sha256 TEXT NOT NULL,
             claim_sha256 TEXT NOT NULL,
             effect_class TEXT NOT NULL,
+            provider_id TEXT NOT NULL,
+            host_id TEXT NOT NULL,
+            owner_sha256 TEXT NOT NULL,
+            repository_sha256 TEXT NOT NULL,
+            worktree_sha256 TEXT NOT NULL,
+            branch_sha256 TEXT NOT NULL,
             expires_at REAL NOT NULL
         )
         """
+    )
+    connection.execute(
+        "CREATE INDEX IF NOT EXISTS effect_intents_v2_resource_idx "
+        "ON effect_intents_v2(resource_key)"
     )
     try:
         os.chmod(path, 0o600)
@@ -706,14 +780,86 @@ def _repository_sha256(root: Path) -> str:
     return _hash(str(root.resolve()))
 
 
-def _effect_identity(payload: dict[str, Any]) -> tuple[str, str] | None:
+def _git_branch(root: Path) -> str:
+    try:
+        symbolic = subprocess.run(
+            ["git", "-C", str(root), "symbolic-ref", "--short", "-q", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+        )
+        if symbolic.returncode == 0 and symbolic.stdout.strip():
+            return symbolic.stdout.strip()
+        detached = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+        )
+        if detached.returncode == 0 and detached.stdout.strip():
+            return f"detached:{detached.stdout.strip()}"
+    except (OSError, subprocess.SubprocessError):
+        pass
+    return "unknown"
+
+
+def _effect_resource_identity(payload: dict[str, Any], root: Path) -> dict[str, str] | None:
     session_id = payload.get("session_id")
     tool_use_id = payload.get("tool_use_id")
     if not isinstance(session_id, str) or not session_id:
         return None
     if not isinstance(tool_use_id, str) or not tool_use_id:
         tool_use_id = _hash(_shell_command(payload))
-    return _hash(session_id), _hash(tool_use_id)
+    provider = payload.get("provider") or os.environ.get("CONTINUITY_PROVIDER") or "codex"
+    host = payload.get("host_id") or os.environ.get("CONTINUITY_HOST_ID") or socket.gethostname()
+    repository = _repository_sha256(root)
+    worktree = _hash(str(root.resolve()))
+    branch = _hash(_git_branch(root))
+    resource_key = _hash(
+        _canonical(
+            {
+                "provider": str(provider),
+                "host": str(host),
+                "repository": repository,
+                "worktree": worktree,
+                "branch": branch,
+            }
+        )
+    )
+    return {
+        "session_sha256": _hash(session_id),
+        "tool_use_sha256": _hash(tool_use_id),
+        "resource_key": resource_key,
+        "provider_id": _hash(str(provider)),
+        "host_id": _hash(str(host)),
+        "repository_sha256": repository,
+        "worktree_sha256": worktree,
+        "branch_sha256": branch,
+    }
+
+
+def _effect_identity(
+    payload: dict[str, Any], root: Path, claim: dict[str, Any]
+) -> dict[str, str] | None:
+    identity = _effect_resource_identity(payload, root)
+    owner = claim.get("actor_ref")
+    if identity is None or not isinstance(owner, str) or not owner:
+        return None
+    intent_key = _hash(
+        _canonical(
+            {
+                "provider": identity["provider_id"],
+                "host": identity["host_id"],
+                "owner": _hash(owner),
+                "repository": identity["repository_sha256"],
+                "worktree": identity["worktree_sha256"],
+                "branch": identity["branch_sha256"],
+            }
+        )
+    )
+    return {**identity, "intent_key": intent_key, "owner_sha256": _hash(owner)}
 
 
 def _acquire_effect_intent(
@@ -723,12 +869,10 @@ def _acquire_effect_intent(
     effect_class: str,
     claim: dict[str, Any],
 ) -> bool:
-    identity = _effect_identity(payload)
+    identity = _effect_identity(payload, root, claim)
     claim_id = claim.get("claim_id")
     if identity is None or not isinstance(claim_id, str) or not claim_id:
         return False
-    session_sha256, tool_use_sha256 = identity
-    repository_sha256 = _repository_sha256(root)
     connection = _recovery_database()
     if connection is None:
         return False
@@ -737,31 +881,39 @@ def _acquire_effect_intent(
         connection.execute("BEGIN IMMEDIATE")
         row = connection.execute(
             """
-            SELECT session_sha256, tool_use_sha256, expires_at
-            FROM effect_intents WHERE repository_sha256 = ?
+            SELECT session_sha256, expires_at
+            FROM effect_intents_v2 WHERE resource_key = ?
             """,
-            (repository_sha256,),
+            (identity["resource_key"],),
         ).fetchone()
         if (
             row is not None
-            and row[2] >= now
-            and row[0] != session_sha256
+            and row[1] >= now
+            and row[0] != identity["session_sha256"]
         ):
             connection.rollback()
             return False
         connection.execute(
             """
-            INSERT OR REPLACE INTO effect_intents (
-                repository_sha256, session_sha256, tool_use_sha256,
-                claim_sha256, effect_class, expires_at
-            ) VALUES (?, ?, ?, ?, ?, ?)
+            INSERT OR REPLACE INTO effect_intents_v2 (
+                intent_key, resource_key, session_sha256, tool_use_sha256,
+                claim_sha256, effect_class, provider_id, host_id, owner_sha256,
+                repository_sha256, worktree_sha256, branch_sha256, expires_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                repository_sha256,
-                session_sha256,
-                tool_use_sha256,
+                identity["intent_key"],
+                identity["resource_key"],
+                identity["session_sha256"],
+                identity["tool_use_sha256"],
                 _hash(claim_id),
                 effect_class,
+                identity["provider_id"],
+                identity["host_id"],
+                identity["owner_sha256"],
+                identity["repository_sha256"],
+                identity["worktree_sha256"],
+                identity["branch_sha256"],
                 now + EFFECT_INTENT_SECONDS,
             ),
         )
@@ -772,21 +924,24 @@ def _acquire_effect_intent(
 
 
 def _release_effect_intent(payload: dict[str, Any], root: Path) -> None:
-    identity = _effect_identity(payload)
+    identity = _effect_resource_identity(payload, root)
     if identity is None:
         return
-    session_sha256, tool_use_sha256 = identity
     connection = _recovery_database()
     if connection is None:
         return
     with connection:
         connection.execute(
             """
-            DELETE FROM effect_intents
-            WHERE repository_sha256 = ? AND session_sha256 = ?
+            DELETE FROM effect_intents_v2
+            WHERE resource_key = ? AND session_sha256 = ?
                 AND tool_use_sha256 = ?
             """,
-            (_repository_sha256(root), session_sha256, tool_use_sha256),
+            (
+                identity["resource_key"],
+                identity["session_sha256"],
+                identity["tool_use_sha256"],
+            ),
         )
     connection.close()
 
@@ -1014,6 +1169,31 @@ def _posttooluse(payload: dict[str, Any], root: Path) -> int:
     if _effect_class(command) is not None:
         _release_effect_intent(payload, root)
     if not _is_recovery_read(command):
+        response = payload.get("tool_response")
+        success = isinstance(response, dict) and response.get("exit_code") == 0
+        if success and _is_stage_test_command(command):
+            packet = _autorun_packet(payload, root)
+            if packet is None:
+                _observe(payload, root, event_type="autorun", success=False)
+                _stop("Continuity autorun failed after a successful stage test; continuation was stopped.")
+                return 0
+            context = _continuation_context(packet)
+            if context is None:
+                _observe(payload, root, event_type="autorun", success=False)
+                _stop("Continuity autorun packet exceeds its byte budget; continuation was stopped.")
+                return 0
+            _observe(payload, root, event_type="autorun", success=True, canary_passed=True)
+            print(
+                _canonical(
+                    {
+                        "continue": True,
+                        "hookSpecificOutput": {
+                            "hookEventName": "PostToolUse",
+                            "additionalContext": context,
+                        },
+                    }
+                )
+            )
         return 0
     output_bytes = _tool_response_bytes(payload)
     result = _admit_recovery_output(payload, root, output_bytes=output_bytes)
@@ -1064,7 +1244,28 @@ def _postcompact(payload: dict[str, Any], root: Path) -> int:
     if not success:
         _stop("Continuity checkpoint verification failed; continuation was stopped.")
     else:
-        print(_canonical({"continue": True}))
+        packet = _autorun_packet(payload, root)
+        if packet is None:
+            _observe(payload, root, event_type="autorun", success=False)
+            _stop("Continuity autorun failed after checkpoint verification; continuation was stopped.")
+            return 0
+        context = _continuation_context(packet)
+        if context is None:
+            _observe(payload, root, event_type="autorun", success=False)
+            _stop("Continuity autorun packet exceeds its byte budget; continuation was stopped.")
+            return 0
+        _observe(payload, root, event_type="autorun", success=True, canary_passed=True)
+        print(
+            _canonical(
+                {
+                    "continue": True,
+                    "hookSpecificOutput": {
+                        "hookEventName": "PostCompact",
+                        "additionalContext": context,
+                    },
+                }
+            )
+        )
     return 0
 
 
@@ -1130,15 +1331,8 @@ def _session_start(payload: dict[str, Any], root: Path) -> int:
             else RECOVERY_READ_BUDGET_BYTES
         )
         _start_recovery_window(payload, root, budget_bytes=budget)
-    context = (
-        "Continuity recovery contract. Continue silently: do not mention recovery, "
-        "compaction, hooks, or reloading. Do not answer acknowledged input again. "
-        "Do not restate text already visible before this continuation. "
-        "Use the packet as the current authority boundary; perform only its next_action "
-        "after the checkpoint canary. Packet: "
-        + _canonical(packet)
-    )
-    if len(context.encode("utf-8")) > MAX_CONTEXT_BYTES:
+    context = _continuation_context(packet)
+    if context is None:
         _stop("Continuity recovery context exceeds its byte budget.")
         return 0
     response = {

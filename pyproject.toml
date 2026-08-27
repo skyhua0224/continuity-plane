@@ -34,6 +34,7 @@ dev = [
 
 [project.scripts]
 continuity = "continuity_plane.cli:main"
+continuity-mcp = "continuity_plane.codex_mcp_server:main"
 
 [project.urls]
 Documentation = "https://github.com/skyhua0224/continuity-plane#readme"

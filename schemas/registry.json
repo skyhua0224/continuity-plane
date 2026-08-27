@@ -6,6 +6,10 @@
       "sha256": "e32fdc2766bddefc853f2ff2d1392b3852b4519aaab0fd5a424dd1b83671206f"
     },
     {
+      "path": "schemas/m10-11/local-work-activation-request.schema.json",
+      "sha256": "b98da170d95735c2dd2280447e1f2f151c6fecaa3769557c08aae6d2cb87d542"
+    },
+    {
       "path": "schemas/m10-11/status-projection.schema.json",
       "sha256": "2b2e9f03791adaaa8eb2160de545f190781686e50e7aa2656d63b1bd21f89963"
     },

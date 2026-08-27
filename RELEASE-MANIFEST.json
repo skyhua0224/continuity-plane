@@ -1,5 +1,5 @@
 {
-  "file_count": 133,
+  "file_count": 135,
   "files": [
     {
       "path": ".agents/plugins/marketplace.json",
@@ -35,11 +35,11 @@
     },
     {
       "path": "CHANGELOG.en.md",
-      "sha256": "ec544e719f08ef7075e5020d150a418541960e70fe2ff22fe950934c1bb4185d"
+      "sha256": "9a07e3cdab0221ba7abae939fb9569b2152b4177554bd9d67c7c5451e5bb8873"
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "9e8d6f5333301d6eb9dacdb109df27d59e2ca8d532b0297c01ebf424d86e91a5"
+      "sha256": "d05eeceb369b0071900bd91485e7d73020af6848c743c1a2efee7a1996ec38d5"
     },
     {
       "path": "CONTRIBUTING.en.md",
@@ -135,11 +135,15 @@
     },
     {
       "path": "continuity_plane/cli.py",
-      "sha256": "a1393a7657ea803e85604caa332766d4196b609b597d7f33be54ccc1cb651642"
+      "sha256": "71130294ef58f72143bc22e8a7cf2e1c2faad2dc54255636875ea3ad7caaa902"
     },
     {
       "path": "continuity_plane/codegraph_verification.py",
       "sha256": "a3ac74c598d58a9758846ecf56aa1fa4a120980cfa23041f313d1d0ecc5f975b"
+    },
+    {
+      "path": "continuity_plane/codex_mcp_server.py",
+      "sha256": "b37a822db28d00a4f718a4f5a7b7bfe4721763fb780cb266d24d7e4287e875d7"
     },
     {
       "path": "continuity_plane/collaboration_notifications.py",
@@ -287,7 +291,7 @@
     },
     {
       "path": "continuity_plane/state_mcp.py",
-      "sha256": "2bfe3ec7dcc3d2bf2457508412fff19f28d5322b4feb555781910a793fbe9682"
+      "sha256": "1e2a6519c54a46492bb4d5000a615a1d44e5bccacbda3c31eba5f59adef55ad2"
     },
     {
       "path": "continuity_plane/state_store.py",
@@ -415,11 +419,11 @@
     },
     {
       "path": "plugins/continuity-plane/scripts/continuity-hook.py",
-      "sha256": "9e736422f045c8d50a5fcad2f51545884780389e0f07b9bf7c73f8d0bef6465f"
+      "sha256": "979451f4b353864a3cc93e3e26e8a773828c7aefda839a05b49b0a46dacf5127"
     },
     {
       "path": "plugins/continuity-plane/scripts/continuity-mcp-server.py",
-      "sha256": "79918787a50056ca79c7d2b2112c97eb976097dc4ec295f3003344a09b6a8607"
+      "sha256": "b37a822db28d00a4f718a4f5a7b7bfe4721763fb780cb266d24d7e4287e875d7"
     },
     {
       "path": "plugins/continuity-plane/skills/continuity-plane/SKILL.md",
@@ -427,11 +431,15 @@
     },
     {
       "path": "pyproject.toml",
-      "sha256": "48b8674e235c87a053623ee0fa973367ef0bdf37dc83ffc23744e050a6cbabd8"
+      "sha256": "46834d567895a28e4efdf6f8be9941f27c79a95d5253e7ca1812c52dda417687"
     },
     {
       "path": "schemas/m10-01/canonical-attach-proposal.schema.json",
       "sha256": "e32fdc2766bddefc853f2ff2d1392b3852b4519aaab0fd5a424dd1b83671206f"
+    },
+    {
+      "path": "schemas/m10-11/local-work-activation-request.schema.json",
+      "sha256": "b98da170d95735c2dd2280447e1f2f151c6fecaa3769557c08aae6d2cb87d542"
     },
     {
       "path": "schemas/m10-11/status-projection.schema.json",
@@ -503,7 +511,7 @@
     },
     {
       "path": "schemas/registry.json",
-      "sha256": "c6b9d12c8d79334ea7e2f2a071003ef632e69ba30623db7449227aeed1af6fe7"
+      "sha256": "ef39ea85907f9c22c08b553f4223006814f74800870acabbf5ba11081387a674"
     },
     {
       "path": "templates/MASTER.en.md",
