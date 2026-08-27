@@ -554,7 +554,9 @@ printf '%s\\n' '{"status":"ok"}'
                 "MCP_BINDING_ENVELOPE": json.dumps(deployment),
             }
 
-            def invoke(session: str, event: str) -> subprocess.CompletedProcess[str]:
+            def invoke(
+                session: str, event: str, tool_use_id: str | None = None
+            ) -> subprocess.CompletedProcess[str]:
                 payload = {
                     "session_id": session,
                     "transcript_path": None,
@@ -563,7 +565,7 @@ printf '%s\\n' '{"status":"ok"}'
                     "model": "provider-model",
                     "turn_id": f"turn-{session}",
                     "tool_name": "Bash",
-                    "tool_use_id": f"deploy-{session}",
+                    "tool_use_id": tool_use_id or f"deploy-{session}",
                     "tool_input": {"command": "kubectl apply -f deploy.yaml"},
                 }
                 if event == "PostToolUse":
@@ -577,12 +579,14 @@ printf '%s\\n' '{"status":"ok"}'
                     check=False,
                 )
 
-            first = invoke("session-a", "PreToolUse")
+            first = invoke("session-a", "PreToolUse", "deploy-session-a-1")
+            same_session = invoke("session-a", "PreToolUse", "deploy-session-a-2")
             conflict = invoke("session-b", "PreToolUse")
-            released = invoke("session-a", "PostToolUse")
+            released = invoke("session-a", "PostToolUse", "deploy-session-a-2")
             successor = invoke("session-b", "PreToolUse")
 
             self.assertEqual(first.stdout, "")
+            self.assertEqual(same_session.stdout, "")
             decision = json.loads(conflict.stdout)["hookSpecificOutput"]
             self.assertEqual(decision["permissionDecision"], "deny")
             self.assertIn("another active session", decision["permissionDecisionReason"])

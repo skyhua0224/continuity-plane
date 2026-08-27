@@ -745,7 +745,7 @@ def _acquire_effect_intent(
         if (
             row is not None
             and row[2] >= now
-            and (row[0], row[1]) != (session_sha256, tool_use_sha256)
+            and row[0] != session_sha256
         ):
             connection.rollback()
             return False
