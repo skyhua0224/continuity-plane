@@ -158,6 +158,65 @@ def _git_output(root: Path, *arguments: str) -> bytes:
     ).stdout
 
 
+def _matching_prior_provenance(
+    root: Path,
+    *,
+    head_commit: str,
+    document_id: str,
+    path: str,
+    document_revision: int,
+    content_sha256: str,
+) -> dict[str, str]:
+    """Find a commit where the declared manifest revision matches its document."""
+    commits = _git_output(
+        root,
+        "rev-list",
+        head_commit,
+        "--",
+        "profiles/document-control-manifest.yaml",
+        path,
+    ).decode().splitlines()
+    for commit in commits:
+        try:
+            manifest_bytes = _git_output(
+                root,
+                "show",
+                f"{commit}:profiles/document-control-manifest.yaml",
+            )
+            prior_manifest = yaml.safe_load(manifest_bytes.decode("utf-8"))
+            document_bytes = _git_output(root, "show", f"{commit}:{path}")
+        except (subprocess.CalledProcessError, UnicodeError, ValueError):
+            continue
+        entries = (
+            prior_manifest.get("documents")
+            if isinstance(prior_manifest, dict)
+            else None
+        )
+        entry = next(
+            (
+                item
+                for item in entries or []
+                if isinstance(item, dict)
+                and item.get("document_id") == document_id
+                and item.get("path") == path
+                and item.get("document_revision") == document_revision
+                and item.get("content_sha256") == content_sha256
+            ),
+            None,
+        )
+        if entry is None or hashlib.sha256(document_bytes).hexdigest() != content_sha256:
+            continue
+        return {
+            "git_commit": commit,
+            "manifest_sha256": hashlib.sha256(manifest_bytes).hexdigest(),
+            "content_sha256": content_sha256,
+        }
+    raise ValueError(
+        "no committed document/manifest pair matches prior revision: "
+        f"{document_id}@{document_revision}"
+    )
+
+
 def sync_document_control_config(
     root: Path,
     config: dict[str, Any],
@@ -207,7 +266,6 @@ def sync_document_control_config(
         for entry in prior_manifest["documents"]
         if isinstance(entry, dict) and isinstance(entry.get("document_id"), str)
     }
-    manifest_sha256 = hashlib.sha256(manifest_bytes).hexdigest()
     release_paths = {
         "README.md",
         "USAGE.md",
@@ -249,11 +307,14 @@ def sync_document_control_config(
             change["supersedes"] = (
                 f"context.document://{entry['document_id']}/revision/{prior_revision}"
             )
-            change["supersedes_provenance"] = {
-                "git_commit": commit,
-                "manifest_sha256": manifest_sha256,
-                "content_sha256": prior["content_sha256"],
-            }
+            change["supersedes_provenance"] = _matching_prior_provenance(
+                root,
+                head_commit=commit,
+                document_id=entry["document_id"],
+                path=path,
+                document_revision=prior_revision,
+                content_sha256=prior["content_sha256"],
+            )
 
         if entry["category"] in {"report", "projection"}:
             binding = entry.setdefault(

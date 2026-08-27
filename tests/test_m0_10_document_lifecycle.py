@@ -18,6 +18,10 @@ from context_control_plane.document_lifecycle import (
     canonical_manifest_bytes,
     validate_document_control_manifest,
 )
+from tools.generate_document_manifest import (
+    build_initial_config,
+    sync_document_control_config,
+)
 
 
 class M010DocumentLifecycleTests(unittest.TestCase):
@@ -604,6 +608,92 @@ class M010DocumentLifecycleTests(unittest.TestCase):
                 DocumentLifecycleError, "must supersede revision 2"
             ):
                 self._validate(root, manifest)
+
+    def test_sync_finds_last_commit_where_manifest_and_document_agree(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            self._valid_repository(root)
+            self._write(
+                root,
+                "docs/migrations/m0-10-document-lifecycle-acceptance-2026-08-12.md",
+                "# Acceptance\n\nverified: true\n",
+            )
+            config = build_initial_config(
+                root,
+                generated_at="2026-08-12T00:00:00Z",
+                governance_revision=1,
+            )
+            manifest = build_document_control_manifest(root, config)
+            profiles = root / "profiles"
+            profiles.mkdir()
+            manifest_path = profiles / "document-control-manifest.yaml"
+            config_path = profiles / "document-control-config.yaml"
+            manifest_path.write_text(
+                yaml.safe_dump(manifest, allow_unicode=True, sort_keys=False),
+                encoding="utf-8",
+            )
+            config_path.write_text(
+                yaml.safe_dump(config, allow_unicode=True, sort_keys=False),
+                encoding="utf-8",
+            )
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True)
+            subprocess.run(
+                ["git", "config", "user.name", "Document Test"], cwd=root, check=True
+            )
+            subprocess.run(
+                ["git", "config", "user.email", "document@example.invalid"],
+                cwd=root,
+                check=True,
+            )
+            subprocess.run(["git", "add", "."], cwd=root, check=True)
+            subprocess.run(
+                ["git", "commit", "-qm", "test: pin matching manifest"],
+                cwd=root,
+                check=True,
+            )
+            matching_commit = subprocess.run(
+                ["git", "rev-parse", "HEAD"],
+                cwd=root,
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+
+            target = root / "docs/architecture/target-state.md"
+            target.write_text(
+                target.read_text(encoding="utf-8") + "\nUntracked revision.\n",
+                encoding="utf-8",
+            )
+            subprocess.run(["git", "add", str(target)], cwd=root, check=True)
+            subprocess.run(
+                ["git", "commit", "-qm", "docs: omit manifest update"],
+                cwd=root,
+                check=True,
+            )
+            target.write_text(
+                target.read_text(encoding="utf-8") + "\nCurrent correction.\n",
+                encoding="utf-8",
+            )
+
+            synced = sync_document_control_config(
+                root,
+                config,
+                generated_at="2026-08-12T01:00:00Z",
+                governance_revision=1,
+            )
+            entry = next(
+                item
+                for item in synced["documents"]
+                if item["path"] == "docs/architecture/target-state.md"
+            )
+
+            self.assertEqual(entry["document_revision"], 2)
+            self.assertEqual(
+                entry["change"]["supersedes_provenance"]["git_commit"],
+                matching_commit,
+            )
+            current_manifest = build_document_control_manifest(root, synced)
+            self._validate(root, current_manifest)
 
     def test_committed_document_revision_cannot_reset_to_one(self):
         with tempfile.TemporaryDirectory() as directory:
