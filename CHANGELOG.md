@@ -2,20 +2,88 @@
 
 [English](CHANGELOG.en.md)
 
+## 未发布
+
+- source-control 的 push、PR、merge 或 release 权限现在覆盖其必需的本地 commit
+  前置动作，但不会扩张为其他外部副作用权限；
+- `git tag --list`、`gh release view` 等只读查询不再进入副作用门；
+- 同一 Session 的连续副作用操作不再互相冲突，其他 Session 仍受仓库级 intent
+  fencing 约束。
+
+这些修复发生在 `v0.1.0-alpha.7` 标签生成之后，不包含在
+`continuity-plane==0.1.0a7` 或该标签下的 Codex plugin 中，将进入下一预发行版。
+
 ## 0.1.0-alpha.7
 
-### 相比 0.1.0-alpha.1
+### 审计范围
 
-- 将本地 SQLite 状态、checkpoint、event replay、claim/lease 和 evidence gate 的运行时边界补齐；
-- 增加 Codex plugin 公开 bundle，包含 SessionStart、PreCompact、PostCompact、PreToolUse、PostToolUse hooks、MCP server 和连续性 Skill；
-- 新 Session 自动发现项目根目录并显示一次性启动确认；压缩恢复继续使用有界 packet，不输出恢复旁白；
-- 增加 Git common-dir 主目录/worktree 统一绑定，阻止旁路 Session 绕过同一份项目状态；
-- 增加 source-stale owner heartbeat/reclaim 的原子自恢复：只在 actor、claim、checkpoint 和 scope 满足条件时重绑当前 canonical source；
-- 增加 idle-to-delivery 原子激活，绑定 source、前序 Work、实现证据、基线 HEAD、未提交 worktree delta 和精确 effect scopes；
-- 修复本地 `rsync` 被误判为远端副作用的问题，真实远端传输仍受 effect gate 控制；
-- 公开发行编译器现在同时输出 Python wheel、Codex plugin 和公开 marketplace；
-- 公开 benchmark、隐私扫描和跨平台安装验证继续保留，不能把缓存命中率当作 token 节省；
-- `0.1.0-alpha.7` 是公开 alpha，完整 Docmost connector、Canvas/Bases 和 shared-strong 部署仍属于后续计划。
+- `v0.1.0-alpha.1` 与 `v0.1.0-alpha.7` 的公开标签树差异为 `28` 个文件：
+  `16` 个新增、`12` 个修改、`+10,282/-94` 行；
+- 对应开发来源从 alpha.1 候选边界到 alpha.7 标签来源包含 `27` 个提交，按用户可见
+  结果归并为安装与发行、现有项目接入、状态与任务生命周期、宿主集成、交付门禁和
+  文档治理；
+- 公开仓库使用脱敏发行投影，标签历史可能不构成单一直线；功能差异以不可变标签树、
+  发行 artifact 和测试结果为准，不以提交数量代替功能证据。
+
+### 本地运行时与 CLI
+
+- 默认 `local-embedded` 继续使用项目内 SQLite，不要求 PostgreSQL、容器、Docmost
+  或网络服务；
+- CLI 增加并公开 `status`、`attach`、`resume`、`checkpoint`、`work`、`export`、
+  `import` 和 `rollback` 生命周期；
+- `attach plan/refresh/approve` 可将已有 canonical MASTER/STATUS 以 source hash、
+  evidence 和幂等批准接入，源变化会拒绝陈旧 proposal；
+- 本地 state bundle 的 export/import/rollback 已实现并通过篡改拒绝、原子替换和
+  无状态丢失回滚测试；跨 adapter 的一键 profile switch 仍未提供；
+- current-only STATUS projection、bounded resume packet、immutable checkpoint 和
+  sticky route apply 共同保存 active Work、首动作、return point、effect watermark
+  和已确认输入；
+- Work complete、dependency suspend/return transition、idle successor activation 和
+  claim heartbeat/reclaim 都在单一 revisioned 边界中刷新并验证 checkpoint，失败时
+  不留下半完成状态。
+
+### 项目根、协作与交付门禁
+
+- Git common-dir 将主目录与 sibling worktree 绑定到同一项目状态，避免旁路 Session
+  使用另一份 `.continuity/`；
+- canonical source 合法变化时，active owner 可在 actor、claim、lease、scope 和
+  checkpoint 验证后原子重绑 evidence；
+- delivery Work 激活绑定 source、前序 Work、实现 evidence、expected Git head/ref、
+  未提交 worktree delta 和精确 effect 集合；
+- push、PR、merge、deploy、远端安装和 package publish 在 shell 执行前检查 active
+  Work、claim、lease、source、checkpoint 和 scope；
+- 本地 `rsync` 不再被误判为远端操作，包含远端端点的传输仍受门禁约束。
+
+### Codex plugin
+
+- 新增公开 marketplace 和 plugin bundle，包含项目根发现、有界状态注入、生命周期
+  checkpoint、状态工具和副作用预检；
+- 新 Session 只显示一次项目与 authoritative revision，不输出完整 Work、packet
+  或原始对话；
+- plugin 不直接修改数据库。其写操作只能调用受 authorization、revision/CAS、
+  validator、claim 和 checkpoint 约束的 State MCP 工具。
+
+### 发行、文档与验证
+
+- 补齐中英文 README、USAGE、架构、配置、API、场景、benchmark、大型项目视图、
+  图形化产品、贡献、安全、品牌和第三方声明；
+- 发行编译器输出 Python wheel、source archive、Codex plugin marketplace、
+  `SHA256SUMS`、中性模板和隐私扫描后的公开历史；
+- public smoke/contracts/benchmark `5/5`、wheel/sdist `twine check`、公开隐私扫描
+  `0` 条违规；Linux、macOS 和 Windows 安装/verify/卸载矩阵保持 `18/18`；
+- benchmark 仍是匹配场景和脱敏 fixture 的结论。跨项目真实 Session 的 token、
+  窗口利用率和每次压缩完成 Work 数尚未形成通用节省率；
+- 完整 Docmost connector、Obsidian Canvas/Bases、provider-neutral Context Health
+  export 和 shared-strong 一键部署未包含在 alpha.7。
+
+### 从 alpha.1 升级
+
+1. 备份完整 `.continuity/`；
+2. 安装 `continuity-plane==0.1.0a7`；
+3. 运行 `continuity verify --root .` 和 `continuity doctor --root .`；
+4. 已有 canonical MASTER/STATUS 的项目使用 `attach plan` 与 `attach approve`，不要
+   用生成模板覆盖原文件；
+5. Codex plugin 是 alpha.7 新增的可选安装，不影响只使用核心 CLI 的项目。
 
 ### 安装
 
@@ -32,8 +100,8 @@ codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.7
 codex plugin add continuity-plane@continuity-plane
 ```
 
-安装或升级 plugin 后请新建 Session。核心包可以单独使用；plugin 只是宿主接入层，不拥有
-权威状态写权限。
+安装或升级 plugin 后请新建 Session。核心包可以单独使用；plugin 的状态变更只能通过
+受控 State MCP 工具提交。
 
 ## 0.1.0-alpha.1
 
@@ -46,4 +114,5 @@ codex plugin add continuity-plane@continuity-plane
 - 增加协作 claim、通知、handoff 和本地 unattended workflow；
 - 提供可复验 benchmark 和隐私门控的公开历史编译器；
 - 发布 PyPI 包 `continuity-plane==0.1.0a1`；
-- Linux、macOS 和 Windows 安装、verify、卸载通过，迁移与 rollback 仍在 M10-09。
+- Linux、macOS 和 Windows 安装、verify、卸载通过；本地 state bundle
+  export/import/rollback 在 alpha.1 中尚未提供。

@@ -62,8 +62,8 @@ idle-time exclusion, and complete consistency vector.
 The 1M provider A/B used `3+3+3` matched runs. The 700K compaction reduced
 `783,628` to `24,776`, the next packet was `59,172`, and recovery was `100%`.
 The 900K upstream compact failed and is not reported as a capability. Window
-utilization and Work completed between compactions await the M10-11 longitudinal
-trace.
+utilization and Work completed between compactions await a longitudinal
+real-session trace.
 
 ## Code Retrieval
 
@@ -98,7 +98,7 @@ task class, verification profile, and accepted Work.
 | Gate | Result |
 |---|---:|
 | compaction / idea / interrupt / worker-loss faults | `4/4` |
-| E0-E9 campaign | `10/10` |
+| mandatory experiment campaign | `10/10` |
 | dual-Session same-revision delivery | `1000/1000` |
 | duplicate-notification suppression | `1000/1000` |
 | offline catch-up | `2000/2000` |

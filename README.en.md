@@ -87,7 +87,7 @@ identifier, and `--display-name` is the human-readable name. See the
 | Code retrieval | input `-50.02%`; tool calls `-57.89%`; wall time `-27.41%`; quality `3/3` | [Retrieval benchmark](docs/benchmarks.en.md#code-retrieval) |
 | Skill loading | source bytes `-96.54%`; quality `3/3` | [Skill benchmark](docs/benchmarks.en.md#skill-loading) |
 | Multi-Session coordination | duplicate tool calls `-55.88%`; parallel wall time `-22.65%` | [Collaboration benchmark](docs/benchmarks.en.md#multi-session-collaboration) |
-| Consistency | E0-E9 `10/10`; dual-Session `1000/1000`; authority violations `0` | [Consistency benchmark](docs/benchmarks.en.md#consistency-and-limitations) |
+| Consistency | mandatory consistency campaign `10/10`; dual-Session `1000/1000`; authority violations `0` | [Consistency benchmark](docs/benchmarks.en.md#consistency-and-limitations) |
 | Large-project views | 2,000 nodes / 5,000 edges; scale p95 `187.459764 ms` | [Project views](docs/project-views.en.md) |
 
 These are scenario-level results from matched tasks and current fixtures, not one
@@ -162,6 +162,7 @@ are optional enhancements.
 ## Documentation
 
 - [Usage guide](USAGE.en.md)
+- [Complete alpha.7 changes and upgrade notes](CHANGELOG.en.md#010-alpha7)
 - [Architecture](docs/architecture.en.md)
 - [Configuration](docs/configuration.en.md)
 - [Python API](docs/api.en.md)
@@ -185,6 +186,6 @@ labels, and telemetry are optional; legal attribution follows LICENSE and NOTICE
 ## Current Status
 
 Linux x86_64, macOS arm64, and Windows AMD64 have completed installation,
-verification, and uninstall probes. Cross-platform export/import/rollback, the
-complete Docmost connector, Obsidian Canvas/Bases, and `shared-strong` deployment
-remain planned.
+verification, and uninstall probes. Local state-bundle export/import/rollback is
+available. One-command cross-adapter profile switching, the complete Docmost
+connector, Obsidian Canvas/Bases, and `shared-strong` deployment remain planned.

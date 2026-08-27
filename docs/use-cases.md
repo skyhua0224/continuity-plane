@@ -83,6 +83,6 @@ Skill source bytes 下降 `96.54%`，但长期 token 和窗口利用率仍需 ho
 - 模型声称“完成”，却没有测试、artifact hash 或 current provenance；
 - crash、503 或 checkpoint 损坏后恢复失败，却继续执行副作用。
 
-当前 E0-E9 `10/10`，compaction、Idea、interrupt 和 worker-loss fault `4/4`；stale
+当前强一致性实验门 `10/10`，compaction、Idea、interrupt 和 worker-loss fault `4/4`；stale
 history revival、静默 CAS 覆盖和 authority violation 均为 `0`。完整数字、方法和限制
 见 [实测方法](benchmarks.md)。

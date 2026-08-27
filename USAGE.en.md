@@ -8,7 +8,7 @@ Python 3.11 or newer is required. The current alpha has completed installation,
 verification, and uninstall probes on Linux x86_64, macOS arm64, and Windows
 AMD64.
 
-Install from PyPI:
+### Install From PyPI
 
 ```bash
 python -m pip install continuity-plane==0.1.0a7
@@ -19,6 +19,15 @@ For a source checkout:
 ```bash
 python -m venv .venv
 .venv/bin/python -m pip install --editable .
+```
+
+### Install From A GitHub Release
+
+Download a wheel or source archive from
+[Continuity Plane Releases](https://github.com/skyhua0224/continuity-plane/releases):
+
+```bash
+python -m pip install /path/to/continuity_plane-0.1.0a7-py3-none-any.whl
 ```
 
 ### Install Once For Many Projects
@@ -97,10 +106,10 @@ continuity attach plan \
   --root /path/to/project \
   --master /path/to/project/MASTER.md \
   --status /path/to/project/STATUS.md \
-  --work-id m10-09 \
-  --work-title "Complete export import rollback" \
+  --work-id work-current \
+  --work-title "Continue current delivery" \
   --owner-ref agent-main \
-  --scope capability:continuity
+  --scope capability:delivery
 ```
 
 This only reads the sources and records their hashes. Inspect
@@ -167,7 +176,7 @@ single-user installation. Install the optional extra in the environment that
 will run the adapter:
 
 ```bash
-python -m pip install '.[postgres]'
+python -m pip install 'continuity-plane[postgres]==0.1.0a7'
 ```
 
 The alpha CLI still defaults to SQLite. PostgreSQL is selected by an explicit
@@ -227,18 +236,35 @@ Before switching:
 5. Move authority only when export/import preserves the snapshot and event head and rollback hashes match.
 6. Restore the backup and return to `local-embedded` if any gate fails.
 
-M10-09 has completed install, verify, and uninstall probes on Linux, macOS, and
-Windows. Cross-adapter export/import/rollback CLI work is still in progress, so
-do not edit `project.yaml.runtime_profile` by hand to claim a completed switch.
+Linux, macOS, and Windows install, verify, and uninstall probes have passed, as
+has local-embedded state-bundle export/import/rollback. One-command cross-adapter
+profile switching is still unavailable; do not edit `project.yaml.runtime_profile`
+by hand to claim a completed switch.
+
+### Migrate Or Roll Back Local State
+
+These commands apply to `local-embedded` and provide a verified backup migration
+and atomic rollback path:
+
+```bash
+continuity export --root /path/to/project --output /safe/path/project-state.tar.gz
+continuity import --root /path/to/target --bundle /safe/path/project-state.tar.gz
+continuity rollback --root /path/to/target
+```
+
+Use `import --replace` only after backing up the target and confirming that its
+local authority should be replaced. A bundle member, hash, project identity, or
+checkpoint mismatch fails before replacement.
 
 ## Agent Integration
 
 The control plane is installed beside the project and accessed by an Agent
 through CLI, Python API, or a provider adapter. A provider-specific plugin is
 not required by the core package. Codex users can optionally install the public
-plugin to automate packet loading, PreCompact/PostCompact checkpoints, recovery
-canaries, and effect preflight; it remains a thin integration layer without
-state authority.
+plugin to automate packet loading, lifecycle checkpoints, recovery canaries, and
+effect preflight. It does not write the database directly; writes can only use
+State MCP tools guarded by authorization, revision/CAS, validators, claims, and
+checkpoints.
 
 ### Install The Public Codex Plugin
 
@@ -276,6 +302,10 @@ history.
 
 Keep session narration and raw conversations out of both files. Dynamic history
 belongs in typed state and append-only events.
+
+Teams usually commit the canonical `MASTER.md` and explicitly team-owned project
+profile. Personal STATUS overlays, local state stores, and provider archives stay
+local. Team governance decides whether a project-level STATUS is committed.
 
 ## Daily Workflow
 
@@ -387,10 +417,10 @@ The current version is available from PyPI and GitHub Releases:
 <https://pypi.org/project/continuity-plane/0.1.0a7/>  
 <https://github.com/skyhua0224/continuity-plane/releases>
 
-The first release used a controlled PyPI token. Future releases have a GitHub
-Actions OIDC workflow and `pypi` environment ready; the PyPI project still needs
-its Trusted Publisher binding. The token is not stored in the repository or a
-GitHub secret.
+The current public release used a controlled PyPI token. A GitHub Actions OIDC
+workflow and `pypi` environment are ready, but the PyPI project still needs its
+Trusted Publisher binding. The token is not stored in the repository or a GitHub
+secret.
 
 ## Verify The Release
 

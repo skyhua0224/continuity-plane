@@ -35,11 +35,11 @@
     },
     {
       "path": "CHANGELOG.en.md",
-      "sha256": "59c32bd59e6bb986bb0c18352d927d8e483a2f9d788ef74ef87634d818caa460"
+      "sha256": "ec544e719f08ef7075e5020d150a418541960e70fe2ff22fe950934c1bb4185d"
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "e21601e594daa907cf7714c820fe42c1c42843d466a327db4bd55e9dde83c81d"
+      "sha256": "9e8d6f5333301d6eb9dacdb109df27d59e2ca8d532b0297c01ebf424d86e91a5"
     },
     {
       "path": "CONTRIBUTING.en.md",
@@ -63,11 +63,11 @@
     },
     {
       "path": "README.en.md",
-      "sha256": "10847d0b6b55901a21f3cafba91c4c485e0fef61adc8e3dc0184136be1d88747"
+      "sha256": "8138773d109154b0d1016c0020502608a60ebc4f587d3e66cc28105c444dbebc"
     },
     {
       "path": "README.md",
-      "sha256": "b114067b0df9a23915d4d69d931cfeeb49131c4139da8d29050af10dce943b38"
+      "sha256": "86a0ce064f0c079070558bf75317071a2ec17faefa23edfd0c28ab44b831787a"
     },
     {
       "path": "SECURITY.en.md",
@@ -87,11 +87,11 @@
     },
     {
       "path": "USAGE.en.md",
-      "sha256": "3b28bedb9aa74c549136b37a51873bfc13cb81e73c175783b9587a1ba8b02301"
+      "sha256": "84facf677dd2cf897b5f20fd4a4c3c52abc3f483a875ee8491b16d371bf37b01"
     },
     {
       "path": "USAGE.md",
-      "sha256": "54ec14fd5dd9627094b457ec710c7743900e6d62e32ff5264678a75f0ea217b4"
+      "sha256": "b16edc606dc054bd136d1eb2179f5bc1b24fc141a502fc14614ee467011f6b9b"
     },
     {
       "path": "benchmarks/__init__.py",
@@ -339,7 +339,7 @@
     },
     {
       "path": "docs/api.en.md",
-      "sha256": "05f4cd18676db2f1ff7e7945ecfdddb6e5381474392eab42ffd9c62f5af04ac7"
+      "sha256": "6ef6f5a6fcff6bbe91ec554087718d3055ecb11b799be86417962c09f19d39d7"
     },
     {
       "path": "docs/api.md",
@@ -359,11 +359,11 @@
     },
     {
       "path": "docs/benchmarks.en.md",
-      "sha256": "ca5abc42dcb1d2d17439546ec27fc7a345eb8cf7892fb29382a531e37775de52"
+      "sha256": "278574bdec0434d211fe90fcdfedf4ac8eb92b3bcd82f0821239c176006de0f9"
     },
     {
       "path": "docs/benchmarks.md",
-      "sha256": "8139ceef3148f1028a18042a55dae61b41651e389a5ed5de37c28c80cf26b87d"
+      "sha256": "f981b3af953f5467e7de4dd69ea776956c7a5341272ab826374ce0ea9a88fcde"
     },
     {
       "path": "docs/configuration.en.md",
@@ -383,11 +383,11 @@
     },
     {
       "path": "docs/use-cases.en.md",
-      "sha256": "6d43e3aa68f612c1e4f44f86c9ac1c3bdcaaecfef2d388ff440d78b51f3ab893"
+      "sha256": "59459b9b626ce8837e9b2204a784dd09bc17d38e0c188038b4f6506e3781db4e"
     },
     {
       "path": "docs/use-cases.md",
-      "sha256": "a3f587a13f4d97e30f52c0b560c1afce6e4e95aeecee4ba046cd7a6106046cae"
+      "sha256": "e06121d40acdd453a61ff32c8a742e814a7f47f1e274fee6b31c382b399d7552"
     },
     {
       "path": "docs/visual-products.en.md",
@@ -415,7 +415,7 @@
     },
     {
       "path": "plugins/continuity-plane/scripts/continuity-hook.py",
-      "sha256": "28f2c43c9e70389dc0a58aed16c03a0d9d965ad394a09cc57d7ec05783188f53"
+      "sha256": "9e736422f045c8d50a5fcad2f51545884780389e0f07b9bf7c73f8d0bef6465f"
     },
     {
       "path": "plugins/continuity-plane/scripts/continuity-mcp-server.py",

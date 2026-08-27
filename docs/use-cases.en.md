@@ -88,6 +88,7 @@ and reports or projections cannot submit authoritative state. Current Skill sour
 - the model claims completion without tests, artifact hashes, or current provenance;
 - recovery continues side effects after a crash, 503, or corrupted checkpoint.
 
-E0-E9 currently pass `10/10`; compaction, Idea, interrupt, and worker-loss faults pass `4/4`;
+The mandatory consistency campaign passes `10/10`; compaction, Idea, interrupt,
+and worker-loss faults pass `4/4`;
 stale-history revival, silent CAS overwrite, and authority violations are `0`. Complete
 measurements, methods, and limitations are in the [benchmark method](benchmarks.en.md).

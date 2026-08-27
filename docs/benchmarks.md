@@ -50,8 +50,8 @@ prompt、repository path、thread ID、provider credential 或私有项目名。
 
 1M provider A/B 使用 `3+3+3` 次匹配运行；700K compaction 从 `783,628` 压缩到
 `24,776`，下一 packet 为 `59,172`，恢复率 `100%`。900K upstream compact 失败，
-因此没有把它写成成功能力。窗口有效利用率和两次压缩之间的工作量仍等待 M10-11
-纵向 trace。
+因此没有把它写成成功能力。窗口有效利用率和两次压缩之间的工作量仍等待纵向真实
+Session trace。
 
 ## 代码检索
 
@@ -84,7 +84,7 @@ host token trace，不能从 source bytes 直接推导。
 | 门 | 结果 |
 |---|---:|
 | compaction / Idea / interrupt / worker loss fault | `4/4` |
-| E0-E9 campaign | `10/10` |
+| mandatory experiment campaign | `10/10` |
 | dual-Session same-revision delivery | `1000/1000` |
 | duplicate-notification suppression | `1000/1000` |
 | offline catch-up | `2000/2000` |

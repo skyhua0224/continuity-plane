@@ -13,6 +13,13 @@ Windows AMD64 完成安装、verify 和卸载。
 python -m pip install continuity-plane==0.1.0a7
 ```
 
+从源码 checkout 开发时：
+
+```bash
+python -m venv .venv
+.venv/bin/python -m pip install --editable .
+```
+
 ### 从 GitHub Release 安装
 
 从 [Continuity Plane Releases](https://github.com/skyhua0224/continuity-plane/releases)
@@ -86,10 +93,10 @@ continuity attach plan \
   --root /path/to/project \
   --master /path/to/project/MASTER.md \
   --status /path/to/project/STATUS.md \
-  --work-id m10-09 \
-  --work-title "Complete export import rollback" \
+  --work-id work-current \
+  --work-title "Continue current delivery" \
   --owner-ref agent-main \
-  --scope capability:continuity
+  --scope capability:delivery
 ```
 
 这一步只读取并记录 MASTER/STATUS 的 hash，不写 SQLite。检查
@@ -108,6 +115,9 @@ STATUS 在两步之间发生变化会拒绝批准。重复批准返回 `already-
 
 已有 canonical MASTER 的长期项目都应使用这个流程；原 MASTER 继续拥有治理权，
 `.continuity/MASTER.md` 只做本地桥接。
+
+`state show` 通过与集成相同的 authorization 和 validation 边界读取 typed snapshot。
+初始 snapshot revision 为零，并包含一个名为 `work-initial` 的 proposed Work。
 
 ## Profile 选择
 
@@ -138,7 +148,7 @@ STATUS 在两步之间发生变化会拒绝批准。重复批准返回 `already-
 个人想进行 SQL 检查、备份或让多个本地 worker 共用状态时，可以选择 PostgreSQL：
 
 ```bash
-python -m pip install '/path/to/continuity_plane-0.1.0a7-py3-none-any.whl[postgres]'
+python -m pip install 'continuity-plane[postgres]==0.1.0a7'
 ```
 
 当前 alpha CLI 仍默认 SQLite。PostgreSQL 通过显式 Python adapter 使用：
@@ -191,15 +201,30 @@ shared-strong。
 5. 只有 export/import 后 snapshot、event head 和 rollback hash 一致，才能切换 authority；
 6. 失败时恢复备份并回到 `local-embedded`。
 
-M10-09 已完成 Linux、macOS、Windows 的安装、verify 和卸载；跨 adapter 的
-export/import/rollback CLI 仍在开发，因此当前不要手工修改 `project.yaml` 的
-`runtime_profile` 来冒充已切换。
+Linux、macOS、Windows 的安装、verify、卸载以及 local-embedded state bundle 的
+export/import/rollback 已通过。跨 adapter 的一键 profile switch 仍未提供，因此
+不要手工修改 `project.yaml` 的 `runtime_profile` 来冒充已切换。
+
+### 迁移或回滚本地状态
+
+以下命令适用于 `local-embedded`，用于可验证的备份迁移和原子回滚：
+
+```bash
+continuity export --root /path/to/project --output /safe/path/project-state.tar.gz
+continuity import --root /path/to/target --bundle /safe/path/project-state.tar.gz
+continuity rollback --root /path/to/target
+```
+
+`import --replace` 只应在目标已备份且确实需要替换现有本地 authority 时使用。bundle
+成员、hash、project identity 或 checkpoint 绑定不一致时，导入会在替换前失败。
 
 ## Agent 接入
 
 控制面安装在项目旁边，通过 CLI、Python API 或 provider adapter 使用。核心包不要求
 安装 Agent plugin。Codex 用户可以额外安装公开 plugin，让宿主自动加载 packet、执行
-压缩前后 checkpoint、恢复 canary 和副作用预检；plugin 不能拥有权威状态写权限。
+压缩前后 checkpoint、恢复 canary 和副作用预检。plugin 不直接修改数据库；写操作
+只能通过受 authorization、revision/CAS、validator、claim 和 checkpoint 约束的
+State MCP 工具提交。
 
 ### 安装公开 Codex plugin
 
@@ -233,8 +258,9 @@ blocker、next action 和恢复入口。中英文版本同步提供，中文文�
 不要把 Session 叙事和原始对话写入这两份文件。动态历史属于 typed state、append-only
 events 和 checkpoint。
 
-项目团队通常提交 canonical `MASTER.md`，个人 STATUS 和本地状态库保持本地；是否提交
-项目级模板由团队治理决定。
+项目团队通常提交 canonical `MASTER.md` 和明确属于团队的 project profile；个人
+STATUS overlay、本地状态库和 provider archive 保持本地。项目级 STATUS 是否提交由
+团队治理决定。
 
 ## 日常流程
 
@@ -268,13 +294,25 @@ Skill 是带版本、hash、适用范围、依赖、冲突和 expiry 的规则�
 缺失或漂移的 Skill 会先 quarantine。始终加载集合应保持很小；实测选中 Skill source
 bytes 降低超过 96%。
 
-## 协作与交接
+## 协作
+
+### 本地与 Forge-Coordinated
+
+多数团队继续使用现有 Git forge 展示 Work、branch、review 和 CI。控制面增加本地
+claim、checkpoint、evidence receipt 和冲突警告；贡献者无需连接共享数据库。
+
+### Shared-Strong
 
 所有权威写入或外部副作用都绑定：
 
 ```text
 project + active Work + claim + lease epoch + scope owner + expected revision
 ```
+
+lease 或 revision 过期时操作 fail closed。presence、聊天消息、branch 和 UI 状态都
+不能授予执行权限。
+
+### 交接
 
 交接必须携带 checkpoint、task revision、next action、return point、effect watermark、
 claim 状态和 evidence refs。接收方确认第一个动作后，才允许副作用。
@@ -283,6 +321,20 @@ claim 状态和 evidence refs。接收方确认第一个动作后，才允许副
 
 项目自行决定需要哪些 gate：静态检查、测试、构建、contract fixture、mutation、loopback、
 性能、故障恢复和 live-device。节省 token 或降低延迟不能跳过必要验证。
+
+## 存储
+
+默认 SQLite 文件为：
+
+```text
+.continuity/state.sqlite3
+```
+
+初始化时创建该文件。文件缺失、属于其他应用、schema 版本高于当前支持范围或完整性
+检查失败时，`verify` 与 `doctor` 会拒绝继续。
+
+PostgreSQL 仅是可选 adapter。artifact 可以保存在本地文件系统或外部对象存储；
+profile 记录可用 capability，不可用增强必须显式降级。
 
 ## 备份与移除
 
@@ -296,8 +348,8 @@ template 和 content-addressed artifact。所有 claim 关闭后，才能归档�
 <https://pypi.org/project/continuity-plane/0.1.0a7/>  
 <https://github.com/skyhua0224/continuity-plane/releases>
 
-首次发布使用受控 PyPI token 完成。后续发布已准备 GitHub Actions OIDC workflow 和
-`pypi` environment；PyPI 项目侧仍需绑定 Trusted Publisher，token 不进入仓库或
+当前公开版本使用受控 PyPI token 发布。GitHub Actions OIDC workflow 和 `pypi`
+environment 已准备，但 PyPI 项目侧仍需绑定 Trusted Publisher；token 不进入仓库或
 GitHub secret。
 
 ## 公开仓库

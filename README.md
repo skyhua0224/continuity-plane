@@ -81,7 +81,7 @@ continuity init --root /path/to/team-repo --project-id team-project --display-na
 | 代码检索 | input `-50.02%`；tool calls `-57.89%`；wall time `-27.41%`；quality `3/3` | [检索实测](docs/benchmarks.md#代码检索) |
 | Skill 装载 | source bytes `-96.54%`；quality `3/3` | [Skill 实测](docs/benchmarks.md#skill-装载) |
 | 多 Session 协调 | duplicate tool calls `-55.88%`；parallel wall time `-22.65%` | [协作实测](docs/benchmarks.md#多-session-协作) |
-| 一致性 | E0-E9 `10/10`；双 Session `1000/1000`；authority violation `0` | [一致性实测](docs/benchmarks.md#一致性与限制) |
+| 一致性 | 强一致性实验门 `10/10`；双 Session `1000/1000`；authority violation `0` | [一致性实测](docs/benchmarks.md#一致性与限制) |
 | 大型项目视图 | 2,000 nodes / 5,000 edges；scale p95 `187.459764 ms` | [图形视图](docs/project-views.md) |
 
 这些是匹配任务和当前 fixture 的场景级结果，不能合成为所有用户的统一节省率。
@@ -152,6 +152,7 @@ continuity state show --root .
 ## 文档
 
 - [完整使用教程](USAGE.md)
+- [alpha.7 完整变更与升级说明](CHANGELOG.md#010-alpha7)
 - [架构说明](docs/architecture.md)
 - [配置说明](docs/configuration.md)
 - [Python API](docs/api.md)
@@ -175,6 +176,6 @@ telemetry 都是可选的，法律归属以 LICENSE 和 NOTICE 为准。
 
 ## 当前状态
 
-Linux x86_64、macOS arm64 和 Windows AMD64 已完成安装、verify 和卸载。跨平台
-export/import/rollback、完整 Docmost connector、Obsidian Canvas/Bases 和
-shared-strong 部署仍在后续计划中。
+Linux x86_64、macOS arm64 和 Windows AMD64 已完成安装、verify 和卸载；本地
+state bundle 的 export/import/rollback 已可用。跨 adapter 一键 profile switch、
+完整 Docmost connector、Obsidian Canvas/Bases 和 shared-strong 部署仍在后续计划中。
