@@ -40,10 +40,12 @@ _EFFECT_PATTERNS = (
     (
         "source-control",
         re.compile(
-            r"(?:^|[;&|]\s*)(?:git\s+(?:commit|push|tag|merge|rebase|reset)|"
+            r"(?:^|[;&|]\s*)(?:git\s+(?:commit|push|merge|rebase|reset)\b|"
+            r"git\s+tag\s+(?!(?:-l|--list|--contains|--points-at|--merged|"
+            r"--no-merged|--sort|--format)\b)|"
             r"tea\s+(?:pulls?\s+(?:create|merge)|releases?)|"
-            r"gh\s+(?:pr\s+(?:create|merge)|release)|"
-            r"glab\s+(?:mr\s+(?:create|merge)|release))\b",
+            r"gh\s+(?:pr\s+(?:create|merge)|release\s+(?:create|delete|edit|upload))|"
+            r"glab\s+(?:mr\s+(?:create|merge)|release\s+(?:create|delete|update|upload)))\b",
             re.IGNORECASE,
         ),
     ),
@@ -743,7 +745,7 @@ def _acquire_effect_intent(
         if (
             row is not None
             and row[2] >= now
-            and (row[0], row[1]) != (session_sha256, tool_use_sha256)
+            and row[0] != session_sha256
         ):
             connection.rollback()
             return False
@@ -864,7 +866,12 @@ def _scope_allows(
         if isinstance(scope, dict) and scope.get("scope_kind") == "effect"
     }
     if effect_scopes:
-        return effect_action in effect_scopes
+        if effect_action in effect_scopes:
+            return True
+        return effect_action == "source-control.local" and any(
+            isinstance(scope_ref, str) and scope_ref.startswith("source-control.")
+            for scope_ref in effect_scopes
+        )
     if effect_action == "source-control.local":
         return all(
             isinstance(scope, dict)
