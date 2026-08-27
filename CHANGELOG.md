@@ -2,7 +2,13 @@
 
 [English](CHANGELOG.en.md)
 
-## 未发布
+## 0.1.0-alpha.8
+
+### 相比 0.1.0-alpha.7
+
+- 公开标签树相对 `v0.1.0-alpha.7` 的差异为 `22` 个文件（`2` 个新增、`20`
+  个修改，`+2,081/-166` 行）；alpha.1 的完整能力清单仍见下方 alpha.7 审计与
+  alpha.1 初始条目，以下条目只记录 alpha.8 新增的用户可见变化。
 
 - 新增 `continuity autorun` 与 `continuity_autorun` MCP 工具：checkpoint 已验证且
   权限有效时，同一 Session 自动回到当前 Work；同一 checkpoint 使用本地幂等记录，
@@ -21,8 +27,37 @@
 - 同一 Session 的连续副作用操作不再互相冲突，其他 Session 仍受仓库级 intent
   fencing 约束。
 
-这些修复发生在 `v0.1.0-alpha.7` 标签生成之后，不包含在
-`continuity-plane==0.1.0a7` 或该标签下的 Codex plugin 中，将进入下一预发行版。
+### 验证与边界
+
+- 控制面、MCP binding、plugin lifecycle、activation 和 autorun 聚焦测试 `61/61`；
+- 脱敏 live snapshot 在同一 MCP Session 中 `continued → already-continued`，重复调用
+  不产生 State Event；原项目状态与未通过的外部阻塞均保持不变；
+- public smoke/contracts/benchmark `5/5`，wheel/sdist `twine check`、公开隐私扫描、
+  Linux/macOS/Windows 安装矩阵和 repository verification 通过；
+- alpha.8 仍是预发行版，Docmost connector、Obsidian Canvas/Bases、shared-strong
+  一键部署和跨项目 matched token A/B 不构成完成声明。
+
+### 安装
+
+核心包：
+
+```bash
+python -m pip install continuity-plane==0.1.0a8
+```
+
+Codex plugin：
+
+```bash
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.8
+codex plugin add continuity-plane@continuity-plane
+```
+
+安装或升级 plugin 后请新建 Session。核心包可以单独使用；plugin 的状态变更只能通过
+受控 State MCP 工具提交。
+
+## 未发布
+
+- 下一版本的用户可见变化待提交后登记。
 
 ## 0.1.0-alpha.7
 

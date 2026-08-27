@@ -2,7 +2,14 @@
 
 [中文](CHANGELOG.md)
 
-## Unreleased
+## 0.1.0-alpha.8
+
+### Changes Since 0.1.0-alpha.7
+
+- The public tag-tree delta from `v0.1.0-alpha.7` is `22` files (`2` added and
+  `20` modified; `+2,081/-166` lines). The complete alpha.1 capability list remains
+  in the alpha.7 audit and alpha.1 entry below; the bullets here are only the
+  user-visible additions in alpha.8.
 
 - Added the `continuity autorun` CLI and `continuity_autorun` MCP tool. After a
   verified checkpoint and valid permissions, the same Session re-enters its
@@ -27,9 +34,42 @@
 - Sequential effects from one Session no longer conflict with each other; other
   Sessions remain fenced by the repository-level intent.
 
-These fixes were made after the `v0.1.0-alpha.7` tag was generated. They are not
-part of `continuity-plane==0.1.0a7` or the Codex plugin under that tag and will be
-included in the next prerelease.
+### Verification And Boundaries
+
+- Control-plane, MCP binding, plugin lifecycle, activation, and autorun focused
+  tests passed `61/61`.
+- A sanitized live snapshot returned `continued → already-continued` in one MCP
+  Session; the repeated call created no State Event, while the project state and
+  its unpassed external blocker were preserved.
+- Public smoke/contracts/benchmark `5/5`, wheel/sdist `twine check`, public
+  privacy scan, Linux/macOS/Windows installation matrix, and repository
+  verification passed.
+- Alpha.8 remains a prerelease. The Docmost connector, Obsidian Canvas/Bases,
+  one-command shared-strong deployment, and cross-project matched token A/B do
+  not constitute completion claims.
+
+### Installation
+
+Core package:
+
+```bash
+python -m pip install continuity-plane==0.1.0a8
+```
+
+Codex plugin:
+
+```bash
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.8
+codex plugin add continuity-plane@continuity-plane
+```
+
+Start a new Session after installing or upgrading the plugin. The core package
+works alone; plugin state changes can only be submitted through controlled State
+MCP tools.
+
+## Unreleased
+
+- User-visible changes for the next prerelease will be recorded after alpha.8.
 
 ## 0.1.0-alpha.7
 

@@ -35,11 +35,11 @@
     },
     {
       "path": "CHANGELOG.en.md",
-      "sha256": "9a07e3cdab0221ba7abae939fb9569b2152b4177554bd9d67c7c5451e5bb8873"
+      "sha256": "e8deb862baeca6d74ae2a9a1f2f05dab92993c85ad6cd07812895cdd24804dfe"
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "d05eeceb369b0071900bd91485e7d73020af6848c743c1a2efee7a1996ec38d5"
+      "sha256": "c2e0f426ddfea2aa856a4e8142ffbb1c1c849b7ed27b0c06af18d8e03d6efb81"
     },
     {
       "path": "CONTRIBUTING.en.md",
@@ -63,11 +63,11 @@
     },
     {
       "path": "README.en.md",
-      "sha256": "8138773d109154b0d1016c0020502608a60ebc4f587d3e66cc28105c444dbebc"
+      "sha256": "5c1bebb91ad2faa72e59ed8778cdd197291a4aabf55ca180ae9b9856ace4af87"
     },
     {
       "path": "README.md",
-      "sha256": "86a0ce064f0c079070558bf75317071a2ec17faefa23edfd0c28ab44b831787a"
+      "sha256": "3492e3ea3ef528372a3c9da35edc7864ff56594a2bed1d7d1e58e8ed0485c39f"
     },
     {
       "path": "SECURITY.en.md",
@@ -87,11 +87,11 @@
     },
     {
       "path": "USAGE.en.md",
-      "sha256": "84facf677dd2cf897b5f20fd4a4c3c52abc3f483a875ee8491b16d371bf37b01"
+      "sha256": "9abad66ad78867550158eb04cbafd2573692e9b4eef1329bab04ff5ab6253d3e"
     },
     {
       "path": "USAGE.md",
-      "sha256": "b16edc606dc054bd136d1eb2179f5bc1b24fc141a502fc14614ee467011f6b9b"
+      "sha256": "428f555f6cf9de651e4daa543ef7ec70ef4cda9cb94c5868ce39a717a8dc94f0"
     },
     {
       "path": "benchmarks/__init__.py",
@@ -99,7 +99,7 @@
     },
     {
       "path": "benchmarks/reference-results.json",
-      "sha256": "3d6f906b67100b395b4a5f20b585e6c383e3f59dae6418abbe4d8fb9c6f4920d"
+      "sha256": "9645ea7b4703211ff7624e276ea0a85ee60e522bc6e67f586f9e0d5eda9ee851"
     },
     {
       "path": "benchmarks/run_local_state.py",
@@ -135,7 +135,7 @@
     },
     {
       "path": "continuity_plane/cli.py",
-      "sha256": "71130294ef58f72143bc22e8a7cf2e1c2faad2dc54255636875ea3ad7caaa902"
+      "sha256": "bc24ea9966081d4276174e18582acc0957a9536f34346f1cbb716ba19e5a4c51"
     },
     {
       "path": "continuity_plane/codegraph_verification.py",
@@ -407,7 +407,7 @@
     },
     {
       "path": "plugins/continuity-plane/.codex-plugin/plugin.json",
-      "sha256": "801fe96798a8d037491f2a2cb55e8763d0a6723f8e9fc73c402e1b943fb3f934"
+      "sha256": "bdac8fe6292b13f545d57f996b942ead9cf9e808ea4a893d6207c1143e874ce5"
     },
     {
       "path": "plugins/continuity-plane/.mcp.json",
@@ -431,7 +431,7 @@
     },
     {
       "path": "pyproject.toml",
-      "sha256": "46834d567895a28e4efdf6f8be9941f27c79a95d5253e7ca1812c52dda417687"
+      "sha256": "cfb7e43edde4f18060763a31392645b84be7d94d8ae033d72f772a000a6a3624"
     },
     {
       "path": "schemas/m10-01/canonical-attach-proposal.schema.json",
@@ -543,5 +543,5 @@
     }
   ],
   "schema_version": "context.public-release-manifest/v1",
-  "version": "0.1.0-alpha.7"
+  "version": "0.1.0-alpha.8"
 }
