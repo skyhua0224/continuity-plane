@@ -11,7 +11,7 @@ AMD64.
 Install from PyPI:
 
 ```bash
-python -m pip install continuity-plane==0.1.0a1
+python -m pip install continuity-plane==0.1.0a7
 ```
 
 For a source checkout:
@@ -29,7 +29,7 @@ projects:
 ```bash
 python3 -m venv ~/.local/share/continuity-plane/venv
 ~/.local/share/continuity-plane/venv/bin/python \
-  -m pip install continuity-plane==0.1.0a1
+  -m pip install continuity-plane==0.1.0a7
 ```
 
 Run the installed CLI with an explicit project root whenever the command is not
@@ -47,7 +47,7 @@ For a project that pins its own control-plane version:
 ```bash
 cd /path/to/project
 python3 -m venv .venv
-.venv/bin/python -m pip install continuity-plane==0.1.0a1
+.venv/bin/python -m pip install continuity-plane==0.1.0a7
 .venv/bin/continuity init --root . --project-id my-project
 ```
 
@@ -86,6 +86,42 @@ continuity verify --root /path/to/project
 continuity doctor --root /path/to/project
 continuity state show --root /path/to/project
 ```
+
+## Attach An Existing MASTER And STATUS
+
+Do not overwrite an existing project's plan with the generated template. Create a
+read-only proposal first:
+
+```bash
+continuity attach plan \
+  --root /path/to/project \
+  --master /path/to/project/MASTER.md \
+  --status /path/to/project/STATUS.md \
+  --work-id m10-09 \
+  --work-title "Complete export import rollback" \
+  --owner-ref agent-main \
+  --scope capability:continuity
+```
+
+This only reads the sources and records their hashes. Inspect
+`.continuity/attach-proposal.json`, then approve explicitly:
+
+```bash
+continuity attach approve \
+  --root /path/to/project \
+  --actor-ref agent-main \
+  --claim-id claim-m10-09
+```
+
+Approval uses State MCP to create a revisioned commit and claim. The initial
+template Work is marked rejected, the existing Work becomes active, and source
+evidence is bound to the proposal digest. A source change between planning and
+approval is rejected. Repeating approval returns `already-attached` without a
+duplicate Event.
+
+Long-running projects with an existing canonical MASTER should use this flow.
+The original MASTER keeps governance authority; `.continuity/MASTER.md` remains
+a local bridge.
 
 `state show` reads the typed snapshot through the same authorization and
 validation boundary used by integrations. The initial snapshot has revision
@@ -199,9 +235,37 @@ do not edit `project.yaml.runtime_profile` by hand to claim a completed switch.
 
 The control plane is installed beside the project and accessed by an Agent
 through CLI, Python API, or a provider adapter. A provider-specific plugin is
-not required by the core package. A future plugin may automate packet loading,
-PreCompact/PostCompact checkpoints, and recovery canaries, but it must remain a
-thin integration layer without state authority.
+not required by the core package. Codex users can optionally install the public
+plugin to automate packet loading, PreCompact/PostCompact checkpoints, recovery
+canaries, and effect preflight; it remains a thin integration layer without
+state authority.
+
+### Install The Public Codex Plugin
+
+Install the core package, then add this GitHub repository as a marketplace:
+
+```bash
+python -m pip install continuity-plane==0.1.0a7
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.7
+codex plugin add continuity-plane@continuity-plane
+```
+
+Start a new Session after installation. The plugin discovers and binds the
+project's `.continuity/` directory at SessionStart, runs checkpoint lifecycle
+hooks around compaction, and preflights claim/effect scope before push, PR,
+merge, deploy, and remote installation. Ordinary answers stay free of recovery
+narration.
+
+To upgrade the plugin, refresh the marketplace, reinstall it, and start a new
+Session:
+
+```bash
+codex plugin marketplace upgrade continuity-plane
+codex plugin add continuity-plane@continuity-plane
+```
+
+Projects that do not need host hooks can keep using the core CLI alone; disabling
+the plugin does not delete `.continuity/` state.
 
 ## MASTER And STATUS
 
@@ -320,7 +384,7 @@ storage.
 
 The current version is available from PyPI and GitHub Releases:
 
-<https://pypi.org/project/continuity-plane/0.1.0a1/>  
+<https://pypi.org/project/continuity-plane/0.1.0a7/>  
 <https://github.com/skyhua0224/continuity-plane/releases>
 
 The first release used a controlled PyPI token. Future releases have a GitHub

@@ -1,0 +1,20 @@
+{
+  "name": "continuity-plane",
+  "interface": {
+    "displayName": "Continuity Plane"
+  },
+  "plugins": [
+    {
+      "name": "continuity-plane",
+      "source": {
+        "source": "local",
+        "path": "./plugins/continuity-plane"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

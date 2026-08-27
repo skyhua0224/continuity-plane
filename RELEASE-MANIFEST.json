@@ -1,6 +1,10 @@
 {
-  "file_count": 117,
+  "file_count": 133,
   "files": [
+    {
+      "path": ".agents/plugins/marketplace.json",
+      "sha256": "9c871fa722d97c8792c293f1db3284e26544658637232793b6a0d401d59df2fa"
+    },
     {
       "path": ".gitattributes",
       "sha256": "b31ed42ed58a1c3ef4d89889c42e1ac960eb194d94b59030ba377626e86503a5"
@@ -31,11 +35,11 @@
     },
     {
       "path": "CHANGELOG.en.md",
-      "sha256": "21f3ba74c6dfabb533ab4fd12eadea1a73e63f62a08623870c509bea96d77525"
+      "sha256": "59c32bd59e6bb986bb0c18352d927d8e483a2f9d788ef74ef87634d818caa460"
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "c64c36294c1d39b05726aa2c52ac83a8c7cb584bfb5fe7b360b2229475dde571"
+      "sha256": "e21601e594daa907cf7714c820fe42c1c42843d466a327db4bd55e9dde83c81d"
     },
     {
       "path": "CONTRIBUTING.en.md",
@@ -59,11 +63,11 @@
     },
     {
       "path": "README.en.md",
-      "sha256": "1deb762c9eb2ab30ff828fb09cb289cc9328f763202b2c9de1f63883de4697f5"
+      "sha256": "10847d0b6b55901a21f3cafba91c4c485e0fef61adc8e3dc0184136be1d88747"
     },
     {
       "path": "README.md",
-      "sha256": "88ca0b7a16234b4642d74468614da8debc5dbc08bcd7137d8e4fdc4e511f5f03"
+      "sha256": "b114067b0df9a23915d4d69d931cfeeb49131c4139da8d29050af10dce943b38"
     },
     {
       "path": "SECURITY.en.md",
@@ -83,11 +87,11 @@
     },
     {
       "path": "USAGE.en.md",
-      "sha256": "df4f01b4f16164bffb6a7d7bc90a084b7b5188afe6e648b3d266ecb47d92d2e3"
+      "sha256": "3b28bedb9aa74c549136b37a51873bfc13cb81e73c175783b9587a1ba8b02301"
     },
     {
       "path": "USAGE.md",
-      "sha256": "c76b32ea0371988177c1143ad638437f3e95d9c0f7bb086228c9f6b45b1dabc8"
+      "sha256": "54ec14fd5dd9627094b457ec710c7743900e6d62e32ff5264678a75f0ea217b4"
     },
     {
       "path": "benchmarks/__init__.py",
@@ -95,7 +99,7 @@
     },
     {
       "path": "benchmarks/reference-results.json",
-      "sha256": "0e7521e33422ffb2e367e64cab1695c4681aab7ed2490a8cf5cc7aba6117571c"
+      "sha256": "3d6f906b67100b395b4a5f20b585e6c383e3f59dae6418abbe4d8fb9c6f4920d"
     },
     {
       "path": "benchmarks/run_local_state.py",
@@ -118,6 +122,10 @@
       "sha256": "08f0e56efcdae84a3f66b1e8d1e79be71b5ed48789f41b13a6238f550d61b97b"
     },
     {
+      "path": "continuity_plane/canonical_attach.py",
+      "sha256": "19d43734a8b21f5a06ae58c7151ba76627283c5d585dd7d9f6f2c83dafbc708b"
+    },
+    {
       "path": "continuity_plane/checkpoint.py",
       "sha256": "02c5e2f290124efa838373d014d4073bf28db2123b25504b101dd3aa4690dddc"
     },
@@ -127,7 +135,7 @@
     },
     {
       "path": "continuity_plane/cli.py",
-      "sha256": "2dba664f2ab5aecfcfd76a6abe0d30a1018e32a37e4c21395a7034c9a78daed5"
+      "sha256": "a1393a7657ea803e85604caa332766d4196b609b597d7f33be54ccc1cb651642"
     },
     {
       "path": "continuity_plane/codegraph_verification.py",
@@ -190,6 +198,10 @@
       "sha256": "868e94f2173a589d6f778f248f71338147e0db359a393ae719acb48aec812817"
     },
     {
+      "path": "continuity_plane/local_state_bundle.py",
+      "sha256": "989c97ffb249cde2eef1aba415870d6fd127672290621597fce8b3839559a26b"
+    },
+    {
       "path": "continuity_plane/obsidian_vault.py",
       "sha256": "4b323626d7860574f0fbd175a9453dbbf4cfc360f3565a0d73b06f2220a09258"
     },
@@ -202,12 +214,20 @@
       "sha256": "429e96fba18fa85dbf5870d46cd16decffaee4ef41f4aa1c2f10998309a66247"
     },
     {
+      "path": "continuity_plane/recovery_envelope.py",
+      "sha256": "ce2433c836ef2eb3380559f0258d211c5327d8116593804bcbdb869ce28d5c89"
+    },
+    {
       "path": "continuity_plane/relationship_impact_projection.py",
       "sha256": "2287c18c03c1adc5da221a4ba6ca796c2c9451fea2ba2a15d5caa5732ecf3782"
     },
     {
       "path": "continuity_plane/retrieval_routing.py",
       "sha256": "ea4aab19cbd360710802367dd9088f3c59c9e1d1b91967daa5a6e9894cfe6b9a"
+    },
+    {
+      "path": "continuity_plane/route_apply.py",
+      "sha256": "673c77d473706bf785febc9e1fac03d95090a707b9ac60f2726945e42190f1ed"
     },
     {
       "path": "continuity_plane/sanitizer.py",
@@ -267,11 +287,19 @@
     },
     {
       "path": "continuity_plane/state_mcp.py",
-      "sha256": "9d1b163f12a7867469171efdda790d883bb3766ae53b1ab6001de36173d8767f"
+      "sha256": "2bfe3ec7dcc3d2bf2457508412fff19f28d5322b4feb555781910a793fbe9682"
     },
     {
       "path": "continuity_plane/state_store.py",
       "sha256": "bc8faf68bb33c8158a38de21339f982963fc72eb8d4d57793fa036e8ecfd7f0d"
+    },
+    {
+      "path": "continuity_plane/status_projection.py",
+      "sha256": "475982cbcd2596ed7e70b6a437637770ea366106219b9e2b55dfd2a79b3d84b0"
+    },
+    {
+      "path": "continuity_plane/sticky_router.py",
+      "sha256": "ca9d3f7e83dee037c9a5953db1852a0086da0bf8376c972af2f6c00c1852a4d2"
     },
     {
       "path": "continuity_plane/templates/MASTER.en.md",
@@ -304,6 +332,10 @@
     {
       "path": "continuity_plane/verification_profile.py",
       "sha256": "27bf856e3bde8a2f2758bfaabd213e27bdb913ad775b835b873d802f614225e0"
+    },
+    {
+      "path": "continuity_plane/workspace_binding.py",
+      "sha256": "9c146b77d9fe279472861f29e6a71091e27817b1f80e19e44af313f02bc6696f"
     },
     {
       "path": "docs/api.en.md",
@@ -370,8 +402,40 @@
       "sha256": "4ef226ac1cddd7305c4d70304a7be74b951a9802d1ef82c441d5bf69e3c9f002"
     },
     {
+      "path": "plugins/continuity-plane/.codex-plugin/plugin.json",
+      "sha256": "801fe96798a8d037491f2a2cb55e8763d0a6723f8e9fc73c402e1b943fb3f934"
+    },
+    {
+      "path": "plugins/continuity-plane/.mcp.json",
+      "sha256": "14d94e9821fb98f840f41c64f9a1543881c693b60685b7720a687624fc3b8db2"
+    },
+    {
+      "path": "plugins/continuity-plane/hooks/hooks.json",
+      "sha256": "81e34c49e96a0a912504780201b10b3dda662694ec049208a2c660af1f22ecb9"
+    },
+    {
+      "path": "plugins/continuity-plane/scripts/continuity-hook.py",
+      "sha256": "28f2c43c9e70389dc0a58aed16c03a0d9d965ad394a09cc57d7ec05783188f53"
+    },
+    {
+      "path": "plugins/continuity-plane/scripts/continuity-mcp-server.py",
+      "sha256": "79918787a50056ca79c7d2b2112c97eb976097dc4ec295f3003344a09b6a8607"
+    },
+    {
+      "path": "plugins/continuity-plane/skills/continuity-plane/SKILL.md",
+      "sha256": "4495a91b1e0b6b34de4e1f100c436fc9b7869e5ebd50f03c203d236048a87e74"
+    },
+    {
       "path": "pyproject.toml",
-      "sha256": "2bc8e416485c3bed4dc9df8b85c7211e99017d046dd3b6955582c9f705c40034"
+      "sha256": "48b8674e235c87a053623ee0fa973367ef0bdf37dc83ffc23744e050a6cbabd8"
+    },
+    {
+      "path": "schemas/m10-01/canonical-attach-proposal.schema.json",
+      "sha256": "e32fdc2766bddefc853f2ff2d1392b3852b4519aaab0fd5a424dd1b83671206f"
+    },
+    {
+      "path": "schemas/m10-11/status-projection.schema.json",
+      "sha256": "2b2e9f03791adaaa8eb2160de545f190781686e50e7aa2656d63b1bd21f89963"
     },
     {
       "path": "schemas/m2-01/typed-state.schema.json",
@@ -439,7 +503,7 @@
     },
     {
       "path": "schemas/registry.json",
-      "sha256": "33d86b29e6d4267d5f28ee61c7264b25c35acb3f10fd5347097cda5be06a464e"
+      "sha256": "c6b9d12c8d79334ea7e2f2a071003ef632e69ba30623db7449227aeed1af6fe7"
     },
     {
       "path": "templates/MASTER.en.md",
@@ -471,5 +535,5 @@
     }
   ],
   "schema_version": "context.public-release-manifest/v1",
-  "version": "0.1.0-alpha.1"
+  "version": "0.1.0-alpha.7"
 }

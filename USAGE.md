@@ -10,7 +10,7 @@ Windows AMD64 完成安装、verify 和卸载。
 ### 从 PyPI 安装
 
 ```bash
-python -m pip install continuity-plane==0.1.0a1
+python -m pip install continuity-plane==0.1.0a7
 ```
 
 ### 从 GitHub Release 安装
@@ -19,7 +19,7 @@ python -m pip install continuity-plane==0.1.0a1
 下载 wheel 或 source archive：
 
 ```bash
-python -m pip install /path/to/continuity_plane-0.1.0a1-py3-none-any.whl
+python -m pip install /path/to/continuity_plane-0.1.0a7-py3-none-any.whl
 ```
 
 ### 全局安装，管理多个项目
@@ -29,7 +29,7 @@ python -m pip install /path/to/continuity_plane-0.1.0a1-py3-none-any.whl
 ```bash
 python3 -m venv ~/.local/share/continuity-plane/venv
 ~/.local/share/continuity-plane/venv/bin/python \
-  -m pip install continuity-plane==0.1.0a1
+  -m pip install continuity-plane==0.1.0a7
 
 ~/.local/share/continuity-plane/venv/bin/continuity \
   init --root /path/to/project --project-id my-project
@@ -40,7 +40,7 @@ python3 -m venv ~/.local/share/continuity-plane/venv
 ```bash
 cd /path/to/project
 python3 -m venv .venv
-.venv/bin/python -m pip install continuity-plane==0.1.0a1
+.venv/bin/python -m pip install continuity-plane==0.1.0a7
 .venv/bin/continuity init --root . --project-id my-project
 ```
 
@@ -77,6 +77,38 @@ continuity doctor --root /path/to/project
 continuity state show --root /path/to/project
 ```
 
+## 接入已有 MASTER 和 STATUS
+
+已有项目不要直接用模板覆盖原计划。先生成只读 proposal：
+
+```bash
+continuity attach plan \
+  --root /path/to/project \
+  --master /path/to/project/MASTER.md \
+  --status /path/to/project/STATUS.md \
+  --work-id m10-09 \
+  --work-title "Complete export import rollback" \
+  --owner-ref agent-main \
+  --scope capability:continuity
+```
+
+这一步只读取并记录 MASTER/STATUS 的 hash，不写 SQLite。检查
+`.continuity/attach-proposal.json` 后，再显式批准：
+
+```bash
+continuity attach approve \
+  --root /path/to/project \
+  --actor-ref agent-main \
+  --claim-id claim-m10-09
+```
+
+批准会通过 State MCP 产生 revisioned commit 和 claim：初始模板 Work 被标记为
+rejected，现有 Work 进入 active，source evidence 绑定到 proposal hash。源 MASTER 或
+STATUS 在两步之间发生变化会拒绝批准。重复批准返回 `already-attached`，不会产生重复 Event。
+
+已有 canonical MASTER 的长期项目都应使用这个流程；原 MASTER 继续拥有治理权，
+`.continuity/MASTER.md` 只做本地桥接。
+
 ## Profile 选择
 
 ### `local-embedded`：默认
@@ -106,7 +138,7 @@ continuity state show --root /path/to/project
 个人想进行 SQL 检查、备份或让多个本地 worker 共用状态时，可以选择 PostgreSQL：
 
 ```bash
-python -m pip install '/path/to/continuity_plane-0.1.0a1-py3-none-any.whl[postgres]'
+python -m pip install '/path/to/continuity_plane-0.1.0a7-py3-none-any.whl[postgres]'
 ```
 
 当前 alpha CLI 仍默认 SQLite。PostgreSQL 通过显式 Python adapter 使用：
@@ -166,8 +198,32 @@ export/import/rollback CLI 仍在开发，因此当前不要手工修改 `projec
 ## Agent 接入
 
 控制面安装在项目旁边，通过 CLI、Python API 或 provider adapter 使用。核心包不要求
-安装任何 Agent plugin。未来 plugin 可以自动加载 packet、执行压缩前后 checkpoint
-和恢复 canary，但不能拥有权威状态写权限。
+安装 Agent plugin。Codex 用户可以额外安装公开 plugin，让宿主自动加载 packet、执行
+压缩前后 checkpoint、恢复 canary 和副作用预检；plugin 不能拥有权威状态写权限。
+
+### 安装公开 Codex plugin
+
+先安装核心包，再把本项目 GitHub 仓库作为 marketplace：
+
+```bash
+python -m pip install continuity-plane==0.1.0a7
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.7
+codex plugin add continuity-plane@continuity-plane
+```
+
+安装后新建 Session。Codex plugin 会在 `SessionStart` 根据当前项目根目录发现并绑定
+`.continuity/`，在 `PreCompact`/`PostCompact` 执行 checkpoint 生命周期，并在需要时对
+push、PR、merge、deploy 和远端安装做 claim/effect 预检。普通问题不会输出恢复旁白。
+
+升级 plugin 时刷新 marketplace 后重新安装，并新建 Session：
+
+```bash
+codex plugin marketplace upgrade continuity-plane
+codex plugin add continuity-plane@continuity-plane
+```
+
+如果某个项目暂时不需要宿主 hook，保留核心 CLI 即可；停用 plugin 不会删除项目的
+`.continuity/` 状态。
 
 ## MASTER 与 STATUS
 
@@ -237,7 +293,7 @@ template 和 content-addressed artifact。所有 claim 关闭后，才能归档�
 
 当前版本同时发布到 PyPI 和 GitHub Release：
 
-<https://pypi.org/project/continuity-plane/0.1.0a1/>  
+<https://pypi.org/project/continuity-plane/0.1.0a7/>  
 <https://github.com/skyhua0224/continuity-plane/releases>
 
 首次发布使用受控 PyPI token 完成。后续发布已准备 GitHub Actions OIDC workflow 和

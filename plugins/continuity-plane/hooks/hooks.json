@@ -1,0 +1,76 @@
+{
+  "description": "Continuity Plane compaction checkpoint and bounded recovery hooks.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${PLUGIN_ROOT}/scripts/continuity-hook.py\"",
+            "commandWindows": "py -3 \"%PLUGIN_ROOT%\\scripts\\continuity-hook.py\"",
+            "timeout": 10,
+            "statusMessage": "Loading bounded continuity state",
+            "additionalContextLimit": 5000
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "manual|auto",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${PLUGIN_ROOT}/scripts/continuity-hook.py\"",
+            "commandWindows": "py -3 \"%PLUGIN_ROOT%\\scripts\\continuity-hook.py\"",
+            "timeout": 10,
+            "statusMessage": "Creating continuity checkpoint"
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "matcher": "manual|auto",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${PLUGIN_ROOT}/scripts/continuity-hook.py\"",
+            "commandWindows": "py -3 \"%PLUGIN_ROOT%\\scripts\\continuity-hook.py\"",
+            "timeout": 10,
+            "statusMessage": "Verifying continuity checkpoint"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${PLUGIN_ROOT}/scripts/continuity-hook.py\"",
+            "commandWindows": "py -3 \"%PLUGIN_ROOT%\\scripts\\continuity-hook.py\"",
+            "timeout": 5,
+            "statusMessage": "Checking Continuity effect authority"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${PLUGIN_ROOT}/scripts/continuity-hook.py\"",
+            "commandWindows": "py -3 \"%PLUGIN_ROOT%\\scripts\\continuity-hook.py\"",
+            "timeout": 5,
+            "statusMessage": "Accounting Continuity recovery reads"
+          }
+        ]
+      }
+    ]
+  }
+}

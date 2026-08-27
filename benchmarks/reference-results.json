@@ -42,8 +42,8 @@
   },
   "public_reproduction_command": "python benchmarks/run_local_state.py --iterations 1000",
   "quality_rate": 1.0,
-  "receipt_sha256": "95622eb64718f2cb75b55afb263240057f65dc8501616f224a91234535264e3a",
-  "release": "0.1.0-alpha.1",
+  "receipt_sha256": "76d43489464e77bc0b462ad8896fa4ab0e785eb4a9e4a6ff72a5e2fb3424edeb",
+  "release": "0.1.0-alpha.7",
   "sample_sizes": {
     "code_retrieval_per_arm": 3,
     "collaboration_per_arm": 3,

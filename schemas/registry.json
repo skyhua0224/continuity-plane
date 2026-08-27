@@ -2,6 +2,14 @@
   "schema_version": "context.public-schema-registry/v1",
   "schemas": [
     {
+      "path": "schemas/m10-01/canonical-attach-proposal.schema.json",
+      "sha256": "e32fdc2766bddefc853f2ff2d1392b3852b4519aaab0fd5a424dd1b83671206f"
+    },
+    {
+      "path": "schemas/m10-11/status-projection.schema.json",
+      "sha256": "2b2e9f03791adaaa8eb2160de545f190781686e50e7aa2656d63b1bd21f89963"
+    },
+    {
       "path": "schemas/m2-01/typed-state.schema.json",
       "sha256": "4a147060f03be415e0f3517c73aa9851c525783ba010927c08d3481795cf9af4"
     },
