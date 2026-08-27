@@ -131,6 +131,9 @@ class PublicReleaseBuilderTests(unittest.TestCase):
             self.assertTrue(
                 (output / "continuity_plane/postgres_state_store.py").is_file()
             )
+            self.assertTrue(
+                (output / "continuity_plane/codex_mcp_server.py").is_file()
+            )
             for module in (
                 "decision_evidence_projection.py",
                 "external_state_provider.py",
@@ -161,6 +164,10 @@ class PublicReleaseBuilderTests(unittest.TestCase):
             self.assertEqual(
                 metadata["project"]["scripts"]["continuity"],
                 "continuity_plane.cli:main",
+            )
+            self.assertEqual(
+                metadata["project"]["scripts"]["continuity-mcp"],
+                "continuity_plane.codex_mcp_server:main",
             )
             self.assertIn("Apache License", (output / "LICENSE").read_text())
             public_text = "\n".join(

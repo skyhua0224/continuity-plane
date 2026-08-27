@@ -2241,7 +2241,7 @@ schemas:
     current_wire_version: context.local-work-activation-request/v1alpha1
     supported_wire_versions: [context.local-work-activation-request/v1alpha1]
     artifact_path: schemas/m10-11/local-work-activation-request.schema.json
-    content_sha256: f0e0c07599915622cf6223b0537985ad8c6a2a932ae69da9fd7182e8c03ac7ad
+    content_sha256: b98da170d95735c2dd2280447e1f2f151c6fecaa3769557c08aae6d2cb87d542
     status: current
     compatibility_mode: strict-versioned
     migrations: []

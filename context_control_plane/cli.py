@@ -483,6 +483,22 @@ def _attach_source_digest(proposal: dict[str, Any]) -> str:
     ).hexdigest()
 
 
+def _build_attach_evidence(
+    proposal: dict[str, Any], *, observed_at: str | None = None
+) -> dict[str, Any]:
+    source_digest = _attach_source_digest(proposal)
+    timestamp = observed_at or datetime.now(UTC).isoformat()
+    return {
+        "evidence_id": f"evidence-attach-{proposal['proposal_sha256'][:16]}",
+        "kind": "artifact",
+        "artifact_ref": f"artifact://sha256/{source_digest}",
+        "content_sha256": source_digest,
+        "validity": "verified",
+        "observed_at": timestamp,
+        "verified_at": timestamp,
+    }
+
+
 def _verified_attach_evidence(
     snapshot: dict[str, Any], proposal: dict[str, Any]
 ) -> dict[str, Any]:
@@ -650,6 +666,7 @@ def _attach_refresh(args: argparse.Namespace) -> int:
                     "old_proposal_sha256": old["proposal_sha256"],
                     "proposal_sha256": old["proposal_sha256"],
                     "changed_sources": [],
+                    "state_rebind_required": False,
                     "state_write_authority": False,
                 },
                 sort_keys=True,
@@ -665,6 +682,7 @@ def _attach_refresh(args: argparse.Namespace) -> int:
                 "old_proposal_sha256": old["proposal_sha256"],
                 "proposal_sha256": refreshed["proposal_sha256"],
                 "changed_sources": changed,
+                "state_rebind_required": True,
                 "state_write_authority": False,
             },
             sort_keys=True,
@@ -1057,6 +1075,227 @@ def _resume(args: argparse.Namespace) -> int:
         raise ValueError("status projection refresh failed") from exc
     print(json.dumps(packet, ensure_ascii=False, sort_keys=True))
     return 0
+
+
+def _capture_json_handler(handler: Any, args: argparse.Namespace) -> dict[str, Any]:
+    output = io.StringIO()
+    with contextlib.redirect_stdout(output):
+        result = handler(args)
+    if result not in (None, 0):
+        raise ValueError("continuation operation failed")
+    try:
+        document = json.loads(output.getvalue().strip().splitlines()[-1])
+    except (IndexError, json.JSONDecodeError) as exc:
+        raise ValueError("continuation operation returned invalid JSON") from exc
+    if not isinstance(document, dict):
+        raise ValueError("continuation operation returned an invalid document")
+    return document
+
+
+def _autorun_ledger(root: Path) -> sqlite3.Connection:
+    path = root / ".continuity/autorun.sqlite3"
+    connection = sqlite3.connect(path, timeout=2.0)
+    connection.execute("PRAGMA busy_timeout = 2000")
+    connection.execute(
+        """
+        CREATE TABLE IF NOT EXISTS continuation_runs (
+            session_sha256 TEXT NOT NULL,
+            project_root_sha256 TEXT NOT NULL,
+            checkpoint_digest TEXT NOT NULL,
+            claim_id TEXT NOT NULL,
+            next_action TEXT NOT NULL,
+            recorded_at TEXT NOT NULL,
+            PRIMARY KEY (session_sha256, project_root_sha256, checkpoint_digest, claim_id)
+        )
+        """
+    )
+    return connection
+
+
+def _autorun_resume_packet(root: Path) -> dict[str, Any]:
+    return _capture_json_handler(
+        _resume,
+        argparse.Namespace(root=str(root), interaction_cursor=None, skill_lock=None),
+    )
+
+
+def _autorun_reclaim_id(session_id: str, claim_id: str, checkpoint_digest: str) -> str:
+    digest = hashlib.sha256(
+        f"{session_id}:{claim_id}:{checkpoint_digest}".encode("utf-8")
+    ).hexdigest()
+    return f"autorun-reclaim-{digest[:40]}"
+
+
+def _autorun_hash(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+
+def _autorun(args: argparse.Namespace) -> int:
+    root = Path(args.root).resolve()
+    session_id = args.session_id
+    if not isinstance(session_id, str) or not session_id.strip() or len(session_id) > 256:
+        raise ValueError("session-id must be a bounded non-empty string")
+    if args.actor_ref is not None and _STATE_ID_RE.fullmatch(args.actor_ref) is None:
+        raise ValueError("actor-ref must be a bounded identifier")
+    if args.claim_id is not None and _STATE_ID_RE.fullmatch(args.claim_id) is None:
+        raise ValueError("claim-id must be a bounded identifier")
+    if type(args.max_attempts) is not int or not 1 <= args.max_attempts <= 5:
+        raise ValueError("max-attempts must be between 1 and 5")
+    if type(args.heartbeat_window_ms) is not int or not 0 <= args.heartbeat_window_ms <= 86_400_000:
+        raise ValueError("heartbeat-window-ms is outside the allowed range")
+
+    packet: dict[str, Any] | None = None
+    recovery_receipts: list[dict[str, Any]] = []
+    for _ in range(args.max_attempts):
+        try:
+            packet = _autorun_resume_packet(root)
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            print(
+                json.dumps(
+                    {
+                        "status": "paused",
+                        "project_id": None,
+                        "failed_gate": "resume",
+                        "error": str(exc),
+                        "state_event_created": False,
+                    },
+                    sort_keys=True,
+                )
+            )
+            return 2
+        active = packet.get("active_work")
+        claim = packet.get("claim")
+        checkpoint = packet.get("checkpoint_ref")
+        if not isinstance(active, dict) or not isinstance(claim, dict):
+            print(
+                json.dumps(
+                    {
+                        "status": "paused",
+                        "project_id": packet.get("project_id"),
+                        "failed_gate": "active_work",
+                        "next_action": packet.get("next_action"),
+                        "state_event_created": False,
+                    },
+                    sort_keys=True,
+                )
+            )
+            return 2
+        if args.actor_ref is not None and claim.get("actor_ref") != args.actor_ref:
+            print(json.dumps({"status": "paused", "failed_gate": "actor_ref", "state_event_created": False}, sort_keys=True))
+            return 2
+        if args.claim_id is not None and claim.get("claim_id") != args.claim_id:
+            print(json.dumps({"status": "paused", "failed_gate": "claim_id", "state_event_created": False}, sort_keys=True))
+            return 2
+        if not isinstance(checkpoint, dict) or not isinstance(checkpoint.get("digest"), str):
+            print(json.dumps({"status": "paused", "failed_gate": "checkpoint", "state_event_created": False}, sort_keys=True))
+            return 2
+        claim_id = claim.get("claim_id")
+        actor_ref = claim.get("actor_ref")
+        if not isinstance(claim_id, str) or not isinstance(actor_ref, str):
+            print(json.dumps({"status": "paused", "failed_gate": "claim", "state_event_created": False}, sort_keys=True))
+            return 2
+        lease_expires = claim.get("lease_expires_at")
+        try:
+            lease_at = datetime.fromisoformat(str(lease_expires).replace("Z", "+00:00"))
+        except ValueError:
+            print(json.dumps({"status": "paused", "failed_gate": "lease", "state_event_created": False}, sort_keys=True))
+            return 2
+        now = datetime.now(UTC)
+        lease_valid = lease_at > now
+        source_fresh = packet.get("source_fresh") is True
+        heartbeat_due = lease_valid and (
+            lease_at - now <= timedelta(milliseconds=args.heartbeat_window_ms)
+        )
+        if not source_fresh or not lease_valid or heartbeat_due:
+            action = "heartbeat" if lease_valid else "reclaim"
+            recover_args = argparse.Namespace(
+                root=str(root),
+                action=action,
+                claim_id=claim_id,
+                actor_ref=actor_ref,
+                new_claim_id=(
+                    None
+                    if action == "heartbeat"
+                    else _autorun_reclaim_id(session_id, claim_id, checkpoint["digest"])
+                ),
+                lease_ttl_ms=28_800_000,
+            )
+            try:
+                receipt = _capture_json_handler(_work_recover, recover_args)
+            except (OSError, ValueError, KeyError, TypeError) as exc:
+                print(
+                    json.dumps(
+                        {
+                            "status": "paused",
+                            "project_id": packet.get("project_id"),
+                            "failed_gate": "source_fresh" if not source_fresh else "lease_valid",
+                            "error": str(exc),
+                            "state_event_created": False,
+                        },
+                        sort_keys=True,
+                    )
+                )
+                return 2
+            recovery_receipts.append(receipt)
+            continue
+        ledger = _autorun_ledger(root)
+        try:
+            ledger.execute("BEGIN IMMEDIATE")
+            key = (
+                _autorun_hash(session_id),
+                _autorun_hash(str(root)),
+                checkpoint["digest"],
+                claim_id,
+            )
+            existing = ledger.execute(
+                "SELECT 1 FROM continuation_runs WHERE session_sha256 = ? AND project_root_sha256 = ? AND checkpoint_digest = ? AND claim_id = ?",
+                key,
+            ).fetchone()
+            if existing is not None:
+                ledger.commit()
+                print(
+                    json.dumps(
+                        {
+                            "status": "already-continued",
+                            "project_id": packet.get("project_id"),
+                            "work_id": active.get("work_id"),
+                            "claim_id": claim_id,
+                            "checkpoint_digest": checkpoint["digest"],
+                            "next_action": packet.get("next_action"),
+                            "resume_packet": packet,
+                            "state_event_created": False,
+                            "recovery_receipts": recovery_receipts,
+                        },
+                        sort_keys=True,
+                    )
+                )
+                return 0
+            ledger.execute(
+                "INSERT INTO continuation_runs (session_sha256, project_root_sha256, checkpoint_digest, claim_id, next_action, recorded_at) VALUES (?, ?, ?, ?, ?, ?)",
+                (*key, str(packet.get("next_action")), now.isoformat()),
+            )
+            ledger.commit()
+        finally:
+            ledger.close()
+        print(
+            json.dumps(
+                {
+                    "status": "continued",
+                    "project_id": packet.get("project_id"),
+                    "work_id": active.get("work_id"),
+                    "claim_id": claim_id,
+                    "checkpoint_digest": checkpoint["digest"],
+                    "next_action": packet.get("next_action"),
+                    "resume_packet": packet,
+                    "state_event_created": False,
+                    "recovery_receipts": recovery_receipts,
+                },
+                sort_keys=True,
+            )
+        )
+        return 0
+    print(json.dumps({"status": "paused", "failed_gate": "continuation_retry_exhausted", "state_event_created": False}, sort_keys=True))
+    return 2
 
 
 def _refresh_projection_after_state_change(root: Path) -> dict[str, Any]:
@@ -2720,7 +2959,14 @@ def _work_activate_atomic(args: argparse.Namespace) -> int:
     state_store = _open_state_store(root, project)
     read_result = _read_state_result(state_store, project["project_id"])
     snapshot = read_result["snapshot"]
-    source_evidence_id = _verified_attach_evidence(snapshot, proposal)["evidence_id"]
+    source_evidence = None
+    try:
+        source_evidence = _verified_attach_evidence(snapshot, proposal)
+    except ValueError as exc:
+        if str(exc) != "current canonical source evidence is not in State":
+            raise
+        source_evidence = _build_attach_evidence(proposal)
+    source_evidence_id = source_evidence["evidence_id"]
     try:
         checkpoint_ref = ArtifactRef.from_document(
             json.loads(_checkpoint_ref_file(root).read_text(encoding="utf-8"))
@@ -2850,6 +3096,20 @@ def _work_activate_atomic(args: argparse.Namespace) -> int:
                     "correlation_ref": f"delivery:{args.work_id}",
                     "supersedes_event_id": None,
                     "changes": [
+                        *(
+                            [
+                                {
+                                    "collection": "evidence",
+                                    "object_id": source_evidence["evidence_id"],
+                                    "value": source_evidence,
+                                }
+                            ]
+                            if not any(
+                                item["evidence_id"] == source_evidence["evidence_id"]
+                                for item in snapshot["evidence"]
+                            )
+                            else []
+                        ),
                         {
                             "collection": "evidence",
                             "object_id": delivery_evidence_id,
@@ -2958,6 +3218,12 @@ def _work_activate_atomic(args: argparse.Namespace) -> int:
             "claim_id": args.claim_id,
             "scope_owners": copy.deepcopy(scope_refs),
             "source_evidence_id": source_evidence_id,
+            "source_evidence": source_evidence
+            if not any(
+                item["evidence_id"] == source_evidence_id
+                for item in snapshot["evidence"]
+            )
+            else None,
             "source_proposal_sha256": proposal["proposal_sha256"],
             "checkpoint_ref": checkpoint_ref.to_document(),
             "lease_expires_at": (now + timedelta(hours=8)).isoformat(),
@@ -3329,6 +3595,16 @@ def build_parser() -> argparse.ArgumentParser:
     resume.add_argument("--interaction-cursor", default=None)
     resume.add_argument("--skill-lock", default=None)
     resume.set_defaults(handler=_resume)
+    autorun = commands.add_parser(
+        "autorun", help="continue the current Work from a verified checkpoint"
+    )
+    autorun.add_argument("--root", default=".")
+    autorun.add_argument("--session-id", default="local-cli")
+    autorun.add_argument("--actor-ref", default=None)
+    autorun.add_argument("--claim-id", default=None)
+    autorun.add_argument("--heartbeat-window-ms", type=int, default=120_000)
+    autorun.add_argument("--max-attempts", type=int, default=3)
+    autorun.set_defaults(handler=_autorun)
     checkpoint = commands.add_parser(
         "checkpoint", help="create or verify an immutable local checkpoint"
     )

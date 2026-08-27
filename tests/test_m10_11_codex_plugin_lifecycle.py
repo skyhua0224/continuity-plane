@@ -10,6 +10,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 
 class M1011CodexPluginLifecycleTests(unittest.TestCase):
@@ -56,6 +57,11 @@ if [ \"$1 $2\" = \"attach refresh\" ]; then
   printf '%s\\n' '{"status":"refreshed"}'
   exit 0
 fi
+if [ \"$1\" = \"autorun\" ]; then
+  if [ \"${HOOK_AUTORUN_RETRY:-0}\" = \"1\" ] && [ ! -f \"$HOOK_AUTORUN_RETRIED\" ]; then touch \"$HOOK_AUTORUN_RETRIED\"; printf 'transport closed\\n' >&2; exit 1; fi
+  printf '%s\\n' '{\"status\":\"continued\",\"state_event_created\":false,\"next_action\":\"continue-active-work\",\"resume_packet\":'\"$MCP_BINDING_ENVELOPE\"'}'
+  exit 0
+fi
 if [ \"${FAIL_CHECKPOINT_VERIFY:-0}\" = \"1\" ] && [ \"$1 $2\" = \"checkpoint verify\" ]; then
   exit 9
 fi
@@ -79,6 +85,8 @@ printf '%s\\n' '{"status":"ok"}'
         resume_packet: dict | None = None,
         slow_resume: bool = False,
         session_source: str = "compact",
+        stage_success: bool = False,
+        autorun_retry: bool = False,
     ) -> tuple[subprocess.CompletedProcess[str], list[str], str]:
         with tempfile.TemporaryDirectory() as directory:
             temp = Path(directory)
@@ -110,6 +118,14 @@ printf '%s\\n' '{"status":"ok"}'
                 payload["tool_name"] = tool_name or "Bash"
                 payload["tool_use_id"] = "private-tool-use-id"
                 payload["tool_input"] = tool_input or {"command": "git status"}
+            if event == "PostToolUse":
+                payload["tool_name"] = tool_name or "Bash"
+                payload["tool_use_id"] = "private-tool-use-id"
+                payload["tool_input"] = tool_input or {"command": "git status"}
+                payload["tool_response"] = {
+                    "exit_code": 0 if stage_success else 1,
+                    "output": "ok" if stage_success else "failed",
+                }
             environment = {
                 **os.environ,
                 "PATH": f"{bin_dir}:{os.environ['PATH']}",
@@ -124,6 +140,8 @@ printf '%s\\n' '{"status":"ok"}'
                 if resume_packet is not None
                 else "",
                 "SLOW_RESUME": "1" if slow_resume else "0",
+                "HOOK_AUTORUN_RETRY": "1" if autorun_retry else "0",
+                "HOOK_AUTORUN_RETRIED": str(temp / "hook-autorun-retried"),
             }
             completed = subprocess.run(
                 ["python3", str(self.script)],
@@ -600,6 +618,67 @@ printf '%s\\n' '{"status":"ok"}'
             self.assertNotIn("session-a", observations)
             self.assertNotIn("session-b", observations)
 
+    def test_distinct_repositories_do_not_share_effect_intents(self) -> None:
+        module = self._hook_module()
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            root_a = temp / "foundation-account-contract-fa-00"
+            root_b = temp / "project-compute"
+            root_a.mkdir()
+            root_b.mkdir()
+            root_a.joinpath(".continuity").mkdir()
+            root_b.joinpath(".continuity").mkdir()
+            environment = {**os.environ, "PLUGIN_DATA": str(temp / "plugin-data")}
+            claim_a = {
+                "claim_id": "claim-a",
+                "actor_ref": "owner-a",
+                "status": "active",
+            }
+            claim_b = {
+                "claim_id": "claim-b",
+                "actor_ref": "owner-b",
+                "status": "active",
+            }
+            payload_a = {
+                "session_id": "session-a",
+                "tool_use_id": "tool-a",
+                "provider": "codex",
+                "host_id": "host-a",
+            }
+            payload_b = {
+                "session_id": "session-b",
+                "tool_use_id": "tool-b",
+                "provider": "codex",
+                "host_id": "host-a",
+            }
+            with mock.patch.dict(os.environ, environment, clear=False), mock.patch.object(
+                module, "_repository_sha256", return_value="repository-collision"
+            ):
+                self.assertTrue(
+                    module._acquire_effect_intent(
+                        payload_a,
+                        root_a,
+                        effect_class="source-control",
+                        claim=claim_a,
+                    )
+                )
+                self.assertTrue(
+                    module._acquire_effect_intent(
+                        payload_b,
+                        root_b,
+                        effect_class="remote-effect",
+                        claim=claim_b,
+                    )
+                )
+                self.assertFalse(
+                    module._acquire_effect_intent(
+                        {**payload_b, "tool_use_id": "tool-b-conflict"},
+                        root_a,
+                        effect_class="remote-effect",
+                        claim=claim_b,
+                    )
+                )
+
     def test_hook_observation_binds_installed_manifest_and_hook_contract(self) -> None:
         completed, _, observations = self._run_hook("SessionStart")
         self.assertEqual(completed.returncode, 0, completed.stderr)
@@ -658,7 +737,21 @@ printf '%s\\n' '{"status":"ok"}'
         self.assertIn("deployment.deploy", deploy_decision["permissionDecisionReason"])
 
     def test_postcompact_verifies_canary_before_continuation(self) -> None:
-        completed, calls, observations = self._run_hook("PostCompact")
+        packet = {
+            "schema_version": "context.recovery-envelope/v1alpha1",
+            "project_id": "portable-project",
+            "revision": 8,
+            "active_work": {"work_id": "work-active"},
+            "claim": {"claim_id": "claim-active", "actor_ref": "actor-active"},
+            "next_action": "continue-active-work",
+            "source_fresh": True,
+            "lease_valid": True,
+            "checkpoint_verified": True,
+            "read_only": False,
+        }
+        completed, calls, observations = self._run_hook(
+            "PostCompact", resume_packet=packet
+        )
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertEqual(json.loads(completed.stdout)["continue"], True)
         self.assertTrue(calls[0].startswith("checkpoint verify --root "))
@@ -670,6 +763,77 @@ printf '%s\\n' '{"status":"ok"}'
         output = json.loads(failed.stdout)
         self.assertEqual(output["continue"], False)
         self.assertIn("checkpoint", output["stopReason"].lower())
+
+    def test_postcompact_auto_continues_the_current_work_after_canary(self) -> None:
+        packet = {
+            "schema_version": "context.recovery-envelope/v1alpha1",
+            "project_id": "portable-project",
+            "revision": 8,
+            "active_work": {"work_id": "work-active"},
+            "claim": {"claim_id": "claim-active", "actor_ref": "actor-active"},
+            "next_action": "continue-active-work",
+            "source_fresh": True,
+            "lease_valid": True,
+            "checkpoint_verified": True,
+            "read_only": False,
+        }
+        completed, calls, _ = self._run_hook("PostCompact", resume_packet=packet)
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        output = json.loads(completed.stdout)
+        self.assertEqual(output["continue"], True)
+        self.assertIn("additionalContext", output["hookSpecificOutput"])
+        self.assertIn("work-active", output["hookSpecificOutput"]["additionalContext"])
+        self.assertTrue(calls[0].startswith("checkpoint verify --root "))
+        self.assertTrue(calls[1].startswith("autorun --session-id "))
+
+    def test_successful_stage_test_auto_continues_the_current_work(self) -> None:
+        packet = {
+            "schema_version": "context.recovery-envelope/v1alpha1",
+            "project_id": "portable-project",
+            "revision": 8,
+            "active_work": {"work_id": "work-active"},
+            "claim": {"claim_id": "claim-active", "actor_ref": "actor-active"},
+            "next_action": "continue-active-work",
+            "source_fresh": True,
+            "lease_valid": True,
+            "checkpoint_verified": True,
+            "read_only": False,
+        }
+        completed, calls, _ = self._run_hook(
+            "PostToolUse",
+            tool_name="Bash",
+            tool_input={"command": "python -m unittest tests/test_stage.py"},
+            resume_packet=packet,
+            stage_success=True,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        output = json.loads(completed.stdout)
+        self.assertEqual(output["continue"], True)
+        self.assertIn("additionalContext", output["hookSpecificOutput"])
+        self.assertIn("work-active", output["hookSpecificOutput"]["additionalContext"])
+        self.assertTrue(calls[0].startswith("autorun --session-id "))
+
+    def test_autorun_retries_a_transient_transport_failure(self) -> None:
+        packet = {
+            "schema_version": "context.recovery-envelope/v1alpha1",
+            "project_id": "portable-project",
+            "revision": 8,
+            "active_work": {"work_id": "work-active"},
+            "claim": {"claim_id": "claim-active", "actor_ref": "actor-active"},
+            "next_action": "continue-active-work",
+            "source_fresh": True,
+            "lease_valid": True,
+            "checkpoint_verified": True,
+            "read_only": False,
+        }
+        completed, calls, _ = self._run_hook(
+            "PostCompact",
+            resume_packet=packet,
+            autorun_retry=True,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(json.loads(completed.stdout)["continue"], True)
+        self.assertEqual(sum(line.startswith("autorun --session-id ") for line in calls), 2)
 
     def test_compact_session_start_injects_only_bounded_silent_packet(self) -> None:
         completed, calls, observations = self._run_hook("SessionStart")

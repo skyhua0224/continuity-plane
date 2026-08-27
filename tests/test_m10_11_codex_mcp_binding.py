@@ -78,6 +78,7 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
         source_fresh: bool | None = None,
         checkpoint_verified: bool | None = None,
         lease_valid: bool | None = None,
+        autorun_retry: bool = False,
     ) -> tuple[list[dict], list[str]]:
         with tempfile.TemporaryDirectory() as directory:
             temp = Path(directory)
@@ -134,7 +135,9 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
                 'if [ "$1" = "resume" ]; then printf \'%s\\n\' "$MCP_BINDING_ENVELOPE"; fi\n'
                 'if [ "$1" = "checkpoint" ] && [ "$2" = "create" ] && '
                 '[ "$MCP_CHECKPOINT_FAIL" = "1" ]; then '
-                'printf \'checkpoint refresh failed\\n\' >&2; exit 9; fi\n',
+                'printf \'checkpoint refresh failed\\n\' >&2; exit 9; fi\n'
+                'if [ "$1" = "autorun" ] && [ "${MCP_AUTORUN_RETRY:-0}" = "1" ] && [ ! -f "$MCP_AUTORUN_RETRIED" ]; then touch "$MCP_AUTORUN_RETRIED"; printf \'transport closed\\n\' >&2; exit 1; fi\n'
+                'if [ "$1" = "autorun" ]; then printf \'%s\\n\' \'{"status":"continued","state_event_created":false}\'; exit 0; fi\n',
                 encoding="utf-8",
             )
             binary.chmod(binary.stat().st_mode | stat.S_IXUSR)
@@ -155,6 +158,8 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
                     "MCP_BINDING_CALLS": str(calls),
                     "MCP_BINDING_ENVELOPE": json.dumps(envelope),
                     "MCP_CHECKPOINT_FAIL": "1" if checkpoint_failure else "0",
+                    "MCP_AUTORUN_RETRY": "1" if autorun_retry else "0",
+                    "MCP_AUTORUN_RETRIED": str(temp / "autorun-retried"),
                 },
                 check=True,
             )
@@ -237,6 +242,58 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
 
         self.assertNotIn("error", responses[0])
         self.assertEqual(sum(line.startswith("resume --root ") for line in calls), 1)
+
+    def test_autorun_tool_continues_the_bound_work_from_a_checkpoint(self) -> None:
+        requests = [
+            {
+                "jsonrpc": "2.0",
+                "id": 0,
+                "method": "tools/call",
+                "params": {
+                    "name": "continuity_resume",
+                    "arguments": {"root": "$PROJECT_ROOT"},
+                },
+            },
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/call",
+                "params": {
+                    "name": "continuity_autorun",
+                    "arguments": {"root": "$PROJECT_ROOT"},
+                },
+            },
+        ]
+        responses, calls = self._run(requests)
+        self.assertNotIn("error", responses[0])
+        self.assertNotIn("error", responses[1])
+        self.assertIn("autorun", " ".join(calls))
+
+    def test_autorun_retries_a_transient_transport_failure_on_the_same_root(self) -> None:
+        requests = [
+            {
+                "jsonrpc": "2.0",
+                "id": 0,
+                "method": "tools/call",
+                "params": {
+                    "name": "continuity_resume",
+                    "arguments": {"root": "$PROJECT_ROOT"},
+                },
+            },
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/call",
+                "params": {
+                    "name": "continuity_autorun",
+                    "arguments": {"root": "$PROJECT_ROOT"},
+                },
+            },
+        ]
+        responses, calls = self._run(requests, autorun_retry=True)
+        self.assertNotIn("error", responses[1])
+        self.assertEqual(sum(line.startswith("autorun ") for line in calls), 2)
+        self.assertEqual(sum(line.startswith("resume ") for line in calls), 3)
 
     def test_transition_tool_is_exposed_and_executes_as_one_cli_operation(self) -> None:
         requests = [

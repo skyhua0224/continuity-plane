@@ -135,6 +135,65 @@ class WorkActivationCliTests(unittest.TestCase):
             self.assertIn('"status": "already-active"', replay.getvalue())
             self.assertEqual(len(store.read_events("sample-app")), 4)
 
+    def test_activation_rebinds_source_evidence_after_attach_refresh(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            store = self._completed_project(root)
+            master = root / "MASTER.md"
+            master.write_text(
+                master.read_text(encoding="utf-8") + "\nUpdated governance source.\n",
+                encoding="utf-8",
+            )
+            with redirect_stdout(StringIO()) as refreshed:
+                refresh_result = main(
+                    [
+                        "attach",
+                        "refresh",
+                        "--root",
+                        str(root),
+                        "--proposal",
+                        ".continuity/attach-proposal.json",
+                    ]
+                )
+            self.assertEqual(refresh_result, 0)
+            self.assertIn('"status": "refreshed"', refreshed.getvalue())
+            self.assertIn('"state_rebind_required": true', refreshed.getvalue())
+
+            with redirect_stdout(StringIO()) as output:
+                result = main(
+                    [
+                        "work",
+                        "activate",
+                        "--root",
+                        str(root),
+                        "--work-id",
+                        "M10-01",
+                        "--work-title",
+                        "Run the external pilot",
+                        "--owner-ref",
+                        "agent-main",
+                        "--claim-id",
+                        "claim-m10-01-refresh",
+                        "--scope",
+                        "capability:external-pilot",
+                    ]
+                )
+
+            state = store.read_project("sample-app")
+            events = store.read_events("sample-app")
+            work = next(item for item in state["works"] if item["work_id"] == "M10-01")
+            self.assertEqual(result, 0)
+            self.assertIn('"status": "activated"', output.getvalue())
+            self.assertEqual(state["project"]["revision"], 4)
+            self.assertEqual(len(events), 4)
+            self.assertEqual(len(work["evidence_ids"]), 1)
+            evidence_id = work["evidence_ids"][0]
+            self.assertTrue(evidence_id.startswith("evidence-attach-"))
+            evidence = next(
+                item for item in state["evidence"] if item["evidence_id"] == evidence_id
+            )
+            self.assertEqual(evidence["validity"], "verified")
+
 
 if __name__ == "__main__":
     unittest.main()
