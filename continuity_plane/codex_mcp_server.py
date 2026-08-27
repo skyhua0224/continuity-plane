@@ -399,6 +399,35 @@ def main() -> int:
                                         "maxItems": 128,
                                         "items": {"type": "string", "minLength": 1},
                                     },
+                                    "execution_class": {
+                                        "enum": ["standard", "delivery"]
+                                    },
+                                    "source_ref": {"type": "string", "minLength": 1},
+                                    "predecessor_work_id": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                    },
+                                    "implementation_evidence_ids": {
+                                        "type": "array",
+                                        "minItems": 1,
+                                        "maxItems": 32,
+                                        "items": {"type": "string", "minLength": 1},
+                                    },
+                                    "workspace_root": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                    },
+                                    "expected_head": {
+                                        "type": "string",
+                                        "pattern": "^[0-9a-f]{40}$",
+                                    },
+                                    "expected_ref": {"type": "string", "minLength": 1},
+                                    "allow_effects": {
+                                        "type": "array",
+                                        "minItems": 1,
+                                        "maxItems": 16,
+                                        "items": {"type": "string", "minLength": 1},
+                                    },
                                 },
                             },
                         },
@@ -601,12 +630,87 @@ def main() -> int:
                 required = ("work_id", "work_title", "owner_ref", "claim_id")
                 values = [arguments.get(field) for field in required]
                 scope = arguments.get("scope")
+                execution_class = arguments.get("execution_class", "standard")
+                source_ref = arguments.get("source_ref")
+                predecessor_work_id = arguments.get("predecessor_work_id")
+                evidence_ids = arguments.get("implementation_evidence_ids")
+                workspace_root = arguments.get("workspace_root")
+                expected_head = arguments.get("expected_head")
+                expected_ref = arguments.get("expected_ref")
+                allow_effects = arguments.get("allow_effects")
+                allowed_fields = {
+                    "root",
+                    *required,
+                    "scope",
+                    "execution_class",
+                    "source_ref",
+                    "predecessor_work_id",
+                    "implementation_evidence_ids",
+                    "workspace_root",
+                    "expected_head",
+                    "expected_ref",
+                    "allow_effects",
+                }
+                delivery_values = (
+                    source_ref,
+                    predecessor_work_id,
+                    evidence_ids,
+                    workspace_root,
+                    expected_head,
+                    expected_ref,
+                    allow_effects,
+                )
                 if (
+                    set(arguments) - allowed_fields
+                    or
                     any(not isinstance(value, str) or not value for value in values)
                     or not isinstance(scope, list)
                     or not scope
                     or len(scope) > 128
                     or any(not isinstance(value, str) or not value for value in scope)
+                    or execution_class not in {"standard", "delivery"}
+                    or (
+                        execution_class == "standard"
+                        and any(value is not None for value in delivery_values)
+                    )
+                    or (
+                        execution_class == "delivery"
+                        and (
+                            not isinstance(source_ref, str)
+                            or not source_ref
+                            or not isinstance(predecessor_work_id, str)
+                            or not predecessor_work_id
+                            or not isinstance(evidence_ids, list)
+                            or not evidence_ids
+                            or len(evidence_ids) > 32
+                            or any(
+                                not isinstance(value, str) or not value
+                                for value in evidence_ids
+                            )
+                            or not isinstance(workspace_root, str)
+                            or not workspace_root
+                            or not isinstance(expected_head, str)
+                            or len(expected_head) != 40
+                            or any(
+                                character not in "0123456789abcdef"
+                                for character in expected_head
+                            )
+                            or (
+                                expected_ref is not None
+                                and (
+                                    not isinstance(expected_ref, str)
+                                    or not expected_ref
+                                )
+                            )
+                            or not isinstance(allow_effects, list)
+                            or not allow_effects
+                            or len(allow_effects) > 16
+                            or any(
+                                not isinstance(value, str) or not value
+                                for value in allow_effects
+                            )
+                        )
+                    )
                 ):
                     _error(request_id, -32602, "activation arguments are invalid")
                     continue
@@ -629,9 +733,22 @@ def main() -> int:
                     arguments["owner_ref"],
                     "--claim-id",
                     arguments["claim_id"],
+                    "--execution-class",
+                    execution_class,
                 ]
                 for scope_ref in scope:
                     command.extend(["--scope", scope_ref])
+                if execution_class == "delivery":
+                    command.extend(["--source-ref", source_ref])
+                    command.extend(["--predecessor-work-id", predecessor_work_id])
+                    for evidence_id in evidence_ids:
+                        command.extend(["--implementation-evidence-id", evidence_id])
+                    command.extend(["--workspace-root", workspace_root])
+                    command.extend(["--expected-head", expected_head])
+                    if expected_ref is not None:
+                        command.extend(["--expected-ref", expected_ref])
+                    for effect in allow_effects:
+                        command.extend(["--allow-effect", effect])
             elif tool_name == "continuity_claim_recover":
                 action = arguments.get("action")
                 claim_id = arguments.get("claim_id")

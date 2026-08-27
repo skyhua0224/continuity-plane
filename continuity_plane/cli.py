@@ -1253,6 +1253,111 @@ def _verified_workspace(
     }
 
 
+def _verified_delivery_workspace(
+    project_root: Path,
+    workspace_root: str,
+    *,
+    expected_head: str,
+    expected_ref: str | None,
+) -> dict[str, Any]:
+    """Bind delivery authority to the exact committed base and pending patch."""
+    workspace = Path(workspace_root).resolve()
+    if not workspace.is_dir() or re.fullmatch(r"[0-9a-f]{40}", expected_head) is None:
+        raise ValueError("transition_gate:workspace_identity")
+
+    def git_text(root: Path, *arguments: str) -> str:
+        completed = subprocess.run(
+            ["git", "-C", str(root), *arguments],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if completed.returncode != 0:
+            raise ValueError("transition_gate:workspace_git")
+        return completed.stdout.strip()
+
+    def git_bytes(root: Path, *arguments: str) -> bytes:
+        completed = subprocess.run(
+            ["git", "-C", str(root), *arguments],
+            capture_output=True,
+            check=False,
+        )
+        if completed.returncode != 0:
+            raise ValueError("transition_gate:workspace_git")
+        return completed.stdout
+
+    project_common = Path(
+        git_text(
+            project_root,
+            "rev-parse",
+            "--path-format=absolute",
+            "--git-common-dir",
+        )
+    )
+    workspace_common = Path(
+        git_text(
+            workspace,
+            "rev-parse",
+            "--path-format=absolute",
+            "--git-common-dir",
+        )
+    )
+    if project_common.resolve() != workspace_common.resolve():
+        raise ValueError("transition_gate:workspace_repository")
+    head_commit = git_text(workspace, "rev-parse", "HEAD")
+    if head_commit != expected_head:
+        raise ValueError("transition_gate:workspace_head")
+    expected_ref_commit: str | None = None
+    if expected_ref is not None:
+        if not expected_ref.strip() or len(expected_ref) > 500:
+            raise ValueError("transition_gate:workspace_ref")
+        expected_ref_commit = git_text(workspace, "rev-parse", "--verify", expected_ref)
+        if expected_ref_commit != head_commit:
+            raise ValueError("transition_gate:workspace_ref")
+
+    status = git_bytes(
+        workspace,
+        "status",
+        "--porcelain=v2",
+        "-z",
+        "--untracked-files=all",
+    )
+    delta = hashlib.sha256(b"context.workspace-delta/v1alpha1\0")
+    tracked_diff = git_bytes(workspace, "diff", "--binary", "HEAD", "--")
+    delta.update(len(tracked_diff).to_bytes(8, "big"))
+    delta.update(tracked_diff)
+    untracked = git_bytes(
+        workspace,
+        "ls-files",
+        "--others",
+        "--exclude-standard",
+        "-z",
+    ).split(b"\0")
+    for encoded_path in sorted(item for item in untracked if item):
+        relative = Path(os.fsdecode(encoded_path))
+        candidate = (workspace / relative).resolve(strict=False)
+        try:
+            candidate.relative_to(workspace)
+        except ValueError as exc:
+            raise ValueError("transition_gate:workspace_path") from exc
+        payload = (
+            os.readlink(workspace / relative).encode("utf-8")
+            if (workspace / relative).is_symlink()
+            else (workspace / relative).read_bytes()
+        )
+        delta.update(len(encoded_path).to_bytes(8, "big"))
+        delta.update(encoded_path)
+        delta.update(len(payload).to_bytes(8, "big"))
+        delta.update(hashlib.sha256(payload).digest())
+    return {
+        "head_commit": head_commit,
+        "clean": not bool(status),
+        "worktree_delta_sha256": delta.hexdigest(),
+        "expected_ref": expected_ref,
+        "expected_ref_commit": expected_ref_commit,
+    }
+
+
 def _work_complete(args: argparse.Namespace) -> int:
     root = Path(args.root).resolve()
     project = _load_project(root)
@@ -2593,7 +2698,7 @@ def _work_activate_atomic(args: argparse.Namespace) -> int:
             or not set(allowed_effects) <= _DELIVERY_EFFECTS
         ):
             raise ValueError("delivery allowed effects are invalid")
-        workspace_verification = _verified_workspace(
+        workspace_verification = _verified_delivery_workspace(
             root,
             args.workspace_root,
             expected_head=args.expected_head,
