@@ -1,5 +1,5 @@
 schema_version: context.document-control-manifest/v1alpha1
-generated_at: '2026-08-27T08:54:30Z'
+generated_at: '2026-08-27T09:03:00Z'
 governance_revision: 95
 documents:
 - document_id: agents
@@ -515,7 +515,7 @@ documents:
 - document_id: status
   path: STATUS.md
   category: routing
-  document_revision: 40
+  document_revision: 41
   authority:
     governance_authority: false
     active_state_authority: false
@@ -523,11 +523,11 @@ documents:
   change:
     change_type: status
     authority_ref: governance-event://master/revision/95
-    supersedes: context.document://status/revision/39
+    supersedes: context.document://status/revision/40
     supersedes_provenance:
-      git_commit: b52f90983b3a4b26eb34a1736c24151a5db5baf6
-      manifest_sha256: 932ff009f372636cc4e03ec7b4d7dd444e242c6e01b41d11227db0183072cf45
-      content_sha256: f800d62e02cb031b3a4f1caa87973a9005cf6dcedc465947f956c7d153c09131
+      git_commit: 8649d5cdd00220caaec9ae3bc163f14241f13b84
+      manifest_sha256: e37da02213fb585f23fe83f1eb506f161caca1c52a411f37518fc586b2c6d52f
+      content_sha256: 40fd076e142656eb9cc896e1a037e670fb4713de2d4abfa58e41007748a101b7
     affected_tasks:
     - M10-00
     - M10-01
@@ -713,9 +713,9 @@ documents:
     path: docs/migrations/m10-00-self-dogfood-acceptance-2026-08-18.md
     valid_until: null
     content_sha256: 09d4248f7adbebeb8ef40d71a5dfe73fa0e408cabfb60cae242af81e4268a35e
-  content_sha256: 40fd076e142656eb9cc896e1a037e670fb4713de2d4abfa58e41007748a101b7
+  content_sha256: 0e8c45bd3df03008a7243c1b59d4318e1ed9876d308ce764c34de1c18ddd0324
   metrics:
-    utf8_bytes: 3074
+    utf8_bytes: 3079
     section_count: 3
     local_link_count: 1
     external_link_count: 0

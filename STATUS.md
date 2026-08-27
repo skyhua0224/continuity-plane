@@ -10,7 +10,7 @@ canonical plan：`MASTER.md`
 |---|---|
 | 当前 Campaign | M10 跨项目发布 |
 | active work | M10-01：跨项目 shadow pilot（🟡） |
-| next action | 完成中英文公开文档、CHANGELOG 与 GitHub Release Note 校准；运行公开构建、隐私、链接和安装门；原子返回 M10-11，再恢复 M10-01 shadow pilot |
+| next action | M10-01 恢复跨项目 shadow pilot：按 exact match key 采集每臂至少 `3` 段 live A/B；alpha.7 标签后三项 effect-gate 修复在下一预发行版单独验收和发布 |
 | hard blocker | PyPI Trusted Publisher 尚未绑定；alpha.7 标签后的三项 Codex effect-gate 修复尚未进入公开预发行版；matched live A/B 每臂仍未达到 `3` 段 |
 | repository mode | internal development repository + fresh-history public mirror |
 | production state | GitHub/PyPI alpha.7 published；shared pilot planned |
@@ -27,7 +27,7 @@ canonical plan：`MASTER.md`
 | post-tag boundary | downstream source-control local prerequisite、只读 forge/release 查询和同 Session 连续 effect intent 三项修复已在开发分支验证，明确标为 unreleased |
 | Coordination/views | shared Work、forge、notification、Project Graph、2,000-node Impact gates passed；authority violation `0` |
 | Release baseline | Linux/macOS/Windows native matrix `18/18`；local state bundle export/import/rollback available；public privacy scan `0` findings |
-| Documentation audit | README、USAGE、CHANGELOG、public docs、templates 与 policy 全文审阅；公开 Markdown 内部阶段标记 `0`，本地链接缺失 `0`；最终 repository verification 待本 Work 完成前刷新 |
+| Documentation audit | README、USAGE、CHANGELOG、public docs、templates 与 policy 全文审阅；公开 Markdown 内部阶段标记 `0`，本地链接缺失 `0`，外部链接 `8/8` 可达；repository verification passed |
 | Governance authority | `MASTER.md` revision 95 |
 
 ## 恢复入口
