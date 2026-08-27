@@ -134,6 +134,9 @@ class PublicReleaseBuilderTests(unittest.TestCase):
             self.assertTrue(
                 (output / "continuity_plane/codex_mcp_server.py").is_file()
             )
+            self.assertTrue(
+                (output / "schemas/m10-11/local-work-activation-request.schema.json").is_file()
+            )
             for module in (
                 "decision_evidence_projection.py",
                 "external_state_provider.py",
