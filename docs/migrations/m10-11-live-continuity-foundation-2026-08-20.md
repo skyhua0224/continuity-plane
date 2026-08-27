@@ -582,3 +582,24 @@ is accepted only with `reclaim` and a new claim identity. Source evidence,
 expired-claim release, successor claim, and checkpoint publication remain one
 State Event; the owner does not need an external Session to refresh sources
 first.
+
+## Idle Delivery Activation
+
+ProjectCompute exposed a separate idle-path deadlock after implementation Work
+`issue-737-zerotier-user-networking` completed at revision/event `257/257`.
+The state correctly returned `next_action=activate-next-work` with no active
+claim. The MCP activation tool, however, exposed only the standard Work fields,
+while the CLI required the delivery source, predecessor, implementation
+evidence, Git head, and effect allowlist. In addition, delivery activation
+required a clean workspace even though its purpose is to commit the pending
+implementation.
+
+The activation contract now carries the complete delivery fields through MCP.
+Delivery activation verifies the shared Git common directory, binds the exact
+committed base HEAD and expected ref, and records a content hash of the current
+tracked and untracked worktree delta. `clean=false` is valid only for this
+delivery path; ordinary transitions remain clean-worktree gated. The resulting
+delivery Work is still source/predecessor/evidence/effect bound and must pass
+the normal commit, PR, CI and deployment gates. The focused activation and MCP
+tests pass; ProjectCompute must perform the final self-activation in its own
+Session.

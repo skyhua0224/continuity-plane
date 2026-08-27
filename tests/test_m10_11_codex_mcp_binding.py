@@ -349,6 +349,65 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
         self.assertNotIn("error", responses[1])
         self.assertEqual(sum("work activate" in line for line in calls), 1)
 
+    def test_idle_session_can_activate_a_fully_bound_delivery_work(self) -> None:
+        requests = [
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/list",
+            },
+            self._tool_call(
+                2,
+                "continuity_work_activate",
+                {
+                    "root": "$PROJECT_ROOT",
+                    "work_id": "work-delivery",
+                    "work_title": "Deliver verified implementation",
+                    "owner_ref": "actor-bound",
+                    "claim_id": "claim-delivery",
+                    "scope": ["capability:delivery"],
+                    "execution_class": "delivery",
+                    "source_ref": "issue://737",
+                    "predecessor_work_id": "work-implementation",
+                    "implementation_evidence_ids": ["evidence-test-verified"],
+                    "workspace_root": "$PROJECT_ROOT",
+                    "expected_head": "a" * 40,
+                    "expected_ref": "refs/heads/work",
+                    "allow_effects": [
+                        "source-control.push",
+                        "source-control.pr",
+                        "source-control.merge",
+                        "deployment.deploy",
+                    ],
+                },
+            ),
+        ]
+
+        responses, calls = self._run(requests, idle=True)
+
+        activation = next(
+            item
+            for item in responses[0]["result"]["tools"]
+            if item["name"] == "continuity_work_activate"
+        )
+        properties = activation["inputSchema"]["properties"]
+        self.assertIn("execution_class", properties)
+        self.assertIn("predecessor_work_id", properties)
+        self.assertIn("implementation_evidence_ids", properties)
+        self.assertIn("allow_effects", properties)
+        self.assertNotIn("error", responses[1], responses[1])
+        command = next(line for line in calls if "work activate" in line)
+        self.assertIn("--execution-class delivery", command)
+        self.assertIn("--source-ref issue://737", command)
+        self.assertIn("--predecessor-work-id work-implementation", command)
+        self.assertIn("--implementation-evidence-id evidence-test-verified", command)
+        self.assertIn("--workspace-root ", command)
+        self.assertIn("/project --expected-head", command)
+        self.assertIn(f"--expected-head {'a' * 40}", command)
+        self.assertIn("--expected-ref refs/heads/work", command)
+        self.assertIn("--allow-effect source-control.push", command)
+        self.assertIn("--allow-effect deployment.deploy", command)
+
     def test_claim_recovery_is_one_cli_operation_with_internal_checkpoint(self) -> None:
         request = {
             "jsonrpc": "2.0",

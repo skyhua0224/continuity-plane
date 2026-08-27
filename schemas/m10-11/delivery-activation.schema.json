@@ -34,10 +34,17 @@
     "workspace_verification": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["head_commit", "clean", "expected_ref", "expected_ref_commit"],
+      "required": [
+        "head_commit",
+        "clean",
+        "worktree_delta_sha256",
+        "expected_ref",
+        "expected_ref_commit"
+      ],
       "properties": {
         "head_commit": {"type": "string", "pattern": "^[0-9a-f]{40}$"},
-        "clean": {"const": true},
+        "clean": {"type": "boolean"},
+        "worktree_delta_sha256": {"$ref": "#/$defs/sha256"},
         "expected_ref": {"type": ["string", "null"], "minLength": 1, "maxLength": 500},
         "expected_ref_commit": {
           "oneOf": [

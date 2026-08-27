@@ -429,6 +429,9 @@ class WorkCompletionCliTests(unittest.TestCase):
                 capture_output=True,
                 check=True,
             ).stdout.strip()
+            (root / "implementation-change.txt").write_text(
+                "verified but not committed\n", encoding="utf-8"
+            )
             output = StringIO()
 
             with redirect_stdout(output):
