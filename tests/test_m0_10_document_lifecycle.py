@@ -247,6 +247,25 @@ class M010DocumentLifecycleTests(unittest.TestCase):
             ):
                 self._validate(root, manifest)
 
+    def test_repeated_evidence_refs_are_hashed_once_per_validation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            manifest = self._valid_repository(root)
+            evidence = root / "docs/migrations/evidence.md"
+            original_read_bytes = Path.read_bytes
+            reads = 0
+
+            def counted_read_bytes(path: Path) -> bytes:
+                nonlocal reads
+                if path == evidence:
+                    reads += 1
+                return original_read_bytes(path)
+
+            with mock.patch.object(Path, "read_bytes", counted_read_bytes):
+                self._validate(root, manifest)
+
+            self.assertEqual(reads, 1)
+
     def test_repeated_full_prose_is_rejected(self):
         repeated = " ".join(["This paragraph carries a normative contract."] * 12)
         with tempfile.TemporaryDirectory() as directory:

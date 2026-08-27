@@ -652,6 +652,7 @@ def _validate_evidence_refs(
     entry: dict[str, Any],
     *,
     as_of: datetime,
+    digest_cache: dict[Path, str],
 ) -> int:
     refs = entry.get("evidence_refs")
     if not isinstance(refs, list):
@@ -670,12 +671,15 @@ def _validate_evidence_refs(
             raise DocumentLifecycleError("evidence ref_id must be unique")
         seen.add(ref_id)
         _, evidence_path = _safe_relative_path(root, ref["path"], "evidence path")
-        try:
-            actual_digest = _sha256_bytes(evidence_path.read_bytes())
-        except OSError as exc:
-            raise DocumentLifecycleError(
-                f"evidence reference is missing: {ref['path']}"
-            ) from exc
+        actual_digest = digest_cache.get(evidence_path)
+        if actual_digest is None:
+            try:
+                actual_digest = _sha256_bytes(evidence_path.read_bytes())
+            except OSError as exc:
+                raise DocumentLifecycleError(
+                    f"evidence reference is missing: {ref['path']}"
+                ) from exc
+            digest_cache[evidence_path] = actual_digest
         expected_digest = ref["content_sha256"]
         if not isinstance(expected_digest, str) or not _SHA256_RE.fullmatch(
             expected_digest
@@ -988,6 +992,7 @@ def _validate_document_control_manifest_content(
     manifest: dict[str, Any],
     *,
     as_of: datetime | None = None,
+    verify_discovery: bool = True,
 ) -> dict[str, int]:
     """Validate current document content and local lifecycle contracts."""
     root = root.resolve()
@@ -1023,6 +1028,7 @@ def _validate_document_control_manifest_content(
     contents: dict[str, str] = {}
     categories: dict[str, str] = {}
     metrics_by_path: dict[str, dict[str, int]] = {}
+    content_digests: dict[Path, str] = {}
     evidence_ref_count = 0
 
     for entry in entries:
@@ -1075,6 +1081,7 @@ def _validate_document_control_manifest_content(
                 f"managed document is unreadable: {path_text}"
             ) from exc
         actual_digest = _sha256_bytes(content_bytes)
+        content_digests[path] = actual_digest
         expected_digest = entry.get("content_sha256")
         if not isinstance(expected_digest, str) or not _SHA256_RE.fullmatch(
             expected_digest
@@ -1141,11 +1148,12 @@ def _validate_document_control_manifest_content(
         raise DocumentLifecycleError(
             "required managed documents are missing: " + ", ".join(sorted(missing))
         )
-    unregistered = _managed_markdown_paths(root) - set(contents)
-    if unregistered:
-        raise DocumentLifecycleError(
-            "unregistered normative document: " + ", ".join(sorted(unregistered))
-        )
+    if verify_discovery:
+        unregistered = _managed_markdown_paths(root) - set(contents)
+        if unregistered:
+            raise DocumentLifecycleError(
+                "unregistered normative document: " + ", ".join(sorted(unregistered))
+            )
     measured_depths = _managed_reference_depths(root, contents, categories)
     for path_text, measured_depth in measured_depths.items():
         declared_depth = metrics_by_path[path_text]["reference_depth"]
@@ -1175,7 +1183,12 @@ def _validate_document_control_manifest_content(
         raise DocumentLifecycleError(f"duplicate full prose across documents: {paths}")
 
     for entry in entries:
-        evidence_ref_count += _validate_evidence_refs(root, entry, as_of=effective_time)
+        evidence_ref_count += _validate_evidence_refs(
+            root,
+            entry,
+            as_of=effective_time,
+            digest_cache=content_digests,
+        )
 
     recovery_total, recovery_recovered = _validate_recovery_fields(
         contents["MASTER.md"], contents["STATUS.md"], governance_revision

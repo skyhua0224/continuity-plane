@@ -149,6 +149,20 @@ class M010DocumentLifecycleBenchmarkTests(unittest.TestCase):
         self.assertEqual(live["validator_failures"], 0)
         self.assertEqual(validate_lineage.call_count, 1)
 
+    def test_live_measurement_reuses_one_preverified_document_discovery(self):
+        with mock.patch(
+            "context_control_plane.document_lifecycle._managed_markdown_paths",
+            wraps=__import__(
+                "context_control_plane.document_lifecycle", fromlist=["unused"]
+            )._managed_markdown_paths,
+        ) as discover_documents:
+            live = measure_document_lifecycle_validator(
+                self.root, self.manifest, samples=40
+            )
+
+        self.assertEqual(live["validator_failures"], 0)
+        self.assertEqual(discover_documents.call_count, 1)
+
     def test_live_measurement_reuses_one_preverified_supersedes_snapshot(self):
         expected_supersedes_checks = sum(
             document["document_revision"] > 1 for document in self.manifest["documents"]
