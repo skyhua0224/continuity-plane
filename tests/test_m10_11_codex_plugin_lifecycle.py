@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import importlib.util
 import os
 import stat
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -175,7 +177,10 @@ printf '%s\\n' '{"status":"ok"}'
         self.assertEqual(hooks["PostCompact"][0]["matcher"], "manual|auto")
         self.assertIn("compact", hooks["SessionStart"][0]["matcher"])
         self.assertEqual(hooks["PreToolUse"][0]["matcher"], "Bash")
-        self.assertEqual(hooks["PostToolUse"][0]["matcher"], "Bash")
+        self.assertEqual(
+            [group["matcher"] for group in hooks["PostToolUse"]],
+            ["Bash", "mcp__continuity__continuity_resume"],
+        )
         for groups in hooks.values():
             handler = groups[0]["hooks"][0]
             self.assertIn("command", handler)
@@ -184,6 +189,207 @@ printf '%s\\n' '{"status":"ok"}'
             hooks["SessionStart"][0]["hooks"][0]["additionalContextLimit"],
             5000,
         )
+
+    def test_explicit_resume_binding_outlives_an_unrelated_session_cwd(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            bound_project = temp / "bound-project"
+            cwd_project = temp / "cwd-project"
+            for project, project_id in (
+                (bound_project, "bound-project"),
+                (cwd_project, "cwd-project"),
+            ):
+                project.mkdir()
+                (project / ".continuity").mkdir()
+                (project / ".continuity/project.yaml").write_text(
+                    f"project_id: {project_id}\n",
+                    encoding="utf-8",
+                )
+            bound_packet = {
+                "schema_version": "context.recovery-envelope/v1alpha1",
+                "project_id": "bound-project",
+                "revision": 4,
+                "active_work": {"work_id": "bound-work"},
+                "claim": {
+                    "claim_id": "bound-claim",
+                    "actor_ref": "bound-actor",
+                    "status": "active",
+                    "scope_owners": [
+                        {"scope_kind": "capability", "scope_ref": "bound-scope"}
+                    ],
+                },
+                "read_only": False,
+                "source_fresh": True,
+                "checkpoint_verified": True,
+                "lease_valid": True,
+                "next_action": "continue-active-work",
+            }
+            cwd_packet = {
+                **bound_packet,
+                "project_id": "cwd-project",
+                "active_work": {"work_id": "cwd-work"},
+                "claim": {
+                    "claim_id": "cwd-claim",
+                    "actor_ref": "cwd-actor",
+                    "status": "active",
+                    "scope_owners": [
+                        {"scope_kind": "capability", "scope_ref": "cwd-scope"}
+                    ],
+                },
+            }
+            bin_dir = temp / "bin"
+            bin_dir.mkdir()
+            calls = temp / "calls.jsonl"
+            binary = bin_dir / "continuity"
+            binary.write_text(
+                "#!/bin/sh\n"
+                'printf \'%s\\n\' "$*" >> "$FAKE_CONTINUITY_CALLS"\n'
+                'if [ "$1" = "resume" ]; then case " $* " in '
+                '*" --root $BOUND_ROOT "*) printf \'%s\\n\' "$BOUND_PACKET"; '
+                'exit 0;; esac; fi\n'
+                'if [ "$1" = "resume" ]; then printf \'%s\\n\' "$CWD_PACKET"; fi\n',
+                encoding="utf-8",
+            )
+            binary.chmod(binary.stat().st_mode | stat.S_IXUSR)
+            plugin_data = temp / "plugin-data"
+            environment = {
+                **os.environ,
+                "PATH": f"{bin_dir}:{os.environ['PATH']}",
+                "PLUGIN_DATA": str(plugin_data),
+                "PLUGIN_ROOT": str(self.plugin),
+                "FAKE_CONTINUITY_CALLS": str(calls),
+                "BOUND_ROOT": str(bound_project),
+                "BOUND_PACKET": json.dumps(bound_packet),
+                "CWD_PACKET": json.dumps(cwd_packet),
+            }
+
+            def invoke(payload: dict) -> subprocess.CompletedProcess[str]:
+                return subprocess.run(
+                    [sys.executable, str(self.script)],
+                    input=json.dumps(payload),
+                    text=True,
+                    capture_output=True,
+                    env=environment,
+                    check=False,
+                )
+
+            base = {
+                "session_id": "session-bound-project",
+                "transcript_path": None,
+                "cwd": str(cwd_project),
+                "model": "provider-model",
+                "turn_id": "turn-bound-project",
+            }
+            bound = invoke(
+                {
+                    **base,
+                    "hook_event_name": "PostToolUse",
+                    "tool_name": "mcp__continuity__continuity_resume",
+                    "tool_use_id": "resume-bound-project",
+                    "tool_input": {"root": str(bound_project)},
+                    "tool_response": {
+                        "content": [
+                            {"type": "text", "text": json.dumps(bound_packet)}
+                        ],
+                        "isError": False,
+                    },
+                }
+            )
+            self.assertEqual(bound.stdout, "")
+            binding_files = list(
+                (plugin_data / "session-bindings").glob("*.json")
+            )
+            self.assertEqual(len(binding_files), 1)
+            self.assertEqual(stat.S_IMODE(binding_files[0].stat().st_mode), 0o600)
+
+            conflict = invoke(
+                {
+                    **base,
+                    "hook_event_name": "PostToolUse",
+                    "tool_name": "mcp__continuity__continuity_resume",
+                    "tool_use_id": "resume-cwd-project",
+                    "tool_input": {"root": str(cwd_project)},
+                    "tool_response": {
+                        "content": [
+                            {"type": "text", "text": json.dumps(cwd_packet)}
+                        ],
+                        "isError": False,
+                    },
+                }
+            )
+            conflict_output = json.loads(conflict.stdout)
+            self.assertEqual(conflict_output["decision"], "block")
+            self.assertIn("binding", conflict_output["reason"].lower())
+
+            started = invoke(
+                {
+                    **base,
+                    "hook_event_name": "SessionStart",
+                    "source": "compact",
+                }
+            )
+            response = json.loads(started.stdout)
+            context = response["hookSpecificOutput"]["additionalContext"]
+            self.assertIn("bound-work", context)
+            self.assertNotIn("cwd-work", context)
+            call_lines = calls.read_text(encoding="utf-8").splitlines()
+            self.assertIn(f"--root {bound_project}", call_lines[-1])
+            self.assertNotIn(f"--root {cwd_project}", call_lines[-1])
+
+    def test_invalid_session_binding_fails_closed_instead_of_using_cwd(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            cwd_project = temp / "cwd-project"
+            cwd_project.mkdir()
+            (cwd_project / ".continuity").mkdir()
+            (cwd_project / ".continuity/project.yaml").write_text(
+                "project_id: cwd-project\n",
+                encoding="utf-8",
+            )
+            bin_dir = temp / "bin"
+            bin_dir.mkdir()
+            _, calls = self._fake_continuity(bin_dir)
+            plugin_data = temp / "plugin-data"
+            bindings = plugin_data / "session-bindings"
+            bindings.mkdir(parents=True)
+            session_id = "session-tampered-binding"
+            binding_path = bindings / (
+                hashlib.sha256(session_id.encode("utf-8")).hexdigest() + ".json"
+            )
+            binding_path.write_text(
+                '{"schema_version":"context.codex-session-project-binding/v1alpha1",'
+                '"binding_sha256":"tampered"}\n',
+                encoding="utf-8",
+            )
+            binding_path.chmod(0o600)
+            payload = {
+                "session_id": session_id,
+                "transcript_path": None,
+                "cwd": str(cwd_project),
+                "hook_event_name": "SessionStart",
+                "source": "resume",
+                "model": "provider-model",
+                "turn_id": "turn-tampered-binding",
+            }
+            completed = subprocess.run(
+                [sys.executable, str(self.script)],
+                input=json.dumps(payload),
+                text=True,
+                capture_output=True,
+                env={
+                    **os.environ,
+                    "PATH": f"{bin_dir}:{os.environ['PATH']}",
+                    "PLUGIN_DATA": str(plugin_data),
+                    "PLUGIN_ROOT": str(self.plugin),
+                    "FAKE_CONTINUITY_CALLS": str(calls),
+                },
+                check=False,
+            )
+
+            response = json.loads(completed.stdout)
+            self.assertFalse(response["continue"])
+            self.assertIn("binding", response["stopReason"].lower())
+            self.assertFalse(calls.exists())
 
     def test_local_rsync_is_not_classified_as_a_remote_effect(self) -> None:
         module = self._hook_module()

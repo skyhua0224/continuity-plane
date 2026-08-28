@@ -67,6 +67,97 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
         plugin_server = self.plugin / "scripts/continuity-mcp-server.py"
         self.assertEqual(packaged.read_bytes(), plugin_server.read_bytes())
 
+    def test_process_cwd_does_not_prebind_before_explicit_resume(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            bound_project = temp / "bound-project"
+            cwd_project = temp / "cwd-project"
+            for project, project_id in (
+                (bound_project, "bound-project"),
+                (cwd_project, "cwd-project"),
+            ):
+                project.mkdir()
+                (project / ".continuity").mkdir()
+                (project / ".continuity/project.yaml").write_text(
+                    f"project_id: {project_id}\n",
+                    encoding="utf-8",
+                )
+            bin_dir = temp / "bin"
+            bin_dir.mkdir()
+            calls = temp / "calls.jsonl"
+            binary = bin_dir / "continuity"
+            binary.write_text(
+                "#!/bin/sh\n"
+                'printf \'%s\\n\' "$*" >> "$MCP_BINDING_CALLS"\n'
+                'if [ "$1" = "resume" ] && [ "$3" = "$BOUND_ROOT" ]; then '
+                'printf \'%s\\n\' "$BOUND_PACKET"; exit 0; fi\n'
+                'if [ "$1" = "resume" ]; then printf \'%s\\n\' "$CWD_PACKET"; fi\n',
+                encoding="utf-8",
+            )
+            binary.chmod(binary.stat().st_mode | stat.S_IXUSR)
+            bound_packet = {
+                "schema_version": "context.recovery-envelope/v1alpha1",
+                "project_id": "bound-project",
+                "revision": 4,
+                "active_work": {"work_id": "bound-work"},
+                "claim": {
+                    "claim_id": "bound-claim",
+                    "actor_ref": "bound-actor",
+                },
+                "read_only": False,
+                "source_fresh": True,
+                "checkpoint_verified": True,
+                "lease_valid": True,
+                "next_action": "continue-active-work",
+            }
+            cwd_packet = {
+                **bound_packet,
+                "project_id": "cwd-project",
+                "active_work": {"work_id": "cwd-work"},
+                "claim": {
+                    "claim_id": "cwd-claim",
+                    "actor_ref": "cwd-actor",
+                },
+            }
+            requests = [
+                self._tool_call(
+                    1,
+                    "continuity_resume",
+                    {"root": str(bound_project)},
+                ),
+                self._tool_call(
+                    2,
+                    "continuity_resume",
+                    {"root": str(cwd_project)},
+                ),
+            ]
+            completed = subprocess.run(
+                [sys.executable, str(self.server)],
+                cwd=cwd_project,
+                input="\n".join(json.dumps(item) for item in requests) + "\n",
+                text=True,
+                capture_output=True,
+                env={
+                    **os.environ,
+                    "PATH": f"{bin_dir}:{os.environ['PATH']}",
+                    "MCP_BINDING_CALLS": str(calls),
+                    "BOUND_ROOT": str(bound_project),
+                    "BOUND_PACKET": json.dumps(bound_packet),
+                    "CWD_PACKET": json.dumps(cwd_packet),
+                },
+                check=True,
+            )
+            responses = [json.loads(line) for line in completed.stdout.splitlines()]
+
+            self.assertEqual(
+                self._tool_text(responses[0])["project_id"],
+                "bound-project",
+            )
+            self.assertIn("error", responses[1])
+            self.assertIn("project", responses[1]["error"]["message"].lower())
+            call_lines = calls.read_text(encoding="utf-8").splitlines()
+            self.assertEqual(call_lines, [f"resume --root {bound_project}"])
+
     def _run(
         self,
         requests: list[dict],
@@ -302,9 +393,14 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
                 "id": 1,
                 "method": "tools/list",
             },
+            self._tool_call(
+                2,
+                "continuity_resume",
+                {"root": "$PROJECT_ROOT"},
+            ),
             {
                 "jsonrpc": "2.0",
-                "id": 2,
+                "id": 3,
                 "method": "tools/call",
                 "params": {
                     "name": "continuity_work_transition",
@@ -332,7 +428,7 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
 
         names = {item["name"] for item in responses[0]["result"]["tools"]}
         self.assertIn("continuity_work_transition", names)
-        self.assertNotIn("error", responses[1])
+        self.assertNotIn("error", responses[2])
         self.assertEqual(sum("work transition" in line for line in calls), 1)
         self.assertEqual(sum("checkpoint create" in line for line in calls), 0)
         transition = next(line for line in calls if "work transition" in line)
@@ -363,9 +459,18 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
             },
         }
 
-        responses, calls = self._run([request])
+        responses, calls = self._run(
+            [
+                self._tool_call(
+                    0,
+                    "continuity_resume",
+                    {"root": "$PROJECT_ROOT"},
+                ),
+                request,
+            ]
+        )
 
-        self.assertNotIn("error", responses[0])
+        self.assertNotIn("error", responses[1])
         self.assertEqual(sum("work transition" in line for line in calls), 1)
 
     def test_idle_resume_binds_and_allows_only_successor_activation(self) -> None:
@@ -415,6 +520,11 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
             },
             self._tool_call(
                 2,
+                "continuity_resume",
+                {"root": "$PROJECT_ROOT"},
+            ),
+            self._tool_call(
+                3,
                 "continuity_work_activate",
                 {
                     "root": "$PROJECT_ROOT",
@@ -452,7 +562,7 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
         self.assertIn("predecessor_work_id", properties)
         self.assertIn("implementation_evidence_ids", properties)
         self.assertIn("allow_effects", properties)
-        self.assertNotIn("error", responses[1], responses[1])
+        self.assertNotIn("error", responses[2], responses[2])
         command = next(line for line in calls if "work activate" in line)
         self.assertIn("--execution-class delivery", command)
         self.assertIn("--source-ref issue://737", command)
@@ -481,9 +591,19 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
             },
         }
 
-        responses, calls = self._run([request], checkpoint_failure=True)
+        responses, calls = self._run(
+            [
+                self._tool_call(
+                    0,
+                    "continuity_resume",
+                    {"root": "$PROJECT_ROOT"},
+                ),
+                request,
+            ],
+            checkpoint_failure=True,
+        )
 
-        self.assertFalse(responses[0]["result"]["isError"])
+        self.assertFalse(responses[1]["result"]["isError"])
         self.assertEqual(sum("work recover heartbeat" in line for line in calls), 1)
         self.assertEqual(sum("checkpoint create" in line for line in calls), 0)
 
@@ -548,13 +668,21 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
                 },
             },
         }
-        responses, calls = self._run([request])
-        self.assertNotIn("error", responses[0])
+        requests = [
+            self._tool_call(
+                0,
+                "continuity_resume",
+                {"root": "$PROJECT_ROOT"},
+            ),
+            request,
+        ]
+        responses, calls = self._run(requests)
+        self.assertNotIn("error", responses[1])
         self.assertEqual(sum("work recover heartbeat" in line for line in calls), 1)
 
-        denied, denied_calls = self._run([request], read_only=True)
-        self.assertIn("error", denied[0])
-        self.assertIn("read-only", denied[0]["error"]["message"].lower())
+        denied, denied_calls = self._run(requests, read_only=True)
+        self.assertIn("error", denied[1])
+        self.assertIn("read-only", denied[1]["error"]["message"].lower())
         self.assertEqual(sum("work recover heartbeat" in line for line in denied_calls), 0)
 
     def test_source_stale_owner_heartbeat_recovers_source_and_checkpoint(self) -> None:
@@ -684,14 +812,21 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
         )
 
         responses, calls = self._run(
-            [request],
+            [
+                self._tool_call(
+                    0,
+                    "continuity_resume",
+                    {"root": "$PROJECT_ROOT"},
+                ),
+                request,
+            ],
             read_only=True,
             source_fresh=False,
             checkpoint_verified=True,
             lease_valid=False,
         )
 
-        self.assertNotIn("error", responses[0])
+        self.assertNotIn("error", responses[1])
         self.assertEqual(sum("work recover reclaim" in line for line in calls), 1)
 
     def test_expired_read_only_binding_allows_only_reclaim_then_heartbeat(self) -> None:

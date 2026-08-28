@@ -70,6 +70,18 @@
             "statusMessage": "Accounting Continuity recovery reads"
           }
         ]
+      },
+      {
+        "matcher": "mcp__continuity__continuity_resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${PLUGIN_ROOT}/scripts/continuity-hook.py\"",
+            "commandWindows": "py -3 \"%PLUGIN_ROOT%\\scripts\\continuity-hook.py\"",
+            "timeout": 5,
+            "statusMessage": "Binding Continuity project identity"
+          }
+        ]
       }
     ]
   }
