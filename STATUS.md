@@ -1,7 +1,7 @@
 # Continuity Plane Status
 
-版本：revision 98  
-日期：2026-08-28  
+版本：revision 99  
+日期：2026-08-29  
 canonical plan：`MASTER.md`
 
 ## 当前状态
@@ -11,7 +11,7 @@ canonical plan：`MASTER.md`
 | 当前 Campaign | M10 跨项目发布 |
 | active work | M10-01：跨项目 shadow pilot（🟡） |
 | next action | 按 exact match key 采集至少两个项目/协作 profile 的 matched live A/B，每臂至少 `3` 段；继续验证 token、窗口利用率与回答相关性 |
-| hard blocker | PyPI Trusted Publisher 尚未绑定；matched live A/B 每臂仍未达到 `3` 段；Foundation Account 尚未初始化 Continuity 状态 |
+| hard blocker | PyPI Trusted Publisher 尚未绑定；matched live A/B 每臂仍未达到 `3` 段 |
 | repository mode | internal development repository + fresh-history public mirror |
 | production state | GitHub/PyPI alpha.8 published；shared pilot planned |
 
@@ -27,10 +27,11 @@ canonical plan：`MASTER.md`
 | post-tag boundary | downstream source-control local prerequisite、只读 forge/release 查询和同 Session 连续 effect intent 三项修复已进入 alpha.8 |
 | M10-12 control-plane fix | `continuity autorun`、MCP retry、source-evidence activation rebind 与 provider/host/repository/worktree/branch intent isolation 已通过 `61` 项聚焦测试；N-69-08 snapshot MCP continued/already-continued，原 Platform revision/event `202/202`、N-69-08、Windows blocker 保持不变 |
 | M10-12 completion | M10-12 已通过 checkpoint-bound autorun、source evidence activation、跨仓 intent isolation、脱敏 snapshot 和 `61/61` focused tests；修复已包含在 alpha.8 |
+| M10-14 Session binding | plugin candidate `0.1.0-alpha.8+codex.20260828175545`；首次显式 resume 优先于进程 cwd，跨根重绑在 CLI 前拒绝；focused `48/48`、full suite `1973` passed、真实双项目只读验收通过；公开发行待下一版本 |
 | Coordination/views | shared Work、forge、notification、Project Graph、2,000-node Impact gates passed；authority violation `0` |
 | Release baseline | Linux/macOS/Windows native matrix `18/18`；local state bundle export/import/rollback available；public privacy scan `0` findings |
 | Documentation audit | README、USAGE、CHANGELOG、public docs、templates 与 policy 全文审阅；公开 Markdown 内部阶段标记 `0`，本地链接缺失 `0`，外部链接 `8/8` 可达；repository verification passed |
-| Governance authority | `MASTER.md` revision 98 |
+| Governance authority | `MASTER.md` revision 99 |
 
 ## 恢复入口
 

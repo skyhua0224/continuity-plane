@@ -57,7 +57,9 @@ codex plugin add continuity-plane@continuity-plane
 
 ## 未发布
 
-- 下一版本的用户可见变化待提交后登记。
+- Codex MCP 不再根据进程 cwd 预绑定项目。首次成功的显式 `continuity_resume`
+  锁定 Session 项目根；后续生命周期事件优先使用该绑定，换根请求在调用 CLI 前拒绝，
+  损坏的本地绑定保持只读。
 
 ## 0.1.0-alpha.7
 
