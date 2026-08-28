@@ -69,7 +69,10 @@ MCP tools.
 
 ## Unreleased
 
-- User-visible changes for the next prerelease will be recorded after alpha.8.
+- Codex MCP no longer pre-binds a project from the process cwd. The first
+  successful explicit `continuity_resume` locks the Session project root; later
+  lifecycle events prefer that binding, reject root changes before the CLI, and
+  keep invalid local bindings read-only.
 
 ## 0.1.0-alpha.7
 

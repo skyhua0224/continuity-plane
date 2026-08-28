@@ -36,6 +36,8 @@ RECOVERY_RULE_IDS = [
     "continuity.resume.current-state",
     "continuity.work.sticky",
 ]
+SESSION_BINDING_SCHEMA = "context.codex-session-project-binding/v1alpha1"
+CONTINUITY_RESUME_TOOL = "mcp__continuity__continuity_resume"
 
 _EFFECT_PATTERNS = (
     (
@@ -100,6 +102,154 @@ def _file_hash(path: Path) -> str | None:
         return hashlib.sha256(path.read_bytes()).hexdigest()
     except OSError:
         return None
+
+
+def _session_binding_path(payload: dict[str, Any]) -> Path | None:
+    data = os.environ.get("PLUGIN_DATA")
+    session_id = payload.get("session_id")
+    if not data or not isinstance(session_id, str) or not session_id:
+        return None
+    return Path(data) / "session-bindings" / f"{_hash(session_id)}.json"
+
+
+def _session_bound_root(payload: dict[str, Any]) -> Path | None:
+    path = _session_binding_path(payload)
+    session_id = payload.get("session_id")
+    if path is None or not isinstance(session_id, str):
+        return None
+    try:
+        binding = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    required = {
+        "schema_version",
+        "session_sha256",
+        "project_id",
+        "project_root",
+        "profile_sha256",
+        "binding_sha256",
+    }
+    if not isinstance(binding, dict) or set(binding) != required:
+        return None
+    digest = binding.get("binding_sha256")
+    expected = _hash(
+        _canonical(
+            {
+                key: value
+                for key, value in binding.items()
+                if key != "binding_sha256"
+            }
+        )
+    )
+    if (
+        binding.get("schema_version") != SESSION_BINDING_SCHEMA
+        or binding.get("session_sha256") != _hash(session_id)
+        or not isinstance(binding.get("project_id"), str)
+        or not binding["project_id"]
+        or not isinstance(binding.get("project_root"), str)
+        or not isinstance(binding.get("profile_sha256"), str)
+        or digest != expected
+    ):
+        return None
+    root = Path(binding["project_root"])
+    if not root.is_absolute():
+        return None
+    try:
+        root = root.resolve()
+    except OSError:
+        return None
+    profile = root / ".continuity/project.yaml"
+    if not profile.is_file() or _file_hash(profile) != binding["profile_sha256"]:
+        return None
+    return root
+
+
+def _resume_tool_packet(payload: dict[str, Any]) -> dict[str, Any] | None:
+    response = payload.get("tool_response")
+    if not isinstance(response, dict) or response.get("isError") is True:
+        return None
+    candidates: list[Any] = [response.get("structuredContent"), response]
+    content = response.get("content")
+    if isinstance(content, list):
+        candidates.extend(
+            item.get("text")
+            for item in content
+            if isinstance(item, dict) and item.get("type") == "text"
+        )
+    for candidate in candidates:
+        if isinstance(candidate, str):
+            try:
+                candidate = json.loads(candidate)
+            except json.JSONDecodeError:
+                continue
+        if not isinstance(candidate, dict):
+            continue
+        packet = _load_resume_packet(_canonical(candidate).encode("utf-8"))
+        if packet is not None:
+            return packet
+    return None
+
+
+def _record_resume_binding(payload: dict[str, Any]) -> str:
+    if payload.get("tool_name") != CONTINUITY_RESUME_TOOL:
+        return "ignored"
+    packet = _resume_tool_packet(payload)
+    tool_input = payload.get("tool_input")
+    if packet is None or not isinstance(tool_input, dict):
+        return "ignored"
+    root_value = tool_input.get("root")
+    if not isinstance(root_value, str) or not root_value:
+        return "ignored"
+    existing_root = _session_bound_root(payload)
+    requested = Path(root_value)
+    if not requested.is_absolute():
+        cwd = payload.get("cwd")
+        base = existing_root or (Path(cwd) if isinstance(cwd, str) else None)
+        if base is None:
+            return "ignored"
+        requested = base / requested
+    try:
+        root = requested.resolve()
+    except OSError:
+        return "ignored"
+    profile = root / ".continuity/project.yaml"
+    profile_sha256 = _file_hash(profile)
+    project_id = packet.get("project_id")
+    if (
+        profile_sha256 is None
+        or not isinstance(project_id, str)
+        or not project_id
+    ):
+        return "ignored"
+    if existing_root is not None and existing_root != root:
+        return "conflict"
+    path = _session_binding_path(payload)
+    session_id = payload.get("session_id")
+    if path is None or not isinstance(session_id, str):
+        return "ignored"
+    document = {
+        "schema_version": SESSION_BINDING_SCHEMA,
+        "session_sha256": _hash(session_id),
+        "project_id": project_id,
+        "project_root": str(root),
+        "profile_sha256": profile_sha256,
+        "binding_sha256": "",
+    }
+    document["binding_sha256"] = _hash(
+        _canonical(
+            {
+                key: value
+                for key, value in document.items()
+                if key != "binding_sha256"
+            }
+        )
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+    temporary.write_text(_canonical(document) + "\n", encoding="utf-8")
+    temporary.chmod(0o600)
+    temporary.replace(path)
+    return "recorded"
 
 
 def _message_text(content: Any) -> str:
@@ -1360,10 +1510,39 @@ def main() -> int:
         return 0
     if not isinstance(payload, dict) or not isinstance(payload.get("cwd"), str):
         return 0
-    root = _project_root(payload["cwd"])
+    event = payload.get("hook_event_name")
+    if event == "PostToolUse" and payload.get("tool_name") == CONTINUITY_RESUME_TOOL:
+        binding_result = _record_resume_binding(payload)
+        if binding_result == "conflict":
+            print(
+                _canonical(
+                    {
+                        "decision": "block",
+                        "reason": (
+                            "Continuity session binding conflicts with the requested "
+                            "project root; the existing project identity was preserved."
+                        ),
+                    }
+                )
+            )
+        return 0
+    binding_path = _session_binding_path(payload)
+    bound_root = _session_bound_root(payload)
+    if binding_path is not None and binding_path.exists() and bound_root is None:
+        if event == "PreToolUse":
+            _deny_tool(
+                "Continuity session project binding is invalid; external effects "
+                "remain blocked."
+            )
+        else:
+            _stop(
+                "Continuity session project binding is invalid; keep this session "
+                "read-only until an explicit project resume succeeds."
+            )
+        return 0
+    root = bound_root or _project_root(payload["cwd"])
     if root is None:
         return 0
-    event = payload.get("hook_event_name")
     try:
         if event == "PreCompact":
             return _precompact(payload, root)

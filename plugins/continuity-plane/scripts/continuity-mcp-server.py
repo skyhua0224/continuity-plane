@@ -23,31 +23,6 @@ def _error(request_id: object, code: int, message: str) -> None:
     )
 
 
-def _session_root() -> Path | None:
-    start = Path.cwd().resolve()
-    completed = subprocess.run(
-        ["git", "-C", str(start), "rev-parse", "--show-toplevel"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    candidates = [
-        Path(completed.stdout.strip()).resolve()
-        if completed.returncode == 0 and completed.stdout.strip()
-        else start,
-        start,
-        *start.parents,
-    ]
-    seen: set[Path] = set()
-    for candidate in candidates:
-        if candidate in seen:
-            continue
-        seen.add(candidate)
-        if (candidate / ".continuity/project.yaml").is_file():
-            return candidate
-    return None
-
-
 def _binding(root: Path) -> dict | None:
     result = subprocess.run(
         ["continuity", "resume", "--root", str(root)],
@@ -283,7 +258,7 @@ def _claim_recovery_binding_error(
 
 
 def main() -> int:
-    session_root = _session_root()
+    session_root: Path | None = None
     for line in sys.stdin:
         try:
             request = json.loads(line)
