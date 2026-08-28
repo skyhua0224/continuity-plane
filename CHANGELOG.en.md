@@ -6,6 +6,11 @@
 
 ### Changes Since 0.1.0-alpha.7
 
+- The public tag-tree delta from `v0.1.0-alpha.7` is `22` files (`2` added and
+  `20` modified; `+2,081/-166` lines). The complete alpha.1 capability list remains
+  in the alpha.7 audit and alpha.1 entry below; the bullets here are only the
+  user-visible additions in alpha.8.
+
 - Added the `continuity autorun` CLI and `continuity_autorun` MCP tool. After a
   verified checkpoint and valid permissions, the same Session re-enters its
   current Work. A local idempotency record prevents duplicate State Events for

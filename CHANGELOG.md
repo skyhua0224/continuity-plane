@@ -6,6 +6,10 @@
 
 ### 相比 0.1.0-alpha.7
 
+- 公开标签树相对 `v0.1.0-alpha.7` 的差异为 `22` 个文件（`2` 个新增、`20`
+  个修改，`+2,081/-166` 行）；alpha.1 的完整能力清单仍见下方 alpha.7 审计与
+  alpha.1 初始条目，以下条目只记录 alpha.8 新增的用户可见变化。
+
 - 新增 `continuity autorun` 与 `continuity_autorun` MCP 工具：checkpoint 已验证且
   权限有效时，同一 Session 自动回到当前 Work；同一 checkpoint 使用本地幂等记录，
   不重复产生 State Event；lease 临近自动 heartbeat，过期按受控 reclaim 换发 claim；

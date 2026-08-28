@@ -1,5 +1,5 @@
 schema_version: context.document-control-config/v1alpha1
-generated_at: '2026-08-28T02:55:00Z'
+generated_at: '2026-08-28T03:00:00Z'
 governance_revision: 97
 documents:
 - document_id: agents
@@ -53,7 +53,7 @@ documents:
 - document_id: changelog-en
   path: CHANGELOG.en.md
   category: policy
-  document_revision: 5
+  document_revision: 6
   authority:
     governance_authority: false
     active_state_authority: false
@@ -61,19 +61,19 @@ documents:
   change:
     change_type: decision
     authority_ref: governance-event://master/revision/97
-    supersedes: context.document://changelog-en/revision/4
+    supersedes: context.document://changelog-en/revision/5
     affected_tasks:
     - M0-10
     next_review: null
     supersedes_provenance:
-      git_commit: e3591c4041e68e04527178a7d75f1e3285d1a005
-      manifest_sha256: 2c212150423fe9e574dcace5410ea8640ccb12eb8b3c4b88301cc9db1f2a5b57
-      content_sha256: 9a07e3cdab0221ba7abae939fb9569b2152b4177554bd9d67c7c5451e5bb8873
+      git_commit: 0f8d73438ae6202cec1a3d3feeeccb0108273608
+      manifest_sha256: 3ce066d61a7334bf238a28ccec656fa75b459163927c2fd844bc7e2e3238c302
+      content_sha256: 3a90ad2f162b89354575db2744b3f70fab67039d4e954c7fd525b5d22e9d7aa3
   evidence_refs: []
 - document_id: changelog
   path: CHANGELOG.md
   category: policy
-  document_revision: 5
+  document_revision: 6
   authority:
     governance_authority: false
     active_state_authority: false
@@ -81,15 +81,15 @@ documents:
   change:
     change_type: decision
     authority_ref: governance-event://master/revision/97
-    supersedes: context.document://changelog/revision/4
+    supersedes: context.document://changelog/revision/5
     affected_tasks:
     - M0-10
     - M10-08
     next_review: null
     supersedes_provenance:
-      git_commit: e3591c4041e68e04527178a7d75f1e3285d1a005
-      manifest_sha256: 2c212150423fe9e574dcace5410ea8640ccb12eb8b3c4b88301cc9db1f2a5b57
-      content_sha256: d05eeceb369b0071900bd91485e7d73020af6848c743c1a2efee7a1996ec38d5
+      git_commit: 0f8d73438ae6202cec1a3d3feeeccb0108273608
+      manifest_sha256: 3ce066d61a7334bf238a28ccec656fa75b459163927c2fd844bc7e2e3238c302
+      content_sha256: 56ceeb0c9508a47b0e104f61d07758b8af52a6c77076bc0578080e187a4f3712
   evidence_refs: []
 - document_id: contributing-en
   path: CONTRIBUTING.en.md
