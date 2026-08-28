@@ -1,5 +1,5 @@
 schema_version: context.document-control-manifest/v1alpha1
-generated_at: '2026-08-28T10:15:00Z'
+generated_at: '2026-08-28T10:20:00Z'
 governance_revision: 98
 documents:
 - document_id: agents
@@ -1111,7 +1111,7 @@ documents:
 - document_id: docs-architecture-target-state
   path: docs/architecture/target-state.md
   category: architecture
-  document_revision: 33
+  document_revision: 34
   authority:
     governance_authority: false
     active_state_authority: false
@@ -1119,11 +1119,11 @@ documents:
   change:
     change_type: decision
     authority_ref: governance-event://master/revision/98
-    supersedes: context.document://docs-architecture-target-state/revision/32
+    supersedes: context.document://docs-architecture-target-state/revision/33
     supersedes_provenance:
-      git_commit: 746ad2e0bf5fba16a2890efd4a0f6547fd85b7b1
-      manifest_sha256: 55187cdb8bc1b20097a7f35d650df3ddd4f489bcf6ccb9916b76486ab74b36e7
-      content_sha256: f16f1b3b8afa3e61903301d04d3bbacb42b663e7441c475fe1e78d02212c8820
+      git_commit: 1a3fe0df2d24868509200ce71d97a3119ac1859d
+      manifest_sha256: b2727573687a1f661217d8952eb21cf3b4fe513b891af0dd73e7fe095e21fc64
+      content_sha256: 0d308350127fe4f5dcb872f91e15b50fd4f0a8b550e9715371be14e4a49dd5df
     affected_tasks:
     - M3-08
     - M4-09
@@ -1275,7 +1275,7 @@ documents:
     path: docs/migrations/m8-03-temporal-workflow-acceptance-2026-08-16.md
     valid_until: null
     content_sha256: 8d7f475a124b01d7c87ef9ac0f7c9e9498e2ad8a908d8b8830bbda6b247e4574
-  content_sha256: 0d308350127fe4f5dcb872f91e15b50fd4f0a8b550e9715371be14e4a49dd5df
+  content_sha256: 64ecb104a80b436b0314557809ea8b27aaa4ed90c86201162d30a9f0fa902e8e
   metrics:
     utf8_bytes: 14192
     section_count: 5
