@@ -1,5 +1,5 @@
 {
-  "file_count": 135,
+  "file_count": 136,
   "files": [
     {
       "path": ".agents/plugins/marketplace.json",
@@ -35,11 +35,11 @@
     },
     {
       "path": "CHANGELOG.en.md",
-      "sha256": "e7242893c0b5cc2a460cbe925cabbdc98df7bc0541f5fb85a3ada993fb837c0a"
+      "sha256": "1f37e92e195c38fdef33a9eed7ed7d5721ca0ce7662dab5670e5d2c0393f3bfb"
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "08f51d1da096acde54fec7c11efac1f4fb3598c7c2bafcee769a5e6b344cf988"
+      "sha256": "05e3abd178f1a9a0d237e44d86bc9fe06a90532d87ec15f8defda9fa178f3851"
     },
     {
       "path": "CONTRIBUTING.en.md",
@@ -87,11 +87,11 @@
     },
     {
       "path": "USAGE.en.md",
-      "sha256": "9abad66ad78867550158eb04cbafd2573692e9b4eef1329bab04ff5ab6253d3e"
+      "sha256": "6020acfd3bdb80d0aceb0ed87b17a6b9c92614cbcec1baeb843fcb9ec90e1c75"
     },
     {
       "path": "USAGE.md",
-      "sha256": "428f555f6cf9de651e4daa543ef7ec70ef4cda9cb94c5868ce39a717a8dc94f0"
+      "sha256": "bc34c960d7ced1a2792353649caa143381ccc48374c5a083e26bc60ca2c62b26"
     },
     {
       "path": "benchmarks/__init__.py",
@@ -135,7 +135,7 @@
     },
     {
       "path": "continuity_plane/cli.py",
-      "sha256": "bc24ea9966081d4276174e18582acc0957a9536f34346f1cbb716ba19e5a4c51"
+      "sha256": "c6bedabee93e55d18be29cc5477837202f0c43e077a67279f998e605f56d27bb"
     },
     {
       "path": "continuity_plane/codegraph_verification.py",
@@ -143,7 +143,7 @@
     },
     {
       "path": "continuity_plane/codex_mcp_server.py",
-      "sha256": "f45695c28dc6c29f4fab1304350ff1a3684390027c2abdd09ce5068637de3f28"
+      "sha256": "e3b66e6bdb27992162de6cfd2cc5bc5802d6aad8fdb3464d71891ebf15c9b86f"
     },
     {
       "path": "continuity_plane/collaboration_notifications.py",
@@ -419,11 +419,11 @@
     },
     {
       "path": "plugins/continuity-plane/scripts/continuity-hook.py",
-      "sha256": "35b4d9494fd07eba7e6dcb500299ad69e5c7f81d42811af4d45772674afaae63"
+      "sha256": "74579d0428f89ed04484cdd15bb16d69e8689d64f01cff7aa7fc709e26caa46a"
     },
     {
       "path": "plugins/continuity-plane/scripts/continuity-mcp-server.py",
-      "sha256": "f45695c28dc6c29f4fab1304350ff1a3684390027c2abdd09ce5068637de3f28"
+      "sha256": "e3b66e6bdb27992162de6cfd2cc5bc5802d6aad8fdb3464d71891ebf15c9b86f"
     },
     {
       "path": "plugins/continuity-plane/skills/continuity-plane/SKILL.md",
@@ -444,6 +444,10 @@
     {
       "path": "schemas/m10-11/status-projection.schema.json",
       "sha256": "2b2e9f03791adaaa8eb2160de545f190781686e50e7aa2656d63b1bd21f89963"
+    },
+    {
+      "path": "schemas/m10-15/delivery-workspace-registry.schema.json",
+      "sha256": "7bd9963bae868bd03cd5ec1e8b81e909d11cd1fc9651ce1257ac73640233b03b"
     },
     {
       "path": "schemas/m2-01/typed-state.schema.json",
@@ -511,7 +515,7 @@
     },
     {
       "path": "schemas/registry.json",
-      "sha256": "ef39ea85907f9c22c08b553f4223006814f74800870acabbf5ba11081387a674"
+      "sha256": "3c1a5461bdc33223b7a8e5783a56e54ca6df99ec1eed942542f242114c0caf04"
     },
     {
       "path": "templates/MASTER.en.md",

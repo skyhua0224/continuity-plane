@@ -432,6 +432,10 @@ def main() -> int:
                                         "maxItems": 32,
                                         "items": {"type": "string", "minLength": 1},
                                     },
+                                    "workspace_id": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                    },
                                     "workspace_root": {
                                         "type": "string",
                                         "minLength": 1,
@@ -665,6 +669,7 @@ def main() -> int:
                 source_ref = arguments.get("source_ref")
                 predecessor_work_id = arguments.get("predecessor_work_id")
                 evidence_ids = arguments.get("implementation_evidence_ids")
+                workspace_id = arguments.get("workspace_id")
                 workspace_root = arguments.get("workspace_root")
                 expected_head = arguments.get("expected_head")
                 expected_ref = arguments.get("expected_ref")
@@ -677,6 +682,7 @@ def main() -> int:
                     "source_ref",
                     "predecessor_work_id",
                     "implementation_evidence_ids",
+                    "workspace_id",
                     "workspace_root",
                     "expected_head",
                     "expected_ref",
@@ -686,6 +692,7 @@ def main() -> int:
                     source_ref,
                     predecessor_work_id,
                     evidence_ids,
+                    workspace_id,
                     workspace_root,
                     expected_head,
                     expected_ref,
@@ -717,6 +724,13 @@ def main() -> int:
                             or any(
                                 not isinstance(value, str) or not value
                                 for value in evidence_ids
+                            )
+                            or (
+                                workspace_id is not None
+                                and (
+                                    not isinstance(workspace_id, str)
+                                    or not workspace_id
+                                )
                             )
                             or not isinstance(workspace_root, str)
                             or not workspace_root
@@ -774,6 +788,8 @@ def main() -> int:
                     command.extend(["--predecessor-work-id", predecessor_work_id])
                     for evidence_id in evidence_ids:
                         command.extend(["--implementation-evidence-id", evidence_id])
+                    if workspace_id is not None:
+                        command.extend(["--workspace-id", workspace_id])
                     command.extend(["--workspace-root", workspace_root])
                     command.extend(["--expected-head", expected_head])
                     if expected_ref is not None:

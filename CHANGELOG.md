@@ -60,6 +60,9 @@ codex plugin add continuity-plane@continuity-plane
 - Codex MCP 不再根据进程 cwd 预绑定项目。首次成功的显式 `continuity_resume`
   锁定 Session 项目根；后续生命周期事件优先使用该绑定，换根请求在调用 CLI 前拒绝，
   损坏的本地绑定保持只读。
+- 多仓项目可以从治理根注册独立 delivery workspace。外部仓库激活绑定 workspace ID、
+  repository 摘要、HEAD/ref、实现证据和 `repo://` claim scope；普通本地提交与历史重写
+  使用独立 effect 权限。
 
 ## 0.1.0-alpha.7
 
