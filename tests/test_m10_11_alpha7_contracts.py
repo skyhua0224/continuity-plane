@@ -24,6 +24,7 @@ class M1011Alpha7ContractTests(unittest.TestCase):
             "context.git-workspace-binding": "schemas/m10-11/git-workspace-binding.schema.json",
             "context.delivery-activation": "schemas/m10-11/delivery-activation.schema.json",
             "context.delivery-workspace-registry": "schemas/m10-15/delivery-workspace-registry.schema.json",
+            "context.codex-session-project-bindings": "schemas/m10-15/codex-session-project-bindings.schema.json",
         }
         for schema_id, relative in expected.items():
             with self.subTest(schema_id=schema_id):

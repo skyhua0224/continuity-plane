@@ -13,6 +13,8 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+PUBLIC_RELEASE_VERSION = "0.1.0-alpha.9"
+
 _ROOT_FILES = (
     "README.md",
     "README.en.md",
@@ -125,6 +127,7 @@ _PUBLIC_SCHEMA_FILES = (
     "m10-11/local-work-activation-request.schema.json",
     "m10-11/status-projection.schema.json",
     "m10-15/delivery-workspace-registry.schema.json",
+    "m10-15/codex-session-project-bindings.schema.json",
 )
 _PUBLIC_IGNORED_PARTS = {".git", "__pycache__", ".ruff_cache", "build", "dist"}
 
@@ -289,7 +292,7 @@ def _copy_public_plugin(source: Path, destination: Path) -> None:
         target = destination / relative
         if path.name == "plugin.json":
             manifest = json.loads(path.read_text(encoding="utf-8"))
-            manifest["version"] = "0.1.0-alpha.8"
+            manifest["version"] = PUBLIC_RELEASE_VERSION
             manifest["description"] = (
                 "Bounded recovery, checkpoint canaries, and local continuity tools for Codex"
             )
@@ -362,7 +365,7 @@ def _public_benchmark(source: Path) -> dict[str, Any]:
     )
     raw: dict[str, Any] = {
         "schema_version": "context.public-benchmark/v1",
-        "release": "0.1.0-alpha.8",
+        "release": PUBLIC_RELEASE_VERSION,
         "quality_rate": 1.0,
         "sample_sizes": {
             "context_composition_per_arm": 3,
@@ -619,7 +622,7 @@ def build_public_release(
     ]
     manifest = {
         "schema_version": "context.public-release-manifest/v1",
-        "version": "0.1.0-alpha.8",
+        "version": PUBLIC_RELEASE_VERSION,
         "file_count": len(files),
         "files": files,
     }

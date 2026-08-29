@@ -68,7 +68,7 @@ def _binding(root: Path) -> dict | None:
     }
 
 
-def _requested_root(value: object, session_root: Path | None) -> Path | None:
+def _requested_root(value: object, active_root: Path | None) -> Path | None:
     if not isinstance(value, str) or not value:
         return None
     try:
@@ -76,12 +76,14 @@ def _requested_root(value: object, session_root: Path | None) -> Path | None:
         if path.is_absolute():
             resolved = path.resolve()
         else:
-            resolved = ((session_root or Path.cwd()) / path).resolve()
+            if active_root is None:
+                return None
+            resolved = (active_root / path).resolve()
     except OSError:
         return None
     if not (resolved / ".continuity/project.yaml").is_file():
         return None
-    return resolved if session_root is None or resolved == session_root else None
+    return resolved
 
 
 def _run_cli_with_retry(command: list[str], root: Path) -> subprocess.CompletedProcess[str]:
@@ -258,7 +260,8 @@ def _claim_recovery_binding_error(
 
 
 def main() -> int:
-    session_root: Path | None = None
+    session_roots: dict[str, Path] = {}
+    active_root: Path | None = None
     for line in sys.stdin:
         try:
             request = json.loads(line)
@@ -272,7 +275,7 @@ def main() -> int:
                 {
                     "protocolVersion": request.get("params", {}).get("protocolVersion", "2024-11-05"),
                     "capabilities": {"tools": {}},
-                    "serverInfo": {"name": "continuity", "version": "0.1.0-alpha.7"},
+                    "serverInfo": {"name": "continuity", "version": "0.1.0-alpha.9"},
                 },
             )
         elif method == "notifications/initialized":
@@ -502,21 +505,23 @@ def main() -> int:
             if not isinstance(root, str) or not root:
                 _error(request_id, -32602, "root is required")
                 continue
-            requested_root = _requested_root(root, session_root)
+            requested_root = _requested_root(root, active_root)
             if requested_root is None:
                 _error(request_id, -32000, "root does not match this MCP session project")
                 continue
-            if session_root is None:
-                if tool_name != "continuity_resume":
-                    _error(
-                        request_id,
-                        -32001,
-                        "session binding is unavailable; call continuity_resume first",
-                    )
-                    continue
-                session_root = requested_root
-            canonical_root = str(session_root)
-            binding = None if tool_name == "continuity_resume" else _binding(session_root)
+            root_key = str(requested_root)
+            if tool_name == "continuity_resume":
+                session_roots[root_key] = requested_root
+                active_root = requested_root
+            elif root_key not in session_roots:
+                _error(
+                    request_id,
+                    -32001,
+                    "session binding is unavailable; call continuity_resume first",
+                )
+                continue
+            canonical_root = root_key
+            binding = None if tool_name == "continuity_resume" else _binding(requested_root)
             command = ["continuity", "resume", "--root", canonical_root]
             if tool_name == "continuity_autorun":
                 if _write_binding_error(request_id, binding=binding):
@@ -854,7 +859,7 @@ def main() -> int:
                 ]
                 if action == "reclaim":
                     command.extend(["--new-claim-id", new_claim_id])
-            result = _run_cli_with_retry(command, session_root)
+            result = _run_cli_with_retry(command, requested_root)
             results = [result]
             failed = any(item.returncode != 0 for item in results)
             output = [item.stdout or item.stderr for item in results]

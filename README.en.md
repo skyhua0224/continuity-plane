@@ -14,7 +14,7 @@ after compaction, task switches, crashes, and handoffs is deterministic.
 Install one CLI first:
 
 ```bash
-python -m pip install continuity-plane==0.1.0a8
+python -m pip install continuity-plane==0.1.0a9
 ```
 
 ### Codex plugin (optional)
@@ -24,7 +24,7 @@ pre/post-compaction checkpoints, recovery canaries, and external-effect prefligh
 Codex plugin from this repository's public GitHub marketplace:
 
 ```bash
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.8
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.9
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -162,7 +162,7 @@ are optional enhancements.
 ## Documentation
 
 - [Usage guide](USAGE.en.md)
-- [Complete alpha.8 changes and upgrade notes](CHANGELOG.en.md#010-alpha8)
+- [Complete alpha.9 changes and upgrade notes](CHANGELOG.en.md#010-alpha9)
 - [Architecture](docs/architecture.en.md)
 - [Configuration](docs/configuration.en.md)
 - [Python API](docs/api.en.md)
@@ -175,7 +175,7 @@ are optional enhancements.
 
 ## Release And License
 
-The current alpha is available from [PyPI](https://pypi.org/project/continuity-plane/0.1.0a8/)
+The current alpha is available from [PyPI](https://pypi.org/project/continuity-plane/0.1.0a9/)
 and [GitHub Releases](https://github.com/skyhua0224/continuity-plane/releases).
 The GitHub release also provides the core wheel, source archive, Codex plugin marketplace, and SHA256SUMS; see the
 [changelog](CHANGELOG.en.md).

@@ -75,6 +75,7 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
             for project, project_id in (
                 (bound_project, "bound-project"),
                 (cwd_project, "cwd-project"),
+                (temp / "unknown-project", "unknown-project"),
             ):
                 project.mkdir()
                 (project / ".continuity").mkdir()
@@ -130,6 +131,16 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
                     "continuity_resume",
                     {"root": str(cwd_project)},
                 ),
+                self._tool_call(
+                    3,
+                    "continuity_claim_recover",
+                    {
+                        "root": str(temp / "unknown-project"),
+                        "action": "heartbeat",
+                        "claim_id": "unknown-claim",
+                        "actor_ref": "unknown-actor",
+                    },
+                ),
             ]
             completed = subprocess.run(
                 [sys.executable, str(self.server)],
@@ -153,10 +164,14 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
                 self._tool_text(responses[0])["project_id"],
                 "bound-project",
             )
-            self.assertIn("error", responses[1])
-            self.assertIn("project", responses[1]["error"]["message"].lower())
+            self.assertNotIn("error", responses[1])
+            self.assertIn("error", responses[2])
+            self.assertEqual(responses[2]["error"]["code"], -32001)
             call_lines = calls.read_text(encoding="utf-8").splitlines()
-            self.assertEqual(call_lines, [f"resume --root {bound_project}"])
+            self.assertEqual(
+                call_lines,
+                [f"resume --root {bound_project}", f"resume --root {cwd_project}"],
+            )
 
     def _run(
         self,
@@ -258,7 +273,7 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
             call_lines = calls.read_text().splitlines() if calls.exists() else []
             return responses, call_lines
 
-    def test_plugin_cache_process_binds_on_resume_then_rejects_other_root(self) -> None:
+    def test_plugin_cache_process_requires_explicit_resume_for_each_root(self) -> None:
         requests = [
             {
                 "jsonrpc": "2.0",
@@ -314,8 +329,7 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
         self.assertIn("continuity_resume", responses[0]["error"]["message"])
         self.assertNotIn("error", responses[1])
         self.assertNotIn("error", responses[2])
-        self.assertIn("error", responses[3])
-        self.assertIn("project", responses[3]["error"]["message"].lower())
+        self.assertNotIn("error", responses[3])
         self.assertEqual(sum("work recover heartbeat" in line for line in calls), 1)
 
     def test_plugin_cache_resume_reads_state_once(self) -> None:
@@ -622,9 +636,18 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
                 "id": 2,
                 "method": "tools/call",
                 "params": {
+                    "name": "continuity_resume",
+                    "arguments": {"root": "$PROJECT_ROOT"},
+                },
+            },
+            {
+                "jsonrpc": "2.0",
+                "id": 3,
+                "method": "tools/call",
+                "params": {
                     "name": "continuity_work_complete",
                     "arguments": {
-                        "root": "/tmp/other-project",
+                        "root": "$OTHER_PROJECT_ROOT",
                         "work_id": "work-active",
                         "claim_id": "claim-active",
                         "actor_ref": "actor-bound",
@@ -634,7 +657,7 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
             },
             {
                 "jsonrpc": "2.0",
-                "id": 3,
+                "id": 4,
                 "method": "tools/call",
                 "params": {
                     "name": "continuity_claim_recover",
@@ -648,10 +671,11 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
             },
         ]
         responses, calls = self._run(requests)
-        self.assertIn("error", responses[1])
-        self.assertIn("project", responses[1]["error"]["message"].lower())
+        self.assertNotIn("error", responses[1])
         self.assertIn("error", responses[2])
         self.assertIn("binding", responses[2]["error"]["message"].lower())
+        self.assertIn("error", responses[3])
+        self.assertIn("binding", responses[3]["error"]["message"].lower())
         self.assertEqual(sum("work complete" in line for line in calls), 0)
         self.assertEqual(sum("work recover" in line for line in calls), 0)
 

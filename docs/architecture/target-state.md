@@ -1,9 +1,9 @@
 # Context Control Plane Target-State Architecture
 
-版本：10  
+版本：11  
 日期：2026-08-28  
 状态：current architecture contract  
-governance authority：`MASTER.md` revision 100
+governance authority：`MASTER.md` revision 101
 
 ## 三文档默认投影
 
@@ -16,6 +16,16 @@ Context Control Plane 安装到个人项目、协作项目或公开大型项目�
 | `docs/architecture/target-state.md` | 目标组件、权限、依赖方向、当前差距和验证归属 | 检查功能覆盖与架构完整性 | 按当前任务引用的组件行有界展开 |
 
 三份文档使用稳定 ID、revision、authority、状态、evidence ref 和 completion gate 关联。运行时 Typed State 与 Event Log 保存高频动态事实；文档提供离线恢复、人类审阅和跨 Agent 的稳定投影。STATUS 不保存完整事件历史，MASTER 不吸收实验日志，目标态全表不保存当前 Session 叙事。
+
+### 多项目 Session 路由
+
+一个 Agent Session 可以服务多个独立项目，但项目身份必须由成功的显式
+`continuity_resume(root=...)` 建立。每个 Session 保存受完整性校验的项目集合、当前
+active root 和各项目 profile digest；切换到另一项目必须再次显式指定其 root。进程
+`cwd` 只在尚未建立 Session binding 时作为发现提示，不能覆盖已绑定项目。未绑定、
+profile digest 失配或损坏的 binding 在调用 State/Effect CLI 前拒绝；这条边界同样适用
+于治理根与外部 delivery workspace 分离的多仓项目。一个项目内仍由该项目的 Work、
+claim、lease 和 revision 独立裁决，切换项目不会复用另一项目的 claim。
 
 ## 目标态架构全表
 

@@ -342,7 +342,7 @@ printf '%s\\n' '{"status":"ok"}'
             self.assertEqual(len(binding_files), 1)
             self.assertEqual(stat.S_IMODE(binding_files[0].stat().st_mode), 0o600)
 
-            conflict = invoke(
+            other_project = invoke(
                 {
                     **base,
                     "hook_event_name": "PostToolUse",
@@ -357,9 +357,28 @@ printf '%s\\n' '{"status":"ok"}'
                     },
                 }
             )
-            conflict_output = json.loads(conflict.stdout)
-            self.assertEqual(conflict_output["decision"], "block")
-            self.assertIn("binding", conflict_output["reason"].lower())
+            self.assertEqual(other_project.stdout, "")
+            self.assertEqual(
+                len(list((plugin_data / "session-bindings").glob("*.json"))),
+                1,
+            )
+
+            rebound = invoke(
+                {
+                    **base,
+                    "hook_event_name": "PostToolUse",
+                    "tool_name": "mcp__continuity__continuity_resume",
+                    "tool_use_id": "resume-bound-project-again",
+                    "tool_input": {"root": str(bound_project)},
+                    "tool_response": {
+                        "content": [
+                            {"type": "text", "text": json.dumps(bound_packet)}
+                        ],
+                        "isError": False,
+                    },
+                }
+            )
+            self.assertEqual(rebound.stdout, "")
 
             started = invoke(
                 {
