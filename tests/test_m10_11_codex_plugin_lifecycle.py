@@ -219,7 +219,11 @@ printf '%s\\n' '{"status":"ok"}'
         self.assertEqual(hooks["PreToolUse"][0]["matcher"], "Bash")
         self.assertEqual(
             [group["matcher"] for group in hooks["PostToolUse"]],
-            ["Bash", "mcp__continuity__continuity_resume"],
+            [
+                "Bash",
+                "mcp__continuity__continuity_resume",
+                "continuity_resume",
+            ],
         )
         for groups in hooks.values():
             handler = groups[0]["hooks"][0]
@@ -324,7 +328,7 @@ printf '%s\\n' '{"status":"ok"}'
                 {
                     **base,
                     "hook_event_name": "PostToolUse",
-                    "tool_name": "mcp__continuity__continuity_resume",
+                    "tool_name": "continuity_resume",
                     "tool_use_id": "resume-bound-project",
                     "tool_input": {"root": str(bound_project)},
                     "tool_response": {

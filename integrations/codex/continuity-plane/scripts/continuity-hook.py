@@ -38,6 +38,7 @@ RECOVERY_RULE_IDS = [
 ]
 SESSION_BINDING_SCHEMA = "context.codex-session-project-bindings/v1alpha1"
 CONTINUITY_RESUME_TOOL = "mcp__continuity__continuity_resume"
+CONTINUITY_RESUME_TOOLS = {CONTINUITY_RESUME_TOOL, "continuity_resume"}
 DELIVERY_WORKSPACE_REGISTRY_SCHEMA = (
     "context.delivery-workspace-registry/v1alpha1"
 )
@@ -260,7 +261,7 @@ def _resume_tool_packet(payload: dict[str, Any]) -> dict[str, Any] | None:
 
 
 def _record_resume_binding(payload: dict[str, Any]) -> str:
-    if payload.get("tool_name") != CONTINUITY_RESUME_TOOL:
+    if payload.get("tool_name") not in CONTINUITY_RESUME_TOOLS:
         return "ignored"
     packet = _resume_tool_packet(payload)
     tool_input = payload.get("tool_input")
@@ -1791,7 +1792,7 @@ def main() -> int:
     if not isinstance(payload, dict) or not isinstance(payload.get("cwd"), str):
         return 0
     event = payload.get("hook_event_name")
-    if event == "PostToolUse" and payload.get("tool_name") == CONTINUITY_RESUME_TOOL:
+    if event == "PostToolUse" and payload.get("tool_name") in CONTINUITY_RESUME_TOOLS:
         binding_result = _record_resume_binding(payload)
         if binding_result == "conflict":
             print(
