@@ -1898,7 +1898,7 @@ def main() -> int:
             )
         return 0
     discovered_root = None
-    if bound_root is None and event == "PreToolUse":
+    if event in {"PreToolUse", "PostToolUse"}:
         command = _shell_command(payload)
         effect_class = _effect_class(command)
         if effect_class is not None:
@@ -1909,7 +1909,11 @@ def main() -> int:
                     workdir,
                     effect_action=effect_action,
                 )
-    root = bound_root or discovered_root or _project_root(payload["cwd"])
+    # An exact registered delivery workspace is stronger than a stale session
+    # root for effect accounting. This lets an already-running Session recover
+    # from a host-side binding that still points at another project without
+    # granting arbitrary cross-project access.
+    root = discovered_root or bound_root or _project_root(payload["cwd"])
     if root is None:
         return 0
     try:

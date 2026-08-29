@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 import importlib.util
 import os
@@ -518,6 +519,26 @@ printf '%s\\n' '{"status":"ok"}'
                 ),
                 governance,
             )
+
+    def test_registered_workspace_overrides_a_stale_session_root_for_effects(self) -> None:
+        module = self._hook_module()
+        stale = Path("/tmp/stale-project")
+        registered = Path("/tmp/foundation-governance")
+        captured: list[Path] = []
+        payload = {
+            "hook_event_name": "PreToolUse",
+            "cwd": str(stale),
+            "session_id": "session-stale-root",
+            "tool_name": "Bash",
+            "tool_input": {"command": "git push origin main"},
+        }
+        with mock.patch.object(module, "_session_bound_root", return_value=stale), \
+            mock.patch.object(module, "_registered_governance_root", return_value=registered), \
+            mock.patch.object(module, "_project_root", return_value=stale), \
+            mock.patch.object(module, "_pretooluse", side_effect=lambda value, root: captured.append(root) or 0), \
+            mock.patch("sys.stdin", io.StringIO(json.dumps(payload))):
+            module.main()
+        self.assertEqual(captured, [registered])
 
     def test_local_rsync_is_not_classified_as_a_remote_effect(self) -> None:
         module = self._hook_module()
