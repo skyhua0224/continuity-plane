@@ -1,6 +1,6 @@
 # Continuity Plane Status
 
-版本：revision 103  
+版本：revision 105  
 日期：2026-08-29  
 canonical plan：`MASTER.md`
 
@@ -24,11 +24,11 @@ canonical plan：`MASTER.md`
 | alpha.9 publication | GitHub prerelease、PyPI、脱敏镜像、wheel/sdist、`SHA256SUMS`、CI 和本地 CLI/plugin 已通过 |
 | alpha.1 → alpha.7 audit | immutable tag tree 差异 `28` files（`16` added、`12` modified、`+10,282/-94`）；tag source 对应 `27` 个开发提交；公开 release history 为脱敏 projection，功能差异以标签树、artifact 和测试为准 |
 | M10-11..15 | autorun、source rebind、effect isolation、Session binding 与 external workspace 已通过各自 focused/full tests；matched improvement remains open |
-| M10-17 multi-project Session | 显式 `continuity_resume(root=...)` 切换多个项目；cwd 不覆盖身份；binding digest/legacy/fail-closed 通过；focused `46/46`、full `1975/1975`（`31` skipped） |
+| M10-17 multi-project Session | 显式 `continuity_resume(root=...)` 切换多个项目；cwd 不覆盖身份；binding digest/legacy/fail-closed 通过；focused `46/46`、full `1975/1975`（`31` skipped）；GitHub/PyPI alpha.9 已发布 |
 | Coordination/views | shared Work、forge、notification、Project Graph、2,000-node Impact gates passed；authority violation `0` |
 | Release baseline | Linux/macOS/Windows native matrix `18/18`；local state bundle export/import/rollback available；public privacy scan `0` findings |
 | Documentation audit | README、USAGE、CHANGELOG、public docs、templates 与 policy 全文审阅；公开 Markdown 内部阶段标记 `0`，本地链接缺失 `0`，外部链接 `8/8` 可达；repository verification passed |
-| Governance authority | `MASTER.md` revision 103 |
+| Governance authority | `MASTER.md` revision 105 |
 
 ## 恢复入口
 

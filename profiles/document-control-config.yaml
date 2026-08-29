@@ -1,6 +1,6 @@
 schema_version: context.document-control-config/v1alpha1
-generated_at: '2026-08-29T14:00:00Z'
-governance_revision: 103
+generated_at: '2026-08-29T14:35:00Z'
+governance_revision: 105
 documents:
 - document_id: agents
   path: AGENTS.md
@@ -12,7 +12,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -28,7 +28,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -44,7 +44,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -60,7 +60,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: context.document://changelog-en/revision/8
     affected_tasks:
     - M0-10
@@ -80,7 +80,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: context.document://changelog/revision/8
     affected_tasks:
     - M0-10
@@ -101,7 +101,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -117,7 +117,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -134,7 +134,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -143,19 +143,19 @@ documents:
 - document_id: master
   path: MASTER.md
   category: governance
-  document_revision: 43
+  document_revision: 44
   authority:
     governance_authority: true
     active_state_authority: false
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
-    supersedes: context.document://master/revision/42
+    authority_ref: governance-event://master/revision/105
+    supersedes: context.document://master/revision/43
     supersedes_provenance:
-      git_commit: 6dcc3e26183115a8a7002f086285132bb6045a4a
-      manifest_sha256: fcd8c722909f4782922bae7513d2396bc0a5ee6d0a5b4dc08af4ae539801d652
-      content_sha256: 51464969d633cb6762a13eeb03e8222702601ce613825e36cdc298a8b6720f1b
+      git_commit: 86cbe9d9e62c48a7b4abc714366a3d448564fb8a
+      manifest_sha256: 9ebba321ad55d4a7a849ae6b50ec093673b801310d8fa7f8276001f76b3d09fc
+      content_sha256: 0654e2eb994018a53a7ece3126c61e289448af841a2264c4f04d8d6184f38b08
     affected_tasks:
     - M10-00
     - M10-01
@@ -316,7 +316,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: context.document://readme-en/revision/7
     affected_tasks:
     - M0-10
@@ -336,7 +336,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: projection
-    authority_ref: state-revision://repository/103
+    authority_ref: state-revision://repository/105
     supersedes: context.document://readme/revision/8
     affected_tasks:
     - M0-10
@@ -348,7 +348,7 @@ documents:
       content_sha256: cc75e9e91b48a8718a0a7eea5ad16d9cd4921caa48d89d4de0795eba44272ccb
   evidence_refs: []
   projection_binding:
-    source_state_revision: 103
+    source_state_revision: 105
     template_version: context.document-projection/v1alpha1
     state_write_authority: false
 - document_id: security-en
@@ -361,7 +361,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -377,7 +377,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -387,19 +387,19 @@ documents:
 - document_id: status
   path: STATUS.md
   category: routing
-  document_revision: 49
+  document_revision: 50
   authority:
     governance_authority: false
     active_state_authority: false
     controlled_action_entry: false
   change:
     change_type: status
-    authority_ref: governance-event://master/revision/103
-    supersedes: context.document://status/revision/48
+    authority_ref: governance-event://master/revision/105
+    supersedes: context.document://status/revision/49
     supersedes_provenance:
-      git_commit: 6dcc3e26183115a8a7002f086285132bb6045a4a
-      manifest_sha256: fcd8c722909f4782922bae7513d2396bc0a5ee6d0a5b4dc08af4ae539801d652
-      content_sha256: 17f0a0fb12a68302648e265be20214da50d84a5d541fd1f6b3d8b71bb6e1fc5f
+      git_commit: 86cbe9d9e62c48a7b4abc714366a3d448564fb8a
+      manifest_sha256: 9ebba321ad55d4a7a849ae6b50ec093673b801310d8fa7f8276001f76b3d09fc
+      content_sha256: 193e480bae081a26fd99dbd12e0bfad2a3bc3ddd37b1f94855e0ad9c98be6acc
     affected_tasks:
     - M10-00
     - M10-01
@@ -560,7 +560,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -576,7 +576,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -592,7 +592,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: context.document://usage-en/revision/7
     affected_tasks:
     - M0-10
@@ -612,7 +612,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: context.document://usage/revision/7
     affected_tasks:
     - M0-10
@@ -633,7 +633,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -649,7 +649,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -665,7 +665,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -681,7 +681,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -697,7 +697,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -713,7 +713,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -729,7 +729,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -745,7 +745,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -761,7 +761,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -777,7 +777,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: context.document://docs-architecture-idea-continuity/revision/2
     supersedes_provenance:
       git_commit: 84ac82f3375a39c712e3c98a95f6126753e64199
@@ -798,7 +798,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -814,7 +814,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: context.document://docs-architecture-skill-orchestration/revision/1
     affected_tasks:
     - M0-10
@@ -829,19 +829,19 @@ documents:
 - document_id: docs-architecture-target-state
   path: docs/architecture/target-state.md
   category: architecture
-  document_revision: 39
+  document_revision: 40
   authority:
     governance_authority: false
     active_state_authority: false
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
-    supersedes: context.document://docs-architecture-target-state/revision/38
+    authority_ref: governance-event://master/revision/105
+    supersedes: context.document://docs-architecture-target-state/revision/39
     supersedes_provenance:
-      git_commit: 6dcc3e26183115a8a7002f086285132bb6045a4a
-      manifest_sha256: fcd8c722909f4782922bae7513d2396bc0a5ee6d0a5b4dc08af4ae539801d652
-      content_sha256: fc516f85fc99172635588cec038028ce21ffdd3d20f4a7c9f634c2530d8d1789
+      git_commit: 86cbe9d9e62c48a7b4abc714366a3d448564fb8a
+      manifest_sha256: 9ebba321ad55d4a7a849ae6b50ec093673b801310d8fa7f8276001f76b3d09fc
+      content_sha256: 5e76e0ce947d7767b9aebe441b77562eb972c045a8be6ccfb634ea08dfa5a9bc
     affected_tasks:
     - M3-08
     - M4-09
@@ -975,7 +975,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -991,7 +991,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -1007,7 +1007,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -1023,7 +1023,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -2531,7 +2531,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -2547,7 +2547,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -2563,7 +2563,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -2579,7 +2579,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -2595,7 +2595,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -2611,7 +2611,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: context.document://docs-policies-git-collaboration/revision/1
     supersedes_provenance:
       git_commit: 51663f3b23a4dc4af31ba4be9e9d3f80066d64ca
@@ -2634,7 +2634,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: context.document://docs-policies-project-dogfooding-observation/revision/1
     supersedes_provenance:
       git_commit: b8e7da0358b3b3b8c21ebf44d6c50483f80cd0b1
@@ -2659,7 +2659,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -2675,7 +2675,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -2691,7 +2691,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: projection
-    authority_ref: state-revision://repository/103
+    authority_ref: state-revision://repository/105
     supersedes: context.document://docs-reports-verified-state/revision/27
     supersedes_provenance:
       git_commit: 50ceef67e8795d3184ec07a403e37cde907f2950
@@ -2938,7 +2938,7 @@ documents:
     path: docs/migrations/m10-00-self-dogfood-acceptance-2026-08-18.md
     valid_until: null
   projection_binding:
-    source_state_revision: 103
+    source_state_revision: 105
     template_version: context.document-projection/v1alpha1
     state_write_authority: false
 - document_id: docs-research-agent-harness-assessment-2026-08-09
@@ -3104,7 +3104,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: context.document://integrations-codex-continuity-plane-skills-continuity-plane-skill/revision/2
     affected_tasks:
     - M10-11
@@ -3126,7 +3126,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: context.document://public-docs-api-en/revision/1
     affected_tasks:
     - M0-10
@@ -3147,7 +3147,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -3164,7 +3164,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -3181,7 +3181,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -3198,7 +3198,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: context.document://public-docs-benchmarks-en/revision/1
     affected_tasks:
     - M0-10
@@ -3219,7 +3219,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: context.document://public-docs-benchmarks/revision/1
     affected_tasks:
     - M0-10
@@ -3240,7 +3240,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -3257,7 +3257,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -3274,7 +3274,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -3291,7 +3291,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -3308,7 +3308,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: context.document://public-docs-use-cases-en/revision/2
     affected_tasks:
     - M0-10
@@ -3329,7 +3329,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: context.document://public-docs-use-cases/revision/2
     affected_tasks:
     - M0-10
@@ -3350,7 +3350,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10
@@ -3367,7 +3367,7 @@ documents:
     controlled_action_entry: false
   change:
     change_type: decision
-    authority_ref: governance-event://master/revision/103
+    authority_ref: governance-event://master/revision/105
     supersedes: null
     affected_tasks:
     - M0-10

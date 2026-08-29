@@ -1,6 +1,6 @@
 # Continuity Plane MASTER
 
-版本：revision 103  
+版本：revision 105  
 日期：2026-08-28  
 状态：public alpha publication  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
@@ -383,7 +383,8 @@ M10-01/M10-11 的跨项目退出门包括：State revision 与 `STATUS.current` 
 
 | ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
 |---|---|---|---|---|---|---|
-| M10-17 | 🧑‍💻 | 显式 root binding 与 active-root 路由 | 一个 Session 按显式 root 访问多个独立 Project State；cwd 不得覆盖身份 | 支持治理根、实现仓和 Platform 连续工作 | M10-14/M10-15 | strict schema、`0600` digest binding、显式切换、legacy 迁移、invalid binding fail-closed；MCP/plugin `46/46`、全量 `1975/1975`（`31` skipped）；真实状态和业务仓未写入；验收见 `docs/migrations/m10-17-multi-project-session-binding-acceptance-2026-08-29.md` |
+| M10-17 | ✅ | 显式 root binding 与 active-root 路由 | 一个 Session 按显式 root 访问多个独立 Project State；cwd 不得覆盖身份 | 支持治理根、实现仓和 Platform 连续工作 | M10-14/M10-15 | strict schema、`0600` digest binding、显式切换、legacy 迁移、invalid binding fail-closed；MCP/plugin `46/46`、全量 `1975/1975`（`31` skipped）；GitHub/PyPI alpha.9 已发布；真实业务仓未写入；验收见 `docs/migrations/m10-17-multi-project-session-binding-acceptance-2026-08-29.md` |
+| M10-19 | ✅ | Codex plugin bundle 与双语 alpha.9 release note | release 页面提供中英说明、可下载 plugin bundle 和统一校验文件 | 让用户能直接发现、安装和验证 plugin | M10-17 | GitHub release note bilingual；plugin zip、wheel、sdist、`SHA256SUMS` 已上传；PyPI alpha.9 workflow success；未修改业务仓或直接写 SQLite；证据为 release receipt |
 
 ## 8. E0-E9 实验链路
 
