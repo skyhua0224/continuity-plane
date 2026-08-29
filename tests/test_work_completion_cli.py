@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import stat
 import subprocess
 import tempfile
 import unittest
@@ -490,6 +491,220 @@ class WorkCompletionCliTests(unittest.TestCase):
                     "source-control.merge",
                     "deployment.deploy",
                     "remote-effect.install-verification",
+                },
+            )
+
+    def test_registered_external_workspace_can_activate_delivery_with_local_effects(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            root = temp / "governance"
+            workspace = temp / "service"
+            for repository in (root, workspace):
+                repository.mkdir()
+                subprocess.run(["git", "init", "-q", str(repository)], check=True)
+                subprocess.run(
+                    [
+                        "git",
+                        "-C",
+                        str(repository),
+                        "config",
+                        "user.email",
+                        "test@example.invalid",
+                    ],
+                    check=True,
+                )
+                subprocess.run(
+                    [
+                        "git",
+                        "-C",
+                        str(repository),
+                        "config",
+                        "user.name",
+                        "Continuity Test",
+                    ],
+                    check=True,
+                )
+                (repository / "README.md").write_text(
+                    "fixture\n",
+                    encoding="utf-8",
+                )
+                subprocess.run(
+                    ["git", "-C", str(repository), "add", "README.md"],
+                    check=True,
+                )
+                subprocess.run(
+                    [
+                        "git",
+                        "-C",
+                        str(repository),
+                        "commit",
+                        "-qm",
+                        "test: initialize",
+                    ],
+                    check=True,
+                )
+            (root / ".git/info/exclude").write_text(
+                ".continuity/\n",
+                encoding="utf-8",
+            )
+            store = self._attached_project(root)
+            subprocess.run(
+                ["git", "-C", str(root), "add", "MASTER.md", "STATUS.md"],
+                check=True,
+            )
+            subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(root),
+                    "commit",
+                    "-qm",
+                    "test: bind governance",
+                ],
+                check=True,
+            )
+            implementation = temp / "implementation.json"
+            implementation.write_text('{"tests":"passed"}\n', encoding="utf-8")
+            with redirect_stdout(StringIO()) as completed_output:
+                main(
+                    [
+                        "work",
+                        "complete",
+                        "--root",
+                        str(root),
+                        "--work-id",
+                        "M10-09",
+                        "--claim-id",
+                        "claim-current",
+                        "--actor-ref",
+                        "agent-main",
+                        "--evidence-file",
+                        str(implementation),
+                    ]
+                )
+            implementation_evidence_id = next(
+                item
+                for item in json.loads(completed_output.getvalue())["evidence_ids"]
+                if item.startswith("evidence-test-")
+            )
+            head = subprocess.run(
+                ["git", "-C", str(workspace), "rev-parse", "HEAD"],
+                text=True,
+                capture_output=True,
+                check=True,
+            ).stdout.strip()
+            (workspace / "implementation-change.txt").write_text(
+                "verified but not committed\n",
+                encoding="utf-8",
+            )
+            activation_args = [
+                "work",
+                "activate",
+                "--root",
+                str(root),
+                "--work-id",
+                "M10-09-delivery",
+                "--work-title",
+                "Deliver the verified service change",
+                "--owner-ref",
+                "agent-main",
+                "--claim-id",
+                "claim-service-delivery",
+                "--scope",
+                "capability:release-delivery",
+                "--execution-class",
+                "delivery",
+                "--source-ref",
+                "issue://sample-app/10",
+                "--predecessor-work-id",
+                "M10-09",
+                "--implementation-evidence-id",
+                implementation_evidence_id,
+                "--workspace-id",
+                "service",
+                "--workspace-root",
+                str(workspace),
+                "--expected-head",
+                head,
+                "--expected-ref",
+                "HEAD",
+                "--allow-effect",
+                "source-control.local",
+                "--allow-effect",
+                "source-control.history-rewrite",
+                "--allow-effect",
+                "source-control.push",
+            ]
+            before = store.read_project("sample-app")
+            before_events = store.read_events("sample-app")
+            with self.assertRaisesRegex(ValueError, "workspace_registry"):
+                main(activation_args)
+            self.assertEqual(store.read_project("sample-app"), before)
+            self.assertEqual(store.read_events("sample-app"), before_events)
+
+            try:
+                with redirect_stdout(StringIO()) as registration_output:
+                    registration_result = main(
+                        [
+                            "workspace",
+                            "register",
+                            "--root",
+                            str(root),
+                            "--workspace-id",
+                            "service",
+                            "--workspace-root",
+                            str(workspace),
+                            "--allow-effect",
+                            "source-control.local",
+                            "--allow-effect",
+                            "source-control.history-rewrite",
+                            "--allow-effect",
+                            "source-control.push",
+                        ]
+                    )
+            except (SystemExit, ValueError) as exc:
+                self.fail(f"external workspace registration was rejected: {exc}")
+            self.assertEqual(registration_result, 0)
+            self.assertIn('"status": "registered"', registration_output.getvalue())
+            registry = root / ".continuity/local/delivery-workspaces.json"
+            self.assertTrue(registry.is_file())
+            self.assertEqual(stat.S_IMODE(registry.stat().st_mode), 0o600)
+
+            try:
+                with redirect_stdout(StringIO()) as output:
+                    result = main(activation_args)
+            except ValueError as exc:
+                self.fail(f"registered external delivery workspace was rejected: {exc}")
+
+            response = json.loads(output.getvalue())
+            state = store.read_project("sample-app")
+            claim = next(
+                item
+                for item in state["claims"]
+                if item["claim_id"] == "claim-service-delivery"
+            )
+            self.assertEqual(result, 0)
+            self.assertEqual(response["execution_class"], "delivery")
+            self.assertEqual(
+                {
+                    item["scope_ref"]
+                    for item in claim["scope_owners"]
+                    if item["scope_kind"] == "repo"
+                },
+                {"repo://service"},
+            )
+            self.assertEqual(
+                {
+                    item["scope_ref"]
+                    for item in claim["scope_owners"]
+                    if item["scope_kind"] == "effect"
+                },
+                {
+                    "source-control.local",
+                    "source-control.history-rewrite",
+                    "source-control.push",
                 },
             )
 

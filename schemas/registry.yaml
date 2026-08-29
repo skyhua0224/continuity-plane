@@ -2257,11 +2257,21 @@ schemas:
     migrations: []
 
   - schema_id: context.delivery-activation
-    current_semver: 1.0.0-alpha.1
+    current_semver: 1.1.0-alpha.1
     current_wire_version: context.delivery-activation/v1alpha1
     supported_wire_versions: [context.delivery-activation/v1alpha1]
     artifact_path: schemas/m10-11/delivery-activation.schema.json
-    content_sha256: 364096b184b9d08a7b4aa5486f7af00c52bcaf86e70d10c7546df3194ea606f3
+    content_sha256: 69b2cef78a8ca14ea2a3cbfce90cd16005b285681563e033a8d5e1faa846aefd
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.delivery-workspace-registry
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.delivery-workspace-registry/v1alpha1
+    supported_wire_versions: [context.delivery-workspace-registry/v1alpha1]
+    artifact_path: schemas/m10-15/delivery-workspace-registry.schema.json
+    content_sha256: 7bd9963bae868bd03cd5ec1e8b81e909d11cd1fc9651ce1257ac73640233b03b
     status: current
     compatibility_mode: strict-versioned
     migrations: []

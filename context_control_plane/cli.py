@@ -85,6 +85,8 @@ _ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,127}$")
 _STATE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 _SOURCE_REF_RE = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*://[^\s]{1,960}$")
 _DELIVERY_EFFECTS = {
+    "source-control.local",
+    "source-control.history-rewrite",
     "source-control.push",
     "source-control.pr",
     "source-control.merge",
@@ -93,6 +95,9 @@ _DELIVERY_EFFECTS = {
     "remote-effect.install-verification",
     "package-publish.publish",
 }
+_DELIVERY_WORKSPACE_REGISTRY_SCHEMA_VERSION = (
+    "context.delivery-workspace-registry/v1alpha1"
+)
 
 
 def _template(name: str) -> str:
@@ -579,6 +584,197 @@ def _write_text_atomic(path: Path, text: str) -> None:
         os.replace(temporary, path)
     finally:
         temporary.unlink(missing_ok=True)
+
+
+def _delivery_workspace_registry_file(root: Path) -> Path:
+    return root / ".continuity/local/delivery-workspaces.json"
+
+
+def _file_sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _delivery_registry_digest(document: dict[str, Any]) -> str:
+    return hashlib.sha256(
+        json.dumps(
+            {
+                key: value
+                for key, value in document.items()
+                if key != "registry_sha256"
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+
+
+def _git_common_dir_sha256(root: Path) -> str:
+    completed = subprocess.run(
+        [
+            "git",
+            "-C",
+            str(root),
+            "rev-parse",
+            "--path-format=absolute",
+            "--git-common-dir",
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if completed.returncode != 0 or not completed.stdout.strip():
+        raise ValueError("transition_gate:workspace_git")
+    return hashlib.sha256(
+        str(Path(completed.stdout.strip()).resolve()).encode("utf-8")
+    ).hexdigest()
+
+
+def _validate_delivery_workspace_registry(
+    root: Path,
+    project: dict[str, Any],
+    document: Any,
+) -> dict[str, Any]:
+    fields = {
+        "schema_version",
+        "project_id",
+        "project_profile_sha256",
+        "workspaces",
+        "registry_sha256",
+    }
+    if (
+        not isinstance(document, dict)
+        or set(document) != fields
+        or document.get("schema_version")
+        != _DELIVERY_WORKSPACE_REGISTRY_SCHEMA_VERSION
+        or document.get("project_id") != project["project_id"]
+        or document.get("project_profile_sha256") != _file_sha256(_project_file(root))
+        or document.get("registry_sha256") != _delivery_registry_digest(document)
+        or not isinstance(document.get("workspaces"), list)
+    ):
+        raise ValueError("transition_gate:workspace_registry")
+    seen: set[str] = set()
+    for item in document["workspaces"]:
+        if (
+            not isinstance(item, dict)
+            or set(item)
+            != {
+                "workspace_id",
+                "workspace_root",
+                "repository_sha256",
+                "allowed_effects",
+            }
+            or not isinstance(item.get("workspace_id"), str)
+            or _ID_RE.fullmatch(item["workspace_id"]) is None
+            or item["workspace_id"] in seen
+            or not isinstance(item.get("workspace_root"), str)
+            or not Path(item["workspace_root"]).is_absolute()
+            or not isinstance(item.get("repository_sha256"), str)
+            or re.fullmatch(r"[0-9a-f]{64}", item["repository_sha256"]) is None
+            or not isinstance(item.get("allowed_effects"), list)
+            or not item["allowed_effects"]
+            or item["allowed_effects"] != sorted(set(item["allowed_effects"]))
+            or not set(item["allowed_effects"]) <= _DELIVERY_EFFECTS
+        ):
+            raise ValueError("transition_gate:workspace_registry")
+        seen.add(item["workspace_id"])
+    if document["workspaces"] != sorted(
+        document["workspaces"], key=lambda item: item["workspace_id"]
+    ):
+        raise ValueError("transition_gate:workspace_registry")
+    return document
+
+
+def _load_delivery_workspace_registry(
+    root: Path,
+    project: dict[str, Any],
+) -> dict[str, Any]:
+    path = _delivery_workspace_registry_file(root)
+    try:
+        if path.is_symlink():
+            raise ValueError("transition_gate:workspace_registry")
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError("transition_gate:workspace_registry") from exc
+    return _validate_delivery_workspace_registry(root, project, document)
+
+
+def _workspace_register(args: argparse.Namespace) -> int:
+    root = Path(args.root).resolve()
+    project = _load_project(root)
+    if _ID_RE.fullmatch(args.workspace_id) is None:
+        raise ValueError("workspace identifier is invalid")
+    allowed_effects = sorted(set(args.allow_effect))
+    if (
+        len(allowed_effects) != len(args.allow_effect)
+        or not allowed_effects
+        or not set(allowed_effects) <= _DELIVERY_EFFECTS
+    ):
+        raise ValueError("workspace allowed effects are invalid")
+    workspace = Path(args.workspace_root).resolve()
+    if not workspace.is_dir():
+        raise ValueError("transition_gate:workspace_identity")
+    project_repository = _git_common_dir_sha256(root)
+    workspace_repository = _git_common_dir_sha256(workspace)
+    if project_repository == workspace_repository:
+        raise ValueError("transition_gate:workspace_repository")
+    foreign_profile = workspace / ".continuity/project.yaml"
+    if foreign_profile.is_file():
+        try:
+            foreign = yaml.safe_load(foreign_profile.read_text(encoding="utf-8"))
+        except (OSError, yaml.YAMLError) as exc:
+            raise ValueError("transition_gate:workspace_registry") from exc
+        if not isinstance(foreign, dict) or foreign.get("project_id") != project["project_id"]:
+            raise ValueError("transition_gate:workspace_foreign_authority")
+    path = _delivery_workspace_registry_file(root)
+    if path.exists():
+        registry = _load_delivery_workspace_registry(root, project)
+    else:
+        registry = {
+            "schema_version": _DELIVERY_WORKSPACE_REGISTRY_SCHEMA_VERSION,
+            "project_id": project["project_id"],
+            "project_profile_sha256": _file_sha256(_project_file(root)),
+            "workspaces": [],
+            "registry_sha256": "",
+        }
+    existing = next(
+        (
+            item
+            for item in registry["workspaces"]
+            if item["workspace_id"] == args.workspace_id
+        ),
+        None,
+    )
+    entry = {
+        "workspace_id": args.workspace_id,
+        "workspace_root": str(workspace),
+        "repository_sha256": workspace_repository,
+        "allowed_effects": allowed_effects,
+    }
+    if existing is not None and existing != entry:
+        raise ValueError("transition_gate:workspace_registration_conflict")
+    if existing is None:
+        registry["workspaces"].append(entry)
+        registry["workspaces"].sort(key=lambda item: item["workspace_id"])
+    registry["registry_sha256"] = _delivery_registry_digest(registry)
+    _validate_delivery_workspace_registry(root, project, registry)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    _write_json_atomic(path, registry)
+    path.chmod(0o600)
+    print(
+        json.dumps(
+            {
+                "status": "already-registered" if existing is not None else "registered",
+                "project_id": project["project_id"],
+                "workspace_id": args.workspace_id,
+                "repository_sha256": workspace_repository,
+                "allowed_effects": allowed_effects,
+                "state_write_authority": False,
+            },
+            sort_keys=True,
+        )
+    )
+    return 0
 
 
 def _attach_plan(args: argparse.Namespace) -> int:
@@ -1496,6 +1692,8 @@ def _verified_delivery_workspace(
     project_root: Path,
     workspace_root: str,
     *,
+    workspace_id: str | None,
+    allowed_effects: list[str],
     expected_head: str,
     expected_ref: str | None,
 ) -> dict[str, Any]:
@@ -1541,8 +1739,32 @@ def _verified_delivery_workspace(
             "--git-common-dir",
         )
     )
-    if project_common.resolve() != workspace_common.resolve():
-        raise ValueError("transition_gate:workspace_repository")
+    external_workspace = project_common.resolve() != workspace_common.resolve()
+    repository_sha256 = _git_common_dir_sha256(workspace)
+    registry_sha256: str | None = None
+    if external_workspace:
+        if workspace_id is None:
+            raise ValueError("transition_gate:workspace_repository")
+        project = _load_project(project_root)
+        registry = _load_delivery_workspace_registry(project_root, project)
+        registry_sha256 = registry["registry_sha256"]
+        registered = next(
+            (
+                item
+                for item in registry["workspaces"]
+                if item["workspace_id"] == workspace_id
+            ),
+            None,
+        )
+        if (
+            registered is None
+            or Path(registered["workspace_root"]).resolve() != workspace
+            or registered["repository_sha256"] != repository_sha256
+            or not set(allowed_effects) <= set(registered["allowed_effects"])
+        ):
+            raise ValueError("transition_gate:workspace_registration")
+    elif workspace_id is not None:
+        raise ValueError("transition_gate:workspace_registration")
     head_commit = git_text(workspace, "rev-parse", "HEAD")
     if head_commit != expected_head:
         raise ValueError("transition_gate:workspace_head")
@@ -1589,6 +1811,10 @@ def _verified_delivery_workspace(
         delta.update(len(payload).to_bytes(8, "big"))
         delta.update(hashlib.sha256(payload).digest())
     return {
+        "workspace_id": workspace_id,
+        "external_workspace": external_workspace,
+        "repository_sha256": repository_sha256,
+        "registry_sha256": registry_sha256,
         "head_commit": head_commit,
         "clean": not bool(status),
         "worktree_delta_sha256": delta.hexdigest(),
@@ -2902,6 +3128,7 @@ def _work_activate_atomic(args: argparse.Namespace) -> int:
         args.source_ref,
         args.predecessor_work_id,
         args.implementation_evidence_id,
+        args.workspace_id,
         args.workspace_root,
         args.expected_head,
         args.expected_ref,
@@ -2940,9 +3167,18 @@ def _work_activate_atomic(args: argparse.Namespace) -> int:
         workspace_verification = _verified_delivery_workspace(
             root,
             args.workspace_root,
+            workspace_id=args.workspace_id,
+            allowed_effects=allowed_effects,
             expected_head=args.expected_head,
             expected_ref=args.expected_ref,
         )
+        if args.workspace_id is not None:
+            scope_refs.append(
+                {
+                    "scope_kind": "repo",
+                    "scope_ref": f"repo://{args.workspace_id}",
+                }
+            )
         scope_refs.extend(
             {"scope_kind": "effect", "scope_ref": item}
             for item in allowed_effects
@@ -3621,6 +3857,23 @@ def build_parser() -> argparse.ArgumentParser:
     )
     checkpoint_verify.add_argument("--root", default=".")
     checkpoint_verify.set_defaults(handler=_checkpoint_verify)
+    workspace = commands.add_parser(
+        "workspace",
+        help="register external delivery workspaces",
+    )
+    workspace_commands = workspace.add_subparsers(
+        dest="workspace_command",
+        required=True,
+    )
+    workspace_register = workspace_commands.add_parser(
+        "register",
+        help="bind one external Git repository to this governance project",
+    )
+    workspace_register.add_argument("--root", default=".")
+    workspace_register.add_argument("--workspace-id", required=True)
+    workspace_register.add_argument("--workspace-root", required=True)
+    workspace_register.add_argument("--allow-effect", action="append", required=True)
+    workspace_register.set_defaults(handler=_workspace_register)
     work = commands.add_parser("work", help="transition claimed Work")
     work_commands = work.add_subparsers(dest="work_command", required=True)
     work_complete = work_commands.add_parser(
@@ -3681,6 +3934,7 @@ def build_parser() -> argparse.ArgumentParser:
     work_activate.add_argument("--source-ref", default=None)
     work_activate.add_argument("--predecessor-work-id", default=None)
     work_activate.add_argument("--implementation-evidence-id", action="append")
+    work_activate.add_argument("--workspace-id", default=None)
     work_activate.add_argument("--workspace-root", default=None)
     work_activate.add_argument("--expected-head", default=None)
     work_activate.add_argument("--expected-ref", default=None)

@@ -6,6 +6,7 @@ import hashlib
 import json
 import importlib.util
 import os
+import sqlite3
 import stat
 import subprocess
 import sys
@@ -99,6 +100,45 @@ printf '%s\\n' '{"status":"ok"}'
                 (project / ".continuity/project.yaml").write_text(
                     "schema_version: context.project/v1alpha1\n",
                     encoding="utf-8",
+                )
+                subprocess.run(["git", "init", "-q", str(project)], check=True)
+                subprocess.run(
+                    [
+                        "git",
+                        "-C",
+                        str(project),
+                        "config",
+                        "user.email",
+                        "test@example.invalid",
+                    ],
+                    check=True,
+                )
+                subprocess.run(
+                    [
+                        "git",
+                        "-C",
+                        str(project),
+                        "config",
+                        "user.name",
+                        "Continuity Test",
+                    ],
+                    check=True,
+                )
+                (project / "README.md").write_text("fixture\n", encoding="utf-8")
+                subprocess.run(
+                    ["git", "-C", str(project), "add", "README.md"],
+                    check=True,
+                )
+                subprocess.run(
+                    [
+                        "git",
+                        "-C",
+                        str(project),
+                        "commit",
+                        "-qm",
+                        "test: initialize",
+                    ],
+                    check=True,
                 )
             bin_dir = temp / "bin"
             bin_dir.mkdir()
@@ -405,6 +445,218 @@ printf '%s\\n' '{"status":"ok"}'
             module._effect_class("rsync -a rsync://host/module/plugin ./plugin"),
             "remote-effect",
         )
+
+    def test_external_delivery_workspace_owns_local_and_history_effects(self) -> None:
+        module = self._hook_module()
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            governance = temp / "governance"
+            service = temp / "service"
+            unregistered = temp / "unregistered"
+            for repository in (governance, service, unregistered):
+                repository.mkdir()
+                subprocess.run(["git", "init", "-q", str(repository)], check=True)
+                subprocess.run(
+                    [
+                        "git",
+                        "-C",
+                        str(repository),
+                        "config",
+                        "user.email",
+                        "test@example.invalid",
+                    ],
+                    check=True,
+                )
+                subprocess.run(
+                    [
+                        "git",
+                        "-C",
+                        str(repository),
+                        "config",
+                        "user.name",
+                        "Continuity Test",
+                    ],
+                    check=True,
+                )
+                (repository / "README.md").write_text(
+                    "fixture\n",
+                    encoding="utf-8",
+                )
+                subprocess.run(
+                    ["git", "-C", str(repository), "add", "README.md"],
+                    check=True,
+                )
+                subprocess.run(
+                    [
+                        "git",
+                        "-C",
+                        str(repository),
+                        "commit",
+                        "-qm",
+                        "test: initialize",
+                    ],
+                    check=True,
+                )
+            (governance / ".continuity").mkdir()
+            profile = governance / ".continuity/project.yaml"
+            profile.write_text(
+                "schema_version: context.project/v1alpha1\n"
+                "project_id: governance-project\n",
+                encoding="utf-8",
+            )
+            registry = {
+                "schema_version": "context.delivery-workspace-registry/v1alpha1",
+                "project_id": "governance-project",
+                "project_profile_sha256": module._file_hash(profile),
+                "workspaces": [
+                    {
+                        "workspace_id": "service",
+                        "workspace_root": str(service.resolve()),
+                        "repository_sha256": module._repository_sha256(service),
+                        "allowed_effects": [
+                            "source-control.history-rewrite",
+                            "source-control.local",
+                        ],
+                    }
+                ],
+                "registry_sha256": "",
+            }
+            registry["registry_sha256"] = module._hash(
+                module._canonical(
+                    {
+                        key: value
+                        for key, value in registry.items()
+                        if key != "registry_sha256"
+                    }
+                )
+            )
+            registry_path = (
+                governance / ".continuity/local/delivery-workspaces.json"
+            )
+            registry_path.parent.mkdir(parents=True)
+            registry_path.write_text(
+                module._canonical(registry) + "\n",
+                encoding="utf-8",
+            )
+            registry_path.chmod(0o600)
+            packet = {
+                "schema_version": "context.recovery-envelope/v1alpha1",
+                "project_id": "governance-project",
+                "revision": 8,
+                "active_work": {"work_id": "delivery-work"},
+                "claim": {
+                    "claim_id": "delivery-claim",
+                    "actor_ref": "delivery-actor",
+                    "status": "active",
+                    "scope_owners": [
+                        {"scope_kind": "capability", "scope_ref": "delivery"},
+                        {"scope_kind": "repo", "scope_ref": "repo://service"},
+                        {
+                            "scope_kind": "effect",
+                            "scope_ref": "source-control.local",
+                        },
+                        {
+                            "scope_kind": "effect",
+                            "scope_ref": "source-control.history-rewrite",
+                        },
+                    ],
+                },
+                "next_action": "continue-active-work",
+                "source_fresh": True,
+                "lease_valid": True,
+                "checkpoint_verified": True,
+                "read_only": False,
+            }
+            bin_dir = temp / "bin"
+            bin_dir.mkdir()
+            _, calls = self._fake_continuity(bin_dir)
+            plugin_data = temp / "plugin-data"
+            environment = {
+                **os.environ,
+                "PATH": f"{bin_dir}:{os.environ['PATH']}",
+                "PLUGIN_DATA": str(plugin_data),
+                "PLUGIN_ROOT": str(self.plugin),
+                "FAKE_CONTINUITY_CALLS": str(calls),
+                "MCP_BINDING_ENVELOPE": json.dumps(packet),
+            }
+
+            def invoke(
+                tool_use_id: str,
+                command: str,
+                workdir: Path,
+                event: str = "PreToolUse",
+            ) -> subprocess.CompletedProcess[str]:
+                payload = {
+                    "session_id": "delivery-session",
+                    "transcript_path": None,
+                    "cwd": str(governance),
+                    "hook_event_name": event,
+                    "model": "provider-model",
+                    "turn_id": "delivery-turn",
+                    "tool_name": "Bash",
+                    "tool_use_id": tool_use_id,
+                    "tool_input": {
+                        "command": command,
+                        "workdir": str(workdir),
+                    },
+                }
+                if event == "PostToolUse":
+                    payload["tool_response"] = {"exit_code": 0, "output": "ok"}
+                return subprocess.run(
+                    [sys.executable, str(self.script)],
+                    input=json.dumps(payload),
+                    text=True,
+                    capture_output=True,
+                    env=environment,
+                    check=False,
+                )
+
+            allowed = invoke("service-commit", "git commit -m service", service)
+            self.assertEqual(allowed.stdout, "")
+            connection = sqlite3.connect(
+                plugin_data / "recovery-budget.sqlite3"
+            )
+            try:
+                repository_sha256 = connection.execute(
+                    "SELECT repository_sha256 FROM effect_intents_v2"
+                ).fetchone()[0]
+            finally:
+                connection.close()
+            self.assertEqual(
+                repository_sha256,
+                module._repository_sha256(service),
+            )
+            released = invoke(
+                "service-commit",
+                "git commit -m service",
+                service,
+                "PostToolUse",
+            )
+            self.assertEqual(released.stdout, "")
+            connection = sqlite3.connect(
+                plugin_data / "recovery-budget.sqlite3"
+            )
+            try:
+                remaining_intents = connection.execute(
+                    "SELECT COUNT(*) FROM effect_intents_v2"
+                ).fetchone()[0]
+            finally:
+                connection.close()
+            self.assertEqual(remaining_intents, 0)
+            self.assertEqual(
+                module._effect_action("git rebase main", "source-control"),
+                "source-control.history-rewrite",
+            )
+
+            denied = invoke(
+                "unregistered-commit",
+                "git commit -m unregistered",
+                unregistered,
+            )
+            self.assertTrue(denied.stdout)
+            decision = json.loads(denied.stdout)["hookSpecificOutput"]
+            self.assertEqual(decision["permissionDecision"], "deny")
+            self.assertIn("workspace", decision["permissionDecisionReason"].lower())
 
     def test_pretooluse_denies_external_effect_without_a_writable_claim(self) -> None:
         idle = {

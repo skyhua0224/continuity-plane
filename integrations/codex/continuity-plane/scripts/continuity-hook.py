@@ -38,12 +38,15 @@ RECOVERY_RULE_IDS = [
 ]
 SESSION_BINDING_SCHEMA = "context.codex-session-project-binding/v1alpha1"
 CONTINUITY_RESUME_TOOL = "mcp__continuity__continuity_resume"
+DELIVERY_WORKSPACE_REGISTRY_SCHEMA = (
+    "context.delivery-workspace-registry/v1alpha1"
+)
 
 _EFFECT_PATTERNS = (
     (
         "source-control",
         re.compile(
-            r"(?:^|[;&|]\s*)(?:git\s+(?:commit|push|merge|rebase|reset)\b|"
+            r"(?:^|[;&|]\s*)(?:git\s+(?:add|commit|push|merge|rebase|reset)\b|"
             r"git\s+tag\s+(?!(?:-l|--list|--contains|--points-at|--merged|"
             r"--no-merged|--sort|--format)\b)|"
             r"tea\s+(?:pulls?\s+(?:create|merge)|releases?)|"
@@ -930,6 +933,148 @@ def _repository_sha256(root: Path) -> str:
     return _hash(str(root.resolve()))
 
 
+def _delivery_workspace_registry(
+    root: Path,
+    project_id: str,
+) -> dict[str, Any] | None:
+    path = root / ".continuity/local/delivery-workspaces.json"
+    profile = root / ".continuity/project.yaml"
+    try:
+        if path.is_symlink():
+            return None
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    fields = {
+        "schema_version",
+        "project_id",
+        "project_profile_sha256",
+        "workspaces",
+        "registry_sha256",
+    }
+    if (
+        not isinstance(document, dict)
+        or set(document) != fields
+        or document.get("schema_version") != DELIVERY_WORKSPACE_REGISTRY_SCHEMA
+        or document.get("project_id") != project_id
+        or document.get("project_profile_sha256") != _file_hash(profile)
+        or document.get("registry_sha256")
+        != _hash(
+            _canonical(
+                {
+                    key: value
+                    for key, value in document.items()
+                    if key != "registry_sha256"
+                }
+            )
+        )
+        or not isinstance(document.get("workspaces"), list)
+    ):
+        return None
+    seen: set[str] = set()
+    for item in document["workspaces"]:
+        if (
+            not isinstance(item, dict)
+            or set(item)
+            != {
+                "workspace_id",
+                "workspace_root",
+                "repository_sha256",
+                "allowed_effects",
+            }
+            or not isinstance(item.get("workspace_id"), str)
+            or not item["workspace_id"]
+            or item["workspace_id"] in seen
+            or not isinstance(item.get("workspace_root"), str)
+            or not Path(item["workspace_root"]).is_absolute()
+            or not isinstance(item.get("repository_sha256"), str)
+            or not re.fullmatch(r"[0-9a-f]{64}", item["repository_sha256"])
+            or not isinstance(item.get("allowed_effects"), list)
+            or not item["allowed_effects"]
+            or item["allowed_effects"] != sorted(set(item["allowed_effects"]))
+        ):
+            return None
+        seen.add(item["workspace_id"])
+    return document
+
+
+def _tool_workdir(payload: dict[str, Any], root: Path) -> Path | None:
+    tool_input = payload.get("tool_input")
+    value = tool_input.get("workdir") if isinstance(tool_input, dict) else None
+    if value is None:
+        value = payload.get("cwd")
+    if not isinstance(value, str) or not value:
+        return root
+    path = Path(value)
+    if not path.is_absolute():
+        path = root / path
+    try:
+        return path.resolve()
+    except OSError:
+        return None
+
+
+def _git_toplevel(root: Path) -> Path | None:
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            timeout=2,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if completed.returncode != 0 or not completed.stdout.strip():
+        return None
+    try:
+        return Path(completed.stdout.strip()).resolve()
+    except OSError:
+        return None
+
+
+def _source_control_effect_root(
+    payload: dict[str, Any],
+    root: Path,
+    claim: dict[str, Any],
+    *,
+    project_id: str,
+    effect_action: str,
+) -> Path | None:
+    workdir = _tool_workdir(payload, root)
+    governance_repository = _git_toplevel(root)
+    effect_repository = _git_toplevel(workdir) if workdir is not None else None
+    if governance_repository is None or effect_repository is None:
+        return None
+    scopes = claim.get("scope_owners")
+    repo_scopes = {
+        item.get("scope_ref")
+        for item in scopes or []
+        if isinstance(item, dict) and item.get("scope_kind") == "repo"
+    }
+    if _repository_sha256(effect_repository) == _repository_sha256(
+        governance_repository
+    ):
+        return effect_repository if not repo_scopes else None
+    registry = _delivery_workspace_registry(root, project_id)
+    if registry is None:
+        return None
+    repository_sha256 = _repository_sha256(effect_repository)
+    for item in registry["workspaces"]:
+        workspace = Path(item["workspace_root"]).resolve()
+        try:
+            workdir.relative_to(workspace)
+        except (TypeError, ValueError):
+            continue
+        if (
+            item["repository_sha256"] == repository_sha256
+            and f"repo://{item['workspace_id']}" in repo_scopes
+            and effect_action in item["allowed_effects"]
+        ):
+            return workspace
+    return None
+
+
 def _git_branch(root: Path) -> str:
     try:
         symbolic = subprocess.run(
@@ -1073,10 +1218,13 @@ def _acquire_effect_intent(
         connection.close()
 
 
-def _release_effect_intent(payload: dict[str, Any], root: Path) -> None:
-    identity = _effect_resource_identity(payload, root)
-    if identity is None:
+def _release_effect_intent(payload: dict[str, Any]) -> None:
+    session_id = payload.get("session_id")
+    tool_use_id = payload.get("tool_use_id")
+    if not isinstance(session_id, str) or not session_id:
         return
+    if not isinstance(tool_use_id, str) or not tool_use_id:
+        tool_use_id = _hash(_shell_command(payload))
     connection = _recovery_database()
     if connection is None:
         return
@@ -1084,13 +1232,11 @@ def _release_effect_intent(payload: dict[str, Any], root: Path) -> None:
         connection.execute(
             """
             DELETE FROM effect_intents_v2
-            WHERE resource_key = ? AND session_sha256 = ?
-                AND tool_use_sha256 = ?
+            WHERE session_sha256 = ? AND tool_use_sha256 = ?
             """,
             (
-                identity["resource_key"],
-                identity["session_sha256"],
-                identity["tool_use_sha256"],
+                _hash(session_id),
+                _hash(tool_use_id),
             ),
         )
     connection.close()
@@ -1135,6 +1281,11 @@ def _rsync_has_remote_endpoint(command: str) -> bool:
 def _effect_action(command: str, effect_class: str) -> str:
     lowered = command.lower()
     if effect_class == "source-control":
+        if re.search(r"\bgit\s+(?:rebase|reset)\b", lowered) or re.search(
+            r"\bgit\s+commit\b[^;&|]*\s--amend\b",
+            lowered,
+        ):
+            return "source-control.history-rewrite"
         if re.search(r"\bgit\s+push\b", lowered):
             return "source-control.push"
         if re.search(
@@ -1282,8 +1433,39 @@ def _pretooluse(payload: dict[str, Any], root: Path) -> int:
         )
         _deny_tool(reason)
         return 0
+    effect_root = root
+    if effect_class == "source-control":
+        project_id = packet.get("project_id") if packet is not None else None
+        effect_root = (
+            _source_control_effect_root(
+                payload,
+                root,
+                claim,
+                project_id=project_id,
+                effect_action=effect_action,
+            )
+            if isinstance(project_id, str) and project_id
+            else None
+        )
+        if effect_root is None:
+            reason = (
+                "Continuity blocked source-control: the command workdir is not "
+                "the governance repository or a registered and claimed delivery "
+                "workspace."
+            )
+            _observe(
+                payload,
+                root,
+                event_type="pretooluse",
+                success=False,
+                tool_name="Bash",
+                effect_class=effect_class,
+                decision="deny-workspace",
+            )
+            _deny_tool(reason)
+            return 0
     if not _acquire_effect_intent(
-        payload, root, effect_class=effect_class, claim=claim
+        payload, effect_root, effect_class=effect_class, claim=claim
     ):
         reason = (
             f"Continuity blocked {effect_class}: another active session holds the "
@@ -1317,7 +1499,7 @@ def _posttooluse(payload: dict[str, Any], root: Path) -> int:
         return 0
     command = _shell_command(payload)
     if _effect_class(command) is not None:
-        _release_effect_intent(payload, root)
+        _release_effect_intent(payload)
     if not _is_recovery_read(command):
         response = payload.get("tool_response")
         success = isinstance(response, dict) and response.get("exit_code") == 0

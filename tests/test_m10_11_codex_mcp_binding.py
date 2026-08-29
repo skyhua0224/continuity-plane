@@ -537,6 +537,7 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
                     "source_ref": "issue://737",
                     "predecessor_work_id": "work-implementation",
                     "implementation_evidence_ids": ["evidence-test-verified"],
+                    "workspace_id": "service",
                     "workspace_root": "$PROJECT_ROOT",
                     "expected_head": "a" * 40,
                     "expected_ref": "refs/heads/work",
@@ -568,6 +569,7 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
         self.assertIn("--source-ref issue://737", command)
         self.assertIn("--predecessor-work-id work-implementation", command)
         self.assertIn("--implementation-evidence-id evidence-test-verified", command)
+        self.assertIn("--workspace-id service", command)
         self.assertIn("--workspace-root ", command)
         self.assertIn("/project --expected-head", command)
         self.assertIn(f"--expected-head {'a' * 40}", command)

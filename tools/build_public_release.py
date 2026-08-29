@@ -124,6 +124,7 @@ _PUBLIC_SCHEMA_FILES = (
     "m8-10/collaboration-subscription.schema.json",
     "m10-11/local-work-activation-request.schema.json",
     "m10-11/status-projection.schema.json",
+    "m10-15/delivery-workspace-registry.schema.json",
 )
 _PUBLIC_IGNORED_PARTS = {".git", "__pycache__", ".ruff_cache", "build", "dist"}
 
