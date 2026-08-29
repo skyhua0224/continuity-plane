@@ -14,7 +14,7 @@ after compaction, task switches, crashes, and handoffs is deterministic.
 Install one CLI first:
 
 ```bash
-python -m pip install continuity-plane==0.1.0a9.post1
+python -m pip install continuity-plane==0.1.0a9
 ```
 
 ### Codex plugin (optional)

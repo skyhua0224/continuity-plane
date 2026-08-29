@@ -13,7 +13,7 @@ Continuity Plane 是面向长期 AI 辅助软件工作的 provider-neutral 控�
 先安装一份 CLI：
 
 ```bash
-python -m pip install continuity-plane==0.1.0a9.post1
+python -m pip install continuity-plane==0.1.0a9
 ```
 
 ### Codex 插件（可选）

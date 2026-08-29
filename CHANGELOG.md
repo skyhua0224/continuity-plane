@@ -19,7 +19,7 @@
 ### 安装
 
 ```bash
-python -m pip install continuity-plane==0.1.0a9.post1
+python -m pip install continuity-plane==0.1.0a9
 codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.9.1
 codex plugin add continuity-plane@continuity-plane
 ```
