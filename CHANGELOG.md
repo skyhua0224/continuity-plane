@@ -2,6 +2,24 @@
 
 [English](CHANGELOG.en.md)
 
+## 0.1.0-alpha.9.3
+
+### 修复
+
+- 支持宿主将 `tea pulls create` 作为工具名传入，而不是放在 `tool_input.command` 中。
+- 在该工具形态下仍按绑定项目、active claim 和 `source-control.pr` scope 进行门禁校验。
+
+### 验证
+
+- Codex plugin lifecycle `33/33` 通过，包含无命令字段的 PR 工具调用。
+
+### 安装
+
+```bash
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.9.3
+codex plugin add continuity-plane@continuity-plane
+```
+
 ## 0.1.0-alpha.9.2
 
 ### 修复

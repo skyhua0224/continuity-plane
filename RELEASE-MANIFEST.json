@@ -35,11 +35,11 @@
     },
     {
       "path": "CHANGELOG.en.md",
-      "sha256": "76a2bb922b785e2c286589d50abc48545fd3e1a35c46f49f021676ef2c5ba6c4"
+      "sha256": "8fae2d5689de0a418ec4759b9a1defc191854c87d53b55a92c64903e3296c7fb"
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "8aad6db8156b5a38ba8be766bd80a2d70ef69722f46ea80dcc035c6d8b8022ae"
+      "sha256": "3c2d0aa90b12b4057ee843ba7c073a9bd61ece486c7a66412b5b5be5bce7a630"
     },
     {
       "path": "CONTRIBUTING.en.md",
@@ -63,11 +63,11 @@
     },
     {
       "path": "README.en.md",
-      "sha256": "ea18d6c9448a385f9519e1897f4fd847b34ea0b269ac60085af469269fa2ddd9"
+      "sha256": "a4357ebe1f56c36736c0404dca2e79583ba1a6237b91c09eb3513fae42149d1f"
     },
     {
       "path": "README.md",
-      "sha256": "8a57184f06b534bc52521fed1cb745209402c1e53fca0a024b931f60e156cd4a"
+      "sha256": "371bc75132f8237f7c2ac5b46fd5c8a84cbb898c73229984192528b15e874c42"
     },
     {
       "path": "SECURITY.en.md",
@@ -87,11 +87,11 @@
     },
     {
       "path": "USAGE.en.md",
-      "sha256": "91b79fba5413cd85547ad0ca7e6e8f0da6705de397411e0e91284235c208f343"
+      "sha256": "ddb5b6bdad2b3b2f23166c17877afaa9cb82627ffc428d69d6b64442fecdffce"
     },
     {
       "path": "USAGE.md",
-      "sha256": "b31fe2d8110358e1319be5837578985194e448e7425cd77d59ba9b8bb1d37c50"
+      "sha256": "64893145ed2ee75b522c981867e21a2483834c675ca572ce20e9056254621308"
     },
     {
       "path": "benchmarks/__init__.py",
@@ -407,7 +407,7 @@
     },
     {
       "path": "plugins/continuity-plane/.codex-plugin/plugin.json",
-      "sha256": "4171f44fdd32a0b672dbda184ed5ce456af0e4e299fa3f04011906fb23fed969"
+      "sha256": "fa7d351bcaa210117563e3be1804e4f83c5efb4f9b5159c843feaceed53b2fc6"
     },
     {
       "path": "plugins/continuity-plane/.mcp.json",
@@ -419,7 +419,7 @@
     },
     {
       "path": "plugins/continuity-plane/scripts/continuity-hook.py",
-      "sha256": "c993c2c8cdd571245064c446064ee89a76a5b9d4775c7b0d6ac3881792ae6542"
+      "sha256": "bb2e78d5cc3a54a3cce2587f4f1099feea7e5dc629d6c8dce168d68cbc410e60"
     },
     {
       "path": "plugins/continuity-plane/scripts/continuity-mcp-server.py",

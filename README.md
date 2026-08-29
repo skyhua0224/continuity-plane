@@ -22,7 +22,7 @@ python -m pip install continuity-plane==0.1.0a9
 预检时，可以从本项目的公开 GitHub marketplace 安装 Codex plugin：
 
 ```bash
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.9.2
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.9.3
 codex plugin add continuity-plane@continuity-plane
 ```
 

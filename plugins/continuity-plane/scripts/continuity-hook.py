@@ -851,6 +851,14 @@ def _shell_command(payload: dict[str, Any]) -> str:
         return command
     if isinstance(command, list) and all(isinstance(item, str) for item in command):
         return " ".join(command)
+    tool_name = payload.get("tool_name")
+    if isinstance(tool_name, str) and re.fullmatch(
+        r"(?:tea\s+pulls?\s+(?:create|merge)|gh\s+pr\s+(?:create|merge)|"
+        r"glab\s+mr\s+(?:create|merge))",
+        tool_name,
+        re.IGNORECASE,
+    ):
+        return tool_name
     return ""
 
 
@@ -1558,9 +1566,9 @@ def _deny_tool(reason: str) -> None:
 
 def _pretooluse(payload: dict[str, Any], root: Path) -> int:
     tool_name = payload.get("tool_name")
-    if tool_name != "Bash":
-        return 0
     command = _shell_command(payload)
+    if tool_name != "Bash" and _effect_class(command) is None:
+        return 0
     recovery_budget = _active_recovery_budget(payload, root)
     if recovery_budget is not None and _is_unbounded_recovery_read(command):
         budget, admitted = recovery_budget
@@ -1698,9 +1706,9 @@ def _pretooluse(payload: dict[str, Any], root: Path) -> int:
 
 
 def _posttooluse(payload: dict[str, Any], root: Path) -> int:
-    if payload.get("tool_name") != "Bash":
-        return 0
     command = _shell_command(payload)
+    if payload.get("tool_name") != "Bash" and _effect_class(command) is None:
+        return 0
     if _effect_class(command) is not None:
         _release_effect_intent(payload)
     if not _is_recovery_read(command):

@@ -2,6 +2,24 @@
 
 [中文](CHANGELOG.md)
 
+## 0.1.0-alpha.9.3
+
+### Fixes
+
+- Support hosts that provide `tea pulls create` as the tool name instead of placing it in `tool_input.command`.
+- Keep project binding, active-claim, and `source-control.pr` checks active for this tool shape.
+
+### Verification
+
+- Codex plugin lifecycle `33/33` passes, including a PR tool call without a command field.
+
+### Installation
+
+```bash
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.9.3
+codex plugin add continuity-plane@continuity-plane
+```
+
 ## 0.1.0-alpha.9.2
 
 ### Fixes

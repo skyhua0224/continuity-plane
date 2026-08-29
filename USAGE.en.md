@@ -319,7 +319,7 @@ Install the core package, then add this GitHub repository as a marketplace:
 
 ```bash
 python -m pip install continuity-plane==0.1.0a9
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.9.2
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.9.3
 codex plugin add continuity-plane@continuity-plane
 ```
 
