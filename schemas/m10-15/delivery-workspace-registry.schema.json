@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.continuity-plane.dev/context.delivery-workspace-registry/v1alpha1",
+  "title": "Continuity Plane Delivery Workspace Registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_id",
+    "project_profile_sha256",
+    "workspaces",
+    "registry_sha256"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "context.delivery-workspace-registry/v1alpha1"
+    },
+    "project_id": {"$ref": "#/$defs/id"},
+    "project_profile_sha256": {"$ref": "#/$defs/sha256"},
+    "workspaces": {
+      "type": "array",
+      "maxItems": 128,
+      "items": {"$ref": "#/$defs/workspace"}
+    },
+    "registry_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "workspace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "workspace_id",
+        "workspace_root",
+        "repository_sha256",
+        "allowed_effects"
+      ],
+      "properties": {
+        "workspace_id": {"$ref": "#/$defs/id"},
+        "workspace_root": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "repository_sha256": {"$ref": "#/$defs/sha256"},
+        "allowed_effects": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "source-control.local",
+              "source-control.history-rewrite",
+              "source-control.push",
+              "source-control.pr",
+              "source-control.merge",
+              "source-control.release",
+              "deployment.deploy",
+              "remote-effect.install-verification",
+              "package-publish.publish"
+            ]
+          }
+        }
+      }
+    }
+  }
+}
