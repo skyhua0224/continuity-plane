@@ -116,7 +116,14 @@ class M1000SelfDogfoodPilotTests(unittest.TestCase):
                 (self.root / "schemas/registry.yaml").read_bytes()
             ).hexdigest(),
         )
-        self.assertTrue(plan["repository_baseline"]["dirty"])
+        status = subprocess.run(
+            ["git", "status", "--short"],
+            cwd=self.root,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout
+        self.assertEqual(plan["repository_baseline"]["dirty"], bool(status))
         self.assertEqual(
             {item["fault_kind"] for item in plan["fault_injections"]},
             {"compaction", "idea", "interrupt", "worker-loss"},
