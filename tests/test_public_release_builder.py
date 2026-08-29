@@ -65,6 +65,7 @@ class PublicReleaseBuilderTests(unittest.TestCase):
             )
             self.assertIn("Codex plugin", (output / "README.md").read_text(encoding="utf-8"))
             self.assertIn("Codex plugin", (output / "README.en.md").read_text(encoding="utf-8"))
+            self.assertIn('version = "0.1.0a9"', (output / "pyproject.toml").read_text(encoding="utf-8"))
             self.assertIn("## 它解决哪些问题", (output / "README.md").read_text())
             self.assertIn("## Problems It Solves", (output / "README.en.md").read_text())
             public_readme = (output / "README.md").read_text(encoding="utf-8")

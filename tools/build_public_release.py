@@ -336,6 +336,7 @@ def _write_public_plugin_marketplace(output: Path) -> None:
 
 def _normalize_public_identity(text: str) -> str:
     # Source documentation lives under public/docs; the projected mirror flattens it to docs.
+    text = text.replace('version = "0.1.0a8"', 'version = "0.1.0a9"')
     text = text.replace("public/docs/", "docs/")
     text = text.replace("Context Control Plane", "Continuity Plane")
     text = text.replace(".context-control-plane", ".continuity")
