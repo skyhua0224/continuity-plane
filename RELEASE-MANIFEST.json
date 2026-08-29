@@ -431,7 +431,7 @@
     },
     {
       "path": "pyproject.toml",
-      "sha256": "cfb7e43edde4f18060763a31392645b84be7d94d8ae033d72f772a000a6a3624"
+      "sha256": "26990c18f9f9eb0401a9815b131e946b831ea3f374784bf5698f54e7e4a15423"
     },
     {
       "path": "schemas/m10-01/canonical-attach-proposal.schema.json",
