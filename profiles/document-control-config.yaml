@@ -143,7 +143,7 @@ documents:
 - document_id: master
   path: MASTER.md
   category: governance
-  document_revision: 40
+  document_revision: 41
   authority:
     governance_authority: true
     active_state_authority: false
@@ -151,11 +151,11 @@ documents:
   change:
     change_type: decision
     authority_ref: governance-event://master/revision/101
-    supersedes: context.document://master/revision/39
+    supersedes: context.document://master/revision/40
     supersedes_provenance:
-      git_commit: 6e6f376e02082ac18a327190901d1197e74dca98
-      manifest_sha256: d30742e98bfc62c4979510cbc15901eb426931eefff740b5121cf8e555598727
-      content_sha256: b8a40310776ac8e89897e15e6fd967caff5ba28a02c31f4870e6d67d9681df4a
+      git_commit: 4eaffa65375a3c422c325847f4a8a3522efcddd8
+      manifest_sha256: f909305206b8b7942e1f13456764c724cd78a4d2d1e2b3a12b117ee24caa8ada
+      content_sha256: 930582ef44966c685a1fbe49af859944d3789d4c758e6d6256ec5549d300d420
     affected_tasks:
     - M10-00
     - M10-01

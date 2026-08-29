@@ -376,9 +376,14 @@ Docmost 候选实现固定到 [`Yundi339/docmost` 参考评估](docs/research/do
 | M10-13 | ✅ | public alpha.8 core package 与 Codex plugin 发布 | GitHub、PyPI、plugin 和校验资产同步可安装 | 让已验证控制面修复可被下游项目采用 | M10-12 | alpha.8 public mirror `135` files；full suite `1970` passed（`31` environment skips）；public tests `5/5`；wheel/sdist/plugin SHA-256 一致；GitHub release 与 PyPI `0.1.0a8` 可独立安装；公开隐私扫描 `0`；内部 MASTER/STATUS 与治理资料未进入公开镜像 |
 | M10-14 | ✅ | Codex Session project binding 与 cwd 隔离 | 首次成功的显式 resume 锁定项目身份；生命周期事件不能由无关 cwd 覆盖已绑定根 | 阻止跨项目 packet 注入和权限误路由 | M8-02/M10-01/M10-11 | MCP 启动时不从 cwd 预绑定；hashed session binding、profile digest、`0600`、conflict veto 和 invalid-binding fail-closed 通过；focused `48/48`；full suite `1973` passed、`31` skipped；真实双项目只读验收返回既定 project_id，第二根在 CLI 前拒绝，SQLite 直接修改 `0`；证据见 `docs/migrations/m10-14-codex-session-project-binding-acceptance-2026-08-29.md` |
 | M10-15 | ✅ | governance root 注册独立 delivery workspace | 多仓项目的治理状态与实现仓 Git 身份显式关联；本地提交、历史重写和远端 effect 绑定实际执行仓 | 支持 governance/service/release 仓分离且不放宽跨仓权限 | M8-02/M10-01/M10-14 | strict workspace registry schema、project/profile/registry/repository digest、`0600`、`repo://` claim scope、HEAD/ref/delta/evidence 和 effect subset gates 通过；`source-control.local` 与 `source-control.history-rewrite` 分离；focused `71/71`、full suite `1975` passed、`31` skipped；真实注册前后 State/Event `75/75`、service worktree clean、SQLite 直接修改 `0`；证据见 `docs/migrations/m10-15-external-delivery-workspace-acceptance-2026-08-29.md` |
-| M10-17 | 🧑‍💻 | 显式多项目 Session binding 与治理根路由 | 一个 Session 可按显式 root 顺序访问多个独立 Project State；已绑定项目集合、当前 active root、profile digest 和 provider Session 身份可验证；cwd 不得覆盖已绑定根；损坏或未绑定根在 CLI 前 fail-closed | 支持 Foundation Identity 这类跨治理仓、实现仓与 Platform 的连续工作，避免把 ProjectCompute cwd 误当成唯一项目并造成跨项目死锁 | M10-14/M10-15 | `context.codex-session-project-bindings/v1alpha1` strict schema、每个 root 显式 `continuity_resume`、多根 binding `0600`、active-root 切换、legacy binding 迁移和 invalid-binding 拒绝；MCP/plugin focused `46/46`；真实多项目 State 不写入、业务仓不修改；验收见 `docs/migrations/m10-17-multi-project-session-binding-acceptance-2026-08-29.md` |
 
 M10-01/M10-11 的跨项目退出门包括：State revision 与 `STATUS.current` 投影一致；Git common-dir 下的主目录与所有 worktree 解析到唯一 canonical State；嵌套 dependency return 可在单一 transition 中补绑已验证 source evidence；delivery activation 绑定 source、predecessor、implementation evidence、Git head/ref 与精确 effect scopes；implementation claim 不得执行 push、PR、merge、deploy、remote install 或 package publish。以上合同通过后仍须完成 matched live A/B，不能以离线测试、缓存命中率或理论字节上限代替 token 与窗口收益。
+
+## 7.12 M10 多项目 Session binding
+
+| ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
+|---|---|---|---|---|---|---|
+| M10-17 | 🧑‍💻 | 显式 root binding 与 active-root 路由 | 一个 Session 按显式 root 访问多个独立 Project State；cwd 不得覆盖身份 | 支持治理根、实现仓和 Platform 连续工作 | M10-14/M10-15 | strict schema、`0600` digest binding、显式切换、legacy 迁移、invalid binding fail-closed；MCP/plugin `46/46`；真实状态和业务仓未写入；验收见 `docs/migrations/m10-17-multi-project-session-binding-acceptance-2026-08-29.md` |
 
 ## 8. E0-E9 实验链路
 
