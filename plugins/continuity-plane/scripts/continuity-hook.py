@@ -38,7 +38,11 @@ RECOVERY_RULE_IDS = [
 ]
 SESSION_BINDING_SCHEMA = "context.codex-session-project-bindings/v1alpha1"
 CONTINUITY_RESUME_TOOL = "mcp__continuity__continuity_resume"
-CONTINUITY_RESUME_TOOLS = {CONTINUITY_RESUME_TOOL, "continuity_resume"}
+CONTINUITY_RESUME_TOOLS = {
+    CONTINUITY_RESUME_TOOL,
+    "continuity_resume",
+    "continuity/continuity_resume",
+}
 DELIVERY_WORKSPACE_REGISTRY_SCHEMA = (
     "context.delivery-workspace-registry/v1alpha1"
 )
@@ -561,7 +565,7 @@ def _command(arguments: list[str], root: Path) -> subprocess.CompletedProcess[st
             [
                 sys.executable,
                 "-m",
-                "continuity_plane.cli",
+                "context_control_plane.cli",
                 *arguments,
                 "--root",
                 str(root),
@@ -1216,17 +1220,41 @@ def _source_control_effect_root(
     project_id: str,
     effect_action: str,
 ) -> Path | None:
-    workdir = _tool_workdir(payload, root)
-    governance_repository = _git_toplevel(root)
-    effect_repository = _git_toplevel(workdir) if workdir is not None else None
-    if governance_repository is None or effect_repository is None:
-        return None
     scopes = claim.get("scope_owners")
     repo_scopes = {
         item.get("scope_ref")
         for item in scopes or []
         if isinstance(item, dict) and item.get("scope_kind") == "repo"
     }
+    tool_input = payload.get("tool_input")
+    explicit_workdir = (
+        isinstance(tool_input, dict)
+        and isinstance(tool_input.get("workdir"), str)
+        and bool(tool_input.get("workdir"))
+    )
+    if not explicit_workdir and repo_scopes:
+        registry = _delivery_workspace_registry(root, project_id)
+        if registry is None:
+            return None
+        candidates: list[Path] = []
+        for item in registry["workspaces"]:
+            if (
+                f"repo://{item['workspace_id']}" not in repo_scopes
+                or effect_action not in item["allowed_effects"]
+            ):
+                continue
+            workspace = Path(item["workspace_root"]).resolve()
+            if (
+                workspace.is_dir()
+                and _repository_sha256(workspace) == item["repository_sha256"]
+            ):
+                candidates.append(workspace)
+        return candidates[0] if len(candidates) == 1 else None
+    workdir = _tool_workdir(payload, root)
+    governance_repository = _git_toplevel(root)
+    effect_repository = _git_toplevel(workdir) if workdir is not None else None
+    if governance_repository is None or effect_repository is None:
+        return None
     if _repository_sha256(effect_repository) == _repository_sha256(
         governance_repository
     ):
@@ -1901,7 +1929,13 @@ def main() -> int:
     if event in {"PreToolUse", "PostToolUse"}:
         command = _shell_command(payload)
         effect_class = _effect_class(command)
-        if effect_class is not None:
+        tool_input = payload.get("tool_input")
+        explicit_workdir = (
+            isinstance(tool_input, dict)
+            and isinstance(tool_input.get("workdir"), str)
+            and bool(tool_input.get("workdir"))
+        )
+        if effect_class is not None and explicit_workdir:
             effect_action = _effect_action(command, effect_class)
             workdir = _tool_workdir(payload, Path(payload["cwd"]).resolve())
             if workdir is not None:

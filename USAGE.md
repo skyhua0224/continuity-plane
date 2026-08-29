@@ -275,7 +275,7 @@ State MCP 工具提交。
 
 ```bash
 python -m pip install continuity-plane==0.1.0a9
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.9.1
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.9.2
 codex plugin add continuity-plane@continuity-plane
 ```
 

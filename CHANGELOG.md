@@ -2,6 +2,25 @@
 
 [English](CHANGELOG.en.md)
 
+## 0.1.0-alpha.9.2
+
+### 修复
+
+- MCP resume 现在识别 `continuity/continuity_resume` 命名空间工具名，确保多种 Codex 宿主都能持久化项目绑定。
+- 当宿主没有提供显式 `workdir` 时，副作用门保持已绑定项目身份，并依据 active claim 的注册 delivery workspace 推断目标仓库，不再使用无关 cwd 覆盖项目路由。
+
+### 验证
+
+- Codex plugin lifecycle `32/32` 通过，包含无 workdir 的 Foundation-style push/PR 路由与跨项目绑定回归。
+- 公开树保持脱敏，核心 PyPI 包版本仍为 `0.1.0a9`。
+
+### 安装
+
+```bash
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.9.2
+codex plugin add continuity-plane@continuity-plane
+```
+
 ## 0.1.0-alpha.9.1
 
 ### 修复与改进

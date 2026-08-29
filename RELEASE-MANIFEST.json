@@ -35,11 +35,11 @@
     },
     {
       "path": "CHANGELOG.en.md",
-      "sha256": "a28dc8228f52081b896a4567671c67cd684c5a1caf133c270bb49ffe4ec3e6f6"
+      "sha256": "76a2bb922b785e2c286589d50abc48545fd3e1a35c46f49f021676ef2c5ba6c4"
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "b41f44a9f8500f255943af719ebdf3e498cf7e2785d26c8747184671800157cb"
+      "sha256": "8aad6db8156b5a38ba8be766bd80a2d70ef69722f46ea80dcc035c6d8b8022ae"
     },
     {
       "path": "CONTRIBUTING.en.md",
@@ -63,11 +63,11 @@
     },
     {
       "path": "README.en.md",
-      "sha256": "c226f9974e77033e51dac6f5203f6ee428f920e731fec16c5b0e6ce48d8c85ec"
+      "sha256": "ea18d6c9448a385f9519e1897f4fd847b34ea0b269ac60085af469269fa2ddd9"
     },
     {
       "path": "README.md",
-      "sha256": "fbc55bf94e9f02a50e3b859926a98fdea8b88a7c36ecaa0e581a9c8a6d4bea10"
+      "sha256": "8a57184f06b534bc52521fed1cb745209402c1e53fca0a024b931f60e156cd4a"
     },
     {
       "path": "SECURITY.en.md",
@@ -87,11 +87,11 @@
     },
     {
       "path": "USAGE.en.md",
-      "sha256": "5f6407cedb9c1147be19fa72a511c4904a7eeb4a9bb03f808f2c1b2cd4277c16"
+      "sha256": "91b79fba5413cd85547ad0ca7e6e8f0da6705de397411e0e91284235c208f343"
     },
     {
       "path": "USAGE.md",
-      "sha256": "d545c0f7c66a4c58f1552aa5cc3f185a301f90358aceeaddbdf1fdc637368d88"
+      "sha256": "b31fe2d8110358e1319be5837578985194e448e7425cd77d59ba9b8bb1d37c50"
     },
     {
       "path": "benchmarks/__init__.py",
@@ -407,7 +407,7 @@
     },
     {
       "path": "plugins/continuity-plane/.codex-plugin/plugin.json",
-      "sha256": "ed62a07e4d6562bac81629d9ada37af3936b4a808f0c0f86735df280656881f9"
+      "sha256": "4171f44fdd32a0b672dbda184ed5ce456af0e4e299fa3f04011906fb23fed969"
     },
     {
       "path": "plugins/continuity-plane/.mcp.json",
@@ -415,11 +415,11 @@
     },
     {
       "path": "plugins/continuity-plane/hooks/hooks.json",
-      "sha256": "29a9c017b4090ca73e1f4ca84da364935eb3e6c54c4498410231ad7d75177333"
+      "sha256": "5259b29cbaf2003bf62fa8375597f3ae3f798c94111c43994ec537fc1e5fc63e"
     },
     {
       "path": "plugins/continuity-plane/scripts/continuity-hook.py",
-      "sha256": "6d9155793ccec6a6f3dce29ea3fbe850d621e2ec454ad00270cf833992c6b920"
+      "sha256": "c993c2c8cdd571245064c446064ee89a76a5b9d4775c7b0d6ac3881792ae6542"
     },
     {
       "path": "plugins/continuity-plane/scripts/continuity-mcp-server.py",

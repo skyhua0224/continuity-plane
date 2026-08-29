@@ -2,6 +2,25 @@
 
 [中文](CHANGELOG.md)
 
+## 0.1.0-alpha.9.2
+
+### Fixes
+
+- MCP resume now recognizes the namespaced `continuity/continuity_resume` tool name so project binding persists across Codex hosts.
+- When a host omits an explicit `workdir`, the effect gate keeps the bound project identity and infers the target repository from the active claim's registered delivery workspace instead of using an unrelated cwd.
+
+### Verification
+
+- Codex plugin lifecycle `32/32` passes, including no-workdir Foundation-style push/PR routing and cross-project binding regressions.
+- The public tree remains sanitized; the core PyPI package remains `0.1.0a9`.
+
+### Installation
+
+```bash
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.9.2
+codex plugin add continuity-plane@continuity-plane
+```
+
 ## 0.1.0-alpha.9.1
 
 ### Fixes And Improvements

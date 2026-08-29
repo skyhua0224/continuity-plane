@@ -24,7 +24,7 @@ pre/post-compaction checkpoints, recovery canaries, and external-effect prefligh
 Codex plugin from this repository's public GitHub marketplace:
 
 ```bash
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.9.1
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.9.2
 codex plugin add continuity-plane@continuity-plane
 ```
 
