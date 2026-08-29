@@ -136,6 +136,53 @@ a local bridge.
 validation boundary used by integrations. The initial snapshot has revision
 zero and one proposed Work item named `work-initial`.
 
+## Separate Governance And Delivery Repositories
+
+A multi-repository project can keep `.continuity/` in its governance repository
+while implementation, commits, and delivery happen in another repository. Register
+the local delivery workspace from the governance root first:
+
+```bash
+continuity workspace register \
+  --root /path/to/governance \
+  --workspace-id service \
+  --workspace-root /path/to/service \
+  --allow-effect source-control.local \
+  --allow-effect source-control.history-rewrite \
+  --allow-effect source-control.push
+```
+
+The registry lives in ignored
+`.continuity/local/delivery-workspaces.json`. It binds the project profile,
+Git repository digest, absolute workspace root, and maximum effect set without
+writing State. A delivery Work must still bind its predecessor, implementation
+evidence, and current Git HEAD explicitly:
+
+```bash
+continuity work activate \
+  --root /path/to/governance \
+  --work-id work-delivery \
+  --work-title "Deliver verified service change" \
+  --owner-ref agent-main \
+  --claim-id claim-delivery \
+  --scope capability:delivery \
+  --execution-class delivery \
+  --source-ref issue://project/123 \
+  --predecessor-work-id work-implementation \
+  --implementation-evidence-id evidence-test-verified \
+  --workspace-id service \
+  --workspace-root /path/to/service \
+  --expected-head "$(git -C /path/to/service rev-parse HEAD)" \
+  --expected-ref HEAD \
+  --allow-effect source-control.local \
+  --allow-effect source-control.push
+```
+
+`source-control.local` covers `git add` and ordinary commits. `commit --amend`,
+rebase, and reset require the separate `source-control.history-rewrite` effect in
+both the Work and workspace registry. An external repository stays denied when
+its workspace ID, repository digest, or `repo://` claim scope does not match.
+
 ## Choose A Runtime Profile
 
 ### Local Embedded: Default

@@ -1,6 +1,6 @@
 # Continuity Plane MASTER
 
-版本：revision 99  
+版本：revision 100  
 日期：2026-08-28  
 状态：public alpha publication  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
@@ -375,6 +375,7 @@ Docmost 候选实现固定到 [`Yundi339/docmost` 参考评估](docs/research/do
 | M10-12 | ✅ | checkpoint-bound same-session continuation、canonical source evidence rebind 与隔离 effect intent | checkpoint 验证或阶段测试完成后自动回到当前 Work；source refresh 后 activation 在同一 Event 绑定新 evidence；不同 provider/host/repository/worktree/branch 不互锁，同仓不同 Session 仍冲突 | 消除“checkpoint 后停住”、跨仓误锁和 attach refresh 后无法激活的控制面阻塞 | M8-09/M10-11 | `continuity autorun` 幂等 ledger；lease 临近自动 heartbeat、过期受控 reclaim；MCP/插件 transient transport retry；snapshot fixture 同 Session continued/already-continued、source rebind、lease heartbeat/reclaim、MCP retry、duplicate Event `0`；source evidence activation 和 cross-repository intent tests 通过；外部未通过阻塞保持原状态 |
 | M10-13 | ✅ | public alpha.8 core package 与 Codex plugin 发布 | GitHub、PyPI、plugin 和校验资产同步可安装 | 让已验证控制面修复可被下游项目采用 | M10-12 | alpha.8 public mirror `135` files；full suite `1970` passed（`31` environment skips）；public tests `5/5`；wheel/sdist/plugin SHA-256 一致；GitHub release 与 PyPI `0.1.0a8` 可独立安装；公开隐私扫描 `0`；内部 MASTER/STATUS 与治理资料未进入公开镜像 |
 | M10-14 | ✅ | Codex Session project binding 与 cwd 隔离 | 首次成功的显式 resume 锁定项目身份；生命周期事件不能由无关 cwd 覆盖已绑定根 | 阻止跨项目 packet 注入和权限误路由 | M8-02/M10-01/M10-11 | MCP 启动时不从 cwd 预绑定；hashed session binding、profile digest、`0600`、conflict veto 和 invalid-binding fail-closed 通过；focused `48/48`；full suite `1973` passed、`31` skipped；真实双项目只读验收返回既定 project_id，第二根在 CLI 前拒绝，SQLite 直接修改 `0`；证据见 `docs/migrations/m10-14-codex-session-project-binding-acceptance-2026-08-29.md` |
+| M10-15 | ✅ | governance root 注册独立 delivery workspace | 多仓项目的治理状态与实现仓 Git 身份显式关联；本地提交、历史重写和远端 effect 绑定实际执行仓 | 支持 governance/service/release 仓分离且不放宽跨仓权限 | M8-02/M10-01/M10-14 | strict workspace registry schema、project/profile/registry/repository digest、`0600`、`repo://` claim scope、HEAD/ref/delta/evidence 和 effect subset gates 通过；`source-control.local` 与 `source-control.history-rewrite` 分离；focused `71/71`、full suite `1975` passed、`31` skipped；真实注册前后 State/Event `75/75`、service worktree clean、SQLite 直接修改 `0`；证据见 `docs/migrations/m10-15-external-delivery-workspace-acceptance-2026-08-29.md` |
 
 M10-01/M10-11 的跨项目退出门包括：State revision 与 `STATUS.current` 投影一致；Git common-dir 下的主目录与所有 worktree 解析到唯一 canonical State；嵌套 dependency return 可在单一 transition 中补绑已验证 source evidence；delivery activation 绑定 source、predecessor、implementation evidence、Git head/ref 与精确 effect scopes；implementation claim 不得执行 push、PR、merge、deploy、remote install 或 package publish。以上合同通过后仍须完成 matched live A/B，不能以离线测试、缓存命中率或理论字节上限代替 token 与窗口收益。
 

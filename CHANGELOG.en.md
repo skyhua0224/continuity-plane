@@ -73,6 +73,10 @@ MCP tools.
   successful explicit `continuity_resume` locks the Session project root; later
   lifecycle events prefer that binding, reject root changes before the CLI, and
   keep invalid local bindings read-only.
+- Multi-repository projects can register a separate delivery workspace from the
+  governance root. External activation binds the workspace ID, repository digest,
+  HEAD/ref, implementation evidence, and `repo://` claim scope; ordinary local
+  commits and history rewrites use separate effect permissions.
 
 ## 0.1.0-alpha.7
 

@@ -119,6 +119,49 @@ STATUS 在两步之间发生变化会拒绝批准。重复批准返回 `already-
 `state show` 通过与集成相同的 authorization 和 validation 边界读取 typed snapshot。
 初始 snapshot revision 为零，并包含一个名为 `work-initial` 的 proposed Work。
 
+## 治理仓与交付仓分离
+
+多仓项目可以把 `.continuity/` 保存在治理仓，同时把实现、提交和发布放在独立仓库。
+先在治理根注册本地 delivery workspace：
+
+```bash
+continuity workspace register \
+  --root /path/to/governance \
+  --workspace-id service \
+  --workspace-root /path/to/service \
+  --allow-effect source-control.local \
+  --allow-effect source-control.history-rewrite \
+  --allow-effect source-control.push
+```
+
+注册表保存在被忽略的 `.continuity/local/delivery-workspaces.json`，绑定项目 profile、
+Git repository 摘要、绝对 workspace 根和 effect 上限，不写 State。Delivery Work
+仍须显式绑定前序 Work、实现证据和当前 Git HEAD：
+
+```bash
+continuity work activate \
+  --root /path/to/governance \
+  --work-id work-delivery \
+  --work-title "Deliver verified service change" \
+  --owner-ref agent-main \
+  --claim-id claim-delivery \
+  --scope capability:delivery \
+  --execution-class delivery \
+  --source-ref issue://project/123 \
+  --predecessor-work-id work-implementation \
+  --implementation-evidence-id evidence-test-verified \
+  --workspace-id service \
+  --workspace-root /path/to/service \
+  --expected-head "$(git -C /path/to/service rev-parse HEAD)" \
+  --expected-ref HEAD \
+  --allow-effect source-control.local \
+  --allow-effect source-control.push
+```
+
+`source-control.local` 覆盖 `git add` 和普通 commit。`commit --amend`、rebase 和 reset
+属于 `source-control.history-rewrite`，只有 Work 与 workspace 注册表都显式声明时才允许。
+外部仓库没有匹配的 workspace ID、repository 摘要或 `repo://` claim scope 时保持拒绝。
+
 ## Profile 选择
 
 ### `local-embedded`：默认
