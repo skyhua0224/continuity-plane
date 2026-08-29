@@ -454,6 +454,20 @@ printf '%s\\n' '{"status":"ok"}'
             self.assertIn("binding", response["stopReason"].lower())
             self.assertFalse(calls.exists())
 
+    def test_plugin_data_falls_back_to_a_user_local_directory(self) -> None:
+        module = self._hook_module()
+        with tempfile.TemporaryDirectory() as directory:
+            with mock.patch.dict(os.environ, {"PLUGIN_DATA": "", "HOME": directory}):
+                path = module._session_binding_path(
+                    {"session_id": "fallback-session"}
+                )
+            self.assertIsNotNone(path)
+            assert path is not None
+            self.assertEqual(
+                path.parent.parent,
+                Path(directory) / ".codex/plugins/data/continuity-plane",
+            )
+
     def test_local_rsync_is_not_classified_as_a_remote_effect(self) -> None:
         module = self._hook_module()
 

@@ -108,12 +108,23 @@ def _file_hash(path: Path) -> str | None:
         return None
 
 
-def _session_binding_path(payload: dict[str, Any]) -> Path | None:
-    data = os.environ.get("PLUGIN_DATA")
-    session_id = payload.get("session_id")
-    if not data or not isinstance(session_id, str) or not session_id:
+def _plugin_data_root() -> Path | None:
+    """Return durable per-user plugin data even when the host omits PLUGIN_DATA."""
+    configured = os.environ.get("PLUGIN_DATA")
+    if configured:
+        return Path(configured)
+    try:
+        return Path.home() / ".codex/plugins/data/continuity-plane"
+    except RuntimeError:
         return None
-    return Path(data) / "session-bindings" / f"{_hash(session_id)}.json"
+
+
+def _session_binding_path(payload: dict[str, Any]) -> Path | None:
+    data = _plugin_data_root()
+    session_id = payload.get("session_id")
+    if data is None or not isinstance(session_id, str) or not session_id:
+        return None
+    return data / "session-bindings" / f"{_hash(session_id)}.json"
 
 
 def _read_session_binding(payload: dict[str, Any]) -> dict[str, Any] | None:
@@ -577,29 +588,29 @@ def _command(arguments: list[str], root: Path) -> subprocess.CompletedProcess[st
 
 
 def _observation_path(payload: dict[str, Any]) -> Path | None:
-    data = os.environ.get("PLUGIN_DATA")
+    data = _plugin_data_root()
     session_id = payload.get("session_id")
-    if not data or not isinstance(session_id, str) or not session_id:
+    if data is None or not isinstance(session_id, str) or not session_id:
         return None
-    directory = Path(data) / "live-events"
+    directory = data / "live-events"
     directory.mkdir(parents=True, exist_ok=True)
     return directory / f"{_hash(session_id)}.jsonl"
 
 
 def _cursor_path(payload: dict[str, Any]) -> Path | None:
-    data = os.environ.get("PLUGIN_DATA")
+    data = _plugin_data_root()
     session_id = payload.get("session_id")
-    if not data or not isinstance(session_id, str) or not session_id:
+    if data is None or not isinstance(session_id, str) or not session_id:
         return None
-    directory = Path(data) / "interaction-cursors"
+    directory = data / "interaction-cursors"
     directory.mkdir(parents=True, exist_ok=True)
     return directory / f"{_hash(session_id)}.json"
 
 
 def _skill_lock_path() -> Path | None:
-    data = os.environ.get("PLUGIN_DATA")
+    data = _plugin_data_root()
     root = os.environ.get("PLUGIN_ROOT")
-    if not data or not root:
+    if data is None or not root:
         return None
     skill = Path(root) / "skills/continuity-plane/SKILL.md"
     try:
@@ -615,7 +626,7 @@ def _skill_lock_path() -> Path | None:
         "compiled_packet_sha256": compiled,
         "unavailable_reason": None,
     }
-    directory = Path(data) / "skill-locks"
+    directory = data / "skill-locks"
     directory.mkdir(parents=True, exist_ok=True)
     target = directory / "continuity-plane.json"
     temporary = target.with_suffix(".tmp")
@@ -840,10 +851,10 @@ def _shell_command(payload: dict[str, Any]) -> str:
 
 
 def _recovery_database_path() -> Path | None:
-    data = os.environ.get("PLUGIN_DATA")
-    if not data:
+    data = _plugin_data_root()
+    if data is None:
         return None
-    directory = Path(data)
+    directory = data
     directory.mkdir(parents=True, exist_ok=True)
     return directory / "recovery-budget.sqlite3"
 
