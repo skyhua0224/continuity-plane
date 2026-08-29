@@ -38,6 +38,7 @@ RECOVERY_RULE_IDS = [
 ]
 SESSION_BINDING_SCHEMA = "context.codex-session-project-bindings/v1alpha1"
 CONTINUITY_RESUME_TOOL = "mcp__continuity__continuity_resume"
+CONTINUITY_RESUME_TOOLS = {CONTINUITY_RESUME_TOOL, "continuity_resume"}
 DELIVERY_WORKSPACE_REGISTRY_SCHEMA = (
     "context.delivery-workspace-registry/v1alpha1"
 )
@@ -107,12 +108,23 @@ def _file_hash(path: Path) -> str | None:
         return None
 
 
-def _session_binding_path(payload: dict[str, Any]) -> Path | None:
-    data = os.environ.get("PLUGIN_DATA")
-    session_id = payload.get("session_id")
-    if not data or not isinstance(session_id, str) or not session_id:
+def _plugin_data_root() -> Path | None:
+    """Return durable per-user plugin data even when the host omits PLUGIN_DATA."""
+    configured = os.environ.get("PLUGIN_DATA")
+    if configured:
+        return Path(configured)
+    try:
+        return Path.home() / ".codex/plugins/data/continuity-plane"
+    except RuntimeError:
         return None
-    return Path(data) / "session-bindings" / f"{_hash(session_id)}.json"
+
+
+def _session_binding_path(payload: dict[str, Any]) -> Path | None:
+    data = _plugin_data_root()
+    session_id = payload.get("session_id")
+    if data is None or not isinstance(session_id, str) or not session_id:
+        return None
+    return data / "session-bindings" / f"{_hash(session_id)}.json"
 
 
 def _read_session_binding(payload: dict[str, Any]) -> dict[str, Any] | None:
@@ -260,7 +272,7 @@ def _resume_tool_packet(payload: dict[str, Any]) -> dict[str, Any] | None:
 
 
 def _record_resume_binding(payload: dict[str, Any]) -> str:
-    if payload.get("tool_name") != CONTINUITY_RESUME_TOOL:
+    if payload.get("tool_name") not in CONTINUITY_RESUME_TOOLS:
         return "ignored"
     packet = _resume_tool_packet(payload)
     tool_input = payload.get("tool_input")
@@ -576,29 +588,29 @@ def _command(arguments: list[str], root: Path) -> subprocess.CompletedProcess[st
 
 
 def _observation_path(payload: dict[str, Any]) -> Path | None:
-    data = os.environ.get("PLUGIN_DATA")
+    data = _plugin_data_root()
     session_id = payload.get("session_id")
-    if not data or not isinstance(session_id, str) or not session_id:
+    if data is None or not isinstance(session_id, str) or not session_id:
         return None
-    directory = Path(data) / "live-events"
+    directory = data / "live-events"
     directory.mkdir(parents=True, exist_ok=True)
     return directory / f"{_hash(session_id)}.jsonl"
 
 
 def _cursor_path(payload: dict[str, Any]) -> Path | None:
-    data = os.environ.get("PLUGIN_DATA")
+    data = _plugin_data_root()
     session_id = payload.get("session_id")
-    if not data or not isinstance(session_id, str) or not session_id:
+    if data is None or not isinstance(session_id, str) or not session_id:
         return None
-    directory = Path(data) / "interaction-cursors"
+    directory = data / "interaction-cursors"
     directory.mkdir(parents=True, exist_ok=True)
     return directory / f"{_hash(session_id)}.json"
 
 
 def _skill_lock_path() -> Path | None:
-    data = os.environ.get("PLUGIN_DATA")
+    data = _plugin_data_root()
     root = os.environ.get("PLUGIN_ROOT")
-    if not data or not root:
+    if data is None or not root:
         return None
     skill = Path(root) / "skills/continuity-plane/SKILL.md"
     try:
@@ -614,7 +626,7 @@ def _skill_lock_path() -> Path | None:
         "compiled_packet_sha256": compiled,
         "unavailable_reason": None,
     }
-    directory = Path(data) / "skill-locks"
+    directory = data / "skill-locks"
     directory.mkdir(parents=True, exist_ok=True)
     target = directory / "continuity-plane.json"
     temporary = target.with_suffix(".tmp")
@@ -839,10 +851,10 @@ def _shell_command(payload: dict[str, Any]) -> str:
 
 
 def _recovery_database_path() -> Path | None:
-    data = os.environ.get("PLUGIN_DATA")
-    if not data:
+    data = _plugin_data_root()
+    if data is None:
         return None
-    directory = Path(data)
+    directory = data
     directory.mkdir(parents=True, exist_ok=True)
     return directory / "recovery-budget.sqlite3"
 
@@ -1094,6 +1106,71 @@ def _delivery_workspace_registry(
             return None
         seen.add(item["workspace_id"])
     return document
+
+
+def _registered_governance_root(
+    workdir: Path,
+    *,
+    effect_action: str,
+    search_roots: list[Path] | None = None,
+) -> Path | None:
+    """Resolve an effect worktree to its registered governance root.
+
+    This is a bounded fallback for hosts that do not deliver a persistent Session
+    binding to hooks. It only accepts an exact, integrity-checked workspace entry
+    and rejects ambiguous matches.
+    """
+    try:
+        target = workdir.resolve()
+    except OSError:
+        return None
+    roots = search_roots
+    if roots is None:
+        configured = os.environ.get("CONTINUITY_PROJECT_ROOTS", "")
+        roots = [Path(item) for item in configured.split(os.pathsep) if item]
+        projects = Path.home() / "Projects"
+        try:
+            roots.extend(
+                item
+                for item in projects.iterdir()
+                if item.is_dir()
+            )
+        except OSError:
+            pass
+    matches: list[Path] = []
+    for candidate in roots[:256]:
+        registry_path = candidate / ".continuity/local/delivery-workspaces.json"
+        profile = candidate / ".continuity/project.yaml"
+        if not registry_path.is_file() or not profile.is_file():
+            continue
+        try:
+            document = json.loads(registry_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        project_id = document.get("project_id") if isinstance(document, dict) else None
+        if not isinstance(project_id, str):
+            continue
+        try:
+            verified = _delivery_workspace_registry(candidate, project_id)
+        except OSError:
+            continue
+        if verified is None:
+            continue
+        repository_sha256 = _repository_sha256(target)
+        for item in verified["workspaces"]:
+            workspace = Path(item["workspace_root"]).resolve()
+            try:
+                target.relative_to(workspace)
+            except (TypeError, ValueError):
+                continue
+            if (
+                item["repository_sha256"] == repository_sha256
+                and effect_action in item["allowed_effects"]
+            ):
+                matches.append(candidate.resolve())
+                break
+    unique = sorted(set(matches))
+    return unique[0] if len(unique) == 1 else None
 
 
 def _tool_workdir(payload: dict[str, Any], root: Path) -> Path | None:
@@ -1791,7 +1868,7 @@ def main() -> int:
     if not isinstance(payload, dict) or not isinstance(payload.get("cwd"), str):
         return 0
     event = payload.get("hook_event_name")
-    if event == "PostToolUse" and payload.get("tool_name") == CONTINUITY_RESUME_TOOL:
+    if event == "PostToolUse" and payload.get("tool_name") in CONTINUITY_RESUME_TOOLS:
         binding_result = _record_resume_binding(payload)
         if binding_result == "conflict":
             print(
@@ -1820,7 +1897,23 @@ def main() -> int:
                 "read-only until an explicit project resume succeeds."
             )
         return 0
-    root = bound_root or _project_root(payload["cwd"])
+    discovered_root = None
+    if event in {"PreToolUse", "PostToolUse"}:
+        command = _shell_command(payload)
+        effect_class = _effect_class(command)
+        if effect_class is not None:
+            effect_action = _effect_action(command, effect_class)
+            workdir = _tool_workdir(payload, Path(payload["cwd"]).resolve())
+            if workdir is not None:
+                discovered_root = _registered_governance_root(
+                    workdir,
+                    effect_action=effect_action,
+                )
+    # An exact registered delivery workspace is stronger than a stale session
+    # root for effect accounting. This lets an already-running Session recover
+    # from a host-side binding that still points at another project without
+    # granting arbitrary cross-project access.
+    root = discovered_root or bound_root or _project_root(payload["cwd"])
     if root is None:
         return 0
     try:

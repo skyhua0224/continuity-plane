@@ -10,7 +10,7 @@ Windows AMD64 完成安装、verify 和卸载。
 ### 从 PyPI 安装
 
 ```bash
-python -m pip install continuity-plane==0.1.0a9
+python -m pip install continuity-plane==0.1.0a9.post1
 ```
 
 从源码 checkout 开发时：
@@ -26,7 +26,7 @@ python -m venv .venv
 下载 wheel 或 source archive：
 
 ```bash
-python -m pip install /path/to/continuity_plane-0.1.0a9-py3-none-any.whl
+python -m pip install /path/to/continuity_plane-0.1.0a9.post1-py3-none-any.whl
 ```
 
 ### 全局安装，管理多个项目
@@ -36,7 +36,7 @@ python -m pip install /path/to/continuity_plane-0.1.0a9-py3-none-any.whl
 ```bash
 python3 -m venv ~/.local/share/continuity-plane/venv
 ~/.local/share/continuity-plane/venv/bin/python \
-  -m pip install continuity-plane==0.1.0a9
+  -m pip install continuity-plane==0.1.0a9.post1
 
 ~/.local/share/continuity-plane/venv/bin/continuity \
   init --root /path/to/project --project-id my-project
@@ -47,7 +47,7 @@ python3 -m venv ~/.local/share/continuity-plane/venv
 ```bash
 cd /path/to/project
 python3 -m venv .venv
-.venv/bin/python -m pip install continuity-plane==0.1.0a9
+.venv/bin/python -m pip install continuity-plane==0.1.0a9.post1
 .venv/bin/continuity init --root . --project-id my-project
 ```
 
@@ -191,7 +191,7 @@ continuity work activate \
 个人想进行 SQL 检查、备份或让多个本地 worker 共用状态时，可以选择 PostgreSQL：
 
 ```bash
-python -m pip install 'continuity-plane[postgres]==0.1.0a9'
+python -m pip install 'continuity-plane[postgres]==0.1.0a9.post1'
 ```
 
 当前 alpha CLI 仍默认 SQLite。PostgreSQL 通过显式 Python adapter 使用：
@@ -274,8 +274,8 @@ State MCP 工具提交。
 先安装核心包，再把本项目 GitHub 仓库作为 marketplace：
 
 ```bash
-python -m pip install continuity-plane==0.1.0a9
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.9
+python -m pip install continuity-plane==0.1.0a9.post1
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.9.1
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -406,7 +406,7 @@ template 和 content-addressed artifact。所有 claim 关闭后，才能归档�
 
 当前版本同时发布到 PyPI 和 GitHub Release：
 
-<https://pypi.org/project/continuity-plane/0.1.0a9/>  
+<https://pypi.org/project/continuity-plane/0.1.0a9.1/>  
 <https://github.com/skyhua0224/continuity-plane/releases>
 
 当前公开版本使用受控 PyPI token 发布。GitHub Actions OIDC workflow 和 `pypi`

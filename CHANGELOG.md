@@ -2,6 +2,28 @@
 
 [English](CHANGELOG.en.md)
 
+## 0.1.0-alpha.9.1
+
+### 修复与改进
+
+- 修复 Codex 插件在缺少 `PLUGIN_DATA` 时无法持久化 Session 绑定、观测记录和恢复预算的问题，改用稳定的用户级插件数据目录作为回退。
+- 支持 `continuity_resume` 的短工具名与完整 MCP 工具名，确保不同 Codex 宿主的恢复后绑定一致。
+- 副作用命令优先按已注册 delivery workspace 解析治理根，并校验 repository digest、允许的 effect 和唯一匹配，避免多项目 Session 被陈旧 cwd 路由。
+- 补充公开插件的 `PreToolUse` effect-scope 门：无 claim、scope 不匹配或工作区未注册时，在命令执行前拒绝 push、merge、部署和发布。
+
+### 验证
+
+- public smoke/contracts/benchmark `5/5` 通过，插件脚本编译和 JSON 合同校验通过。
+- 本补丁继续保持 alpha.9 的公开脱敏边界；业务仓库、内部状态和原始会话不进入公开树。
+
+### 安装
+
+```bash
+python -m pip install continuity-plane==0.1.0a9.post1
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.9.1
+codex plugin add continuity-plane@continuity-plane
+```
+
 ## 0.1.0-alpha.9
 
 ### 相比 0.1.0-alpha.8

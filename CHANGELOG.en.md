@@ -2,6 +2,28 @@
 
 [中文](CHANGELOG.md)
 
+## 0.1.0-alpha.9.1
+
+### Fixes And Improvements
+
+- Fixed persistence of Session bindings, observations, and recovery budgets when a Codex host omits `PLUGIN_DATA`; the plugin now falls back to a stable per-user data directory.
+- Accepted both the short `continuity_resume` tool name and the full MCP name so post-resume binding works consistently across Codex hosts.
+- Resolved effect commands through registered delivery workspaces first, validating repository digest, allowed effects, and unique matches so a stale `cwd` cannot route a multi-project Session to the wrong governance root.
+- Added the public plugin `PreToolUse` effect-scope gate: push, merge, deployment, and release commands are denied before execution when there is no claim, the scope does not match, or the workspace is unregistered.
+
+### Verification
+
+- Public smoke/contracts/benchmark `5/5` pass; plugin script compilation and JSON contract validation pass.
+- The patch preserves alpha.9's sanitized public boundary; business repositories, internal state, and raw sessions are excluded from the public tree.
+
+### Installation
+
+```bash
+python -m pip install continuity-plane==0.1.0a9.post1
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.9.1
+codex plugin add continuity-plane@continuity-plane
+```
+
 ## 0.1.0-alpha.9
 
 ### Changes Since 0.1.0-alpha.8
