@@ -11,7 +11,7 @@ AMD64.
 ### Install From PyPI
 
 ```bash
-python -m pip install continuity-plane==0.1.0a8
+python -m pip install continuity-plane==0.1.0a9
 ```
 
 For a source checkout:
@@ -27,7 +27,7 @@ Download a wheel or source archive from
 [Continuity Plane Releases](https://github.com/skyhua0224/continuity-plane/releases):
 
 ```bash
-python -m pip install /path/to/continuity_plane-0.1.0a8-py3-none-any.whl
+python -m pip install /path/to/continuity_plane-0.1.0a9-py3-none-any.whl
 ```
 
 ### Install Once For Many Projects
@@ -38,7 +38,7 @@ projects:
 ```bash
 python3 -m venv ~/.local/share/continuity-plane/venv
 ~/.local/share/continuity-plane/venv/bin/python \
-  -m pip install continuity-plane==0.1.0a8
+  -m pip install continuity-plane==0.1.0a9
 ```
 
 Run the installed CLI with an explicit project root whenever the command is not
@@ -56,7 +56,7 @@ For a project that pins its own control-plane version:
 ```bash
 cd /path/to/project
 python3 -m venv .venv
-.venv/bin/python -m pip install continuity-plane==0.1.0a8
+.venv/bin/python -m pip install continuity-plane==0.1.0a9
 .venv/bin/continuity init --root . --project-id my-project
 ```
 
@@ -223,7 +223,7 @@ single-user installation. Install the optional extra in the environment that
 will run the adapter:
 
 ```bash
-python -m pip install 'continuity-plane[postgres]==0.1.0a8'
+python -m pip install 'continuity-plane[postgres]==0.1.0a9'
 ```
 
 The alpha CLI still defaults to SQLite. PostgreSQL is selected by an explicit
@@ -318,8 +318,8 @@ checkpoints.
 Install the core package, then add this GitHub repository as a marketplace:
 
 ```bash
-python -m pip install continuity-plane==0.1.0a8
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.8
+python -m pip install continuity-plane==0.1.0a9
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.9
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -339,6 +339,27 @@ codex plugin add continuity-plane@continuity-plane
 
 Projects that do not need host hooks can keep using the core CLI alone; disabling
 the plugin does not delete `.continuity/` state.
+
+### One Session Across Multiple Projects
+
+When one Session works on a governance root, an implementation project, and
+another project, explicitly resume each project's governance root first:
+
+```text
+continuity_resume(root=/path/to/project-a)
+continuity_resume(root=/path/to/project-b)
+continuity_resume(root=/path/to/project-c)
+```
+
+Each call adds the root to the Session's integrity-checked project set and makes
+it the active root. Work, claim, checkpoint, and effect requests for that
+project must use the same root; switch projects by explicitly calling
+`continuity_resume` again. Relative roots resolve only against the last
+successful active root. After a Session binding exists, the terminal `cwd`
+cannot replace the active root. An unbound root, missing profile, digest
+mismatch, or corrupt binding is rejected before any CLI/State write instead of
+silently falling back to `cwd`. Register governance-to-delivery repository
+relationships with the workspace registry described above.
 
 ## MASTER And STATUS
 
@@ -461,7 +482,7 @@ storage.
 
 The current version is available from PyPI and GitHub Releases:
 
-<https://pypi.org/project/continuity-plane/0.1.0a8/>  
+<https://pypi.org/project/continuity-plane/0.1.0a9/>  
 <https://github.com/skyhua0224/continuity-plane/releases>
 
 The current public release used a controlled PyPI token. A GitHub Actions OIDC

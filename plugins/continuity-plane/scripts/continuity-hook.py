@@ -36,7 +36,7 @@ RECOVERY_RULE_IDS = [
     "continuity.resume.current-state",
     "continuity.work.sticky",
 ]
-SESSION_BINDING_SCHEMA = "context.codex-session-project-binding/v1alpha1"
+SESSION_BINDING_SCHEMA = "context.codex-session-project-bindings/v1alpha1"
 CONTINUITY_RESUME_TOOL = "mcp__continuity__continuity_resume"
 DELIVERY_WORKSPACE_REGISTRY_SCHEMA = (
     "context.delivery-workspace-registry/v1alpha1"
@@ -115,7 +115,7 @@ def _session_binding_path(payload: dict[str, Any]) -> Path | None:
     return Path(data) / "session-bindings" / f"{_hash(session_id)}.json"
 
 
-def _session_bound_root(payload: dict[str, Any]) -> Path | None:
+def _read_session_binding(payload: dict[str, Any]) -> dict[str, Any] | None:
     path = _session_binding_path(payload)
     session_id = payload.get("session_id")
     if path is None or not isinstance(session_id, str):
@@ -124,15 +124,7 @@ def _session_bound_root(payload: dict[str, Any]) -> Path | None:
         binding = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return None
-    required = {
-        "schema_version",
-        "session_sha256",
-        "project_id",
-        "project_root",
-        "profile_sha256",
-        "binding_sha256",
-    }
-    if not isinstance(binding, dict) or set(binding) != required:
+    if not isinstance(binding, dict):
         return None
     digest = binding.get("binding_sha256")
     expected = _hash(
@@ -144,27 +136,101 @@ def _session_bound_root(payload: dict[str, Any]) -> Path | None:
             }
         )
     )
+    if not isinstance(session_id, str) or not session_id or digest != expected:
+        return None
+    if binding.get("session_sha256") != _hash(session_id):
+        return None
+    fields = {
+        "schema_version",
+        "session_sha256",
+        "active_project_root",
+        "projects",
+        "binding_sha256",
+    }
+    if binding.get("schema_version") != SESSION_BINDING_SCHEMA or set(binding) != fields:
+        legacy_fields = {
+            "schema_version",
+            "session_sha256",
+            "project_id",
+            "project_root",
+            "profile_sha256",
+            "binding_sha256",
+        }
+        if binding.get("schema_version") != "context.codex-session-project-binding/v1alpha1" or set(binding) != legacy_fields:
+            return None
+        binding = {
+            "schema_version": SESSION_BINDING_SCHEMA,
+            "session_sha256": binding["session_sha256"],
+            "active_project_root": binding["project_root"],
+            "projects": [
+                {
+                    "project_id": binding["project_id"],
+                    "project_root": binding["project_root"],
+                    "profile_sha256": binding["profile_sha256"],
+                }
+            ],
+            "binding_sha256": "",
+        }
+        binding["binding_sha256"] = _hash(
+            _canonical(
+                {
+                    key: value
+                    for key, value in binding.items()
+                    if key != "binding_sha256"
+                }
+            )
+        )
+    return binding
+
+
+def _session_bound_roots(payload: dict[str, Any]) -> list[dict[str, Any]] | None:
+    binding = _read_session_binding(payload)
+    if binding is None:
+        return None
+    projects = binding.get("projects")
+    active_root = binding.get("active_project_root")
     if (
-        binding.get("schema_version") != SESSION_BINDING_SCHEMA
-        or binding.get("session_sha256") != _hash(session_id)
-        or not isinstance(binding.get("project_id"), str)
-        or not binding["project_id"]
-        or not isinstance(binding.get("project_root"), str)
-        or not isinstance(binding.get("profile_sha256"), str)
-        or digest != expected
+        not isinstance(projects, list)
+        or not projects
+        or not isinstance(active_root, str)
+        or not Path(active_root).is_absolute()
     ):
         return None
-    root = Path(binding["project_root"])
-    if not root.is_absolute():
+    roots: list[dict[str, Any]] = []
+    for item in projects:
+        if (
+            not isinstance(item, dict)
+            or set(item) != {"project_id", "project_root", "profile_sha256"}
+            or not isinstance(item.get("project_id"), str)
+            or not item["project_id"]
+            or not isinstance(item.get("project_root"), str)
+            or not Path(item["project_root"]).is_absolute()
+            or not isinstance(item.get("profile_sha256"), str)
+        ):
+            return None
+        root = Path(item["project_root"]).resolve()
+        profile = root / ".continuity/project.yaml"
+        if not profile.is_file() or _file_hash(profile) != item["profile_sha256"]:
+            return None
+        roots.append(
+            {
+                "project_id": item["project_id"],
+                "project_root": root,
+                "profile_sha256": item["profile_sha256"],
+            }
+        )
+    if not any(item["project_root"] == Path(active_root).resolve() for item in roots):
         return None
-    try:
-        root = root.resolve()
-    except OSError:
+    return roots
+
+
+def _session_bound_root(payload: dict[str, Any]) -> Path | None:
+    roots = _session_bound_roots(payload)
+    binding = _read_session_binding(payload)
+    if roots is None or binding is None:
         return None
-    profile = root / ".continuity/project.yaml"
-    if not profile.is_file() or _file_hash(profile) != binding["profile_sha256"]:
-        return None
-    return root
+    active_root = Path(binding["active_project_root"]).resolve()
+    return active_root if any(item["project_root"] == active_root for item in roots) else None
 
 
 def _resume_tool_packet(payload: dict[str, Any]) -> dict[str, Any] | None:
@@ -203,11 +269,26 @@ def _record_resume_binding(payload: dict[str, Any]) -> str:
     root_value = tool_input.get("root")
     if not isinstance(root_value, str) or not root_value:
         return "ignored"
-    existing_root = _session_bound_root(payload)
+    existing_binding = _read_session_binding(payload)
+    existing_roots = _session_bound_roots(payload)
+    if existing_binding is not None and existing_roots is None:
+        # A successful explicit resume is allowed to repair a stale profile digest.
+        existing_roots = [
+            {
+                "project_id": item["project_id"],
+                "project_root": Path(item["project_root"]).resolve(),
+                "profile_sha256": item["profile_sha256"],
+            }
+            for item in existing_binding.get("projects", [])
+            if isinstance(item, dict)
+            and isinstance(item.get("project_id"), str)
+            and isinstance(item.get("project_root"), str)
+            and isinstance(item.get("profile_sha256"), str)
+        ]
     requested = Path(root_value)
     if not requested.is_absolute():
         cwd = payload.get("cwd")
-        base = existing_root or (Path(cwd) if isinstance(cwd, str) else None)
+        base = _session_bound_root(payload) or (Path(cwd) if isinstance(cwd, str) else None)
         if base is None:
             return "ignored"
         requested = base / requested
@@ -224,18 +305,35 @@ def _record_resume_binding(payload: dict[str, Any]) -> str:
         or not project_id
     ):
         return "ignored"
-    if existing_root is not None and existing_root != root:
-        return "conflict"
     path = _session_binding_path(payload)
     session_id = payload.get("session_id")
     if path is None or not isinstance(session_id, str):
         return "ignored"
+    for item in existing_roots or []:
+        if item["project_root"] == root and item["project_id"] != project_id:
+            return "conflict"
+    projects = [
+        {
+            "project_id": item["project_id"],
+            "project_root": str(item["project_root"]),
+            "profile_sha256": item["profile_sha256"],
+        }
+        for item in existing_roots or []
+        if item["project_root"] != root
+    ]
+    projects.append(
+        {
+            "project_id": project_id,
+            "project_root": str(root),
+            "profile_sha256": profile_sha256,
+        }
+    )
+    projects.sort(key=lambda item: item["project_root"])
     document = {
         "schema_version": SESSION_BINDING_SCHEMA,
         "session_sha256": _hash(session_id),
-        "project_id": project_id,
-        "project_root": str(root),
-        "profile_sha256": profile_sha256,
+        "active_project_root": str(root),
+        "projects": projects,
         "binding_sha256": "",
     }
     document["binding_sha256"] = _hash(

@@ -2,6 +2,56 @@
 
 [中文](CHANGELOG.md)
 
+## 0.1.0-alpha.9
+
+### Changes Since 0.1.0-alpha.8
+
+- One Codex Session can explicitly bind multiple independent project roots. The
+  MCP server no longer pre-binds from `cwd`; each successful
+  `continuity_resume(root=...)` adds a project and switches the active root.
+  Claims, checkpoints, revisions, and effect permissions remain isolated per
+  project.
+- Once a Session binding exists, an unbound root, missing profile, profile-digest
+  mismatch, or corrupt binding is rejected before any CLI/State write. The
+  terminal `cwd` cannot override an explicit project identity.
+- A governance root and external delivery workspace can be used alternately in
+  one Session. The external repository remains constrained by its workspace
+  registry, repository digest, expected HEAD/ref, and `repo://` scope.
+- The packaged MCP and Codex plugin multi-root contracts are synchronized. The
+  handshake reports the alpha.8 protocol line, and legacy single-root migration
+  plus multi-root profile-integrity checks are covered.
+
+### Verification And Boundaries
+
+- MCP binding, plugin lifecycle, root switching, unbound-write rejection, and
+  strict-schema focused tests pass `46/46`; ruff checks pass.
+- Explicit dual-project resume for two independent governance roots succeeds
+  while the process runs from an unrelated workspace cwd; project identity is
+  selected by the requested root, with no product-repository changes or direct
+  SQLite writes.
+- Alpha.9 remains a prerelease. Automatic cross-project Work merging, a
+  cross-device unique claim, and cross-project token A/B remain governed by the
+  selected runtime profile and later acceptance gates.
+
+### Installation
+
+Core package:
+
+```bash
+python -m pip install continuity-plane==0.1.0a9
+```
+
+Codex plugin:
+
+```bash
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.9
+codex plugin add continuity-plane@continuity-plane
+```
+
+Start a new Session after installing or upgrading the plugin. In a multi-project
+Session, explicitly call `continuity_resume(root=...)` before working in each
+project.
+
 ## 0.1.0-alpha.8
 
 ### Changes Since 0.1.0-alpha.7
@@ -66,17 +116,6 @@ codex plugin add continuity-plane@continuity-plane
 Start a new Session after installing or upgrading the plugin. The core package
 works alone; plugin state changes can only be submitted through controlled State
 MCP tools.
-
-## Unreleased
-
-- Codex MCP no longer pre-binds a project from the process cwd. The first
-  successful explicit `continuity_resume` locks the Session project root; later
-  lifecycle events prefer that binding, reject root changes before the CLI, and
-  keep invalid local bindings read-only.
-- Multi-repository projects can register a separate delivery workspace from the
-  governance root. External activation binds the workspace ID, repository digest,
-  HEAD/ref, implementation evidence, and `repo://` claim scope; ordinary local
-  commits and history rewrites use separate effect permissions.
 
 ## 0.1.0-alpha.7
 

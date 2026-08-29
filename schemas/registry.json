@@ -14,6 +14,10 @@
       "sha256": "2b2e9f03791adaaa8eb2160de545f190781686e50e7aa2656d63b1bd21f89963"
     },
     {
+      "path": "schemas/m10-15/codex-session-project-bindings.schema.json",
+      "sha256": "569caf4dc0ec137a6e1cb09bd33bef90ef53cf7d68fc04beb292f515b130a7a1"
+    },
+    {
       "path": "schemas/m10-15/delivery-workspace-registry.schema.json",
       "sha256": "7bd9963bae868bd03cd5ec1e8b81e909d11cd1fc9651ce1257ac73640233b03b"
     },

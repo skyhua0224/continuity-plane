@@ -1,5 +1,5 @@
 {
-  "file_count": 136,
+  "file_count": 137,
   "files": [
     {
       "path": ".agents/plugins/marketplace.json",
@@ -35,11 +35,11 @@
     },
     {
       "path": "CHANGELOG.en.md",
-      "sha256": "1f37e92e195c38fdef33a9eed7ed7d5721ca0ce7662dab5670e5d2c0393f3bfb"
+      "sha256": "55a4177eae5a1e6cbd86a9af8b46d65d09a9c9a6237b50fb8db181eeaba569a8"
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "05e3abd178f1a9a0d237e44d86bc9fe06a90532d87ec15f8defda9fa178f3851"
+      "sha256": "992aab51974a53d40d9f0fcaa33ba9884b8012546dc33d30114656d79e96de22"
     },
     {
       "path": "CONTRIBUTING.en.md",
@@ -63,11 +63,11 @@
     },
     {
       "path": "README.en.md",
-      "sha256": "5c1bebb91ad2faa72e59ed8778cdd197291a4aabf55ca180ae9b9856ace4af87"
+      "sha256": "a51927f1ba266358d69ce756b6cd7a22e46545d5f877d39d083df1ed821f7508"
     },
     {
       "path": "README.md",
-      "sha256": "3492e3ea3ef528372a3c9da35edc7864ff56594a2bed1d7d1e58e8ed0485c39f"
+      "sha256": "ec115ce10cc33de863b2eeccd1a454a6001b757b6c072c333f89472d1b59647b"
     },
     {
       "path": "SECURITY.en.md",
@@ -87,11 +87,11 @@
     },
     {
       "path": "USAGE.en.md",
-      "sha256": "6020acfd3bdb80d0aceb0ed87b17a6b9c92614cbcec1baeb843fcb9ec90e1c75"
+      "sha256": "6ed6bec39316382ada5dd1fa25b909257110406bf260991f13dfc2d2a10e5a17"
     },
     {
       "path": "USAGE.md",
-      "sha256": "bc34c960d7ced1a2792353649caa143381ccc48374c5a083e26bc60ca2c62b26"
+      "sha256": "720fd1d6a0ab08d01cb02aac2b48a68e0d2e5044504921bb5587dea68a624825"
     },
     {
       "path": "benchmarks/__init__.py",
@@ -99,7 +99,7 @@
     },
     {
       "path": "benchmarks/reference-results.json",
-      "sha256": "9645ea7b4703211ff7624e276ea0a85ee60e522bc6e67f586f9e0d5eda9ee851"
+      "sha256": "42d04602877d61b11a1901d552cd28feb8c8bafe5a23d5aaf0ebeb66c593e5de"
     },
     {
       "path": "benchmarks/run_local_state.py",
@@ -135,7 +135,7 @@
     },
     {
       "path": "continuity_plane/cli.py",
-      "sha256": "c6bedabee93e55d18be29cc5477837202f0c43e077a67279f998e605f56d27bb"
+      "sha256": "ad54b9e5812a4096021fba4a330746ad36547f5930deb9fa68e53653389b014c"
     },
     {
       "path": "continuity_plane/codegraph_verification.py",
@@ -143,7 +143,7 @@
     },
     {
       "path": "continuity_plane/codex_mcp_server.py",
-      "sha256": "e3b66e6bdb27992162de6cfd2cc5bc5802d6aad8fdb3464d71891ebf15c9b86f"
+      "sha256": "b023a551ee5ea3246cbb127b43becb0a7992e51c6ee815b792085e7592f4bb32"
     },
     {
       "path": "continuity_plane/collaboration_notifications.py",
@@ -407,7 +407,7 @@
     },
     {
       "path": "plugins/continuity-plane/.codex-plugin/plugin.json",
-      "sha256": "bdac8fe6292b13f545d57f996b942ead9cf9e808ea4a893d6207c1143e874ce5"
+      "sha256": "4aa148ab398a4261d6cb0a5d064ccb1811c4a62e47001d0f2f4f6f7fccdb4be0"
     },
     {
       "path": "plugins/continuity-plane/.mcp.json",
@@ -419,11 +419,11 @@
     },
     {
       "path": "plugins/continuity-plane/scripts/continuity-hook.py",
-      "sha256": "74579d0428f89ed04484cdd15bb16d69e8689d64f01cff7aa7fc709e26caa46a"
+      "sha256": "dde96413e8ab6a7a347a0e5a9a07ec9dc82a8e80d8d7193df45983e223a66891"
     },
     {
       "path": "plugins/continuity-plane/scripts/continuity-mcp-server.py",
-      "sha256": "e3b66e6bdb27992162de6cfd2cc5bc5802d6aad8fdb3464d71891ebf15c9b86f"
+      "sha256": "b023a551ee5ea3246cbb127b43becb0a7992e51c6ee815b792085e7592f4bb32"
     },
     {
       "path": "plugins/continuity-plane/skills/continuity-plane/SKILL.md",
@@ -444,6 +444,10 @@
     {
       "path": "schemas/m10-11/status-projection.schema.json",
       "sha256": "2b2e9f03791adaaa8eb2160de545f190781686e50e7aa2656d63b1bd21f89963"
+    },
+    {
+      "path": "schemas/m10-15/codex-session-project-bindings.schema.json",
+      "sha256": "569caf4dc0ec137a6e1cb09bd33bef90ef53cf7d68fc04beb292f515b130a7a1"
     },
     {
       "path": "schemas/m10-15/delivery-workspace-registry.schema.json",
@@ -515,7 +519,7 @@
     },
     {
       "path": "schemas/registry.json",
-      "sha256": "3c1a5461bdc33223b7a8e5783a56e54ca6df99ec1eed942542f242114c0caf04"
+      "sha256": "7964d12e5a17b241d8c897c42d32fae68fe1bf7995b331f00affb331132e91ce"
     },
     {
       "path": "templates/MASTER.en.md",
@@ -547,5 +551,5 @@
     }
   ],
   "schema_version": "context.public-release-manifest/v1",
-  "version": "0.1.0-alpha.8"
+  "version": "0.1.0-alpha.9"
 }

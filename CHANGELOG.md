@@ -2,6 +2,47 @@
 
 [English](CHANGELOG.en.md)
 
+## 0.1.0-alpha.9
+
+### 相比 0.1.0-alpha.8
+
+- 一个 Codex Session 可以显式绑定多个独立项目根。MCP 启动不再从 `cwd` 预绑定；每次
+  成功的 `continuity_resume(root=...)` 加入项目集合并切换 active root。不同项目的
+  claim、checkpoint、revision 和副作用权限保持隔离。
+- 已建立 Session binding 后，未绑定 root、缺少 profile、profile digest 失配或损坏
+  binding 会在 CLI/State 写入前 fail-closed，终端 `cwd` 不能覆盖显式项目身份。
+- 治理根与外部 delivery workspace 可以在同一 Session 中交替使用；外部仓库仍由
+  workspace registry、repository digest、expected HEAD/ref 和 `repo://` scope 约束。
+- 修复 packaged MCP 与 Codex plugin 的多根路由合同，并将 server handshake 版本同步
+  到 alpha.8 协议线；补充 legacy 单根 binding 迁移和多根 profile 完整性校验。
+
+### 验证与边界
+
+- MCP binding、plugin lifecycle、跨根切换、未绑定写拒绝和严格 schema 聚焦测试
+  `46/46` 通过；ruff 检查通过。
+- 两个独立治理根的显式双项目 resume 在无关 workspace cwd 下通过；项目身份按请求
+  root 返回，未修改业务仓库或直接写入 SQLite。
+- alpha.9 仍为预发行版；跨项目自动合并 Work、跨设备唯一 claim 和跨项目 token A/B
+  仍按各项目 runtime profile 与后续验收门执行。
+
+### 安装
+
+核心包：
+
+```bash
+python -m pip install continuity-plane==0.1.0a9
+```
+
+Codex plugin：
+
+```bash
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.9
+codex plugin add continuity-plane@continuity-plane
+```
+
+安装或升级 plugin 后请新建 Session。跨项目 Session 在每个项目首次工作前显式调用
+`continuity_resume(root=...)`。
+
 ## 0.1.0-alpha.8
 
 ### 相比 0.1.0-alpha.7
@@ -54,15 +95,6 @@ codex plugin add continuity-plane@continuity-plane
 
 安装或升级 plugin 后请新建 Session。核心包可以单独使用；plugin 的状态变更只能通过
 受控 State MCP 工具提交。
-
-## 未发布
-
-- Codex MCP 不再根据进程 cwd 预绑定项目。首次成功的显式 `continuity_resume`
-  锁定 Session 项目根；后续生命周期事件优先使用该绑定，换根请求在调用 CLI 前拒绝，
-  损坏的本地绑定保持只读。
-- 多仓项目可以从治理根注册独立 delivery workspace。外部仓库激活绑定 workspace ID、
-  repository 摘要、HEAD/ref、实现证据和 `repo://` claim scope；普通本地提交与历史重写
-  使用独立 effect 权限。
 
 ## 0.1.0-alpha.7
 

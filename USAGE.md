@@ -10,7 +10,7 @@ Windows AMD64 完成安装、verify 和卸载。
 ### 从 PyPI 安装
 
 ```bash
-python -m pip install continuity-plane==0.1.0a8
+python -m pip install continuity-plane==0.1.0a9
 ```
 
 从源码 checkout 开发时：
@@ -26,7 +26,7 @@ python -m venv .venv
 下载 wheel 或 source archive：
 
 ```bash
-python -m pip install /path/to/continuity_plane-0.1.0a8-py3-none-any.whl
+python -m pip install /path/to/continuity_plane-0.1.0a9-py3-none-any.whl
 ```
 
 ### 全局安装，管理多个项目
@@ -36,7 +36,7 @@ python -m pip install /path/to/continuity_plane-0.1.0a8-py3-none-any.whl
 ```bash
 python3 -m venv ~/.local/share/continuity-plane/venv
 ~/.local/share/continuity-plane/venv/bin/python \
-  -m pip install continuity-plane==0.1.0a8
+  -m pip install continuity-plane==0.1.0a9
 
 ~/.local/share/continuity-plane/venv/bin/continuity \
   init --root /path/to/project --project-id my-project
@@ -47,7 +47,7 @@ python3 -m venv ~/.local/share/continuity-plane/venv
 ```bash
 cd /path/to/project
 python3 -m venv .venv
-.venv/bin/python -m pip install continuity-plane==0.1.0a8
+.venv/bin/python -m pip install continuity-plane==0.1.0a9
 .venv/bin/continuity init --root . --project-id my-project
 ```
 
@@ -191,7 +191,7 @@ continuity work activate \
 个人想进行 SQL 检查、备份或让多个本地 worker 共用状态时，可以选择 PostgreSQL：
 
 ```bash
-python -m pip install 'continuity-plane[postgres]==0.1.0a8'
+python -m pip install 'continuity-plane[postgres]==0.1.0a9'
 ```
 
 当前 alpha CLI 仍默认 SQLite。PostgreSQL 通过显式 Python adapter 使用：
@@ -274,14 +274,32 @@ State MCP 工具提交。
 先安装核心包，再把本项目 GitHub 仓库作为 marketplace：
 
 ```bash
-python -m pip install continuity-plane==0.1.0a8
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.8
+python -m pip install continuity-plane==0.1.0a9
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.9
 codex plugin add continuity-plane@continuity-plane
 ```
 
 安装后新建 Session。Codex plugin 会在 `SessionStart` 根据当前项目根目录发现并绑定
 `.continuity/`，在 `PreCompact`/`PostCompact` 执行 checkpoint 生命周期，并在需要时对
 push、PR、merge、deploy 和远端安装做 claim/effect 预检。普通问题不会输出恢复旁白。
+
+### 一个 Session 管理多个项目
+
+当同一个 Session 同时处理治理仓、实现仓和另一个项目时，先对每个项目的治理根执行
+一次显式 resume：
+
+```text
+continuity_resume(root=/path/to/project-a)
+continuity_resume(root=/path/to/project-b)
+continuity_resume(root=/path/to/project-c)
+```
+
+每次调用都会把该 root 加入当前 Session 的受校验项目集合，并把它设为 active root。
+之后该项目的 Work、claim、checkpoint 和 effect 请求必须使用相同 root；切换项目时
+再次显式调用 `continuity_resume`。相对 root 只相对上一次成功的 active root 解析。
+Session 已建立 binding 后，终端 `cwd` 不能替换 active root；未绑定、profile 缺失、
+digest 失配或损坏 binding 会在 CLI/State 写入前拒绝，而不会静默改用 cwd。治理根与
+独立 delivery workspace 的多仓关系仍按上一节的 registry 注册。
 
 升级 plugin 时刷新 marketplace 后重新安装，并新建 Session：
 
@@ -388,7 +406,7 @@ template 和 content-addressed artifact。所有 claim 关闭后，才能归档�
 
 当前版本同时发布到 PyPI 和 GitHub Release：
 
-<https://pypi.org/project/continuity-plane/0.1.0a8/>  
+<https://pypi.org/project/continuity-plane/0.1.0a9/>  
 <https://github.com/skyhua0224/continuity-plane/releases>
 
 当前公开版本使用受控 PyPI token 发布。GitHub Actions OIDC workflow 和 `pypi`
