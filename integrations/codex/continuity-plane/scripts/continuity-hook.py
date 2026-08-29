@@ -1108,6 +1108,71 @@ def _delivery_workspace_registry(
     return document
 
 
+def _registered_governance_root(
+    workdir: Path,
+    *,
+    effect_action: str,
+    search_roots: list[Path] | None = None,
+) -> Path | None:
+    """Resolve an effect worktree to its registered governance root.
+
+    This is a bounded fallback for hosts that do not deliver a persistent Session
+    binding to hooks. It only accepts an exact, integrity-checked workspace entry
+    and rejects ambiguous matches.
+    """
+    try:
+        target = workdir.resolve()
+    except OSError:
+        return None
+    roots = search_roots
+    if roots is None:
+        configured = os.environ.get("CONTINUITY_PROJECT_ROOTS", "")
+        roots = [Path(item) for item in configured.split(os.pathsep) if item]
+        projects = Path.home() / "Projects"
+        try:
+            roots.extend(
+                item
+                for item in projects.iterdir()
+                if item.is_dir()
+            )
+        except OSError:
+            pass
+    matches: list[Path] = []
+    for candidate in roots[:256]:
+        registry_path = candidate / ".continuity/local/delivery-workspaces.json"
+        profile = candidate / ".continuity/project.yaml"
+        if not registry_path.is_file() or not profile.is_file():
+            continue
+        try:
+            document = json.loads(registry_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        project_id = document.get("project_id") if isinstance(document, dict) else None
+        if not isinstance(project_id, str):
+            continue
+        try:
+            verified = _delivery_workspace_registry(candidate, project_id)
+        except OSError:
+            continue
+        if verified is None:
+            continue
+        repository_sha256 = _repository_sha256(target)
+        for item in verified["workspaces"]:
+            workspace = Path(item["workspace_root"]).resolve()
+            try:
+                target.relative_to(workspace)
+            except (TypeError, ValueError):
+                continue
+            if (
+                item["repository_sha256"] == repository_sha256
+                and effect_action in item["allowed_effects"]
+            ):
+                matches.append(candidate.resolve())
+                break
+    unique = sorted(set(matches))
+    return unique[0] if len(unique) == 1 else None
+
+
 def _tool_workdir(payload: dict[str, Any], root: Path) -> Path | None:
     tool_input = payload.get("tool_input")
     value = tool_input.get("workdir") if isinstance(tool_input, dict) else None
@@ -1832,7 +1897,19 @@ def main() -> int:
                 "read-only until an explicit project resume succeeds."
             )
         return 0
-    root = bound_root or _project_root(payload["cwd"])
+    discovered_root = None
+    if bound_root is None and event == "PreToolUse":
+        command = _shell_command(payload)
+        effect_class = _effect_class(command)
+        if effect_class is not None:
+            effect_action = _effect_action(command, effect_class)
+            workdir = _tool_workdir(payload, Path(payload["cwd"]).resolve())
+            if workdir is not None:
+                discovered_root = _registered_governance_root(
+                    workdir,
+                    effect_action=effect_action,
+                )
+    root = bound_root or discovered_root or _project_root(payload["cwd"])
     if root is None:
         return 0
     try:

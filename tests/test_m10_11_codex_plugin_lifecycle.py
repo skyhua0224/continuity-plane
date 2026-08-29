@@ -468,6 +468,57 @@ printf '%s\\n' '{"status":"ok"}'
                 Path(directory) / ".codex/plugins/data/continuity-plane",
             )
 
+    def test_registered_workspace_resolves_governance_root_for_effect_preflight(self) -> None:
+        module = self._hook_module()
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            governance = temp / "governance"
+            workspace = temp / "delivery"
+            for repo in (governance, workspace):
+                repo.mkdir()
+                subprocess.run(["git", "init", "-q", str(repo)], check=True)
+            (governance / ".continuity").mkdir()
+            (governance / ".continuity/project.yaml").write_text(
+                "project_id: foundation-account\n", encoding="utf-8"
+            )
+            repository_sha256 = module._repository_sha256(workspace)
+            registry = {
+                "schema_version": module.DELIVERY_WORKSPACE_REGISTRY_SCHEMA,
+                "project_id": "foundation-account",
+                "project_profile_sha256": module._file_hash(
+                    governance / ".continuity/project.yaml"
+                ),
+                "workspaces": [
+                    {
+                        "workspace_id": "account-service-hosting",
+                        "workspace_root": str(workspace),
+                        "repository_sha256": repository_sha256,
+                        "allowed_effects": ["source-control.push"],
+                    }
+                ],
+                "registry_sha256": "",
+            }
+            registry["registry_sha256"] = module._hash(
+                module._canonical(
+                    {
+                        key: value
+                        for key, value in registry.items()
+                        if key != "registry_sha256"
+                    }
+                )
+            )
+            path = governance / ".continuity/local/delivery-workspaces.json"
+            path.parent.mkdir(parents=True)
+            path.write_text(module._canonical(registry), encoding="utf-8")
+            self.assertEqual(
+                module._registered_governance_root(
+                    workspace,
+                    effect_action="source-control.push",
+                    search_roots=[governance],
+                ),
+                governance,
+            )
+
     def test_local_rsync_is_not_classified_as_a_remote_effect(self) -> None:
         module = self._hook_module()
 
