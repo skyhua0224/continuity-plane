@@ -1,8 +1,8 @@
 # Continuity Plane MASTER
 
-版本：revision 105  
-日期：2026-08-28  
-状态：public alpha publication  
+版本：revision 106  
+日期：2026-08-30  
+状态：zero-friction core reset  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
 
 ## 0. 项目治理状态
@@ -385,6 +385,14 @@ M10-01/M10-11 的跨项目退出门包括：State revision 与 `STATUS.current` 
 |---|---|---|---|---|---|---|
 | M10-17 | ✅ | 显式 root binding 与 active-root 路由 | 一个 Session 按显式 root 访问多个独立 Project State；cwd 不得覆盖身份 | 支持治理根、实现仓和 Platform 连续工作 | M10-14/M10-15 | strict schema、`0600` digest binding、显式切换、legacy 迁移、invalid binding fail-closed；MCP/plugin `46/46`、全量 `1975/1975`（`31` skipped）；GitHub/PyPI alpha.9 已发布；真实业务仓未写入；验收见 `docs/migrations/m10-17-multi-project-session-binding-acceptance-2026-08-29.md` |
 | M10-19 | ✅ | Codex plugin bundle 与双语 alpha.9 release note | release 页面提供中英说明、可下载 plugin bundle 和统一校验文件 | 让用户能直接发现、安装和验证 plugin | M10-17 | GitHub release note bilingual；plugin zip、wheel、sdist、`SHA256SUMS` 已上传；PyPI alpha.9 workflow success；未修改业务仓或直接写 SQLite；证据为 release receipt |
+
+## 7.13 M11 零阻断连续性核心收口
+
+| ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
+|---|---|---|---|---|---|---|
+| M11-00 | 🧑‍💻 | Zero-friction continuity core | 默认恢复、自动推进和上下文优化不干扰业务 Session | 回到项目初衷并给后续严格能力建立可验证边界 | M5/M7/M8/M10-11 | 默认 integration policy 为 `observe`；三个真实项目无命令误阻断；stale/read-only packet 不停止或注入；普通 Work 的 Continuity 手动操作为 `0`；三项目各 `3` 段 matched baseline/candidate；旧 Work 复活、重复回答、错误首动作和副作用误阻断均为 `0`；恢复读取 p95 相对基线下降 `>=30%`；history-heavy input/accepted Work 与压缩间隔不劣于基线且目标下降 `>=30%`；未达到目标时保持插件 disabled，不进入公共 release |
+
+M11-00 的运行策略分为三层：`observe` 仅记录，不阻断；`auto` 自动绑定项目、恢复 Work、创建本地 claim、续租和继续下一动作；`strict` 只由项目 Profile 显式启用，用于不可逆生产副作用。任何层级都不得将 stale packet、旧 Work 或陈旧 STATUS 注入当前 Session。M11-00 关闭前，不新增 effect gate、强制 PostgreSQL、Docmost 或人工 claim 操作。
 
 ## 8. E0-E9 实验链路
 

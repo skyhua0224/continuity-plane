@@ -1,8 +1,18 @@
 # Continuity Plane Status
 
-版本：revision 105  
-日期：2026-08-29  
+版本：revision 106  
+日期：2026-08-30  
 canonical plan：`MASTER.md`
+
+## 当前安全姿态与收口目标
+
+| 字段 | 值 |
+|---|---|
+| integration posture | `observe` design；本机 plugin disabled |
+| 业务影响 | Platform、ProjectCompute、Foundation Account 不受命令门禁影响 |
+| 收口目标 | M11-00：Zero-friction continuity core |
+| 收口条件 | 三项目各 `3` 段 matched baseline/candidate；旧 Work 复活、重复回答、误阻断为 `0`；恢复读取和 history-heavy token 达到目标降幅 |
+| 未达标策略 | 保持 disabled，不发布新的默认启用版本 |
 
 ## 当前状态
 
