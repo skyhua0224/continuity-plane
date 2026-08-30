@@ -8,7 +8,7 @@ canonical plan：`MASTER.md`
 
 | 字段 | 值 |
 |---|---|
-| integration posture | `observe`；本机 core/search/state 三插件显式启用；命令门禁 0 |
+| integration posture | 非阻断 `auto`；本机 core/search/state 三插件显式启用；lifecycle hook trust `3/3`；命令门禁 0 |
 | 业务影响 | Platform、ProjectCompute、Foundation Account 不受命令门禁影响 |
 | 收口目标 | M11-00：Zero-friction continuity core |
 | 收口条件 | 三项目各 `3` 段 matched baseline/candidate；旧 Work 复活、重复回答、误阻断为 `0`；恢复读取和 history-heavy token 达到目标降幅 |
@@ -35,7 +35,7 @@ canonical plan：`MASTER.md`
 | Coordination/views | shared Work、forge、notification、Project Graph、2,000-node Impact gates passed；authority violation `0` |
 | Release baseline | Linux/macOS/Windows native matrix `18/18`；local state bundle export/import/rollback available；public privacy scan `0` findings |
 | Documentation audit | README、USAGE、CHANGELOG、public docs、templates 与 policy 全文审阅；公开 Markdown 内部阶段标记 `0`，本地链接缺失 `0`，外部链接 `8/8` 可达；repository verification passed |
-| M11-00 zero-friction reset | 本机 core/search/state 显式启用；core 无 Skill/MCP/命令门；三仓 source-control/remote-effect 无副作用 shell probe `6/6` 到达执行层；State MCP 在新 Codex task 可见；54/54 profile/lifecycle tests 通过；[pre-reset baseline](experiments/evidence/m11-00-live-baseline-20260830.json) |
+| M11-00 zero-friction reset | 本机 core/search/state 显式启用；core 无 Skill/MCP/命令门；lifecycle hook trust `3/3`，新 Codex startup receipt 已生成，子进程 `CONTINUITY_EFFECT_POLICY=auto`；自然 1M/900K PreCompact/PostCompact 链待观测；三仓 source-control/remote-effect 无副作用 shell probe `6/6` 到达执行层；State MCP 在新 Codex task 可见；54/54 profile/lifecycle tests 通过；[pre-reset baseline](experiments/evidence/m11-00-live-baseline-20260830.json) |
 | M11 hook efficiency | `40` 组：calls `-33.33%`，model context `-83.73%`，stdout `-85.18%`，wall p50/p95 `-25.60%/-29.98%`，deny/stop `0/0`；[receipt](experiments/evidence/m11-00-codex-hook-efficiency.json) |
 | M11 Platform matched A/B | `3+3`：input/output/tool-output 中位 `-12.14%/-28.84%/-41.46%`，veto `0`，input gate failed；[comparison](experiments/evidence/m11-live/platform-ultralight/platform-comparison.json) |
 | M11 ProjectCompute matched A/B | `3+3`：input/output/tool-output 中位 `-2.36%/-13.70%/+2.62%`，veto `0`，input gate failed；[comparison](experiments/evidence/m11-live/projectcompute-ultralight/projectcompute-comparison.json) |
