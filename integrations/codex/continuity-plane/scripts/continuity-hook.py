@@ -99,7 +99,8 @@ _WHOLE_FILE_READERS = {"cat", "less", "more"}
 
 def _effect_policy() -> str:
     """Return the explicit effect policy; observation is the safe default."""
-    return "strict" if os.environ.get("CONTINUITY_EFFECT_POLICY", "observe").lower() == "strict" else "observe"
+    value = os.environ.get("CONTINUITY_EFFECT_POLICY", "observe").lower()
+    return value if value in {"observe", "auto", "strict"} else "observe"
 
 
 def _status_projection_is_current(root: Path, packet: dict[str, Any]) -> bool:
@@ -1737,6 +1738,8 @@ def _posttooluse(payload: dict[str, Any], root: Path) -> int:
     command = _shell_command(payload)
     if payload.get("tool_name") != "Bash" and _effect_class(command) is None:
         return 0
+    if _effect_policy() == "observe":
+        return 0
     if _effect_class(command) is not None:
         _release_effect_intent(payload)
     if not _is_recovery_read(command):
@@ -1792,6 +1795,8 @@ def _posttooluse(payload: dict[str, Any], root: Path) -> int:
 
 
 def _precompact(payload: dict[str, Any], root: Path) -> int:
+    if _effect_policy() == "observe":
+        return 0
     _write_cursor(payload)
     _skill_lock_path()
     completed = _command(["checkpoint", "create"], root)
@@ -1803,6 +1808,8 @@ def _precompact(payload: dict[str, Any], root: Path) -> int:
 
 
 def _postcompact(payload: dict[str, Any], root: Path) -> int:
+    if _effect_policy() == "observe":
+        return 0
     completed = _command(["checkpoint", "verify"], root)
     success = completed.returncode == 0
     _observe(
@@ -1888,7 +1895,7 @@ def _session_start(payload: dict[str, Any], root: Path) -> int:
                     "keep this session read-only."
                 )
             return 0
-        if _effect_policy() != "strict":
+        if _effect_policy() == "observe":
             return 0
     source_refreshed = False
     if packet.get("source_fresh") is False:

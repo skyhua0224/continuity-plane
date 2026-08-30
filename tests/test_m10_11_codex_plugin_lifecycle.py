@@ -1437,17 +1437,45 @@ printf '%s\\n' '{"status":"ok"}'
         self.assertEqual(output["continue"], False)
         self.assertIn("checkpoint", output["stopReason"].lower())
 
-    def test_observe_mode_does_not_stop_on_checkpoint_verify_failure(self) -> None:
+    def test_auto_mode_does_not_stop_on_checkpoint_verify_failure(self) -> None:
         completed, calls, observations = self._run_hook(
             "PostCompact",
             fail_verify=True,
-            effect_policy=None,
+            effect_policy="auto",
         )
 
         self.assertEqual(completed.returncode, 0)
         self.assertEqual(completed.stdout, "")
         self.assertEqual(len(calls), 1)
         self.assertIn('"canary_passed":false', observations)
+
+    def test_observe_mode_compaction_events_are_zero_call_noops(self) -> None:
+        before, before_calls, _ = self._run_hook(
+            "PreCompact",
+            effect_policy=None,
+        )
+        after, after_calls, _ = self._run_hook(
+            "PostCompact",
+            effect_policy=None,
+        )
+
+        self.assertEqual(before.stdout, "")
+        self.assertEqual(after.stdout, "")
+        self.assertEqual(before_calls, [])
+        self.assertEqual(after_calls, [])
+
+    def test_auto_mode_session_start_injects_only_current_bounded_context(self) -> None:
+        completed, calls, _ = self._run_hook(
+            "SessionStart",
+            effect_policy="auto",
+            projection_revision=8,
+        )
+
+        self.assertEqual(completed.returncode, 0)
+        output = json.loads(completed.stdout)
+        self.assertEqual(output["continue"], True)
+        self.assertIn("work-active", output["hookSpecificOutput"]["additionalContext"])
+        self.assertEqual(len(calls), 1)
 
     def test_postcompact_auto_continues_the_current_work_after_canary(self) -> None:
         packet = {
@@ -1497,6 +1525,18 @@ printf '%s\\n' '{"status":"ok"}'
         self.assertIn("additionalContext", output["hookSpecificOutput"])
         self.assertIn("work-active", output["hookSpecificOutput"]["additionalContext"])
         self.assertTrue(calls[0].startswith("autorun --session-id "))
+
+    def test_observe_mode_successful_stage_test_is_a_zero_call_noop(self) -> None:
+        completed, calls, _ = self._run_hook(
+            "PostToolUse",
+            tool_name="Bash",
+            tool_input={"command": "python -m unittest tests/test_stage.py"},
+            stage_success=True,
+            effect_policy=None,
+        )
+
+        self.assertEqual(completed.stdout, "")
+        self.assertEqual(calls, [])
 
     def test_autorun_retries_a_transient_transport_failure(self) -> None:
         packet = {
