@@ -1,0 +1,37 @@
+{
+  "arm": "candidate",
+  "compaction": {
+    "compact_start_events": 4,
+    "complete_chains": 4,
+    "failed_events": 0,
+    "postcompact_events": 4,
+    "precompact_events": 4
+  },
+  "completion_authority": false,
+  "context_efficiency": {
+    "assistant_messages": 5,
+    "assistant_messages_sha256": "75bc850b51f1d418852f6498da0a315ee5a7df0b1fe1d9c4e661df141a133a20",
+    "error_item_count": 0,
+    "hook_trust_warning_count": 2,
+    "master_read_calls": 0,
+    "recovery_narration_count": 0,
+    "skill_read_calls": 0,
+    "status_read_calls": 0,
+    "tool_calls": 7,
+    "tool_output_bytes": 240449
+  },
+  "observed_at": "2026-08-30T19:31:33+08:00",
+  "provider_usage": {
+    "cache_write_input_tokens": 0,
+    "cached_input_tokens": 134144,
+    "input_tokens": 176649,
+    "output_tokens": 2122,
+    "reasoning_output_tokens": 211
+  },
+  "raw_transcript_admission": false,
+  "receipt_sha256": "327466055c5d89bc0ffe0a5c8170d1410d629f163b3c270aba56804570bd54c0",
+  "schema_version": "context.codex-exec-observation/v1alpha1",
+  "segment_id": "projectcompute-candidate-02",
+  "source_sha256": "c64a751d0fc6f41fab4c8dfb8e3e40d599b6bee8530ed76466f53802591aca44",
+  "state_write_authority": false
+}

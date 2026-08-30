@@ -29,7 +29,11 @@ class M1100CodexExecObservationTests(unittest.TestCase):
         output_tokens: int,
         read_status: bool,
     ) -> dict:
-        command = "sed -n '1,120p' STATUS.md" if read_status else "rg -n package pyproject.toml"
+        command = (
+            "sed -n '1,120p' STATUS.md"
+            if read_status
+            else "continuity context search --root . --query runtime"
+        )
         stream = io.StringIO(
             _line({"type": "thread.started", "thread_id": "private-thread"})
             + _line(
@@ -88,6 +92,7 @@ class M1100CodexExecObservationTests(unittest.TestCase):
         validate_codex_exec_observation(receipt)
         self.assertEqual(receipt["provider_usage"]["input_tokens"], 100_000)
         self.assertEqual(receipt["context_efficiency"]["status_read_calls"], 0)
+        self.assertEqual(receipt["context_efficiency"]["bounded_search_calls"], 1)
         self.assertEqual(receipt["compaction"]["complete_chains"], 1)
         self.assertEqual(receipt["compaction"]["failed_events"], 0)
         encoded = json.dumps(receipt, ensure_ascii=False)

@@ -110,6 +110,7 @@ def observe_codex_exec_stream(
     status_reads = 0
     master_reads = 0
     skill_reads = 0
+    bounded_search_calls = 0
     assistant_messages = 0
     assistant_hashes: list[str] = []
     recovery_narration = 0
@@ -157,6 +158,10 @@ def observe_codex_exec_stream(
                 status_reads += int(_read_kind(command, "STATUS.md"))
                 master_reads += int(_read_kind(command, "MASTER.md"))
                 skill_reads += int(_read_kind(command, "SKILL.md"))
+                bounded_search_calls += int(
+                    re.search(r"\bcontinuity\s+context\s+search\b", command)
+                    is not None
+                )
             if isinstance(output, str):
                 tool_output_bytes += len(output.encode("utf-8"))
         elif item_type == "agent_message":
@@ -186,6 +191,7 @@ def observe_codex_exec_stream(
             "status_read_calls": status_reads,
             "master_read_calls": master_reads,
             "skill_read_calls": skill_reads,
+            "bounded_search_calls": bounded_search_calls,
             "assistant_messages": assistant_messages,
             "assistant_messages_sha256": _sha(
                 _canonical(sorted(assistant_hashes))

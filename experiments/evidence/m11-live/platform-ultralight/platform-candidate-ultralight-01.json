@@ -1,0 +1,37 @@
+{
+  "arm": "candidate",
+  "compaction": {
+    "compact_start_events": 3,
+    "complete_chains": 3,
+    "failed_events": 0,
+    "postcompact_events": 3,
+    "precompact_events": 3
+  },
+  "completion_authority": false,
+  "context_efficiency": {
+    "assistant_messages": 4,
+    "assistant_messages_sha256": "3749453c3f0d4d4e23a09f70eff568da1dfffeb2f00f82594efb0bec97e1d456",
+    "error_item_count": 0,
+    "hook_trust_warning_count": 2,
+    "master_read_calls": 0,
+    "recovery_narration_count": 0,
+    "skill_read_calls": 0,
+    "status_read_calls": 0,
+    "tool_calls": 7,
+    "tool_output_bytes": 223204
+  },
+  "observed_at": "2026-08-30T19:11:45+08:00",
+  "provider_usage": {
+    "cache_write_input_tokens": 0,
+    "cached_input_tokens": 88576,
+    "input_tokens": 125935,
+    "output_tokens": 1505,
+    "reasoning_output_tokens": 138
+  },
+  "raw_transcript_admission": false,
+  "receipt_sha256": "1e7903fde9820b261d3a3e9a9c4fad743775e63f92ca561da30cda587f95eabe",
+  "schema_version": "context.codex-exec-observation/v1alpha1",
+  "segment_id": "platform-candidate-ultralight-01",
+  "source_sha256": "7ae9ac9d84fd80f1c353d5bbcdba6cab56674a617da3a760514243622bc3c172",
+  "state_write_authority": false
+}
