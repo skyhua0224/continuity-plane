@@ -1477,6 +1477,29 @@ printf '%s\\n' '{"status":"ok"}'
         self.assertIn("work-active", output["hookSpecificOutput"]["additionalContext"])
         self.assertEqual(len(calls), 1)
 
+    def test_auto_mode_idle_session_does_not_invent_the_next_work(self) -> None:
+        idle = {
+            "schema_version": "context.recovery-envelope/v1alpha1",
+            "project_id": "portable-project",
+            "revision": 8,
+            "active_work": None,
+            "claim": None,
+            "next_action": "activate-next-work",
+            "source_fresh": True,
+            "lease_valid": True,
+            "checkpoint_verified": True,
+            "read_only": False,
+        }
+        completed, calls, _ = self._run_hook(
+            "SessionStart",
+            resume_packet=idle,
+            effect_policy="auto",
+            projection_revision=8,
+        )
+
+        self.assertEqual(completed.stdout, "")
+        self.assertEqual(len(calls), 1)
+
     def test_postcompact_auto_continues_the_current_work_after_canary(self) -> None:
         packet = {
             "schema_version": "context.recovery-envelope/v1alpha1",

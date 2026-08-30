@@ -1895,6 +1895,8 @@ def _session_start(payload: dict[str, Any], root: Path) -> int:
                     "keep this session read-only."
                 )
             return 0
+        if packet.get("active_work") is None or packet.get("claim") is None:
+            return 0
         if _effect_policy() == "observe":
             return 0
     source_refreshed = False
