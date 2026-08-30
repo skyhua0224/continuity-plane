@@ -1,0 +1,66 @@
+{
+  "acceptance": {
+    "candidate_deny_count_zero": true,
+    "candidate_stop_count_zero": true,
+    "continuity_call_reduction_at_least_30_percent": true,
+    "model_context_reduction_at_least_30_percent": true,
+    "passed": true
+  },
+  "arms": {
+    "baseline": {
+      "continuity_calls_per_sample": 6.0,
+      "continuity_calls_total": 240,
+      "deny_count": 0,
+      "hook_stdout_bytes_per_sample": 3704.0,
+      "hook_stdout_bytes_total": 148160,
+      "model_context_bytes_per_sample": 2274.0,
+      "model_context_bytes_total": 90960,
+      "samples": 40,
+      "stop_count": 0,
+      "wall_ms_p50": 268.344032,
+      "wall_ms_p95": 287.447537
+    },
+    "candidate": {
+      "continuity_calls_per_sample": 4.0,
+      "continuity_calls_total": 160,
+      "deny_count": 0,
+      "hook_stdout_bytes_per_sample": 1908.0,
+      "hook_stdout_bytes_total": 76320,
+      "model_context_bytes_per_sample": 1536.0,
+      "model_context_bytes_total": 61440,
+      "samples": 40,
+      "stop_count": 0,
+      "wall_ms_p50": 235.259999,
+      "wall_ms_p95": 251.155032
+    }
+  },
+  "completion_authority": false,
+  "improvements": {
+    "continuity_call_reduction_percent": 33.333333,
+    "hook_stdout_byte_reduction_percent": 48.488121,
+    "model_context_byte_reduction_percent": 32.453826,
+    "wall_ms_p50_reduction_percent": 12.328962,
+    "wall_ms_p95_reduction_percent": 12.625784
+  },
+  "observed_at": "2026-08-30T17:18:09+08:00",
+  "parameters": {
+    "baseline_git_ref": "ffcdbfb73a1fafb77d5fed50d440ff3b122f3496",
+    "effect_policy": "auto",
+    "event_sequence": [
+      "SessionStart:startup",
+      "PostToolUse:Bash",
+      "PreCompact:auto",
+      "PostCompact:auto",
+      "SessionStart:compact"
+    ],
+    "samples": 40
+  },
+  "provenance": {
+    "baseline_hook_sha256": "80140b83e9062f8f68e7b843a48b224f092b33b8b600efd30c0b9a63df130907",
+    "candidate_hook_sha256": "b86a1f12548781ea96cb415a49fad95af64ae81b2130bfced53d80f6362021bb",
+    "official_hook_contract": "https://developers.openai.com/codex/hooks"
+  },
+  "receipt_sha256": "2390e8795db5ade27e863d02db017500d2060a3ca3c900173edb1f9a51aa5230",
+  "schema_version": "context.codex-hook-efficiency-benchmark/v1alpha1",
+  "state_write_authority": false
+}
