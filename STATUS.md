@@ -1,6 +1,6 @@
 # Continuity Plane Status
 
-版本：revision 106  
+版本：revision 107  
 日期：2026-08-30  
 canonical plan：`MASTER.md`
 
@@ -38,7 +38,8 @@ canonical plan：`MASTER.md`
 | Coordination/views | shared Work、forge、notification、Project Graph、2,000-node Impact gates passed；authority violation `0` |
 | Release baseline | Linux/macOS/Windows native matrix `18/18`；local state bundle export/import/rollback available；public privacy scan `0` findings |
 | Documentation audit | README、USAGE、CHANGELOG、public docs、templates 与 policy 全文审阅；公开 Markdown 内部阶段标记 `0`，本地链接缺失 `0`，外部链接 `8/8` 可达；repository verification passed |
-| Governance authority | `MASTER.md` revision 105 |
+| M11-00 zero-friction reset | 本机 plugin disabled；已安装脚本为 no-op fallback；observe/auto/strict policy、stale/read-only/projection quarantine、auto project binding 与 non-blocking checkpoint/resume 通过 `49/49` focused tests；三项目 pre-reset baseline 见 [`m11-00-live-baseline-20260830.json`](experiments/evidence/m11-00-live-baseline-20260830.json) |
+| Governance authority | `MASTER.md` revision 106 |
 
 ## 恢复入口
 
