@@ -1,6 +1,6 @@
 # Continuity Plane MASTER
 
-版本：revision 110  
+版本：revision 112  
 日期：2026-08-30  
 状态：zero-friction core reset  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
@@ -396,7 +396,9 @@ M11-00 的运行策略分为三层：`observe` 仅记录，不阻断；`auto` �
 
 Codex `auto` compaction 在 `PreCompact` 创建 checkpoint、`PostCompact` 验证 canary，并由宿主原生上下文继续同一轮；`SessionStart(source=compact)` 不注入 packet。显式 `strict` 或恢复模式可在 canary 后注入 bounded fallback。普通 `PostToolUse` 不调用 autorun 或注入当前 Work。
 
-Codex 默认 plugin 采用 core profile，仅包含 hook 与不超过 `2 KiB` 的 bootstrap Skill，不注册 State MCP。`continuity-plane-state` advanced plugin 承载显式 resume、claim、checkpoint 与 Work transition 工具，按需单独安装。
+Codex 默认 plugin 采用 core profile，仅包含 lifecycle hook 与不超过 `512 B` 的 startup return-point projection，不注册 Skill、MCP 或命令门。`continuity-plane-search` 提供显式选择的有界 current-worktree 检索 Skill；`continuity-plane-state` 承载 resume、claim、checkpoint 与 Work transition 工具。两个扩展均按需单独安装。
+
+`continuity context search` 只查询 Git tracked current worktree，绑定 repository revision、file/line hash 和完整 JSON 输出预算。自动 Skill adoption 必须按项目与任务类通过 matched provider gate；未通过时保持显式安装，不进入默认 core。
 
 ## 8. E0-E9 实验链路
 

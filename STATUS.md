@@ -1,6 +1,6 @@
 # Continuity Plane Status
 
-版本：revision 110  
+版本：revision 112  
 日期：2026-08-30  
 canonical plan：`MASTER.md`
 
@@ -20,8 +20,8 @@ canonical plan：`MASTER.md`
 |---|---|
 | 当前 Campaign | M10 跨项目发布 |
 | active work | M10-01：跨项目 shadow pilot（🟡） |
-| next action | 采集两个 profile 的 matched live A/B，每臂 `3` 段 |
-| hard blocker | matched A/B 未达 `3` 段 |
+| next action | 为可选 search plugin 建立项目/任务适用性 gate，再重复 matched A/B |
+| hard blocker | Platform 与 ProjectCompute input-token gate 均未达 `30%` |
 | repository mode | internal development repository + fresh-history public mirror |
 | production state | GitHub/PyPI alpha.9 prerelease published；shared pilot planned |
 
@@ -35,11 +35,13 @@ canonical plan：`MASTER.md`
 | Coordination/views | shared Work、forge、notification、Project Graph、2,000-node Impact gates passed；authority violation `0` |
 | Release baseline | Linux/macOS/Windows native matrix `18/18`；local state bundle export/import/rollback available；public privacy scan `0` findings |
 | Documentation audit | README、USAGE、CHANGELOG、public docs、templates 与 policy 全文审阅；公开 Markdown 内部阶段标记 `0`，本地链接缺失 `0`，外部链接 `8/8` 可达；repository verification passed |
-| M11-00 zero-friction reset | plugin disabled；intent-aware startup、healthy-packet zero-reread、native compact zero-injection 与 non-blocking recovery 通过 current focused tests；[pre-reset baseline](experiments/evidence/m11-00-live-baseline-20260830.json) |
-| M11 hook efficiency | `40` 组：calls `-33.33%`，model context `-63.98%`，stdout `-71.92%`，wall p50/p95 `-25.37%/-28.14%`，deny/stop `0/0`；[receipt](experiments/evidence/m11-00-codex-hook-efficiency.json) |
-| M11 provider smoke | matched compact `1+1`：两臂均 3 次 native compact；candidate checkpoint/canary `3/3`，input/output约 `-13.34%/-13.25%`，一致性错误 `0`；仍低于 release gate |
-| Repository gate | split full shards `2004/2004` passed，`31` skipped；latest M11 core/measurement focused `64/64` |
-| Governance authority | `MASTER.md` revision 110 |
+| M11-00 zero-friction reset | plugin disabled；core 无 Skill/MCP/命令门；intent-aware startup、native compact zero-injection 与 non-blocking recovery 通过 current tests；[pre-reset baseline](experiments/evidence/m11-00-live-baseline-20260830.json) |
+| M11 hook efficiency | `40` 组：calls `-33.33%`，model context `-83.73%`，stdout `-85.18%`，wall p50/p95 `-25.60%/-29.98%`，deny/stop `0/0`；[receipt](experiments/evidence/m11-00-codex-hook-efficiency.json) |
+| M11 Platform matched A/B | `3+3`：input/output/tool-output 中位 `-12.14%/-28.84%/-41.46%`，veto `0`，input gate failed；[comparison](experiments/evidence/m11-live/platform-ultralight/platform-comparison.json) |
+| M11 ProjectCompute matched A/B | `3+3`：input/output/tool-output 中位 `-2.36%/-13.70%/+2.62%`，veto `0`，input gate failed；[comparison](experiments/evidence/m11-live/projectcompute-ultralight/projectcompute-comparison.json) |
+| M11 bounded retrieval | current tracked worktree、revision/hash、完整 JSON budget 与 CLI `3/3`；默认自动 Skill adoption rejected，功能保留为可选 search plugin |
+| Repository gate | split full shards `2004/2004` passed，`31` skipped；latest M11/document/release focused `172/172` |
+| Governance authority | `MASTER.md` revision 112 |
 
 ## 恢复入口
 
