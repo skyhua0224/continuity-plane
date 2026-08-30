@@ -4,6 +4,7 @@ import io
 import json
 import subprocess
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -178,8 +179,8 @@ class M1100CodexExecObservationTests(unittest.TestCase):
                     "candidate-01",
                     "--observed-at",
                     "2026-08-30T19:00:00+08:00",
-                    "--hook-events",
-                    str(hook_path),
+                    "--hook-events-dir",
+                    str(root),
                     "--output",
                     str(output),
                 ],
@@ -253,6 +254,63 @@ class M1100CodexExecObservationTests(unittest.TestCase):
             report = json.loads(output.read_text(encoding="utf-8"))
             validate_codex_exec_comparison(report)
             self.assertEqual(report["verdict"], "qualified")
+
+    def test_stdin_runner_waits_for_hook_events_created_during_the_run(self) -> None:
+        stream = (
+            _line({"type": "thread.started", "thread_id": "private-thread"})
+            + _line(
+                {
+                    "type": "turn.completed",
+                    "usage": {
+                        "input_tokens": 100,
+                        "cached_input_tokens": 50,
+                        "cache_write_input_tokens": 0,
+                        "output_tokens": 10,
+                        "reasoning_output_tokens": 2,
+                    },
+                }
+            )
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            hook_path = root / "late-hooks.jsonl"
+            output = root / "receipt.json"
+            process = subprocess.Popen(
+                [
+                    ".venv/bin/python",
+                    "tools/sanitize_codex_exec_observation.py",
+                    "--arm",
+                    "candidate",
+                    "--segment-id",
+                    "candidate-late-01",
+                    "--observed-at",
+                    "2026-08-30T19:00:00+08:00",
+                    "--hook-events",
+                    str(hook_path),
+                    "--output",
+                    str(output),
+                ],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+            )
+            time.sleep(0.1)
+            hook_path.write_text(
+                _line(
+                    {
+                        "event_type": "session-start",
+                        "trigger": "compact",
+                        "success": True,
+                    }
+                ),
+                encoding="utf-8",
+            )
+            stdout, stderr = process.communicate(stream, timeout=5)
+
+            self.assertEqual(process.returncode, 0, stderr or stdout)
+            receipt = json.loads(output.read_text(encoding="utf-8"))
+            self.assertEqual(receipt["compaction"]["compact_start_events"], 1)
 
 
 if __name__ == "__main__":
