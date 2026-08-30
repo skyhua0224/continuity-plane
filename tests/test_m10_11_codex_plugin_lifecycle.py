@@ -253,6 +253,25 @@ printf '%s\\n' '{"status":"ok"}'
             5000,
         )
 
+    def test_plugin_skill_avoids_reloading_governance_after_a_healthy_packet(
+        self,
+    ) -> None:
+        skill = (self.plugin / "skills/continuity-plane/SKILL.md").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn(
+            "do not re-read STATUS, MASTER, AGENTS, or SKILL files",
+            skill,
+        )
+        self.assertIn("when no healthy packet was injected", skill)
+        self.assertIn(
+            "observe and auto modes never block normal project work",
+            skill,
+        )
+        self.assertIn("Strict mode applies only when the project explicitly opts in", skill)
+        self.assertNotIn("Treat `read_only: true` as a veto", skill)
+
     def test_explicit_resume_binding_outlives_an_unrelated_session_cwd(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             temp = Path(directory)
