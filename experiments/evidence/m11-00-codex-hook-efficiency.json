@@ -24,17 +24,17 @@
       ],
       "samples": 40,
       "stop_count": 0,
-      "wall_ms_p50": 269.350931,
-      "wall_ms_p95": 286.946601
+      "wall_ms_p50": 274.566693,
+      "wall_ms_p95": 301.719905
     },
     "candidate": {
       "continuity_calls_per_sample": 4.0,
       "continuity_calls_total": 160,
       "deny_count": 0,
-      "hook_stdout_bytes_per_sample": 1908.0,
-      "hook_stdout_bytes_total": 76320,
-      "model_context_bytes_per_sample": 1536.0,
-      "model_context_bytes_total": 61440,
+      "hook_stdout_bytes_per_sample": 1040.0,
+      "hook_stdout_bytes_total": 41600,
+      "model_context_bytes_per_sample": 819.0,
+      "model_context_bytes_total": 32760,
       "registered_event_sequence": [
         "SessionStart:startup",
         "PreCompact:auto",
@@ -43,19 +43,19 @@
       ],
       "samples": 40,
       "stop_count": 0,
-      "wall_ms_p50": 198.787059,
-      "wall_ms_p95": 208.230856
+      "wall_ms_p50": 204.914628,
+      "wall_ms_p95": 216.826968
     }
   },
   "completion_authority": false,
   "improvements": {
     "continuity_call_reduction_percent": 33.333333,
-    "hook_stdout_byte_reduction_percent": 48.488121,
-    "model_context_byte_reduction_percent": 32.453826,
-    "wall_ms_p50_reduction_percent": 26.197746,
-    "wall_ms_p95_reduction_percent": 27.432193
+    "hook_stdout_byte_reduction_percent": 71.922246,
+    "model_context_byte_reduction_percent": 63.984169,
+    "wall_ms_p50_reduction_percent": 25.367995,
+    "wall_ms_p95_reduction_percent": 28.13634
   },
-  "observed_at": "2026-08-30T18:24:49+08:00",
+  "observed_at": "2026-08-30T18:43:41+08:00",
   "parameters": {
     "baseline_git_ref": "ffcdbfb73a1fafb77d5fed50d440ff3b122f3496",
     "effect_policy": "auto",
@@ -72,10 +72,10 @@
     "baseline_hook_contract_sha256": "5259b29cbaf2003bf62fa8375597f3ae3f798c94111c43994ec537fc1e5fc63e",
     "baseline_hook_sha256": "80140b83e9062f8f68e7b843a48b224f092b33b8b600efd30c0b9a63df130907",
     "candidate_hook_contract_sha256": "15836b729e48ecac514991645d6f02db4f91a19a025095985f81729234c5a263",
-    "candidate_hook_sha256": "b86a1f12548781ea96cb415a49fad95af64ae81b2130bfced53d80f6362021bb",
+    "candidate_hook_sha256": "8bc11bc2c6dfdad3b63655b69291859209cbccd865bb9bc65d5d83ffebf3c35f",
     "official_hook_contract": "https://developers.openai.com/codex/hooks"
   },
-  "receipt_sha256": "033ff0bdeef411a7f73ce349fac991c8b63920d8058b4caf3909133c0ab811f4",
+  "receipt_sha256": "038861334500d807d732880355b4476aa568a0b56425d775b4548c361d949be9",
   "schema_version": "context.codex-hook-efficiency-benchmark/v1alpha1",
   "state_write_authority": false
 }
