@@ -1594,6 +1594,7 @@ printf '%s\\n' '{"status":"ok"}'
             )
 
             self.assertEqual(completed.returncode, 0)
+            self.assertEqual(completed.stdout, "")
             binding_files = list(
                 (plugin_data / "session-bindings").glob("*.json")
             )

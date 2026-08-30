@@ -1888,6 +1888,8 @@ def _session_start(payload: dict[str, Any], root: Path) -> int:
                     "keep this session read-only."
                 )
             return 0
+        if _effect_policy() != "strict":
+            return 0
     source_refreshed = False
     if packet.get("source_fresh") is False:
         refreshed = _command(["attach", "refresh"], root)
