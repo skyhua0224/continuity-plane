@@ -1,5 +1,5 @@
 schema_version: context.document-control-config/v1alpha1
-generated_at: '2026-08-30T17:06:27+08:00'
+generated_at: '2026-08-30T17:22:31+08:00'
 governance_revision: 108
 documents:
 - document_id: agents
@@ -387,7 +387,7 @@ documents:
 - document_id: status
   path: STATUS.md
   category: routing
-  document_revision: 51
+  document_revision: 52
   authority:
     governance_authority: false
     active_state_authority: false
@@ -395,11 +395,11 @@ documents:
   change:
     change_type: status
     authority_ref: governance-event://master/revision/108
-    supersedes: context.document://status/revision/50
+    supersedes: context.document://status/revision/51
     supersedes_provenance:
-      git_commit: 11015d8848d29187104310f3f62b45309a00223a
-      manifest_sha256: 47313f02b8151230cefc9702fea608082a6d684184dbfafe960758db7513b86c
-      content_sha256: 8eabc07d2a93aaa1cde58676043562fa695bed4637ef9fda7479f189ebc6872a
+      git_commit: b6a07bde579acb6d2934c7fda1a122b82e9248f2
+      manifest_sha256: 65caf048ac191629e7f4dc4cd7653860bf4b0afc379c55e3845abc2c5c8a8b9e
+      content_sha256: 05e5fd1b277782a76ba17658023c0458614ce1f4a8d188e46d35b92664da6147
     affected_tasks:
     - M10-00
     - M10-01
