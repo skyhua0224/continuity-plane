@@ -22,6 +22,7 @@ from typing import Any
 import yaml
 
 from .artifact_store import ArtifactRef, LocalArtifactStore
+from .bounded_code_search import bounded_git_search
 from .checkpoint import (
     CheckpointError,
     CheckpointStaleError,
@@ -360,6 +361,17 @@ def _state_show(args: argparse.Namespace) -> int:
             sort_keys=True,
         )
     )
+    return 0
+
+
+def _context_search(args: argparse.Namespace) -> int:
+    receipt = bounded_git_search(
+        Path(args.root),
+        query=args.query,
+        max_results=args.max_results,
+        max_output_bytes=args.max_output_bytes,
+    )
+    print(json.dumps(receipt, ensure_ascii=False, sort_keys=True))
     return 0
 
 
@@ -3847,6 +3859,18 @@ def build_parser() -> argparse.ArgumentParser:
     status_render = status_commands.add_parser("render", help="render current bilingual STATUS")
     status_render.add_argument("--root", default=".")
     status_render.set_defaults(handler=_status_render)
+    context = commands.add_parser(
+        "context", help="query bounded current repository evidence"
+    )
+    context_commands = context.add_subparsers(dest="context_command", required=True)
+    context_search = context_commands.add_parser(
+        "search", help="search tracked current-worktree text within an output budget"
+    )
+    context_search.add_argument("--root", default=".")
+    context_search.add_argument("--query", required=True)
+    context_search.add_argument("--max-results", type=int, default=40)
+    context_search.add_argument("--max-output-bytes", type=int, default=8192)
+    context_search.set_defaults(handler=_context_search)
     attach = commands.add_parser("attach", help="attach existing governance documents")
     attach_commands = attach.add_subparsers(dest="attach_command", required=True)
     plan = attach_commands.add_parser("plan", help="create a candidate import proposal")
@@ -4015,7 +4039,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    if hasattr(args, "root"):
+    if hasattr(args, "root") and getattr(args, "command", None) != "context":
         try:
             args.root = str(resolve_control_root(args.root))
         except WorkspaceBindingError as exc:
