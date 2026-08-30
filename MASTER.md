@@ -1,6 +1,6 @@
 # Continuity Plane MASTER
 
-版本：revision 106  
+版本：revision 108  
 日期：2026-08-30  
 状态：zero-friction core reset  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
@@ -393,6 +393,8 @@ M10-01/M10-11 的跨项目退出门包括：State revision 与 `STATUS.current` 
 | M11-00 | 🧑‍💻 | Zero-friction continuity core | 默认恢复、自动推进和上下文优化不干扰业务 Session | 回到项目初衷并给后续严格能力建立可验证边界 | M5/M7/M8/M10-11 | 默认 integration policy 为 `observe`；三个真实项目无命令误阻断；stale/read-only packet 不停止或注入；普通 Work 的 Continuity 手动操作为 `0`；三项目各 `3` 段 matched baseline/candidate；旧 Work 复活、重复回答、错误首动作和副作用误阻断均为 `0`；恢复读取 p95 相对基线下降 `>=30%`；history-heavy input/accepted Work 与压缩间隔不劣于基线且目标下降 `>=30%`；未达到目标时保持插件 disabled，不进入公共 release |
 
 M11-00 的运行策略分为三层：`observe` 仅记录，不阻断；`auto` 自动绑定项目、恢复 Work、创建本地 claim、续租和继续下一动作；`strict` 只由项目 Profile 显式启用，用于不可逆生产副作用。任何层级都不得将 stale packet、旧 Work 或陈旧 STATUS 注入当前 Session。M11-00 关闭前，不新增 effect gate、强制 PostgreSQL、Docmost 或人工 claim 操作。
+
+Codex compaction 仅由 `SessionStart(source=compact)` 注入一次 bounded continuation packet；`PostCompact` 只验证 checkpoint，普通 `PostToolUse` 使用宿主原生工具续跑，不重复调用 autorun 或注入当前 Work。
 
 ## 8. E0-E9 实验链路
 
