@@ -1797,7 +1797,7 @@ def _precompact(payload: dict[str, Any], root: Path) -> int:
     completed = _command(["checkpoint", "create"], root)
     success = completed.returncode == 0
     _observe(payload, root, event_type="precompact", success=success)
-    if not success:
+    if not success and _effect_policy() == "strict":
         _stop("Continuity checkpoint creation failed; compaction was stopped.")
     return 0
 
@@ -1812,9 +1812,9 @@ def _postcompact(payload: dict[str, Any], root: Path) -> int:
         success=success,
         canary_passed=success,
     )
-    if not success:
+    if not success and _effect_policy() == "strict":
         _stop("Continuity checkpoint verification failed; continuation was stopped.")
-    else:
+    elif success:
         packet = _autorun_packet(payload, root)
         if packet is None:
             _observe(payload, root, event_type="autorun", success=False)

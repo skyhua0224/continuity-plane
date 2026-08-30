@@ -1437,6 +1437,18 @@ printf '%s\\n' '{"status":"ok"}'
         self.assertEqual(output["continue"], False)
         self.assertIn("checkpoint", output["stopReason"].lower())
 
+    def test_observe_mode_does_not_stop_on_checkpoint_verify_failure(self) -> None:
+        completed, calls, observations = self._run_hook(
+            "PostCompact",
+            fail_verify=True,
+            effect_policy=None,
+        )
+
+        self.assertEqual(completed.returncode, 0)
+        self.assertEqual(completed.stdout, "")
+        self.assertEqual(len(calls), 1)
+        self.assertIn('"canary_passed":false', observations)
+
     def test_postcompact_auto_continues_the_current_work_after_canary(self) -> None:
         packet = {
             "schema_version": "context.recovery-envelope/v1alpha1",
