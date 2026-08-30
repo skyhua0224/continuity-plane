@@ -38,7 +38,7 @@ canonical plan：`MASTER.md`
 | Coordination/views | shared Work、forge、notification、Project Graph、2,000-node Impact gates passed；authority violation `0` |
 | Release baseline | Linux/macOS/Windows native matrix `18/18`；local state bundle export/import/rollback available；public privacy scan `0` findings |
 | Documentation audit | README、USAGE、CHANGELOG、public docs、templates 与 policy 全文审阅；公开 Markdown 内部阶段标记 `0`，本地链接缺失 `0`，外部链接 `8/8` 可达；repository verification passed |
-| M11-00 zero-friction reset | plugin disabled；intent-aware startup、non-blocking recovery 与 single-path compact continuation 通过 `59/59` focused tests；[pre-reset baseline](experiments/evidence/m11-00-live-baseline-20260830.json) |
+| M11-00 zero-friction reset | plugin disabled；intent-aware startup、healthy-packet zero-reread、non-blocking recovery 与 single-path compact continuation 通过 `60/60` focused tests；[pre-reset baseline](experiments/evidence/m11-00-live-baseline-20260830.json) |
 | M11 hook efficiency | `40` 组：calls `-33.33%`，model context `-32.45%`，stdout `-48.49%`，wall p50/p95 `-12.33%/-12.63%`，deny/stop `0/0`；[receipt](experiments/evidence/m11-00-codex-hook-efficiency.json) |
 | Repository gate | full `1995/1995` passed，`31` skipped；治理 revision、149-document manifest 与五份派生 benchmark receipt 已重建并通过 current-provenance gate |
 | Governance authority | `MASTER.md` revision 108 |
