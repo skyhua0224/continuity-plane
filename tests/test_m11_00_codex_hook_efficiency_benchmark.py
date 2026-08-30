@@ -38,6 +38,14 @@ class M1100CodexHookEfficiencyBenchmarkTests(unittest.TestCase):
         self.assertEqual(candidate["stop_count"], 0)
         self.assertEqual(candidate["continuity_calls_per_sample"], 4)
         self.assertEqual(baseline["continuity_calls_per_sample"], 6)
+        self.assertNotIn(
+            "PostToolUse:Bash", candidate["registered_event_sequence"]
+        )
+        self.assertIn("PostToolUse:Bash", baseline["registered_event_sequence"])
+        self.assertRegex(
+            receipt["provenance"]["candidate_hook_contract_sha256"],
+            r"^[0-9a-f]{64}$",
+        )
         self.assertGreaterEqual(
             receipt["improvements"]["continuity_call_reduction_percent"],
             30,

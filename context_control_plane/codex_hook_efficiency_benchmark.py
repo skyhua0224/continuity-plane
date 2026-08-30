@@ -18,6 +18,7 @@ from typing import Any
 
 SCHEMA_VERSION = "context.codex-hook-efficiency-benchmark/v1alpha1"
 HOOK_PATH = "integrations/codex/continuity-plane/scripts/continuity-hook.py"
+HOOK_CONFIG_PATH = "integrations/codex/continuity-plane/hooks/hooks.json"
 OFFICIAL_HOOK_CONTRACT = "https://developers.openai.com/codex/hooks"
 EVENT_SEQUENCE = (
     "SessionStart:startup",
@@ -69,6 +70,15 @@ def _percentile(samples: list[float], ratio: float) -> float:
     ordered = sorted(samples)
     index = max(0, min(len(ordered) - 1, int(len(ordered) * ratio) - 1))
     return round(ordered[index], 6)
+
+
+def _registered_event_sequence(encoded: bytes) -> list[str]:
+    try:
+        document = json.loads(encoded)
+        registered = set(document["hooks"])
+    except (json.JSONDecodeError, KeyError, TypeError) as exc:
+        raise ValueError("hook contract is invalid") from exc
+    return [item for item in EVENT_SEQUENCE if item.split(":", 1)[0] in registered]
 
 
 def _fake_continuity(path: Path) -> None:
@@ -141,6 +151,7 @@ def _measure_arm(
     root: Path,
     samples: int,
     arm: str,
+    registered_event_sequence: list[str],
 ) -> dict[str, Any]:
     calls_total = 0
     context_bytes_total = 0
@@ -198,7 +209,10 @@ def _measure_arm(
                 "CONTINUITY_EFFECT_POLICY": "auto",
             }
             started = time.perf_counter_ns()
-            for payload in _payloads(project, f"benchmark-{arm}-{sample}"):
+            payloads = _payloads(project, f"benchmark-{arm}-{sample}")
+            for event_name, payload in zip(EVENT_SEQUENCE, payloads, strict=True):
+                if event_name not in registered_event_sequence:
+                    continue
                 completed = subprocess.run(
                     [sys.executable, str(script)],
                     input=json.dumps(payload),
@@ -231,6 +245,7 @@ def _measure_arm(
             calls_total += len(calls.read_text(encoding="utf-8").splitlines())
     return {
         "samples": samples,
+        "registered_event_sequence": registered_event_sequence,
         "continuity_calls_total": calls_total,
         "continuity_calls_per_sample": calls_total / samples,
         "model_context_bytes_total": context_bytes_total,
@@ -262,12 +277,24 @@ def benchmark_codex_hook_efficiency(
         raise ValueError("observed_at requires a timezone")
     baseline = _git_blob(root, baseline_git_ref, HOOK_PATH)
     candidate = (root / HOOK_PATH).read_bytes()
+    baseline_contract = _git_blob(root, baseline_git_ref, HOOK_CONFIG_PATH)
+    candidate_contract = (root / HOOK_CONFIG_PATH).read_bytes()
+    baseline_events = _registered_event_sequence(baseline_contract)
+    candidate_events = _registered_event_sequence(candidate_contract)
     arms = {
         "baseline": _measure_arm(
-            baseline, root=root, samples=samples, arm="baseline"
+            baseline,
+            root=root,
+            samples=samples,
+            arm="baseline",
+            registered_event_sequence=baseline_events,
         ),
         "candidate": _measure_arm(
-            candidate, root=root, samples=samples, arm="candidate"
+            candidate,
+            root=root,
+            samples=samples,
+            arm="candidate",
+            registered_event_sequence=candidate_events,
         ),
     }
     improvements = {
@@ -313,6 +340,8 @@ def benchmark_codex_hook_efficiency(
         "provenance": {
             "baseline_hook_sha256": _digest(baseline),
             "candidate_hook_sha256": _digest(candidate),
+            "baseline_hook_contract_sha256": _digest(baseline_contract),
+            "candidate_hook_contract_sha256": _digest(candidate_contract),
             "official_hook_contract": OFFICIAL_HOOK_CONTRACT,
         },
         "arms": arms,
@@ -360,10 +389,16 @@ def validate_codex_hook_efficiency_receipt(
         raise ValueError("receipt parameters are invalid")
     baseline = _git_blob(root, parameters["baseline_git_ref"], HOOK_PATH)
     candidate = (root / HOOK_PATH).read_bytes()
+    baseline_contract = _git_blob(
+        root, parameters["baseline_git_ref"], HOOK_CONFIG_PATH
+    )
+    candidate_contract = (root / HOOK_CONFIG_PATH).read_bytes()
     provenance = receipt["provenance"]
     if provenance != {
         "baseline_hook_sha256": _digest(baseline),
         "candidate_hook_sha256": _digest(candidate),
+        "baseline_hook_contract_sha256": _digest(baseline_contract),
+        "candidate_hook_contract_sha256": _digest(candidate_contract),
         "official_hook_contract": OFFICIAL_HOOK_CONTRACT,
     }:
         raise ValueError("receipt provenance mismatch")
@@ -377,6 +412,12 @@ def validate_codex_hook_efficiency_receipt(
     for arm in arms.values():
         if not isinstance(arm, dict) or arm.get("samples") != parameters["samples"]:
             raise ValueError("arm measurement is invalid")
+    if arms["baseline"].get("registered_event_sequence") != (
+        _registered_event_sequence(baseline_contract)
+    ) or arms["candidate"].get("registered_event_sequence") != (
+        _registered_event_sequence(candidate_contract)
+    ):
+        raise ValueError("arm hook contract is invalid")
     expected_improvements = {
         "continuity_call_reduction_percent": _percent_reduction(
             arms["baseline"]["continuity_calls_per_sample"],

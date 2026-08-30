@@ -227,23 +227,13 @@ printf '%s\\n' '{"status":"ok"}'
                 "SessionStart",
                 "PreCompact",
                 "PostCompact",
-                "PreToolUse",
-                "PostToolUse",
             },
         )
         self.assertEqual(hooks["PreCompact"][0]["matcher"], "manual|auto")
         self.assertEqual(hooks["PostCompact"][0]["matcher"], "manual|auto")
         self.assertIn("compact", hooks["SessionStart"][0]["matcher"])
-        self.assertEqual(hooks["PreToolUse"][0]["matcher"], "Bash")
-        self.assertEqual(
-            [group["matcher"] for group in hooks["PostToolUse"]],
-            [
-                "Bash",
-                "mcp__continuity__continuity_resume",
-                "continuity_resume",
-                "continuity/continuity_resume",
-            ],
-        )
+        self.assertNotIn("PreToolUse", hooks)
+        self.assertNotIn("PostToolUse", hooks)
         for groups in hooks.values():
             handler = groups[0]["hooks"][0]
             self.assertIn("command", handler)

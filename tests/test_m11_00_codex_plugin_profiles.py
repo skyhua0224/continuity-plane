@@ -23,6 +23,10 @@ class M1100CodexPluginProfileTests(unittest.TestCase):
         self.assertEqual(core_manifest["name"], "continuity-plane")
         self.assertTrue((self.core / "hooks/hooks.json").is_file())
         self.assertTrue((self.core / "skills/continuity-plane/SKILL.md").is_file())
+        hooks = json.loads(
+            (self.core / "hooks/hooks.json").read_text(encoding="utf-8")
+        )["hooks"]
+        self.assertEqual(set(hooks), {"SessionStart", "PreCompact", "PostCompact"})
 
     def test_state_tools_are_an_explicit_advanced_plugin(self) -> None:
         state_manifest = json.loads(

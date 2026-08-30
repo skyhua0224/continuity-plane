@@ -36,9 +36,9 @@ canonical plan：`MASTER.md`
 | Release baseline | Linux/macOS/Windows native matrix `18/18`；local state bundle export/import/rollback available；public privacy scan `0` findings |
 | Documentation audit | README、USAGE、CHANGELOG、public docs、templates 与 policy 全文审阅；公开 Markdown 内部阶段标记 `0`，本地链接缺失 `0`，外部链接 `8/8` 可达；repository verification passed |
 | M11-00 zero-friction reset | plugin disabled；intent-aware startup、healthy-packet zero-reread、non-blocking recovery 与 single-path compact continuation 通过 `60/60` focused tests；[pre-reset baseline](experiments/evidence/m11-00-live-baseline-20260830.json) |
-| M11 hook efficiency | `40` 组：calls `-33.33%`，model context `-32.45%`，stdout `-48.49%`，wall p50/p95 `-12.33%/-12.63%`，deny/stop `0/0`；[receipt](experiments/evidence/m11-00-codex-hook-efficiency.json) |
-| M11 provider smoke | core-only ABBA `3+3`：STATUS reads `4 → 0`，tool output mean `-76.5%`，input median约 `-0.9%`；无 compaction，尚不满足 release gate |
-| Repository gate | sequential shards `2004/2004` passed，`31` skipped；一项既有 M8 concurrency test 瞬时失败后单测与完整 shard 重跑通过 |
+| M11 hook efficiency | `40` 组：calls `-33.33%`，model context `-32.45%`，stdout `-48.49%`，wall p50/p95 `-26.20%/-27.43%`，deny/stop `0/0`；[receipt](experiments/evidence/m11-00-codex-hook-efficiency.json) |
+| M11 provider smoke | short ABBA `3+3`：STATUS reads `4 → 0`、tool output `-76.5%`、input median约 `-0.9%`；history-heavy `1+1` input/output约 `-2.28%/-15.09%`；compact event `0`，release gate 未满足 |
+| Repository gate | split full shards `2004/2004` passed，`31` skipped；latest core hook/profile/benchmark focused `77/77` |
 | Governance authority | `MASTER.md` revision 109 |
 
 ## 恢复入口
