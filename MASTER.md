@@ -1,6 +1,6 @@
 # Continuity Plane MASTER
 
-版本：revision 112  
+版本：revision 113  
 日期：2026-08-30  
 状态：zero-friction core reset  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
@@ -390,13 +390,15 @@ M10-01/M10-11 的跨项目退出门包括：State revision 与 `STATUS.current` 
 
 | ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
 |---|---|---|---|---|---|---|
-| M11-00 | 🧑‍💻 | Zero-friction continuity core | 默认恢复、自动推进和上下文优化不干扰业务 Session | 回到项目初衷并给后续严格能力建立可验证边界 | M5/M7/M8/M10-11 | 默认 integration policy 为 `observe`；三个真实项目无命令误阻断；stale/read-only packet 不停止或注入；普通 Work 的 Continuity 手动操作为 `0`；三项目各 `3` 段 matched baseline/candidate；旧 Work 复活、重复回答、错误首动作和副作用误阻断均为 `0`；恢复读取 p95 相对基线下降 `>=30%`；history-heavy input/accepted Work 与压缩间隔不劣于基线且目标下降 `>=30%`；未达到目标时保持插件 disabled，不进入公共 release |
+| M11-00 | 🧑‍💻 | Zero-friction continuity core | 默认恢复、自动推进和上下文优化不干扰业务 Session | 回到项目初衷并给后续严格能力建立可验证边界 | M5/M7/M8/M10-11 | 默认 integration policy 为 `observe`；三个真实项目无命令误阻断；stale/read-only packet 不停止或注入；普通 Work 的 Continuity 手动操作为 `0`；三项目各 `3` 段 matched baseline/candidate；旧 Work 复活、重复回答、错误首动作和副作用误阻断均为 `0`；恢复读取 p95 相对基线下降 `>=30%`；history-heavy input/accepted Work 与压缩间隔不劣于基线且目标下降 `>=30%`；未达到目标时不得进入公共默认启用或 stable release |
 
 M11-00 的运行策略分为三层：`observe` 仅记录，不阻断；`auto` 自动绑定项目、恢复 Work、创建本地 claim、续租和继续下一动作；`strict` 只由项目 Profile 显式启用，用于不可逆生产副作用。任何层级都不得将 stale packet、旧 Work 或陈旧 STATUS 注入当前 Session。M11-00 关闭前，不新增 effect gate、强制 PostgreSQL、Docmost 或人工 claim 操作。
 
 Codex `auto` compaction 在 `PreCompact` 创建 checkpoint、`PostCompact` 验证 canary，并由宿主原生上下文继续同一轮；`SessionStart(source=compact)` 不注入 packet。显式 `strict` 或恢复模式可在 canary 后注入 bounded fallback。普通 `PostToolUse` 不调用 autorun 或注入当前 Work。
 
 Codex 默认 plugin 采用 core profile，仅包含 lifecycle hook 与不超过 `512 B` 的 startup return-point projection，不注册 Skill、MCP 或命令门。`continuity-plane-search` 提供显式选择的有界 current-worktree 检索 Skill；`continuity-plane-state` 承载 resume、claim、checkpoint 与 Work transition 工具。两个扩展均按需单独安装。
+
+本机或受控试点可由用户显式启用 core、search 和 state 三个 profile 进行 dogfood。全量安装不授予命令拦截权限；State 或检索 adapter 失败时继续业务执行。公共默认启用仍受 M11-00 matched gate 约束。
 
 `continuity context search` 只查询 Git tracked current worktree，绑定 repository revision、file/line hash 和完整 JSON 输出预算。自动 Skill adoption 必须按项目与任务类通过 matched provider gate；未通过时保持显式安装，不进入默认 core。
 
