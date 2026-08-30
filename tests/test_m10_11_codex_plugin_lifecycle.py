@@ -91,6 +91,7 @@ printf '%s\\n' '{"status":"ok"}'
         session_source: str = "compact",
         stage_success: bool = False,
         autorun_retry: bool = False,
+        effect_policy: str | None = "strict",
     ) -> tuple[subprocess.CompletedProcess[str], list[str], str]:
         with tempfile.TemporaryDirectory() as directory:
             temp = Path(directory)
@@ -186,6 +187,8 @@ printf '%s\\n' '{"status":"ok"}'
                 "HOOK_AUTORUN_RETRY": "1" if autorun_retry else "0",
                 "HOOK_AUTORUN_RETRIED": str(temp / "hook-autorun-retried"),
             }
+            if effect_policy is not None:
+                environment["CONTINUITY_EFFECT_POLICY"] = effect_policy
             completed = subprocess.run(
                 ["python3", str(self.script)],
                 input=json.dumps(payload),
@@ -224,6 +227,7 @@ printf '%s\\n' '{"status":"ok"}'
                 "Bash",
                 "mcp__continuity__continuity_resume",
                 "continuity_resume",
+                "continuity/continuity_resume",
             ],
         )
         for groups in hooks.values():
@@ -351,7 +355,7 @@ printf '%s\\n' '{"status":"ok"}'
                 {
                     **base,
                     "hook_event_name": "PostToolUse",
-                    "tool_name": "mcp__continuity__continuity_resume",
+                    "tool_name": "continuity/continuity_resume",
                     "tool_use_id": "resume-cwd-project",
                     "tool_input": {"root": str(cwd_project)},
                     "tool_response": {
@@ -530,7 +534,10 @@ printf '%s\\n' '{"status":"ok"}'
             "cwd": str(stale),
             "session_id": "session-stale-root",
             "tool_name": "Bash",
-            "tool_input": {"command": "git push origin main"},
+            "tool_input": {
+                "command": "git push origin main",
+                "workdir": str(stale),
+            },
         }
         with mock.patch.object(module, "_session_bound_root", return_value=stale), \
             mock.patch.object(module, "_registered_governance_root", return_value=registered), \
@@ -539,6 +546,26 @@ printf '%s\\n' '{"status":"ok"}'
             mock.patch("sys.stdin", io.StringIO(json.dumps(payload))):
             module.main()
         self.assertEqual(captured, [registered])
+
+    def test_bound_root_is_kept_when_cwd_has_no_explicit_workdir(self) -> None:
+        module = self._hook_module()
+        stale = Path("/tmp/stale-project")
+        bound = Path("/tmp/foundation-governance")
+        captured: list[Path] = []
+        payload = {
+            "hook_event_name": "PreToolUse",
+            "cwd": str(stale),
+            "session_id": "session-bound-root",
+            "tool_name": "Bash",
+            "tool_input": {"command": "git push origin main"},
+        }
+        with mock.patch.object(module, "_session_bound_root", return_value=bound), \
+            mock.patch.object(module, "_registered_governance_root", side_effect=AssertionError("cwd must not override binding")), \
+            mock.patch.object(module, "_project_root", return_value=stale), \
+            mock.patch.object(module, "_pretooluse", side_effect=lambda value, root: captured.append(root) or 0), \
+            mock.patch("sys.stdin", io.StringIO(json.dumps(payload))):
+            module.main()
+        self.assertEqual(captured, [bound])
 
     def test_local_rsync_is_not_classified_as_a_remote_effect(self) -> None:
         module = self._hook_module()
@@ -625,6 +652,7 @@ printf '%s\\n' '{"status":"ok"}'
                         "allowed_effects": [
                             "source-control.history-rewrite",
                             "source-control.local",
+                            "source-control.push",
                         ],
                     }
                 ],
@@ -668,6 +696,10 @@ printf '%s\\n' '{"status":"ok"}'
                             "scope_kind": "effect",
                             "scope_ref": "source-control.history-rewrite",
                         },
+                        {
+                            "scope_kind": "effect",
+                            "scope_ref": "source-control.push",
+                        },
                     ],
                 },
                 "next_action": "continue-active-work",
@@ -687,6 +719,7 @@ printf '%s\\n' '{"status":"ok"}'
                 "PLUGIN_ROOT": str(self.plugin),
                 "FAKE_CONTINUITY_CALLS": str(calls),
                 "MCP_BINDING_ENVELOPE": json.dumps(packet),
+                "CONTINUITY_EFFECT_POLICY": "strict",
             }
 
             def invoke(
@@ -694,6 +727,8 @@ printf '%s\\n' '{"status":"ok"}'
                 command: str,
                 workdir: Path,
                 event: str = "PreToolUse",
+                *,
+                include_workdir: bool = True,
             ) -> subprocess.CompletedProcess[str]:
                 payload = {
                     "session_id": "delivery-session",
@@ -704,11 +739,10 @@ printf '%s\\n' '{"status":"ok"}'
                     "turn_id": "delivery-turn",
                     "tool_name": "Bash",
                     "tool_use_id": tool_use_id,
-                    "tool_input": {
-                        "command": command,
-                        "workdir": str(workdir),
-                    },
+                    "tool_input": {"command": command},
                 }
+                if include_workdir:
+                    payload["tool_input"]["workdir"] = str(workdir)
                 if event == "PostToolUse":
                     payload["tool_response"] = {"exit_code": 0, "output": "ok"}
                 return subprocess.run(
@@ -756,6 +790,14 @@ printf '%s\\n' '{"status":"ok"}'
                 module._effect_action("git rebase main", "source-control"),
                 "source-control.history-rewrite",
             )
+
+            cwd_only = invoke(
+                "service-push-cwd-only",
+                "git push origin main",
+                service,
+                include_workdir=False,
+            )
+            self.assertEqual(cwd_only.stdout, "")
 
             denied = invoke(
                 "unregistered-commit",
@@ -830,6 +872,61 @@ printf '%s\\n' '{"status":"ok"}'
         decision = json.loads(completed.stdout)["hookSpecificOutput"]
         self.assertEqual(decision["permissionDecision"], "deny")
         self.assertIn("deployment", decision["permissionDecisionReason"])
+
+    def test_default_effect_policy_observes_without_blocking_development(self) -> None:
+        idle = {
+            "schema_version": "context.recovery-envelope/v1alpha1",
+            "project_id": "portable-project",
+            "revision": 8,
+            "active_work": None,
+            "claim": None,
+            "next_action": "activate-next-work",
+            "source_fresh": True,
+            "lease_valid": True,
+            "checkpoint_verified": True,
+            "read_only": False,
+        }
+        completed, calls, observations = self._run_hook(
+            "PreToolUse",
+            tool_name="Bash",
+            tool_input={"command": "git push origin main"},
+            resume_packet=idle,
+            effect_policy=None,
+        )
+
+        self.assertEqual(completed.stdout, "")
+        self.assertEqual(calls, [])
+        self.assertNotIn('"decision":"deny"', observations)
+
+    def test_named_tea_pull_tool_uses_the_active_pr_scope(self) -> None:
+        packet = {
+            "schema_version": "context.recovery-envelope/v1alpha1",
+            "project_id": "portable-project",
+            "revision": 8,
+            "active_work": {"work_id": "work-active"},
+            "claim": {
+                "claim_id": "claim-active",
+                "actor_ref": "actor-active",
+                "status": "active",
+                "scope_owners": [
+                    {"scope_kind": "capability", "scope_ref": "release"},
+                    {"scope_kind": "effect", "scope_ref": "source-control.pr"},
+                ],
+            },
+            "next_action": "continue-active-work",
+            "source_fresh": True,
+            "lease_valid": True,
+            "checkpoint_verified": True,
+            "read_only": False,
+        }
+        completed, calls, _ = self._run_hook(
+            "PreToolUse",
+            tool_name="tea pulls create",
+            tool_input={"command": None},
+            resume_packet=packet,
+        )
+        self.assertEqual(completed.stdout, "")
+        self.assertEqual(len(calls), 1)
 
     def test_pretooluse_fails_closed_when_authority_lookup_times_out(self) -> None:
         completed, _, _ = self._run_hook(
@@ -1137,6 +1234,7 @@ printf '%s\\n' '{"status":"ok"}'
                 "PLUGIN_ROOT": str(self.plugin),
                 "FAKE_CONTINUITY_CALLS": str(calls),
                 "MCP_BINDING_ENVELOPE": json.dumps(deployment),
+                "CONTINUITY_EFFECT_POLICY": "strict",
             }
 
             def invoke(

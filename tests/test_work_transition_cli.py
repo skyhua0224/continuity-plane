@@ -52,7 +52,12 @@ class WorkTransitionCliTests(unittest.TestCase):
         self.assertFalse(schema["additionalProperties"])
         self.assertFalse(definition["inputSchema"]["additionalProperties"])
 
-    def _repository(self, directory: str) -> tuple[Path, Path, SQLiteStateStore, dict]:
+    def _repository(
+        self,
+        directory: str,
+        *,
+        return_scopes: list[str] | None = None,
+    ) -> tuple[Path, Path, SQLiteStateStore, dict]:
         root = Path(directory) / "repo"
         root.mkdir()
         subprocess.run(["git", "init", "-q", str(root)], check=True)
@@ -74,16 +79,16 @@ class WorkTransitionCliTests(unittest.TestCase):
         )
         with redirect_stdout(StringIO()):
             main(["init", "--root", str(root), "--project-id", "sample-app"])
-            main(
-                [
-                    "attach", "plan", "--root", str(root),
-                    "--master", "MASTER.md", "--status", "STATUS.md",
-                    "--work-id", "N-69-06",
-                    "--work-title", "Finish the trusted throughput gate",
-                    "--owner-ref", "agent-main",
-                    "--scope", "capability:network-cc-reliable",
-                ]
-            )
+            plan_argv = [
+                "attach", "plan", "--root", str(root),
+                "--master", "MASTER.md", "--status", "STATUS.md",
+                "--work-id", "N-69-06",
+                "--work-title", "Finish the trusted throughput gate",
+                "--owner-ref", "agent-main",
+            ]
+            for scope in return_scopes or ["capability:network-cc-reliable"]:
+                plan_argv.extend(["--scope", scope])
+            main(plan_argv)
             main(
                 [
                     "attach", "approve", "--root", str(root),
@@ -130,15 +135,20 @@ class WorkTransitionCliTests(unittest.TestCase):
         }
 
     @staticmethod
-    def _transition_argv(root: Path, receipt: Path, fixture: dict) -> list[str]:
-        return [
+    def _transition_argv(
+        root: Path,
+        receipt: Path,
+        fixture: dict,
+        *,
+        successor_scopes: list[str] | None = None,
+    ) -> list[str]:
+        argv = [
             "work", "transition", "--root", str(root),
             "--work-id", "N-69-09-IO",
             "--claim-id", fixture["dependency_claim_id"],
             "--actor-ref", "agent-main",
             "--return-work-id", "N-69-06",
             "--successor-claim-id", "claim-network-returned",
-            "--successor-scope", "capability:network-cc-reliable",
             "--resolved-blocker-id", "blocker-dependency-",
             "--remaining-blocker-id", "blocker-external-windows-path",
             "--remaining-blocker-reason",
@@ -148,6 +158,11 @@ class WorkTransitionCliTests(unittest.TestCase):
             "--expected-ref", "HEAD",
             "--evidence-file", str(receipt),
         ]
+        scope_values = successor_scopes or ["capability:network-cc-reliable"]
+        insert_at = argv.index("--resolved-blocker-id")
+        for scope in reversed(scope_values):
+            argv[insert_at:insert_at] = ["--successor-scope", scope]
+        return argv
 
     def _resolved_blocker_id(self, store: SQLiteStateStore) -> str:
         state = store.read_project("sample-app")
@@ -208,6 +223,55 @@ class WorkTransitionCliTests(unittest.TestCase):
             self.assertEqual(replay["status"], "already-transitioned")
             self.assertEqual(len(store.read_events("sample-app")), len(events))
             self.assertEqual(replay["revision"], 5)
+
+    def test_transition_accepts_a_registered_external_delivery_workspace(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root, receipt, store, fixture = self._repository(
+                directory,
+                return_scopes=[
+                    "capability:network-cc-reliable",
+                    "repo:repo://external-delivery",
+                    "effect:source-control.local",
+                ],
+            )
+            external = Path(directory) / "external-delivery"
+            subprocess.run(
+                ["git", "clone", "-q", str(root), str(external)],
+                check=True,
+            )
+            with redirect_stdout(StringIO()):
+                main(
+                    [
+                        "workspace", "register", "--root", str(root),
+                        "--workspace-id", "external-delivery",
+                        "--workspace-root", str(external),
+                        "--allow-effect", "source-control.local",
+                    ]
+                )
+            argv = self._transition_argv(
+                root,
+                receipt,
+                fixture,
+                successor_scopes=[
+                    "capability:network-cc-reliable",
+                    "repo:repo://external-delivery",
+                    "effect:source-control.local",
+                ],
+            )
+            argv[argv.index("blocker-dependency-")] = self._resolved_blocker_id(store)
+            argv[argv.index("--workspace-root") + 1] = str(external)
+            output = StringIO()
+            with redirect_stdout(output):
+                result = main(argv)
+
+            response = json.loads(output.getvalue())
+            self.assertEqual(result, 0)
+            self.assertEqual(response["status"], "transitioned")
+            self.assertTrue(response["checkpoint_verified"])
+            self.assertEqual(
+                store.read_project("sample-app")["project"]["active_work_ids"],
+                ["N-69-06"],
+            )
 
     def test_nested_dependency_return_atomically_rebinds_verified_source(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

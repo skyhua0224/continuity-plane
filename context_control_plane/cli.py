@@ -2080,12 +2080,56 @@ def _work_transition(args: argparse.Namespace) -> int:
     except ValueError as exc:
         return deny("source_fresh", message=str(exc))
     try:
-        workspace = _verified_workspace(
-            root,
-            args.workspace_root,
-            expected_head=args.expected_head,
-            expected_ref=args.expected_ref,
-        )
+        workspace_common = _git_common_dir_sha256(Path(args.workspace_root).resolve())
+        project_common = _git_common_dir_sha256(root)
+        if workspace_common == project_common:
+            workspace = _verified_workspace(
+                root,
+                args.workspace_root,
+                expected_head=args.expected_head,
+                expected_ref=args.expected_ref,
+            )
+        else:
+            repo_scopes = [
+                scope["scope_ref"]
+                for scope in successor_scopes
+                if scope["scope_kind"] == "repo"
+            ]
+            if len(repo_scopes) != 1:
+                raise ValueError("transition_gate:workspace_repository")
+            repo_ref = repo_scopes[0]
+            if repo_ref.startswith("repo://"):
+                workspace_id = repo_ref.removeprefix("repo://")
+            elif repo_ref.startswith("//"):
+                # CLI scope parsing historically stores `repo://id` as kind
+                # `repo` with reference `//id`; accept both encodings.
+                workspace_id = repo_ref.removeprefix("//")
+            else:
+                workspace_id = repo_ref
+            if not workspace_id or _ID_RE.fullmatch(workspace_id) is None:
+                raise ValueError("transition_gate:workspace_repository")
+            effect_scopes = [
+                scope["scope_ref"]
+                for scope in successor_scopes
+                if scope["scope_kind"] == "effect"
+            ]
+            workspace = _verified_delivery_workspace(
+                root,
+                args.workspace_root,
+                workspace_id=workspace_id,
+                allowed_effects=effect_scopes,
+                expected_head=args.expected_head,
+                expected_ref=args.expected_ref,
+            )
+            workspace = {
+                key: workspace[key]
+                for key in (
+                    "head_commit",
+                    "clean",
+                    "expected_ref",
+                    "expected_ref_commit",
+                )
+            }
     except ValueError as exc:
         marker = str(exc)
         gate = marker.removeprefix("transition_gate:")

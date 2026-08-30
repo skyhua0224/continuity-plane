@@ -4779,7 +4779,20 @@ class StateMCPService:
                 or context.subject_ref not in return_work["owner_refs"]
             ):
                 return denied("return_point_ready_owner")
-            if return_work["scope_refs"] != arguments["successor_scope_owners"]:
+            requested_scopes = arguments["successor_scope_owners"]
+            legacy_scopes = [
+                {
+                    "scope_kind": item["scope_kind"],
+                    "scope_ref": (
+                        "repo://" + item["scope_ref"][2:]
+                        if item["scope_kind"] == "repo"
+                        and item["scope_ref"].startswith("//")
+                        else item["scope_ref"]
+                    ),
+                }
+                for item in return_work["scope_refs"]
+            ]
+            if return_work["scope_refs"] != requested_scopes and legacy_scopes != requested_scopes:
                 return denied("scope_no_expansion")
             if any(
                 item["claim_id"] == arguments["successor_claim_id"]
@@ -4887,6 +4900,9 @@ class StateMCPService:
             )
             returned_work["status"] = "active"
             returned_work["revision"] += 1
+            # Normalize the legacy `//repository` encoding emitted by older
+            # activation clients while preserving the requested scope contract.
+            returned_work["scope_refs"] = copy.deepcopy(requested_scopes)
             returned_work["evidence_ids"] = list(
                 dict.fromkeys([*returned_work["evidence_ids"], source_evidence_id])
             )
@@ -4926,6 +4942,28 @@ class StateMCPService:
                 "released_at": None,
                 "scope_owners": copy.deepcopy(arguments["successor_scope_owners"]),
             }
+            for existing_claim in candidate["claims"]:
+                if existing_claim["work_id"] != returned_work["work_id"]:
+                    continue
+                normalized_claim_scopes = [
+                    {
+                        "scope_kind": item["scope_kind"],
+                        "scope_ref": (
+                            "repo://" + item["scope_ref"][2:]
+                            if item["scope_kind"] == "repo"
+                            and item["scope_ref"].startswith("//")
+                            else item["scope_ref"]
+                        ),
+                    }
+                    for item in existing_claim["scope_owners"]
+                ]
+                if normalized_claim_scopes == requested_scopes:
+                    existing_claim["scope_owners"] = copy.deepcopy(requested_scopes)
+                    _upsert_change(
+                        changes,
+                        collection="claims",
+                        value=existing_claim,
+                    )
             candidate["claims"].append(successor_claim)
             _upsert_change(changes, collection="works", value=completed_work)
             _upsert_change(changes, collection="claims", value=completed_claim)

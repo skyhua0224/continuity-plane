@@ -38,7 +38,11 @@ RECOVERY_RULE_IDS = [
 ]
 SESSION_BINDING_SCHEMA = "context.codex-session-project-bindings/v1alpha1"
 CONTINUITY_RESUME_TOOL = "mcp__continuity__continuity_resume"
-CONTINUITY_RESUME_TOOLS = {CONTINUITY_RESUME_TOOL, "continuity_resume"}
+CONTINUITY_RESUME_TOOLS = {
+    CONTINUITY_RESUME_TOOL,
+    "continuity_resume",
+    "continuity/continuity_resume",
+}
 DELIVERY_WORKSPACE_REGISTRY_SCHEMA = (
     "context.delivery-workspace-registry/v1alpha1"
 )
@@ -91,6 +95,11 @@ _RECOVERY_SOURCE_RE = re.compile(
     re.IGNORECASE,
 )
 _WHOLE_FILE_READERS = {"cat", "less", "more"}
+
+
+def _effect_policy() -> str:
+    """Return the explicit effect policy; observation is the safe default."""
+    return "strict" if os.environ.get("CONTINUITY_EFFECT_POLICY", "observe").lower() == "strict" else "observe"
 
 
 def _canonical(value: Any) -> str:
@@ -847,6 +856,14 @@ def _shell_command(payload: dict[str, Any]) -> str:
         return command
     if isinstance(command, list) and all(isinstance(item, str) for item in command):
         return " ".join(command)
+    tool_name = payload.get("tool_name")
+    if isinstance(tool_name, str) and re.fullmatch(
+        r"(?:tea\s+pulls?\s+(?:create|merge)|gh\s+pr\s+(?:create|merge)|"
+        r"glab\s+mr\s+(?:create|merge))",
+        tool_name,
+        re.IGNORECASE,
+    ):
+        return tool_name
     return ""
 
 
@@ -1216,17 +1233,41 @@ def _source_control_effect_root(
     project_id: str,
     effect_action: str,
 ) -> Path | None:
-    workdir = _tool_workdir(payload, root)
-    governance_repository = _git_toplevel(root)
-    effect_repository = _git_toplevel(workdir) if workdir is not None else None
-    if governance_repository is None or effect_repository is None:
-        return None
     scopes = claim.get("scope_owners")
     repo_scopes = {
         item.get("scope_ref")
         for item in scopes or []
         if isinstance(item, dict) and item.get("scope_kind") == "repo"
     }
+    tool_input = payload.get("tool_input")
+    explicit_workdir = (
+        isinstance(tool_input, dict)
+        and isinstance(tool_input.get("workdir"), str)
+        and bool(tool_input.get("workdir"))
+    )
+    if not explicit_workdir and repo_scopes:
+        registry = _delivery_workspace_registry(root, project_id)
+        if registry is None:
+            return None
+        candidates: list[Path] = []
+        for item in registry["workspaces"]:
+            if (
+                f"repo://{item['workspace_id']}" not in repo_scopes
+                or effect_action not in item["allowed_effects"]
+            ):
+                continue
+            workspace = Path(item["workspace_root"]).resolve()
+            if (
+                workspace.is_dir()
+                and _repository_sha256(workspace) == item["repository_sha256"]
+            ):
+                candidates.append(workspace)
+        return candidates[0] if len(candidates) == 1 else None
+    workdir = _tool_workdir(payload, root)
+    governance_repository = _git_toplevel(root)
+    effect_repository = _git_toplevel(workdir) if workdir is not None else None
+    if governance_repository is None or effect_repository is None:
+        return None
     if _repository_sha256(effect_repository) == _repository_sha256(
         governance_repository
     ):
@@ -1530,9 +1571,9 @@ def _deny_tool(reason: str) -> None:
 
 def _pretooluse(payload: dict[str, Any], root: Path) -> int:
     tool_name = payload.get("tool_name")
-    if tool_name != "Bash":
-        return 0
     command = _shell_command(payload)
+    if tool_name != "Bash" and _effect_class(command) is None:
+        return 0
     recovery_budget = _active_recovery_budget(payload, root)
     if recovery_budget is not None and _is_unbounded_recovery_read(command):
         budget, admitted = recovery_budget
@@ -1557,6 +1598,17 @@ def _pretooluse(payload: dict[str, Any], root: Path) -> int:
     if effect_class is None:
         return 0
     effect_action = _effect_action(command, effect_class)
+    if _effect_policy() != "strict":
+        _observe(
+            payload,
+            root,
+            event_type="pretooluse",
+            success=True,
+            tool_name="Bash",
+            effect_class=effect_class,
+            decision="observe",
+        )
+        return 0
     completed = _command(["resume"], root)
     packet = (
         _load_resume_packet(completed.stdout.strip().encode("utf-8"))
@@ -1670,9 +1722,9 @@ def _pretooluse(payload: dict[str, Any], root: Path) -> int:
 
 
 def _posttooluse(payload: dict[str, Any], root: Path) -> int:
-    if payload.get("tool_name") != "Bash":
-        return 0
     command = _shell_command(payload)
+    if payload.get("tool_name") != "Bash" and _effect_class(command) is None:
+        return 0
     if _effect_class(command) is not None:
         _release_effect_intent(payload)
     if not _is_recovery_read(command):
@@ -1901,7 +1953,13 @@ def main() -> int:
     if event in {"PreToolUse", "PostToolUse"}:
         command = _shell_command(payload)
         effect_class = _effect_class(command)
-        if effect_class is not None:
+        tool_input = payload.get("tool_input")
+        explicit_workdir = (
+            isinstance(tool_input, dict)
+            and isinstance(tool_input.get("workdir"), str)
+            and bool(tool_input.get("workdir"))
+        )
+        if effect_class is not None and explicit_workdir:
             effect_action = _effect_action(command, effect_class)
             workdir = _tool_workdir(payload, Path(payload["cwd"]).resolve())
             if workdir is not None:
