@@ -1539,6 +1539,56 @@ printf '%s\\n' '{"status":"ok"}'
         self.assertNotIn("work-active", output["systemMessage"])
         self.assertNotIn("packet", output["systemMessage"].lower())
 
+    def test_session_start_persists_project_binding_without_explicit_resume(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            project = temp / "portable-project"
+            project.mkdir()
+            (project / ".continuity").mkdir()
+            profile = project / ".continuity/project.yaml"
+            profile.write_text(
+                "schema_version: context.project/v1alpha1\n"
+                "project_id: portable-project\n",
+                encoding="utf-8",
+            )
+            (project / ".continuity/status-projection.json").write_text(
+                json.dumps({"revision": 8}),
+                encoding="utf-8",
+            )
+            bin_dir = temp / "bin"
+            bin_dir.mkdir()
+            _, calls = self._fake_continuity(bin_dir)
+            plugin_data = temp / "plugin-data"
+            payload = {
+                "session_id": "session-auto-bound",
+                "cwd": str(project),
+                "hook_event_name": "SessionStart",
+                "source": "startup",
+            }
+            completed = subprocess.run(
+                [sys.executable, str(self.script)],
+                input=json.dumps(payload),
+                text=True,
+                capture_output=True,
+                env={
+                    **os.environ,
+                    "PATH": f"{bin_dir}:{os.environ['PATH']}",
+                    "PLUGIN_DATA": str(plugin_data),
+                    "PLUGIN_ROOT": str(self.plugin),
+                    "FAKE_CONTINUITY_CALLS": str(calls),
+                    "MCP_BINDING_ENVELOPE": "",
+                },
+                check=False,
+            )
+
+            self.assertEqual(completed.returncode, 0)
+            binding_files = list(
+                (plugin_data / "session-bindings").glob("*.json")
+            )
+            self.assertEqual(len(binding_files), 1)
+            binding = json.loads(binding_files[0].read_text(encoding="utf-8"))
+            self.assertEqual(binding["active_project_root"], str(project))
+
     def test_compact_session_start_refreshes_stale_sources_before_resume(self) -> None:
         completed, calls, _ = self._run_hook("SessionStart", auto_refresh=True)
         self.assertEqual(completed.returncode, 0, completed.stderr)

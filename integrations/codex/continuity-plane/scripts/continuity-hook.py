@@ -1873,6 +1873,21 @@ def _session_start(payload: dict[str, Any], root: Path) -> int:
             source_refreshed=False,
         )
         return 0
+    if packet.get("source_fresh") is True and packet.get("read_only") is False:
+        binding_payload = {
+            **payload,
+            "tool_name": "continuity_resume",
+            "tool_input": {"root": str(root)},
+            "tool_response": {"structuredContent": packet, "isError": False},
+        }
+        binding_result = _record_resume_binding(binding_payload)
+        if binding_result == "conflict":
+            if _effect_policy() == "strict":
+                _stop(
+                    "Continuity project binding conflicts with the current root; "
+                    "keep this session read-only."
+                )
+            return 0
     source_refreshed = False
     if packet.get("source_fresh") is False:
         refreshed = _command(["attach", "refresh"], root)
