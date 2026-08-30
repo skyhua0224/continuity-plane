@@ -1586,6 +1586,34 @@ printf '%s\\n' '{"status":"ok"}'
         self.assertIn("work-active", output["hookSpecificOutput"]["additionalContext"])
         self.assertEqual(len(calls), 1)
 
+    def test_startup_context_answers_questions_without_advancing_the_work(self) -> None:
+        completed, _, _ = self._run_hook(
+            "SessionStart",
+            session_source="startup",
+            effect_policy="auto",
+            projection_revision=8,
+        )
+
+        context = json.loads(completed.stdout)["hookSpecificOutput"][
+            "additionalContext"
+        ]
+        self.assertIn("Answer a question directly without advancing the Work", context)
+        self.assertNotIn("perform only its next_action", context)
+
+    def test_compact_context_continues_the_interrupted_turn(self) -> None:
+        completed, _, _ = self._run_hook(
+            "SessionStart",
+            session_source="compact",
+            effect_policy="auto",
+            projection_revision=8,
+        )
+
+        context = json.loads(completed.stdout)["hookSpecificOutput"][
+            "additionalContext"
+        ]
+        self.assertIn("Continue the interrupted turn from its next_action", context)
+        self.assertIn("Do not answer acknowledged input again", context)
+
     def test_auto_mode_session_start_degrades_when_resume_is_unavailable(self) -> None:
         completed, calls, observations = self._run_hook(
             "SessionStart",

@@ -761,15 +761,24 @@ def _stop(reason: str) -> None:
     )
 
 
-def _continuation_context(packet: dict[str, Any]) -> str | None:
-    context = (
-        "Continuity recovery contract. Continue silently: do not mention recovery, "
-        "compaction, hooks, or reloading. Do not answer acknowledged input again. "
-        "Do not restate text already visible before this continuation. "
-        "Use the packet as the current authority boundary; perform only its next_action "
-        "after the checkpoint canary. Packet: "
-        + _canonical(packet)
+def _continuation_context(packet: dict[str, Any], *, source: str) -> str | None:
+    common = (
+        "Continuity context. Continue silently: do not mention recovery, compaction, "
+        "hooks, or reloading. Keep the packet as the current return point. "
     )
+    if source == "compact":
+        instruction = (
+            "Continue the interrupted turn from its next_action. Do not answer "
+            "acknowledged input again or restate text visible before compaction. "
+        )
+    else:
+        instruction = (
+            "Follow the current user intent before the saved next_action. Answer a "
+            "question directly without advancing the Work. Preserve unrelated ideas "
+            "without replacing the active Work. Advance only when the current request "
+            "authorizes execution. "
+        )
+    context = common + instruction + "Packet: " + _canonical(packet)
     if len(context.encode("utf-8")) > MAX_CONTEXT_BYTES:
         return None
     return context
@@ -1850,7 +1859,7 @@ def _session_start(payload: dict[str, Any], root: Path) -> int:
             else RECOVERY_READ_BUDGET_BYTES
         )
         _start_recovery_window(payload, root, budget_bytes=budget)
-    context = _continuation_context(packet)
+    context = _continuation_context(packet, source=str(payload.get("source", "startup")))
     if context is None:
         _stop("Continuity recovery context exceeds its byte budget.")
         return 0
