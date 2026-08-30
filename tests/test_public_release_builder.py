@@ -50,8 +50,14 @@ class PublicReleaseBuilderTests(unittest.TestCase):
             self.assertTrue(
                 (output / "plugins/continuity-plane/hooks/hooks.json").is_file()
             )
+            self.assertFalse(
+                (output / "plugins/continuity-plane/.mcp.json").exists()
+            )
             self.assertTrue(
-                (output / "plugins/continuity-plane/scripts/continuity-mcp-server.py").is_file()
+                (
+                    output
+                    / "plugins/continuity-plane-state/scripts/continuity-mcp-server.py"
+                ).is_file()
             )
             self.assertEqual(
                 json.loads(public_plugin_manifest.read_text(encoding="utf-8"))["version"],
@@ -62,6 +68,10 @@ class PublicReleaseBuilderTests(unittest.TestCase):
             self.assertEqual(
                 marketplace["plugins"][0]["source"]["path"],
                 "./plugins/continuity-plane",
+            )
+            self.assertEqual(
+                marketplace["plugins"][1]["source"]["path"],
+                "./plugins/continuity-plane-state",
             )
             self.assertIn("Codex plugin", (output / "README.md").read_text(encoding="utf-8"))
             self.assertIn("Codex plugin", (output / "README.en.md").read_text(encoding="utf-8"))

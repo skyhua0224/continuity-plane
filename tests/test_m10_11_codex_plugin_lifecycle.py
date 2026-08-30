@@ -271,6 +271,7 @@ printf '%s\\n' '{"status":"ok"}'
         )
         self.assertIn("Strict mode applies only when the project explicitly opts in", skill)
         self.assertNotIn("Treat `read_only: true` as a veto", skill)
+        self.assertLessEqual(len(skill.encode("utf-8")), 2048)
 
     def test_explicit_resume_binding_outlives_an_unrelated_session_cwd(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

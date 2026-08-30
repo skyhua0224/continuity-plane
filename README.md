@@ -18,16 +18,22 @@ python -m pip install continuity-plane==0.1.0a9
 
 ### Codex 插件（可选）
 
-核心包不依赖插件；需要自动加载恢复包、压缩前后 checkpoint、恢复 canary 和副作用
-预检时，可以从本项目的公开 GitHub marketplace 安装 Codex plugin：
+核心包不依赖插件。默认 `continuity-plane` plugin 是轻量 core，只提供有界恢复和
+checkpoint lifecycle，不注册 State MCP 工具，也不阻断普通开发命令：
 
 ```bash
 codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.9
 codex plugin add continuity-plane@continuity-plane
 ```
 
-安装后新建一个 Session，插件会按当前项目根目录自动绑定 `.continuity/` 状态。插件
-只负责 provider 接入，权威状态仍由本地 CLI/State MCP 管理。
+只有明确需要在 Codex 中调用 resume、claim、checkpoint 或原子 Work transition 时，
+才安装 advanced State plugin：
+
+```bash
+codex plugin add continuity-plane-state@continuity-plane
+```
+
+安装后新建一个 Session。权威状态仍由本地 CLI/State MCP 管理。
 
 ### 单项目
 

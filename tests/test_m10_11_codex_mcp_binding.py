@@ -31,9 +31,9 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
         cls.root = Path(__file__).resolve().parents[1]
         cls.server = (
             cls.root
-            / "integrations/codex/continuity-plane/scripts/continuity-mcp-server.py"
+            / "integrations/codex/continuity-plane-state/scripts/continuity-mcp-server.py"
         )
-        cls.plugin = cls.root / "integrations/codex/continuity-plane"
+        cls.plugin = cls.root / "integrations/codex/continuity-plane-state"
 
     def test_plugin_mcp_config_starts_from_plugin_root_and_handshakes(self) -> None:
         config = json.loads((self.plugin / ".mcp.json").read_text(encoding="utf-8"))

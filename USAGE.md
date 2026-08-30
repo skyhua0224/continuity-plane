@@ -264,10 +264,9 @@ continuity rollback --root /path/to/target
 ## Agent 接入
 
 控制面安装在项目旁边，通过 CLI、Python API 或 provider adapter 使用。核心包不要求
-安装 Agent plugin。Codex 用户可以额外安装公开 plugin，让宿主自动加载 packet、执行
-压缩前后 checkpoint、恢复 canary 和副作用预检。plugin 不直接修改数据库；写操作
-只能通过受 authorization、revision/CAS、validator、claim 和 checkpoint 约束的
-State MCP 工具提交。
+Agent plugin。默认 Codex plugin 只提供有界 packet 和 checkpoint lifecycle，不注册
+MCP 写工具，也不阻断普通开发。需要显式 State 操作时再安装 advanced State plugin；
+写入仍经过 authorization、revision/CAS、validator、claim 和 checkpoint。
 
 ### 安装公开 Codex plugin
 
@@ -279,14 +278,20 @@ codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.9
 codex plugin add continuity-plane@continuity-plane
 ```
 
-安装后新建 Session。Codex plugin 会在 `SessionStart` 根据当前项目根目录发现并绑定
-`.continuity/`，在 `PreCompact`/`PostCompact` 执行 checkpoint 生命周期，并在需要时对
-push、PR、merge、deploy 和远端安装做 claim/effect 预检。普通问题不会输出恢复旁白。
+安装后新建 Session。core plugin 在 `SessionStart` 加载有界 packet，并在
+`PreCompact`/`PostCompact` 执行 checkpoint 生命周期。普通问题不会推进保存的 Work，
+也不会输出恢复旁白。
+
+需要在 Codex 内调用 State 工具时额外安装：
+
+```bash
+codex plugin add continuity-plane-state@continuity-plane
+```
 
 ### 一个 Session 管理多个项目
 
-当同一个 Session 同时处理治理仓、实现仓和另一个项目时，先对每个项目的治理根执行
-一次显式 resume：
+安装 advanced State plugin 后，同一个 Session 同时处理治理仓、实现仓和另一个项目时，
+可以对各项目治理根执行显式 resume：
 
 ```text
 continuity_resume(root=/path/to/project-a)
@@ -306,6 +311,7 @@ digest 失配或损坏 binding 会在 CLI/State 写入前拒绝，而不会静�
 ```bash
 codex plugin marketplace upgrade continuity-plane
 codex plugin add continuity-plane@continuity-plane
+codex plugin add continuity-plane-state@continuity-plane  # 仅在需要 State MCP 时
 ```
 
 如果某个项目暂时不需要宿主 hook，保留核心 CLI 即可；停用 plugin 不会删除项目的

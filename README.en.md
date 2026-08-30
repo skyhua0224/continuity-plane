@@ -19,18 +19,24 @@ python -m pip install continuity-plane==0.1.0a9
 
 ### Codex plugin (optional)
 
-The core package does not depend on a plugin. To enable automatic bounded packet loading,
-pre/post-compaction checkpoints, recovery canaries, and external-effect preflight, install the
-Codex plugin from this repository's public GitHub marketplace:
+The core package does not depend on a plugin. The default `continuity-plane` plugin is a
+lightweight core for bounded recovery and checkpoint lifecycle. It registers no State MCP tools
+and does not block ordinary development commands:
 
 ```bash
 codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.9
 codex plugin add continuity-plane@continuity-plane
 ```
 
-Start a new Session after installation. The plugin discovers the current project root and binds
-the local `.continuity/` state automatically. It is only a provider integration; authoritative
-state remains managed by the CLI/State MCP.
+Install the advanced State plugin only when Codex must call resume, claim, checkpoint, or atomic
+Work transition tools:
+
+```bash
+codex plugin add continuity-plane-state@continuity-plane
+```
+
+Start a new Session after installation. Authoritative state remains managed by the local
+CLI/State MCP.
 
 ### One Project
 

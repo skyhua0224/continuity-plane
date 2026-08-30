@@ -1,6 +1,6 @@
 # Continuity Plane Status
 
-版本：revision 108  
+版本：revision 109  
 日期：2026-08-30  
 canonical plan：`MASTER.md`
 
@@ -32,16 +32,14 @@ canonical plan：`MASTER.md`
 | Evidence index | [`docs/reports/verified-state.md`](docs/reports/verified-state.md) |
 | Verified campaigns | M0-M8 core 与 M9-01..07 见 Evidence index；M9-08..11 planned |
 | alpha.9 publication | GitHub prerelease、PyPI、脱敏镜像、wheel/sdist、`SHA256SUMS`、CI 和本地 CLI/plugin 已通过 |
-| alpha.1 → alpha.7 audit | immutable tag tree 差异 `28` files（`16` added、`12` modified、`+10,282/-94`）；tag source 对应 `27` 个开发提交；公开 release history 为脱敏 projection，功能差异以标签树、artifact 和测试为准 |
-| M10-11..15 | autorun、source rebind、effect isolation、Session binding 与 external workspace 已通过各自 focused/full tests；matched improvement remains open |
-| M10-17 multi-project Session | 显式 `continuity_resume(root=...)` 切换多个项目；cwd 不覆盖身份；binding digest/legacy/fail-closed 通过；focused `46/46`、full `1975/1975`（`31` skipped）；GitHub/PyPI alpha.9 已发布 |
 | Coordination/views | shared Work、forge、notification、Project Graph、2,000-node Impact gates passed；authority violation `0` |
 | Release baseline | Linux/macOS/Windows native matrix `18/18`；local state bundle export/import/rollback available；public privacy scan `0` findings |
 | Documentation audit | README、USAGE、CHANGELOG、public docs、templates 与 policy 全文审阅；公开 Markdown 内部阶段标记 `0`，本地链接缺失 `0`，外部链接 `8/8` 可达；repository verification passed |
 | M11-00 zero-friction reset | plugin disabled；intent-aware startup、healthy-packet zero-reread、non-blocking recovery 与 single-path compact continuation 通过 `60/60` focused tests；[pre-reset baseline](experiments/evidence/m11-00-live-baseline-20260830.json) |
 | M11 hook efficiency | `40` 组：calls `-33.33%`，model context `-32.45%`，stdout `-48.49%`，wall p50/p95 `-12.33%/-12.63%`，deny/stop `0/0`；[receipt](experiments/evidence/m11-00-codex-hook-efficiency.json) |
-| Repository gate | full `1995/1995` passed，`31` skipped；治理 revision、149-document manifest 与五份派生 benchmark receipt 已重建并通过 current-provenance gate |
-| Governance authority | `MASTER.md` revision 108 |
+| M11 provider smoke | core-only ABBA `3+3`：STATUS reads `4 → 0`，tool output mean `-76.5%`，input median约 `-0.9%`；无 compaction，尚不满足 release gate |
+| Repository gate | sequential shards `2004/2004` passed，`31` skipped；一项既有 M8 concurrency test 瞬时失败后单测与完整 shard 重跑通过 |
+| Governance authority | `MASTER.md` revision 109 |
 
 ## 恢复入口
 

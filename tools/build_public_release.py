@@ -277,14 +277,21 @@ def _copy_public_text(source: Path, destination: Path) -> None:
 
 def _copy_public_plugin(source: Path, destination: Path) -> None:
     """Project the Codex adapter as a standalone public marketplace plugin."""
-    files = [
-        source / ".codex-plugin/plugin.json",
-        source / ".mcp.json",
-        source / "hooks/hooks.json",
-        source / "scripts/continuity-hook.py",
-        source / "scripts/continuity-mcp-server.py",
-        source / "skills/continuity-plane/SKILL.md",
-    ]
+    if source.name == "continuity-plane":
+        files = [
+            source / ".codex-plugin/plugin.json",
+            source / "hooks/hooks.json",
+            source / "scripts/continuity-hook.py",
+            source / "skills/continuity-plane/SKILL.md",
+        ]
+    elif source.name == "continuity-plane-state":
+        files = [
+            source / ".codex-plugin/plugin.json",
+            source / ".mcp.json",
+            source / "scripts/continuity-mcp-server.py",
+        ]
+    else:
+        raise RuntimeError(f"unsupported public Codex plugin: {source.name}")
     for path in files:
         if not path.is_file():
             raise RuntimeError(f"public Codex plugin file is unavailable: {path}")
@@ -293,9 +300,6 @@ def _copy_public_plugin(source: Path, destination: Path) -> None:
         if path.name == "plugin.json":
             manifest = json.loads(path.read_text(encoding="utf-8"))
             manifest["version"] = PUBLIC_RELEASE_VERSION
-            manifest["description"] = (
-                "Bounded recovery, checkpoint canaries, and local continuity tools for Codex"
-            )
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(
                 json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
@@ -317,6 +321,18 @@ def _write_public_plugin_marketplace(output: Path) -> None:
                 "source": {
                     "source": "local",
                     "path": "./plugins/continuity-plane",
+                },
+                "policy": {
+                    "installation": "AVAILABLE",
+                    "authentication": "ON_INSTALL",
+                },
+                "category": "Productivity",
+            },
+            {
+                "name": "continuity-plane-state",
+                "source": {
+                    "source": "local",
+                    "path": "./plugins/continuity-plane-state",
                 },
                 "policy": {
                     "installation": "AVAILABLE",
@@ -549,6 +565,10 @@ def build_public_release(
     _copy_public_plugin(
         source / "integrations/codex/continuity-plane",
         output / "plugins/continuity-plane",
+    )
+    _copy_public_plugin(
+        source / "integrations/codex/continuity-plane-state",
+        output / "plugins/continuity-plane-state",
     )
     _write_public_plugin_marketplace(output)
     for section in ("benchmarks", "docs", "examples", "tests"):

@@ -305,13 +305,11 @@ checkpoint mismatch fails before replacement.
 
 ## Agent Integration
 
-The control plane is installed beside the project and accessed by an Agent
-through CLI, Python API, or a provider adapter. A provider-specific plugin is
-not required by the core package. Codex users can optionally install the public
-plugin to automate packet loading, lifecycle checkpoints, recovery canaries, and
-effect preflight. It does not write the database directly; writes can only use
-State MCP tools guarded by authorization, revision/CAS, validators, claims, and
-checkpoints.
+The control plane is installed beside the project and accessed through CLI,
+Python API, or a provider adapter. The core package requires no Agent plugin.
+The default Codex plugin provides bounded packets and checkpoint lifecycle only;
+it registers no MCP write tools and does not block ordinary development. Install
+the advanced State plugin only for explicit State operations.
 
 ### Install The Public Codex Plugin
 
@@ -323,11 +321,15 @@ codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.9
 codex plugin add continuity-plane@continuity-plane
 ```
 
-Start a new Session after installation. The plugin discovers and binds the
-project's `.continuity/` directory at SessionStart, runs checkpoint lifecycle
-hooks around compaction, and preflights claim/effect scope before push, PR,
-merge, deploy, and remote installation. Ordinary answers stay free of recovery
-narration.
+Start a new Session after installation. The core plugin loads one bounded packet
+at SessionStart and runs checkpoint lifecycle hooks around compaction. Questions
+do not advance the saved Work or emit recovery narration.
+
+Install the advanced plugin only when Codex needs State tools:
+
+```bash
+codex plugin add continuity-plane-state@continuity-plane
+```
 
 To upgrade the plugin, refresh the marketplace, reinstall it, and start a new
 Session:
@@ -335,6 +337,7 @@ Session:
 ```bash
 codex plugin marketplace upgrade continuity-plane
 codex plugin add continuity-plane@continuity-plane
+codex plugin add continuity-plane-state@continuity-plane  # only for State MCP
 ```
 
 Projects that do not need host hooks can keep using the core CLI alone; disabling
@@ -342,8 +345,9 @@ the plugin does not delete `.continuity/` state.
 
 ### One Session Across Multiple Projects
 
-When one Session works on a governance root, an implementation project, and
-another project, explicitly resume each project's governance root first:
+With the advanced State plugin installed, a Session spanning a governance root,
+an implementation project, and another project can explicitly resume each
+governance root:
 
 ```text
 continuity_resume(root=/path/to/project-a)
