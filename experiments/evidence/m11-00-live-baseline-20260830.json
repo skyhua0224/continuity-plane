@@ -1,0 +1,72 @@
+{
+  "schema_version": "context.m11-live-baseline/v1alpha1",
+  "benchmark_id": "m11-00-live-baseline",
+  "observed_at": "2026-08-30",
+  "purpose": "Pre-reset baseline for three real long-running Codex Sessions",
+  "privacy": {
+    "raw_transcript_admitted": false,
+    "session_ids_retained": false,
+    "paths_retained": false,
+    "project_names_retained": false
+  },
+  "measurement_boundary": {
+    "source": "streamed rollout metadata and token_count events",
+    "window_matching": "provisional; not a matched A/B result",
+    "plugin_posture": "historical window may include strict integration behavior",
+    "interpretation": "descriptive baseline only; no causal benefit claim"
+  },
+  "sessions": [
+    {
+      "profile": "projectcompute-session",
+      "session_sha256": "sha256:837dc8a56dfc8fcfa475e5978f4aefe8d3f1561bf620592715b015c305a938b5",
+      "source_file_sha256": "sha256:bb167300e78bf0ce5107704e6fa61bf2a100642ce64031e8c775a4deeaa4ce68",
+      "rollout_lines": 768,
+      "token_events": 123,
+      "input_tokens": 27340911,
+      "cached_input_tokens": 26881536,
+      "output_tokens": 34053,
+      "reasoning_output_tokens": 19178,
+      "user_messages": 3,
+      "agent_messages": 22,
+      "tool_calls": 102,
+      "context_window_tokens": 828400,
+      "observed_effect_block_mentions": 2
+    },
+    {
+      "profile": "platform-session",
+      "session_sha256": "sha256:88d26f14a10272203ac0ccdb7fe7656a5f63fa3817c4893d19334a8b34a00968",
+      "source_file_sha256": "sha256:222a5fb527044e06dbaa7ad046a7156fb7137f892aa04f9a5d13bda732ba1013",
+      "rollout_lines": 1469,
+      "token_events": 206,
+      "input_tokens": 74228471,
+      "cached_input_tokens": 73035776,
+      "output_tokens": 132760,
+      "reasoning_output_tokens": 74651,
+      "user_messages": 9,
+      "agent_messages": 66,
+      "tool_calls": 135,
+      "context_window_tokens": 828400,
+      "observed_n69_08_mentions": 224
+    },
+    {
+      "profile": "foundation-identity-session",
+      "session_sha256": "sha256:7ad78377f7d1d4c33441a2c3da4db433f0d5a8101d661518e6a1b694411d2aa0",
+      "source_file_sha256": "sha256:2ad79cb15fce71d2e398610f0ef7bb3c78f58f70df48e5ba2245d96795d794e9",
+      "rollout_lines": 172,
+      "token_events": 26,
+      "input_tokens": 2033602,
+      "cached_input_tokens": 1880832,
+      "output_tokens": 6326,
+      "reasoning_output_tokens": 3633,
+      "user_messages": 5,
+      "agent_messages": 8,
+      "tool_calls": 15,
+      "context_window_tokens": 828400,
+      "observed_foundation_mentions": 10,
+      "observed_skyindows_mentions": 31
+    }
+  ],
+  "status": "baseline-recorded",
+  "completion_authority": false,
+  "state_write_authority": false
+}
