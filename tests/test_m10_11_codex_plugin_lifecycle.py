@@ -1586,6 +1586,7 @@ printf '%s\\n' '{"status":"ok"}'
     def test_auto_mode_session_start_injects_only_current_bounded_context(self) -> None:
         completed, calls, _ = self._run_hook(
             "SessionStart",
+            session_source="startup",
             effect_policy="auto",
             projection_revision=8,
         )
@@ -1610,19 +1611,20 @@ printf '%s\\n' '{"status":"ok"}'
         self.assertIn("Answer a question directly without advancing the Work", context)
         self.assertNotIn("perform only its next_action", context)
 
-    def test_compact_context_continues_the_interrupted_turn(self) -> None:
-        completed, _, _ = self._run_hook(
+    def test_auto_compact_uses_native_continuation_without_packet_injection(
+        self,
+    ) -> None:
+        completed, calls, observations = self._run_hook(
             "SessionStart",
             session_source="compact",
             effect_policy="auto",
             projection_revision=8,
         )
 
-        context = json.loads(completed.stdout)["hookSpecificOutput"][
-            "additionalContext"
-        ]
-        self.assertIn("Continue the interrupted turn from its next_action", context)
-        self.assertIn("Do not answer acknowledged input again", context)
+        self.assertEqual(completed.stdout, "")
+        self.assertEqual(len(calls), 1)
+        self.assertIn('"event_type":"session-start"', observations)
+        self.assertIn('"success":true', observations)
 
     def test_auto_mode_session_start_degrades_when_resume_is_unavailable(self) -> None:
         completed, calls, observations = self._run_hook(
