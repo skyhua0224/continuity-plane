@@ -775,54 +775,6 @@ def _continuation_context(packet: dict[str, Any]) -> str | None:
     return context
 
 
-def _autorun_command(payload: dict[str, Any], root: Path) -> subprocess.CompletedProcess[str]:
-    session_id = payload.get("session_id")
-    suffix = _hash(str(session_id))[:32]
-    command = ["autorun", "--session-id", f"hook-{suffix}"]
-    last = subprocess.CompletedProcess(command, 1, "", "autorun failed")
-    for attempt in range(3):
-        last = _command(command, root)
-        if last.returncode == 0:
-            return last
-        message = f"{last.stdout}\n{last.stderr}".lower()
-        if attempt == 2 or not any(
-            marker in message
-            for marker in (
-                "transport closed",
-                "connection reset",
-                "broken pipe",
-                "timed out",
-                "temporarily unavailable",
-            )
-        ):
-            return last
-    return last
-
-
-def _autorun_packet(payload: dict[str, Any], root: Path) -> dict[str, Any] | None:
-    completed = _autorun_command(payload, root)
-    if completed.returncode != 0:
-        return None
-    try:
-        result = json.loads(completed.stdout.strip())
-    except json.JSONDecodeError:
-        return None
-    packet = result.get("resume_packet") if isinstance(result, dict) else None
-    return packet if _load_resume_packet(_canonical(packet).encode("utf-8")) else None
-
-
-def _is_stage_test_command(command: str) -> bool:
-    return bool(
-        re.search(
-            r"(?:^|[;&|]\s*)(?:pytest\b|python(?:3)?\s+-m\s+(?:unittest|pytest)\b|"
-            r"(?:npm|pnpm|yarn)\s+test\b|cargo\s+test\b|go\s+test\b|"
-            r"cmake\s+--build\b)",
-            command,
-            re.IGNORECASE,
-        )
-    )
-
-
 def _load_resume_packet(encoded: bytes) -> dict[str, Any] | None:
     if not encoded or len(encoded) > MAX_PACKET_BYTES:
         return None
@@ -1590,22 +1542,24 @@ def _pretooluse(payload: dict[str, Any], root: Path) -> int:
     recovery_budget = _active_recovery_budget(payload, root)
     if recovery_budget is not None and _is_unbounded_recovery_read(command):
         budget, admitted = recovery_budget
+        strict = _effect_policy() == "strict"
         _observe(
             payload,
             root,
             event_type="recovery-read",
-            success=False,
+            success=not strict,
             tool_name="Bash",
-            decision="deny",
+            decision="deny" if strict else "observe",
             recovery_read_bytes=admitted,
             recovery_read_budget_bytes=budget,
             tool_output_bytes=0,
-            context_admitted=False,
+            context_admitted=not strict,
         )
-        _deny_tool(
-            "Continuity blocked an unbounded recovery read; use the current bounded "
-            "projection or an explicit line/range limit."
-        )
+        if strict:
+            _deny_tool(
+                "Continuity blocked an unbounded recovery read; use the current "
+                "bounded projection or an explicit line/range limit."
+            )
         return 0
     effect_class = _effect_class(command)
     if effect_class is None:
@@ -1743,31 +1697,6 @@ def _posttooluse(payload: dict[str, Any], root: Path) -> int:
     if _effect_class(command) is not None:
         _release_effect_intent(payload)
     if not _is_recovery_read(command):
-        response = payload.get("tool_response")
-        success = isinstance(response, dict) and response.get("exit_code") == 0
-        if success and _is_stage_test_command(command):
-            packet = _autorun_packet(payload, root)
-            if packet is None:
-                _observe(payload, root, event_type="autorun", success=False)
-                _stop("Continuity autorun failed after a successful stage test; continuation was stopped.")
-                return 0
-            context = _continuation_context(packet)
-            if context is None:
-                _observe(payload, root, event_type="autorun", success=False)
-                _stop("Continuity autorun packet exceeds its byte budget; continuation was stopped.")
-                return 0
-            _observe(payload, root, event_type="autorun", success=True, canary_passed=True)
-            print(
-                _canonical(
-                    {
-                        "continue": True,
-                        "hookSpecificOutput": {
-                            "hookEventName": "PostToolUse",
-                            "additionalContext": context,
-                        },
-                    }
-                )
-            )
         return 0
     output_bytes = _tool_response_bytes(payload)
     result = _admit_recovery_output(payload, root, output_bytes=output_bytes)
@@ -1787,10 +1716,11 @@ def _posttooluse(payload: dict[str, Any], root: Path) -> int:
         context_admitted=admitted,
     )
     if not admitted:
-        _stop(
-            "Continuity recovery read budget exceeded; use the current bounded "
-            "projection or a smaller explicit range."
-        )
+        if _effect_policy() == "strict":
+            _stop(
+                "Continuity recovery read budget exceeded; use the current bounded "
+                "projection or a smaller explicit range."
+            )
     return 0
 
 
@@ -1821,29 +1751,6 @@ def _postcompact(payload: dict[str, Any], root: Path) -> int:
     )
     if not success and _effect_policy() == "strict":
         _stop("Continuity checkpoint verification failed; continuation was stopped.")
-    elif success:
-        packet = _autorun_packet(payload, root)
-        if packet is None:
-            _observe(payload, root, event_type="autorun", success=False)
-            _stop("Continuity autorun failed after checkpoint verification; continuation was stopped.")
-            return 0
-        context = _continuation_context(packet)
-        if context is None:
-            _observe(payload, root, event_type="autorun", success=False)
-            _stop("Continuity autorun packet exceeds its byte budget; continuation was stopped.")
-            return 0
-        _observe(payload, root, event_type="autorun", success=True, canary_passed=True)
-        print(
-            _canonical(
-                {
-                    "continue": True,
-                    "hookSpecificOutput": {
-                        "hookEventName": "PostCompact",
-                        "additionalContext": context,
-                    },
-                }
-            )
-        )
     return 0
 
 
@@ -1859,13 +1766,15 @@ def _session_start(payload: dict[str, Any], root: Path) -> int:
     success = completed.returncode == 0
     if not success:
         _observe(payload, root, event_type="session-start", success=False)
-        _stop("Continuity resume failed; keep this project read-only.")
+        if _effect_policy() == "strict":
+            _stop("Continuity resume failed; keep this project read-only.")
         return 0
     encoded = completed.stdout.strip().encode("utf-8")
     packet = _load_resume_packet(encoded)
     if packet is None:
         _observe(payload, root, event_type="session-start", success=False)
-        _stop("Continuity resume packet is invalid or exceeds its byte budget.")
+        if _effect_policy() == "strict":
+            _stop("Continuity resume packet is invalid or exceeds its byte budget.")
         return 0
     if _effect_policy() != "strict" and (
         packet.get("source_fresh") is False
@@ -1989,6 +1898,8 @@ def main() -> int:
     binding_path = _session_binding_path(payload)
     bound_root = _session_bound_root(payload)
     if binding_path is not None and binding_path.exists() and bound_root is None:
+        if _effect_policy() != "strict":
+            return 0
         if event == "PreToolUse":
             _deny_tool(
                 "Continuity session project binding is invalid; external effects "

@@ -40,6 +40,10 @@ class M1011CodexPluginLifecycleTests(unittest.TestCase):
             """#!/bin/sh
 printf '%s\\n' \"$*\" >> \"$FAKE_CONTINUITY_CALLS\"
 if [ \"$1\" = \"resume\" ]; then
+  if [ \"${FAIL_RESUME:-0}\" = \"1\" ]; then
+    printf 'transport unavailable\\n' >&2
+    exit 9
+  fi
   if [ \"${SLOW_RESUME:-0}\" = \"1\" ]; then
     sleep 4
   fi
@@ -62,7 +66,10 @@ if [ \"$1 $2\" = \"attach refresh\" ]; then
   exit 0
 fi
 if [ \"$1\" = \"autorun\" ]; then
-  if [ \"${HOOK_AUTORUN_RETRY:-0}\" = \"1\" ] && [ ! -f \"$HOOK_AUTORUN_RETRIED\" ]; then touch \"$HOOK_AUTORUN_RETRIED\"; printf 'transport closed\\n' >&2; exit 1; fi
+  if [ \"${FAIL_AUTORUN:-0}\" = \"1\" ]; then
+    printf 'transport closed\\n' >&2
+    exit 9
+  fi
   printf '%s\\n' '{\"status\":\"continued\",\"state_event_created\":false,\"next_action\":\"continue-active-work\",\"resume_packet\":'\"$MCP_BINDING_ENVELOPE\"'}'
   exit 0
 fi
@@ -90,7 +97,8 @@ printf '%s\\n' '{"status":"ok"}'
         slow_resume: bool = False,
         session_source: str = "compact",
         stage_success: bool = False,
-        autorun_retry: bool = False,
+        fail_autorun: bool = False,
+        fail_resume: bool = False,
         effect_policy: str | None = "strict",
         projection_revision: int | None = None,
     ) -> tuple[subprocess.CompletedProcess[str], list[str], str]:
@@ -190,8 +198,8 @@ printf '%s\\n' '{"status":"ok"}'
                 if resume_packet is not None
                 else "",
                 "SLOW_RESUME": "1" if slow_resume else "0",
-                "HOOK_AUTORUN_RETRY": "1" if autorun_retry else "0",
-                "HOOK_AUTORUN_RETRIED": str(temp / "hook-autorun-retried"),
+                "FAIL_AUTORUN": "1" if fail_autorun else "0",
+                "FAIL_RESUME": "1" if fail_resume else "0",
             }
             if effect_policy is not None:
                 environment["CONTINUITY_EFFECT_POLICY"] = effect_policy
@@ -457,6 +465,7 @@ printf '%s\\n' '{"status":"ok"}'
                     "PLUGIN_DATA": str(plugin_data),
                     "PLUGIN_ROOT": str(self.plugin),
                     "FAKE_CONTINUITY_CALLS": str(calls),
+                    "CONTINUITY_EFFECT_POLICY": "strict",
                 },
                 check=False,
             )
@@ -465,6 +474,53 @@ printf '%s\\n' '{"status":"ok"}'
             self.assertFalse(response["continue"])
             self.assertIn("binding", response["stopReason"].lower())
             self.assertFalse(calls.exists())
+
+    def test_auto_mode_ignores_an_invalid_session_binding(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            project = temp / "portable-project"
+            project.mkdir()
+            (project / ".continuity").mkdir()
+            (project / ".continuity/project.yaml").write_text(
+                "project_id: portable-project\n",
+                encoding="utf-8",
+            )
+            plugin_data = temp / "plugin-data"
+            bindings = plugin_data / "session-bindings"
+            bindings.mkdir(parents=True)
+            session_id = "session-tampered-binding-auto"
+            binding_path = bindings / (
+                hashlib.sha256(session_id.encode("utf-8")).hexdigest() + ".json"
+            )
+            binding_path.write_text(
+                '{"schema_version":"context.codex-session-project-binding/v1alpha1",'
+                '"binding_sha256":"tampered"}\n',
+                encoding="utf-8",
+            )
+            binding_path.chmod(0o600)
+            completed = subprocess.run(
+                [sys.executable, str(self.script)],
+                input=json.dumps(
+                    {
+                        "session_id": session_id,
+                        "cwd": str(project),
+                        "hook_event_name": "SessionStart",
+                        "source": "resume",
+                    }
+                ),
+                text=True,
+                capture_output=True,
+                env={
+                    **os.environ,
+                    "PLUGIN_DATA": str(plugin_data),
+                    "PLUGIN_ROOT": str(self.plugin),
+                    "CONTINUITY_EFFECT_POLICY": "auto",
+                },
+                check=False,
+            )
+
+            self.assertEqual(completed.returncode, 0)
+            self.assertEqual(completed.stdout, "")
 
     def test_plugin_data_falls_back_to_a_user_local_directory(self) -> None:
         module = self._hook_module()
@@ -1201,6 +1257,43 @@ printf '%s\\n' '{"status":"ok"}'
             self.assertNotIn("STATUS.current.md", encoded)
             self.assertNotIn("private-session-id", encoded)
 
+    def test_auto_mode_recovery_budget_never_blocks_project_reads(self) -> None:
+        module = self._hook_module()
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            project = temp / "portable-project"
+            project.mkdir()
+            (project / ".continuity").mkdir()
+            plugin_data = temp / "plugin-data"
+            common = {
+                "session_id": "auto-read-budget-session",
+                "cwd": str(project),
+                "tool_name": "Bash",
+                "tool_use_id": "auto-read-budget-tool",
+                "tool_input": {"command": "cat MASTER.md"},
+            }
+            output = io.StringIO()
+            with mock.patch.dict(
+                os.environ,
+                {
+                    "PLUGIN_DATA": str(plugin_data),
+                    "PLUGIN_ROOT": str(self.plugin),
+                    "CONTINUITY_EFFECT_POLICY": "auto",
+                },
+                clear=False,
+            ), mock.patch("sys.stdout", output):
+                module._start_recovery_window(common, project, budget_bytes=1024)
+                module._pretooluse(common, project)
+                module._posttooluse(
+                    {
+                        **common,
+                        "tool_response": "x" * 2048,
+                    },
+                    project,
+                )
+
+            self.assertEqual(output.getvalue(), "")
+
     def test_same_repository_sessions_serialize_external_effects(self) -> None:
         deployment = {
             "schema_version": "context.recovery-envelope/v1alpha1",
@@ -1426,7 +1519,8 @@ printf '%s\\n' '{"status":"ok"}'
             "PostCompact", resume_packet=packet
         )
         self.assertEqual(completed.returncode, 0, completed.stderr)
-        self.assertEqual(json.loads(completed.stdout)["continue"], True)
+        self.assertEqual(completed.stdout, "")
+        self.assertEqual(len(calls), 1)
         self.assertTrue(calls[0].startswith("checkpoint verify --root "))
         self.assertIn('"canary_passed":true', observations)
 
@@ -1448,6 +1542,21 @@ printf '%s\\n' '{"status":"ok"}'
         self.assertEqual(completed.stdout, "")
         self.assertEqual(len(calls), 1)
         self.assertIn('"canary_passed":false', observations)
+
+    def test_auto_mode_postcompact_does_not_call_autorun(
+        self,
+    ) -> None:
+        completed, calls, observations = self._run_hook(
+            "PostCompact",
+            fail_autorun=True,
+            effect_policy="auto",
+        )
+
+        self.assertEqual(completed.returncode, 0)
+        self.assertEqual(completed.stdout, "")
+        self.assertTrue(calls[0].startswith("checkpoint verify --root "))
+        self.assertEqual(len(calls), 1)
+        self.assertNotIn('"event_type":"autorun"', observations)
 
     def test_observe_mode_compaction_events_are_zero_call_noops(self) -> None:
         before, before_calls, _ = self._run_hook(
@@ -1477,6 +1586,32 @@ printf '%s\\n' '{"status":"ok"}'
         self.assertIn("work-active", output["hookSpecificOutput"]["additionalContext"])
         self.assertEqual(len(calls), 1)
 
+    def test_auto_mode_session_start_degrades_when_resume_is_unavailable(self) -> None:
+        completed, calls, observations = self._run_hook(
+            "SessionStart",
+            fail_resume=True,
+            effect_policy="auto",
+        )
+
+        self.assertEqual(completed.returncode, 0)
+        self.assertEqual(completed.stdout, "")
+        self.assertEqual(len(calls), 1)
+        self.assertIn('"event_type":"session-start"', observations)
+        self.assertIn('"success":false', observations)
+
+    def test_auto_mode_session_start_ignores_an_invalid_resume_packet(self) -> None:
+        completed, calls, observations = self._run_hook(
+            "SessionStart",
+            resume_packet={},
+            effect_policy="auto",
+        )
+
+        self.assertEqual(completed.returncode, 0)
+        self.assertEqual(completed.stdout, "")
+        self.assertEqual(len(calls), 1)
+        self.assertIn('"event_type":"session-start"', observations)
+        self.assertIn('"success":false', observations)
+
     def test_auto_mode_idle_session_does_not_invent_the_next_work(self) -> None:
         idle = {
             "schema_version": "context.recovery-envelope/v1alpha1",
@@ -1500,7 +1635,7 @@ printf '%s\\n' '{"status":"ok"}'
         self.assertEqual(completed.stdout, "")
         self.assertEqual(len(calls), 1)
 
-    def test_postcompact_auto_continues_the_current_work_after_canary(self) -> None:
+    def test_postcompact_auto_defers_continuation_to_compact_session_start(self) -> None:
         packet = {
             "schema_version": "context.recovery-envelope/v1alpha1",
             "project_id": "portable-project",
@@ -1515,14 +1650,11 @@ printf '%s\\n' '{"status":"ok"}'
         }
         completed, calls, _ = self._run_hook("PostCompact", resume_packet=packet)
         self.assertEqual(completed.returncode, 0, completed.stderr)
-        output = json.loads(completed.stdout)
-        self.assertEqual(output["continue"], True)
-        self.assertIn("additionalContext", output["hookSpecificOutput"])
-        self.assertIn("work-active", output["hookSpecificOutput"]["additionalContext"])
+        self.assertEqual(completed.stdout, "")
+        self.assertEqual(len(calls), 1)
         self.assertTrue(calls[0].startswith("checkpoint verify --root "))
-        self.assertTrue(calls[1].startswith("autorun --session-id "))
 
-    def test_successful_stage_test_auto_continues_the_current_work(self) -> None:
+    def test_successful_stage_test_uses_the_native_tool_continuation(self) -> None:
         packet = {
             "schema_version": "context.recovery-envelope/v1alpha1",
             "project_id": "portable-project",
@@ -1541,13 +1673,11 @@ printf '%s\\n' '{"status":"ok"}'
             tool_input={"command": "python -m unittest tests/test_stage.py"},
             resume_packet=packet,
             stage_success=True,
+            effect_policy="auto",
         )
         self.assertEqual(completed.returncode, 0, completed.stderr)
-        output = json.loads(completed.stdout)
-        self.assertEqual(output["continue"], True)
-        self.assertIn("additionalContext", output["hookSpecificOutput"])
-        self.assertIn("work-active", output["hookSpecificOutput"]["additionalContext"])
-        self.assertTrue(calls[0].startswith("autorun --session-id "))
+        self.assertEqual(completed.stdout, "")
+        self.assertEqual(calls, [])
 
     def test_observe_mode_successful_stage_test_is_a_zero_call_noop(self) -> None:
         completed, calls, _ = self._run_hook(
@@ -1560,28 +1690,6 @@ printf '%s\\n' '{"status":"ok"}'
 
         self.assertEqual(completed.stdout, "")
         self.assertEqual(calls, [])
-
-    def test_autorun_retries_a_transient_transport_failure(self) -> None:
-        packet = {
-            "schema_version": "context.recovery-envelope/v1alpha1",
-            "project_id": "portable-project",
-            "revision": 8,
-            "active_work": {"work_id": "work-active"},
-            "claim": {"claim_id": "claim-active", "actor_ref": "actor-active"},
-            "next_action": "continue-active-work",
-            "source_fresh": True,
-            "lease_valid": True,
-            "checkpoint_verified": True,
-            "read_only": False,
-        }
-        completed, calls, _ = self._run_hook(
-            "PostCompact",
-            resume_packet=packet,
-            autorun_retry=True,
-        )
-        self.assertEqual(completed.returncode, 0, completed.stderr)
-        self.assertEqual(json.loads(completed.stdout)["continue"], True)
-        self.assertEqual(sum(line.startswith("autorun --session-id ") for line in calls), 2)
 
     def test_compact_session_start_injects_only_bounded_silent_packet(self) -> None:
         completed, calls, observations = self._run_hook("SessionStart")
