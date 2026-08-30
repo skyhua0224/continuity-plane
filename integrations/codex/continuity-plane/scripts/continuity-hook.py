@@ -2027,6 +2027,8 @@ def main() -> int:
             return _posttooluse(payload, root)
     except (OSError, RuntimeError, subprocess.SubprocessError):
         _observe(payload, root, event_type="hook-error", success=False)
+        if _effect_policy() != "strict":
+            return 0
         if event == "PreToolUse":
             _deny_tool(
                 "Continuity authority is unavailable; external effects remain blocked."

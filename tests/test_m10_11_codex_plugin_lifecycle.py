@@ -1664,6 +1664,17 @@ printf '%s\\n' '{"status":"ok"}'
         self.assertEqual(completed.stdout, "")
         self.assertEqual(len(calls), 1)
 
+    def test_observe_mode_does_not_stop_when_resume_is_unavailable(self) -> None:
+        completed, _, observations = self._run_hook(
+            "SessionStart",
+            slow_resume=True,
+            effect_policy=None,
+        )
+
+        self.assertEqual(completed.returncode, 0)
+        self.assertEqual(completed.stdout, "")
+        self.assertIn('"success":false', observations)
+
     def test_non_continuity_project_is_a_zero_output_noop(self) -> None:
         completed, calls, observations = self._run_hook(
             "PreCompact", with_project=False
