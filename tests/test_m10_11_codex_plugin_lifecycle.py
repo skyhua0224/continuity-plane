@@ -1548,6 +1548,29 @@ printf '%s\\n' '{"status":"ok"}'
         self.assertIn("read-only", completed.stdout)
         self.assertIn('"success":false', observations)
 
+    def test_observe_mode_drops_stale_resume_context_without_stopping_the_session(self) -> None:
+        stale = {
+            "schema_version": "context.recovery-envelope/v1alpha1",
+            "project_id": "portable-project",
+            "revision": 8,
+            "active_work": {"work_id": "old-work"},
+            "claim": {"claim_id": "old-claim", "actor_ref": "old-actor"},
+            "next_action": "remain-read-only",
+            "source_fresh": False,
+            "lease_valid": True,
+            "checkpoint_verified": True,
+            "read_only": True,
+        }
+        completed, calls, _ = self._run_hook(
+            "SessionStart",
+            resume_packet=stale,
+            effect_policy=None,
+        )
+
+        self.assertEqual(completed.stdout, "")
+        self.assertEqual(len(calls), 1)
+        self.assertTrue(calls[0].startswith("resume "))
+
     def test_non_continuity_project_is_a_zero_output_noop(self) -> None:
         completed, calls, observations = self._run_hook(
             "PreCompact", with_project=False

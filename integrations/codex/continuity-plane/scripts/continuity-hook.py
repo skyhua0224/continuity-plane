@@ -1848,6 +1848,17 @@ def _session_start(payload: dict[str, Any], root: Path) -> int:
         _observe(payload, root, event_type="session-start", success=False)
         _stop("Continuity resume packet is invalid or exceeds its byte budget.")
         return 0
+    if _effect_policy() != "strict" and (
+        packet.get("source_fresh") is False or packet.get("read_only") is True
+    ):
+        _observe(
+            payload,
+            root,
+            event_type="session-start",
+            success=False,
+            source_refreshed=False,
+        )
+        return 0
     source_refreshed = False
     if packet.get("source_fresh") is False:
         refreshed = _command(["attach", "refresh"], root)
