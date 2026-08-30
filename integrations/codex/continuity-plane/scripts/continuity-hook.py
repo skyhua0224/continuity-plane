@@ -102,6 +102,18 @@ def _effect_policy() -> str:
     return "strict" if os.environ.get("CONTINUITY_EFFECT_POLICY", "observe").lower() == "strict" else "observe"
 
 
+def _status_projection_is_current(root: Path, packet: dict[str, Any]) -> bool:
+    try:
+        projection = json.loads(
+            (root / ".continuity/status-projection.json").read_text(
+                encoding="utf-8"
+            )
+        )
+    except (OSError, json.JSONDecodeError):
+        return False
+    return projection.get("revision") == packet.get("revision")
+
+
 def _canonical(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
@@ -1849,7 +1861,9 @@ def _session_start(payload: dict[str, Any], root: Path) -> int:
         _stop("Continuity resume packet is invalid or exceeds its byte budget.")
         return 0
     if _effect_policy() != "strict" and (
-        packet.get("source_fresh") is False or packet.get("read_only") is True
+        packet.get("source_fresh") is False
+        or packet.get("read_only") is True
+        or not _status_projection_is_current(root, packet)
     ):
         _observe(
             payload,

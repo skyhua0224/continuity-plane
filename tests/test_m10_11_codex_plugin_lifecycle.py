@@ -92,6 +92,7 @@ printf '%s\\n' '{"status":"ok"}'
         stage_success: bool = False,
         autorun_retry: bool = False,
         effect_policy: str | None = "strict",
+        projection_revision: int | None = None,
     ) -> tuple[subprocess.CompletedProcess[str], list[str], str]:
         with tempfile.TemporaryDirectory() as directory:
             temp = Path(directory)
@@ -115,6 +116,11 @@ printf '%s\\n' '{"status":"ok"}'
                     ],
                     check=True,
                 )
+                if projection_revision is not None:
+                    (project / ".continuity/status-projection.json").write_text(
+                        json.dumps({"revision": projection_revision}),
+                        encoding="utf-8",
+                    )
                 subprocess.run(
                     [
                         "git",
@@ -310,6 +316,7 @@ printf '%s\\n' '{"status":"ok"}'
                 "BOUND_ROOT": str(bound_project),
                 "BOUND_PACKET": json.dumps(bound_packet),
                 "CWD_PACKET": json.dumps(cwd_packet),
+                "CONTINUITY_EFFECT_POLICY": "strict",
             }
 
             def invoke(payload: dict) -> subprocess.CompletedProcess[str]:
@@ -1105,6 +1112,7 @@ printf '%s\\n' '{"status":"ok"}'
                 "PLUGIN_ROOT": str(self.plugin),
                 "FAKE_CONTINUITY_CALLS": str(calls),
                 "MCP_BINDING_ENVELOPE": "",
+                "CONTINUITY_EFFECT_POLICY": "strict",
             }
             common = {
                 "session_id": "private-session-id",
@@ -1571,6 +1579,29 @@ printf '%s\\n' '{"status":"ok"}'
         self.assertEqual(len(calls), 1)
         self.assertTrue(calls[0].startswith("resume "))
 
+    def test_observe_mode_drops_context_when_status_projection_is_stale(self) -> None:
+        packet = {
+            "schema_version": "context.recovery-envelope/v1alpha1",
+            "project_id": "portable-project",
+            "revision": 8,
+            "active_work": {"work_id": "current-work"},
+            "claim": {"claim_id": "current-claim", "actor_ref": "current-actor"},
+            "next_action": "continue-active-work",
+            "source_fresh": True,
+            "lease_valid": True,
+            "checkpoint_verified": True,
+            "read_only": False,
+        }
+        completed, calls, _ = self._run_hook(
+            "SessionStart",
+            resume_packet=packet,
+            effect_policy=None,
+            projection_revision=7,
+        )
+
+        self.assertEqual(completed.stdout, "")
+        self.assertEqual(len(calls), 1)
+
     def test_non_continuity_project_is_a_zero_output_noop(self) -> None:
         completed, calls, observations = self._run_hook(
             "PreCompact", with_project=False
@@ -1638,6 +1669,7 @@ printf '%s\\n' '{"status":"ok"}'
                     "PLUGIN_ROOT": str(self.plugin),
                     "FAKE_CONTINUITY_CALLS": str(calls),
                     "MCP_BINDING_ENVELOPE": "",
+                    "CONTINUITY_EFFECT_POLICY": "strict",
                 },
                 check=False,
             )
