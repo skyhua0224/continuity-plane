@@ -71,6 +71,10 @@ class PublicReleaseBuilderTests(unittest.TestCase):
             )
             self.assertEqual(
                 marketplace["plugins"][1]["source"]["path"],
+                "./plugins/continuity-plane-search",
+            )
+            self.assertEqual(
+                marketplace["plugins"][2]["source"]["path"],
                 "./plugins/continuity-plane-state",
             )
             self.assertIn("Codex plugin", (output / "README.md").read_text(encoding="utf-8"))

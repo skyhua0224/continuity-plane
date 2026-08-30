@@ -26,6 +26,12 @@ codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.9
 codex plugin add continuity-plane@continuity-plane
 ```
 
+大型仓库需要有界 current-worktree 检索时，可单独安装 search plugin：
+
+```bash
+codex plugin add continuity-plane-search@continuity-plane
+```
+
 只有明确需要在 Codex 中调用 resume、claim、checkpoint 或原子 Work transition 时，
 才安装 advanced State plugin：
 

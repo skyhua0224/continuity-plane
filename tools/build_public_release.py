@@ -282,13 +282,18 @@ def _copy_public_plugin(source: Path, destination: Path) -> None:
             source / ".codex-plugin/plugin.json",
             source / "hooks/hooks.json",
             source / "scripts/continuity-hook.py",
-            source / "skills/continuity-plane/SKILL.md",
+        ]
+    elif source.name == "continuity-plane-search":
+        files = [
+            source / ".codex-plugin/plugin.json",
+            source / "skills/bounded-search/SKILL.md",
         ]
     elif source.name == "continuity-plane-state":
         files = [
             source / ".codex-plugin/plugin.json",
             source / ".mcp.json",
             source / "scripts/continuity-mcp-server.py",
+            source / "skills/continuity-plane/SKILL.md",
         ]
     else:
         raise RuntimeError(f"unsupported public Codex plugin: {source.name}")
@@ -321,6 +326,18 @@ def _write_public_plugin_marketplace(output: Path) -> None:
                 "source": {
                     "source": "local",
                     "path": "./plugins/continuity-plane",
+                },
+                "policy": {
+                    "installation": "AVAILABLE",
+                    "authentication": "ON_INSTALL",
+                },
+                "category": "Productivity",
+            },
+            {
+                "name": "continuity-plane-search",
+                "source": {
+                    "source": "local",
+                    "path": "./plugins/continuity-plane-search",
                 },
                 "policy": {
                     "installation": "AVAILABLE",
@@ -565,6 +582,10 @@ def build_public_release(
     _copy_public_plugin(
         source / "integrations/codex/continuity-plane",
         output / "plugins/continuity-plane",
+    )
+    _copy_public_plugin(
+        source / "integrations/codex/continuity-plane-search",
+        output / "plugins/continuity-plane-search",
     )
     _copy_public_plugin(
         source / "integrations/codex/continuity-plane-state",

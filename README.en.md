@@ -28,6 +28,12 @@ codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.9
 codex plugin add continuity-plane@continuity-plane
 ```
 
+Install the search plugin separately for bounded current-worktree lookup in large repositories:
+
+```bash
+codex plugin add continuity-plane-search@continuity-plane
+```
+
 Install the advanced State plugin only when Codex must call resume, claim, checkpoint, or atomic
 Work transition tools:
 

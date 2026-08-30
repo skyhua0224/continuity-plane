@@ -325,6 +325,17 @@ Start a new Session after installation. The core plugin loads one bounded packet
 at SessionStart and runs checkpoint lifecycle hooks around compaction. Questions
 do not advance the saved Work or emit recovery narration.
 
+Install the search plugin for explicit bounded current-worktree lookup in large repositories:
+
+```bash
+codex plugin add continuity-plane-search@continuity-plane
+continuity context search --root . --query "Runtime" --max-results 40 --max-output-bytes 8192
+```
+
+The command reads only the Git-tracked current worktree and bounds the complete
+JSON receipt. The search plugin only prompts the Agent to prefer this command
+when the task matches.
+
 Install the advanced plugin only when Codex needs State tools:
 
 ```bash
@@ -337,6 +348,7 @@ Session:
 ```bash
 codex plugin marketplace upgrade continuity-plane
 codex plugin add continuity-plane@continuity-plane
+codex plugin add continuity-plane-search@continuity-plane  # bounded lookup only
 codex plugin add continuity-plane-state@continuity-plane  # only for State MCP
 ```
 

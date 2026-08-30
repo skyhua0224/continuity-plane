@@ -634,7 +634,16 @@ def _skill_lock_path() -> Path | None:
     root = os.environ.get("PLUGIN_ROOT")
     if data is None or not root:
         return None
-    skill = Path(root) / "skills/continuity-plane/SKILL.md"
+    plugin_root = Path(root)
+    try:
+        manifest = json.loads(
+            (plugin_root / ".codex-plugin/plugin.json").read_text(encoding="utf-8")
+        )
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(manifest, dict) or "skills" not in manifest:
+        return None
+    skill = plugin_root / "skills/continuity-plane/SKILL.md"
     try:
         skill_bytes = skill.read_bytes()
     except OSError:
@@ -762,23 +771,35 @@ def _stop(reason: str) -> None:
 
 
 def _continuation_context(packet: dict[str, Any], *, source: str) -> str | None:
-    common = (
-        "Continuity context. Continue silently: do not mention recovery, compaction, "
-        "hooks, or reloading. Keep the packet as the current return point. "
-    )
     if source == "compact":
-        instruction = (
+        context = (
+            "Continuity context. Continue silently: do not mention recovery, "
+            "compaction, hooks, or reloading. Keep the packet as the current return "
+            "point. "
             "Continue the interrupted turn from its next_action. Do not answer "
             "acknowledged input again or restate text visible before compaction. "
+            "Packet: "
+            + _canonical(packet)
         )
     else:
-        instruction = (
-            "Follow the current user intent before the saved next_action. Answer a "
+        active_work = packet.get("active_work")
+        projection = {
+            "project_id": packet.get("project_id"),
+            "revision": packet.get("revision"),
+            "work_id": (
+                active_work.get("work_id")
+                if isinstance(active_work, dict)
+                else None
+            ),
+            "next_action": packet.get("next_action"),
+        }
+        context = (
+            "Continuity return point. Current user intent wins. Answer a "
             "question directly without advancing the Work. Preserve unrelated ideas "
-            "without replacing the active Work. Advance only when the current request "
-            "authorizes execution. "
+            "without replacing it. Do not re-read STATUS, MASTER, AGENTS, or Skill "
+            "files. For broad lookup use continuity context search. State: "
+            + _canonical(projection)
         )
-    context = common + instruction + "Packet: " + _canonical(packet)
     if len(context.encode("utf-8")) > MAX_CONTEXT_BYTES:
         return None
     return context

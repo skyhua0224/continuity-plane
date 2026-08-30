@@ -22,6 +22,7 @@ class M1011CodexPluginLifecycleTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.root = Path(__file__).resolve().parents[1]
         cls.plugin = cls.root / "integrations/codex/continuity-plane"
+        cls.state_plugin = cls.root / "integrations/codex/continuity-plane-state"
         cls.hooks_path = cls.plugin / "hooks/hooks.json"
         cls.script = cls.plugin / "scripts/continuity-hook.py"
 
@@ -246,7 +247,7 @@ printf '%s\\n' '{"status":"ok"}'
     def test_plugin_skill_avoids_reloading_governance_after_a_healthy_packet(
         self,
     ) -> None:
-        skill = (self.plugin / "skills/continuity-plane/SKILL.md").read_text(
+        skill = (self.state_plugin / "skills/continuity-plane/SKILL.md").read_text(
             encoding="utf-8"
         )
 
@@ -1608,8 +1609,11 @@ printf '%s\\n' '{"status":"ok"}'
         context = json.loads(completed.stdout)["hookSpecificOutput"][
             "additionalContext"
         ]
+        self.assertLessEqual(len(context.encode("utf-8")), 512)
         self.assertIn("Answer a question directly without advancing the Work", context)
+        self.assertIn("continuity context search", context)
         self.assertNotIn("perform only its next_action", context)
+        self.assertNotIn("claim-active", context)
 
     def test_auto_compact_uses_native_continuation_without_packet_injection(
         self,
@@ -1735,7 +1739,7 @@ printf '%s\\n' '{"status":"ok"}'
         completed, calls, observations = self._run_hook("SessionStart")
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertTrue(calls[0].startswith("resume "))
-        self.assertIn("--skill-lock ", calls[0])
+        self.assertNotIn("--skill-lock ", calls[0])
         output = json.loads(completed.stdout)
         context = output["hookSpecificOutput"]["additionalContext"]
         self.assertLessEqual(len(context.encode("utf-8")), 12 * 1024)

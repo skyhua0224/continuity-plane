@@ -14,6 +14,7 @@ class M1100CodexPluginProfileTests(unittest.TestCase):
         cls.root = Path(__file__).resolve().parents[1]
         cls.core = cls.root / "integrations/codex/continuity-plane"
         cls.state = cls.root / "integrations/codex/continuity-plane-state"
+        cls.search = cls.root / "integrations/codex/continuity-plane-search"
 
     def test_default_core_has_no_eager_mcp_surface(self) -> None:
         self.assertFalse((self.core / ".mcp.json").exists())
@@ -22,7 +23,21 @@ class M1100CodexPluginProfileTests(unittest.TestCase):
         )
         self.assertEqual(core_manifest["name"], "continuity-plane")
         self.assertTrue((self.core / "hooks/hooks.json").is_file())
-        self.assertTrue((self.core / "skills/continuity-plane/SKILL.md").is_file())
+        self.assertNotIn("skills", core_manifest)
+        tombstone = self.core / "skills/continuity-plane/SKILL.md"
+        self.assertTrue(tombstone.is_file())
+        self.assertIn("status: superseded", tombstone.read_text(encoding="utf-8"))
+
+    def test_bounded_search_is_an_explicit_optional_plugin(self) -> None:
+        search_manifest = json.loads(
+            (self.search / ".codex-plugin/plugin.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(search_manifest["name"], "continuity-plane-search")
+        search_skill = self.search / "skills/bounded-search/SKILL.md"
+        self.assertTrue(search_skill.is_file())
+        search_text = search_skill.read_text(encoding="utf-8")
+        self.assertIn("continuity context search", search_text)
+        self.assertLessEqual(len(search_text.encode("utf-8")), 1024)
         hooks = json.loads(
             (self.core / "hooks/hooks.json").read_text(encoding="utf-8")
         )["hooks"]
@@ -35,6 +50,9 @@ class M1100CodexPluginProfileTests(unittest.TestCase):
         self.assertEqual(state_manifest["name"], "continuity-plane-state")
         self.assertTrue((self.state / ".mcp.json").is_file())
         self.assertTrue((self.state / "scripts/continuity-mcp-server.py").is_file())
+        self.assertTrue(
+            (self.state / "skills/continuity-plane/SKILL.md").is_file()
+        )
         self.assertFalse((self.state / "hooks/hooks.json").exists())
 
     def test_public_marketplace_offers_core_and_state_separately(self) -> None:
@@ -49,7 +67,11 @@ class M1100CodexPluginProfileTests(unittest.TestCase):
 
             self.assertEqual(
                 [plugin["name"] for plugin in marketplace["plugins"]],
-                ["continuity-plane", "continuity-plane-state"],
+                [
+                    "continuity-plane",
+                    "continuity-plane-search",
+                    "continuity-plane-state",
+                ],
             )
             self.assertFalse(
                 (output / "plugins/continuity-plane/.mcp.json").exists()
@@ -61,6 +83,10 @@ class M1100CodexPluginProfileTests(unittest.TestCase):
                 text = (output / readme).read_text(encoding="utf-8")
                 self.assertIn(
                     "codex plugin add continuity-plane@continuity-plane",
+                    text,
+                )
+                self.assertIn(
+                    "codex plugin add continuity-plane-search@continuity-plane",
                     text,
                 )
                 self.assertIn(

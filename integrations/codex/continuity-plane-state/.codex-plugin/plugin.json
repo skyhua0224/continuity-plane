@@ -15,6 +15,7 @@
     "checkpoint",
     "collaboration"
   ],
+  "skills": "./skills/",
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Continuity Plane State",

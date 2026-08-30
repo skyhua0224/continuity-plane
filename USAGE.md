@@ -282,6 +282,16 @@ codex plugin add continuity-plane@continuity-plane
 `PreCompact`/`PostCompact` 执行 checkpoint 生命周期。普通问题不会推进保存的 Work，
 也不会输出恢复旁白。
 
+大型仓库希望显式启用有界 current-worktree 检索时安装：
+
+```bash
+codex plugin add continuity-plane-search@continuity-plane
+continuity context search --root . --query "Runtime" --max-results 40 --max-output-bytes 8192
+```
+
+该命令只读取 Git tracked current worktree，完整 JSON receipt 不超过指定字节预算；
+search plugin 只负责在适用任务中提示 Agent 优先调用该命令。
+
 需要在 Codex 内调用 State 工具时额外安装：
 
 ```bash
@@ -311,6 +321,7 @@ digest 失配或损坏 binding 会在 CLI/State 写入前拒绝，而不会静�
 ```bash
 codex plugin marketplace upgrade continuity-plane
 codex plugin add continuity-plane@continuity-plane
+codex plugin add continuity-plane-search@continuity-plane  # 仅在需要有界检索时
 codex plugin add continuity-plane-state@continuity-plane  # 仅在需要 State MCP 时
 ```
 

@@ -15,7 +15,6 @@
     "checkpoint",
     "compaction"
   ],
-  "skills": "./skills/",
   "interface": {
     "displayName": "Continuity Plane",
     "shortDescription": "\u538b\u7f29\u524d\u540e\u4fdd\u6301\u4efb\u52a1\u8fde\u7eed / Preserve work across compaction.",
