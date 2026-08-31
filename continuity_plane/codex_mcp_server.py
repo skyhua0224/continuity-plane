@@ -3,11 +3,15 @@
 
 from __future__ import annotations
 
+import atexit
 import json
 import hashlib
 import subprocess
 import sys
+import time
 from pathlib import Path
+
+from .light_observability import PolicyConfigError, SessionProbe, load_policy
 
 
 def _reply(request_id: object, result: dict) -> None:
@@ -23,17 +27,9 @@ def _error(request_id: object, code: int, message: str) -> None:
     )
 
 
-def _binding(root: Path) -> dict | None:
-    result = subprocess.run(
-        ["continuity", "resume", "--root", str(root)],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if result.returncode != 0:
-        return None
+def _binding_from_output(output: str) -> dict | None:
     try:
-        envelope = json.loads(result.stdout)
+        envelope = json.loads(output)
     except json.JSONDecodeError:
         return None
     if (
@@ -66,6 +62,22 @@ def _binding(root: Path) -> dict | None:
         "lease_valid": envelope.get("lease_valid") is True,
         "next_action": envelope.get("next_action"),
     }
+
+
+def _binding(root: Path) -> dict | None:
+    try:
+        result = subprocess.run(
+            ["continuity", "resume", "--root", str(root)],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if result.returncode != 0:
+        return None
+    return _binding_from_output(result.stdout)
 
 
 def _requested_root(value: object, active_root: Path | None) -> Path | None:
@@ -261,19 +273,34 @@ def _claim_recovery_binding_error(
 
 def main() -> int:
     session_roots: dict[str, Path] = {}
+    session_bindings: dict[str, dict] = {}
     active_root: Path | None = None
+    probes: dict[str, SessionProbe] = {}
+
+    def close_probes() -> None:
+        for probe in probes.values():
+            probe.close()
+
+    atexit.register(close_probes)
     for line in sys.stdin:
         try:
             request = json.loads(line)
         except json.JSONDecodeError:
             continue
+        if not isinstance(request, dict):
+            continue
         method = request.get("method")
         request_id = request.get("id")
         if method == "initialize":
+            initialize_params = request.get("params")
+            if not isinstance(initialize_params, dict):
+                initialize_params = {}
             _reply(
                 request_id,
                 {
-                    "protocolVersion": request.get("params", {}).get("protocolVersion", "2024-11-05"),
+                    "protocolVersion": initialize_params.get(
+                        "protocolVersion", "2024-11-05"
+                    ),
                     "capabilities": {"tools": {}},
                     "serverInfo": {"name": "continuity", "version": "0.1.0-alpha.10"},
                 },
@@ -488,6 +515,9 @@ def main() -> int:
             )
         elif method == "tools/call":
             params = request.get("params", {})
+            if not isinstance(params, dict):
+                _error(request_id, -32602, "params must be an object")
+                continue
             tool_name = params.get("name")
             if tool_name not in {
                 "continuity_resume",
@@ -501,6 +531,9 @@ def main() -> int:
                 _error(request_id, -32602, "unknown tool")
                 continue
             arguments = params.get("arguments", {})
+            if not isinstance(arguments, dict):
+                _error(request_id, -32602, "arguments must be an object")
+                continue
             root = arguments.get("root")
             if not isinstance(root, str) or not root:
                 _error(request_id, -32602, "root is required")
@@ -510,10 +543,7 @@ def main() -> int:
                 _error(request_id, -32000, "root does not match this MCP session project")
                 continue
             root_key = str(requested_root)
-            if tool_name == "continuity_resume":
-                session_roots[root_key] = requested_root
-                active_root = requested_root
-            elif root_key not in session_roots:
+            if tool_name != "continuity_resume" and root_key not in session_roots:
                 _error(
                     request_id,
                     -32001,
@@ -521,7 +551,36 @@ def main() -> int:
                 )
                 continue
             canonical_root = root_key
-            binding = None if tool_name == "continuity_resume" else _binding(requested_root)
+            try:
+                probe = probes.get(root_key)
+                if probe is None:
+                    probe = SessionProbe(requested_root, load_policy(requested_root))
+                    probes[root_key] = probe
+            except PolicyConfigError:
+                _error(
+                    request_id,
+                    -32004,
+                    "Continuity policy is invalid; this MCP session remains read-only",
+                )
+                continue
+            binding = (
+                None
+                if tool_name == "continuity_resume"
+                else session_bindings.get(root_key)
+            )
+            if tool_name in {"continuity_autorun", "continuity_claim_recover"}:
+                refresh_started = time.perf_counter()
+                binding = _binding(requested_root)
+                refresh_duration_ms = (time.perf_counter() - refresh_started) * 1000
+                probe.record_call(
+                    "continuity_binding_refresh",
+                    duration_ms=refresh_duration_ms,
+                    success=binding is not None,
+                )
+                if binding is None:
+                    session_bindings.pop(root_key, None)
+                else:
+                    session_bindings[root_key] = binding
             command = ["continuity", "resume", "--root", canonical_root]
             if tool_name == "continuity_autorun":
                 if _write_binding_error(request_id, binding=binding):
@@ -859,13 +918,71 @@ def main() -> int:
                 ]
                 if action == "reclaim":
                     command.extend(["--new-claim-id", new_claim_id])
+            started = time.perf_counter()
             result = _run_cli_with_retry(command, requested_root)
+            duration_ms = (time.perf_counter() - started) * 1000
             results = [result]
             failed = any(item.returncode != 0 for item in results)
             output = [item.stdout or item.stderr for item in results]
             text = "\n".join(item.rstrip() for item in output if item.strip())
             if not text:
                 text = "operation failed" if failed else "operation completed"
+            if tool_name == "continuity_resume" and not failed:
+                resumed_binding = _binding_from_output(result.stdout)
+                if resumed_binding is None:
+                    failed = True
+                    text = "Continuity resume returned an invalid recovery envelope"
+                    session_roots.pop(root_key, None)
+                    session_bindings.pop(root_key, None)
+                else:
+                    session_roots[root_key] = requested_root
+                    session_bindings[root_key] = resumed_binding
+                    active_root = requested_root
+            probe_tool_name = tool_name
+            if tool_name == "continuity_checkpoint":
+                probe_tool_name = f"{tool_name}:{arguments.get('action')}"
+            request_bytes = len(
+                json.dumps(arguments, ensure_ascii=False, separators=(",", ":")).encode(
+                    "utf-8"
+                )
+            )
+            response_bytes = len(text.encode("utf-8"))
+            probe.record_call(
+                probe_tool_name,
+                duration_ms=duration_ms,
+                success=not failed,
+                request_bytes=request_bytes,
+                response_bytes=response_bytes,
+            )
+            if tool_name == "continuity_resume":
+                probe.boundary(
+                    "resume",
+                    success=not failed,
+                    duration_ms=duration_ms,
+                    extra={
+                        "packet_bytes": response_bytes if not failed else None,
+                        "duplicate_resumes": probe.duplicate_resumes,
+                    },
+                )
+            elif tool_name in {
+                "continuity_autorun",
+                "continuity_work_complete",
+                "continuity_work_transition",
+                "continuity_work_activate",
+                "continuity_claim_recover",
+            }:
+                refresh_started = time.perf_counter()
+                refreshed_binding = _binding(requested_root)
+                refresh_duration_ms = (time.perf_counter() - refresh_started) * 1000
+                probe.record_call(
+                    "continuity_binding_refresh",
+                    duration_ms=refresh_duration_ms,
+                    success=refreshed_binding is not None,
+                )
+                if refreshed_binding is None:
+                    session_bindings.pop(root_key, None)
+                else:
+                    session_bindings[root_key] = refreshed_binding
             _reply(
                 request_id,
                 {
@@ -875,6 +992,8 @@ def main() -> int:
             )
         elif request_id is not None:
             _error(request_id, -32601, f"method not found: {method}")
+    close_probes()
+    atexit.unregister(close_probes)
     return 0
 
 
