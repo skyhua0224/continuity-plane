@@ -5,6 +5,7 @@ import importlib.util
 import hashlib
 import os
 import subprocess
+import sys
 import tempfile
 import threading
 import unittest
@@ -472,6 +473,19 @@ class ObservationTests(unittest.TestCase):
 
 
 class MCPProbeTests(unittest.TestCase):
+    def test_cli_commands_use_current_interpreter_without_path_lookup(self) -> None:
+        self.assertEqual(
+            codex_mcp_server._cli_command("resume", "--root", "project"),
+            [
+                sys.executable,
+                "-m",
+                "continuity_plane.cli",
+                "resume",
+                "--root",
+                "project",
+            ],
+        )
+
     def test_disabled_probes_do_not_persist_successful_resume(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory)

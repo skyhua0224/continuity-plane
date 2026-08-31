@@ -14,6 +14,12 @@ from pathlib import Path
 from .light_observability import PolicyConfigError, SessionProbe, load_policy
 
 
+def _cli_command(*arguments: str) -> list[str]:
+    """Run the CLI with the MCP server interpreter, independent of PATH."""
+
+    return [sys.executable, "-m", "continuity_plane.cli", *arguments]
+
+
 def _reply(request_id: object, result: dict) -> None:
     print(json.dumps({"jsonrpc": "2.0", "id": request_id, "result": result}), flush=True)
 
@@ -67,7 +73,7 @@ def _binding_from_output(output: str) -> dict | None:
 def _binding(root: Path) -> dict | None:
     try:
         result = subprocess.run(
-            ["continuity", "resume", "--root", str(root)],
+            _cli_command("resume", "--root", str(root)),
             capture_output=True,
             text=True,
             check=False,
@@ -581,18 +587,17 @@ def main() -> int:
                     session_bindings.pop(root_key, None)
                 else:
                     session_bindings[root_key] = binding
-            command = ["continuity", "resume", "--root", canonical_root]
+            command = _cli_command("resume", "--root", canonical_root)
             if tool_name == "continuity_autorun":
                 if _write_binding_error(request_id, binding=binding):
                     continue
-                command = [
-                    "continuity",
+                command = _cli_command(
                     "autorun",
                     "--root",
                     canonical_root,
                     "--session-id",
                     "mcp-" + hashlib.sha256(canonical_root.encode()).hexdigest()[:32],
-                ]
+                )
             elif tool_name == "continuity_checkpoint":
                 action = arguments.get("action")
                 if action not in {"create", "verify"}:
@@ -602,13 +607,12 @@ def main() -> int:
                     request_id, binding=binding
                 ):
                     continue
-                command = [
-                    "continuity",
+                command = _cli_command(
                     "checkpoint",
                     action,
                     "--root",
                     canonical_root,
-                ]
+                )
             elif tool_name == "continuity_work_complete":
                 work_id = arguments.get("work_id")
                 claim_id = arguments.get("claim_id")
@@ -634,8 +638,7 @@ def main() -> int:
                     work_id=work_id,
                 ):
                     continue
-                command = [
-                    "continuity",
+                command = _cli_command(
                     "work",
                     "complete",
                     "--root",
@@ -646,7 +649,7 @@ def main() -> int:
                     claim_id,
                     "--actor-ref",
                     actor_ref,
-                ]
+                )
                 for evidence_file in evidence_files:
                     command.extend(["--evidence-file", evidence_file])
             elif tool_name == "continuity_work_transition":
@@ -693,8 +696,7 @@ def main() -> int:
                     successor_claim_id=values["successor_claim_id"],
                 ):
                     continue
-                command = [
-                    "continuity",
+                command = _cli_command(
                     "work",
                     "transition",
                     "--root",
@@ -715,7 +717,7 @@ def main() -> int:
                     values["workspace_root"],
                     "--expected-head",
                     values["expected_head"],
-                ]
+                )
                 for scope_ref in scopes:
                     command.extend(["--successor-scope", scope_ref])
                 if remaining_id is not None:
@@ -828,8 +830,7 @@ def main() -> int:
                     binding=binding,
                 ):
                     continue
-                command = [
-                    "continuity",
+                command = _cli_command(
                     "work",
                     "activate",
                     "--root",
@@ -844,7 +845,7 @@ def main() -> int:
                     arguments["claim_id"],
                     "--execution-class",
                     execution_class,
-                ]
+                )
                 for scope_ref in scope:
                     command.extend(["--scope", scope_ref])
                 if execution_class == "delivery":
@@ -902,8 +903,7 @@ def main() -> int:
                     new_claim_id=new_claim_id,
                 ):
                     continue
-                command = [
-                    "continuity",
+                command = _cli_command(
                     "work",
                     "recover",
                     action,
@@ -915,7 +915,7 @@ def main() -> int:
                     actor_ref,
                     "--lease-ttl-ms",
                     str(lease_ttl_ms),
-                ]
+                )
                 if action == "reclaim":
                     command.extend(["--new-claim-id", new_claim_id])
             started = time.perf_counter()
