@@ -1,7 +1,7 @@
 {
   "name": "continuity-plane",
-  "version": "0.1.0-alpha.9.3",
-  "description": "Bounded recovery, checkpoint canaries, and local continuity tools for Codex",
+  "version": "0.1.0-alpha.10",
+  "description": "Zero-friction bounded recovery and checkpoint canaries for Codex",
   "author": {
     "name": "SkyHua"
   },
@@ -15,8 +15,6 @@
     "checkpoint",
     "compaction"
   ],
-  "skills": "./skills/",
-  "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Continuity Plane",
     "shortDescription": "压缩前后保持任务连续 / Preserve work across compaction.",

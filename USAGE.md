@@ -10,7 +10,7 @@ Windows AMD64 完成安装、verify 和卸载。
 ### 从 PyPI 安装
 
 ```bash
-python -m pip install continuity-plane==0.1.0a9
+python -m pip install continuity-plane==0.1.0a10
 ```
 
 从源码 checkout 开发时：
@@ -26,7 +26,7 @@ python -m venv .venv
 下载 wheel 或 source archive：
 
 ```bash
-python -m pip install /path/to/continuity_plane-0.1.0a9-py3-none-any.whl
+python -m pip install /path/to/continuity_plane-0.1.0a10-py3-none-any.whl
 ```
 
 ### 全局安装，管理多个项目
@@ -36,7 +36,7 @@ python -m pip install /path/to/continuity_plane-0.1.0a9-py3-none-any.whl
 ```bash
 python3 -m venv ~/.local/share/continuity-plane/venv
 ~/.local/share/continuity-plane/venv/bin/python \
-  -m pip install continuity-plane==0.1.0a9
+  -m pip install continuity-plane==0.1.0a10
 
 ~/.local/share/continuity-plane/venv/bin/continuity \
   init --root /path/to/project --project-id my-project
@@ -47,7 +47,7 @@ python3 -m venv ~/.local/share/continuity-plane/venv
 ```bash
 cd /path/to/project
 python3 -m venv .venv
-.venv/bin/python -m pip install continuity-plane==0.1.0a9
+.venv/bin/python -m pip install continuity-plane==0.1.0a10
 .venv/bin/continuity init --root . --project-id my-project
 ```
 
@@ -191,7 +191,7 @@ continuity work activate \
 个人想进行 SQL 检查、备份或让多个本地 worker 共用状态时，可以选择 PostgreSQL：
 
 ```bash
-python -m pip install 'continuity-plane[postgres]==0.1.0a9'
+python -m pip install 'continuity-plane[postgres]==0.1.0a10'
 ```
 
 当前 alpha CLI 仍默认 SQLite。PostgreSQL 通过显式 Python adapter 使用：
@@ -264,29 +264,44 @@ continuity rollback --root /path/to/target
 ## Agent 接入
 
 控制面安装在项目旁边，通过 CLI、Python API 或 provider adapter 使用。核心包不要求
-安装 Agent plugin。Codex 用户可以额外安装公开 plugin，让宿主自动加载 packet、执行
-压缩前后 checkpoint、恢复 canary 和副作用预检。plugin 不直接修改数据库；写操作
-只能通过受 authorization、revision/CAS、validator、claim 和 checkpoint 约束的
-State MCP 工具提交。
+Agent plugin。默认 Codex plugin 只提供有界 packet 和 checkpoint lifecycle，不注册
+MCP 写工具，也不阻断普通开发。需要显式 State 操作时再安装 advanced State plugin；
+写入仍经过 authorization、revision/CAS、validator、claim 和 checkpoint。
 
 ### 安装公开 Codex plugin
 
 先安装核心包，再把本项目 GitHub 仓库作为 marketplace：
 
 ```bash
-python -m pip install continuity-plane==0.1.0a9
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.9.3
+python -m pip install continuity-plane==0.1.0a10
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.10
 codex plugin add continuity-plane@continuity-plane
 ```
 
-安装后新建 Session。Codex plugin 会在 `SessionStart` 根据当前项目根目录发现并绑定
-`.continuity/`，在 `PreCompact`/`PostCompact` 执行 checkpoint 生命周期，并在需要时对
-push、PR、merge、deploy 和远端安装做 claim/effect 预检。普通问题不会输出恢复旁白。
+安装后新建 Session。core plugin 在 `SessionStart` 加载有界 packet，并在
+`PreCompact`/`PostCompact` 执行 checkpoint 生命周期。普通问题不会推进保存的 Work，
+也不会输出恢复旁白。
+
+大型仓库希望显式启用有界 current-worktree 检索时安装：
+
+```bash
+codex plugin add continuity-plane-search@continuity-plane
+continuity context search --root . --query "Runtime" --max-results 40 --max-output-bytes 8192
+```
+
+该命令只读取 Git tracked current worktree，完整 JSON receipt 不超过指定字节预算；
+search plugin 只负责在适用任务中提示 Agent 优先调用该命令。
+
+需要在 Codex 内调用 State 工具时额外安装：
+
+```bash
+codex plugin add continuity-plane-state@continuity-plane
+```
 
 ### 一个 Session 管理多个项目
 
-当同一个 Session 同时处理治理仓、实现仓和另一个项目时，先对每个项目的治理根执行
-一次显式 resume：
+安装 advanced State plugin 后，同一个 Session 同时处理治理仓、实现仓和另一个项目时，
+可以对各项目治理根执行显式 resume：
 
 ```text
 continuity_resume(root=/path/to/project-a)
@@ -306,6 +321,8 @@ digest 失配或损坏 binding 会在 CLI/State 写入前拒绝，而不会静�
 ```bash
 codex plugin marketplace upgrade continuity-plane
 codex plugin add continuity-plane@continuity-plane
+codex plugin add continuity-plane-search@continuity-plane  # 仅在需要有界检索时
+codex plugin add continuity-plane-state@continuity-plane  # 仅在需要 State MCP 时
 ```
 
 如果某个项目暂时不需要宿主 hook，保留核心 CLI 即可；停用 plugin 不会删除项目的
@@ -406,7 +423,7 @@ template 和 content-addressed artifact。所有 claim 关闭后，才能归档�
 
 当前版本同时发布到 PyPI 和 GitHub Release：
 
-<https://pypi.org/project/continuity-plane/0.1.0a9.1/>  
+<https://pypi.org/project/continuity-plane/0.1.0a10/>  
 <https://github.com/skyhua0224/continuity-plane/releases>
 
 当前公开版本使用受控 PyPI token 发布。GitHub Actions OIDC workflow 和 `pypi`

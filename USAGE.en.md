@@ -11,7 +11,7 @@ AMD64.
 ### Install From PyPI
 
 ```bash
-python -m pip install continuity-plane==0.1.0a9
+python -m pip install continuity-plane==0.1.0a10
 ```
 
 For a source checkout:
@@ -27,7 +27,7 @@ Download a wheel or source archive from
 [Continuity Plane Releases](https://github.com/skyhua0224/continuity-plane/releases):
 
 ```bash
-python -m pip install /path/to/continuity_plane-0.1.0a9-py3-none-any.whl
+python -m pip install /path/to/continuity_plane-0.1.0a10-py3-none-any.whl
 ```
 
 ### Install Once For Many Projects
@@ -38,7 +38,7 @@ projects:
 ```bash
 python3 -m venv ~/.local/share/continuity-plane/venv
 ~/.local/share/continuity-plane/venv/bin/python \
-  -m pip install continuity-plane==0.1.0a9
+  -m pip install continuity-plane==0.1.0a10
 ```
 
 Run the installed CLI with an explicit project root whenever the command is not
@@ -56,7 +56,7 @@ For a project that pins its own control-plane version:
 ```bash
 cd /path/to/project
 python3 -m venv .venv
-.venv/bin/python -m pip install continuity-plane==0.1.0a9
+.venv/bin/python -m pip install continuity-plane==0.1.0a10
 .venv/bin/continuity init --root . --project-id my-project
 ```
 
@@ -223,7 +223,7 @@ single-user installation. Install the optional extra in the environment that
 will run the adapter:
 
 ```bash
-python -m pip install 'continuity-plane[postgres]==0.1.0a9'
+python -m pip install 'continuity-plane[postgres]==0.1.0a10'
 ```
 
 The alpha CLI still defaults to SQLite. PostgreSQL is selected by an explicit
@@ -305,29 +305,42 @@ checkpoint mismatch fails before replacement.
 
 ## Agent Integration
 
-The control plane is installed beside the project and accessed by an Agent
-through CLI, Python API, or a provider adapter. A provider-specific plugin is
-not required by the core package. Codex users can optionally install the public
-plugin to automate packet loading, lifecycle checkpoints, recovery canaries, and
-effect preflight. It does not write the database directly; writes can only use
-State MCP tools guarded by authorization, revision/CAS, validators, claims, and
-checkpoints.
+The control plane is installed beside the project and accessed through CLI,
+Python API, or a provider adapter. The core package requires no Agent plugin.
+The default Codex plugin provides bounded packets and checkpoint lifecycle only;
+it registers no MCP write tools and does not block ordinary development. Install
+the advanced State plugin only for explicit State operations.
 
 ### Install The Public Codex Plugin
 
 Install the core package, then add this GitHub repository as a marketplace:
 
 ```bash
-python -m pip install continuity-plane==0.1.0a9
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.9.3
+python -m pip install continuity-plane==0.1.0a10
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.10
 codex plugin add continuity-plane@continuity-plane
 ```
 
-Start a new Session after installation. The plugin discovers and binds the
-project's `.continuity/` directory at SessionStart, runs checkpoint lifecycle
-hooks around compaction, and preflights claim/effect scope before push, PR,
-merge, deploy, and remote installation. Ordinary answers stay free of recovery
-narration.
+Start a new Session after installation. The core plugin loads one bounded packet
+at SessionStart and runs checkpoint lifecycle hooks around compaction. Questions
+do not advance the saved Work or emit recovery narration.
+
+Install the search plugin for explicit bounded current-worktree lookup in large repositories:
+
+```bash
+codex plugin add continuity-plane-search@continuity-plane
+continuity context search --root . --query "Runtime" --max-results 40 --max-output-bytes 8192
+```
+
+The command reads only the Git-tracked current worktree and bounds the complete
+JSON receipt. The search plugin only prompts the Agent to prefer this command
+when the task matches.
+
+Install the advanced plugin only when Codex needs State tools:
+
+```bash
+codex plugin add continuity-plane-state@continuity-plane
+```
 
 To upgrade the plugin, refresh the marketplace, reinstall it, and start a new
 Session:
@@ -335,6 +348,8 @@ Session:
 ```bash
 codex plugin marketplace upgrade continuity-plane
 codex plugin add continuity-plane@continuity-plane
+codex plugin add continuity-plane-search@continuity-plane  # bounded lookup only
+codex plugin add continuity-plane-state@continuity-plane  # only for State MCP
 ```
 
 Projects that do not need host hooks can keep using the core CLI alone; disabling
@@ -342,8 +357,9 @@ the plugin does not delete `.continuity/` state.
 
 ### One Session Across Multiple Projects
 
-When one Session works on a governance root, an implementation project, and
-another project, explicitly resume each project's governance root first:
+With the advanced State plugin installed, a Session spanning a governance root,
+an implementation project, and another project can explicitly resume each
+governance root:
 
 ```text
 continuity_resume(root=/path/to/project-a)
@@ -482,7 +498,7 @@ storage.
 
 The current version is available from PyPI and GitHub Releases:
 
-<https://pypi.org/project/continuity-plane/0.1.0a9.1/>  
+<https://pypi.org/project/continuity-plane/0.1.0a10/>  
 <https://github.com/skyhua0224/continuity-plane/releases>
 
 The current public release used a controlled PyPI token. A GitHub Actions OIDC

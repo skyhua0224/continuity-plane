@@ -14,23 +14,35 @@ after compaction, task switches, crashes, and handoffs is deterministic.
 Install one CLI first:
 
 ```bash
-python -m pip install continuity-plane==0.1.0a9
+python -m pip install continuity-plane==0.1.0a10
 ```
 
 ### Codex plugin (optional)
 
-The core package does not depend on a plugin. To enable automatic bounded packet loading,
-pre/post-compaction checkpoints, recovery canaries, and external-effect preflight, install the
-Codex plugin from this repository's public GitHub marketplace:
+The core package does not depend on a plugin. The default `continuity-plane` plugin is a
+lightweight core for bounded recovery and checkpoint lifecycle. It registers no State MCP tools
+and does not block ordinary development commands:
 
 ```bash
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.9.3
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.10
 codex plugin add continuity-plane@continuity-plane
 ```
 
-Start a new Session after installation. The plugin discovers the current project root and binds
-the local `.continuity/` state automatically. It is only a provider integration; authoritative
-state remains managed by the CLI/State MCP.
+Install the search plugin separately for bounded current-worktree lookup in large repositories:
+
+```bash
+codex plugin add continuity-plane-search@continuity-plane
+```
+
+Install the advanced State plugin only when Codex must call resume, claim, checkpoint, or atomic
+Work transition tools:
+
+```bash
+codex plugin add continuity-plane-state@continuity-plane
+```
+
+Start a new Session after installation. Authoritative state remains managed by the local
+CLI/State MCP.
 
 ### One Project
 
@@ -162,7 +174,7 @@ are optional enhancements.
 ## Documentation
 
 - [Usage guide](USAGE.en.md)
-- [Alpha.9.1 patch and complete change notes](CHANGELOG.en.md#010-alpha91)
+- [Complete alpha.10 changes and upgrade notes](CHANGELOG.en.md#010-alpha10)
 - [Architecture](docs/architecture.en.md)
 - [Configuration](docs/configuration.en.md)
 - [Python API](docs/api.en.md)
@@ -175,7 +187,7 @@ are optional enhancements.
 
 ## Release And License
 
-The current alpha is available from [PyPI](https://pypi.org/project/continuity-plane/0.1.0a9.1/)
+The current alpha is available from [PyPI](https://pypi.org/project/continuity-plane/0.1.0a10/)
 and [GitHub Releases](https://github.com/skyhua0224/continuity-plane/releases).
 The GitHub release also provides the core wheel, source archive, Codex plugin marketplace, and SHA256SUMS; see the
 [changelog](CHANGELOG.en.md).

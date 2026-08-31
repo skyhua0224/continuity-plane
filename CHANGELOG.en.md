@@ -2,64 +2,55 @@
 
 [中文](CHANGELOG.md)
 
-## 0.1.0-alpha.9.3
+## 0.1.0-alpha.10
 
-### Fixes
+### Changes Since 0.1.0-alpha.9
 
-- Support hosts that provide `tea pulls create` as the tool name instead of placing it in `tool_input.command`.
-- Keep project binding, active-claim, and `source-control.pr` checks active for this tool shape.
+- Split the Codex integration into a lightweight core, an optional bounded-search profile, and
+  an optional State MCP profile. The core registers only `SessionStart`, `PreCompact`, and
+  `PostCompact`; it registers no `PreToolUse`, `PostToolUse`, or command-effect gate.
+- The core now defaults to non-blocking `auto`: it creates a checkpoint before compaction and
+  verifies a canary afterward. Recovery failures, stale sources, and unavailable State adapters
+  are recorded and normal development continues without making the business Session read-only.
+- Compaction recovery uses Codex native continuation instead of reinjecting a full Execution
+  Packet after automatic compaction, reducing model-visible recovery input and repeated answers.
+- Added `continuity context search`, a bounded current-worktree search with a complete JSON receipt
+  bound to the Git revision, file hash, line hash, and output budget. Automatic Skill adoption still
+  requires a project/task matched evidence gate.
+- Added streaming sanitized provider JSONL observation and matched A/B comparison tools covering
+  input/output tokens, tool output, Skill/governance reads, compaction chains, and repeated answers;
+  raw transcripts never enter Git.
 
-### Verification
+### Verification And Boundaries
 
-- Codex plugin lifecycle `33/33` passes, including a PR tool call without a command field.
-
-### Installation
-
-```bash
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.9.3
-codex plugin add continuity-plane@continuity-plane
-```
-
-## 0.1.0-alpha.9.2
-
-### Fixes
-
-- MCP resume now recognizes the namespaced `continuity/continuity_resume` tool name so project binding persists across Codex hosts.
-- When a host omits an explicit `workdir`, the effect gate keeps the bound project identity and infers the target repository from the active claim's registered delivery workspace instead of using an unrelated cwd.
-
-### Verification
-
-- Codex plugin lifecycle `32/32` passes, including no-workdir Foundation-style push/PR routing and cross-project binding regressions.
-- The public tree remains sanitized; the core PyPI package remains `0.1.0a9`.
-
-### Installation
-
-```bash
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.9.2
-codex plugin add continuity-plane@continuity-plane
-```
-
-## 0.1.0-alpha.9.1
-
-### Fixes And Improvements
-
-- Fixed persistence of Session bindings, observations, and recovery budgets when a Codex host omits `PLUGIN_DATA`; the plugin now falls back to a stable per-user data directory.
-- Accepted both the short `continuity_resume` tool name and the full MCP name so post-resume binding works consistently across Codex hosts.
-- Resolved effect commands through registered delivery workspaces first, validating repository digest, allowed effects, and unique matches so a stale `cwd` cannot route a multi-project Session to the wrong governance root.
-- Added the public plugin `PreToolUse` effect-scope gate: push, merge, deployment, and release commands are denied before execution when there is no claim, the scope does not match, or the workspace is unregistered.
-
-### Verification
-
-- Public smoke/contracts/benchmark `5/5` pass; plugin script compilation and JSON contract validation pass.
-- The patch preserves alpha.9's sanitized public boundary; business repositories, internal state, and raw sessions are excluded from the public tree.
+- Core profile, State MCP, lifecycle, and public-builder focused tests pass; three repositories
+  reached the shell for `6/6` no-effect probes, with zero command-effect gates.
+- Two real matched A/B profiles each have `3+3` samples: median input tokens decreased `12.14%`
+  and `2.36%`; median output tokens decreased `28.84%` and `13.70%`; tool output decreased
+  `41.46%` for one profile and increased `2.62%` for the other. Both consistency veto counts are
+  `0`, but the `>=30%` input gate did not pass, so alpha.10 makes no universal token-savings claim.
+- Alpha.10 remains a prerelease. Natural `1M/900K` long-session compaction interval, recovery-read,
+  and accepted-Work results remain under long-running measurement; the Docmost connector, Obsidian
+  Canvas/Bases, and shared-strong deployment remain planned capabilities.
 
 ### Installation
 
+Core package:
+
 ```bash
-python -m pip install continuity-plane==0.1.0a9
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.9.1
+python -m pip install continuity-plane==0.1.0a10
+```
+
+Codex plugin:
+
+```bash
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.10
 codex plugin add continuity-plane@continuity-plane
 ```
+
+Install `continuity-plane-search` separately for large-repository lookup and
+`continuity-plane-state` only when explicit State MCP tools are needed. Start a new Session after
+installing or upgrading the plugin.
 
 ## 0.1.0-alpha.9
 

@@ -22,6 +22,7 @@ from typing import Any
 import yaml
 
 from .artifact_store import ArtifactRef, LocalArtifactStore
+from .bounded_code_search import bounded_git_search
 from .checkpoint import (
     CheckpointError,
     CheckpointStaleError,
@@ -70,7 +71,7 @@ from .state_mcp import (
     StateMCPService,
 )
 
-VERSION = "0.1.0a9"
+VERSION = "0.1.0a10"
 _PROJECT_FIELDS = {
     "schema_version",
     "project_id",
@@ -360,6 +361,17 @@ def _state_show(args: argparse.Namespace) -> int:
             sort_keys=True,
         )
     )
+    return 0
+
+
+def _context_search(args: argparse.Namespace) -> int:
+    receipt = bounded_git_search(
+        Path(args.root),
+        query=args.query,
+        max_results=args.max_results,
+        max_output_bytes=args.max_output_bytes,
+    )
+    print(json.dumps(receipt, ensure_ascii=False, sort_keys=True))
     return 0
 
 
@@ -2080,12 +2092,56 @@ def _work_transition(args: argparse.Namespace) -> int:
     except ValueError as exc:
         return deny("source_fresh", message=str(exc))
     try:
-        workspace = _verified_workspace(
-            root,
-            args.workspace_root,
-            expected_head=args.expected_head,
-            expected_ref=args.expected_ref,
-        )
+        workspace_common = _git_common_dir_sha256(Path(args.workspace_root).resolve())
+        project_common = _git_common_dir_sha256(root)
+        if workspace_common == project_common:
+            workspace = _verified_workspace(
+                root,
+                args.workspace_root,
+                expected_head=args.expected_head,
+                expected_ref=args.expected_ref,
+            )
+        else:
+            repo_scopes = [
+                scope["scope_ref"]
+                for scope in successor_scopes
+                if scope["scope_kind"] == "repo"
+            ]
+            if len(repo_scopes) != 1:
+                raise ValueError("transition_gate:workspace_repository")
+            repo_ref = repo_scopes[0]
+            if repo_ref.startswith("repo://"):
+                workspace_id = repo_ref.removeprefix("repo://")
+            elif repo_ref.startswith("//"):
+                # CLI scope parsing historically stores `repo://id` as kind
+                # `repo` with reference `//id`; accept both encodings.
+                workspace_id = repo_ref.removeprefix("//")
+            else:
+                workspace_id = repo_ref
+            if not workspace_id or _ID_RE.fullmatch(workspace_id) is None:
+                raise ValueError("transition_gate:workspace_repository")
+            effect_scopes = [
+                scope["scope_ref"]
+                for scope in successor_scopes
+                if scope["scope_kind"] == "effect"
+            ]
+            workspace = _verified_delivery_workspace(
+                root,
+                args.workspace_root,
+                workspace_id=workspace_id,
+                allowed_effects=effect_scopes,
+                expected_head=args.expected_head,
+                expected_ref=args.expected_ref,
+            )
+            workspace = {
+                key: workspace[key]
+                for key in (
+                    "head_commit",
+                    "clean",
+                    "expected_ref",
+                    "expected_ref_commit",
+                )
+            }
     except ValueError as exc:
         marker = str(exc)
         gate = marker.removeprefix("transition_gate:")
@@ -3803,6 +3859,18 @@ def build_parser() -> argparse.ArgumentParser:
     status_render = status_commands.add_parser("render", help="render current bilingual STATUS")
     status_render.add_argument("--root", default=".")
     status_render.set_defaults(handler=_status_render)
+    context = commands.add_parser(
+        "context", help="query bounded current repository evidence"
+    )
+    context_commands = context.add_subparsers(dest="context_command", required=True)
+    context_search = context_commands.add_parser(
+        "search", help="search tracked current-worktree text within an output budget"
+    )
+    context_search.add_argument("--root", default=".")
+    context_search.add_argument("--query", required=True)
+    context_search.add_argument("--max-results", type=int, default=40)
+    context_search.add_argument("--max-output-bytes", type=int, default=8192)
+    context_search.set_defaults(handler=_context_search)
     attach = commands.add_parser("attach", help="attach existing governance documents")
     attach_commands = attach.add_subparsers(dest="attach_command", required=True)
     plan = attach_commands.add_parser("plan", help="create a candidate import proposal")
@@ -3971,7 +4039,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    if hasattr(args, "root"):
+    if hasattr(args, "root") and getattr(args, "command", None) != "context":
         try:
             args.root = str(resolve_control_root(args.root))
         except WorkspaceBindingError as exc:
