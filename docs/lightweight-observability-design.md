@@ -50,15 +50,21 @@ Work、claim、revision、checkpoint 和完成状态已经由 State/Event Log �
 
 默认需要持久化的事件只有：
 
-- `session_start`；
-- `pre_compact`；
-- `post_compact`；
+- Hook 生命周期：`session-start`、`precompact`、`postcompact`、`autorun`、
+  `hook-error`；
+- MCP 边界：`resume`、`state_write_completed`、`state_write_failed`、
+  `tool_call_failed`、`slow_call`、`session_end`；
+- `diagnostic` 模式额外允许 `tool_call`。
+
+`probes_enabled: false` 关闭普通计数、慢调用和资源采样，但不关闭以下安全记录：
+
 - `state_write_completed`；
 - `state_write_failed`；
-- `session_end`。
+- `tool_call_failed`。
 
 `resume`、`health`、`audit_verify` 等普通读取不逐条写详细记录，只在 Session 汇总中
-累加计数、字节数和耗时。慢调用或失败调用例外。
+累加计数、字节数和耗时。慢调用或失败调用例外。关闭可选探针后，如果产生过上述强制
+安全记录，仍写 `session_end` 作为 retention 的可回收边界。
 
 ### 3. token 与本地字节分开
 
@@ -172,14 +178,15 @@ v1 不做自动调参。只有当多个版本积累了足够样本，并且策�
 ```json
 {
   "schema_version": "context.light-observation/v1alpha1",
-  "event_type": "post_compact",
+  "event_type": "postcompact",
   "observed_at_utc": "2026-08-29T09:00:00.000000+00:00",
   "session_sha256": "...",
   "turn_sha256": "...",
   "project_sha256": "...",
+  "policy_sha256": "...",
+  "preset": "balanced",
   "success": true,
   "duration_ms": 18.4,
-  "state_revision": 42,
   "packet_bytes": 5928,
   "canary_passed": true
 }
@@ -191,9 +198,9 @@ v1 不做自动调参。只有当多个版本积累了足够样本，并且策�
 - `event_type`：固定枚举；
 - `observed_at_utc`：UTC 时间；
 - `session_sha256`、`turn_sha256`、`project_sha256`：隐私化关联 ID；
+- `policy_sha256`、`preset`：本次 Session 固定的策略标识；
 - `success`：布尔结果；
-- `duration_ms`：边界操作耗时；
-- `state_revision`：操作完成后观察到的 State revision。
+- `duration_ms`：边界操作耗时。
 
 ### 按需字段
 
@@ -222,21 +229,25 @@ v1 不做自动调参。只有当多个版本积累了足够样本，并且策�
   "read_calls": 8,
   "write_calls": 2,
   "failed_calls": 0,
-  "compactions": 1,
-  "accepted_work": 1,
-  "packet_bytes_total": 5928,
-  "tool_output_bytes_total": 21140,
-  "provider_usage_available": false
+  "resume_calls": 1,
+  "duplicate_resumes": 0,
+  "request_bytes_total": 512,
+  "response_bytes_total": 21140,
+  "latency_buckets": "0,1,4,3,2,0,0,0,0",
+  "observation_degraded": false
 }
 ```
 
 该汇总足以计算：
 
-- 恢复成功率；
-- 每次可见压缩完成的 accepted Work；
-- 压缩后恢复字节与读取预算；
-- 恢复到首个成功 State 写或有效动作的耗时；
-- provider usage 可用时的 tokens per accepted Work。
+- MCP 读写与失败调用数量；
+- 重复 resume 比例；
+- 请求/响应本地字节量；
+- 固定桶调用延迟分布；
+- observation 是否发生降级。
+
+恢复、压缩和 canary 结果从对应 Hook 边界事件统计。只有 host 将 token usage 明确提供给
+observation 合同时，报告才允许计算 token 指标；当前实现默认标记为不可用。
 
 ## 资源采样
 
@@ -250,36 +261,40 @@ v1 不做自动调参。只有当多个版本积累了足够样本，并且策�
 - 调用耗时超过 `slow_call_threshold_ms`，默认 1000 ms；
 - 用户显式调用 health/diagnostic。
 
-采样字段只保留 RSS、State 存储字节、Continuity 总字节和日志总字节。Python heap、
-文件系统总量和逐字段 delta 留在 diagnostic 输出，不进入默认持久日志。
+采样字段只保留当前 RSS（Linux/Windows；其他 POSIX 无当前值时明确使用
+`peak_rss_bytes`）、State 存储字节和当前 Session 日志字节。Python heap、文件系统
+总量和逐字段 delta 不进入默认持久日志。
 
 ## 持久化和校验
 
 ### 写入
 
-- 每个 Session 使用独立 JSONL 文件，避免多进程竞争同一文件；
+- 每个 Session 使用独立 JSONL 文件；同一 Session 的多 Hook 进程通过进程内锁和操作
+  系统文件锁串行追加；
 - 每条记录使用 canonical JSON；
-- 保留分片内 SHA-256 chain 和关闭时 seal；
-- 默认每个边界或 State 写最多执行一次 `fsync`；
+- observation 不承担 State authority，因此不增加 hash chain、seal 或逐记录 `fsync`；
 - 普通读取计数保存在内存中，在 Session 汇总时一次写入；
-- 进程异常退出时允许缺少 `session_end`，下一次启动写 `session_recovered`。
+- MCP 正常结束时写 `session_end`；Hook-only 或进程异常退出的文件允许缺少该事件，并由
+  保守的 orphan retention 处理。
 
-### 启动校验
+### 后续完整性校验（未实现）
 
-启动只校验：
+v1 不在 SessionStart 扫描或重放历史 observation。若未来增加 observation 完整性校验，
+默认仍只允许检查：
 
 - 当前 Session 文件；
 - 最近一个已 seal 分片；
 - 未 seal 的 orphan 分片。
 
-不得在普通 SessionStart 全量 `rglob` 并重放全部历史。完整校验只通过显式
-`continuity audit verify --deep` 或等价工具执行。
+不得在普通 SessionStart 全量 `rglob` 并重放全部历史。完整校验只能通过未来显式的
+deep 工具执行，不能进入恢复热路径。
 
 ### 保留策略
 
-v1 不引入复杂归档系统。默认只设置一个简单上限：日志总量超过 64 MiB 时删除最旧、
-已经 seal 且通过校验的分片，并在当前分片写入 `retention_prune` 记录。活跃、未 seal、
-损坏或无法验证的分片不得自动删除。
+v1 不引入复杂归档系统。默认上限为 64 MiB：MCP Session 结束和 Hook `session-start`
+执行 retention，只删除最旧的已完成 Session，或超过 24 小时、不是当前 Session 且能
+取得非阻塞文件锁的 orphan 文件。当前文件和正在写入的文件不得删除。对应 `.lock`
+文件随 observation 一起清理，不额外写 `retention_prune` 事件。
 
 ## token 边界
 
@@ -300,8 +315,8 @@ v1 不引入复杂归档系统。默认只设置一个简单上限：日志总�
 - 常规 minimal 记录：序列化后不超过 512 B；
 - 失败记录：不超过 2 KiB；
 - 普通读取调用：不执行持久日志 `fsync`；
-- State 写或 compaction 边界：最多一次日志 `fsync`；
-- 1000 条历史记录下最近分片启动校验 P95 不超过 50 ms；
+- State 写或 compaction 边界：一次有锁追加，不执行日志 `fsync`；
+- 1000 条历史记录下 retention/report 不进入普通工具调用热路径；
 - 日志关闭或 retention 不阻塞 State transaction；
 - 日志故障不得把已提交的 State 伪装成未提交，返回结果必须允许按 State revision
   对账。
@@ -316,22 +331,23 @@ v1 不引入复杂归档系统。默认只设置一个简单上限：日志总�
 
 ## 测试
 
-最小测试集：
+已实现的最小测试集：
 
 1. SessionStart、PreCompact、PostCompact 和 State 写生成预期事件；
 2. 普通读取只增加内存计数，不产生逐调用持久记录；
-3. provider usage 缺失时不出现伪造 token 值；
-4. crash 后产生 `session_recovered`，且不重写原 JSONL；
-5. 最近分片损坏会阻止信任该分片，但不会扫描全部历史；
-6. 并发 Session 各写独立文件，不发生交叉或半行记录；
-7. 日志目录只读、磁盘满、时钟回拨和 PID 复用返回可诊断错误；
-8. 1000 条记录基准满足大小、启动和写入预算；
-9. detailed artifact 不会被自动注入恢复上下文；
-10. 旧 audit 日志仍可通过显式 deep verify 校验。
-11. 缺少 `continuity_policy` 的旧项目得到 `balanced` 默认行为；
-12. preset 覆盖、非法枚举、数值上下限和 Session 内配置固定行为通过测试；
-13. 普通调用探针不落盘，Session 汇总包含配置摘要和固定桶统计；
-14. 调优报告只给出有证据的建议，不修改项目配置。
+3. 关闭可选探针后只保留强制安全记录，并以 `session_end` 形成可回收文件；
+4. provider usage 缺失时不出现伪造 token 值；
+5. 并发追加不发生交叉或半行记录；
+6. observation 目录不可写时不阻断 State 操作；
+7. retention 保留当前 Session，删除已完成或保守判定的旧 orphan；
+8. 报告容忍损坏行，并限制单文件读取尾部大小；
+9. 缺少 `continuity_policy` 的旧项目得到 `balanced` 默认行为；
+10. preset 覆盖、非法枚举和数值上下限通过测试；
+11. 无效恢复包不建立 MCP binding，普通读取复用已有 binding；
+12. 插件/包版本错配和非法策略保持 fail closed。
+
+后续测试包括真实崩溃恢复、POSIX/macOS 进程指标、磁盘满和跨进程长期压力；这些不在
+当前实现的已验证声明中。
 
 ## 分阶段实现
 

@@ -21,6 +21,7 @@ from continuity_plane.light_observability import (
     MAX_REPORT_FILE_BYTES,
     PolicyConfigError,
     SessionProbe,
+    _posix_process_memory,
     append_observation,
     build_observation_report,
     policy_sha256,
@@ -161,6 +162,25 @@ class PolicyTests(unittest.TestCase):
 
 
 class ObservationTests(unittest.TestCase):
+    def test_linux_rss_uses_current_resident_pages(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            statm = Path(directory) / "statm"
+            statm.write_text("100 5 2 1 0 0 0\n", encoding="ascii")
+            with (
+                patch(
+                    "continuity_plane.light_observability.sys.platform", "linux"
+                ),
+                patch(
+                    "continuity_plane.light_observability.os.sysconf",
+                    return_value=4096,
+                    create=True,
+                ),
+            ):
+                self.assertEqual(
+                    _posix_process_memory(statm_path=statm),
+                    {"rss_bytes": 5 * 4096},
+                )
+
     def test_minimal_reads_stay_in_memory_until_session_summary(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory)
@@ -238,6 +258,47 @@ class ObservationTests(unittest.TestCase):
             probe.record_call("continuity_resume", duration_ms=1, success=True)
             self.assertEqual(probe.duplicate_resumes, 0)
             probe.close()
+
+    def test_disabled_probes_keep_only_mandatory_records_and_close_file(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            root = base / "project"
+            data = base / "data"
+            root.mkdir()
+            policy = resolve_policy(
+                _project(
+                    {
+                        "observability": {
+                            "probes_enabled": False,
+                            "resource_sampling": "every_call",
+                        }
+                    }
+                ),
+                environment={},
+            )
+            probe = SessionProbe(
+                root, policy, data_root=data, session_id="disabled-probes"
+            )
+            probe.record_call("continuity_resume", duration_ms=5000, success=True)
+            self.assertFalse((data / "live-events").exists())
+            probe.record_call("continuity_resume", duration_ms=1, success=False)
+            probe.record_call(
+                "continuity_checkpoint:create", duration_ms=1, success=True
+            )
+            probe.close()
+            records = [
+                json.loads(line)
+                for line in next((data / "live-events").glob("*.jsonl"))
+                .read_text(encoding="utf-8")
+                .splitlines()
+            ]
+            self.assertEqual(
+                [record["event_type"] for record in records],
+                ["tool_call_failed", "state_write_completed", "session_end"],
+            )
+            self.assertFalse(any("rss_bytes" in record for record in records))
+            self.assertEqual(records[-1]["read_calls"], 0)
+            self.assertEqual(records[-1]["write_calls"], 0)
 
     def test_observation_io_failure_is_non_blocking(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -348,6 +409,34 @@ class ObservationTests(unittest.TestCase):
                 names,
             )
 
+    def test_retention_removes_old_unlocked_hook_orphan(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            root = base / "project"
+            data = base / "data"
+            root.mkdir()
+            policy = resolve_policy(_project(), environment={})
+            append_observation(
+                data_root=data,
+                session_id="old-hook-orphan",
+                project_root=root,
+                policy=policy,
+                event_type="precompact",
+                success=True,
+            )
+            path = next((data / "live-events").glob("*.jsonl"))
+            old = path.stat().st_mtime - 10
+            os.utime(path, (old, old))
+            removed = prune_closed_observations(
+                data,
+                retention_max_bytes=1,
+                current_session_id="current-hook",
+                orphan_after_seconds=1,
+            )
+            self.assertEqual(removed, 1)
+            self.assertFalse(path.exists())
+            self.assertFalse(path.with_suffix(".lock").exists())
+
     def test_concurrent_boundary_appends_remain_complete_json_lines(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory)
@@ -383,6 +472,42 @@ class ObservationTests(unittest.TestCase):
 
 
 class MCPProbeTests(unittest.TestCase):
+    def test_disabled_probes_do_not_persist_successful_resume(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            root = base / "project"
+            data = base / "data"
+            _write_project(
+                root, {"observability": {"probes_enabled": False}}
+            )
+            request = {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/call",
+                "params": {
+                    "name": "continuity_resume",
+                    "arguments": {"root": str(root)},
+                },
+            }
+            with (
+                patch.object(
+                    codex_mcp_server.sys,
+                    "stdin",
+                    StringIO(json.dumps(request) + "\n"),
+                ),
+                patch.object(codex_mcp_server.sys, "stdout", StringIO()),
+                patch.object(
+                    codex_mcp_server,
+                    "_run_cli_with_retry",
+                    return_value=subprocess.CompletedProcess(
+                        [], 0, _idle_envelope(), ""
+                    ),
+                ),
+                patch.dict(os.environ, {"PLUGIN_DATA": str(data)}, clear=False),
+            ):
+                self.assertEqual(codex_mcp_server.main(), 0)
+            self.assertFalse((data / "live-events").exists())
+
     def test_non_object_requests_are_ignored_or_rejected_without_crashing(self) -> None:
         requests = [
             [],
@@ -666,6 +791,31 @@ class HookProbeTests(unittest.TestCase):
             )
             self.assertEqual(record["event_type"], "pretooluse")
             self.assertFalse(record["success"])
+
+    def test_session_start_hook_runs_bounded_orphan_retention(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            root = base / "project"
+            data = base / "data"
+            _write_project(root)
+            hook = self._load_hook()
+            payload = {"session_id": "hook-retention", "source": "startup"}
+            with (
+                patch.dict(os.environ, {"PLUGIN_DATA": str(data)}, clear=False),
+                patch.object(hook, "prune_closed_observations") as prune,
+            ):
+                hook._observe(
+                    payload,
+                    root,
+                    event_type="session-start",
+                    success=True,
+                )
+            prune.assert_called_once_with(
+                data,
+                retention_max_bytes=64 * 1024 * 1024,
+                current_session_id="hook-retention",
+                orphan_after_seconds=24 * 60 * 60,
+            )
 
     def test_invalid_hook_policy_stops_before_lifecycle_command(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

@@ -74,6 +74,8 @@ checkpoint 或 deep verifier 调度时，它们不会增加后台工作。
 `CONTINUITY_OBSERVABILITY_MODE=diagnostic` 可临时提升观测级别，但长期策略应写入项目
 配置。minimal 模式下普通成功读取只在 MCP 进程内累计，只有边界、State 写、失败、
 慢调用和 Session 汇总落盘。观测失败不会回滚或阻塞已经完成的 State 操作。
+`probes_enabled: false` 只关闭可选计数、慢调用和资源采样；State 写与失败仍保留最小安全
+记录，并在 Session 结束时写入可供 retention 回收的结束标记。
 
 离线查看探针结果：
 

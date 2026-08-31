@@ -954,7 +954,7 @@ def main() -> int:
                 request_bytes=request_bytes,
                 response_bytes=response_bytes,
             )
-            if tool_name == "continuity_resume":
+            if tool_name == "continuity_resume" and probe.enabled:
                 probe.boundary(
                     "resume",
                     success=not failed,

@@ -84,6 +84,9 @@ minimal mode, ordinary successful reads update MCP in-memory counters. Only
 boundaries, State writes, failures, slow calls, and the Session summary are
 persisted. Observation failures do not roll back or block a completed State
 operation.
+`probes_enabled: false` disables optional counters, slow-call observations, and
+resource sampling. State writes and failures still retain minimal safety
+records, followed by a Session-end marker that retention can reclaim.
 
 Build an offline probe report with:
 

@@ -21,6 +21,7 @@ import yaml
 OBSERVATION_SCHEMA_VERSION = "context.light-observation/v1alpha1"
 MAX_OBSERVATION_BYTES = 2 * 1024
 MAX_REPORT_FILE_BYTES = 4 * 1024 * 1024
+ORPHAN_RETENTION_SECONDS = 24 * 60 * 60
 LATENCY_BUCKETS_MS = (1, 5, 10, 50, 100, 500, 1000, 5000)
 WRITE_TOOLS = {
     "continuity_autorun",
@@ -277,6 +278,28 @@ def _unlock_file(stream: Any) -> None:
     fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
 
 
+def _try_lock_file(stream: Any) -> bool:
+    """Attempt a non-blocking cross-process lock for retention cleanup."""
+
+    try:
+        if os.name == "nt":
+            import msvcrt
+
+            stream.seek(0, os.SEEK_END)
+            if stream.tell() == 0:
+                stream.write(b"\0")
+                stream.flush()
+            stream.seek(0)
+            msvcrt.locking(stream.fileno(), msvcrt.LK_NBLCK, 1)
+            return True
+        import fcntl
+
+        fcntl.flock(stream.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return True
+    except (ImportError, OSError):
+        return False
+
+
 def _safe_extra(extra: Mapping[str, Any] | None) -> dict[str, Any]:
     if extra is None:
         return {}
@@ -289,6 +312,30 @@ def _safe_extra(extra: Mapping[str, Any] | None) -> dict[str, Any]:
         elif isinstance(value, str) and len(value) <= 128:
             safe[key] = value
     return safe
+
+
+def _posix_process_memory(
+    *, statm_path: Path = Path("/proc/self/statm")
+) -> dict[str, int]:
+    """Return current Linux RSS, or an explicitly named POSIX peak fallback."""
+
+    if sys.platform.startswith("linux"):
+        try:
+            fields = statm_path.read_text(encoding="ascii").split()
+            resident_pages = int(fields[1])
+            page_size = int(os.sysconf("SC_PAGE_SIZE"))
+            if resident_pages >= 0 and page_size > 0:
+                return {"rss_bytes": resident_pages * page_size}
+        except (IndexError, OSError, UnicodeError, ValueError):
+            pass
+    try:
+        import resource
+
+        maximum_rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        multiplier = 1 if sys.platform == "darwin" else 1024
+        return {"peak_rss_bytes": int(maximum_rss * multiplier)}
+    except (AttributeError, ImportError, OSError, ValueError):
+        return {}
 
 
 def _resource_snapshot(
@@ -342,12 +389,7 @@ def _resource_snapshot(
             ):
                 snapshot["rss_bytes"] = int(counters.working_set_size)
         else:
-            import resource
-
-            maximum_rss = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-            snapshot["rss_bytes"] = int(
-                maximum_rss if sys.platform == "darwin" else maximum_rss * 1024
-            )
+            snapshot.update(_posix_process_memory())
     except (AttributeError, ImportError, OSError, ValueError):
         pass
     return snapshot
@@ -441,13 +483,32 @@ def _closed_observation(path: Path) -> bool:
     return False
 
 
+def _remove_observation_if_idle(path: Path) -> bool:
+    """Remove one observation and lock file only while no writer holds its lock."""
+
+    lock_path = path.with_suffix(".lock")
+    try:
+        with _APPEND_LOCK, lock_path.open("a+b") as lock_stream:
+            if not _try_lock_file(lock_stream):
+                return False
+            try:
+                path.unlink()
+            finally:
+                _unlock_file(lock_stream)
+        lock_path.unlink(missing_ok=True)
+    except OSError:
+        return False
+    return True
+
+
 def prune_closed_observations(
     data_root: Path | None,
     *,
     retention_max_bytes: int,
     current_session_id: str | None = None,
+    orphan_after_seconds: int | None = None,
 ) -> int:
-    """Remove only old, completed Session files when the local cap is exceeded."""
+    """Prune completed or conservatively stale Session files above the local cap."""
 
     if data_root is None or retention_max_bytes < 0:
         return 0
@@ -471,15 +532,23 @@ def prune_closed_observations(
         f"{_sha256(current_session_id)}.jsonl" if current_session_id else None
     )
     removed = 0
-    for _, size, path in sorted(entries):
+    now_ns = time.time_ns()
+    orphan_age_ns = (
+        None
+        if orphan_after_seconds is None
+        else max(0, orphan_after_seconds) * 1_000_000_000
+    )
+    for modified_ns, size, path in sorted(entries):
         if total <= retention_max_bytes:
             break
-        if path.name == current_name or not _closed_observation(path):
+        stale_orphan = (
+            orphan_age_ns is not None and now_ns - modified_ns >= orphan_age_ns
+        )
+        if path.name == current_name or not (
+            _closed_observation(path) or stale_orphan
+        ):
             continue
-        try:
-            path.unlink()
-            path.with_suffix(".lock").unlink(missing_ok=True)
-        except OSError:
+        if not _remove_observation_if_idle(path):
             continue
         total -= size
         removed += 1
@@ -512,6 +581,7 @@ class SessionProbe:
         self.latency_buckets = [0] * (len(LATENCY_BUCKETS_MS) + 1)
         self.closed = False
         self.degraded = False
+        self.persisted_records = 0
 
     @property
     def enabled(self) -> bool:
@@ -533,7 +603,10 @@ class SessionProbe:
         extra: Mapping[str, Any] | None = None,
     ) -> None:
         merged_extra = dict(extra or {})
-        if self.policy["observability"]["resource_sampling"] != "disabled":
+        if (
+            self.enabled
+            and self.policy["observability"]["resource_sampling"] != "disabled"
+        ):
             for key, value in _resource_snapshot(
                 self.project_root, self.data_root, self.session_id
             ).items():
@@ -549,6 +622,7 @@ class SessionProbe:
             extra=merged_extra,
         )
         self.degraded = self.degraded or not written
+        self.persisted_records += int(written)
 
     def record_call(
         self,
@@ -573,8 +647,12 @@ class SessionProbe:
             self.request_bytes += max(0, request_bytes)
             self.response_bytes += max(0, response_bytes)
             self._bucket(duration_ms)
-        slow = duration_ms >= self.policy["observability"]["slow_call_threshold_ms"]
-        diagnostic = self.policy["observability"]["mode"] == "diagnostic"
+        slow = self.enabled and (
+            duration_ms >= self.policy["observability"]["slow_call_threshold_ms"]
+        )
+        diagnostic = self.enabled and (
+            self.policy["observability"]["mode"] == "diagnostic"
+        )
         if not (is_write or not success or slow or diagnostic):
             return
         event_type = (
@@ -603,7 +681,14 @@ class SessionProbe:
         if self.closed:
             return
         self.closed = True
-        if not self.enabled and not self.degraded:
+        if not self.enabled and not self.degraded and self.persisted_records == 0:
+            prune_closed_observations(
+                self.data_root,
+                retention_max_bytes=self.policy["observability"][
+                    "retention_max_bytes"
+                ],
+                current_session_id=self.session_id,
+            )
             return
         self.boundary(
             "session_end",
@@ -738,6 +823,7 @@ def build_observation_report(
 
 __all__ = [
     "MAX_REPORT_FILE_BYTES",
+    "ORPHAN_RETENTION_SECONDS",
     "OBSERVATION_SCHEMA_VERSION",
     "PolicyConfigError",
     "SessionProbe",
