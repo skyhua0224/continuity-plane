@@ -1,7 +1,7 @@
 # Continuity Plane Status
 
-版本：revision 114  
-日期：2026-08-31  
+版本：revision 115  
+日期：2026-09-01  
 canonical plan：`MASTER.md`
 
 ## 当前安全姿态与收口目标
@@ -23,7 +23,7 @@ canonical plan：`MASTER.md`
 | next action | 建立可续跑的自然 1M/900K shadow runner，再按 accepted Work 重复 matched A/B |
 | hard blocker | Platform 与 ProjectCompute input-token gate 均未达 `30%` |
 | repository mode | internal development repository + fresh-history public mirror |
-| production state | GitHub/PyPI alpha.9 prerelease published；alpha.10 release candidate verified locally；本机 current snapshot 三插件 enabled；shared pilot planned |
+| production state | GitHub/PyPI alpha.10 published；本机 alpha.10 三插件 enabled；shared pilot planned |
 
 ## 已验证摘要
 
@@ -31,7 +31,7 @@ canonical plan：`MASTER.md`
 |---|---|
 | Evidence index | [`docs/reports/verified-state.md`](docs/reports/verified-state.md) |
 | Verified campaigns | M0-M8 core 与 M9-01..07 见 Evidence index；M9-08..11 planned |
-| alpha.9 publication | GitHub prerelease、PyPI、脱敏镜像、wheel/sdist、`SHA256SUMS`、CI 和本地 CLI/plugin 已通过 |
+| alpha.10 publication | GitHub/PyPI、42-commit public history、141-file mirror、wheel/sdist/3-plugin zip/`SHA256SUMS` 和 CI 通过 |
 | Coordination/views | shared Work、forge、notification、Project Graph、2,000-node Impact gates passed；authority violation `0` |
 | Release baseline | Linux/macOS/Windows native matrix `18/18`；local state bundle export/import/rollback available；public privacy scan `0` findings |
 | Documentation audit | README、USAGE、CHANGELOG、public docs、templates 与 policy 全文审阅；公开 Markdown 内部阶段标记 `0`，本地链接缺失 `0`，外部链接 `8/8` 可达；repository verification passed |
@@ -40,8 +40,8 @@ canonical plan：`MASTER.md`
 | M11 Platform matched A/B | `3+3`：input/output/tool-output 中位 `-12.14%/-28.84%/-41.46%`，veto `0`，input gate failed；[comparison](experiments/evidence/m11-live/platform-ultralight/platform-comparison.json) |
 | M11 ProjectCompute matched A/B | `3+3`：input/output/tool-output 中位 `-2.36%/-13.70%/+2.62%`，veto `0`，input gate failed；[comparison](experiments/evidence/m11-live/projectcompute-ultralight/projectcompute-comparison.json) |
 | M11 bounded retrieval | current tracked worktree、revision/hash、完整 JSON budget 与 CLI `3/3`；默认自动 Skill adoption rejected，功能保留为可选 search plugin |
-| Repository gate | split full shards `2004/2004` passed，`31` skipped；latest M11/document/release focused `172/172` |
-| Governance authority | `MASTER.md` revision 114 |
+| Repository gate | full `2014/2014` passed，`31` skipped；release `76/76`、governance `49/49`、public `5/5` |
+| Governance authority | `MASTER.md` revision 115 |
 
 ## 恢复入口
 
