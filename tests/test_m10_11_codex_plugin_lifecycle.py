@@ -257,7 +257,7 @@ printf '%s\\n' '{"status":"ok"}'
         )
         self.assertIn("when no healthy packet was injected", skill)
         self.assertIn(
-            "observe and auto modes never block normal project work",
+            "auto and observe modes never block normal project work",
             skill,
         )
         self.assertIn("Strict mode applies only when the project explicitly opts in", skill)
@@ -947,7 +947,7 @@ printf '%s\\n' '{"status":"ok"}'
         self.assertEqual(decision["permissionDecision"], "deny")
         self.assertIn("deployment", decision["permissionDecisionReason"])
 
-    def test_default_effect_policy_observes_without_blocking_development(self) -> None:
+    def test_observe_policy_does_not_block_development(self) -> None:
         idle = {
             "schema_version": "context.recovery-envelope/v1alpha1",
             "project_id": "portable-project",
@@ -965,12 +965,24 @@ printf '%s\\n' '{"status":"ok"}'
             tool_name="Bash",
             tool_input={"command": "git push origin main"},
             resume_packet=idle,
-            effect_policy=None,
+            effect_policy="observe",
         )
 
         self.assertEqual(completed.stdout, "")
         self.assertEqual(calls, [])
         self.assertNotIn('"decision":"deny"', observations)
+
+    def test_default_effect_policy_runs_non_blocking_lifecycle(self) -> None:
+        completed, calls, observations = self._run_hook(
+            "PreCompact",
+            effect_policy=None,
+        )
+
+        self.assertEqual(completed.returncode, 0)
+        self.assertEqual(completed.stdout, "")
+        self.assertEqual(len(calls), 1)
+        self.assertTrue(calls[0].startswith("checkpoint create --root "))
+        self.assertIn('"event_type":"precompact"', observations)
 
     def test_named_tea_pull_tool_uses_the_active_pr_scope(self) -> None:
         packet = {
@@ -1572,11 +1584,11 @@ printf '%s\\n' '{"status":"ok"}'
     def test_observe_mode_compaction_events_are_zero_call_noops(self) -> None:
         before, before_calls, _ = self._run_hook(
             "PreCompact",
-            effect_policy=None,
+            effect_policy="observe",
         )
         after, after_calls, _ = self._run_hook(
             "PostCompact",
-            effect_policy=None,
+            effect_policy="observe",
         )
 
         self.assertEqual(before.stdout, "")
@@ -1729,7 +1741,7 @@ printf '%s\\n' '{"status":"ok"}'
             tool_name="Bash",
             tool_input={"command": "python -m unittest tests/test_stage.py"},
             stage_success=True,
-            effect_policy=None,
+            effect_policy="observe",
         )
 
         self.assertEqual(completed.stdout, "")
@@ -1804,6 +1816,7 @@ printf '%s\\n' '{"status":"ok"}'
                     "PLUGIN_ROOT": str(self.plugin),
                     "FAKE_CONTINUITY_CALLS": str(calls),
                     "MCP_BINDING_ENVELOPE": "",
+                    "CONTINUITY_EFFECT_POLICY": "observe",
                 },
                 check=False,
             )
@@ -1850,7 +1863,7 @@ printf '%s\\n' '{"status":"ok"}'
         completed, calls, _ = self._run_hook(
             "SessionStart",
             resume_packet=stale,
-            effect_policy=None,
+            effect_policy="observe",
         )
 
         self.assertEqual(completed.stdout, "")
@@ -1873,7 +1886,7 @@ printf '%s\\n' '{"status":"ok"}'
         completed, calls, _ = self._run_hook(
             "SessionStart",
             resume_packet=packet,
-            effect_policy=None,
+            effect_policy="observe",
             projection_revision=7,
         )
 
@@ -1884,7 +1897,7 @@ printf '%s\\n' '{"status":"ok"}'
         completed, _, observations = self._run_hook(
             "SessionStart",
             slow_resume=True,
-            effect_policy=None,
+            effect_policy="observe",
         )
 
         self.assertEqual(completed.returncode, 0)

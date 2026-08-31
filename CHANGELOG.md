@@ -2,6 +2,52 @@
 
 [English](CHANGELOG.en.md)
 
+## 0.1.0-alpha.10
+
+### 相比 0.1.0-alpha.9
+
+- 将 Codex 集成拆分为轻量 core、可选有界检索和可选 State MCP 三个 profile。core 只注册
+  `SessionStart`、`PreCompact` 和 `PostCompact` 生命周期，不注册 `PreToolUse`、
+  `PostToolUse` 或命令副作用门。
+- core 的默认策略改为非阻断 `auto`：压缩前创建 checkpoint，压缩后验证 canary；恢复失败、
+  陈旧来源或不可用 State adapter 只记录并继续普通开发，不把业务 Session 置为只读。
+- 压缩恢复改为使用 Codex 原生 continuation，不在自动压缩后重复注入完整 Execution Packet，
+  降低恢复阶段的模型可见输入和重复回答风险。
+- 新增 `continuity context search` 有界 current-worktree 检索和完整 JSON receipt，绑定 Git
+  revision、文件 hash、行 hash 与输出预算；自动 Skill 装载仍需按项目和任务类型通过实测门。
+- 增加 provider JSONL 的流式脱敏观测与 matched A/B 对比工具，统计 input/output token、工具
+  输出、Skill/治理文档读取、压缩链和重复回答，原始 transcript 不写入 Git。
+
+### 验证与边界
+
+- core profile、State MCP、生命周期和公开构建聚焦测试通过；三仓无副作用 shell 探针 `6/6`
+  到达执行层，命令门禁为 `0`。
+- 两组真实 matched A/B 各 `3+3`：输入 token 中位分别下降 `12.14%` 和 `2.36%`；输出
+  token 中位下降 `28.84%` 和 `13.70%`；工具输出一组下降 `41.46%`，另一组增加 `2.62%`。
+  两组一致性 veto 均为 `0`，但输入 token `>=30%` 门未通过，因此 alpha.10 不宣称通用
+  token 节省率。
+- alpha.10 仍为预发行版。自然 `1M/900K` 长 Session 的压缩间隔、恢复读取和 accepted Work
+  收益仍待长期实测；Docmost connector、Obsidian Canvas/Bases 与 shared-strong 部署仍为
+  planned capability。
+
+### 安装
+
+核心包：
+
+```bash
+python -m pip install continuity-plane==0.1.0a10
+```
+
+Codex plugin：
+
+```bash
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.10
+codex plugin add continuity-plane@continuity-plane
+```
+
+大型仓库可另外安装 `continuity-plane-search`；需要显式 State MCP 工具时再安装
+`continuity-plane-state`。安装或升级 plugin 后请新建 Session。
+
 ## 0.1.0-alpha.9
 
 ### 相比 0.1.0-alpha.8

@@ -2,6 +2,56 @@
 
 [中文](CHANGELOG.md)
 
+## 0.1.0-alpha.10
+
+### Changes Since 0.1.0-alpha.9
+
+- Split the Codex integration into a lightweight core, an optional bounded-search profile, and
+  an optional State MCP profile. The core registers only `SessionStart`, `PreCompact`, and
+  `PostCompact`; it registers no `PreToolUse`, `PostToolUse`, or command-effect gate.
+- The core now defaults to non-blocking `auto`: it creates a checkpoint before compaction and
+  verifies a canary afterward. Recovery failures, stale sources, and unavailable State adapters
+  are recorded and normal development continues without making the business Session read-only.
+- Compaction recovery uses Codex native continuation instead of reinjecting a full Execution
+  Packet after automatic compaction, reducing model-visible recovery input and repeated answers.
+- Added `continuity context search`, a bounded current-worktree search with a complete JSON receipt
+  bound to the Git revision, file hash, line hash, and output budget. Automatic Skill adoption still
+  requires a project/task matched evidence gate.
+- Added streaming sanitized provider JSONL observation and matched A/B comparison tools covering
+  input/output tokens, tool output, Skill/governance reads, compaction chains, and repeated answers;
+  raw transcripts never enter Git.
+
+### Verification And Boundaries
+
+- Core profile, State MCP, lifecycle, and public-builder focused tests pass; three repositories
+  reached the shell for `6/6` no-effect probes, with zero command-effect gates.
+- Two real matched A/B profiles each have `3+3` samples: median input tokens decreased `12.14%`
+  and `2.36%`; median output tokens decreased `28.84%` and `13.70%`; tool output decreased
+  `41.46%` for one profile and increased `2.62%` for the other. Both consistency veto counts are
+  `0`, but the `>=30%` input gate did not pass, so alpha.10 makes no universal token-savings claim.
+- Alpha.10 remains a prerelease. Natural `1M/900K` long-session compaction interval, recovery-read,
+  and accepted-Work results remain under long-running measurement; the Docmost connector, Obsidian
+  Canvas/Bases, and shared-strong deployment remain planned capabilities.
+
+### Installation
+
+Core package:
+
+```bash
+python -m pip install continuity-plane==0.1.0a10
+```
+
+Codex plugin:
+
+```bash
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.10
+codex plugin add continuity-plane@continuity-plane
+```
+
+Install `continuity-plane-search` separately for large-repository lookup and
+`continuity-plane-state` only when explicit State MCP tools are needed. Start a new Session after
+installing or upgrading the plugin.
+
 ## 0.1.0-alpha.9
 
 ### Changes Since 0.1.0-alpha.8

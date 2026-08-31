@@ -5,7 +5,7 @@ description: Bounded continuity for projects with a .continuity directory.
 
 # Continuity Plane / 连续性控制面
 
-- `observe` 为默认策略；`auto` 仅处理健康恢复。observe and auto modes never block normal project work. / `observe` is the default; `auto` adds healthy recovery only. Neither blocks normal work.
+- `auto` 为默认策略；`observe` 仅记录。auto and observe modes never block normal project work. / `auto` is the default; `observe` only records. Neither blocks normal work.
 - 健康 packet 已注入时直接使用；do not re-read STATUS, MASTER, AGENTS, or SKILL files。只展开当前请求需要的 opaque ref。 / Use a healthy injected packet directly and expand only a required opaque ref.
 - 仅 when no healthy packet was injected，读取有界 `.continuity/STATUS.current.md`；不可用时继续正常工作，不复活旧 Work。 / Read the bounded status projection only without a healthy packet; otherwise continue normally without reviving old Work.
 - startup/resume 只保存 return point：问题直接回答，Idea 不替换 Work，执行请求才推进。`source=compact` 才续接同一轮，不复答或输出恢复旁白。 / Startup follows current intent; compact resumes without replay or narration.

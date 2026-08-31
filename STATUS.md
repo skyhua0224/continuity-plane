@@ -1,7 +1,7 @@
 # Continuity Plane Status
 
-版本：revision 113  
-日期：2026-08-30  
+版本：revision 114  
+日期：2026-08-31  
 canonical plan：`MASTER.md`
 
 ## 当前安全姿态与收口目标
@@ -23,7 +23,7 @@ canonical plan：`MASTER.md`
 | next action | 建立可续跑的自然 1M/900K shadow runner，再按 accepted Work 重复 matched A/B |
 | hard blocker | Platform 与 ProjectCompute input-token gate 均未达 `30%` |
 | repository mode | internal development repository + fresh-history public mirror |
-| production state | GitHub/PyPI alpha.9 prerelease published；本机 current snapshot 三插件 enabled；shared pilot planned |
+| production state | GitHub/PyPI alpha.9 prerelease published；alpha.10 release candidate verified locally；本机 current snapshot 三插件 enabled；shared pilot planned |
 
 ## 已验证摘要
 
@@ -35,13 +35,13 @@ canonical plan：`MASTER.md`
 | Coordination/views | shared Work、forge、notification、Project Graph、2,000-node Impact gates passed；authority violation `0` |
 | Release baseline | Linux/macOS/Windows native matrix `18/18`；local state bundle export/import/rollback available；public privacy scan `0` findings |
 | Documentation audit | README、USAGE、CHANGELOG、public docs、templates 与 policy 全文审阅；公开 Markdown 内部阶段标记 `0`，本地链接缺失 `0`，外部链接 `8/8` 可达；repository verification passed |
-| M11-00 zero-friction reset | 本机 core/search/state 显式启用；core 无 Skill/MCP/命令门；lifecycle hook trust `3/3`，新 Codex startup receipt 已生成，子进程 `CONTINUITY_EFFECT_POLICY=auto`；自然 1M/900K PreCompact/PostCompact 链待观测；三仓 source-control/remote-effect 无副作用 shell probe `6/6` 到达执行层；State MCP 在新 Codex task 可见；54/54 profile/lifecycle tests 通过；[pre-reset baseline](experiments/evidence/m11-00-live-baseline-20260830.json) |
+| M11 reset | plugins enabled；trust `3/3`；auto verified；1M/900K chain pending；probes `6/6`；MCP visible；54/54 tests；[baseline](experiments/evidence/m11-00-live-baseline-20260830.json) |
 | M11 hook efficiency | `40` 组：calls `-33.33%`，model context `-83.73%`，stdout `-85.18%`，wall p50/p95 `-25.60%/-29.98%`，deny/stop `0/0`；[receipt](experiments/evidence/m11-00-codex-hook-efficiency.json) |
 | M11 Platform matched A/B | `3+3`：input/output/tool-output 中位 `-12.14%/-28.84%/-41.46%`，veto `0`，input gate failed；[comparison](experiments/evidence/m11-live/platform-ultralight/platform-comparison.json) |
 | M11 ProjectCompute matched A/B | `3+3`：input/output/tool-output 中位 `-2.36%/-13.70%/+2.62%`，veto `0`，input gate failed；[comparison](experiments/evidence/m11-live/projectcompute-ultralight/projectcompute-comparison.json) |
 | M11 bounded retrieval | current tracked worktree、revision/hash、完整 JSON budget 与 CLI `3/3`；默认自动 Skill adoption rejected，功能保留为可选 search plugin |
 | Repository gate | split full shards `2004/2004` passed，`31` skipped；latest M11/document/release focused `172/172` |
-| Governance authority | `MASTER.md` revision 113 |
+| Governance authority | `MASTER.md` revision 114 |
 
 ## 恢复入口
 

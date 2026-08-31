@@ -98,8 +98,8 @@ _WHOLE_FILE_READERS = {"cat", "less", "more"}
 
 
 def _effect_policy() -> str:
-    """Return the explicit effect policy; observation is the safe default."""
-    value = os.environ.get("CONTINUITY_EFFECT_POLICY", "observe").lower()
+    """Return the non-blocking default or an explicitly selected policy."""
+    value = os.environ.get("CONTINUITY_EFFECT_POLICY", "auto").lower()
     return value if value in {"observe", "auto", "strict"} else "observe"
 
 

@@ -61,7 +61,7 @@ class PublicReleaseBuilderTests(unittest.TestCase):
             )
             self.assertEqual(
                 json.loads(public_plugin_manifest.read_text(encoding="utf-8"))["version"],
-                "0.1.0-alpha.9",
+                "0.1.0-alpha.10",
             )
             marketplace = json.loads(public_plugin_marketplace.read_text(encoding="utf-8"))
             self.assertEqual(marketplace["name"], "continuity-plane")
@@ -79,7 +79,7 @@ class PublicReleaseBuilderTests(unittest.TestCase):
             )
             self.assertIn("Codex plugin", (output / "README.md").read_text(encoding="utf-8"))
             self.assertIn("Codex plugin", (output / "README.en.md").read_text(encoding="utf-8"))
-            self.assertIn('version = "0.1.0a9"', (output / "pyproject.toml").read_text(encoding="utf-8"))
+            self.assertIn('version = "0.1.0a10"', (output / "pyproject.toml").read_text(encoding="utf-8"))
             self.assertIn("## 它解决哪些问题", (output / "README.md").read_text())
             self.assertIn("## Problems It Solves", (output / "README.en.md").read_text())
             public_readme = (output / "README.md").read_text(encoding="utf-8")
@@ -210,7 +210,7 @@ class PublicReleaseBuilderTests(unittest.TestCase):
             changelog = (output / "CHANGELOG.md").read_text(encoding="utf-8")
             self.assertIn("28", changelog)
             self.assertIn("10,282", changelog)
-            self.assertIn("## 0.1.0-alpha.9", changelog)
+            self.assertIn("## 0.1.0-alpha.10", changelog)
             self.assertNotIn("## 未发布", changelog)
             self.assertGreater(manifest["file_count"], 20)
             count = subprocess.run(
