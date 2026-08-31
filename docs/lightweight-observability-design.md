@@ -2,9 +2,9 @@
 
 ## 状态
 
-v1 首批实现。已实现有界策略解析、Hook/MCP 轻量探针、Session 汇总、并发安全追加、
-安全保留和离线调优报告；自动调参、深度 verifier 调度和 provider token 采集仍不在
-当前范围。
+v1 首批实现。基于 alpha.10 的 core/search/state 插件拆分，已实现独立策略合同、State
+MCP 轻量探针、Session 汇总、跨进程安全追加、保守保留和统一离线报告；自动调参、
+深度 verifier 调度和 provider token 采集仍不在当前范围。
 
 ## 背景
 
@@ -17,8 +17,9 @@ Continuity Plane 需要回答两个不同问题：
 分片 seal，但每次调用保存两份较大的资源文档，并在进程启动时全量扫描历史分片。
 随着 Session 增加，日志大小、`fsync` 次数和启动校验时间线性增长。
 
-上游当前以 Codex hook observation 为主要观测面。本地 MCP access audit 应作为迁移
-来源合并到同一轻量合同，而不是继续维护两套无法关联的日志。
+alpha.10 core 已使用 `context.codex-hook-observation/v1alpha1` 记录生命周期。本设计不
+复制或替换该合同：State 插件只写已登记的 `context.light-observation/v1alpha1`，离线
+报告通过 project/session hash 读取两类事件。两类目录和保留责任保持隔离。
 
 ## 目标
 
@@ -87,28 +88,29 @@ input、output 和 reasoning token 只有 provider/host 明确提供时才记录
 ## 配置模型
 
 上述行为必须可配置，但配置面保持有界，避免大量独立布尔开关形成不可测试的组合。
-项目配置以 `.continuity/project.yaml` 为入口，新增单一 `continuity_policy` 命名空间；
-实现时需要先扩展 profile schema 和兼容校验，旧配置缺少该段时使用下列默认值。
+策略位于独立的 `.continuity/observability-policy.yaml`，不扩展严格的
+`context.project/v1alpha1`。文件缺失时使用下列默认值；早期实验版写入 project profile
+的 `continuity_policy` 只做内存迁移，不回写 profile。
 
 ```yaml
-continuity_policy:
-  preset: balanced
-  resume:
-    explicit_policy: once_per_connection
-  checkpoint:
-    on_pre_compact: true
-    on_work_complete: true
-    after_state_writes: false
-    min_interval_seconds: 30
-  verification:
-    startup_scope: recent
-    deep_verify: manual
-  observability:
-    mode: minimal
-    probes_enabled: true
-    slow_call_threshold_ms: 1000
-    resource_sampling: boundaries_failures_and_slow
-    retention_max_bytes: 67108864
+schema_version: context.observability-policy/v1alpha1
+preset: balanced
+resume:
+  explicit_policy: once_per_connection
+checkpoint:
+  on_pre_compact: true
+  on_work_complete: true
+  after_state_writes: false
+  min_interval_seconds: 30
+verification:
+  startup_scope: recent
+  deep_verify: manual
+observability:
+  mode: minimal
+  probes_enabled: true
+  slow_call_threshold_ms: 1000
+  resource_sampling: boundaries_failures_and_slow
+  retention_max_bytes: 67108864
 ```
 
 `preset` 只提供少量经过测试的组合：
@@ -124,8 +126,8 @@ PreCompact checkpoint、State revision/CAS、claim fencing、失败记录和恢�
 不复制完整配置内容。
 
 环境变量只允许覆盖临时运行参数，例如把 `observability.mode` 临时提升为
-`diagnostic`。长期策略必须写入项目配置，且不得在配置中保存凭据、机器绝对路径或原始
-会话数据。
+`diagnostic`。长期策略必须写入独立策略文件，且不得在配置中保存凭据、机器绝对路径或
+原始会话数据。
 
 ## 轻量探针与调优闭环
 
@@ -178,17 +180,15 @@ v1 不做自动调参。只有当多个版本积累了足够样本，并且策�
 ```json
 {
   "schema_version": "context.light-observation/v1alpha1",
-  "event_type": "postcompact",
+  "event_type": "state_write_completed",
   "observed_at_utc": "2026-08-29T09:00:00.000000+00:00",
   "session_sha256": "...",
-  "turn_sha256": "...",
   "project_sha256": "...",
   "policy_sha256": "...",
   "preset": "balanced",
   "success": true,
   "duration_ms": 18.4,
-  "packet_bytes": 5928,
-  "canary_passed": true
+  "tool_name": "continuity_work_complete"
 }
 ```
 
@@ -197,16 +197,14 @@ v1 不做自动调参。只有当多个版本积累了足够样本，并且策�
 - `schema_version`：事件合同版本；
 - `event_type`：固定枚举；
 - `observed_at_utc`：UTC 时间；
-- `session_sha256`、`turn_sha256`、`project_sha256`：隐私化关联 ID；
+- `session_sha256`、`project_sha256`：隐私化关联 ID；
 - `policy_sha256`、`preset`：本次 Session 固定的策略标识；
 - `success`：布尔结果；
 - `duration_ms`：边界操作耗时。
 
 ### 按需字段
 
-- `packet_bytes`：恢复包或 additionalContext 的 UTF-8 字节数；
-- `recovery_read_bytes`、`recovery_read_budget_bytes`：压缩后有界读取；
-- `canary_passed`：PostCompact 验证结果；
+- `packet_bytes`：恢复包的 UTF-8 字节数；
 - `tool_name`：仅 State 写、失败或慢调用；
 - `error_category`：经过 allowlist 的错误类别，不记录原始异常文本；
 - `request_bytes`、`response_bytes`：仅 diagnostic 或慢调用；
@@ -269,13 +267,15 @@ observation 合同时，报告才允许计算 token 指标；当前实现默认�
 
 ### 写入
 
-- 每个 Session 使用独立 JSONL 文件；同一 Session 的多 Hook 进程通过进程内锁和操作
-  系统文件锁串行追加；
+- core Hook 继续写 alpha.10 的 `live-events/`；State MCP 写独立的
+  `state-mcp-events/`，两者不共享写入生命周期；
+- 每个 State MCP Session 使用独立 JSONL 文件；所有追加和清理通过一个不会删除的
+  目录级 `.retention.lock` 串行化，避免锁 inode 被替换后新旧 writer 分裂；
 - 每条记录使用 canonical JSON；
 - observation 不承担 State authority，因此不增加 hash chain、seal 或逐记录 `fsync`；
 - 普通读取计数保存在内存中，在 Session 汇总时一次写入；
-- MCP 正常结束时写 `session_end`；Hook-only 或进程异常退出的文件允许缺少该事件，并由
-  保守的 orphan retention 处理。
+- MCP 正常结束时写 `session_end`；异常退出的 State 文件允许缺少该事件，并由保守的
+  orphan retention 处理。core Hook 的 retention 仍由 core 合同负责。
 
 ### 后续完整性校验（未实现）
 
@@ -291,10 +291,10 @@ deep 工具执行，不能进入恢复热路径。
 
 ### 保留策略
 
-v1 不引入复杂归档系统。默认上限为 64 MiB：MCP Session 结束和 Hook `session-start`
-执行 retention，只删除最旧的已完成 Session，或超过 24 小时、不是当前 Session 且能
-取得非阻塞文件锁的 orphan 文件。当前文件和正在写入的文件不得删除。对应 `.lock`
-文件随 observation 一起清理，不额外写 `retention_prune` 事件。
+v1 不引入复杂归档系统。State MCP 默认上限为 64 MiB，在 Session 结束时执行 retention；
+只删除最旧的已完成 Session，或超过 24 小时且不是当前 Session 的 orphan 文件。追加和
+删除持有同一个稳定目录锁，因此当前文件和正在写入的文件不会与清理竞态。稳定锁文件
+不删除，也不额外写 `retention_prune` 事件。
 
 ## token 边界
 
@@ -324,8 +324,8 @@ v1 不引入复杂归档系统。默认上限为 64 MiB：MCP Session 结束和 
 ## 兼容与迁移
 
 - 现有 MCP access audit JSONL 保持只读，不重写、不导入新热路径；
-- 新实现使用新的 schema 和目录，避免旧 verifier 误判；
-- hook observation 与 MCP 最小事件共用字段命名和关联 ID；
+- 新 State 实现使用已登记的新 schema 和目录，避免 core/旧 verifier 误判；
+- core Hook 和 State MCP 保持各自合同，通过公共 hash 字段在报告阶段关联；
 - 上游 hook 模型是目标基线，本地资源审计只迁移其中仍有价值的摘要字段；
 - 旧日志的 deep verify 保留为兼容工具，不在 SessionStart 调用。
 
@@ -333,30 +333,31 @@ v1 不引入复杂归档系统。默认上限为 64 MiB：MCP Session 结束和 
 
 已实现的最小测试集：
 
-1. SessionStart、PreCompact、PostCompact 和 State 写生成预期事件；
+1. core manifest 仅注册 SessionStart、PreCompact、PostCompact，默认 auto/observe 不阻塞；
 2. 普通读取只增加内存计数，不产生逐调用持久记录；
 3. 关闭可选探针后只保留强制安全记录，并以 `session_end` 形成可回收文件；
 4. provider usage 缺失时不出现伪造 token 值；
-5. 并发追加不发生交叉或半行记录；
+5. 线程和真实多进程 append+prune 不发生交叉、半行或锁删除竞态；
 6. observation 目录不可写时不阻断 State 操作；
 7. retention 保留当前 Session，删除已完成或保守判定的旧 orphan；
 8. 报告容忍损坏行，并限制单文件读取尾部大小；
-9. 缺少 `continuity_policy` 的旧项目得到 `balanced` 默认行为；
+9. 缺少独立策略文件的项目得到 `balanced` 默认行为，旧字段仅内存迁移；
 10. preset 覆盖、非法枚举和数值上下限通过测试；
 11. 无效恢复包不建立 MCP binding，普通读取复用已有 binding；
-12. 插件/包版本错配和非法策略保持 fail closed。
+12. 所有 State 写及 checkpoint create 在执行前后刷新 binding，过期 lease/source 拒绝写；
+13. 策略和 State observation 均通过 Draft 2020-12 schema 与公共 registry hash 校验。
 
 后续测试包括真实崩溃恢复、POSIX/macOS 进程指标、磁盘满和跨进程长期压力；这些不在
 当前实现的已验证声明中。
 
 ## 分阶段实现
 
-### 阶段 1：合同与 hook 边界
+### 阶段 1：合同与插件边界
 
 - 增加最小事件合同；
-- 定义 `continuity_policy` schema、`balanced` 默认值和兼容解析；
-- 统一 hook 的 Session/turn/project 关联字段；
-- 记录 compaction、packet bytes、canary 和 Session 汇总；
+- 定义独立 policy schema、`balanced` 默认值和兼容解析；
+- 复用 alpha.10 core Hook 生命周期观测，不向 core 加回 State MCP；
+- State observation 进入公共 schema registry；
 - 不改 State schema。
 
 ### 阶段 2：MCP 最小记录

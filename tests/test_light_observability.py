@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import importlib.util
 import hashlib
+import multiprocessing
 import os
 import subprocess
 import sys
@@ -14,17 +15,24 @@ from pathlib import Path
 from unittest.mock import patch
 
 import yaml
+from jsonschema import Draft202012Validator
 
 from continuity_plane import codex_mcp_server
 from continuity_plane.cli import main as cli_main
 from continuity_plane.light_observability import (
     MAX_OBSERVATION_BYTES,
     MAX_REPORT_FILE_BYTES,
+    CORE_OBSERVATION_DIRECTORY,
+    CORE_OBSERVATION_SCHEMA_VERSION,
+    POLICY_FILENAME,
+    POLICY_SCHEMA_VERSION,
+    STATE_OBSERVATION_DIRECTORY,
     PolicyConfigError,
     SessionProbe,
     _posix_process_memory,
     append_observation,
     build_observation_report,
+    load_policy,
     policy_sha256,
     prune_closed_observations,
     resolve_policy,
@@ -57,8 +65,13 @@ def _write_project(root: Path, policy: object | None = None) -> None:
     control = root / ".continuity"
     control.mkdir(parents=True)
     (control / "project.yaml").write_text(
-        yaml.safe_dump(_project(policy), sort_keys=False), encoding="utf-8"
+        yaml.safe_dump(_project(), sort_keys=False), encoding="utf-8"
     )
+    if policy is not None:
+        policy_document = {"schema_version": POLICY_SCHEMA_VERSION, **policy}
+        (control / POLICY_FILENAME).write_text(
+            yaml.safe_dump(policy_document, sort_keys=False), encoding="utf-8"
+        )
 
 
 def _idle_envelope() -> str:
@@ -93,7 +106,84 @@ def _active_envelope() -> str:
     )
 
 
+def _stale_source_binding() -> dict:
+    binding = codex_mcp_server._binding_from_output(_active_envelope())
+    if binding is None:
+        raise AssertionError("active binding fixture is invalid")
+    binding["source_fresh"] = False
+    return binding
+
+
+def _expired_lease_binding() -> dict:
+    binding = codex_mcp_server._binding_from_output(_active_envelope())
+    if binding is None:
+        raise AssertionError("active binding fixture is invalid")
+    binding["lease_valid"] = False
+    return binding
+
+
+def _multiprocess_append_worker(
+    data_root: str,
+    project_root: str,
+    session_id: str,
+    worker: int,
+    count: int,
+) -> None:
+    policy = resolve_policy(_project(), environment={})
+    for sequence in range(count):
+        if not append_observation(
+            data_root=Path(data_root),
+            session_id=session_id,
+            project_root=Path(project_root),
+            policy=policy,
+            event_type="state_write_completed",
+            success=True,
+            extra={"worker": worker, "sequence": sequence},
+        ):
+            raise RuntimeError("observation append failed")
+
+
+def _multiprocess_prune_worker(data_root: str, session_id: str) -> None:
+    for _ in range(20):
+        prune_closed_observations(
+            Path(data_root),
+            retention_max_bytes=1,
+            current_session_id=session_id,
+            orphan_after_seconds=0,
+        )
+
+
 class PolicyTests(unittest.TestCase):
+    def test_policy_and_state_observation_schemas_are_registered(self) -> None:
+        root = Path(__file__).parents[1]
+        registry_path = root / "schemas/registry.json"
+        registry = json.loads(registry_path.read_text(encoding="utf-8"))
+        registered = {entry["path"]: entry["sha256"] for entry in registry["schemas"]}
+        paths = (
+            "schemas/m10-16/observability-policy.schema.json",
+            "schemas/m10-16/state-mcp-observation.schema.json",
+        )
+        for relative in paths:
+            with self.subTest(schema=relative):
+                path = root / relative
+                schema = json.loads(path.read_text(encoding="utf-8"))
+                Draft202012Validator.check_schema(schema)
+                self.assertEqual(
+                    registered[relative],
+                    hashlib.sha256(path.read_bytes().replace(b"\r\n", b"\n")).hexdigest(),
+                )
+
+    def test_resolved_policy_matches_independent_schema(self) -> None:
+        root = Path(__file__).parents[1]
+        schema = json.loads(
+            (root / "schemas/m10-16/observability-policy.schema.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        Draft202012Validator(schema).validate(
+            resolve_policy(_project(), environment={})
+        )
+
     def test_old_profile_uses_balanced_defaults(self) -> None:
         policy = resolve_policy(_project(), environment={})
         self.assertEqual(policy["preset"], "balanced")
@@ -136,7 +226,7 @@ class PolicyTests(unittest.TestCase):
         right = {key: left[key] for key in reversed(left)}
         self.assertEqual(policy_sha256(left), policy_sha256(right))
 
-    def test_cli_accepts_optional_policy_and_rejects_invalid_policy(self) -> None:
+    def test_independent_policy_does_not_change_project_profile_contract(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             with patch("sys.stdout", new=StringIO()):
@@ -145,24 +235,108 @@ class PolicyTests(unittest.TestCase):
                     0,
                 )
             profile_path = root / ".continuity/project.yaml"
-            profile = yaml.safe_load(profile_path.read_text(encoding="utf-8"))
-            profile["continuity_policy"] = {"preset": "diagnostic"}
-            profile_path.write_text(
-                yaml.safe_dump(profile, sort_keys=False), encoding="utf-8"
+            original_profile = profile_path.read_bytes()
+            policy_path = root / ".continuity" / POLICY_FILENAME
+            policy_path.write_text(
+                yaml.safe_dump(
+                    {
+                        "schema_version": POLICY_SCHEMA_VERSION,
+                        "preset": "diagnostic",
+                    },
+                    sort_keys=False,
+                ),
+                encoding="utf-8",
             )
             with patch("sys.stdout", new=StringIO()):
                 self.assertEqual(cli_main(["verify", "--root", str(root)]), 0)
-            profile["continuity_policy"] = {
-                "checkpoint": {"on_work_complete": False}
-            }
-            profile_path.write_text(
-                yaml.safe_dump(profile, sort_keys=False), encoding="utf-8"
+            self.assertEqual(profile_path.read_bytes(), original_profile)
+            self.assertEqual(load_policy(root, environment={})["preset"], "diagnostic")
+            policy_path.write_text(
+                yaml.safe_dump(
+                    {
+                        "schema_version": POLICY_SCHEMA_VERSION,
+                        "unknown": True,
+                    }
+                ),
+                encoding="utf-8",
             )
-            with self.assertRaisesRegex(ValueError, "required authority boundary"):
-                cli_main(["verify", "--root", str(root)])
+            with self.assertRaisesRegex(PolicyConfigError, "unsupported fields"):
+                load_policy(root, environment={})
+
+    def test_legacy_project_policy_migrates_in_memory(self) -> None:
+        policy = resolve_policy(
+            _project({"preset": "diagnostic"}), environment={}
+        )
+        self.assertEqual(policy["schema_version"], POLICY_SCHEMA_VERSION)
+        self.assertEqual(policy["preset"], "diagnostic")
+
+    def test_legacy_wrapper_is_rejected_outside_project_profile(self) -> None:
+        with self.assertRaisesRegex(PolicyConfigError, "unsupported fields"):
+            resolve_policy(
+                {
+                    "schema_version": POLICY_SCHEMA_VERSION,
+                    "continuity_policy": {"preset": "diagnostic"},
+                },
+                environment={},
+            )
 
 
 class ObservationTests(unittest.TestCase):
+    def test_report_reuses_alpha10_core_lifecycle_observations(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            root = base / "project"
+            data = base / "data"
+            root.mkdir()
+            live_events = data / CORE_OBSERVATION_DIRECTORY
+            live_events.mkdir(parents=True)
+            record = {
+                "schema_version": CORE_OBSERVATION_SCHEMA_VERSION,
+                "event_type": "postcompact",
+                "session_sha256": hashlib.sha256(b"core-session").hexdigest(),
+                "project_root_sha256": hashlib.sha256(
+                    str(root.resolve()).encode()
+                ).hexdigest(),
+                "success": True,
+            }
+            (live_events / "core.jsonl").write_text(
+                json.dumps(record) + "\n", encoding="utf-8"
+            )
+            report = build_observation_report(root, data_root=data)
+            self.assertEqual(report["event_counts"], {"postcompact": 1})
+
+    def test_persisted_state_observation_matches_registered_schema(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            root = base / "project"
+            data = base / "data"
+            root.mkdir()
+            policy = resolve_policy(_project(), environment={})
+            self.assertTrue(
+                append_observation(
+                    data_root=data,
+                    session_id="schema-validation",
+                    project_root=root,
+                    policy=policy,
+                    event_type="state_write_completed",
+                    success=True,
+                    duration_ms=2.5,
+                    extra={"tool_name": "continuity_checkpoint:create"},
+                )
+            )
+            record = json.loads(
+                next((data / STATE_OBSERVATION_DIRECTORY).glob("*.jsonl"))
+                .read_text(encoding="utf-8")
+                .strip()
+            )
+            schema = json.loads(
+                (
+                    Path(__file__).parents[1]
+                    / "schemas/m10-16/state-mcp-observation.schema.json"
+                ).read_text(encoding="utf-8")
+            )
+            Draft202012Validator(schema).validate(record)
+
     def test_linux_rss_uses_current_resident_pages(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             statm = Path(directory) / "statm"
@@ -199,9 +373,9 @@ class ObservationTests(unittest.TestCase):
                 request_bytes=10,
                 response_bytes=20,
             )
-            self.assertFalse((data / "live-events").exists())
+            self.assertFalse((data / STATE_OBSERVATION_DIRECTORY).exists())
             probe.close()
-            lines = next((data / "live-events").glob("*.jsonl")).read_text(
+            lines = next((data / STATE_OBSERVATION_DIRECTORY).glob("*.jsonl")).read_text(
                 encoding="utf-8"
             ).splitlines()
             self.assertEqual(len(lines), 1)
@@ -231,7 +405,7 @@ class ObservationTests(unittest.TestCase):
             probe.close()
             records = [
                 json.loads(line)
-                for line in next((data / "live-events").glob("*.jsonl"))
+                for line in next((data / STATE_OBSERVATION_DIRECTORY).glob("*.jsonl"))
                 .read_text(encoding="utf-8")
                 .splitlines()
             ]
@@ -281,7 +455,7 @@ class ObservationTests(unittest.TestCase):
                 root, policy, data_root=data, session_id="disabled-probes"
             )
             probe.record_call("continuity_resume", duration_ms=5000, success=True)
-            self.assertFalse((data / "live-events").exists())
+            self.assertFalse((data / STATE_OBSERVATION_DIRECTORY).exists())
             probe.record_call("continuity_resume", duration_ms=1, success=False)
             probe.record_call(
                 "continuity_checkpoint:create", duration_ms=1, success=True
@@ -289,7 +463,7 @@ class ObservationTests(unittest.TestCase):
             probe.close()
             records = [
                 json.loads(line)
-                for line in next((data / "live-events").glob("*.jsonl"))
+                for line in next((data / STATE_OBSERVATION_DIRECTORY).glob("*.jsonl"))
                 .read_text(encoding="utf-8")
                 .splitlines()
             ]
@@ -344,7 +518,7 @@ class ObservationTests(unittest.TestCase):
                 success=True,
                 extra={"duplicate_resumes": 1},
             )
-            path = next((data / "live-events").glob("*.jsonl"))
+            path = next((data / STATE_OBSERVATION_DIRECTORY).glob("*.jsonl"))
             with path.open("a", encoding="utf-8") as stream:
                 stream.write("{broken\n")
             report = build_observation_report(root, data_root=data)
@@ -367,7 +541,7 @@ class ObservationTests(unittest.TestCase):
                 event_type="session_end",
                 success=True,
             )
-            path = next((data / "live-events").glob("*.jsonl"))
+            path = next((data / STATE_OBSERVATION_DIRECTORY).glob("*.jsonl"))
             valid_tail = path.read_bytes()
             path.write_bytes(b"x" * MAX_REPORT_FILE_BYTES + b"\n" + valid_tail)
             report = build_observation_report(root, data_root=data)
@@ -400,7 +574,10 @@ class ObservationTests(unittest.TestCase):
                 current_session_id="closed-current",
             )
             self.assertEqual(removed, 1)
-            names = {path.name for path in (data / "live-events").glob("*.jsonl")}
+            names = {
+                path.name
+                for path in (data / STATE_OBSERVATION_DIRECTORY).glob("*.jsonl")
+            }
             self.assertIn(
                 hashlib.sha256(b"closed-current").hexdigest() + ".jsonl",
                 names,
@@ -410,7 +587,7 @@ class ObservationTests(unittest.TestCase):
                 names,
             )
 
-    def test_retention_removes_old_unlocked_hook_orphan(self) -> None:
+    def test_retention_removes_old_state_orphan_under_stable_lock(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory)
             root = base / "project"
@@ -419,24 +596,26 @@ class ObservationTests(unittest.TestCase):
             policy = resolve_policy(_project(), environment={})
             append_observation(
                 data_root=data,
-                session_id="old-hook-orphan",
+                session_id="old-state-orphan",
                 project_root=root,
                 policy=policy,
                 event_type="precompact",
                 success=True,
             )
-            path = next((data / "live-events").glob("*.jsonl"))
+            path = next((data / STATE_OBSERVATION_DIRECTORY).glob("*.jsonl"))
             old = path.stat().st_mtime - 10
             os.utime(path, (old, old))
             removed = prune_closed_observations(
                 data,
                 retention_max_bytes=1,
-                current_session_id="current-hook",
+                current_session_id="current-state-session",
                 orphan_after_seconds=1,
             )
             self.assertEqual(removed, 1)
             self.assertFalse(path.exists())
-            self.assertFalse(path.with_suffix(".lock").exists())
+            self.assertTrue(
+                (data / STATE_OBSERVATION_DIRECTORY / ".retention.lock").exists()
+            )
 
     def test_concurrent_boundary_appends_remain_complete_json_lines(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -464,12 +643,68 @@ class ObservationTests(unittest.TestCase):
             for thread in threads:
                 thread.join()
             self.assertTrue(all(results))
-            lines = next((data / "live-events").glob("*.jsonl")).read_text(
+            lines = next((data / STATE_OBSERVATION_DIRECTORY).glob("*.jsonl")).read_text(
                 encoding="utf-8"
             ).splitlines()
             records = [json.loads(line) for line in lines]
             self.assertEqual(len(records), 64)
             self.assertEqual({record["sequence"] for record in records}, set(range(64)))
+
+    def test_multiprocess_append_and_prune_share_stable_directory_lock(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            root = base / "project"
+            data = base / "data"
+            root.mkdir()
+            policy = resolve_policy(_project(), environment={})
+            self.assertTrue(
+                append_observation(
+                    data_root=data,
+                    session_id="old-closed-session",
+                    project_root=root,
+                    policy=policy,
+                    event_type="session_end",
+                    success=True,
+                )
+            )
+            context = multiprocessing.get_context("spawn")
+            session_id = "shared-live-session"
+            processes = [
+                context.Process(
+                    target=_multiprocess_append_worker,
+                    args=(str(data), str(root), session_id, worker, 30),
+                )
+                for worker in range(4)
+            ]
+            processes.append(
+                context.Process(
+                    target=_multiprocess_prune_worker,
+                    args=(str(data), session_id),
+                )
+            )
+            for process in processes:
+                process.start()
+            for process in processes:
+                process.join(30)
+                self.assertEqual(process.exitcode, 0)
+            directory_path = data / STATE_OBSERVATION_DIRECTORY
+            shared_path = directory_path / (
+                hashlib.sha256(session_id.encode()).hexdigest() + ".jsonl"
+            )
+            records = [
+                json.loads(line)
+                for line in shared_path.read_text(encoding="utf-8").splitlines()
+            ]
+            self.assertEqual(len(records), 120)
+            self.assertEqual(
+                {(record["worker"], record["sequence"]) for record in records},
+                {(worker, sequence) for worker in range(4) for sequence in range(30)},
+            )
+            old_path = directory_path / (
+                hashlib.sha256(b"old-closed-session").hexdigest() + ".jsonl"
+            )
+            self.assertFalse(old_path.exists())
+            self.assertTrue((directory_path / ".retention.lock").exists())
 
 
 class MCPProbeTests(unittest.TestCase):
@@ -520,7 +755,7 @@ class MCPProbeTests(unittest.TestCase):
                 patch.dict(os.environ, {"PLUGIN_DATA": str(data)}, clear=False),
             ):
                 self.assertEqual(codex_mcp_server.main(), 0)
-            self.assertFalse((data / "live-events").exists())
+            self.assertFalse((data / STATE_OBSERVATION_DIRECTORY).exists())
 
     def test_non_object_requests_are_ignored_or_rejected_without_crashing(self) -> None:
         requests = [
@@ -679,7 +914,7 @@ class MCPProbeTests(unittest.TestCase):
             self.assertTrue(responses[0]["result"]["isError"])
             self.assertEqual(responses[1]["error"]["code"], -32001)
 
-    def test_successful_state_write_refreshes_binding_once(self) -> None:
+    def test_successful_state_write_refreshes_binding_before_and_after(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory)
             root = base / "project"
@@ -727,12 +962,121 @@ class MCPProbeTests(unittest.TestCase):
                 patch.object(
                     codex_mcp_server,
                     "_binding",
-                    return_value=json.loads(_idle_envelope()),
+                    return_value=codex_mcp_server._binding_from_output(
+                        _active_envelope()
+                    ),
                 ) as refresh_binding,
                 patch.dict(os.environ, {"PLUGIN_DATA": str(base / "data")}, clear=False),
             ):
                 self.assertEqual(codex_mcp_server.main(), 0)
-            refresh_binding.assert_called_once_with(root.resolve())
+            self.assertEqual(refresh_binding.call_count, 2)
+            refresh_binding.assert_called_with(root.resolve())
+
+    def test_checkpoint_create_rejects_binding_that_became_stale(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            root = base / "project"
+            _write_project(root)
+            requests = [
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "tools/call",
+                    "params": {
+                        "name": "continuity_resume",
+                        "arguments": {"root": str(root)},
+                    },
+                },
+                {
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "method": "tools/call",
+                    "params": {
+                        "name": "continuity_checkpoint",
+                        "arguments": {"root": str(root), "action": "create"},
+                    },
+                },
+            ]
+            stdout = StringIO()
+            with (
+                patch.object(
+                    codex_mcp_server.sys,
+                    "stdin",
+                    StringIO("".join(json.dumps(item) + "\n" for item in requests)),
+                ),
+                patch.object(codex_mcp_server.sys, "stdout", stdout),
+                patch.object(
+                    codex_mcp_server,
+                    "_run_cli_with_retry",
+                    return_value=subprocess.CompletedProcess(
+                        [], 0, _active_envelope(), ""
+                    ),
+                ) as run_cli,
+                patch.object(
+                    codex_mcp_server, "_binding", return_value=_stale_source_binding()
+                ),
+                patch.dict(os.environ, {"PLUGIN_DATA": str(base / "data")}, clear=False),
+            ):
+                self.assertEqual(codex_mcp_server.main(), 0)
+            responses = [json.loads(line) for line in stdout.getvalue().splitlines()]
+            self.assertEqual(run_cli.call_count, 1)
+            self.assertEqual(responses[1]["error"]["code"], -32002)
+
+    def test_work_complete_rejects_binding_that_became_stale(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            root = base / "project"
+            _write_project(root)
+            requests = [
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "tools/call",
+                    "params": {
+                        "name": "continuity_resume",
+                        "arguments": {"root": str(root)},
+                    },
+                },
+                {
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "method": "tools/call",
+                    "params": {
+                        "name": "continuity_work_complete",
+                        "arguments": {
+                            "root": str(root),
+                            "work_id": "work-1",
+                            "claim_id": "claim-1",
+                            "actor_ref": "actor-1",
+                            "evidence_files": ["evidence.json"],
+                        },
+                    },
+                },
+            ]
+            stdout = StringIO()
+            with (
+                patch.object(
+                    codex_mcp_server.sys,
+                    "stdin",
+                    StringIO("".join(json.dumps(item) + "\n" for item in requests)),
+                ),
+                patch.object(codex_mcp_server.sys, "stdout", stdout),
+                patch.object(
+                    codex_mcp_server,
+                    "_run_cli_with_retry",
+                    return_value=subprocess.CompletedProcess(
+                        [], 0, _active_envelope(), ""
+                    ),
+                ) as run_cli,
+                patch.object(
+                    codex_mcp_server, "_binding", return_value=_expired_lease_binding()
+                ),
+                patch.dict(os.environ, {"PLUGIN_DATA": str(base / "data")}, clear=False),
+            ):
+                self.assertEqual(codex_mcp_server.main(), 0)
+            responses = [json.loads(line) for line in stdout.getvalue().splitlines()]
+            self.assertEqual(run_cli.call_count, 1)
+            self.assertEqual(responses[1]["error"]["code"], -32002)
 
     def test_invalid_policy_fails_closed_before_cli_execution(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -774,108 +1118,71 @@ class HookProbeTests(unittest.TestCase):
         spec.loader.exec_module(module)
         return module
 
-    def test_minimal_hook_skips_successful_tool_detail_but_keeps_failure(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            base = Path(directory)
-            root = base / "project"
-            data = base / "data"
-            _write_project(root)
-            hook = self._load_hook()
-            payload = {"session_id": "hook-session", "turn_id": "turn-1"}
-            with patch.dict(os.environ, {"PLUGIN_DATA": str(data)}, clear=False):
-                hook._observe(
-                    payload,
-                    root,
-                    event_type="pretooluse",
-                    success=True,
-                    decision="allow",
-                )
-                self.assertFalse((data / "live-events").exists())
-                hook._observe(
-                    payload,
-                    root,
-                    event_type="pretooluse",
-                    success=False,
-                    decision="deny-conflict",
-                )
-            record = json.loads(
-                next((data / "live-events").glob("*.jsonl"))
-                .read_text(encoding="utf-8")
-                .strip()
-            )
-            self.assertEqual(record["event_type"], "pretooluse")
-            self.assertFalse(record["success"])
+    def test_core_manifest_registers_lifecycle_hooks_only(self) -> None:
+        root = Path(__file__).parents[1]
+        path = root / "plugins/continuity-plane/hooks/hooks.json"
+        manifest = json.loads(path.read_text(encoding="utf-8"))
+        self.assertEqual(
+            set(manifest["hooks"]), {"SessionStart", "PreCompact", "PostCompact"}
+        )
+        self.assertNotIn("PreToolUse", manifest["hooks"])
+        self.assertNotIn("PostToolUse", manifest["hooks"])
 
-    def test_session_start_hook_runs_bounded_orphan_retention(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            base = Path(directory)
-            root = base / "project"
-            data = base / "data"
-            _write_project(root)
-            hook = self._load_hook()
-            payload = {"session_id": "hook-retention", "source": "startup"}
-            with (
-                patch.dict(os.environ, {"PLUGIN_DATA": str(data)}, clear=False),
-                patch.object(hook, "prune_closed_observations") as prune,
-            ):
-                hook._observe(
-                    payload,
-                    root,
-                    event_type="session-start",
-                    success=True,
-                )
-            prune.assert_called_once_with(
-                data,
-                retention_max_bytes=64 * 1024 * 1024,
-                current_session_id="hook-retention",
-                orphan_after_seconds=24 * 60 * 60,
-            )
+    def test_alpha10_core_and_state_plugin_ownership_remains_split(self) -> None:
+        root = Path(__file__).parents[1]
+        core = root / "plugins/continuity-plane"
+        state = root / "plugins/continuity-plane-state"
+        core_manifest = json.loads(
+            (core / ".codex-plugin/plugin.json").read_text(encoding="utf-8")
+        )
+        state_manifest = json.loads(
+            (state / ".codex-plugin/plugin.json").read_text(encoding="utf-8")
+        )
+        self.assertNotIn("mcpServers", core_manifest)
+        self.assertFalse((core / ".mcp.json").exists())
+        self.assertIn("mcpServers", state_manifest)
+        self.assertTrue((state / ".mcp.json").is_file())
+        self.assertFalse((core / "skills/continuity-plane-state").exists())
 
-    def test_invalid_hook_policy_stops_before_lifecycle_command(self) -> None:
+    def test_auto_lifecycle_failures_never_stop_the_session(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "project"
-            _write_project(root, {"verification": {"startup_scope": "off"}})
+            root.mkdir()
             hook = self._load_hook()
-            payload = {
-                "cwd": str(root),
-                "session_id": "hook-invalid-policy",
-                "hook_event_name": "SessionStart",
-                "source": "startup",
-            }
-            stdin = StringIO(json.dumps(payload))
+            payload = {"session_id": "auto-failure", "source": "startup"}
+            failed = subprocess.CompletedProcess([], 1, "", "failed")
             stdout = StringIO()
             with (
-                patch.object(hook.sys, "stdin", stdin),
+                patch.dict(
+                    os.environ, {"CONTINUITY_EFFECT_POLICY": "auto"}, clear=False
+                ),
                 patch.object(hook.sys, "stdout", stdout),
-                patch.object(hook, "_command") as command,
+                patch.object(hook, "_command", return_value=failed),
+                patch.object(hook, "_observe"),
+                patch.object(hook, "_write_cursor", return_value=None),
+                patch.object(hook, "_skill_lock_path", return_value=None),
+                patch.object(hook, "_cursor_path", return_value=None),
             ):
-                self.assertEqual(hook.main(), 0)
-            command.assert_not_called()
-            response = json.loads(stdout.getvalue())
-            self.assertFalse(response["continue"])
-            self.assertIn("policy is invalid", response["stopReason"])
+                self.assertEqual(hook._precompact(payload, root), 0)
+                self.assertEqual(hook._postcompact(payload, root), 0)
+                self.assertEqual(hook._session_start(payload, root), 0)
+            self.assertEqual(stdout.getvalue(), "")
 
-    def test_hook_package_version_mismatch_fails_closed(self) -> None:
+    def test_observe_lifecycle_does_not_execute_checkpoint_commands(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "project"
-            _write_project(root)
+            root.mkdir()
             hook = self._load_hook()
-            payload = {
-                "cwd": str(root),
-                "session_id": "hook-version-mismatch",
-                "hook_event_name": "PreCompact",
-            }
-            stdout = StringIO()
+            payload = {"session_id": "observe-only", "source": "compact"}
             with (
-                patch.object(hook.sys, "stdin", StringIO(json.dumps(payload))),
-                patch.object(hook.sys, "stdout", stdout),
-                patch.object(hook, "load_policy", None),
-                patch.object(hook, "append_observation", None),
+                patch.dict(
+                    os.environ, {"CONTINUITY_EFFECT_POLICY": "observe"}, clear=False
+                ),
                 patch.object(hook, "_command") as command,
             ):
-                self.assertEqual(hook.main(), 0)
+                self.assertEqual(hook._precompact(payload, root), 0)
+                self.assertEqual(hook._postcompact(payload, root), 0)
             command.assert_not_called()
-            self.assertIn("versions do not match", stdout.getvalue())
 
 
 if __name__ == "__main__":

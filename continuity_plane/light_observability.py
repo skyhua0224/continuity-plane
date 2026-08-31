@@ -19,6 +19,11 @@ import yaml
 
 
 OBSERVATION_SCHEMA_VERSION = "context.light-observation/v1alpha1"
+CORE_OBSERVATION_SCHEMA_VERSION = "context.codex-hook-observation/v1alpha1"
+POLICY_SCHEMA_VERSION = "context.observability-policy/v1alpha1"
+POLICY_FILENAME = "observability-policy.yaml"
+STATE_OBSERVATION_DIRECTORY = "state-mcp-events"
+CORE_OBSERVATION_DIRECTORY = "live-events"
 MAX_OBSERVATION_BYTES = 2 * 1024
 MAX_REPORT_FILE_BYTES = 4 * 1024 * 1024
 ORPHAN_RETENTION_SECONDS = 24 * 60 * 60
@@ -134,26 +139,52 @@ def _mapping_keys(value: Mapping[Any, Any], field: str) -> set[str]:
 
 
 def resolve_policy(
-    project: Mapping[str, Any],
+    document: Mapping[str, Any] | None,
     *,
     environment: Mapping[str, str] | None = None,
+    require_schema: bool = False,
 ) -> dict[str, Any]:
-    """Resolve one bounded policy, preserving compatibility with old profiles."""
+    """Resolve a strict policy and migrate the pre-alpha project field in memory."""
 
-    configured = project.get("continuity_policy")
+    if document is None:
+        configured: Mapping[str, Any] = {}
+    elif not isinstance(document, Mapping):
+        raise PolicyConfigError("observability policy must be an object")
+    elif document.get("schema_version") == "context.project/v1alpha1":
+        configured = document.get("continuity_policy", {})  # type: ignore[assignment]
+    else:
+        schema_version = document.get("schema_version")
+        if require_schema and schema_version != POLICY_SCHEMA_VERSION:
+            raise PolicyConfigError("observability policy schema is unsupported")
+        if schema_version is not None and schema_version != POLICY_SCHEMA_VERSION:
+            raise PolicyConfigError("observability policy schema is unsupported")
+        allowed_document_fields = _POLICY_FIELDS | {"schema_version"}
+        unknown_document = (
+            _mapping_keys(document, "observability policy") - allowed_document_fields
+        )
+        if unknown_document:
+            raise PolicyConfigError(
+                "observability policy contains unsupported fields: "
+                + ", ".join(sorted(unknown_document))
+            )
+        configured = {
+            key: value for key, value in document.items() if key != "schema_version"
+        }
     if configured is None:
         configured = {}
     if not isinstance(configured, Mapping):
-        raise PolicyConfigError("continuity_policy must be an object")
-    unknown = _mapping_keys(configured, "continuity_policy") - _POLICY_FIELDS
+        raise PolicyConfigError("observability policy must be an object")
+    unknown = _mapping_keys(configured, "observability policy") - _POLICY_FIELDS
     if unknown:
         raise PolicyConfigError(
-            "continuity_policy contains unsupported fields: " + ", ".join(sorted(unknown))
+            "observability policy contains unsupported fields: "
+            + ", ".join(sorted(unknown))
         )
     preset = configured.get("preset", "balanced")
     if not isinstance(preset, str) or preset not in _PRESETS:
         raise PolicyConfigError("continuity_policy.preset is unsupported")
     policy = copy.deepcopy(_PRESETS[preset])
+    policy["schema_version"] = POLICY_SCHEMA_VERSION
     for section, allowed_fields in _SECTION_FIELDS.items():
         override = configured.get(section)
         if override is None:
@@ -223,13 +254,25 @@ def resolve_policy(
 
 
 def load_policy(root: Path, *, environment: Mapping[str, str] | None = None) -> dict[str, Any]:
-    """Load the project policy without accepting arbitrary YAML shapes."""
+    """Load the independent policy, with an in-memory legacy project migration."""
 
-    path = root / ".continuity/project.yaml"
+    control = root / ".continuity"
+    path = control / POLICY_FILENAME
+    if path.is_file():
+        try:
+            document = yaml.safe_load(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, yaml.YAMLError) as exc:
+            raise PolicyConfigError("observability policy is unavailable or invalid") from exc
+        if not isinstance(document, Mapping):
+            raise PolicyConfigError("observability policy must be an object")
+        return resolve_policy(
+            document, environment=environment, require_schema=True
+        )
+    project_path = control / "project.yaml"
     try:
-        project = yaml.safe_load(path.read_text(encoding="utf-8"))
+        project = yaml.safe_load(project_path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, yaml.YAMLError) as exc:
-        raise PolicyConfigError("project policy is unavailable or invalid") from exc
+        raise PolicyConfigError("project profile is unavailable or invalid") from exc
     if not isinstance(project, Mapping):
         raise PolicyConfigError("project profile must be an object")
     return resolve_policy(project, environment=environment)
@@ -276,28 +319,6 @@ def _unlock_file(stream: Any) -> None:
     import fcntl
 
     fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
-
-
-def _try_lock_file(stream: Any) -> bool:
-    """Attempt a non-blocking cross-process lock for retention cleanup."""
-
-    try:
-        if os.name == "nt":
-            import msvcrt
-
-            stream.seek(0, os.SEEK_END)
-            if stream.tell() == 0:
-                stream.write(b"\0")
-                stream.flush()
-            stream.seek(0)
-            msvcrt.locking(stream.fileno(), msvcrt.LK_NBLCK, 1)
-            return True
-        import fcntl
-
-        fcntl.flock(stream.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-        return True
-    except (ImportError, OSError):
-        return False
 
 
 def _safe_extra(extra: Mapping[str, Any] | None) -> dict[str, Any]:
@@ -350,7 +371,9 @@ def _resource_snapshot(
         snapshot["state_store_bytes"] = 0
     try:
         snapshot["session_log_bytes"] = (
-            data_root / "live-events" / f"{_sha256(session_id)}.jsonl"
+            data_root
+            / STATE_OBSERVATION_DIRECTORY
+            / f"{_sha256(session_id)}.jsonl"
         ).stat().st_size if data_root is not None else 0
     except OSError:
         snapshot["session_log_bytes"] = 0
@@ -444,10 +467,10 @@ def append_observation(
     except (KeyError, OSError, TypeError, ValueError):
         return False
     try:
-        directory = data_root / "live-events"
+        directory = data_root / STATE_OBSERVATION_DIRECTORY
         directory.mkdir(parents=True, exist_ok=True)
         path = directory / f"{_sha256(session_id)}.jsonl"
-        lock_path = path.with_suffix(".lock")
+        lock_path = directory / ".retention.lock"
         with _APPEND_LOCK, lock_path.open("a+b") as lock_stream:
             _lock_file(lock_stream)
             try:
@@ -483,24 +506,6 @@ def _closed_observation(path: Path) -> bool:
     return False
 
 
-def _remove_observation_if_idle(path: Path) -> bool:
-    """Remove one observation and lock file only while no writer holds its lock."""
-
-    lock_path = path.with_suffix(".lock")
-    try:
-        with _APPEND_LOCK, lock_path.open("a+b") as lock_stream:
-            if not _try_lock_file(lock_stream):
-                return False
-            try:
-                path.unlink()
-            finally:
-                _unlock_file(lock_stream)
-        lock_path.unlink(missing_ok=True)
-    except OSError:
-        return False
-    return True
-
-
 def prune_closed_observations(
     data_root: Path | None,
     *,
@@ -512,11 +517,36 @@ def prune_closed_observations(
 
     if data_root is None or retention_max_bytes < 0:
         return 0
-    directory = data_root / "live-events"
+    directory = data_root / STATE_OBSERVATION_DIRECTORY
+    if not directory.is_dir():
+        return 0
+    lock_path = directory / ".retention.lock"
     try:
-        paths = list(directory.glob("*.jsonl"))
+        with _APPEND_LOCK, lock_path.open("a+b") as lock_stream:
+            _lock_file(lock_stream)
+            try:
+                return _prune_locked_observations(
+                    directory,
+                    retention_max_bytes=retention_max_bytes,
+                    current_session_id=current_session_id,
+                    orphan_after_seconds=orphan_after_seconds,
+                )
+            finally:
+                _unlock_file(lock_stream)
     except OSError:
         return 0
+
+
+def _prune_locked_observations(
+    directory: Path,
+    *,
+    retention_max_bytes: int,
+    current_session_id: str | None,
+    orphan_after_seconds: int | None,
+) -> int:
+    """Prune State MCP observations while the stable directory lock is held."""
+
+    paths = list(directory.glob("*.jsonl"))
     entries: list[tuple[int, int, Path]] = []
     total = 0
     for path in paths:
@@ -548,7 +578,9 @@ def prune_closed_observations(
             _closed_observation(path) or stale_orphan
         ):
             continue
-        if not _remove_observation_if_idle(path):
+        try:
+            path.unlink()
+        except OSError:
             continue
         total -= size
         removed += 1
@@ -727,17 +759,21 @@ def build_observation_report(
     corrupt_lines = 0
     truncated_files = 0
     if data_root is not None:
-        directory = data_root / "live-events"
+        directories = [
+            data_root / STATE_OBSERVATION_DIRECTORY,
+            data_root / CORE_OBSERVATION_DIRECTORY,
+        ]
         entries: list[tuple[int, Path]] = []
-        try:
-            candidates = directory.glob("*.jsonl")
-            for path in candidates:
-                try:
-                    entries.append((path.stat().st_mtime_ns, path))
-                except OSError:
-                    continue
-        except OSError:
-            entries = []
+        for directory in directories:
+            try:
+                candidates = directory.glob("*.jsonl")
+                for path in candidates:
+                    try:
+                        entries.append((path.stat().st_mtime_ns, path))
+                    except OSError:
+                        continue
+            except OSError:
+                continue
         paths = [
             path
             for _, path in sorted(entries, key=lambda item: item[0], reverse=True)[
@@ -772,8 +808,12 @@ def build_observation_report(
                     continue
                 if (
                     isinstance(record, dict)
-                    and record.get("schema_version") == OBSERVATION_SCHEMA_VERSION
-                    and record.get("project_sha256") == project_digest
+                    and record.get("schema_version")
+                    in {OBSERVATION_SCHEMA_VERSION, CORE_OBSERVATION_SCHEMA_VERSION}
+                    and (
+                        record.get("project_sha256") == project_digest
+                        or record.get("project_root_sha256") == project_digest
+                    )
                 ):
                     records.append(record)
     event_counts: dict[str, int] = {}
@@ -823,8 +863,13 @@ def build_observation_report(
 
 __all__ = [
     "MAX_REPORT_FILE_BYTES",
+    "CORE_OBSERVATION_DIRECTORY",
+    "CORE_OBSERVATION_SCHEMA_VERSION",
     "ORPHAN_RETENTION_SECONDS",
     "OBSERVATION_SCHEMA_VERSION",
+    "POLICY_FILENAME",
+    "POLICY_SCHEMA_VERSION",
+    "STATE_OBSERVATION_DIRECTORY",
     "PolicyConfigError",
     "SessionProbe",
     "append_observation",

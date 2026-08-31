@@ -148,8 +148,17 @@ def _write_binding_error(
     if binding is None:
         _error(request_id, -32001, "session binding is unavailable; write tools are disabled")
         return True
-    if binding["read_only"]:
-        _error(request_id, -32002, "session binding is read-only; write tools are disabled")
+    if (
+        binding["read_only"]
+        or not binding["source_fresh"]
+        or not binding["checkpoint_verified"]
+        or not binding["lease_valid"]
+    ):
+        _error(
+            request_id,
+            -32002,
+            "session binding is stale or read-only; write tools are disabled",
+        )
         return True
     if actor_ref is not None and actor_ref != binding["actor_ref"]:
         _error(request_id, -32003, "actor binding does not match the session claim")
@@ -176,8 +185,17 @@ def _write_transition_binding_error(
     if binding is None:
         _error(request_id, -32001, "session binding is unavailable; write tools are disabled")
         return True
-    if binding["read_only"]:
-        _error(request_id, -32002, "session binding is read-only; write tools are disabled")
+    if (
+        binding["read_only"]
+        or not binding["source_fresh"]
+        or not binding["checkpoint_verified"]
+        or not binding["lease_valid"]
+    ):
+        _error(
+            request_id,
+            -32002,
+            "session binding is stale or read-only; write tools are disabled",
+        )
         return True
     if actor_ref != binding["actor_ref"]:
         _error(request_id, -32003, "actor binding does not match the session claim")
@@ -201,8 +219,17 @@ def _write_activation_binding_error(
     if binding is None:
         _error(request_id, -32001, "session binding is unavailable; write tools are disabled")
         return True
-    if binding["read_only"]:
-        _error(request_id, -32002, "session binding is read-only; write tools are disabled")
+    if (
+        binding["read_only"]
+        or not binding["source_fresh"]
+        or not binding["checkpoint_verified"]
+        or not binding["lease_valid"]
+    ):
+        _error(
+            request_id,
+            -32002,
+            "session binding is stale or read-only; write tools are disabled",
+        )
         return True
     if binding["mode"] != "idle":
         _error(request_id, -32003, "successor activation requires an idle session binding")
@@ -574,7 +601,18 @@ def main() -> int:
                 if tool_name == "continuity_resume"
                 else session_bindings.get(root_key)
             )
-            if tool_name in {"continuity_autorun", "continuity_claim_recover"}:
+            checkpoint_create = (
+                tool_name == "continuity_checkpoint"
+                and arguments.get("action") == "create"
+            )
+            authority_write = tool_name in {
+                "continuity_autorun",
+                "continuity_work_complete",
+                "continuity_work_transition",
+                "continuity_work_activate",
+                "continuity_claim_recover",
+            }
+            if checkpoint_create or authority_write:
                 refresh_started = time.perf_counter()
                 binding = _binding(requested_root)
                 refresh_duration_ms = (time.perf_counter() - refresh_started) * 1000
@@ -964,7 +1002,7 @@ def main() -> int:
                         "duplicate_resumes": probe.duplicate_resumes,
                     },
                 )
-            elif tool_name in {
+            elif checkpoint_create or tool_name in {
                 "continuity_autorun",
                 "continuity_work_complete",
                 "continuity_work_transition",

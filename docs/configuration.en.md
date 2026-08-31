@@ -44,29 +44,29 @@ fully local for its entire lifecycle.
 
 ## Continuity policy and lightweight probes
 
-Existing projects require no migration. A missing `continuity_policy` selects
-the `balanced` defaults. Add this section to `.continuity/project.yaml` only
-when an override is needed:
+Existing project profiles require no migration. State MCP probes use the
+independent `.continuity/observability-policy.yaml`; a missing file selects the
+`balanced` defaults. Create this file only when an override is needed:
 
 ```yaml
-continuity_policy:
-  preset: balanced
-  resume:
-    explicit_policy: once_per_connection
-  checkpoint:
-    on_pre_compact: true
-    on_work_complete: true
-    after_state_writes: false
-    min_interval_seconds: 30
-  verification:
-    startup_scope: recent
-    deep_verify: manual
-  observability:
-    mode: minimal
-    probes_enabled: true
-    slow_call_threshold_ms: 1000
-    resource_sampling: boundaries_failures_and_slow
-    retention_max_bytes: 67108864
+schema_version: context.observability-policy/v1alpha1
+preset: balanced
+resume:
+  explicit_policy: once_per_connection
+checkpoint:
+  on_pre_compact: true
+  on_work_complete: true
+  after_state_writes: false
+  min_interval_seconds: 30
+verification:
+  startup_scope: recent
+  deep_verify: manual
+observability:
+  mode: minimal
+  probes_enabled: true
+  slow_call_threshold_ms: 1000
+  resource_sampling: boundaries_failures_and_slow
+  retention_max_bytes: 67108864
 ```
 
 The supported presets are `balanced`, temporary `diagnostic`, and
@@ -79,7 +79,7 @@ the automation contract. They do not add background work when no additional
 automatic checkpoint or deep-verifier scheduler is present.
 
 `CONTINUITY_OBSERVABILITY_MODE=diagnostic` may temporarily raise the
-observation level; persistent policy belongs in the project profile. In
+observation level; persistent policy belongs in the independent policy file. In
 minimal mode, ordinary successful reads update MCP in-memory counters. Only
 boundaries, State writes, failures, slow calls, and the Session summary are
 persisted. Observation failures do not roll back or block a completed State

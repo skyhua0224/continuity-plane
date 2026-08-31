@@ -1891,7 +1891,8 @@ def _session_start(payload: dict[str, Any], root: Path) -> int:
         _start_recovery_window(payload, root, budget_bytes=budget)
     context = _continuation_context(packet, source=str(payload.get("source", "startup")))
     if context is None:
-        _stop("Continuity recovery context exceeds its byte budget.")
+        if _effect_policy() == "strict":
+            _stop("Continuity recovery context exceeds its byte budget.")
         return 0
     response = {
         "continue": True,

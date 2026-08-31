@@ -41,28 +41,29 @@ project isolation 支持后，才能承担权威操作。
 
 ## Continuity 策略与轻量探针
 
-旧项目无需修改配置，缺少 `continuity_policy` 时使用 `balanced`。需要覆盖默认策略时，
-在 `.continuity/project.yaml` 增加：
+旧项目无需修改 project profile。State MCP 轻量探针使用独立的
+`.continuity/observability-policy.yaml`；文件缺失时使用 `balanced`。需要覆盖默认策略时
+创建：
 
 ```yaml
-continuity_policy:
-  preset: balanced
-  resume:
-    explicit_policy: once_per_connection
-  checkpoint:
-    on_pre_compact: true
-    on_work_complete: true
-    after_state_writes: false
-    min_interval_seconds: 30
-  verification:
-    startup_scope: recent
-    deep_verify: manual
-  observability:
-    mode: minimal
-    probes_enabled: true
-    slow_call_threshold_ms: 1000
-    resource_sampling: boundaries_failures_and_slow
-    retention_max_bytes: 67108864
+schema_version: context.observability-policy/v1alpha1
+preset: balanced
+resume:
+  explicit_policy: once_per_connection
+checkpoint:
+  on_pre_compact: true
+  on_work_complete: true
+  after_state_writes: false
+  min_interval_seconds: 30
+verification:
+  startup_scope: recent
+  deep_verify: manual
+observability:
+  mode: minimal
+  probes_enabled: true
+  slow_call_threshold_ms: 1000
+  resource_sampling: boundaries_failures_and_slow
+  retention_max_bytes: 67108864
 ```
 
 可用 preset 为 `balanced`、临时排障用的 `diagnostic`，以及异常恢复期使用的
@@ -71,8 +72,8 @@ continuity_policy:
 当前 alpha 中，checkpoint 间隔和 verification 字段约束自动化策略合同；尚无额外自动
 checkpoint 或 deep verifier 调度时，它们不会增加后台工作。
 
-`CONTINUITY_OBSERVABILITY_MODE=diagnostic` 可临时提升观测级别，但长期策略应写入项目
-配置。minimal 模式下普通成功读取只在 MCP 进程内累计，只有边界、State 写、失败、
+`CONTINUITY_OBSERVABILITY_MODE=diagnostic` 可临时提升观测级别，但长期策略应写入独立
+policy 文件。minimal 模式下普通成功读取只在 MCP 进程内累计，只有边界、State 写、失败、
 慢调用和 Session 汇总落盘。观测失败不会回滚或阻塞已经完成的 State 操作。
 `probes_enabled: false` 只关闭可选计数、慢调用和资源采样；State 写与失败仍保留最小安全
 记录，并在 Session 结束时写入可供 retention 回收的结束标记。
