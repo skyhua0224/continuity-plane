@@ -24,12 +24,20 @@
     "success": {"type": "boolean"},
     "duration_ms": {"type": "number", "minimum": 0},
     "observation_truncated": {"type": "boolean"},
-    "tool_name": {"type": "string", "maxLength": 128},
+    "tool_name": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.:/-]{1,128}$"
+    },
     "request_bytes": {"type": ["integer", "null"], "minimum": 0},
     "response_bytes": {"type": ["integer", "null"], "minimum": 0},
     "request_bytes_total": {"type": "integer", "minimum": 0},
     "response_bytes_total": {"type": "integer", "minimum": 0},
     "packet_bytes": {"type": ["integer", "null"], "minimum": 0},
+    "input_tokens": {"type": "integer", "minimum": 0},
+    "cached_input_tokens": {"type": "integer", "minimum": 0},
+    "output_tokens": {"type": "integer", "minimum": 0},
+    "reasoning_tokens": {"type": "integer", "minimum": 0},
+    "measurement_source": {"enum": ["host", "plugin", "unavailable"]},
     "state_store_bytes": {"type": "integer", "minimum": 0},
     "session_log_bytes": {"type": "integer", "minimum": 0},
     "rss_bytes": {"type": "integer", "minimum": 0},
@@ -39,18 +47,13 @@
     "failed_calls": {"type": "integer", "minimum": 0},
     "resume_calls": {"type": "integer", "minimum": 0},
     "duplicate_resumes": {"type": "integer", "minimum": 0},
-    "latency_buckets": {"type": "string", "maxLength": 128},
+    "latency_buckets": {
+      "type": "string",
+      "pattern": "^[0-9,]{1,128}$"
+    },
     "observation_degraded": {"type": "boolean"}
   },
-  "additionalProperties": {
-    "anyOf": [
-      {"type": "null"},
-      {"type": "boolean"},
-      {"type": "integer"},
-      {"type": "number"},
-      {"type": "string", "maxLength": 128}
-    ]
-  },
+  "additionalProperties": false,
   "$defs": {
     "sha256": {
       "type": "string",

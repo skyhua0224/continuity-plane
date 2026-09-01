@@ -37,6 +37,34 @@ WRITE_TOOLS = {
     "continuity_claim_recover",
 }
 _APPEND_LOCK = threading.Lock()
+_EXTRA_INTEGER_FIELDS = {
+    "cached_input_tokens",
+    "duplicate_resumes",
+    "failed_calls",
+    "input_tokens",
+    "output_tokens",
+    "packet_bytes",
+    "peak_rss_bytes",
+    "read_calls",
+    "reasoning_tokens",
+    "request_bytes",
+    "request_bytes_total",
+    "response_bytes",
+    "response_bytes_total",
+    "resume_calls",
+    "rss_bytes",
+    "session_log_bytes",
+    "state_store_bytes",
+    "write_calls",
+}
+_EXTRA_BOOLEAN_FIELDS = {"observation_degraded"}
+_EXTRA_STRING_FIELDS = {"latency_buckets", "measurement_source", "tool_name"}
+_TOKEN_FIELDS = {
+    "cached_input_tokens",
+    "input_tokens",
+    "output_tokens",
+    "reasoning_tokens",
+}
 
 _BALANCED = {
     "preset": "balanced",
@@ -293,20 +321,26 @@ def plugin_data_root(environment: Mapping[str, str] | None = None) -> Path | Non
         return None
 
 
-def _lock_file(stream: Any) -> None:
-    if os.name == "nt":
-        import msvcrt
+def _try_lock_file(stream: Any) -> bool:
+    """Acquire the stable observation lock without waiting on another process."""
 
-        stream.seek(0, os.SEEK_END)
-        if stream.tell() == 0:
-            stream.write(b"\0")
-            stream.flush()
-        stream.seek(0)
-        msvcrt.locking(stream.fileno(), msvcrt.LK_LOCK, 1)
-        return
-    import fcntl
+    try:
+        if os.name == "nt":
+            import msvcrt
 
-    fcntl.flock(stream.fileno(), fcntl.LOCK_EX)
+            stream.seek(0, os.SEEK_END)
+            if stream.tell() == 0:
+                stream.write(b"\0")
+                stream.flush()
+            stream.seek(0)
+            msvcrt.locking(stream.fileno(), msvcrt.LK_NBLCK, 1)
+            return True
+        import fcntl
+
+        fcntl.flock(stream.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        return True
+    except (ImportError, OSError):
+        return False
 
 
 def _unlock_file(stream: Any) -> None:
@@ -322,17 +356,48 @@ def _unlock_file(stream: Any) -> None:
 
 
 def _safe_extra(extra: Mapping[str, Any] | None) -> dict[str, Any]:
+    """Admit only schema-declared, bounded, non-sensitive observation fields."""
+
     if extra is None:
         return {}
     safe: dict[str, Any] = {}
     for key, value in extra.items():
-        if not isinstance(key, str) or len(key) > 64:
-            continue
-        if value is None or type(value) in {bool, int, float}:
+        if key in _EXTRA_INTEGER_FIELDS and type(value) is int and value >= 0:
             safe[key] = value
-        elif isinstance(value, str) and len(value) <= 128:
+        elif key in _EXTRA_BOOLEAN_FIELDS and type(value) is bool:
             safe[key] = value
+        elif key in _EXTRA_STRING_FIELDS and isinstance(value, str) and len(value) <= 128:
+            if key == "tool_name" and not all(
+                character.isascii()
+                and (character.isalnum() or character in "_.:/-")
+                for character in value
+            ):
+                continue
+            if key == "latency_buckets" and not all(
+                character.isdigit() or character == "," for character in value
+            ):
+                continue
+            if key != "measurement_source" or value in {
+                "host",
+                "plugin",
+                "unavailable",
+            }:
+                safe[key] = value
+    if safe.get("measurement_source") != "host":
+        for field in _TOKEN_FIELDS:
+            safe.pop(field, None)
     return safe
+
+
+def _write_all(descriptor: int, payload: bytes) -> None:
+    """Write one complete JSONL record or raise instead of accepting a short write."""
+
+    remaining = memoryview(payload)
+    while remaining:
+        written = os.write(descriptor, remaining)
+        if written <= 0:
+            raise OSError("observation write was incomplete")
+        remaining = remaining[written:]
 
 
 def _posix_process_memory(
@@ -471,18 +536,38 @@ def append_observation(
         directory.mkdir(parents=True, exist_ok=True)
         path = directory / f"{_sha256(session_id)}.jsonl"
         lock_path = directory / ".retention.lock"
-        with _APPEND_LOCK, lock_path.open("a+b") as lock_stream:
-            _lock_file(lock_stream)
-            try:
-                descriptor = os.open(
-                    path, os.O_APPEND | os.O_CREAT | os.O_WRONLY, 0o600
-                )
+        if not _APPEND_LOCK.acquire(blocking=False):
+            return False
+        try:
+            lock_stream = lock_path.open("a+b")
+        except OSError:
+            _APPEND_LOCK.release()
+            return False
+        try:
+            with lock_stream:
+                if not _try_lock_file(lock_stream):
+                    return False
+                descriptor = -1
+                original_size: int | None = None
                 try:
-                    os.write(descriptor, serialized)
+                    descriptor = os.open(
+                        path, os.O_APPEND | os.O_CREAT | os.O_WRONLY, 0o600
+                    )
+                    original_size = os.lseek(descriptor, 0, os.SEEK_END)
+                    _write_all(descriptor, serialized)
+                except OSError:
+                    if descriptor >= 0 and original_size is not None:
+                        try:
+                            os.ftruncate(descriptor, original_size)
+                        except OSError:
+                            pass
+                    raise
                 finally:
-                    os.close(descriptor)
-            finally:
-                _unlock_file(lock_stream)
+                    if descriptor >= 0:
+                        os.close(descriptor)
+                    _unlock_file(lock_stream)
+        finally:
+            _APPEND_LOCK.release()
     except OSError:
         return False
     return True
@@ -522,17 +607,28 @@ def prune_closed_observations(
         return 0
     lock_path = directory / ".retention.lock"
     try:
-        with _APPEND_LOCK, lock_path.open("a+b") as lock_stream:
-            _lock_file(lock_stream)
-            try:
-                return _prune_locked_observations(
-                    directory,
-                    retention_max_bytes=retention_max_bytes,
-                    current_session_id=current_session_id,
-                    orphan_after_seconds=orphan_after_seconds,
-                )
-            finally:
-                _unlock_file(lock_stream)
+        if not _APPEND_LOCK.acquire(blocking=False):
+            return 0
+        try:
+            lock_stream = lock_path.open("a+b")
+        except OSError:
+            _APPEND_LOCK.release()
+            return 0
+        try:
+            with lock_stream:
+                if not _try_lock_file(lock_stream):
+                    return 0
+                try:
+                    return _prune_locked_observations(
+                        directory,
+                        retention_max_bytes=retention_max_bytes,
+                        current_session_id=current_session_id,
+                        orphan_after_seconds=orphan_after_seconds,
+                    )
+                finally:
+                    _unlock_file(lock_stream)
+        finally:
+            _APPEND_LOCK.release()
     except OSError:
         return 0
 

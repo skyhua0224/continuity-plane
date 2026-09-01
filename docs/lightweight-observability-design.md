@@ -214,6 +214,9 @@ v1 不做自动调参。只有当多个版本积累了足够样本，并且策�
 
 默认不记录完整 Work、claim、checkpoint 或 event head。需要关联时只记录 `work_id`、
 `claim_id` 和 checkpoint digest 的短前缀；权威内容仍从 State 按 revision 查询。
+State observation schema 使用 `additionalProperties: false`；运行时只接纳 schema 明确声明
+的计数、资源、工具名和 provider usage 字段。调用方传入的 `schema_version`、
+`event_type`、`success`、prompt、原始异常或响应正文均不能覆盖或扩展持久记录。
 
 ## Session 汇总
 
@@ -269,9 +272,12 @@ observation 合同时，报告才允许计算 token 指标；当前实现默认�
 
 - core Hook 继续写 alpha.10 的 `live-events/`；State MCP 写独立的
   `state-mcp-events/`，两者不共享写入生命周期；
-- 每个 State MCP Session 使用独立 JSONL 文件；所有追加和清理通过一个不会删除的
-  目录级 `.retention.lock` 串行化，避免锁 inode 被替换后新旧 writer 分裂；
+- 每个 State MCP Session 使用独立 JSONL 文件；所有追加和清理尝试取得一个不会删除的
+  目录级 `.retention.lock`，避免锁 inode 被替换后新旧 writer 分裂；线程锁或 OS 锁繁忙
+  时立即放弃本次观测/清理并标记降级，不等待、不阻塞 State/MCP；
 - 每条记录使用 canonical JSON；
+- 单条记录循环写到全部字节完成；短写后的失败会在持锁期间回退到写入前文件大小，避免
+  把半行当作成功观测；
 - observation 不承担 State authority，因此不增加 hash chain、seal 或逐记录 `fsync`；
 - 普通读取计数保存在内存中，在 Session 汇总时一次写入；
 - MCP 正常结束时写 `session_end`；异常退出的 State 文件允许缺少该事件，并由保守的
@@ -293,8 +299,9 @@ deep 工具执行，不能进入恢复热路径。
 
 v1 不引入复杂归档系统。State MCP 默认上限为 64 MiB，在 Session 结束时执行 retention；
 只删除最旧的已完成 Session，或超过 24 小时且不是当前 Session 的 orphan 文件。追加和
-删除持有同一个稳定目录锁，因此当前文件和正在写入的文件不会与清理竞态。稳定锁文件
-不删除，也不额外写 `retention_prune` 事件。
+删除只有在非阻塞取得同一个稳定目录锁后才执行，因此当前文件和正在写入的文件不会与
+清理竞态；锁繁忙时本轮 retention 直接跳过。稳定锁文件不删除，也不额外写
+`retention_prune` 事件。
 
 ## token 边界
 
@@ -315,7 +322,7 @@ v1 不引入复杂归档系统。State MCP 默认上限为 64 MiB，在 Session 
 - 常规 minimal 记录：序列化后不超过 512 B；
 - 失败记录：不超过 2 KiB；
 - 普通读取调用：不执行持久日志 `fsync`；
-- State 写或 compaction 边界：一次有锁追加，不执行日志 `fsync`；
+- State 写或 compaction 边界：至多一次非阻塞有锁追加，不执行日志 `fsync`；
 - 1000 条历史记录下 retention/report 不进入普通工具调用热路径；
 - 日志关闭或 retention 不阻塞 State transaction；
 - 日志故障不得把已提交的 State 伪装成未提交，返回结果必须允许按 State revision
@@ -337,7 +344,7 @@ v1 不引入复杂归档系统。State MCP 默认上限为 64 MiB，在 Session 
 2. 普通读取只增加内存计数，不产生逐调用持久记录；
 3. 关闭可选探针后只保留强制安全记录，并以 `session_end` 形成可回收文件；
 4. provider usage 缺失时不出现伪造 token 值；
-5. 线程和真实多进程 append+prune 不发生交叉、半行或锁删除竞态；
+5. 线程和真实多进程 append+prune 不发生交叉、半行或锁删除竞态，锁繁忙立即降级；
 6. observation 目录不可写时不阻断 State 操作；
 7. retention 保留当前 Session，删除已完成或保守判定的旧 orphan；
 8. 报告容忍损坏行，并限制单文件读取尾部大小；
@@ -346,6 +353,7 @@ v1 不引入复杂归档系统。State MCP 默认上限为 64 MiB，在 Session 
 11. 无效恢复包不建立 MCP binding，普通读取复用已有 binding；
 12. 所有 State 写及 checkpoint create 在执行前后刷新 binding，过期 lease/source 拒绝写；
 13. 策略和 State observation 均通过 Draft 2020-12 schema 与公共 registry hash 校验。
+14. extra 白名单不能覆盖权威字段，短写会补齐或回退，不产生已报告成功的半行。
 
 后续测试包括真实崩溃恢复、POSIX/macOS 进程指标、磁盘满和跨进程长期压力；这些不在
 当前实现的已验证声明中。

@@ -27,7 +27,7 @@
     },
     {
       "path": "schemas/m10-16/state-mcp-observation.schema.json",
-      "sha256": "25c856c393d102d3414a7e557a3962ea27827301afbb52e43dda802327e6ac04"
+      "sha256": "4844d612f54c263a0c9d7cce88086d0e925d85bb1112f2e228d2c7b7f01667e7"
     },
     {
       "path": "schemas/m2-01/typed-state.schema.json",

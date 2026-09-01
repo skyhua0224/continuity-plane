@@ -9,15 +9,16 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import unittest
 from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
 
 import yaml
-from jsonschema import Draft202012Validator
+from jsonschema import Draft202012Validator, ValidationError
 
-from continuity_plane import codex_mcp_server
+from continuity_plane import codex_mcp_server, light_observability
 from continuity_plane.cli import main as cli_main
 from continuity_plane.light_observability import (
     MAX_OBSERVATION_BYTES,
@@ -131,26 +132,45 @@ def _multiprocess_append_worker(
 ) -> None:
     policy = resolve_policy(_project(), environment={})
     for sequence in range(count):
-        if not append_observation(
-            data_root=Path(data_root),
-            session_id=session_id,
-            project_root=Path(project_root),
-            policy=policy,
-            event_type="state_write_completed",
-            success=True,
-            extra={"worker": worker, "sequence": sequence},
-        ):
+        for _ in range(1000):
+            if append_observation(
+                data_root=Path(data_root),
+                session_id=session_id,
+                project_root=Path(project_root),
+                policy=policy,
+                event_type="state_write_completed",
+                success=True,
+                extra={"tool_name": f"worker-{worker}-sequence-{sequence}"},
+            ):
+                break
+            time.sleep(0.001)
+        else:
             raise RuntimeError("observation append failed")
 
 
 def _multiprocess_prune_worker(data_root: str, session_id: str) -> None:
-    for _ in range(20):
+    for _ in range(200):
         prune_closed_observations(
             Path(data_root),
             retention_max_bytes=1,
             current_session_id=session_id,
             orphan_after_seconds=0,
         )
+        time.sleep(0.001)
+
+
+def _multiprocess_hold_observation_lock(
+    lock_path: str,
+    ready: multiprocessing.synchronize.Event,
+    release: multiprocessing.synchronize.Event,
+) -> None:
+    with Path(lock_path).open("a+b") as stream:
+        if not light_observability._try_lock_file(stream):
+            raise RuntimeError("failed to acquire observation lock")
+        ready.set()
+        if not release.wait(10):
+            raise RuntimeError("lock release signal timed out")
+        light_observability._unlock_file(stream)
 
 
 class PolicyTests(unittest.TestCase):
@@ -336,6 +356,182 @@ class ObservationTests(unittest.TestCase):
                 ).read_text(encoding="utf-8")
             )
             Draft202012Validator(schema).validate(record)
+
+    def test_extra_fields_are_allowlisted_and_cannot_override_authority(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            root = base / "project"
+            data = base / "data"
+            root.mkdir()
+            policy = resolve_policy(_project(), environment={})
+            self.assertTrue(
+                append_observation(
+                    data_root=data,
+                    session_id="reserved-fields",
+                    project_root=root,
+                    policy=policy,
+                    event_type="state_write_completed",
+                    success=True,
+                    extra={
+                        "schema_version": "untrusted/v1",
+                        "event_type": "state_write_failed",
+                        "success": False,
+                        "prompt": "must-not-persist",
+                        "raw_error": "must-not-persist",
+                        "tool_name": "continuity_work_complete",
+                        "input_tokens": 12,
+                        "measurement_source": "host",
+                    },
+                )
+            )
+            record = json.loads(
+                next((data / STATE_OBSERVATION_DIRECTORY).glob("*.jsonl"))
+                .read_text(encoding="utf-8")
+                .strip()
+            )
+            self.assertEqual(
+                record["schema_version"],
+                light_observability.OBSERVATION_SCHEMA_VERSION,
+            )
+            self.assertEqual(record["event_type"], "state_write_completed")
+            self.assertTrue(record["success"])
+            self.assertNotIn("prompt", record)
+            self.assertNotIn("raw_error", record)
+            self.assertEqual(record["tool_name"], "continuity_work_complete")
+            self.assertEqual(record["input_tokens"], 12)
+            self.assertEqual(record["measurement_source"], "host")
+            schema = json.loads(
+                (
+                    Path(__file__).parents[1]
+                    / "schemas/m10-16/state-mcp-observation.schema.json"
+                ).read_text(encoding="utf-8")
+            )
+            validator = Draft202012Validator(schema)
+            validator.validate(record)
+            with self.assertRaises(ValidationError):
+                validator.validate({**record, "prompt": "must-not-be-schema-valid"})
+            self.assertEqual(
+                light_observability._safe_extra({"input_tokens": 99}),
+                {},
+            )
+            self.assertEqual(
+                light_observability._safe_extra(
+                    {"tool_name": "raw tool response must not persist"}
+                ),
+                {},
+            )
+
+    def test_write_all_retries_short_writes_and_rejects_zero_progress(self) -> None:
+        with patch.object(
+            light_observability.os, "write", side_effect=(2, 3)
+        ) as write:
+            light_observability._write_all(9, b"abcde")
+        self.assertEqual(bytes(write.call_args_list[0].args[1]), b"abcde")
+        self.assertEqual(bytes(write.call_args_list[1].args[1]), b"cde")
+        with (
+            patch.object(light_observability.os, "write", return_value=0),
+            self.assertRaisesRegex(OSError, "incomplete"),
+        ):
+            light_observability._write_all(9, b"abc")
+
+    def test_failed_partial_write_is_rolled_back(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            root = base / "project"
+            data = base / "data"
+            root.mkdir()
+            policy = resolve_policy(_project(), environment={})
+
+            def partial_then_fail(descriptor: int, payload: bytes) -> None:
+                light_observability.os.write(descriptor, b"{partial")
+                raise OSError("simulated short-write failure")
+
+            with patch.object(
+                light_observability,
+                "_write_all",
+                side_effect=partial_then_fail,
+            ):
+                self.assertFalse(
+                    append_observation(
+                        data_root=data,
+                        session_id="partial-write",
+                        project_root=root,
+                        policy=policy,
+                        event_type="state_write_completed",
+                        success=True,
+                    )
+                )
+            path = next((data / STATE_OBSERVATION_DIRECTORY).glob("*.jsonl"))
+            self.assertEqual(path.stat().st_size, 0)
+
+    def test_in_process_lock_contention_degrades_without_waiting(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            root = base / "project"
+            data = base / "data"
+            root.mkdir()
+            policy = resolve_policy(_project(), environment={})
+            self.assertTrue(light_observability._APPEND_LOCK.acquire())
+            started = time.perf_counter()
+            try:
+                self.assertFalse(
+                    append_observation(
+                        data_root=data,
+                        session_id="thread-lock-busy",
+                        project_root=root,
+                        policy=policy,
+                        event_type="state_write_completed",
+                        success=True,
+                    )
+                )
+                self.assertEqual(
+                    prune_closed_observations(data, retention_max_bytes=1),
+                    0,
+                )
+            finally:
+                light_observability._APPEND_LOCK.release()
+            self.assertLess(time.perf_counter() - started, 0.5)
+
+    def test_cross_process_lock_contention_degrades_without_waiting(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            root = base / "project"
+            data = base / "data"
+            observation_dir = data / STATE_OBSERVATION_DIRECTORY
+            observation_dir.mkdir(parents=True)
+            root.mkdir()
+            policy = resolve_policy(_project(), environment={})
+            context = multiprocessing.get_context("spawn")
+            ready = context.Event()
+            release = context.Event()
+            process = context.Process(
+                target=_multiprocess_hold_observation_lock,
+                args=(str(observation_dir / ".retention.lock"), ready, release),
+            )
+            process.start()
+            self.assertTrue(ready.wait(10))
+            started = time.perf_counter()
+            try:
+                self.assertFalse(
+                    append_observation(
+                        data_root=data,
+                        session_id="process-lock-busy",
+                        project_root=root,
+                        policy=policy,
+                        event_type="state_write_completed",
+                        success=True,
+                    )
+                )
+                self.assertEqual(
+                    prune_closed_observations(data, retention_max_bytes=1),
+                    0,
+                )
+                elapsed = time.perf_counter() - started
+            finally:
+                release.set()
+                process.join(10)
+            self.assertEqual(process.exitcode, 0)
+            self.assertLess(elapsed, 0.5)
 
     def test_linux_rss_uses_current_resident_pages(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -627,15 +823,19 @@ class ObservationTests(unittest.TestCase):
             results = [False] * 64
 
             def write(index: int) -> None:
-                results[index] = append_observation(
-                    data_root=data,
-                    session_id="session-concurrent",
-                    project_root=root,
-                    policy=policy,
-                    event_type="precompact",
-                    success=True,
-                    extra={"sequence": index},
-                )
+                for _ in range(1000):
+                    results[index] = append_observation(
+                        data_root=data,
+                        session_id="session-concurrent",
+                        project_root=root,
+                        policy=policy,
+                        event_type="precompact",
+                        success=True,
+                        extra={"tool_name": f"thread-sequence-{index}"},
+                    )
+                    if results[index]:
+                        return
+                    time.sleep(0.001)
 
             threads = [threading.Thread(target=write, args=(index,)) for index in range(64)]
             for thread in threads:
@@ -648,7 +848,10 @@ class ObservationTests(unittest.TestCase):
             ).splitlines()
             records = [json.loads(line) for line in lines]
             self.assertEqual(len(records), 64)
-            self.assertEqual({record["sequence"] for record in records}, set(range(64)))
+            self.assertEqual(
+                {record["tool_name"] for record in records},
+                {f"thread-sequence-{index}" for index in range(64)},
+            )
 
     def test_multiprocess_append_and_prune_share_stable_directory_lock(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -697,8 +900,12 @@ class ObservationTests(unittest.TestCase):
             ]
             self.assertEqual(len(records), 120)
             self.assertEqual(
-                {(record["worker"], record["sequence"]) for record in records},
-                {(worker, sequence) for worker in range(4) for sequence in range(30)},
+                {record["tool_name"] for record in records},
+                {
+                    f"worker-{worker}-sequence-{sequence}"
+                    for worker in range(4)
+                    for sequence in range(30)
+                },
             )
             old_path = directory_path / (
                 hashlib.sha256(b"old-closed-session").hexdigest() + ".jsonl"

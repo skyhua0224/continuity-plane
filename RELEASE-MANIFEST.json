@@ -147,7 +147,7 @@
     },
     {
       "path": "continuity_plane/codex_mcp_server.py",
-      "sha256": "6067330b9f98c8bb708be5fdcfc966065c95321bb19425d103407325ff68004b"
+      "sha256": "309a0755ba25e47a1deb499b323bcb872b8e02a52dd2d0519e889bfdf2744617"
     },
     {
       "path": "continuity_plane/collaboration_notifications.py",
@@ -207,7 +207,7 @@
     },
     {
       "path": "continuity_plane/light_observability.py",
-      "sha256": "baf375ea8ca870e05ba8c8dc1279be53e5ec01a18eef8d0610424a81860fd4f2"
+      "sha256": "33190f756e04c795c9fa0b8785cff110b1cfb61fb30ce65f0049a756e4ed8f3a"
     },
     {
       "path": "continuity_plane/local_state_bundle.py",
@@ -387,7 +387,7 @@
     },
     {
       "path": "docs/lightweight-observability-design.md",
-      "sha256": "5649d3c68180c522c3e6f10cac29229d7f75616f5740031f9ef09acae6377232"
+      "sha256": "388cc8b0e3be7b1054dc0a185524b81da6dff187a2461414bd62a6044b076741"
     },
     {
       "path": "docs/project-views.en.md",
@@ -483,7 +483,7 @@
     },
     {
       "path": "schemas/m10-16/state-mcp-observation.schema.json",
-      "sha256": "25c856c393d102d3414a7e557a3962ea27827301afbb52e43dda802327e6ac04"
+      "sha256": "4844d612f54c263a0c9d7cce88086d0e925d85bb1112f2e228d2c7b7f01667e7"
     },
     {
       "path": "schemas/m2-01/typed-state.schema.json",
@@ -551,7 +551,7 @@
     },
     {
       "path": "schemas/registry.json",
-      "sha256": "7539dbe85cd04acdd0df0e22c0da1f9b12c111c0a92b8effffd4bd4ffe18be97"
+      "sha256": "c30a23e1d50a712532d6954277090eae63e8464815d4b767de060328a1124780"
     },
     {
       "path": "templates/MASTER.en.md",
@@ -571,7 +571,7 @@
     },
     {
       "path": "tests/test_light_observability.py",
-      "sha256": "ab02ad2c8ea802af44ea21393338feeca2d431fea6a63fa3c481a9d775d1bb4f"
+      "sha256": "267851a43eb17bfc31478cdcf2580007e9b7bedb73ecd24552a9c79f9032aa4f"
     },
     {
       "path": "tests/test_public_benchmark.py",

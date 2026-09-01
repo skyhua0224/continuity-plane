@@ -137,6 +137,17 @@ def _run_cli_with_retry(command: list[str], root: Path) -> subprocess.CompletedP
     return last
 
 
+def _binding_is_writable(binding: dict) -> bool:
+    """Return whether a fresh binding may authorize an ordinary State write."""
+
+    return (
+        not binding["read_only"]
+        and binding["source_fresh"]
+        and binding["checkpoint_verified"]
+        and binding["lease_valid"]
+    )
+
+
 def _write_binding_error(
     request_id: object,
     *,
@@ -148,12 +159,7 @@ def _write_binding_error(
     if binding is None:
         _error(request_id, -32001, "session binding is unavailable; write tools are disabled")
         return True
-    if (
-        binding["read_only"]
-        or not binding["source_fresh"]
-        or not binding["checkpoint_verified"]
-        or not binding["lease_valid"]
-    ):
+    if not _binding_is_writable(binding):
         _error(
             request_id,
             -32002,
@@ -185,12 +191,7 @@ def _write_transition_binding_error(
     if binding is None:
         _error(request_id, -32001, "session binding is unavailable; write tools are disabled")
         return True
-    if (
-        binding["read_only"]
-        or not binding["source_fresh"]
-        or not binding["checkpoint_verified"]
-        or not binding["lease_valid"]
-    ):
+    if not _binding_is_writable(binding):
         _error(
             request_id,
             -32002,
@@ -219,12 +220,7 @@ def _write_activation_binding_error(
     if binding is None:
         _error(request_id, -32001, "session binding is unavailable; write tools are disabled")
         return True
-    if (
-        binding["read_only"]
-        or not binding["source_fresh"]
-        or not binding["checkpoint_verified"]
-        or not binding["lease_valid"]
-    ):
+    if not _binding_is_writable(binding):
         _error(
             request_id,
             -32002,
