@@ -317,13 +317,15 @@ def main() -> int:
         except json.JSONDecodeError:
             continue
         if not isinstance(request, dict):
+            _error(None, -32600, "request must be an object")
             continue
         method = request.get("method")
         request_id = request.get("id")
         if method == "initialize":
             initialize_params = request.get("params")
             if not isinstance(initialize_params, dict):
-                initialize_params = {}
+                _error(request_id, -32602, "initialize params must be an object")
+                continue
             _reply(
                 request_id,
                 {

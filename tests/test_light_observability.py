@@ -420,6 +420,12 @@ class ObservationTests(unittest.TestCase):
                 ),
                 {},
             )
+            self.assertEqual(
+                light_observability._safe_extra(
+                    {"tool_name": "", "latency_buckets": ""}
+                ),
+                {},
+            )
 
     def test_write_all_retries_short_writes_and_rejects_zero_progress(self) -> None:
         with patch.object(
@@ -964,7 +970,7 @@ class MCPProbeTests(unittest.TestCase):
                 self.assertEqual(codex_mcp_server.main(), 0)
             self.assertFalse((data / STATE_OBSERVATION_DIRECTORY).exists())
 
-    def test_non_object_requests_are_ignored_or_rejected_without_crashing(self) -> None:
+    def test_invalid_request_shapes_return_json_rpc_errors(self) -> None:
         requests = [
             [],
             {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": []},
@@ -975,6 +981,7 @@ class MCPProbeTests(unittest.TestCase):
                 "method": "tools/call",
                 "params": {"name": "continuity_resume", "arguments": []},
             },
+            {"jsonrpc": "2.0", "id": 4, "method": "initialize"},
         ]
         stdin = StringIO("".join(json.dumps(item) + "\n" for item in requests))
         stdout = StringIO()
@@ -984,9 +991,14 @@ class MCPProbeTests(unittest.TestCase):
         ):
             self.assertEqual(codex_mcp_server.main(), 0)
         responses = [json.loads(line) for line in stdout.getvalue().splitlines()]
-        self.assertEqual(responses[0]["id"], 1)
+        self.assertIsNone(responses[0]["id"])
+        self.assertEqual(responses[0]["error"]["code"], -32600)
+        self.assertEqual(responses[1]["id"], 1)
         self.assertEqual(responses[1]["error"]["code"], -32602)
         self.assertEqual(responses[2]["error"]["code"], -32602)
+        self.assertEqual(responses[3]["error"]["code"], -32602)
+        self.assertEqual(responses[4]["id"], 4)
+        self.assertEqual(responses[4]["error"]["code"], -32602)
 
     def test_mcp_records_duplicate_resume_and_closes_summary(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

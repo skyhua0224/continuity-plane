@@ -366,7 +366,11 @@ def _safe_extra(extra: Mapping[str, Any] | None) -> dict[str, Any]:
             safe[key] = value
         elif key in _EXTRA_BOOLEAN_FIELDS and type(value) is bool:
             safe[key] = value
-        elif key in _EXTRA_STRING_FIELDS and isinstance(value, str) and len(value) <= 128:
+        elif (
+            key in _EXTRA_STRING_FIELDS
+            and isinstance(value, str)
+            and 1 <= len(value) <= 128
+        ):
             if key == "tool_name" and not all(
                 character.isascii()
                 and (character.isalnum() or character in "_.:/-")

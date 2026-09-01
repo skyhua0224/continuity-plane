@@ -147,7 +147,7 @@
     },
     {
       "path": "continuity_plane/codex_mcp_server.py",
-      "sha256": "309a0755ba25e47a1deb499b323bcb872b8e02a52dd2d0519e889bfdf2744617"
+      "sha256": "95daa17b7f684f1d767b1363e590433dd827222e62229689d314a308784648b2"
     },
     {
       "path": "continuity_plane/collaboration_notifications.py",
@@ -207,7 +207,7 @@
     },
     {
       "path": "continuity_plane/light_observability.py",
-      "sha256": "33190f756e04c795c9fa0b8785cff110b1cfb61fb30ce65f0049a756e4ed8f3a"
+      "sha256": "532eac1768549d3e8fc8aa478af29fa4d5c03329b6c032958844b38a5df2910f"
     },
     {
       "path": "continuity_plane/local_state_bundle.py",
@@ -571,7 +571,7 @@
     },
     {
       "path": "tests/test_light_observability.py",
-      "sha256": "267851a43eb17bfc31478cdcf2580007e9b7bedb73ecd24552a9c79f9032aa4f"
+      "sha256": "bba9e65a07fc08bdf54c908c46d9fe982982795f570296fd119463eff40786e4"
     },
     {
       "path": "tests/test_public_benchmark.py",
