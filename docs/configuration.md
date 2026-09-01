@@ -77,6 +77,9 @@ policy 文件。minimal 模式下普通成功读取只在 MCP 进程内累计，
 慢调用和 Session 汇总落盘。观测失败不会回滚或阻塞已经完成的 State 操作。
 `probes_enabled: false` 只关闭可选计数、慢调用和资源采样；State 写与失败仍保留最小安全
 记录，并在 Session 结束时写入可供 retention 回收的结束标记。
+独立 policy 文件损坏或不安全时，默认 `auto`/`observe` 会关闭可选探针、写一条
+`policy_degraded`，并继续执行 resume/State 工具；只有显式设置
+`CONTINUITY_EFFECT_POLICY=strict` 才拒绝该无效策略。
 
 离线查看探针结果：
 
@@ -85,4 +88,7 @@ continuity observe report --root .
 ```
 
 报告只读取隐私化的本地 observation，不读取 transcript、源码或工具响应正文，也不会
-自动修改配置。provider/host 没有提供 token usage 时，报告明确标记不可用。
+自动修改配置。`--session-limit` 先按 Session 身份配对 core/state 文件，再限制 Session
+数量；`files_scanned`、`paired_sessions` 和 `partial_sessions` 会明确报告覆盖范围。
+当前报告只返回 host usage 是否可用，不汇总 input/output/cached token，也不计算 token
+降幅；provider/host 没有提供 usage 时明确标记不可用。

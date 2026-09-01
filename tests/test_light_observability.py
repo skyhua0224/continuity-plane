@@ -325,6 +325,75 @@ class ObservationTests(unittest.TestCase):
             report = build_observation_report(root, data_root=data)
             self.assertEqual(report["event_counts"], {"postcompact": 1})
 
+    def test_report_applies_session_limit_after_pairing_core_and_state_files(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            root = base / "project"
+            data = base / "data"
+            root.mkdir()
+            policy = resolve_policy(_project(), environment={})
+            project_digest = hashlib.sha256(str(root.resolve()).encode()).hexdigest()
+
+            def state_record(session_id: str, event_type: str) -> Path:
+                self.assertTrue(
+                    append_observation(
+                        data_root=data,
+                        session_id=session_id,
+                        project_root=root,
+                        policy=policy,
+                        event_type=event_type,
+                        success=True,
+                    )
+                )
+                return (
+                    data
+                    / STATE_OBSERVATION_DIRECTORY
+                    / (hashlib.sha256(session_id.encode()).hexdigest() + ".jsonl")
+                )
+
+            partial_path = state_record("partial-session", "partial-state")
+            paired_state_path = state_record("paired-session", "paired-state")
+            paired_digest = hashlib.sha256(b"paired-session").hexdigest()
+            core_dir = data / CORE_OBSERVATION_DIRECTORY
+            core_dir.mkdir(parents=True)
+            paired_core_path = core_dir / f"{paired_digest}.jsonl"
+            paired_core_path.write_text(
+                json.dumps(
+                    {
+                        "schema_version": CORE_OBSERVATION_SCHEMA_VERSION,
+                        "event_type": "paired-core",
+                        "session_sha256": paired_digest,
+                        "project_root_sha256": project_digest,
+                        "success": True,
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            os.utime(partial_path, (1, 1))
+            os.utime(paired_state_path, (2, 2))
+            os.utime(paired_core_path, (2, 2))
+
+            one = build_observation_report(root, data_root=data, session_limit=1)
+            self.assertEqual(one["session_groups_selected"], 1)
+            self.assertEqual(one["sessions_scanned"], 1)
+            self.assertEqual(one["files_scanned"], 2)
+            self.assertEqual(one["paired_sessions"], 1)
+            self.assertEqual(one["partial_sessions"], 0)
+            self.assertEqual(
+                one["event_counts"], {"paired-core": 1, "paired-state": 1}
+            )
+            self.assertFalse(one["provider_usage_available"])
+            self.assertNotIn("input_tokens_total", one)
+            self.assertNotIn("token_reduction", one)
+
+            two = build_observation_report(root, data_root=data, session_limit=2)
+            self.assertEqual(two["session_groups_selected"], 2)
+            self.assertEqual(two["sessions_scanned"], 2)
+            self.assertEqual(two["files_scanned"], 3)
+            self.assertEqual(two["paired_sessions"], 1)
+            self.assertEqual(two["partial_sessions"], 1)
+
     def test_persisted_state_observation_matches_registered_schema(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory)
@@ -1297,9 +1366,11 @@ class MCPProbeTests(unittest.TestCase):
             self.assertEqual(run_cli.call_count, 1)
             self.assertEqual(responses[1]["error"]["code"], -32002)
 
-    def test_invalid_policy_fails_closed_before_cli_execution(self) -> None:
+    def test_invalid_optional_policy_degrades_observation_but_resume_continues(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory) / "project"
+            base = Path(directory)
+            root = base / "project"
+            data = base / "data"
             _write_project(root, {"checkpoint": {"on_pre_compact": False}})
             request = {
                 "jsonrpc": "2.0",
@@ -1315,7 +1386,66 @@ class MCPProbeTests(unittest.TestCase):
             with (
                 patch.object(codex_mcp_server.sys, "stdin", stdin),
                 patch.object(codex_mcp_server.sys, "stdout", stdout),
+                patch.object(
+                    codex_mcp_server,
+                    "_run_cli_with_retry",
+                    return_value=subprocess.CompletedProcess(
+                        [], 0, _idle_envelope(), ""
+                    ),
+                ) as run_cli,
+                patch.dict(
+                    os.environ,
+                    {
+                        "CONTINUITY_EFFECT_POLICY": "auto",
+                        "PLUGIN_DATA": str(data),
+                    },
+                    clear=False,
+                ),
+            ):
+                self.assertEqual(codex_mcp_server.main(), 0)
+            run_cli.assert_called_once()
+            response = json.loads(stdout.getvalue())
+            self.assertFalse(response["result"]["isError"])
+            records = [
+                json.loads(line)
+                for line in next((data / STATE_OBSERVATION_DIRECTORY).glob("*.jsonl"))
+                .read_text(encoding="utf-8")
+                .splitlines()
+            ]
+            self.assertEqual(
+                [record["event_type"] for record in records],
+                ["policy_degraded", "session_end"],
+            )
+            self.assertTrue(records[0]["observation_degraded"])
+            self.assertTrue(records[-1]["observation_degraded"])
+
+    def test_invalid_policy_is_rejected_only_in_explicit_strict_mode(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "project"
+            _write_project(root, {"checkpoint": {"on_pre_compact": False}})
+            request = {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "tools/call",
+                "params": {
+                    "name": "continuity_resume",
+                    "arguments": {"root": str(root)},
+                },
+            }
+            stdout = StringIO()
+            with (
+                patch.object(
+                    codex_mcp_server.sys,
+                    "stdin",
+                    StringIO(json.dumps(request) + "\n"),
+                ),
+                patch.object(codex_mcp_server.sys, "stdout", stdout),
                 patch.object(codex_mcp_server, "_run_cli_with_retry") as run_cli,
+                patch.dict(
+                    os.environ,
+                    {"CONTINUITY_EFFECT_POLICY": "strict"},
+                    clear=False,
+                ),
             ):
                 self.assertEqual(codex_mcp_server.main(), 0)
             run_cli.assert_not_called()
@@ -1350,6 +1480,7 @@ class HookProbeTests(unittest.TestCase):
     def test_alpha10_core_and_state_plugin_ownership_remains_split(self) -> None:
         root = Path(__file__).parents[1]
         core = root / "plugins/continuity-plane"
+        search = root / "plugins/continuity-plane-search"
         state = root / "plugins/continuity-plane-state"
         core_manifest = json.loads(
             (core / ".codex-plugin/plugin.json").read_text(encoding="utf-8")
@@ -1357,11 +1488,65 @@ class HookProbeTests(unittest.TestCase):
         state_manifest = json.loads(
             (state / ".codex-plugin/plugin.json").read_text(encoding="utf-8")
         )
+        search_manifest = json.loads(
+            (search / ".codex-plugin/plugin.json").read_text(encoding="utf-8")
+        )
         self.assertNotIn("mcpServers", core_manifest)
+        self.assertNotIn("mcpServers", search_manifest)
         self.assertFalse((core / ".mcp.json").exists())
+        self.assertFalse((search / ".mcp.json").exists())
         self.assertIn("mcpServers", state_manifest)
         self.assertTrue((state / ".mcp.json").is_file())
         self.assertFalse((core / "skills/continuity-plane-state").exists())
+
+    def test_state_plugin_script_forwards_to_the_package_server_contract(self) -> None:
+        root = Path(__file__).parents[1]
+        state = root / "plugins/continuity-plane-state"
+        script = state / "scripts/continuity-mcp-server.py"
+        source = script.read_text(encoding="utf-8")
+        self.assertLessEqual(len(source.splitlines()), 10)
+        self.assertIn("from continuity_plane.codex_mcp_server import main", source)
+        self.assertNotIn("subprocess", source)
+        mcp_config = json.loads((state / ".mcp.json").read_text(encoding="utf-8"))
+        self.assertEqual(
+            mcp_config["mcpServers"]["continuity"],
+            {"command": "continuity-mcp", "args": []},
+        )
+        request = json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {"protocolVersion": "2024-11-05"},
+            }
+        ) + "\n"
+        outputs = []
+        for command in (
+            [sys.executable, str(script)],
+            [sys.executable, "-m", "continuity_plane.codex_mcp_server"],
+        ):
+            completed = subprocess.run(
+                command,
+                cwd=root,
+                input=request,
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
+            )
+            self.assertEqual(completed.returncode, 0, completed.stderr)
+            outputs.append(json.loads(completed.stdout))
+        self.assertEqual(outputs[0], outputs[1])
+
+        release = json.loads(
+            (root / "RELEASE-MANIFEST.json").read_text(encoding="utf-8")
+        )
+        entries = {entry["path"]: entry["sha256"] for entry in release["files"]}
+        relative = "plugins/continuity-plane-state/scripts/continuity-mcp-server.py"
+        self.assertEqual(
+            entries[relative],
+            hashlib.sha256(script.read_bytes().replace(b"\r\n", b"\n")).hexdigest(),
+        )
 
     def test_auto_lifecycle_failures_never_stop_the_session(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

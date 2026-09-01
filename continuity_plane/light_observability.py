@@ -858,28 +858,51 @@ def build_observation_report(
     records: list[dict[str, Any]] = []
     corrupt_lines = 0
     truncated_files = 0
+    files_scanned = 0
+    paired_sessions = 0
+    partial_sessions = 0
+    session_groups_selected = 0
     if data_root is not None:
         directories = [
-            data_root / STATE_OBSERVATION_DIRECTORY,
-            data_root / CORE_OBSERVATION_DIRECTORY,
+            (STATE_OBSERVATION_DIRECTORY, data_root / STATE_OBSERVATION_DIRECTORY),
+            (CORE_OBSERVATION_DIRECTORY, data_root / CORE_OBSERVATION_DIRECTORY),
         ]
-        entries: list[tuple[int, Path]] = []
-        for directory in directories:
+        session_paths: dict[str, list[Path]] = {}
+        session_mtimes: dict[str, int] = {}
+        session_sources: dict[str, set[str]] = {}
+        for source, directory in directories:
             try:
                 candidates = directory.glob("*.jsonl")
                 for path in candidates:
                     try:
-                        entries.append((path.stat().st_mtime_ns, path))
+                        modified_ns = path.stat().st_mtime_ns
                     except OSError:
                         continue
+                    session_id = path.stem
+                    session_paths.setdefault(session_id, []).append(path)
+                    session_sources.setdefault(session_id, set()).add(source)
+                    session_mtimes[session_id] = max(
+                        session_mtimes.get(session_id, 0), modified_ns
+                    )
             except OSError:
                 continue
+        selected_session_ids = sorted(
+            session_paths,
+            key=lambda session_id: session_mtimes[session_id],
+            reverse=True,
+        )[: max(1, min(session_limit, 100))]
+        session_groups_selected = len(selected_session_ids)
+        paired_sessions = sum(
+            len(session_sources[session_id]) == len(directories)
+            for session_id in selected_session_ids
+        )
+        partial_sessions = session_groups_selected - paired_sessions
         paths = [
             path
-            for _, path in sorted(entries, key=lambda item: item[0], reverse=True)[
-                : max(1, min(session_limit, 100))
-            ]
+            for session_id in selected_session_ids
+            for path in sorted(session_paths[session_id], key=str)
         ]
+        files_scanned = len(paths)
         for path in paths:
             try:
                 with path.open("rb") as stream:
@@ -943,10 +966,19 @@ def build_observation_report(
         suggestions.append("verify PostCompact autorun and recovery-context admission")
     if failures:
         suggestions.append("temporarily enable diagnostic or reliability-first for failed boundaries")
+    observed_sessions = {
+        session
+        for record in records
+        if isinstance((session := record.get("session_sha256")), str) and session
+    }
     return {
         "schema_version": "context.light-observation-report/v1alpha1",
         "project_sha256": project_digest,
-        "sessions_scanned": len({record.get("session_sha256") for record in records}),
+        "sessions_scanned": len(observed_sessions),
+        "session_groups_selected": session_groups_selected,
+        "files_scanned": files_scanned,
+        "paired_sessions": paired_sessions,
+        "partial_sessions": partial_sessions,
         "records": len(records),
         "corrupt_lines": corrupt_lines,
         "truncated_files": truncated_files,

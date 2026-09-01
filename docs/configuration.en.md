@@ -87,6 +87,10 @@ operation.
 `probes_enabled: false` disables optional counters, slow-call observations, and
 resource sampling. State writes and failures still retain minimal safety
 records, followed by a Session-end marker that retention can reclaim.
+If the independent policy file is malformed or unsafe, the default `auto` and
+`observe` modes disable optional probes, write one `policy_degraded` event, and
+continue resume/State tools. Only explicit `CONTINUITY_EFFECT_POLICY=strict`
+rejects the invalid policy.
 
 Build an offline probe report with:
 
@@ -96,5 +100,9 @@ continuity observe report --root .
 
 The report reads only privacy-preserving local observations. It does not read
 transcripts, source code, or tool response bodies, and it never changes the
-policy. Token usage remains explicitly unavailable unless the provider or host
-supplies it.
+policy. `--session-limit` pairs core/state files by Session identity before it
+limits Session count; `files_scanned`, `paired_sessions`, and
+`partial_sessions` expose the resulting coverage. The current report only says
+whether host usage is available. It does not aggregate input/output/cached
+tokens or calculate token reduction, and usage remains unavailable unless the
+provider or host supplies it.

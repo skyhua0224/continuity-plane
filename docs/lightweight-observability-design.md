@@ -129,6 +129,10 @@ PreCompact checkpoint、State revision/CAS、claim fencing、失败记录和恢�
 `diagnostic`。长期策略必须写入独立策略文件，且不得在配置中保存凭据、机器绝对路径或
 原始会话数据。
 
+独立策略属于可选观测面：默认 `auto`/`observe` 遇到损坏或不安全策略时，使用关闭探针
+的 balanced fallback，写一次 `policy_degraded` 后继续业务 MCP；只有显式
+`CONTINUITY_EFFECT_POLICY=strict` 才因无效策略拒绝请求。
+
 ## 轻量探针与调优闭环
 
 探针默认开启，但必须比被测操作更轻。探针记录原始事实，不在热路径计算复杂评分，也不
@@ -153,6 +157,9 @@ PreCompact checkpoint、State revision/CAS、claim fencing、失败记录和恢�
 
 提供显式的本地报告命令，例如 `continuity observe report`，按配置摘要比较最近若干个
 已完成 Session，并输出证据和建议：
+
+- `session_limit` 先按 Session hash 配对 `live-events` 与 `state-mcp-events`，再限制
+  Session 数量；同时输出扫描文件数、完整配对数和 partial Session 数；
 
 - 重复 resume 比例高时，建议检查 MCP 连接生命周期；
 - checkpoint 被短时间重复创建时，建议提高 `min_interval_seconds` 或关闭普通 State
@@ -248,7 +255,8 @@ State observation schema 使用 `additionalProperties: false`；运行时只接�
 - observation 是否发生降级。
 
 恢复、压缩和 canary 结果从对应 Hook 边界事件统计。只有 host 将 token usage 明确提供给
-observation 合同时，报告才允许计算 token 指标；当前实现默认标记为不可用。
+observation 合同时，未来报告才允许计算 token 指标。当前实现只返回
+`provider_usage_available`，不汇总 input/output/cached token，也不计算 token 降幅。
 
 ## 资源采样
 
@@ -333,6 +341,8 @@ v1 不引入复杂归档系统。State MCP 默认上限为 64 MiB，在 Session 
 - 现有 MCP access audit JSONL 保持只读，不重写、不导入新热路径；
 - 新 State 实现使用已登记的新 schema 和目录，避免 core/旧 verifier 误判；
 - core Hook 和 State MCP 保持各自合同，通过公共 hash 字段在报告阶段关联；
+- State 插件中的脚本只转发到 package `continuity_plane.codex_mcp_server`，不保留第二份
+  MCP 实现；`.mcp.json` 与兼容脚本因此共享同一合同；
 - 上游 hook 模型是目标基线，本地资源审计只迁移其中仍有价值的摘要字段；
 - 旧日志的 deep verify 保留为兼容工具，不在 SessionStart 调用。
 

@@ -6,18 +6,51 @@ from __future__ import annotations
 import atexit
 import json
 import hashlib
+import os
 import subprocess
 import sys
 import time
 from pathlib import Path
 
-from .light_observability import PolicyConfigError, SessionProbe, load_policy
+from .light_observability import (
+    PolicyConfigError,
+    SessionProbe,
+    load_policy,
+    resolve_policy,
+)
 
 
 def _cli_command(*arguments: str) -> list[str]:
     """Run the CLI with the MCP server interpreter, independent of PATH."""
 
     return [sys.executable, "-m", "continuity_plane.cli", *arguments]
+
+
+def _effect_policy() -> str:
+    """Return the explicit strict mode or a non-blocking MCP default."""
+
+    value = os.environ.get("CONTINUITY_EFFECT_POLICY", "auto").lower()
+    return value if value in {"observe", "auto", "strict"} else "observe"
+
+
+def _load_session_probe(root: Path) -> SessionProbe:
+    """Load optional probes, degrading safely unless strict was explicit."""
+
+    try:
+        return SessionProbe(root, load_policy(root))
+    except PolicyConfigError:
+        if _effect_policy() == "strict":
+            raise
+        policy = resolve_policy(None, environment={})
+        policy["observability"]["probes_enabled"] = False
+        probe = SessionProbe(root, policy)
+        probe.boundary(
+            "policy_degraded",
+            success=False,
+            extra={"observation_degraded": True},
+        )
+        probe.degraded = True
+        return probe
 
 
 def _reply(request_id: object, result: dict) -> None:
@@ -585,7 +618,7 @@ def main() -> int:
             try:
                 probe = probes.get(root_key)
                 if probe is None:
-                    probe = SessionProbe(requested_root, load_policy(requested_root))
+                    probe = _load_session_probe(requested_root)
                     probes[root_key] = probe
             except PolicyConfigError:
                 _error(

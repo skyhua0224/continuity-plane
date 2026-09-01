@@ -147,7 +147,7 @@
     },
     {
       "path": "continuity_plane/codex_mcp_server.py",
-      "sha256": "95daa17b7f684f1d767b1363e590433dd827222e62229689d314a308784648b2"
+      "sha256": "e418781cfad1019916d1ab249cf15b622145358ec5f5decb6c5733ce782324c5"
     },
     {
       "path": "continuity_plane/collaboration_notifications.py",
@@ -207,7 +207,7 @@
     },
     {
       "path": "continuity_plane/light_observability.py",
-      "sha256": "532eac1768549d3e8fc8aa478af29fa4d5c03329b6c032958844b38a5df2910f"
+      "sha256": "3eea7336dd8b8b90fbdbf2891f598b837b721d187738729ecadb8eba890cff09"
     },
     {
       "path": "continuity_plane/local_state_bundle.py",
@@ -379,15 +379,15 @@
     },
     {
       "path": "docs/configuration.en.md",
-      "sha256": "3fea2e02c16acbe79c78489f50971eb846f046ca9e286c65dedc59f63a364663"
+      "sha256": "76a351004e0ad50564f998f81046aeec061c538a43674766156209c500bcd267"
     },
     {
       "path": "docs/configuration.md",
-      "sha256": "ddd3bcc9244d28b0e60a82cc59b2a6b867c747878514c584e326ce0a2affa4a8"
+      "sha256": "3dfc57af8e7a6d4859f7b8660394f3d547274f9f829c2305cdc6b133597d0a75"
     },
     {
       "path": "docs/lightweight-observability-design.md",
-      "sha256": "388cc8b0e3be7b1054dc0a185524b81da6dff187a2461414bd62a6044b076741"
+      "sha256": "511a7954a01334d840d8a3b4a3843a96350babd733036da523dc25b24e26d713"
     },
     {
       "path": "docs/project-views.en.md",
@@ -435,7 +435,7 @@
     },
     {
       "path": "plugins/continuity-plane-state/scripts/continuity-mcp-server.py",
-      "sha256": "ed859e845edbe39926c3f48485870c789fcd128ccb51d4f8f12f5f5649dc116b"
+      "sha256": "3bc8586701016dc502e2662680a6e82d9f619aa3a9677c4b3b0ab759f8222831"
     },
     {
       "path": "plugins/continuity-plane-state/skills/continuity-plane/SKILL.md",
@@ -571,7 +571,7 @@
     },
     {
       "path": "tests/test_light_observability.py",
-      "sha256": "bba9e65a07fc08bdf54c908c46d9fe982982795f570296fd119463eff40786e4"
+      "sha256": "dbbf58099405a42f8233fef16b11453282708b462a0644eaa01f8ad30a093f19"
     },
     {
       "path": "tests/test_public_benchmark.py",
