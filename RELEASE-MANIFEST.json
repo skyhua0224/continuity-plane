@@ -435,7 +435,7 @@
     },
     {
       "path": "plugins/continuity-plane-state/scripts/continuity-mcp-server.py",
-      "sha256": "3bc8586701016dc502e2662680a6e82d9f619aa3a9677c4b3b0ab759f8222831"
+      "sha256": "c3a8475baae94e30294559db26262f8cc0ff6af9dd1d4fd203c9d12e6ac74762"
     },
     {
       "path": "plugins/continuity-plane-state/skills/continuity-plane/SKILL.md",
@@ -571,7 +571,7 @@
     },
     {
       "path": "tests/test_light_observability.py",
-      "sha256": "05aad5befe2f7ee19e9486644b78e243b4e69970cabc3514ebf111a80a56be4b"
+      "sha256": "5195a617201ae73f077bf518b324fccfc3090ef257164c4f02f2db48387db91c"
     },
     {
       "path": "tests/test_public_benchmark.py",

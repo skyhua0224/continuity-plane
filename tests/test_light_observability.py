@@ -7,6 +7,7 @@ import multiprocessing
 import os
 import subprocess
 import sys
+import sysconfig
 import tempfile
 import threading
 import time
@@ -1516,7 +1517,8 @@ class HookProbeTests(unittest.TestCase):
         state = root / "plugins/continuity-plane-state"
         script = state / "scripts/continuity-mcp-server.py"
         source = script.read_text(encoding="utf-8")
-        self.assertLessEqual(len(source.splitlines()), 10)
+        self.assertLessEqual(len(source.splitlines()), 20)
+        self.assertIn("sys.path.insert", source)
         self.assertIn("from continuity_plane.codex_mcp_server import main", source)
         self.assertNotIn("subprocess", source)
         mcp_config = json.loads((state / ".mcp.json").read_text(encoding="utf-8"))
@@ -1532,23 +1534,38 @@ class HookProbeTests(unittest.TestCase):
                 "params": {"protocolVersion": "2024-11-05"},
             }
         ) + "\n"
-        outputs = []
-        for command in (
-            [sys.executable, str(script)],
-            [sys.executable, "-m", "continuity_plane.codex_mcp_server"],
-        ):
-            completed = subprocess.run(
-                command,
-                cwd=root,
+        isolated_environment = os.environ.copy()
+        with tempfile.TemporaryDirectory() as outside_checkout:
+            sentinel = Path(outside_checkout) / "continuity_plane.py"
+            sentinel.write_text(
+                "raise RuntimeError('installed package resolution was used')\n",
+                encoding="utf-8",
+            )
+            isolated_environment["PYTHONPATH"] = os.pathsep.join(
+                (outside_checkout, sysconfig.get_paths()["purelib"])
+            )
+            launcher = subprocess.run(
+                [sys.executable, "-S", str(script)],
+                cwd=outside_checkout,
                 input=request,
                 capture_output=True,
                 text=True,
                 timeout=10,
                 check=False,
+                env=isolated_environment,
             )
-            self.assertEqual(completed.returncode, 0, completed.stderr)
-            outputs.append(json.loads(completed.stdout))
-        self.assertEqual(outputs[0], outputs[1])
+        packaged = subprocess.run(
+            [sys.executable, "-m", "continuity_plane.codex_mcp_server"],
+            cwd=root,
+            input=request,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+        self.assertEqual(launcher.returncode, 0, launcher.stderr)
+        self.assertEqual(packaged.returncode, 0, packaged.stderr)
+        self.assertEqual(json.loads(launcher.stdout), json.loads(packaged.stdout))
 
         release = json.loads(
             (root / "RELEASE-MANIFEST.json").read_text(encoding="utf-8")
