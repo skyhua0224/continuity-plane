@@ -247,6 +247,39 @@ class M1011RecoveryEnvelopeTests(unittest.TestCase):
         self.assertFalse(envelope["read_only"])
         self.assertEqual(envelope["next_action"], "activate-next-work")
 
+    def test_idle_stale_source_envelope_is_read_only_without_a_fake_activation(self) -> None:
+        envelope = compose_recovery_envelope(
+            project_id="portable-project",
+            revision=3,
+            event_head={"sequence_no": 3, "event_sha256": "1" * 64},
+            checkpoint_ref={
+                "schema_version": "context.artifact-ref/v1alpha1",
+                "artifact_uri": "artifact://sha256/" + "2" * 64,
+                "digest_algorithm": "sha-256",
+                "digest": "2" * 64,
+                "size_bytes": 100,
+            },
+            active_work=None,
+            claim=None,
+            current_decisions=[],
+            current_constraints=[],
+            open_blockers=[],
+            return_point_work_id=None,
+            effect_high_watermark=0,
+            proposal_sha256="3" * 64,
+            source_fresh=False,
+            lease_valid=True,
+            next_action="remain-read-only",
+            interaction_cursor=None,
+        )
+
+        validate_recovery_envelope(envelope)
+        self.assertTrue(envelope["read_only"])
+        self.assertEqual(envelope["next_action"], "remain-read-only")
+        self.assertEqual(
+            envelope["first_permitted_action"]["target"], "remain-read-only"
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

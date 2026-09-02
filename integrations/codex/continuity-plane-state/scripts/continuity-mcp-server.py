@@ -52,7 +52,10 @@ def _binding(root: Path) -> dict | None:
         not isinstance(active_work, dict) or not isinstance(claim, dict)
     ):
         return None
-    if idle and envelope.get("next_action") != "activate-next-work":
+    if idle and envelope.get("next_action") not in {
+        "activate-next-work",
+        "remain-read-only",
+    }:
         return None
     return {
         "project_id": envelope.get("project_id"),
