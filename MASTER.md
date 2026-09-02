@@ -1,8 +1,8 @@
 # Continuity Plane MASTER
 
-版本：revision 115  
-日期：2026-09-01  
-状态：zero-friction core reset  
+版本：revision 116  
+日期：2026-09-02  
+状态：zero-friction core reset / plugin portability validation  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
 
 ## 0. 项目治理状态
@@ -361,7 +361,7 @@ Docmost 候选实现固定到 [`Yundi339/docmost` 参考评估](docs/research/do
 | ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
 |---|---|---|---|---|---|---|
 | M10-00 | ✅ | Continuity Plane self-dogfood release pilot | 本仓库通过统一产品入口持续使用本项目的状态、路由、Skill、检索、验证和可选增强能力 | 先以自身研发证明连续性、质量与交付速度收益 | M7-05/M8-04/M8-07/M8-09 | strict plan 与 execution-worktree binding；State MCP required leaf `3/3`、automatable closure `100%`、2 worker + independent verifier、forced fault `4/4`、dogfood coverage `100%`、E0-E9 `10/10`；real provider packet `-40.2471%` input、retrieval input/tool/wall `-50.0153%/-57.8947%/-27.4120%`、Skill source bytes `-96.5409%`；历史 950K/700K compaction 的数值由 source rollout 重新验证，旧 receipt event ref 不进入 M10-11 provenance；验收见 `docs/migrations/m10-00-self-dogfood-acceptance-2026-08-18.md` 与 M10-11 correction |
-| M10-01 | 🟡 | AlkaidLab 三仓 shadow pilot | 用真实超大型项目验证 | 取得生产证据 | M10-00 | Platform pilot 的动态 revision、claim 和 adapter version 只记录于 `STATUS.md` 与 M10 evidence；Codex global-plugin MCP 通过首次 resume 绑定项目根，write-before-bind、cross-project、actor/claim/Work mismatch 和 read-only envelope 均在 CLI 前拒绝；`context.state.work.transition` 在单一 Event 内完成 dependency、release、blocker resolution、return-point activation 和 successor claim；零 active Work 产生 `activate-next-work` idle envelope，idle binding 仅允许 `context.state.work.activate`，该操作在单一 Event 内创建 Work、签发 claim 并发布 verified checkpoint；checkpoint publication/CAS 前置失败保持原 revision；Platform alpha.5 live chain `95/95 idle -> 96/96 N-69-07` 通过且无需外部 State 代写；PreCompact/PostCompact/SessionStart `3/3` trusted active；退出条件保持 E0-E9 全门通过、Product build/runtime 依赖 0、v1->v6 migration、arbitrary shell effect preflight 与 M10-11 matched gate 完成；证据见 `docs/migrations/m10-01-platform-claim-recovery-and-ux-probe-2026-08-19.md` 与 M10-11 live update |
+| M10-01 | 🧑‍💻 | AlkaidLab 三仓 shadow pilot | 用真实超大型项目验证 | 取得生产证据 | M10-00 | Platform pilot 的动态 revision、claim 和 adapter version 只记录于 `STATUS.md` 与 M10 evidence；Codex global-plugin MCP 通过首次 resume 绑定项目根，write-before-bind、cross-project、actor/claim/Work mismatch 和 read-only envelope 均在 CLI 前拒绝；`context.state.work.transition` 在单一 Event 内完成 dependency、release、blocker resolution、return-point activation 和 successor claim；零 active Work 产生 `activate-next-work` idle envelope，idle binding 仅允许 `context.state.work.activate`，该操作在单一 Event 内创建 Work、签发 claim 并发布 verified checkpoint；checkpoint publication/CAS 前置失败保持原 revision；Platform alpha.5 live chain `95/95 idle -> 96/96 N-69-07` 通过且无需外部 State 代写；PreCompact/PostCompact/SessionStart `3/3` trusted active；退出条件保持 E0-E9 全门通过、Product build/runtime 依赖 0、v1->v6 migration、arbitrary shell effect preflight 与 M10-11 matched gate 完成；证据见 `docs/migrations/m10-01-platform-claim-recovery-and-ux-probe-2026-08-19.md` 与 M10-11 live update |
 | M10-02 | ⏳ | 第二个跨领域项目接入 | 验证核心协议的项目中立性 | 验证可移植性 | M10-01 | 核心代码 fork 数为 0 |
 | M10-03 | ⏳ | 多协作者 pilot | 验证 forge 与 shared-strong profile 的 claim、权限和交接 | 支持不同投入等级的团队 | M8-05/M8-08 | shared-strong 静默覆盖 0；forge profile 对已发布 Work 的冲突可见率 100%；handoff 100% |
 | M10-04 | ⏳ | backup/export/import/disaster recovery | 状态可迁移和恢复 | 长期可持续 | M8-03 | 新实例完整 replay 且 hash 一致 |
@@ -390,7 +390,7 @@ M10-01/M10-11 的跨项目退出门包括：State revision 与 `STATUS.current` 
 
 | ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
 |---|---|---|---|---|---|---|
-| M11-00 | 🧑‍💻 | Zero-friction continuity core | 默认恢复、自动推进和上下文优化不干扰业务 Session | 回到项目初衷并给后续严格能力建立可验证边界 | M5/M7/M8/M10-11 | 默认 integration policy 为非阻断 `auto`；三个真实项目无命令误阻断；stale/read-only packet 不停止或注入；普通 Work 的 Continuity 手动操作为 `0`；三项目各 `3` 段 matched baseline/candidate；旧 Work 复活、重复回答、错误首动作和副作用误阻断均为 `0`；恢复读取 p95 相对基线下降 `>=30%`；history-heavy input/accepted Work 与压缩间隔不劣于基线且目标下降 `>=30%`；未达到目标时不得进入公共默认启用或 stable release |
+| M11-00 | 🟡 | Zero-friction continuity core | 默认恢复、自动推进和上下文优化不干扰业务 Session | 回到项目初衷并给后续严格能力建立可验证边界 | M5/M7/M8/M10-11 | 默认 integration policy 为非阻断 `auto`；三个真实项目无命令误阻断；stale/read-only packet 不停止或注入；普通 Work 的 Continuity 手动操作为 `0`；三项目各 `3` 段 matched baseline/candidate；旧 Work 复活、重复回答、错误首动作和副作用误阻断均为 `0`；恢复读取 p95 相对基线下降 `>=30%`；history-heavy input/accepted Work 与压缩间隔不劣于基线且目标下降 `>=30%`；未达到目标时不得进入公共默认启用或 stable release |
 
 M11-00 的运行策略分为三层：`auto` 默认自动绑定项目、恢复 Work、创建本地 claim、续租和继续下一动作且不阻断普通开发；`observe` 仅记录；`strict` 只由项目 Profile 显式启用，用于不可逆生产副作用。任何层级都不得将 stale packet、旧 Work 或陈旧 STATUS 注入当前 Session。M11-00 关闭前，不新增 effect gate、强制 PostgreSQL、Docmost 或人工 claim 操作。
 
@@ -399,6 +399,13 @@ Codex `auto` compaction 在 `PreCompact` 创建 checkpoint、`PostCompact` 验�
 Codex 默认 plugin 采用 core profile，仅包含 lifecycle hook 与不超过 `512 B` 的 startup return-point projection，不注册 Skill、MCP 或命令门。`continuity-plane-search` 提供显式选择的有界 current-worktree 检索 Skill；`continuity-plane-state` 承载 resume、claim、checkpoint 与 Work transition 工具。两个扩展均按需单独安装。
 
 本机或受控试点可由用户显式启用 core、search 和 state 三个 profile 进行 dogfood。全量安装不授予命令拦截权限；State 或检索 adapter 失败时继续业务执行。公共默认启用仍受 M11-00 matched gate 约束。
+
+2026-09-02 的本地 alpha.10 plugin 验收补充 launcher portability 合同：State plugin
+兼容脚本必须从发布根发现同包并转发到唯一 package MCP server；直接从任意工作目录启动时
+不得依赖 `PYTHONPATH` 或已安装的同名包。该合同由
+`tests/test_m10_11_codex_mcp_binding.py` 与
+`tests/test_m11_00_codex_plugin_profiles.py` 覆盖。Codex app-server 重载属于运行时边界，
+在当前 Session 中保持 deferred，不能把已安装 cachebuster 视为当前连接已加载。
 
 `continuity context search` 只查询 Git tracked current worktree，绑定 repository revision、file/line hash 和完整 JSON 输出预算。自动 Skill adoption 必须按项目与任务类通过 matched provider gate；未通过时保持显式安装，不进入默认 core。
 

@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import json
+import os
+import subprocess
 import tempfile
+import sys
 import unittest
 from pathlib import Path
 
@@ -54,6 +57,51 @@ class M1100CodexPluginProfileTests(unittest.TestCase):
             (self.state / "skills/continuity-plane/SKILL.md").is_file()
         )
         self.assertFalse((self.state / "hooks/hooks.json").exists())
+
+    def test_state_launcher_runs_from_a_clean_working_directory(self) -> None:
+        script = self.state / "scripts/continuity-mcp-server.py"
+        source = script.read_text(encoding="utf-8")
+        self.assertIn("from context_control_plane.codex_mcp_server import main", source)
+        self.assertIn("sys.path", source)
+        request = json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {"protocolVersion": "2024-11-05"},
+            }
+        ) + "\n"
+        completed = subprocess.run(
+            [sys.executable, str(script)],
+            cwd="/tmp",
+            input=request,
+            capture_output=True,
+            text=True,
+            env={"PATH": os.environ.get("PATH", ""), "PYTHONPATH": ""},
+            timeout=10,
+            check=False,
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(json.loads(completed.stdout)["result"]["serverInfo"]["name"], "continuity")
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "public"
+            build_public_release(self.root, output, initialize_git=False)
+            public_script = output / "plugins/continuity-plane-state/scripts/continuity-mcp-server.py"
+            generated = subprocess.run(
+                [sys.executable, str(public_script)],
+                cwd="/tmp",
+                input=request,
+                capture_output=True,
+                text=True,
+                env={"PATH": os.environ.get("PATH", ""), "PYTHONPATH": ""},
+                timeout=10,
+                check=False,
+            )
+            self.assertEqual(generated.returncode, 0, generated.stderr)
+            self.assertEqual(
+                json.loads(generated.stdout)["result"]["serverInfo"]["name"],
+                "continuity",
+            )
 
     def test_public_marketplace_offers_core_and_state_separately(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

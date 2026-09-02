@@ -1,7 +1,7 @@
 # Continuity Plane Status
 
-版本：revision 115  
-日期：2026-09-01  
+版本：revision 116  
+日期：2026-09-02  
 canonical plan：`MASTER.md`
 
 ## 当前安全姿态与收口目标
@@ -18,12 +18,12 @@ canonical plan：`MASTER.md`
 
 | 字段 | 值 |
 |---|---|
-| 当前 Campaign | M10 跨项目发布 |
-| active work | M10-01：跨项目 shadow pilot（🟡） |
-| next action | 建立可续跑的自然 1M/900K shadow runner，再按 accepted Work 重复 matched A/B |
+| 当前 Campaign | M11 零阻断连续性核心收口 |
+| active work | M11-00：插件可见性与配置持久化验证（🟡） |
+| next action | 在用户允许的运行时边界内重载 app-server，再验收新 Session 的 MCP 工具可见性与三项目恢复 |
 | hard blocker | Platform 与 ProjectCompute input-token gate 均未达 `30%` |
 | repository mode | internal development repository + fresh-history public mirror |
-| production state | GitHub/PyPI alpha.10 published；本机 alpha.10 三插件 enabled；shared pilot planned |
+| production state | GitHub/PyPI alpha.10；本机三插件 enabled；cc-switch snippet 已持久化；app-server 重载 deferred |
 
 ## 已验证摘要
 
@@ -39,9 +39,9 @@ canonical plan：`MASTER.md`
 | M11 hook efficiency | `40` 组：calls `-33.33%`，model context `-83.73%`，stdout `-85.18%`，wall p50/p95 `-25.60%/-29.98%`，deny/stop `0/0`；[receipt](experiments/evidence/m11-00-codex-hook-efficiency.json) |
 | M11 Platform matched A/B | `3+3`：input/output/tool-output 中位 `-12.14%/-28.84%/-41.46%`，veto `0`，input gate failed；[comparison](experiments/evidence/m11-live/platform-ultralight/platform-comparison.json) |
 | M11 ProjectCompute matched A/B | `3+3`：input/output/tool-output 中位 `-2.36%/-13.70%/+2.62%`，veto `0`，input gate failed；[comparison](experiments/evidence/m11-live/projectcompute-ultralight/projectcompute-comparison.json) |
-| M11 bounded retrieval | current tracked worktree、revision/hash、完整 JSON budget 与 CLI `3/3`；默认自动 Skill adoption rejected，功能保留为可选 search plugin |
+| M11 bounded retrieval | current tracked worktree、revision/hash、完整 JSON budget 与 CLI `3/3` |
 | Repository gate | full `2014/2014` passed，`31` skipped；release `76/76`、governance `49/49`、public `5/5` |
-| Governance authority | `MASTER.md` revision 115 |
+| Governance authority | `MASTER.md` revision 116 |
 
 ## 恢复入口
 

@@ -64,9 +64,42 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
         self.assertEqual(response["result"]["serverInfo"]["version"], "0.1.0-alpha.10")
 
     def test_packaged_and_plugin_mcp_servers_have_the_same_contract(self) -> None:
-        packaged = self.root / "context_control_plane/codex_mcp_server.py"
+        packaged = "context_control_plane.codex_mcp_server"
         plugin_server = self.plugin / "scripts/continuity-mcp-server.py"
-        self.assertEqual(packaged.read_bytes(), plugin_server.read_bytes())
+        request = json.dumps(
+            {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {"protocolVersion": "2025-06-18"},
+            }
+        ) + "\n"
+        with tempfile.TemporaryDirectory() as directory:
+            plugin_environment = os.environ.copy()
+            plugin_environment.pop("PYTHONPATH", None)
+            plugin_result = subprocess.run(
+                [sys.executable, str(plugin_server)],
+                cwd=directory,
+                input=request,
+                text=True,
+                capture_output=True,
+                env=plugin_environment,
+                check=False,
+            )
+        package_environment = os.environ.copy()
+        package_environment["PYTHONPATH"] = str(self.root)
+        package_result = subprocess.run(
+            [sys.executable, "-m", packaged],
+            cwd=self.root,
+            input=request,
+            text=True,
+            capture_output=True,
+            env=package_environment,
+            check=False,
+        )
+        self.assertEqual(plugin_result.returncode, 0, plugin_result.stderr)
+        self.assertEqual(package_result.returncode, 0, package_result.stderr)
+        self.assertEqual(json.loads(plugin_result.stdout), json.loads(package_result.stdout))
 
     def test_process_cwd_does_not_prebind_before_explicit_resume(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
