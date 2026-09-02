@@ -342,6 +342,18 @@ Install the advanced plugin only when Codex needs State tools:
 codex plugin add continuity-plane-state@continuity-plane
 ```
 
+Verify actual adoption after starting or resuming a Session:
+
+```bash
+continuity doctor --root . --codex-home ~/.codex
+continuity inspect --root .
+```
+
+The doctor reads plugin configuration, MCP policy, hook trust, and sanitized lifecycle
+observations; it does not read chat content. `active` means a real SessionStart was observed,
+`configured` means no runtime event exists yet, and `misconfigured` means an installation gate
+failed.
+
 To upgrade the plugin, refresh the marketplace, reinstall it, and start a new
 Session:
 
@@ -358,19 +370,19 @@ the plugin does not delete `.continuity/` state.
 ### One Session Across Multiple Projects
 
 With the advanced State plugin installed, a Session spanning a governance root,
-an implementation project, and another project can explicitly resume each
-governance root:
+an implementation project, and another project can inspect a governance root
+once, then resume only before an explicit State write:
 
 ```text
-continuity_resume(root=/path/to/project-a)
-continuity_resume(root=/path/to/project-b)
-continuity_resume(root=/path/to/project-c)
+continuity_inspect(root=/path/to/project-a)
+continuity_resume(root=/path/to/project-a)  # only before an explicit State write
 ```
 
-Each call adds the root to the Session's integrity-checked project set and makes
-it the active root. Work, claim, checkpoint, and effect requests for that
-project must use the same root; switch projects by explicitly calling
-`continuity_resume` again. Relative roots resolve only against the last
+Inspect does not write projections or establish a write binding; reuse its result
+within the turn. Resume adds the root to the Session's integrity-checked project
+set and makes it active. Work, claim, checkpoint, and effect requests for that
+project must use the same root; switch projects by calling resume once when a
+write is required. Relative roots resolve only against the last
 successful active root. After a Session binding exists, the terminal `cwd`
 cannot replace the active root. An unbound root, missing profile, digest
 mismatch, or corrupt binding is rejected before any CLI/State write instead of

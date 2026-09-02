@@ -382,6 +382,37 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
         self.assertNotIn("error", responses[0])
         self.assertEqual(sum(line.startswith("resume --root ") for line in calls), 1)
 
+    def test_inspect_is_read_only_and_all_tools_have_safety_annotations(self) -> None:
+        requests = [
+            {"jsonrpc": "2.0", "id": 1, "method": "tools/list"},
+            self._tool_call(
+                2,
+                "continuity_inspect",
+                {"root": "$PROJECT_ROOT"},
+            ),
+        ]
+
+        responses, calls = self._run(requests, start_from_plugin_cache=True)
+
+        tools = {
+            item["name"]: item for item in responses[0]["result"]["tools"]
+        }
+        self.assertEqual(
+            tools["continuity_inspect"]["annotations"],
+            {
+                "readOnlyHint": True,
+                "openWorldHint": False,
+                "destructiveHint": False,
+            },
+        )
+        self.assertTrue(all("annotations" in item for item in tools.values()))
+        self.assertFalse(
+            any(item["annotations"]["readOnlyHint"] for name, item in tools.items() if name != "continuity_inspect")
+        )
+        self.assertNotIn("error", responses[1])
+        self.assertEqual(sum(line.startswith("inspect --root ") for line in calls), 1)
+        self.assertEqual(sum(line.startswith("resume --root ") for line in calls), 0)
+
     def test_autorun_tool_continues_the_bound_work_from_a_checkpoint(self) -> None:
         requests = [
             {

@@ -39,7 +39,16 @@ codex plugin add continuity-plane-search@continuity-plane
 codex plugin add continuity-plane-state@continuity-plane
 ```
 
-安装后新建一个 Session。权威状态仍由本地 CLI/State MCP 管理。
+安装后新建或恢复一个 Session。用只读命令确认插件已真实运行：
+
+```bash
+continuity doctor --root . --codex-home ~/.codex
+continuity inspect --root .
+```
+
+`codex_plugin.status=active` 表示配置、MCP policy、hook trust 和真实 SessionStart
+观测均已通过。普通问题只 inspect 一次；显式 State 写入前才 resume。权威状态仍由本地
+CLI/State MCP 管理。
 
 ### 单项目
 

@@ -41,8 +41,16 @@ Work transition tools:
 codex plugin add continuity-plane-state@continuity-plane
 ```
 
-Start a new Session after installation. Authoritative state remains managed by the local
-CLI/State MCP.
+Start or resume a Session after installation, then verify real adoption with read-only commands:
+
+```bash
+continuity doctor --root . --codex-home ~/.codex
+continuity inspect --root .
+```
+
+`codex_plugin.status=active` means configuration, MCP policy, hook trust, and a real SessionStart
+observation all passed. Ordinary questions inspect at most once; resume is reserved for an explicit
+State write. Authoritative state remains managed by the local CLI/State MCP.
 
 ### One Project
 

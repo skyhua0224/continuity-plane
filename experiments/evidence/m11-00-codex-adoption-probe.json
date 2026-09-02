@@ -1,0 +1,54 @@
+{
+  "acceptance": {
+    "candidate_inspect_calls_exactly_one": true,
+    "candidate_post_inspect_project_reads_zero": true,
+    "candidate_project_writes_zero": true,
+    "candidate_resume_calls_zero": true,
+    "passed": true
+  },
+  "arms": {
+    "baseline": {
+      "cachebuster": "20260902044616",
+      "cached_input_tokens": 175360,
+      "command_execution_calls": 7,
+      "input_tokens": 199754,
+      "inspect_calls": 1,
+      "output_tokens": 1527,
+      "post_inspect_project_reads": 5,
+      "reasoning_output_tokens": 862,
+      "resume_calls": 0,
+      "state_mutating_tool_calls": 0
+    },
+    "candidate": {
+      "cachebuster": "20260902045812",
+      "cached_input_tokens": 64768,
+      "command_execution_calls": 0,
+      "continuity_tree_hash_unchanged": true,
+      "git_status_hash_unchanged": true,
+      "input_tokens": 83696,
+      "inspect_calls": 1,
+      "output_tokens": 500,
+      "post_inspect_project_reads": 0,
+      "reasoning_output_tokens": 372,
+      "resume_calls": 0,
+      "state_mutating_tool_calls": 0
+    }
+  },
+  "improvements": {
+    "command_execution_reduction_percent": 100.0,
+    "input_token_reduction_percent": 58.1005,
+    "output_token_reduction_percent": 67.2561,
+    "post_inspect_project_read_reduction_percent": 100.0,
+    "reasoning_output_token_reduction_percent": 56.8445
+  },
+  "limitations": [
+    "single matched same-model probe",
+    "does not replace the three-project three-segment release gate",
+    "cached input composition differs between arms"
+  ],
+  "model_id": "gpt-5.6-sol",
+  "observed_at": "2026-09-02T05:02:38Z",
+  "prompt_sha256": "46512a4687505004d9bbbf3afe28a528936a82cd691aef18f6aee87204dbcc1e",
+  "schema_version": "context.codex-adoption-probe/v1alpha1",
+  "state_write_authority": false
+}

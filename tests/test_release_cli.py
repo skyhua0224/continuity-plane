@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import subprocess
 import tempfile
 import unittest
@@ -18,6 +19,70 @@ from context_control_plane.sqlite_state_store import SQLiteStateStore
 
 
 class ReleaseCliTests(unittest.TestCase):
+    def test_doctor_reports_real_codex_plugin_adoption_without_transcripts(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            root = base / "project"
+            codex_home = base / "codex-home"
+            root.mkdir()
+            codex_home.mkdir()
+            with redirect_stdout(StringIO()):
+                main(["init", "--root", str(root), "--project-id", "sample-app"])
+            (codex_home / "config.toml").write_text(
+                "[plugins.\"continuity-plane@continuity-plane\"]\n"
+                "enabled = true\n"
+                "[plugins.\"continuity-plane-search@continuity-plane\"]\n"
+                "enabled = true\n"
+                "[plugins.\"continuity-plane-state@continuity-plane\"]\n"
+                "enabled = true\n"
+                "[plugins.\"continuity-plane-state@continuity-plane\".mcp_servers.continuity]\n"
+                "enabled = true\n"
+                "default_tools_approval_mode = \"approve\"\n"
+                "[hooks.state]\n"
+                "[hooks.state.\"continuity-plane@continuity-plane:hooks/hooks.json:pre_compact:0:0\"]\n"
+                f"trusted_hash = \"sha256:{'1' * 64}\"\n"
+                "[hooks.state.\"continuity-plane@continuity-plane:hooks/hooks.json:post_compact:0:0\"]\n"
+                f"trusted_hash = \"sha256:{'2' * 64}\"\n"
+                "[hooks.state.\"continuity-plane@continuity-plane:hooks/hooks.json:session_start:0:0\"]\n"
+                f"trusted_hash = \"sha256:{'3' * 64}\"\n",
+                encoding="utf-8",
+            )
+            events = (
+                codex_home
+                / "plugins/data/continuity-plane-continuity-plane/live-events"
+            )
+            events.mkdir(parents=True)
+            event = {
+                "event_type": "session-start",
+                "observed_at": "2026-09-02T03:56:55+00:00",
+                "plugin_loaded": True,
+                "success": True,
+            }
+            (events / f"{hashlib.sha256(b'session').hexdigest()}.jsonl").write_text(
+                json.dumps(event) + "\n", encoding="utf-8"
+            )
+            output = StringIO()
+
+            with redirect_stdout(output):
+                result = main(
+                    [
+                        "doctor",
+                        "--root",
+                        str(root),
+                        "--codex-home",
+                        str(codex_home),
+                    ]
+                )
+
+            report = json.loads(output.getvalue())
+            self.assertEqual(result, 0)
+            self.assertEqual(report["codex_plugin"]["status"], "active")
+            self.assertEqual(report["codex_plugin"]["trusted_hooks"], 3)
+            self.assertEqual(report["codex_plugin"]["expected_hooks"], 3)
+            self.assertTrue(report["codex_plugin"]["mcp_auto_approved"])
+            self.assertTrue(report["codex_plugin"]["session_start_observed"])
+            self.assertNotIn("transcript", json.dumps(report).lower())
+
     def test_resume_packet_has_a_registered_strict_schema(self) -> None:
         root = Path(__file__).parents[1]
         schema_path = root / "schemas/m10-09/resume-packet.schema.json"

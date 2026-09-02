@@ -1,6 +1,6 @@
 # Continuity Plane Status
 
-版本：revision 116  
+版本：revision 118  
 日期：2026-09-02  
 canonical plan：`MASTER.md`
 
@@ -19,11 +19,11 @@ canonical plan：`MASTER.md`
 | 字段 | 值 |
 |---|---|
 | 当前 Campaign | M11 零阻断连续性核心收口 |
-| active work | M11-00：插件可见性与配置持久化验证（🟡） |
-| next action | 在用户允许的运行时边界内重载 app-server，再验收新 Session 的 MCP 工具可见性与三项目恢复 |
+| active work | M11-00：真实插件采用与旧线程原位恢复（🟡） |
+| next action | 收集 Platform、ProjectCompute、Foundation 原线程采用回执并完成各 `3` 段 matched candidate |
 | hard blocker | Platform 与 ProjectCompute input-token gate 均未达 `30%` |
 | repository mode | internal development repository + fresh-history public mirror |
-| production state | GitHub/PyPI alpha.10；本机三插件 enabled；cc-switch snippet 已持久化；app-server 重载 deferred |
+| production state | GitHub/PyPI alpha.10；本机 candidate cachebuster `20260902045812` 已安装；公共默认启用仍受 matched gate 约束 |
 
 ## 已验证摘要
 
@@ -35,13 +35,13 @@ canonical plan：`MASTER.md`
 | Coordination/views | shared Work、forge、notification、Project Graph、2,000-node Impact gates passed；authority violation `0` |
 | Release baseline | Linux/macOS/Windows native matrix `18/18`；local state bundle export/import/rollback available；public privacy scan `0` findings |
 | Documentation audit | README、USAGE、CHANGELOG、public docs、templates 与 policy 全文审阅；公开 Markdown 内部阶段标记 `0`，本地链接缺失 `0`，外部链接 `8/8` 可达；repository verification passed |
-| M11 reset | plugins enabled；trust `3/3`；auto verified；1M/900K chain pending；probes `6/6`；MCP visible；54/54 tests；[baseline](experiments/evidence/m11-00-live-baseline-20260830.json) |
+| M11 adoption | doctor `active`、hooks `3/3`；单样本 inspect 后读取 `5 -> 0`、shell `7 -> 0`、input/output `-58.10%/-67.26%`、resume/write `0/0`；[receipt](experiments/evidence/m11-00-codex-adoption-probe.json)；原线程与 `3+3` pending |
 | M11 hook efficiency | `40` 组：calls `-33.33%`，model context `-83.73%`，stdout `-85.18%`，wall p50/p95 `-25.60%/-29.98%`，deny/stop `0/0`；[receipt](experiments/evidence/m11-00-codex-hook-efficiency.json) |
 | M11 Platform matched A/B | `3+3`：input/output/tool-output 中位 `-12.14%/-28.84%/-41.46%`，veto `0`，input gate failed；[comparison](experiments/evidence/m11-live/platform-ultralight/platform-comparison.json) |
 | M11 ProjectCompute matched A/B | `3+3`：input/output/tool-output 中位 `-2.36%/-13.70%/+2.62%`，veto `0`，input gate failed；[comparison](experiments/evidence/m11-live/projectcompute-ultralight/projectcompute-comparison.json) |
 | M11 bounded retrieval | current tracked worktree、revision/hash、完整 JSON budget 与 CLI `3/3` |
 | Repository gate | full `2014/2014` passed，`31` skipped；release `76/76`、governance `49/49`、public `5/5` |
-| Governance authority | `MASTER.md` revision 116 |
+| Governance authority | `MASTER.md` revision 118 |
 
 ## 恢复入口
 

@@ -1,8 +1,8 @@
 # Continuity Plane MASTER
 
-版本：revision 116  
+版本：revision 118  
 日期：2026-09-02  
-状态：zero-friction core reset / plugin portability validation  
+状态：zero-friction core reset / live plugin adoption  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
 
 ## 0. 项目治理状态
@@ -400,12 +400,13 @@ Codex 默认 plugin 采用 core profile，仅包含 lifecycle hook 与不超过 
 
 本机或受控试点可由用户显式启用 core、search 和 state 三个 profile 进行 dogfood。全量安装不授予命令拦截权限；State 或检索 adapter 失败时继续业务执行。公共默认启用仍受 M11-00 matched gate 约束。
 
-2026-09-02 的本地 alpha.10 plugin 验收补充 launcher portability 合同：State plugin
-兼容脚本必须从发布根发现同包并转发到唯一 package MCP server；直接从任意工作目录启动时
-不得依赖 `PYTHONPATH` 或已安装的同名包。该合同由
-`tests/test_m10_11_codex_mcp_binding.py` 与
-`tests/test_m11_00_codex_plugin_profiles.py` 覆盖。Codex app-server 重载属于运行时边界，
-在当前 Session 中保持 deferred，不能把已安装 cachebuster 视为当前连接已加载。
+2026-09-02 的 alpha.10 live adoption 合同要求：State launcher 可从发布根加载唯一 package
+MCP server；`continuity_inspect` 只读且每 turn 最多调用一次；所有 MCP 工具声明准确安全
+annotations；显式 State 写入前才 resume；`continuity doctor --codex-home` 同时验证 plugin
+配置、MCP policy、hook trust `3/3` 与脱敏 SessionStart observation。已安装 cache、插件列表
+或 app-server 重载本身均不构成采用证据；旧线程必须在原线程恢复后获得新能力且保留历史。
+成功的 `continuity_inspect` 是该 turn 的只读恢复终点；除非用户明确要求诊断投影或 State
+不一致，Agent 必须直接复用返回值，不得继续读取 `.continuity`、MASTER 或 STATUS。
 
 `continuity context search` 只查询 Git tracked current worktree，绑定 repository revision、file/line hash 和完整 JSON 输出预算。自动 Skill adoption 必须按项目与任务类通过 matched provider gate；未通过时保持显式安装，不进入默认 core。
 

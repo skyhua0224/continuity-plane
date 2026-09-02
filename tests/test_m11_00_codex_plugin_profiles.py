@@ -58,6 +58,16 @@ class M1100CodexPluginProfileTests(unittest.TestCase):
         )
         self.assertFalse((self.state / "hooks/hooks.json").exists())
 
+    def test_state_skill_uses_one_bounded_inspection_per_turn(self) -> None:
+        skill = self.state / "skills/continuity-plane/SKILL.md"
+        text = skill.read_text(encoding="utf-8")
+
+        self.assertIn("continuity_inspect", text)
+        self.assertIn("once per turn", text)
+        self.assertIn("After a successful inspect, answer from its result", text)
+        self.assertIn("do not read `.continuity` or governance files", text)
+        self.assertLessEqual(len(text.encode("utf-8")), 1024)
+
     def test_state_launcher_runs_from_a_clean_working_directory(self) -> None:
         script = self.state / "scripts/continuity-mcp-server.py"
         source = script.read_text(encoding="utf-8")

@@ -1,9 +1,9 @@
 # Context Control Plane Target-State Architecture
 
-版本：16  
+版本：17  
 日期：2026-08-28  
 状态：current architecture contract  
-governance authority：`MASTER.md` revision 116
+governance authority：`MASTER.md` revision 118
 
 ## 三文档默认投影
 
@@ -42,7 +42,7 @@ claim、lease 和 revision 独立裁决，切换项目不会复用另一项目�
 | `context.workflow` | `durable-execution` | checkpoint、重试、幂等、lease、unattended required-work loop、multi-Agent fan-out/fan-in 和长流程恢复；长 campaign 采用 append-only step index/replay high watermark | local State MCP + SQLite cursor/port receipt；DBOS；Temporal 按需启用 | M8-09 local-embedded shadow contract verified；M8-10 scale decision verified；M10 step-index implementation/live pilot |
 | `context.skill-resolution` | `versioned-skill-registry` | Skill manifest、五类 source catalog、version/hash 固定外部 adapter policy、pinned Git tree evidence、本地 CAS staging、metadata/admission 分层、offline replay、M4-07 candidate-only projection、M4-01 manifest schema reuse、M4-07 跨 entry dependency/cycle admission、M4-09 role/operation/provider resolver、同 kind OR/跨 kind AND、segment-prefix path、精确 provider contract、priority conflict、expiry quarantine、64 KiB preflight/canonical input、16,384 Unicode scalar/64 KiB UTF-8 content 与 128 KiB output bounded Project/User proposal、strict SemVer/ID/timestamp gate、set-like input canonicalization、Verification Profile license policy、expected-time-bound replay verifier、candidate-only body asset、固定 source/license/provenance、approval/verification evidence、stable rule IDs、dependency-closed compiled packet、drift quarantine、packet-bound S0-S3 load plan、selected manifest digest、exact provider applicability/contract、active-task compatibility lock、live input/adapter surface 重算、evidence-verified replay/rollback migration、gated composition entrypoint、host-owned authorization adapter 和 deterministic loader | Git + local artifact store + selected StateStore metadata | M4 |
 | `context.composition` | `execution-packet-composer` | 组装当前任务、当前 Skill、当前 evidence 与 Continuation Cursor 的有界执行包 | State MCP + artifact store | M5 |
-| `context.provider-integration` | `tiered-provider-adapters` | 默认 core adapter 仅加载 lifecycle hook 与 `<=512 B` startup projection，不注册 Skill、MCP 或命令门；auto compact 验证 checkpoint 后使用宿主原生续跑且零 packet 注入；bounded search 与 State 工具由独立可选 adapter 提供 | Codex core/search/state plugins；Claude 与其他 provider adapters | M4/M10/M11 |
+| `context.provider-integration` | `tiered-provider-adapters` | 默认 core adapter 仅加载 lifecycle hook 与 `<=512 B` startup projection，不注册 Skill、MCP 或命令门；auto compact 验证 checkpoint 后使用宿主原生续跑且零 packet 注入；bounded search 与 State 工具由独立可选 adapter 提供；成功的只读 inspect 直接终止恢复读取 | Codex core/search/state plugins；Claude 与其他 provider adapters | M4/M10/M11 |
 | `context.replay` | `checkpoint-canary-validator` | 压缩、切任务、换模型、崩溃后的确定性恢复门 | deterministic validator | M1/M5 |
 | `context.evidence` | `assertion-resolver` | 当前代码、标准、OS/软件官方文档的 version、validity 和 provenance | Git metadata、artifact store、`rg`、LSP、SCIP、RTFM | M6/M7 |
 | `context.code-intelligence` | `bounded-code-retrieval` | 精确搜索、受影响图、跨仓线索和 index freshness | `rg`、Zoekt、LSP、SCIP、CodeGraph | M6 |

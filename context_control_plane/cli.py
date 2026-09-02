@@ -13,6 +13,7 @@ import re
 import sqlite3
 import subprocess
 import sys
+import tomllib
 import uuid
 from datetime import UTC, datetime, timedelta
 from importlib import resources
@@ -312,24 +313,104 @@ def _verify(args: argparse.Namespace) -> int:
     return 0
 
 
+def _latest_codex_session_start(codex_home: Path) -> dict[str, Any] | None:
+    candidates = sorted(
+        codex_home.glob("plugins/data/continuity-plane*/live-events/*.jsonl"),
+        key=lambda path: path.stat().st_mtime_ns,
+        reverse=True,
+    )
+    for path in candidates:
+        try:
+            with path.open("rb") as stream:
+                stream.seek(max(0, path.stat().st_size - 64 * 1024))
+                lines = stream.read().splitlines()
+        except OSError:
+            continue
+        for line in reversed(lines):
+            try:
+                event = json.loads(line)
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                continue
+            if isinstance(event, dict) and event.get("event_type") == "session-start":
+                return event
+    return None
+
+
+def _codex_plugin_status(codex_home: Path) -> dict[str, Any]:
+    try:
+        config = tomllib.loads(
+            (codex_home / "config.toml").read_text(encoding="utf-8")
+        )
+    except (OSError, UnicodeError, tomllib.TOMLDecodeError):
+        config = {}
+    plugins = config.get("plugins")
+    plugins = plugins if isinstance(plugins, dict) else {}
+
+    def enabled(plugin_id: str) -> bool:
+        value = plugins.get(plugin_id)
+        return isinstance(value, dict) and value.get("enabled") is True
+
+    state_id = "continuity-plane-state@continuity-plane"
+    state = plugins.get(state_id)
+    state = state if isinstance(state, dict) else {}
+    servers = state.get("mcp_servers")
+    servers = servers if isinstance(servers, dict) else {}
+    server = servers.get("continuity")
+    server = server if isinstance(server, dict) else {}
+    mcp_auto_approved = (
+        server.get("enabled") is True
+        and server.get("default_tools_approval_mode") == "approve"
+    )
+    hooks = config.get("hooks")
+    hooks = hooks if isinstance(hooks, dict) else {}
+    hook_state = hooks.get("state")
+    hook_state = hook_state if isinstance(hook_state, dict) else {}
+    trusted_hooks = sum(
+        isinstance(key, str)
+        and key.startswith("continuity-plane@continuity-plane:")
+        and isinstance(value, dict)
+        and isinstance(value.get("trusted_hash"), str)
+        for key, value in hook_state.items()
+    )
+    event = _latest_codex_session_start(codex_home)
+    session_start_observed = event is not None and event.get("plugin_loaded") is True
+    configured = enabled("continuity-plane@continuity-plane") and enabled(state_id)
+    ready = configured and mcp_auto_approved and trusted_hooks >= 3
+    status = "active" if ready and session_start_observed else "configured" if ready else "misconfigured"
+    return {
+        "status": status,
+        "core_enabled": enabled("continuity-plane@continuity-plane"),
+        "search_enabled": enabled("continuity-plane-search@continuity-plane"),
+        "state_enabled": enabled(state_id),
+        "mcp_auto_approved": mcp_auto_approved,
+        "trusted_hooks": trusted_hooks,
+        "expected_hooks": 3,
+        "session_start_observed": session_start_observed,
+        "last_session_start_success": (
+            event.get("success") is True if event is not None else None
+        ),
+        "last_observed_at": event.get("observed_at") if event is not None else None,
+    }
+
+
 def _doctor(args: argparse.Namespace) -> int:
     root = Path(args.root).resolve()
     project = _load_project(root)
     _open_state_store(root, project)
     sqlite_version = sqlite3.sqlite_version
-    print(
-        json.dumps(
-            {
-                "status": "ready",
-                "project_id": project["project_id"],
-                "python": sys.version.split()[0],
-                "sqlite": sqlite_version,
-                "runtime_profile": project["runtime_profile"],
-                "external_services_required": 0,
-            },
-            sort_keys=True,
+    response = {
+        "status": "ready",
+        "project_id": project["project_id"],
+        "python": sys.version.split()[0],
+        "sqlite": sqlite_version,
+        "runtime_profile": project["runtime_profile"],
+        "external_services_required": 0,
+    }
+    if args.codex_home is not None:
+        response["codex_plugin"] = _codex_plugin_status(
+            Path(args.codex_home).expanduser().resolve()
         )
-    )
+    print(json.dumps(response, sort_keys=True))
     return 0
 
 
@@ -1095,6 +1176,7 @@ def _attach_approve(args: argparse.Namespace) -> int:
 
 def _resume(args: argparse.Namespace) -> int:
     root = Path(args.root).resolve()
+    persist = getattr(args, "persist", True)
     project = _load_project(root)
     proposal_path = root / ".continuity/attach-proposal.json"
     try:
@@ -1162,6 +1244,8 @@ def _resume(args: argparse.Namespace) -> int:
             expected_registry_digest=read_result["registry_digest"],
         )
     except CheckpointStaleError as exc:
+        if not persist:
+            raise ValueError("inspect requires a current verified checkpoint") from exc
         if not idle or not source_fresh:
             raise ValueError(str(exc)) from exc
         checkpoint_ref = publish_checkpoint(
@@ -1275,14 +1359,26 @@ def _resume(args: argparse.Namespace) -> int:
         interaction_cursor=interaction_cursor,
         skill_lock=skill_lock,
     )
-    path = root / ".continuity/resume-packet.json"
-    _write_json_atomic(path, packet)
-    try:
-        _ensure_status_projection(root, packet)
-    except (OSError, ValueError) as exc:
-        raise ValueError("status projection refresh failed") from exc
+    if persist:
+        path = root / ".continuity/resume-packet.json"
+        _write_json_atomic(path, packet)
+        try:
+            _ensure_status_projection(root, packet)
+        except (OSError, ValueError) as exc:
+            raise ValueError("status projection refresh failed") from exc
     print(json.dumps(packet, ensure_ascii=False, sort_keys=True))
     return 0
+
+
+def _inspect(args: argparse.Namespace) -> int:
+    return _resume(
+        argparse.Namespace(
+            root=args.root,
+            interaction_cursor=None,
+            skill_lock=None,
+            persist=False,
+        )
+    )
 
 
 def _capture_json_handler(handler: Any, args: argparse.Namespace) -> dict[str, Any]:
@@ -3848,6 +3944,7 @@ def build_parser() -> argparse.ArgumentParser:
     verify.set_defaults(handler=_verify)
     doctor = commands.add_parser("doctor", help="check local runtime prerequisites")
     doctor.add_argument("--root", default=".")
+    doctor.add_argument("--codex-home", default=None)
     doctor.set_defaults(handler=_doctor)
     state = commands.add_parser("state", help="read local authoritative state")
     state_commands = state.add_subparsers(dest="state_command", required=True)
@@ -3899,6 +3996,11 @@ def build_parser() -> argparse.ArgumentParser:
     resume.add_argument("--interaction-cursor", default=None)
     resume.add_argument("--skill-lock", default=None)
     resume.set_defaults(handler=_resume)
+    inspect = commands.add_parser(
+        "inspect", help="read the bounded packet without binding or writing projections"
+    )
+    inspect.add_argument("--root", default=".")
+    inspect.set_defaults(handler=_inspect)
     autorun = commands.add_parser(
         "autorun", help="continue the current Work from a verified checkpoint"
     )

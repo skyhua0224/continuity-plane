@@ -298,18 +298,29 @@ search plugin 只负责在适用任务中提示 Agent 优先调用该命令。
 codex plugin add continuity-plane-state@continuity-plane
 ```
 
+安装或恢复 Session 后验证实际采用状态：
+
+```bash
+continuity doctor --root . --codex-home ~/.codex
+continuity inspect --root .
+```
+
+doctor 只读取插件配置、MCP policy、hook trust 和脱敏 lifecycle observation，不读取聊天
+正文。`active` 表示已出现真实 SessionStart；`configured` 表示配置完成但尚无运行事件；
+`misconfigured` 表示至少一项安装门未通过。
+
 ### 一个 Session 管理多个项目
 
 安装 advanced State plugin 后，同一个 Session 同时处理治理仓、实现仓和另一个项目时，
-可以对各项目治理根执行显式 resume：
+普通读取先对治理根执行一次只读 inspect；只有下一步需要 State 写入时才执行一次 resume：
 
 ```text
-continuity_resume(root=/path/to/project-a)
-continuity_resume(root=/path/to/project-b)
-continuity_resume(root=/path/to/project-c)
+continuity_inspect(root=/path/to/project-a)
+continuity_resume(root=/path/to/project-a)  # 仅在显式 State 写入前
 ```
 
-每次调用都会把该 root 加入当前 Session 的受校验项目集合，并把它设为 active root。
+inspect 不写投影、不建立写绑定；同一 turn 复用其结果，不得重复调用。resume 会把该 root
+加入当前 Session 的受校验项目集合，并把它设为 active root。
 之后该项目的 Work、claim、checkpoint 和 effect 请求必须使用相同 root；切换项目时
 再次显式调用 `continuity_resume`。相对 root 只相对上一次成功的 active root 解析。
 Session 已建立 binding 后，终端 `cwd` 不能替换 active root；未绑定、profile 缺失、
