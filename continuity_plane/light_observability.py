@@ -26,6 +26,7 @@ STATE_OBSERVATION_DIRECTORY = "state-mcp-events"
 CORE_OBSERVATION_DIRECTORY = "live-events"
 MAX_OBSERVATION_BYTES = 2 * 1024
 MAX_REPORT_FILE_BYTES = 4 * 1024 * 1024
+_MAX_PROJECT_CLASSIFICATION_BYTES = 8 * 1024
 ORPHAN_RETENTION_SECONDS = 24 * 60 * 60
 LATENCY_BUCKETS_MS = (1, 5, 10, 50, 100, 500, 1000, 5000)
 WRITE_TOOLS = {
@@ -845,6 +846,41 @@ class SessionProbe:
         )
 
 
+def _observation_matches_project(path: Path, project_digest: str) -> bool:
+    """Check registered project digests in bounded head and tail samples."""
+
+    try:
+        with path.open("rb") as stream:
+            head = stream.read(_MAX_PROJECT_CLASSIFICATION_BYTES)
+            stream.seek(0, os.SEEK_END)
+            size = stream.tell()
+            if size > _MAX_PROJECT_CLASSIFICATION_BYTES:
+                stream.seek(max(0, size - _MAX_PROJECT_CLASSIFICATION_BYTES))
+                samples = (head, stream.read(_MAX_PROJECT_CLASSIFICATION_BYTES))
+            else:
+                samples = (head,)
+    except OSError:
+        return False
+    for payload in samples:
+        for line in payload.splitlines():
+            try:
+                record = json.loads(line)
+            except (json.JSONDecodeError, UnicodeDecodeError):
+                continue
+            if not isinstance(record, dict):
+                continue
+            schema_version = record.get("schema_version")
+            if schema_version == OBSERVATION_SCHEMA_VERSION:
+                digest = record.get("project_sha256")
+            elif schema_version == CORE_OBSERVATION_SCHEMA_VERSION:
+                digest = record.get("project_root_sha256")
+            else:
+                continue
+            if digest == project_digest:
+                return True
+    return False
+
+
 def build_observation_report(
     project_root: Path,
     *,
@@ -874,6 +910,8 @@ def build_observation_report(
             try:
                 candidates = directory.glob("*.jsonl")
                 for path in candidates:
+                    if not _observation_matches_project(path, project_digest):
+                        continue
                     try:
                         modified_ns = path.stat().st_mtime_ns
                     except OSError:

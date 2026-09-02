@@ -100,8 +100,10 @@ continuity observe report --root .
 
 The report reads only privacy-preserving local observations. It does not read
 transcripts, source code, or tool response bodies, and it never changes the
-policy. `--session-limit` pairs core/state files by Session identity before it
-limits Session count; `files_scanned`, `paired_sessions`, and
+policy. The report uses bounded head and tail samples from each candidate file
+to identify the project hash and keeps only the target project. `--session-limit` then
+pairs core/state files by Session identity before it limits Session count;
+`files_scanned`, `paired_sessions`, and
 `partial_sessions` expose the resulting coverage. The current report only says
 whether host usage is available. It does not aggregate input/output/cached
 tokens or calculate token reduction, and usage remains unavailable unless the

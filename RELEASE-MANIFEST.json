@@ -207,7 +207,7 @@
     },
     {
       "path": "continuity_plane/light_observability.py",
-      "sha256": "3eea7336dd8b8b90fbdbf2891f598b837b721d187738729ecadb8eba890cff09"
+      "sha256": "b18a96b7bd1081f224d08e31ba285a6ff498607f17fc813c782309882fd229a1"
     },
     {
       "path": "continuity_plane/local_state_bundle.py",
@@ -379,15 +379,15 @@
     },
     {
       "path": "docs/configuration.en.md",
-      "sha256": "76a351004e0ad50564f998f81046aeec061c538a43674766156209c500bcd267"
+      "sha256": "c3ff40e2f127144992cc850d0144891ce27f2c9ab808f3c1af343f368fc15705"
     },
     {
       "path": "docs/configuration.md",
-      "sha256": "3dfc57af8e7a6d4859f7b8660394f3d547274f9f829c2305cdc6b133597d0a75"
+      "sha256": "310f96d6c04869354536919d89f4d5a4fa8040b23e495f04edb233db09d512d0"
     },
     {
       "path": "docs/lightweight-observability-design.md",
-      "sha256": "511a7954a01334d840d8a3b4a3843a96350babd733036da523dc25b24e26d713"
+      "sha256": "be5f23c25868f640cb6805f4e402845da2b2bda473908faa6bcdd8e4b6e56a9e"
     },
     {
       "path": "docs/project-views.en.md",
@@ -571,7 +571,7 @@
     },
     {
       "path": "tests/test_light_observability.py",
-      "sha256": "dbbf58099405a42f8233fef16b11453282708b462a0644eaa01f8ad30a093f19"
+      "sha256": "05aad5befe2f7ee19e9486644b78e243b4e69970cabc3514ebf111a80a56be4b"
     },
     {
       "path": "tests/test_public_benchmark.py",

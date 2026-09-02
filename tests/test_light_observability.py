@@ -329,17 +329,23 @@ class ObservationTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory)
             root = base / "project"
+            other_root = base / "other-project"
             data = base / "data"
             root.mkdir()
+            other_root.mkdir()
             policy = resolve_policy(_project(), environment={})
             project_digest = hashlib.sha256(str(root.resolve()).encode()).hexdigest()
 
-            def state_record(session_id: str, event_type: str) -> Path:
+            def state_record(
+                session_id: str,
+                event_type: str,
+                project_root: Path = root,
+            ) -> Path:
                 self.assertTrue(
                     append_observation(
                         data_root=data,
                         session_id=session_id,
-                        project_root=root,
+                        project_root=project_root,
                         policy=policy,
                         event_type=event_type,
                         success=True,
@@ -373,6 +379,12 @@ class ObservationTests(unittest.TestCase):
             os.utime(partial_path, (1, 1))
             os.utime(paired_state_path, (2, 2))
             os.utime(paired_core_path, (2, 2))
+            other_path = state_record(
+                "newer-other-project-session",
+                "other-project-state",
+                other_root,
+            )
+            os.utime(other_path, (3, 3))
 
             one = build_observation_report(root, data_root=data, session_limit=1)
             self.assertEqual(one["session_groups_selected"], 1)

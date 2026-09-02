@@ -88,7 +88,8 @@ continuity observe report --root .
 ```
 
 报告只读取隐私化的本地 observation，不读取 transcript、源码或工具响应正文，也不会
-自动修改配置。`--session-limit` 先按 Session 身份配对 core/state 文件，再限制 Session
-数量；`files_scanned`、`paired_sessions` 和 `partial_sessions` 会明确报告覆盖范围。
+自动修改配置。报告先用候选文件的有界头尾样本识别项目哈希，只保留目标项目；
+`--session-limit` 再按 Session 身份配对 core/state 文件，最后限制 Session 数量；
+`files_scanned`、`paired_sessions` 和 `partial_sessions` 会明确报告覆盖范围。
 当前报告只返回 host usage 是否可用，不汇总 input/output/cached token，也不计算 token
 降幅；provider/host 没有提供 usage 时明确标记不可用。

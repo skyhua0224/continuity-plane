@@ -158,8 +158,11 @@ PreCompact checkpoint、State revision/CAS、claim fencing、失败记录和恢�
 提供显式的本地报告命令，例如 `continuity observe report`，按配置摘要比较最近若干个
 已完成 Session，并输出证据和建议：
 
-- `session_limit` 先按 Session hash 配对 `live-events` 与 `state-mcp-events`，再限制
-  Session 数量；同时输出扫描文件数、完整配对数和 partial Session 数；
+- 报告先用每个候选文件最多 8 KiB 的头部和 8 KiB 的尾部识别项目哈希，只让目标
+  项目进入统计；
+- `session_limit` 再按 Session hash 配对 `live-events` 与 `state-mcp-events`，最后限制
+  Session 数量，避免其他项目抢占限额；同时输出扫描文件数、完整配对数和 partial
+  Session 数；
 
 - 重复 resume 比例高时，建议检查 MCP 连接生命周期；
 - checkpoint 被短时间重复创建时，建议提高 `min_interval_seconds` 或关闭普通 State
