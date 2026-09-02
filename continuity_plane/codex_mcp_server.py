@@ -10,6 +10,18 @@ import sys
 from pathlib import Path
 
 
+_READ_ONLY_ANNOTATIONS = {
+    "readOnlyHint": True,
+    "openWorldHint": False,
+    "destructiveHint": False,
+}
+_LOCAL_WRITE_ANNOTATIONS = {
+    "readOnlyHint": False,
+    "openWorldHint": False,
+    "destructiveHint": False,
+}
+
+
 def _reply(request_id: object, result: dict) -> None:
     print(json.dumps({"jsonrpc": "2.0", "id": request_id, "result": result}), flush=True)
 
@@ -289,8 +301,20 @@ def main() -> int:
                 {
                     "tools": [
                         {
+                            "name": "continuity_inspect",
+                            "description": "只读检查当前有界恢复状态，不建立写绑定或刷新投影 / Read bounded continuity state without binding writes or refreshing projections.",
+                            "annotations": _READ_ONLY_ANNOTATIONS,
+                            "inputSchema": {
+                                "type": "object",
+                                "additionalProperties": False,
+                                "required": ["root"],
+                                "properties": {"root": {"type": "string", "minLength": 1}},
+                            },
+                        },
+                        {
                             "name": "continuity_resume",
                             "description": "读取有界恢复包并绑定本 MCP Session 的项目根；全局插件首次调用需传绝对路径 / Read the bounded packet and bind this MCP session to the project root; use an absolute path for the first global-plugin call.",
+                            "annotations": _LOCAL_WRITE_ANNOTATIONS,
                             "inputSchema": {
                                 "type": "object",
                                 "additionalProperties": False,
@@ -301,6 +325,7 @@ def main() -> int:
                         {
                             "name": "continuity_autorun",
                             "description": "从已验证 checkpoint 继续当前 Work；同一 checkpoint 幂等，lease 临近或过期时按受控路径续租或换签 / Continue the current Work from a verified checkpoint; idempotent per checkpoint with controlled heartbeat or reclaim.",
+                            "annotations": _LOCAL_WRITE_ANNOTATIONS,
                             "inputSchema": {
                                 "type": "object",
                                 "additionalProperties": False,
@@ -311,6 +336,7 @@ def main() -> int:
                         {
                             "name": "continuity_checkpoint",
                             "description": "创建或验证 immutable checkpoint；本 MCP Session 须先调用 continuity_resume / Create or verify a checkpoint after continuity_resume binds this MCP session.",
+                            "annotations": _LOCAL_WRITE_ANNOTATIONS,
                             "inputSchema": {
                                 "type": "object",
                                 "additionalProperties": False,
@@ -324,6 +350,7 @@ def main() -> int:
                         {
                             "name": "continuity_work_complete",
                             "description": "用 checkpoint-bound evidence 完成 Work 并释放 claim；须先调用 continuity_resume / Complete Work and release its claim after continuity_resume binds this MCP session.",
+                            "annotations": _LOCAL_WRITE_ANNOTATIONS,
                             "inputSchema": {
                                 "type": "object",
                                 "additionalProperties": False,
@@ -351,6 +378,7 @@ def main() -> int:
                         {
                             "name": "continuity_work_transition",
                             "description": "完成当前依赖 Work，并在单一 State 事件中释放 claim、解析依赖 blocker、激活预声明 return point、签发新 claim 和刷新 checkpoint / Complete the active dependency and atomically return to its predeclared Work with a fresh claim and checkpoint.",
+                            "annotations": _LOCAL_WRITE_ANNOTATIONS,
                             "inputSchema": {
                                 "type": "object",
                                 "additionalProperties": False,
@@ -401,6 +429,7 @@ def main() -> int:
                         {
                             "name": "continuity_work_activate",
                             "description": "添加并认领下一个 source-bound Work；须先调用 continuity_resume / Add and claim the next Work after continuity_resume binds this MCP session.",
+                            "annotations": _LOCAL_WRITE_ANNOTATIONS,
                             "inputSchema": {
                                 "type": "object",
                                 "additionalProperties": False,
@@ -463,6 +492,7 @@ def main() -> int:
                         {
                             "name": "continuity_claim_recover",
                             "description": "续租或恢复 claim，并在同一调用内受控刷新已变更的 canonical source 与 checkpoint；任一步失败均保持只读 / Heartbeat or reclaim and, when narrowly authorized, refresh changed canonical sources and the checkpoint in one call.",
+                            "annotations": _LOCAL_WRITE_ANNOTATIONS,
                             "inputSchema": {
                                 "type": "object",
                                 "additionalProperties": False,
@@ -493,6 +523,7 @@ def main() -> int:
             params = request.get("params", {})
             tool_name = params.get("name")
             if tool_name not in {
+                "continuity_inspect",
                 "continuity_resume",
                 "continuity_autorun",
                 "continuity_checkpoint",
@@ -516,7 +547,7 @@ def main() -> int:
             if tool_name == "continuity_resume":
                 session_roots[root_key] = requested_root
                 active_root = requested_root
-            elif root_key not in session_roots:
+            elif tool_name != "continuity_inspect" and root_key not in session_roots:
                 _error(
                     request_id,
                     -32001,
@@ -524,9 +555,15 @@ def main() -> int:
                 )
                 continue
             canonical_root = root_key
-            binding = None if tool_name == "continuity_resume" else _binding(requested_root)
+            binding = (
+                None
+                if tool_name in {"continuity_inspect", "continuity_resume"}
+                else _binding(requested_root)
+            )
             command = ["continuity", "resume", "--root", canonical_root]
-            if tool_name == "continuity_autorun":
+            if tool_name == "continuity_inspect":
+                command = ["continuity", "inspect", "--root", canonical_root]
+            elif tool_name == "continuity_autorun":
                 if _write_binding_error(request_id, binding=binding):
                     continue
                 command = [
