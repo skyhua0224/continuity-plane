@@ -22,6 +22,14 @@
       "sha256": "7bd9963bae868bd03cd5ec1e8b81e909d11cd1fc9651ce1257ac73640233b03b"
     },
     {
+      "path": "schemas/m10-16/observability-policy.schema.json",
+      "sha256": "599c8ffd1f2e02b0b3dd82c769f89f7488e574fd4a56ad5a8f93f0b2645dc1ee"
+    },
+    {
+      "path": "schemas/m10-16/state-mcp-observation.schema.json",
+      "sha256": "4844d612f54c263a0c9d7cce88086d0e925d85bb1112f2e228d2c7b7f01667e7"
+    },
+    {
       "path": "schemas/m2-01/typed-state.schema.json",
       "sha256": "4a147060f03be415e0f3517c73aa9851c525783ba010927c08d3481795cf9af4"
     },

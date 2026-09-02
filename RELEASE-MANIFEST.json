@@ -1,5 +1,5 @@
 {
-  "file_count": 141,
+  "file_count": 146,
   "files": [
     {
       "path": ".agents/plugins/marketplace.json",
@@ -139,7 +139,7 @@
     },
     {
       "path": "continuity_plane/cli.py",
-      "sha256": "58cbaec18e010667500743d60c8c75da3a80875f2a2118eac75b8fc13857deb0"
+      "sha256": "573771e760001a00736dc778036034aa43e3fb5c2347e9bab9a66fedbfbcff9d"
     },
     {
       "path": "continuity_plane/codegraph_verification.py",
@@ -147,7 +147,7 @@
     },
     {
       "path": "continuity_plane/codex_mcp_server.py",
-      "sha256": "ed859e845edbe39926c3f48485870c789fcd128ccb51d4f8f12f5f5649dc116b"
+      "sha256": "e418781cfad1019916d1ab249cf15b622145358ec5f5decb6c5733ce782324c5"
     },
     {
       "path": "continuity_plane/collaboration_notifications.py",
@@ -204,6 +204,10 @@
     {
       "path": "continuity_plane/idea_review.py",
       "sha256": "868e94f2173a589d6f778f248f71338147e0db359a393ae719acb48aec812817"
+    },
+    {
+      "path": "continuity_plane/light_observability.py",
+      "sha256": "b18a96b7bd1081f224d08e31ba285a6ff498607f17fc813c782309882fd229a1"
     },
     {
       "path": "continuity_plane/local_state_bundle.py",
@@ -375,11 +379,15 @@
     },
     {
       "path": "docs/configuration.en.md",
-      "sha256": "1f34c202f6f43423530d8dec398caf96b4543a56578121bb9d89eaa584bfcc7d"
+      "sha256": "c3ff40e2f127144992cc850d0144891ce27f2c9ab808f3c1af343f368fc15705"
     },
     {
       "path": "docs/configuration.md",
-      "sha256": "57b17b327a899c58fec3384fafd89b7fe9461e0bc93c26340dcafeda29227c0e"
+      "sha256": "310f96d6c04869354536919d89f4d5a4fa8040b23e495f04edb233db09d512d0"
+    },
+    {
+      "path": "docs/lightweight-observability-design.md",
+      "sha256": "be5f23c25868f640cb6805f4e402845da2b2bda473908faa6bcdd8e4b6e56a9e"
     },
     {
       "path": "docs/project-views.en.md",
@@ -410,18 +418,6 @@
       "sha256": "4ef226ac1cddd7305c4d70304a7be74b951a9802d1ef82c441d5bf69e3c9f002"
     },
     {
-      "path": "plugins/continuity-plane/.codex-plugin/plugin.json",
-      "sha256": "990de25a89719ed13313c41feab8190fe124882c4cd42ca37f22595aaa511636"
-    },
-    {
-      "path": "plugins/continuity-plane/hooks/hooks.json",
-      "sha256": "15836b729e48ecac514991645d6f02db4f91a19a025095985f81729234c5a263"
-    },
-    {
-      "path": "plugins/continuity-plane/scripts/continuity-hook.py",
-      "sha256": "71931e866429d97869fa2b0a2909b5849d2cdbdbe245cae8b6f6b5adf03d1e58"
-    },
-    {
       "path": "plugins/continuity-plane-search/.codex-plugin/plugin.json",
       "sha256": "8d8242b53e523a07aae046e1e4d03797d665f2f7b74d4590516b28feecd6f584"
     },
@@ -439,11 +435,23 @@
     },
     {
       "path": "plugins/continuity-plane-state/scripts/continuity-mcp-server.py",
-      "sha256": "ed859e845edbe39926c3f48485870c789fcd128ccb51d4f8f12f5f5649dc116b"
+      "sha256": "c3a8475baae94e30294559db26262f8cc0ff6af9dd1d4fd203c9d12e6ac74762"
     },
     {
       "path": "plugins/continuity-plane-state/skills/continuity-plane/SKILL.md",
       "sha256": "98998c36a363421864fc0b8634a1cad40ce0dac7f7fe489cb96e6247462320e0"
+    },
+    {
+      "path": "plugins/continuity-plane/.codex-plugin/plugin.json",
+      "sha256": "990de25a89719ed13313c41feab8190fe124882c4cd42ca37f22595aaa511636"
+    },
+    {
+      "path": "plugins/continuity-plane/hooks/hooks.json",
+      "sha256": "15836b729e48ecac514991645d6f02db4f91a19a025095985f81729234c5a263"
+    },
+    {
+      "path": "plugins/continuity-plane/scripts/continuity-hook.py",
+      "sha256": "3cd1c179b10b4aa4960d413024000d7bda13d00475f062316734fc3f0d619a6f"
     },
     {
       "path": "pyproject.toml",
@@ -468,6 +476,14 @@
     {
       "path": "schemas/m10-15/delivery-workspace-registry.schema.json",
       "sha256": "7bd9963bae868bd03cd5ec1e8b81e909d11cd1fc9651ce1257ac73640233b03b"
+    },
+    {
+      "path": "schemas/m10-16/observability-policy.schema.json",
+      "sha256": "599c8ffd1f2e02b0b3dd82c769f89f7488e574fd4a56ad5a8f93f0b2645dc1ee"
+    },
+    {
+      "path": "schemas/m10-16/state-mcp-observation.schema.json",
+      "sha256": "4844d612f54c263a0c9d7cce88086d0e925d85bb1112f2e228d2c7b7f01667e7"
     },
     {
       "path": "schemas/m2-01/typed-state.schema.json",
@@ -535,7 +551,7 @@
     },
     {
       "path": "schemas/registry.json",
-      "sha256": "7964d12e5a17b241d8c897c42d32fae68fe1bf7995b331f00affb331132e91ce"
+      "sha256": "c30a23e1d50a712532d6954277090eae63e8464815d4b767de060328a1124780"
     },
     {
       "path": "templates/MASTER.en.md",
@@ -552,6 +568,10 @@
     {
       "path": "templates/STATUS.md",
       "sha256": "12b295826e5408fa64176a0ff601b63246815ff6f51d14f9892ddaac602beee5"
+    },
+    {
+      "path": "tests/test_light_observability.py",
+      "sha256": "5195a617201ae73f077bf518b324fccfc3090ef257164c4f02f2db48387db91c"
     },
     {
       "path": "tests/test_public_benchmark.py",
