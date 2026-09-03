@@ -384,8 +384,10 @@ structured `source_rebind_required` gate; neither operation writes State. The
 next explicit standard `continuity_work_activate` verifies the pre-change
 checkpoint and atomically commits refreshed source evidence, the new Work and
 claim, and the final checkpoint. Completed Work and released claims stay
-closed. A denied activation leaves the proposal, checkpoint, and State revision
-unchanged.
+closed. The immutable source revision and evidence identity are revalidated
+before checkpoint publication and immediately before the State commit;
+concurrent source edits fail the `source_fresh` gate. A denied activation leaves
+the proposal, checkpoint, and State revision unchanged.
 
 ## MASTER And STATUS
 

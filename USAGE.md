@@ -322,7 +322,9 @@ digest 失配或损坏 binding 会在 CLI/State 写入前拒绝，而不会静�
 `source_rebind_required`，两者都不会写 State。下一次显式的标准
 `continuity_work_activate` 会先验证变更前 checkpoint，再将刷新后的 source evidence、
 新 Work、claim 和最终 checkpoint 原子提交；已完成 Work 与 released claim 不会复活。
-如果 activation gate 拒绝，proposal、checkpoint 与 State revision 保持不变。
+checkpoint 生成前和 State commit 前都会重新校验不可变 source revision 与 evidence
+identity；并发 source 编辑会触发 `source_fresh` gate。如果 activation gate 拒绝，
+proposal、checkpoint 与 State revision 保持不变。
 
 升级 plugin 时刷新 marketplace 后重新安装，并新建 Session：
 

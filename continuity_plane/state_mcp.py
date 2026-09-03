@@ -1615,6 +1615,8 @@ class StateMCPService:
         event_id_factory: Callable[[str], str],
         transition_checkpoint_publisher: Callable[[dict[str, Any]], dict[str, Any]]
         | None = None,
+        activation_source_validator: Callable[[str, dict[str, Any]], bool]
+        | None = None,
     ) -> None:
         self._manifest = validate_state_store_adapter(store)
         if not isinstance(registry_digest, str) or not _SHA256_RE.fullmatch(
@@ -1627,12 +1629,17 @@ class StateMCPService:
             transition_checkpoint_publisher
         ):
             raise TypeError("transition_checkpoint_publisher must be callable")
+        if activation_source_validator is not None and not callable(
+            activation_source_validator
+        ):
+            raise TypeError("activation_source_validator must be callable")
         self._store = store
         self._authorizer = authorizer or _DenyAllAuthorizer()
         self._registry_hash_value = registry_digest
         self._clock = clock
         self._event_id_factory = event_id_factory
         self._transition_checkpoint_publisher = transition_checkpoint_publisher
+        self._activation_source_validator = activation_source_validator
         self._request_receipts: dict[
             tuple[str, str, str], tuple[str, dict[str, Any]]
         ] = {}
@@ -4491,6 +4498,21 @@ class StateMCPService:
                 return denied("source_fresh")
             if source_evidence is None and supplied_source_evidence is None:
                 return denied("source_fresh")
+
+            def source_revision_is_current() -> bool:
+                if self._activation_source_validator is None:
+                    return True
+                try:
+                    return (
+                        self._activation_source_validator(
+                            arguments["source_proposal_sha256"],
+                            copy.deepcopy(source_evidence),
+                        )
+                        is True
+                    )
+                except Exception:  # noqa: BLE001
+                    return False
+
             observed_at = self._clock()
             observed = datetime.fromisoformat(observed_at.replace("Z", "+00:00"))
             lease_expires = datetime.fromisoformat(
@@ -4599,6 +4621,8 @@ class StateMCPService:
             )
             if self._transition_checkpoint_publisher is None:
                 return denied("checkpoint_publisher", code="capability")
+            if not source_revision_is_current():
+                return denied("source_fresh", code="conflict")
             checkpoint_input = {
                 "snapshot": expected_snapshot,
                 "revision": revision_after,
@@ -4635,6 +4659,8 @@ class StateMCPService:
                 != f"artifact://sha256/{checkpoint_ref['digest']}"
             ):
                 return denied("checkpoint_publication")
+            if not source_revision_is_current():
+                return denied("source_fresh", code="conflict")
             invoke_state_store(
                 self._store,
                 "commit_event",

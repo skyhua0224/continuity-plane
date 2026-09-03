@@ -87,11 +87,11 @@
     },
     {
       "path": "USAGE.en.md",
-      "sha256": "71f5925ea3b93b2239d9d5954d6eaede957ca0b4e19a2f4dfa905223b0258477"
+      "sha256": "bfa90dbf068ab540a106bbc09cf991f4cfde3903d4b3924b7ad54f2777b39995"
     },
     {
       "path": "USAGE.md",
-      "sha256": "af2903acd58f81f66586ec06750a0a2b2285faba16302db05a89970ea3dd6f2a"
+      "sha256": "b136fd24085298e07c2b6c964d8e04326a22a99f44852f8d09ca44c495e15212"
     },
     {
       "path": "benchmarks/__init__.py",
@@ -139,7 +139,7 @@
     },
     {
       "path": "continuity_plane/cli.py",
-      "sha256": "7b8a5a616d5f7baf8598eb848fb4839ec7d5e4ab07bc9842e36186b7554fed1b"
+      "sha256": "070036db54721a2627cdff75ac5761d915b0c50c04aff9b9c6e19db1a81eade8"
     },
     {
       "path": "continuity_plane/codegraph_verification.py",
@@ -299,7 +299,7 @@
     },
     {
       "path": "continuity_plane/state_mcp.py",
-      "sha256": "2c9817da65c4b15eb0465600dcf450fee48ec3dd5f24ff520345efe6b0670ab2"
+      "sha256": "ea85d84dd5a66b0a6826dd181d4b7b6778ac5e6f4cf914cab0376b01eced367f"
     },
     {
       "path": "continuity_plane/state_store.py",
@@ -579,7 +579,7 @@
     },
     {
       "path": "tests/test_public_contracts.py",
-      "sha256": "ac5c9bdc7a2fc2e8d974839916bf9137e9c571f4dbcf15f0095323086bc80ccc"
+      "sha256": "e84c99f5502848b43d07f2475668478671ef9061644e93b8937b8bfb155b9e27"
     },
     {
       "path": "tests/test_public_smoke.py",

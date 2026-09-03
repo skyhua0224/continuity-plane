@@ -8,7 +8,9 @@ from contextlib import redirect_stdout
 from datetime import UTC, datetime, timedelta
 from io import StringIO
 from pathlib import Path
+from unittest.mock import patch
 
+from continuity_plane import cli as cli_module
 from continuity_plane.artifact_store import LocalArtifactStore
 from continuity_plane.checkpoint import publish_checkpoint, restore_checkpoint
 from continuity_plane.cli import main
@@ -173,6 +175,47 @@ class PublicContractTests(unittest.TestCase):
                 _cli_json(["state", "show", "--root", str(root)])[1]["revision"],
                 before["revision"],
             )
+
+            build_evidence = cli_module._build_attach_evidence
+
+            def mutate_source_after_evidence(proposal: dict) -> dict:
+                result = build_evidence(proposal)
+                master.write_text("master v3\n", encoding="utf-8")
+                return result
+
+            with patch.object(
+                cli_module,
+                "_build_attach_evidence",
+                side_effect=mutate_source_after_evidence,
+            ):
+                race_code, race_denied = _cli_json(
+                    [
+                        "work",
+                        "activate",
+                        "--root",
+                        str(root),
+                        "--work-id",
+                        "work-raced",
+                        "--work-title",
+                        "Raced Work",
+                        "--owner-ref",
+                        "actor-two",
+                        "--claim-id",
+                        "claim-raced",
+                        "--scope",
+                        "capability:raced",
+                    ]
+                )
+            self.assertEqual(race_code, 2)
+            self.assertEqual(race_denied["failed_gate"], "source_fresh")
+            self.assertFalse(race_denied["state_changed"])
+            self.assertEqual(checkpoint_path.read_bytes(), checkpoint_before)
+            self.assertEqual(proposal_path.read_bytes(), proposal_before)
+            self.assertEqual(
+                _cli_json(["state", "show", "--root", str(root)])[1]["revision"],
+                before["revision"],
+            )
+            master.write_text("master v2\n", encoding="utf-8")
 
             activation_code, activated = _cli_json(
                 [

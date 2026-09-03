@@ -239,6 +239,7 @@ def _state_service(
     clock: Any | None = None,
     event_id_factory: Any | None = None,
     transition_checkpoint_publisher: Any | None = None,
+    activation_source_validator: Any | None = None,
 ) -> StateMCPService:
     registry_digest = hashlib.sha256(b"context.public-runtime/v1").hexdigest()
     return StateMCPService(
@@ -249,6 +250,7 @@ def _state_service(
         event_id_factory=event_id_factory
         or (lambda request_id: f"event-{request_id}-{uuid.uuid4().hex}"),
         transition_checkpoint_publisher=transition_checkpoint_publisher,
+        activation_source_validator=activation_source_validator,
     )
 
 
@@ -3503,6 +3505,29 @@ def _work_activate_atomic(args: argparse.Namespace) -> int:
         ):
             raise ValueError("delivery activation binding conflicts with existing Work")
     pending_checkpoint_path = _transition_pending_checkpoint_file(root)
+    proposal_path = root / ".continuity/attach-proposal.json"
+
+    def validate_activation_source(
+        proposal_sha256: str,
+        evidence: dict[str, Any],
+    ) -> bool:
+        try:
+            current_proposal = json.loads(proposal_path.read_text(encoding="utf-8"))
+            validate_attach_proposal(root, current_proposal, verify_sources=True)
+        except (OSError, json.JSONDecodeError, CanonicalAttachError):
+            return False
+        source_digest = _attach_source_digest(proposal)
+        return (
+            proposal_sha256 == proposal["proposal_sha256"]
+            and current_proposal == proposal
+            and evidence.get("evidence_id")
+            == f"evidence-attach-{proposal['proposal_sha256'][:16]}"
+            and evidence.get("kind") == "artifact"
+            and evidence.get("artifact_ref")
+            == f"artifact://sha256/{source_digest}"
+            and evidence.get("content_sha256") == source_digest
+            and evidence.get("validity") == "verified"
+        )
 
     def publish_and_verify(candidate: dict[str, Any]) -> dict[str, Any]:
         final_ref = publish_checkpoint(
@@ -3550,8 +3575,8 @@ def _work_activate_atomic(args: argparse.Namespace) -> int:
         clock=lambda: now_text,
         event_id_factory=lambda request_id: f"event-{request_id}",
         transition_checkpoint_publisher=publish_and_verify,
+        activation_source_validator=validate_activation_source,
     )
-    proposal_path = root / ".continuity/attach-proposal.json"
     if changed_sources:
         _write_json_atomic(proposal_path, proposal)
     try:
