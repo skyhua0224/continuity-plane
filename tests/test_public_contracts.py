@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import json
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -25,7 +26,203 @@ def _initialized_store(root: Path) -> SQLiteStateStore:
     return SQLiteStateStore(root / ".continuity/state.sqlite3")
 
 
+def _cli_json(arguments: list[str]) -> tuple[int, dict]:
+    output = StringIO()
+    with redirect_stdout(output):
+        result = main(arguments)
+    return result, json.loads(output.getvalue())
+
+
 class PublicContractTests(unittest.TestCase):
+    def test_idle_stale_sources_rebind_on_successor_activation(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            master = root / "MASTER.md"
+            status = root / "STATUS.md"
+            evidence = root / "evidence.txt"
+            master.write_text("master v1\n", encoding="utf-8")
+            status.write_text("status v1\n", encoding="utf-8")
+            evidence.write_text("verified completion\n", encoding="utf-8")
+            self.assertEqual(
+                _cli_json(
+                    ["init", "--root", str(root), "--project-id", "sample-app"]
+                )[0],
+                0,
+            )
+            self.assertEqual(
+                _cli_json(
+                    [
+                        "attach",
+                        "plan",
+                        "--root",
+                        str(root),
+                        "--master",
+                        str(master),
+                        "--status",
+                        str(status),
+                        "--work-id",
+                        "work-first",
+                        "--work-title",
+                        "First Work",
+                        "--owner-ref",
+                        "actor-one",
+                        "--scope",
+                        "capability:first",
+                    ]
+                )[0],
+                0,
+            )
+            self.assertEqual(
+                _cli_json(
+                    [
+                        "attach",
+                        "approve",
+                        "--root",
+                        str(root),
+                        "--actor-ref",
+                        "actor-one",
+                        "--claim-id",
+                        "claim-first",
+                    ]
+                )[0],
+                0,
+            )
+            self.assertEqual(
+                _cli_json(["checkpoint", "create", "--root", str(root)])[0],
+                0,
+            )
+            self.assertEqual(
+                _cli_json(
+                    [
+                        "work",
+                        "complete",
+                        "--root",
+                        str(root),
+                        "--work-id",
+                        "work-first",
+                        "--claim-id",
+                        "claim-first",
+                        "--actor-ref",
+                        "actor-one",
+                        "--evidence-file",
+                        str(evidence),
+                    ]
+                )[0],
+                0,
+            )
+            before_code, before = _cli_json(
+                ["state", "show", "--root", str(root)]
+            )
+            self.assertEqual(before_code, 0)
+            checkpoint_path = root / ".continuity/checkpoint-ref.json"
+            proposal_path = root / ".continuity/attach-proposal.json"
+            checkpoint_before = checkpoint_path.read_bytes()
+            proposal_before = proposal_path.read_bytes()
+
+            master.write_text("master v2\n", encoding="utf-8")
+            status.write_text("status v2\n", encoding="utf-8")
+
+            resume_code, packet = _cli_json(
+                ["resume", "--root", str(root)]
+            )
+            self.assertEqual(resume_code, 0)
+            self.assertTrue(packet["read_only"])
+            self.assertFalse(packet["source_fresh"])
+            self.assertTrue(packet["checkpoint_verified"])
+            self.assertEqual(
+                packet["next_action"],
+                "rebind-source-and-activate-next-work",
+            )
+            verify_code, denied = _cli_json(
+                ["checkpoint", "verify", "--root", str(root)]
+            )
+            self.assertEqual(verify_code, 2)
+            self.assertEqual(denied["failed_gate"], "source_rebind_required")
+            self.assertFalse(denied["state_changed"])
+            self.assertEqual(checkpoint_path.read_bytes(), checkpoint_before)
+            self.assertEqual(proposal_path.read_bytes(), proposal_before)
+            self.assertEqual(
+                _cli_json(["state", "show", "--root", str(root)])[1]["revision"],
+                before["revision"],
+            )
+
+            denied_activation_code, denied_activation = _cli_json(
+                [
+                    "work",
+                    "activate",
+                    "--root",
+                    str(root),
+                    "--work-id",
+                    "work-denied",
+                    "--work-title",
+                    "Denied Work",
+                    "--owner-ref",
+                    "actor-two",
+                    "--claim-id",
+                    "claim-first",
+                    "--scope",
+                    "capability:denied",
+                ]
+            )
+            self.assertEqual(denied_activation_code, 2)
+            self.assertEqual(denied_activation["failed_gate"], "claim_identity")
+            self.assertFalse(denied_activation["state_changed"])
+            self.assertEqual(checkpoint_path.read_bytes(), checkpoint_before)
+            self.assertEqual(proposal_path.read_bytes(), proposal_before)
+            self.assertEqual(
+                _cli_json(["state", "show", "--root", str(root)])[1]["revision"],
+                before["revision"],
+            )
+
+            activation_code, activated = _cli_json(
+                [
+                    "work",
+                    "activate",
+                    "--root",
+                    str(root),
+                    "--work-id",
+                    "work-next",
+                    "--work-title",
+                    "Next Work",
+                    "--owner-ref",
+                    "actor-two",
+                    "--claim-id",
+                    "claim-next",
+                    "--scope",
+                    "capability:next",
+                ]
+            )
+            self.assertEqual(activation_code, 0)
+            self.assertEqual(activated["changed_sources"], ["master", "status"])
+            self.assertTrue(activated["source_evidence_rebound"])
+            self.assertNotEqual(proposal_path.read_bytes(), proposal_before)
+            self.assertEqual(
+                _cli_json(["checkpoint", "verify", "--root", str(root)])[0],
+                0,
+            )
+            final_code, final_packet = _cli_json(
+                ["resume", "--root", str(root)]
+            )
+            self.assertEqual(final_code, 0)
+            self.assertFalse(final_packet["read_only"])
+            self.assertTrue(final_packet["source_fresh"])
+            self.assertEqual(final_packet["active_work"]["work_id"], "work-next")
+            self.assertEqual(final_packet["claim"]["claim_id"], "claim-next")
+            final_state = _cli_json(
+                ["state", "show", "--root", str(root)]
+            )[1]
+            self.assertEqual(final_state["revision"], before["revision"] + 1)
+            work_by_id = {
+                item["work_id"]: item for item in final_state["state"]["works"]
+            }
+            claim_by_id = {
+                item["claim_id"]: item for item in final_state["state"]["claims"]
+            }
+            self.assertEqual(work_by_id["work-first"]["status"], "completed")
+            self.assertEqual(claim_by_id["claim-first"]["status"], "released")
+            self.assertEqual(work_by_id["work-next"]["status"], "active")
+            self.assertEqual(claim_by_id["claim-next"]["status"], "active")
+
     def test_sqlite_event_commit_is_revision_guarded(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             store = _initialized_store(Path(directory))

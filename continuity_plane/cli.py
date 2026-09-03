@@ -1198,7 +1198,9 @@ def _resume(args: argparse.Namespace) -> int:
         and interaction_cursor["response_mode"] == "answer-current-input"
     ):
         next_action = "answer-current-input"
-    if not source_fresh or not lease_valid:
+    if idle and not source_fresh:
+        next_action = "rebind-source-and-activate-next-work"
+    elif not source_fresh or not lease_valid:
         next_action = "remain-read-only"
     packet = compose_recovery_envelope(
         project_id=project["project_id"],
@@ -1565,16 +1567,34 @@ def _checkpoint_verify(args: argparse.Namespace) -> int:
     proposal = _load_current_attach_proposal(
         root,
         project["project_id"],
-        verify_sources=True,
+        verify_sources=False,
     )
+    state_store = _open_state_store(root, project)
+    read_result = _read_state_result(state_store, project["project_id"])
+    try:
+        validate_attach_proposal(root, proposal, verify_sources=True)
+    except CanonicalAttachError:
+        print(
+            json.dumps(
+                {
+                    "status": "denied",
+                    "project_id": project["project_id"],
+                    "revision": read_result["revision"],
+                    "event_head": read_result["event_head"],
+                    "failed_gate": "source_rebind_required",
+                    "state_changed": False,
+                    "next_action": "rebind-source-and-activate-next-work",
+                },
+                sort_keys=True,
+            )
+        )
+        return 2
     try:
         checkpoint_ref = ArtifactRef.from_document(
             json.loads(_checkpoint_ref_file(root).read_text(encoding="utf-8"))
         )
     except (OSError, json.JSONDecodeError, TypeError, ValueError) as exc:
         raise ValueError("checkpoint ref is unavailable or invalid") from exc
-    state_store = _open_state_store(root, project)
-    read_result = _read_state_result(state_store, project["project_id"])
     try:
         restored = restore_checkpoint(
             checkpoint_ref,
@@ -3244,14 +3264,43 @@ def _work_activate_atomic(args: argparse.Namespace) -> int:
         implementation_evidence_ids = []
         allowed_effects = []
         workspace_verification = None
-    proposal = _load_current_attach_proposal(
+    original_proposal = _load_current_attach_proposal(
         root,
         project["project_id"],
-        verify_sources=True,
+        verify_sources=False,
     )
+    proposal = original_proposal
+    changed_sources: list[str] = []
+    try:
+        validate_attach_proposal(root, proposal, verify_sources=True)
+    except CanonicalAttachError:
+        proposal, changed_sources = _refreshed_attach_proposal(
+            root, project["project_id"], original_proposal
+        )
+        validate_attach_proposal(root, proposal, verify_sources=True)
+    if changed_sources and execution_class != "standard":
+        print(
+            json.dumps(
+                {
+                    "status": "denied",
+                    "project_id": project["project_id"],
+                    "failed_gate": "idle_source_rebind_standard_only",
+                    "state_changed": False,
+                    "next_action": "activate-standard-successor",
+                },
+                sort_keys=True,
+            )
+        )
+        return 2
     state_store = _open_state_store(root, project)
     read_result = _read_state_result(state_store, project["project_id"])
     snapshot = read_result["snapshot"]
+    if changed_sources and (
+        snapshot["project"]["active_work_ids"]
+        or snapshot["project"]["primary_work_id"] is not None
+        or any(item["status"] == "active" for item in snapshot["claims"])
+    ):
+        raise ValueError("stale source successor activation requires idle State")
     source_evidence = None
     try:
         source_evidence = _verified_attach_evidence(snapshot, proposal)
@@ -3271,10 +3320,14 @@ def _work_activate_atomic(args: argparse.Namespace) -> int:
             expected_revision=read_result["revision"],
             expected_event_head=read_result["event_head"],
             expected_governance_ref=snapshot["project"]["governance_ref"],
-            expected_plan_sha256=_canonical_master_sha256(proposal),
+            expected_plan_sha256=_canonical_master_sha256(original_proposal),
             expected_registry_digest=read_result["registry_digest"],
         )
-    except CheckpointStaleError:
+    except CheckpointStaleError as exc:
+        if changed_sources:
+            raise ValueError(
+                "idle source rebind requires the verified pre-change checkpoint"
+            ) from exc
         checkpoint_ref = publish_checkpoint(
             read_result,
             _checkpoint_store(root),
@@ -3498,34 +3551,44 @@ def _work_activate_atomic(args: argparse.Namespace) -> int:
         event_id_factory=lambda request_id: f"event-{request_id}",
         transition_checkpoint_publisher=publish_and_verify,
     )
-    response = service.call_tool(
-        LOCAL_WORK_ACTIVATION_TOOL,
-        {
-            "schema_version": LOCAL_WORK_ACTIVATION_REQUEST_SCHEMA_VERSION,
-            "request_id": f"activate-{request_sha256}",
-            "project_id": project["project_id"],
-            "expected_revision": read_result["revision"],
-            "work_id": args.work_id,
-            "work_title": args.work_title,
-            "owner_ref": args.owner_ref,
-            "claim_id": args.claim_id,
-            "scope_owners": copy.deepcopy(scope_refs),
-            "source_evidence_id": source_evidence_id,
-            "source_evidence": source_evidence
-            if not any(
-                item["evidence_id"] == source_evidence_id
-                for item in snapshot["evidence"]
-            )
-            else None,
-            "source_proposal_sha256": proposal["proposal_sha256"],
-            "checkpoint_ref": checkpoint_ref.to_document(),
-            "lease_expires_at": (now + timedelta(hours=8)).isoformat(),
-            "causation_ref": f"source:{proposal['proposal_sha256']}",
-            "correlation_ref": f"work:{args.work_id}",
-        },
-        context=RequestContext(args.owner_ref, "local-workflow-approved"),
-    )
+    proposal_path = root / ".continuity/attach-proposal.json"
+    if changed_sources:
+        _write_json_atomic(proposal_path, proposal)
+    try:
+        response = service.call_tool(
+            LOCAL_WORK_ACTIVATION_TOOL,
+            {
+                "schema_version": LOCAL_WORK_ACTIVATION_REQUEST_SCHEMA_VERSION,
+                "request_id": f"activate-{request_sha256}",
+                "project_id": project["project_id"],
+                "expected_revision": read_result["revision"],
+                "work_id": args.work_id,
+                "work_title": args.work_title,
+                "owner_ref": args.owner_ref,
+                "claim_id": args.claim_id,
+                "scope_owners": copy.deepcopy(scope_refs),
+                "source_evidence_id": source_evidence_id,
+                "source_evidence": source_evidence
+                if not any(
+                    item["evidence_id"] == source_evidence_id
+                    for item in snapshot["evidence"]
+                )
+                else None,
+                "source_proposal_sha256": proposal["proposal_sha256"],
+                "checkpoint_ref": checkpoint_ref.to_document(),
+                "lease_expires_at": (now + timedelta(hours=8)).isoformat(),
+                "causation_ref": f"source:{proposal['proposal_sha256']}",
+                "correlation_ref": f"work:{args.work_id}",
+            },
+            context=RequestContext(args.owner_ref, "local-workflow-approved"),
+        )
+    except Exception:
+        if changed_sources:
+            _write_json_atomic(proposal_path, original_proposal)
+        raise
     if not response["ok"]:
+        if changed_sources:
+            _write_json_atomic(proposal_path, original_proposal)
         if pending_checkpoint_path.exists():
             pending_checkpoint_path.unlink()
         marker = response["error"]["message"]
@@ -3568,6 +3631,8 @@ def _work_activate_atomic(args: argparse.Namespace) -> int:
                 "checkpoint_verified": True,
                 "execution_class": execution_class,
                 "delivery_contract_sha256": delivery_contract_sha256,
+                "changed_sources": changed_sources,
+                "source_evidence_rebound": bool(changed_sources),
                 **projection_receipt,
             },
             sort_keys=True,

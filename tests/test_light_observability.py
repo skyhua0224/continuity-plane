@@ -108,6 +108,14 @@ def _active_envelope() -> str:
     )
 
 
+def _stale_idle_envelope() -> str:
+    envelope = json.loads(_idle_envelope())
+    envelope["read_only"] = True
+    envelope["source_fresh"] = False
+    envelope["next_action"] = "rebind-source-and-activate-next-work"
+    return json.dumps(envelope)
+
+
 def _stale_source_binding() -> dict:
     binding = codex_mcp_server._binding_from_output(_active_envelope())
     if binding is None:
@@ -1167,6 +1175,84 @@ class MCPProbeTests(unittest.TestCase):
                 self.assertEqual(codex_mcp_server.main(), 0)
             self.assertEqual(run_cli.call_count, 2)
             internal_binding.assert_not_called()
+
+    def test_stale_idle_binding_allows_only_successor_source_rebind(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            root = base / "project"
+            _write_project(root)
+            stale_binding = codex_mcp_server._binding_from_output(
+                _stale_idle_envelope()
+            )
+            active_binding = codex_mcp_server._binding_from_output(
+                _active_envelope()
+            )
+            self.assertIsNotNone(stale_binding)
+            self.assertIsNotNone(active_binding)
+            invalid_stale = json.loads(_stale_idle_envelope())
+            invalid_stale["source_fresh"] = True
+            self.assertIsNone(
+                codex_mcp_server._binding_from_output(json.dumps(invalid_stale))
+            )
+            requests = [
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "tools/call",
+                    "params": {
+                        "name": "continuity_resume",
+                        "arguments": {"root": str(root)},
+                    },
+                },
+                {
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "method": "tools/call",
+                    "params": {
+                        "name": "continuity_work_activate",
+                        "arguments": {
+                            "root": str(root),
+                            "work_id": "work-next",
+                            "work_title": "Next Work",
+                            "owner_ref": "actor-next",
+                            "claim_id": "claim-next",
+                            "scope": ["capability:next"],
+                        },
+                    },
+                },
+            ]
+            outputs = [
+                subprocess.CompletedProcess([], 0, _stale_idle_envelope(), ""),
+                subprocess.CompletedProcess([], 0, '{"status":"activated"}', ""),
+            ]
+            stdout = StringIO()
+            with (
+                patch.object(
+                    codex_mcp_server.sys,
+                    "stdin",
+                    StringIO("".join(json.dumps(item) + "\n" for item in requests)),
+                ),
+                patch.object(codex_mcp_server.sys, "stdout", stdout),
+                patch.object(
+                    codex_mcp_server, "_run_cli_with_retry", side_effect=outputs
+                ) as run_cli,
+                patch.object(
+                    codex_mcp_server,
+                    "_binding",
+                    side_effect=[stale_binding, active_binding],
+                ) as refresh_binding,
+                patch.dict(
+                    os.environ, {"PLUGIN_DATA": str(base / "data")}, clear=False
+                ),
+            ):
+                self.assertEqual(codex_mcp_server.main(), 0)
+            responses = [json.loads(line) for line in stdout.getvalue().splitlines()]
+            self.assertFalse(responses[0]["result"]["isError"])
+            self.assertFalse(responses[1]["result"]["isError"])
+            self.assertEqual(run_cli.call_count, 2)
+            self.assertEqual(refresh_binding.call_count, 2)
+            self.assertIn("work", run_cli.call_args_list[1].args[0])
+            self.assertIn("activate", run_cli.call_args_list[1].args[0])
 
     def test_invalid_resume_envelope_does_not_establish_binding(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

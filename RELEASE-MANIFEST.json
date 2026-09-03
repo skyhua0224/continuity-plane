@@ -87,11 +87,11 @@
     },
     {
       "path": "USAGE.en.md",
-      "sha256": "337e2f7d024c012e52617f56308c3812e9629de22955abb029353989105b128d"
+      "sha256": "71f5925ea3b93b2239d9d5954d6eaede957ca0b4e19a2f4dfa905223b0258477"
     },
     {
       "path": "USAGE.md",
-      "sha256": "de6d70f3ae5fd146aa7fb0da43f8986aa2379e324cfdb1a6b5334080f36c797e"
+      "sha256": "af2903acd58f81f66586ec06750a0a2b2285faba16302db05a89970ea3dd6f2a"
     },
     {
       "path": "benchmarks/__init__.py",
@@ -139,7 +139,7 @@
     },
     {
       "path": "continuity_plane/cli.py",
-      "sha256": "573771e760001a00736dc778036034aa43e3fb5c2347e9bab9a66fedbfbcff9d"
+      "sha256": "7b8a5a616d5f7baf8598eb848fb4839ec7d5e4ab07bc9842e36186b7554fed1b"
     },
     {
       "path": "continuity_plane/codegraph_verification.py",
@@ -147,7 +147,7 @@
     },
     {
       "path": "continuity_plane/codex_mcp_server.py",
-      "sha256": "e418781cfad1019916d1ab249cf15b622145358ec5f5decb6c5733ce782324c5"
+      "sha256": "96a853e788b08ccd0aa7d4a33e79f694a370f256a4a62559f1cfc0666d29a720"
     },
     {
       "path": "continuity_plane/collaboration_notifications.py",
@@ -227,7 +227,7 @@
     },
     {
       "path": "continuity_plane/recovery_envelope.py",
-      "sha256": "ce2433c836ef2eb3380559f0258d211c5327d8116593804bcbdb869ce28d5c89"
+      "sha256": "04f896caefcd54c2b0cf7fe999ff3ad09ec82e9799e8875cf558f7fc68e793bb"
     },
     {
       "path": "continuity_plane/relationship_impact_projection.py",
@@ -571,7 +571,7 @@
     },
     {
       "path": "tests/test_light_observability.py",
-      "sha256": "5195a617201ae73f077bf518b324fccfc3090ef257164c4f02f2db48387db91c"
+      "sha256": "65655672b55f2e5551b78b3575019bbca2e940e22b31657d312c27468a29b72c"
     },
     {
       "path": "tests/test_public_benchmark.py",
@@ -579,7 +579,7 @@
     },
     {
       "path": "tests/test_public_contracts.py",
-      "sha256": "146d55a1241a65a02d210b302069a7e7d855c0eac40c08d322fe4889249b0309"
+      "sha256": "ac5c9bdc7a2fc2e8d974839916bf9137e9c571f4dbcf15f0095323086bc80ccc"
     },
     {
       "path": "tests/test_public_smoke.py",

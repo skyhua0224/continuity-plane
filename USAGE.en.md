@@ -377,6 +377,16 @@ mismatch, or corrupt binding is rejected before any CLI/State write instead of
 silently falling back to `cwd`. Register governance-to-delivery repository
 relationships with the workspace registry described above.
 
+When a project is idle with no active claim and its canonical MASTER or STATUS
+changes, resume returns a read-only packet whose `next_action` is
+`rebind-source-and-activate-next-work`. Checkpoint verification returns the
+structured `source_rebind_required` gate; neither operation writes State. The
+next explicit standard `continuity_work_activate` verifies the pre-change
+checkpoint and atomically commits refreshed source evidence, the new Work and
+claim, and the final checkpoint. Completed Work and released claims stay
+closed. A denied activation leaves the proposal, checkpoint, and State revision
+unchanged.
+
 ## MASTER And STATUS
 
 `MASTER.md` stores stable intent, constraints, work dependencies, and completion
