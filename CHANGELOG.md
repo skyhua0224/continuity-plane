@@ -2,6 +2,47 @@
 
 [English](CHANGELOG.en.md)
 
+## 0.1.0-alpha.11
+
+### 相比 0.1.0-alpha.10
+
+- Continuity State 暂时不可写时，普通代码编辑、构建、测试和读取继续执行。MCP 通过
+  `read_only_scope=continuity-state`、`ordinary_project_work_allowed=true` 和
+  `project_next_action=continue-ordinary-project-work` 明确限制范围，生成的 STATUS 也不再把
+  Session 表述为全局只读。
+- lifecycle 遇到过期 claim、陈旧来源或落后投影时不再注入旧 Work。启动、压缩和 adapter
+  故障均保持非阻断；core 仍只注册 `SessionStart`、`PreCompact` 和 `PostCompact`，不注册
+  命令拦截 hook。
+- `continuity init` 现在一次性建立 proposal、genesis Event 和 verified checkpoint；checkpoint
+  发布失败会清理本次初始化并允许安全重试。旧 revision 0 项目仍可继续 attach。
+- 新增按仓库隔离的增量代码索引。它只读取 Git tracked 文件，复用未变化文件，只返回
+  path、line、symbol 和 file hash。可选 search plugin 通过单工具
+  `continuity_context_lookup` MCP 暴露检索，不加载 Skill，也不建立 State binding。
+- State plugin 改为 MCP-only；普通问答不再因插件安装而自动加载 State Skill 或调用 inspect。
+  `continuity doctor` 会分别验证 State MCP 与 Search MCP 是否真正启用并自动批准。
+- 修复公开 wheel 缺少 `continuity-search-mcp` 入口的问题。PyPI 安装后的 search plugin 与
+  本地开发版现在使用同一命令合同。
+
+### 验证与边界
+
+- 全量测试 `2037/2037` 通过，`31` 项按环境跳过；受影响面 `134/134`、公开构建 `142` 个文件、
+  repository verifier、隐私扫描、真实 init/inspect 和 stale-State MCP smoke 均通过。
+- 现有 matched A/B 的输入 token 降幅仍未达到 `30%` 目标。alpha.11 不宣称所有项目都能获得
+  统一 token 节省，也不把缓存命中率等同于上下文成本下降。
+- Codex 按官方插件加载规则在安装后的新 Session 中提供新工具。已经运行的 Session 需要进入
+  新 Session 才能可靠获得 alpha.11 的插件 manifest 和 MCP 工具表。
+
+### 安装
+
+```bash
+python -m pip install --upgrade continuity-plane==0.1.0a11
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.11
+codex plugin add continuity-plane@continuity-plane
+```
+
+大型仓库再安装 `continuity-plane-search`；需要显式 State 操作时再安装
+`continuity-plane-state`。安装或升级后新建 Session。
+
 ## 0.1.0-alpha.10
 
 ### 相比 0.1.0-alpha.9

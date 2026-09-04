@@ -11,7 +11,7 @@ AMD64.
 ### Install From PyPI
 
 ```bash
-python -m pip install continuity-plane==0.1.0a10
+python -m pip install continuity-plane==0.1.0a11
 ```
 
 For a source checkout:
@@ -27,7 +27,7 @@ Download a wheel or source archive from
 [Continuity Plane Releases](https://github.com/skyhua0224/continuity-plane/releases):
 
 ```bash
-python -m pip install /path/to/continuity_plane-0.1.0a10-py3-none-any.whl
+python -m pip install /path/to/continuity_plane-0.1.0a11-py3-none-any.whl
 ```
 
 ### Install Once For Many Projects
@@ -38,7 +38,7 @@ projects:
 ```bash
 python3 -m venv ~/.local/share/continuity-plane/venv
 ~/.local/share/continuity-plane/venv/bin/python \
-  -m pip install continuity-plane==0.1.0a10
+  -m pip install continuity-plane==0.1.0a11
 ```
 
 Run the installed CLI with an explicit project root whenever the command is not
@@ -56,7 +56,7 @@ For a project that pins its own control-plane version:
 ```bash
 cd /path/to/project
 python3 -m venv .venv
-.venv/bin/python -m pip install continuity-plane==0.1.0a10
+.venv/bin/python -m pip install continuity-plane==0.1.0a11
 .venv/bin/continuity init --root . --project-id my-project
 ```
 
@@ -223,7 +223,7 @@ single-user installation. Install the optional extra in the environment that
 will run the adapter:
 
 ```bash
-python -m pip install 'continuity-plane[postgres]==0.1.0a10'
+python -m pip install 'continuity-plane[postgres]==0.1.0a11'
 ```
 
 The alpha CLI still defaults to SQLite. PostgreSQL is selected by an explicit
@@ -316,8 +316,8 @@ the advanced State plugin only for explicit State operations.
 Install the core package, then add this GitHub repository as a marketplace:
 
 ```bash
-python -m pip install continuity-plane==0.1.0a10
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.10
+python -m pip install continuity-plane==0.1.0a11
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.11
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -333,14 +333,62 @@ continuity context search --root . --query "Runtime" --max-results 40 --max-outp
 ```
 
 The command reads only the Git-tracked current worktree and bounds the complete
-JSON receipt. The search plugin only prompts the Agent to prefer this command
-when the task matches.
+JSON receipt. The search plugin registers one lookup MCP tool and no Skill.
+
+#### Incremental Code Index
+
+For large repositories, multiple Sessions, or another AI client that needs fast symbol lookup:
+
+```bash
+continuity context index --root .
+continuity context lookup --root . --query "Runtime" --max-results 20 --max-output-bytes 8192
+```
+
+`index` reads only Git-tracked files and stores file hashes, languages, and symbol locations in the
+user cache by default, outside the project. A second run reuses unchanged files; changing one file
+reparses one file. `lookup` returns short references with `repository_revision`, `index_revision`,
+and `file_sha256`, never source bodies. Any Agent can use the same contract through the CLI or API:
+
+```python
+from continuity_plane.code_index import lookup_code_index
+
+receipt = lookup_code_index(".", query="Runtime")
+```
+
+The index is a candidate-location layer and grants no State, memory, or side-effect authority.
+Verify the current worktree hash before opening source. A corrupt cache is treated as a miss and
+rebuilt, never as a reason to block project work.
 
 Install the advanced plugin only when Codex needs State tools:
 
 ```bash
 codex plugin add continuity-plane-state@continuity-plane
 ```
+
+The search plugin exposes `continuity_context_lookup`. It returns bounded symbol/path/hash
+references, refreshes only the user cache, establishes no State binding, and never intercepts
+shell commands. Other AI clients use the same contract through the CLI.
+
+The lookup receipt measures `cache_status` and `returned_bytes`; host traces measure model
+input/output tokens. A cache hit alone is not token savings and must be reconciled with matched
+context-input/output A/B results.
+
+Verify actual adoption after starting or resuming a Session:
+
+```bash
+continuity doctor --root . --codex-home ~/.codex
+```
+
+The doctor reads plugin configuration, MCP policy, hook trust, and sanitized lifecycle
+observations; it does not read chat content. `active` means a real SessionStart was observed,
+`configured` means no runtime event exists yet, and `misconfigured` means an installation gate
+failed.
+
+The CLI v1 packet's `read_only` field applies only to Continuity State writes. The State MCP
+inspect/resume wrapper returns `read_only_scope=continuity-state` and
+`ordinary_project_work_allowed=true`; generated STATUS renders the project action as
+`continue-project-work-state-sync-pending`. Code edits, builds, tests, and reads continue without
+waiting for another Session.
 
 To upgrade the plugin, refresh the marketplace, reinstall it, and start a new
 Session:
@@ -358,19 +406,19 @@ the plugin does not delete `.continuity/` state.
 ### One Session Across Multiple Projects
 
 With the advanced State plugin installed, a Session spanning a governance root,
-an implementation project, and another project can explicitly resume each
-governance root:
+an implementation project, and another project inspects a governance root only for explicit State
+diagnosis, then resumes only before an explicit State write:
 
 ```text
-continuity_resume(root=/path/to/project-a)
-continuity_resume(root=/path/to/project-b)
-continuity_resume(root=/path/to/project-c)
+continuity_inspect(root=/path/to/project-a)
+continuity_resume(root=/path/to/project-a)  # only before an explicit State write
 ```
 
-Each call adds the root to the Session's integrity-checked project set and makes
-it the active root. Work, claim, checkpoint, and effect requests for that
-project must use the same root; switch projects by explicitly calling
-`continuity_resume` again. Relative roots resolve only against the last
+Inspect does not write projections or establish a write binding; reuse its result
+within the turn. Resume adds the root to the Session's integrity-checked project
+set and makes it active. Work, claim, checkpoint, and effect requests for that
+project must use the same root; switch projects by calling resume once when a
+write is required. Relative roots resolve only against the last
 successful active root. After a Session binding exists, the terminal `cwd`
 cannot replace the active root. An unbound root, missing profile, digest
 mismatch, or corrupt binding is rejected before any CLI/State write instead of
@@ -498,7 +546,7 @@ storage.
 
 The current version is available from PyPI and GitHub Releases:
 
-<https://pypi.org/project/continuity-plane/0.1.0a10/>  
+<https://pypi.org/project/continuity-plane/0.1.0a11/>  
 <https://github.com/skyhua0224/continuity-plane/releases>
 
 The current public release used a controlled PyPI token. A GitHub Actions OIDC

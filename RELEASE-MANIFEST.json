@@ -1,5 +1,5 @@
 {
-  "file_count": 146,
+  "file_count": 147,
   "files": [
     {
       "path": ".agents/plugins/marketplace.json",
@@ -35,11 +35,11 @@
     },
     {
       "path": "CHANGELOG.en.md",
-      "sha256": "359dfaa1e31183e7c38adee115040f5425d2611d3ca298d7c5dc562341374395"
+      "sha256": "e9fa683e896abaff48b48fbcdfb3a46d2ab575eff92ec6c4b81a09277262f828"
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "665715af07948ce5ea9c28c2152b8e94b00395eceec628d04f4372f2d8d08f75"
+      "sha256": "f2d0b5bbedf495b3a62726260458af364c65e2b71657ef8945bf6ad40927fdc0"
     },
     {
       "path": "CONTRIBUTING.en.md",
@@ -63,11 +63,11 @@
     },
     {
       "path": "README.en.md",
-      "sha256": "c1b123b6956bc6913bc29582996561a9dfea7110e7858d243cf3a6fab4a5ef0d"
+      "sha256": "58e29d101affb0236abdfcf449e215bb3ce4852ee0508dfcf79b18dcd399d079"
     },
     {
       "path": "README.md",
-      "sha256": "afdac1304163207a1f6f3701b14d448b4b51678f0507ab21e3f173840a5c1a22"
+      "sha256": "b8a85e42fbaa319920de97fb6831ab0b3999767869a1033cb25125da0c1a1e02"
     },
     {
       "path": "SECURITY.en.md",
@@ -87,11 +87,11 @@
     },
     {
       "path": "USAGE.en.md",
-      "sha256": "337e2f7d024c012e52617f56308c3812e9629de22955abb029353989105b128d"
+      "sha256": "041609f59146c275f2b2edae3e3d6c2883ca3edcfa432e6431c8fe2148f17349"
     },
     {
       "path": "USAGE.md",
-      "sha256": "de6d70f3ae5fd146aa7fb0da43f8986aa2379e324cfdb1a6b5334080f36c797e"
+      "sha256": "77e2637c93b829e5c193bfda17feaa296f9dc5bb6f71fb4223307fc20ddfbe0a"
     },
     {
       "path": "benchmarks/__init__.py",
@@ -99,11 +99,11 @@
     },
     {
       "path": "benchmarks/reference-results.json",
-      "sha256": "71afd557b27f5513d39c97d39934b9c64d5d079e8d6999dbf25c17d32ada62a6"
+      "sha256": "ff31b11c4d424290cb5491f224146b1b44237385be8402d1dbbaecedbd672485"
     },
     {
       "path": "benchmarks/run_local_state.py",
-      "sha256": "50f0179acd93392d5cd08aa04a72e630a3bc98de29ced8270badd52663277852"
+      "sha256": "910cd5db67c1f8514fcb407a9916b1c58c5975c5bcc84d9f8424980e7bbafc7d"
     },
     {
       "path": "continuity_plane/__init__.py",
@@ -139,7 +139,11 @@
     },
     {
       "path": "continuity_plane/cli.py",
-      "sha256": "573771e760001a00736dc778036034aa43e3fb5c2347e9bab9a66fedbfbcff9d"
+      "sha256": "0a4d16f8257056d8fdf7cd444045e1ab99482ba7db09637797e0d3c28163425a"
+    },
+    {
+      "path": "continuity_plane/code_index.py",
+      "sha256": "8da180d577a7fbdccbea4c4662dc6e9decebaffa295707157cf9b49b784438d3"
     },
     {
       "path": "continuity_plane/codegraph_verification.py",
@@ -147,7 +151,7 @@
     },
     {
       "path": "continuity_plane/codex_mcp_server.py",
-      "sha256": "e418781cfad1019916d1ab249cf15b622145358ec5f5decb6c5733ce782324c5"
+      "sha256": "5f85e734b9e563b965358eaf17605ff55361ea42bcdda12b38ebe9961d2fedd4"
     },
     {
       "path": "continuity_plane/collaboration_notifications.py",
@@ -156,6 +160,10 @@
     {
       "path": "continuity_plane/compiled_skill_packet.py",
       "sha256": "3d6403cb538c230ba4d3920185e11490d7c0b6d0c5914be06542248e006ce3ae"
+    },
+    {
+      "path": "continuity_plane/context_mcp_server.py",
+      "sha256": "9b44253d1998914171a75b3fa4be1f95471a483ac90b036cc589ec56d7e7ed64"
     },
     {
       "path": "continuity_plane/database/migrations/001_postgres_state.up.sql",
@@ -227,7 +235,7 @@
     },
     {
       "path": "continuity_plane/recovery_envelope.py",
-      "sha256": "ce2433c836ef2eb3380559f0258d211c5327d8116593804bcbdb869ce28d5c89"
+      "sha256": "85a426b392bc0c85a633eec434a0f23f1d74d3d9bdbbabf7a1c6bb9b92bfbc56"
     },
     {
       "path": "continuity_plane/relationship_impact_projection.py",
@@ -307,7 +315,7 @@
     },
     {
       "path": "continuity_plane/status_projection.py",
-      "sha256": "475982cbcd2596ed7e70b6a437637770ea366106219b9e2b55dfd2a79b3d84b0"
+      "sha256": "ea2971246718de597daa48e173e550b8bdc14b10cd0dad80b234279c356cc718"
     },
     {
       "path": "continuity_plane/sticky_router.py",
@@ -418,32 +426,8 @@
       "sha256": "4ef226ac1cddd7305c4d70304a7be74b951a9802d1ef82c441d5bf69e3c9f002"
     },
     {
-      "path": "plugins/continuity-plane-search/.codex-plugin/plugin.json",
-      "sha256": "8d8242b53e523a07aae046e1e4d03797d665f2f7b74d4590516b28feecd6f584"
-    },
-    {
-      "path": "plugins/continuity-plane-search/skills/bounded-search/SKILL.md",
-      "sha256": "7007e81759adb3d1b2f45f5de766b1e84fcb43bcf23d6a49ae0d9fa33c08eca0"
-    },
-    {
-      "path": "plugins/continuity-plane-state/.codex-plugin/plugin.json",
-      "sha256": "c4cf98797c92ff3b444b9a572db02a79a5e0f1f2ea6bf8bbea05f487385dff83"
-    },
-    {
-      "path": "plugins/continuity-plane-state/.mcp.json",
-      "sha256": "14d94e9821fb98f840f41c64f9a1543881c693b60685b7720a687624fc3b8db2"
-    },
-    {
-      "path": "plugins/continuity-plane-state/scripts/continuity-mcp-server.py",
-      "sha256": "c3a8475baae94e30294559db26262f8cc0ff6af9dd1d4fd203c9d12e6ac74762"
-    },
-    {
-      "path": "plugins/continuity-plane-state/skills/continuity-plane/SKILL.md",
-      "sha256": "98998c36a363421864fc0b8634a1cad40ce0dac7f7fe489cb96e6247462320e0"
-    },
-    {
       "path": "plugins/continuity-plane/.codex-plugin/plugin.json",
-      "sha256": "990de25a89719ed13313c41feab8190fe124882c4cd42ca37f22595aaa511636"
+      "sha256": "9b2f75200a688ef8010f25ce756908708ec8b1d1f8a8327446096c3f00afb4c3"
     },
     {
       "path": "plugins/continuity-plane/hooks/hooks.json",
@@ -451,11 +435,31 @@
     },
     {
       "path": "plugins/continuity-plane/scripts/continuity-hook.py",
-      "sha256": "3cd1c179b10b4aa4960d413024000d7bda13d00475f062316734fc3f0d619a6f"
+      "sha256": "4348af4da3ef28be246a8fa550375aa732e332f075b8fe4573579619898f509a"
+    },
+    {
+      "path": "plugins/continuity-plane-search/.codex-plugin/plugin.json",
+      "sha256": "acc2cbc8fe603a5be86b1d2556344c6da4b969d885ea63351fa9fb66351d132d"
+    },
+    {
+      "path": "plugins/continuity-plane-search/.mcp.json",
+      "sha256": "3ef922b71df423c1948fb01462c62eda06deaeae63425b379f4a93bc97b3beb6"
+    },
+    {
+      "path": "plugins/continuity-plane-state/.codex-plugin/plugin.json",
+      "sha256": "12392b82c73a28b389746c986747ac373408e22d909db6df64cdb9d10c0211be"
+    },
+    {
+      "path": "plugins/continuity-plane-state/.mcp.json",
+      "sha256": "14d94e9821fb98f840f41c64f9a1543881c693b60685b7720a687624fc3b8db2"
+    },
+    {
+      "path": "plugins/continuity-plane-state/scripts/continuity-mcp-server.py",
+      "sha256": "047d21d3306167bfa6d38ad5a8b235ed41c7bc42dce572293d07664c577f814b"
     },
     {
       "path": "pyproject.toml",
-      "sha256": "9236437314e0790cbab6dda8d079433f4e8c649a7f84ae72a4aa32752b1bdcdf"
+      "sha256": "395c8707fded61483cc704ea2ec3f000ac45d4c7eda2f1d35d6e445d584eba45"
     },
     {
       "path": "schemas/m10-01/canonical-attach-proposal.schema.json",
@@ -571,7 +575,7 @@
     },
     {
       "path": "tests/test_light_observability.py",
-      "sha256": "5195a617201ae73f077bf518b324fccfc3090ef257164c4f02f2db48387db91c"
+      "sha256": "dd889cd57b086aecdb2129c6d97df9da9f26bab8ab86cfc474ea84bb0c84724c"
     },
     {
       "path": "tests/test_public_benchmark.py",
@@ -579,13 +583,11 @@
     },
     {
       "path": "tests/test_public_contracts.py",
-      "sha256": "146d55a1241a65a02d210b302069a7e7d855c0eac40c08d322fe4889249b0309"
+      "sha256": "4b653156898423e3e75d48a94f06b2fe3503160474d057a36f60cf46f6f53659"
     },
     {
       "path": "tests/test_public_smoke.py",
-      "sha256": "c423003b30c37f3d2c3290dcbbfe6fbfbb449cf703eec6570983d655545a7741"
+      "sha256": "f70fe772454ed64f0697b8478cf977499c1091ac4310bd8aa61041ccc1faf075"
     }
-  ],
-  "schema_version": "context.public-release-manifest/v1",
-  "version": "0.1.0-alpha.10"
+  ]
 }

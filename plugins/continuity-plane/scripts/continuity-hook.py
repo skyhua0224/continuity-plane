@@ -572,6 +572,29 @@ def _project_root(cwd: str) -> Path | None:
     return None
 
 
+def _repository_is_large(root: Path, *, threshold: int = 200) -> bool:
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(root), "ls-files", "-z"],
+            capture_output=True,
+            check=False,
+            timeout=COMMAND_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return result.returncode == 0 and result.stdout.count(b"\0") >= threshold
+
+
+def _startup_search_context(root: Path) -> str | None:
+    if not _repository_is_large(root):
+        return None
+    return (
+        "Large repository route: for unfamiliar symbols call MCP "
+        "continuity_context_lookup (or `continuity context lookup`) first; "
+        "reuse its cache_status and hash-bound references before broad rg/find/read."
+    )
+
+
 def _command(arguments: list[str], root: Path) -> subprocess.CompletedProcess[str]:
     executable = shutil.which("continuity")
     candidates: list[list[str]] = []
@@ -770,6 +793,17 @@ def _stop(reason: str) -> None:
     )
 
 
+def _state_sync_notice(reason: str) -> None:
+    print(
+        _canonical(
+            {
+                "continue": True,
+                "systemMessage": reason,
+            }
+        )
+    )
+
+
 def _continuation_context(packet: dict[str, Any], *, source: str) -> str | None:
     if source == "compact":
         context = (
@@ -797,7 +831,8 @@ def _continuation_context(packet: dict[str, Any], *, source: str) -> str | None:
             "Continuity return point. Current user intent wins. Answer a "
             "question directly without advancing the Work. Preserve unrelated ideas "
             "without replacing it. Do not re-read STATUS, MASTER, AGENTS, or Skill "
-            "files. For broad lookup use continuity context search. State: "
+            "files. When code is unfamiliar, use continuity context lookup or continuity "
+            "context search before broad rg/find/read. State: "
             + _canonical(projection)
         )
     if len(context.encode("utf-8")) > MAX_CONTEXT_BYTES:
@@ -1797,20 +1832,31 @@ def _session_start(payload: dict[str, Any], root: Path) -> int:
     if not success:
         _observe(payload, root, event_type="session-start", success=False)
         if _effect_policy() == "strict":
-            _stop("Continuity resume failed; keep this project read-only.")
+            _state_sync_notice(
+                "Continuity State sync is temporarily unavailable. Continue ordinary "
+                "project work; retry State at the next lifecycle boundary."
+            )
         return 0
     encoded = completed.stdout.strip().encode("utf-8")
     packet = _load_resume_packet(encoded)
     if packet is None:
         _observe(payload, root, event_type="session-start", success=False)
         if _effect_policy() == "strict":
-            _stop("Continuity resume packet is invalid or exceeds its byte budget.")
+            _state_sync_notice(
+                "Continuity State returned no usable recovery packet. Continue ordinary "
+                "project work; no stale state was injected."
+            )
         return 0
-    if _effect_policy() != "strict" and (
-        packet.get("source_fresh") is False
-        or packet.get("read_only") is True
-        or not _status_projection_is_current(root, packet)
-    ):
+    projection_path = root / ".continuity/status-projection.json"
+    projection_stale = (
+        projection_path.exists()
+        and not _status_projection_is_current(root, packet)
+    )
+    if (
+        packet.get("source_fresh") is True
+        and packet.get("read_only") is True
+    ) or projection_stale:
+        hint = _startup_search_context(root)
         _observe(
             payload,
             root,
@@ -1818,6 +1864,48 @@ def _session_start(payload: dict[str, Any], root: Path) -> int:
             success=False,
             source_refreshed=False,
         )
+        if _effect_policy() == "strict":
+            _state_sync_notice(
+                "Continuity State lease or projection requires synchronization. "
+                "Continue ordinary project work; no old Work was injected."
+            )
+        elif hint is not None:
+            print(
+                _canonical(
+                    {
+                        "continue": True,
+                        "hookSpecificOutput": {
+                            "hookEventName": "SessionStart",
+                            "additionalContext": hint,
+                        },
+                    }
+                )
+            )
+        return 0
+    if _effect_policy() != "strict" and (
+        packet.get("source_fresh") is False
+        or packet.get("read_only") is True
+    ):
+        hint = _startup_search_context(root)
+        _observe(
+            payload,
+            root,
+            event_type="session-start",
+            success=False,
+            source_refreshed=False,
+        )
+        if hint is not None:
+            print(
+                _canonical(
+                    {
+                        "continue": True,
+                        "hookSpecificOutput": {
+                            "hookEventName": "SessionStart",
+                            "additionalContext": hint,
+                        },
+                    }
+                )
+            )
         return 0
     if packet.get("source_fresh") is True and packet.get("read_only") is False:
         binding_payload = {
@@ -1829,12 +1917,25 @@ def _session_start(payload: dict[str, Any], root: Path) -> int:
         binding_result = _record_resume_binding(binding_payload)
         if binding_result == "conflict":
             if _effect_policy() == "strict":
-                _stop(
-                    "Continuity project binding conflicts with the current root; "
-                    "keep this session read-only."
+                _state_sync_notice(
+                    "Continuity State binding conflicts with the current root. Continue "
+                    "ordinary project work; no recovery packet was injected."
                 )
             return 0
         if packet.get("active_work") is None or packet.get("claim") is None:
+            hint = _startup_search_context(root)
+            if hint is not None:
+                print(
+                    _canonical(
+                        {
+                            "continue": True,
+                            "hookSpecificOutput": {
+                                "hookEventName": "SessionStart",
+                                "additionalContext": hint,
+                            },
+                        }
+                    )
+                )
             return 0
         if _effect_policy() == "observe":
             return 0
@@ -1858,7 +1959,10 @@ def _session_start(payload: dict[str, Any], root: Path) -> int:
                 success=False,
                 source_refreshed=False,
             )
-            _stop("Continuity source refresh failed; keep this project read-only.")
+            _state_sync_notice(
+                "Continuity State source refresh failed. Continue ordinary project "
+                "work; retry State synchronization later."
+            )
             return 0
         source_refreshed = True
         _observe(
@@ -1868,9 +1972,9 @@ def _session_start(payload: dict[str, Any], root: Path) -> int:
             success=False,
             source_refreshed=True,
         )
-        _stop(
-            "Continuity source proposal refreshed. Explicit governance approval is required "
-            "before checkpoint creation; keep this project read-only."
+        _state_sync_notice(
+            "Continuity State source proposal was refreshed and awaits checkpoint "
+            "approval. Continue ordinary project work."
         )
         return 0
     _observe(
@@ -1891,8 +1995,10 @@ def _session_start(payload: dict[str, Any], root: Path) -> int:
         _start_recovery_window(payload, root, budget_bytes=budget)
     context = _continuation_context(packet, source=str(payload.get("source", "startup")))
     if context is None:
-        if _effect_policy() == "strict":
-            _stop("Continuity recovery context exceeds its byte budget.")
+        _state_sync_notice(
+            "Continuity recovery context exceeded its byte budget. Continue ordinary "
+            "project work; no oversized context was injected."
+        )
         return 0
     response = {
         "continue": True,
@@ -1945,10 +2051,15 @@ def main() -> int:
                 "Continuity session project binding is invalid; external effects "
                 "remain blocked."
             )
+        elif event == "SessionStart":
+            _state_sync_notice(
+                "Continuity State binding is invalid. Continue ordinary project work; "
+                "no recovery packet was injected."
+            )
         else:
             _stop(
-                "Continuity session project binding is invalid; keep this session "
-                "read-only until an explicit project resume succeeds."
+                "Continuity session project binding is invalid; lifecycle State work "
+                "was stopped."
             )
         return 0
     discovered_root = None
@@ -1996,7 +2107,13 @@ def main() -> int:
                 "Continuity authority is unavailable; external effects remain blocked."
             )
             return 0
-        _stop("Continuity lifecycle hook failed; keep this project read-only.")
+        if event == "SessionStart":
+            _state_sync_notice(
+                "Continuity State lifecycle sync failed. Continue ordinary project work; "
+                "retry State at the next lifecycle boundary."
+            )
+        else:
+            _stop("Continuity lifecycle hook failed; this lifecycle operation was stopped.")
     return 0
 
 

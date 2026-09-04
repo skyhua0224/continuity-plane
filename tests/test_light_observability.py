@@ -1490,7 +1490,7 @@ class HookProbeTests(unittest.TestCase):
         self.assertNotIn("PreToolUse", manifest["hooks"])
         self.assertNotIn("PostToolUse", manifest["hooks"])
 
-    def test_alpha10_core_and_state_plugin_ownership_remains_split(self) -> None:
+    def test_alpha11_core_search_and_state_plugin_ownership_remains_split(self) -> None:
         root = Path(__file__).parents[1]
         core = root / "plugins/continuity-plane"
         search = root / "plugins/continuity-plane-search"
@@ -1505,9 +1505,9 @@ class HookProbeTests(unittest.TestCase):
             (search / ".codex-plugin/plugin.json").read_text(encoding="utf-8")
         )
         self.assertNotIn("mcpServers", core_manifest)
-        self.assertNotIn("mcpServers", search_manifest)
+        self.assertIn("mcpServers", search_manifest)
         self.assertFalse((core / ".mcp.json").exists())
-        self.assertFalse((search / ".mcp.json").exists())
+        self.assertTrue((search / ".mcp.json").is_file())
         self.assertIn("mcpServers", state_manifest)
         self.assertTrue((state / ".mcp.json").is_file())
         self.assertFalse((core / "skills/continuity-plane-state").exists())

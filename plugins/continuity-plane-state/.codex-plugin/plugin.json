@@ -1,6 +1,6 @@
 {
   "name": "continuity-plane-state",
-  "version": "0.1.0-alpha.10",
+  "version": "0.1.0-alpha.11",
   "description": "Optional advanced State MCP tools for Continuity Plane",
   "author": {
     "name": "SkyHua"
@@ -15,7 +15,6 @@
     "checkpoint",
     "collaboration"
   ],
-  "skills": "./skills/",
   "mcpServers": "./.mcp.json",
   "interface": {
     "displayName": "Continuity Plane State",

@@ -10,7 +10,7 @@ Windows AMD64 完成安装、verify 和卸载。
 ### 从 PyPI 安装
 
 ```bash
-python -m pip install continuity-plane==0.1.0a10
+python -m pip install continuity-plane==0.1.0a11
 ```
 
 从源码 checkout 开发时：
@@ -26,7 +26,7 @@ python -m venv .venv
 下载 wheel 或 source archive：
 
 ```bash
-python -m pip install /path/to/continuity_plane-0.1.0a10-py3-none-any.whl
+python -m pip install /path/to/continuity_plane-0.1.0a11-py3-none-any.whl
 ```
 
 ### 全局安装，管理多个项目
@@ -36,7 +36,7 @@ python -m pip install /path/to/continuity_plane-0.1.0a10-py3-none-any.whl
 ```bash
 python3 -m venv ~/.local/share/continuity-plane/venv
 ~/.local/share/continuity-plane/venv/bin/python \
-  -m pip install continuity-plane==0.1.0a10
+  -m pip install continuity-plane==0.1.0a11
 
 ~/.local/share/continuity-plane/venv/bin/continuity \
   init --root /path/to/project --project-id my-project
@@ -47,7 +47,7 @@ python3 -m venv ~/.local/share/continuity-plane/venv
 ```bash
 cd /path/to/project
 python3 -m venv .venv
-.venv/bin/python -m pip install continuity-plane==0.1.0a10
+.venv/bin/python -m pip install continuity-plane==0.1.0a11
 .venv/bin/continuity init --root . --project-id my-project
 ```
 
@@ -191,7 +191,7 @@ continuity work activate \
 个人想进行 SQL 检查、备份或让多个本地 worker 共用状态时，可以选择 PostgreSQL：
 
 ```bash
-python -m pip install 'continuity-plane[postgres]==0.1.0a10'
+python -m pip install 'continuity-plane[postgres]==0.1.0a11'
 ```
 
 当前 alpha CLI 仍默认 SQLite。PostgreSQL 通过显式 Python adapter 使用：
@@ -273,8 +273,8 @@ MCP 写工具，也不阻断普通开发。需要显式 State 操作时再安装
 先安装核心包，再把本项目 GitHub 仓库作为 marketplace：
 
 ```bash
-python -m pip install continuity-plane==0.1.0a10
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.10
+python -m pip install continuity-plane==0.1.0a11
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.11
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -290,7 +290,30 @@ continuity context search --root . --query "Runtime" --max-results 40 --max-outp
 ```
 
 该命令只读取 Git tracked current worktree，完整 JSON receipt 不超过指定字节预算；
-search plugin 只负责在适用任务中提示 Agent 优先调用该命令。
+search plugin 只注册一个 lookup MCP 工具，不加载额外 Skill。
+
+#### 增量代码索引
+
+适合大型仓库、多个 Session 或需要让其他 AI 快速定位符号的场景：
+
+```bash
+continuity context index --root .
+continuity context lookup --root . --query "Runtime" --max-results 20 --max-output-bytes 8192
+```
+
+`index` 只读取 Git tracked 文件，把文件 hash、语言和符号位置写入用户缓存目录；默认不写
+项目目录。第二次执行会复用未变化文件，修改一个文件只重新解析一个文件。`lookup` 返回
+带 `repository_revision`、`index_revision` 和 `file_sha256` 的短引用，不返回源码正文。
+任何 Agent 都可以通过 CLI 或 Python API 使用同一合同：
+
+```python
+from continuity_plane.code_index import lookup_code_index
+
+receipt = lookup_code_index(".", query="Runtime")
+```
+
+索引是候选定位，不授予 State、memory 或副作用权限；展开源码前仍需按返回的 hash 验证
+当前工作树。缓存损坏时会被当作未命中并重建，不会阻断项目工作。
 
 需要在 Codex 内调用 State 工具时额外安装：
 
@@ -298,18 +321,39 @@ search plugin 只负责在适用任务中提示 Agent 优先调用该命令。
 codex plugin add continuity-plane-state@continuity-plane
 ```
 
+search plugin 提供 `continuity_context_lookup` MCP 工具。它只返回有界的 symbol/path/hash
+引用，刷新用户缓存，不建立 State binding，也不拦截 shell。其他 AI 通过 CLI 使用同一合同。
+
+`cache_status` 与 `returned_bytes` 由 lookup receipt 直接计量；模型 input/output token 由
+host trace 计量。缓存命中不能单独证明 token 节省，必须和同任务的上下文输入输出 A/B 对账。
+
+安装或恢复 Session 后验证实际采用状态：
+
+```bash
+continuity doctor --root . --codex-home ~/.codex
+```
+
+doctor 只读取插件配置、MCP policy、hook trust 和脱敏 lifecycle observation，不读取聊天
+正文。`active` 表示已出现真实 SessionStart；`configured` 表示配置完成但尚无运行事件；
+`misconfigured` 表示至少一项安装门未通过。
+
+CLI v1 packet 中的 `read_only` 仅指 Continuity State 写入。State MCP 的 inspect/resume
+外层返回 `read_only_scope=continuity-state` 与 `ordinary_project_work_allowed=true`；生成的
+STATUS 将项目动作显示为 `continue-project-work-state-sync-pending`。代码编辑、编译、测试
+和读取继续进行，不等待外部 Session。
+
 ### 一个 Session 管理多个项目
 
 安装 advanced State plugin 后，同一个 Session 同时处理治理仓、实现仓和另一个项目时，
-可以对各项目治理根执行显式 resume：
+只有显式诊断 State 才对治理根执行一次 inspect；需要 State 写入时执行一次 resume：
 
 ```text
-continuity_resume(root=/path/to/project-a)
-continuity_resume(root=/path/to/project-b)
-continuity_resume(root=/path/to/project-c)
+continuity_inspect(root=/path/to/project-a)
+continuity_resume(root=/path/to/project-a)  # 仅在显式 State 写入前
 ```
 
-每次调用都会把该 root 加入当前 Session 的受校验项目集合，并把它设为 active root。
+inspect 不写投影、不建立写绑定；同一 turn 复用其结果，不得重复调用。resume 会把该 root
+加入当前 Session 的受校验项目集合，并把它设为 active root。
 之后该项目的 Work、claim、checkpoint 和 effect 请求必须使用相同 root；切换项目时
 再次显式调用 `continuity_resume`。相对 root 只相对上一次成功的 active root 解析。
 Session 已建立 binding 后，终端 `cwd` 不能替换 active root；未绑定、profile 缺失、
@@ -423,7 +467,7 @@ template 和 content-addressed artifact。所有 claim 关闭后，才能归档�
 
 当前版本同时发布到 PyPI 和 GitHub Release：
 
-<https://pypi.org/project/continuity-plane/0.1.0a10/>  
+<https://pypi.org/project/continuity-plane/0.1.0a11/>  
 <https://github.com/skyhua0224/continuity-plane/releases>
 
 当前公开版本使用受控 PyPI token 发布。GitHub Actions OIDC workflow 和 `pypi`

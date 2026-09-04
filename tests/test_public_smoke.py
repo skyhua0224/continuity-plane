@@ -35,7 +35,7 @@ class PublicSmokeTests(unittest.TestCase):
                 self.assertEqual(main(["state", "show", "--root", str(root)]), 0)
             result = json.loads(output.getvalue())
             self.assertEqual(result["project_id"], "sample-app")
-            self.assertEqual(result["revision"], 0)
+            self.assertEqual(result["revision"], 1)
 
 
 if __name__ == "__main__":
