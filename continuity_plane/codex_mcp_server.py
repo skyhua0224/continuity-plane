@@ -3,12 +3,51 @@
 
 from __future__ import annotations
 
+import atexit
 import json
 import hashlib
+import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
+from .light_observability import (
+    PolicyConfigError,
+    SessionProbe,
+    load_policy,
+    resolve_policy,
+)
+
+
+def _cli_command(*arguments: str) -> list[str]:
+    test_executable = os.environ.get("CONTINUITY_TEST_CLI_EXECUTABLE")
+    if test_executable:
+        return [test_executable, *arguments]
+    return [sys.executable, "-m", "continuity_plane.cli", *arguments]
+
+
+def _effect_policy() -> str:
+    value = os.environ.get("CONTINUITY_EFFECT_POLICY", "auto").lower()
+    return value if value in {"observe", "auto", "strict"} else "observe"
+
+
+def _load_session_probe(root: Path) -> SessionProbe:
+    try:
+        return SessionProbe(root, load_policy(root))
+    except PolicyConfigError:
+        if _effect_policy() == "strict":
+            raise
+        policy = resolve_policy(None, environment={})
+        policy["observability"]["probes_enabled"] = False
+        probe = SessionProbe(root, policy)
+        probe.boundary(
+            "policy_degraded",
+            success=False,
+            extra={"observation_degraded": True},
+        )
+        probe.degraded = True
+        return probe
 
 
 _READ_ONLY_ANNOTATIONS = {
@@ -61,17 +100,9 @@ def _scoped_state_result_text(value: str) -> str:
     )
 
 
-def _binding(root: Path) -> dict | None:
-    result = subprocess.run(
-        ["continuity", "resume", "--root", str(root)],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if result.returncode != 0:
-        return None
+def _binding_from_output(output: str) -> dict | None:
     try:
-        envelope = json.loads(result.stdout)
+        envelope = json.loads(output)
     except json.JSONDecodeError:
         return None
     if (
@@ -107,6 +138,31 @@ def _binding(root: Path) -> dict | None:
         "lease_valid": envelope.get("lease_valid") is True,
         "next_action": envelope.get("next_action"),
     }
+
+
+def _binding(root: Path) -> dict | None:
+    try:
+        result = subprocess.run(
+            _cli_command("resume", "--root", str(root)),
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if result.returncode != 0:
+        return None
+    return _binding_from_output(result.stdout)
+
+
+def _binding_is_writable(binding: dict) -> bool:
+    return (
+        not binding["read_only"]
+        and binding["source_fresh"]
+        and binding["checkpoint_verified"]
+        and binding["lease_valid"]
+    )
 
 
 def _requested_root(value: object, active_root: Path | None) -> Path | None:
@@ -171,7 +227,7 @@ def _write_binding_error(
     if binding is None:
         _error(request_id, -32001, "session binding is unavailable; write tools are disabled")
         return True
-    if binding["read_only"]:
+    if not _binding_is_writable(binding):
         _error(
             request_id,
             -32002,
@@ -203,7 +259,7 @@ def _write_transition_binding_error(
     if binding is None:
         _error(request_id, -32001, "session binding is unavailable; write tools are disabled")
         return True
-    if binding["read_only"]:
+    if not _binding_is_writable(binding):
         _error(
             request_id,
             -32002,
@@ -232,7 +288,7 @@ def _write_activation_binding_error(
     if binding is None:
         _error(request_id, -32001, "session binding is unavailable; write tools are disabled")
         return True
-    if binding["read_only"]:
+    if not _binding_is_writable(binding):
         _error(
             request_id,
             -32002,
@@ -314,19 +370,36 @@ def _claim_recovery_binding_error(
 
 def main() -> int:
     session_roots: dict[str, Path] = {}
+    session_bindings: dict[str, dict] = {}
     active_root: Path | None = None
+    probes: dict[str, SessionProbe] = {}
+
+    def close_probes() -> None:
+        for probe in probes.values():
+            probe.close()
+
+    atexit.register(close_probes)
     for line in sys.stdin:
         try:
             request = json.loads(line)
         except json.JSONDecodeError:
             continue
+        if not isinstance(request, dict):
+            _error(None, -32600, "request must be an object")
+            continue
         method = request.get("method")
         request_id = request.get("id")
         if method == "initialize":
+            initialize_params = request.get("params")
+            if not isinstance(initialize_params, dict):
+                _error(request_id, -32602, "initialize params must be an object")
+                continue
             _reply(
                 request_id,
                 {
-                    "protocolVersion": request.get("params", {}).get("protocolVersion", "2024-11-05"),
+                    "protocolVersion": initialize_params.get(
+                        "protocolVersion", "2024-11-05"
+                    ),
                     "capabilities": {"tools": {}},
                     "serverInfo": {"name": "continuity", "version": "0.1.0-alpha.11"},
                 },
@@ -559,6 +632,9 @@ def main() -> int:
             )
         elif method == "tools/call":
             params = request.get("params", {})
+            if not isinstance(params, dict):
+                _error(request_id, -32602, "params must be an object")
+                continue
             tool_name = params.get("name")
             if tool_name not in {
                 "continuity_inspect",
@@ -573,6 +649,9 @@ def main() -> int:
                 _error(request_id, -32602, "unknown tool")
                 continue
             arguments = params.get("arguments", {})
+            if not isinstance(arguments, dict):
+                _error(request_id, -32602, "arguments must be an object")
+                continue
             root = arguments.get("root")
             if not isinstance(root, str) or not root:
                 _error(request_id, -32602, "root is required")
@@ -582,10 +661,7 @@ def main() -> int:
                 _error(request_id, -32000, "root does not match this MCP session project")
                 continue
             root_key = str(requested_root)
-            if tool_name == "continuity_resume":
-                session_roots[root_key] = requested_root
-                active_root = requested_root
-            elif tool_name != "continuity_inspect" and root_key not in session_roots:
+            if tool_name not in {"continuity_inspect", "continuity_resume"} and root_key not in session_roots:
                 _error(
                     request_id,
                     -32001,
@@ -593,25 +669,59 @@ def main() -> int:
                 )
                 continue
             canonical_root = root_key
+            try:
+                probe = probes.get(root_key)
+                if probe is None:
+                    probe = _load_session_probe(requested_root)
+                    probes[root_key] = probe
+            except PolicyConfigError:
+                _error(
+                    request_id,
+                    -32004,
+                    "Continuity policy is invalid; State tools are unavailable but ordinary project work remains allowed",
+                )
+                continue
             binding = (
                 None
                 if tool_name in {"continuity_inspect", "continuity_resume"}
-                else _binding(requested_root)
+                else session_bindings.get(root_key)
             )
-            command = ["continuity", "resume", "--root", canonical_root]
+            checkpoint_create = (
+                tool_name == "continuity_checkpoint"
+                and arguments.get("action") == "create"
+            )
+            authority_write = tool_name in {
+                "continuity_autorun",
+                "continuity_work_complete",
+                "continuity_work_transition",
+                "continuity_work_activate",
+                "continuity_claim_recover",
+            }
+            if checkpoint_create or authority_write:
+                refresh_started = time.perf_counter()
+                binding = _binding(requested_root)
+                probe.record_call(
+                    "continuity_binding_refresh",
+                    duration_ms=(time.perf_counter() - refresh_started) * 1000,
+                    success=binding is not None,
+                )
+                if binding is None:
+                    session_bindings.pop(root_key, None)
+                else:
+                    session_bindings[root_key] = binding
+            command = _cli_command("resume", "--root", canonical_root)
             if tool_name == "continuity_inspect":
-                command = ["continuity", "inspect", "--root", canonical_root]
+                command = _cli_command("inspect", "--root", canonical_root)
             elif tool_name == "continuity_autorun":
                 if _write_binding_error(request_id, binding=binding):
                     continue
-                command = [
-                    "continuity",
+                command = _cli_command(
                     "autorun",
                     "--root",
                     canonical_root,
                     "--session-id",
                     "mcp-" + hashlib.sha256(canonical_root.encode()).hexdigest()[:32],
-                ]
+                )
             elif tool_name == "continuity_checkpoint":
                 action = arguments.get("action")
                 if action not in {"create", "verify"}:
@@ -621,13 +731,12 @@ def main() -> int:
                     request_id, binding=binding
                 ):
                     continue
-                command = [
-                    "continuity",
+                command = _cli_command(
                     "checkpoint",
                     action,
                     "--root",
                     canonical_root,
-                ]
+                )
             elif tool_name == "continuity_work_complete":
                 work_id = arguments.get("work_id")
                 claim_id = arguments.get("claim_id")
@@ -653,8 +762,7 @@ def main() -> int:
                     work_id=work_id,
                 ):
                     continue
-                command = [
-                    "continuity",
+                command = _cli_command(
                     "work",
                     "complete",
                     "--root",
@@ -665,7 +773,7 @@ def main() -> int:
                     claim_id,
                     "--actor-ref",
                     actor_ref,
-                ]
+                )
                 for evidence_file in evidence_files:
                     command.extend(["--evidence-file", evidence_file])
             elif tool_name == "continuity_work_transition":
@@ -712,8 +820,7 @@ def main() -> int:
                     successor_claim_id=values["successor_claim_id"],
                 ):
                     continue
-                command = [
-                    "continuity",
+                command = _cli_command(
                     "work",
                     "transition",
                     "--root",
@@ -734,7 +841,7 @@ def main() -> int:
                     values["workspace_root"],
                     "--expected-head",
                     values["expected_head"],
-                ]
+                )
                 for scope_ref in scopes:
                     command.extend(["--successor-scope", scope_ref])
                 if remaining_id is not None:
@@ -847,8 +954,7 @@ def main() -> int:
                     binding=binding,
                 ):
                     continue
-                command = [
-                    "continuity",
+                command = _cli_command(
                     "work",
                     "activate",
                     "--root",
@@ -863,7 +969,7 @@ def main() -> int:
                     arguments["claim_id"],
                     "--execution-class",
                     execution_class,
-                ]
+                )
                 for scope_ref in scope:
                     command.extend(["--scope", scope_ref])
                 if execution_class == "delivery":
@@ -921,8 +1027,7 @@ def main() -> int:
                     new_claim_id=new_claim_id,
                 ):
                     continue
-                command = [
-                    "continuity",
+                command = _cli_command(
                     "work",
                     "recover",
                     action,
@@ -934,16 +1039,69 @@ def main() -> int:
                     actor_ref,
                     "--lease-ttl-ms",
                     str(lease_ttl_ms),
-                ]
+                )
                 if action == "reclaim":
                     command.extend(["--new-claim-id", new_claim_id])
+            started = time.perf_counter()
             result = _run_cli_with_retry(command, requested_root)
+            duration_ms = (time.perf_counter() - started) * 1000
             results = [result]
             failed = any(item.returncode != 0 for item in results)
             output = [item.stdout or item.stderr for item in results]
             text = "\n".join(item.rstrip() for item in output if item.strip())
             if not text:
                 text = "operation failed" if failed else "operation completed"
+            if tool_name == "continuity_resume" and not failed:
+                resumed_binding = _binding_from_output(result.stdout)
+                if resumed_binding is None:
+                    failed = True
+                    text = "Continuity resume returned an invalid recovery envelope"
+                    session_roots.pop(root_key, None)
+                    session_bindings.pop(root_key, None)
+                else:
+                    session_roots[root_key] = requested_root
+                    session_bindings[root_key] = resumed_binding
+                    active_root = requested_root
+            probe_tool_name = tool_name
+            if tool_name == "continuity_checkpoint":
+                probe_tool_name = f"{tool_name}:{arguments.get('action')}"
+            request_bytes = len(
+                json.dumps(
+                    arguments,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                ).encode("utf-8")
+            )
+            response_bytes = len(text.encode("utf-8"))
+            probe.record_call(
+                probe_tool_name,
+                duration_ms=duration_ms,
+                success=not failed,
+                request_bytes=request_bytes,
+                response_bytes=response_bytes,
+            )
+            if tool_name == "continuity_resume" and probe.enabled:
+                probe.boundary(
+                    "resume",
+                    success=not failed,
+                    duration_ms=duration_ms,
+                    extra={
+                        "packet_bytes": response_bytes if not failed else None,
+                        "duplicate_resumes": probe.duplicate_resumes,
+                    },
+                )
+            elif checkpoint_create or authority_write:
+                refresh_started = time.perf_counter()
+                refreshed_binding = _binding(requested_root)
+                probe.record_call(
+                    "continuity_binding_refresh",
+                    duration_ms=(time.perf_counter() - refresh_started) * 1000,
+                    success=refreshed_binding is not None,
+                )
+                if refreshed_binding is None:
+                    session_bindings.pop(root_key, None)
+                else:
+                    session_bindings[root_key] = refreshed_binding
             structured_content = None
             if not failed and tool_name in {"continuity_inspect", "continuity_resume"}:
                 text = _scoped_state_result_text(text)
@@ -965,6 +1123,8 @@ def main() -> int:
             )
         elif request_id is not None:
             _error(request_id, -32601, f"method not found: {method}")
+    close_probes()
+    atexit.unregister(close_probes)
     return 0
 
 

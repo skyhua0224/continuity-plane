@@ -38,6 +38,7 @@ from .local_state_bundle import (
     import_local_state,
     rollback_local_state,
 )
+from .light_observability import build_observation_report
 from .recovery_envelope import (
     RecoveryEnvelopeError,
     compose_recovery_envelope,
@@ -4058,6 +4059,19 @@ def _rollback_state(args: argparse.Namespace) -> int:
     return 0
 
 
+def _observe_report(args: argparse.Namespace) -> int:
+    root = Path(args.root).resolve()
+    _load_project(root)
+    data_root = Path(args.data_root).resolve() if args.data_root else None
+    report = build_observation_report(
+        root,
+        data_root=data_root,
+        session_limit=args.session_limit,
+    )
+    print(json.dumps(report, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="continuity")
     parser.add_argument("--version", action="version", version=VERSION)
@@ -4280,6 +4294,19 @@ def build_parser() -> argparse.ArgumentParser:
     )
     rollback.add_argument("--root", default=".")
     rollback.set_defaults(handler=_rollback_state)
+    observe = commands.add_parser(
+        "observe", help="inspect lightweight local observations"
+    )
+    observe_commands = observe.add_subparsers(
+        dest="observe_command", required=True
+    )
+    observe_report = observe_commands.add_parser(
+        "report", help="build a bounded offline tuning report"
+    )
+    observe_report.add_argument("--root", default=".")
+    observe_report.add_argument("--data-root", default=None)
+    observe_report.add_argument("--session-limit", type=int, default=20)
+    observe_report.set_defaults(handler=_observe_report)
     return parser
 
 
