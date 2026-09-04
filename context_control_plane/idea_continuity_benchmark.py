@@ -92,7 +92,7 @@ def build_idea_snapshot() -> dict[str, Any]:
                 "status": "active",
                 "expected_project_revision": 9,
                 "claimed_at": "2026-08-14T07:30:00+08:00",
-                    "lease_expires_at": "2026-08-14T12:00:00+08:00",
+                    "lease_expires_at": "2099-12-31T23:59:59+00:00",
                 "released_at": None,
                 "scope_owners": [
                     {"scope_kind": "capability", "scope_ref": "idea/active"}

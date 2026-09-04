@@ -1,6 +1,6 @@
 # Continuity Plane Status
 
-版本：revision 127  
+版本：revision 128  
 日期：2026-09-04  
 canonical plan：`MASTER.md`
 
@@ -20,10 +20,10 @@ canonical plan：`MASTER.md`
 |---|---|
 | 当前 Campaign | M11 零阻断收口 |
 | active work | M11-00：真实插件采用与旧线程原位恢复（🟡） |
-| next action | 发布并安装 alpha.11；随后继续 lookup matched A/B 与三项目回执 |
+| next action | 让新建 Session 载入 alpha.11；继续 lookup matched A/B 与三项目回执 |
 | hard blocker | Platform 与 ProjectCompute input-token gate 均未达 `30%` |
 | repository mode | internal development repository + fresh-history public mirror |
-| production state | alpha.11 candidate；observability、双语 changelog、search MCP 已准备；公共默认待 A/B |
+| production state | alpha.11 已发布并安装；GitHub CI/PyPI/插件均通过；公共默认待 A/B |
 
 ## 已验证摘要
 
@@ -31,7 +31,7 @@ canonical plan：`MASTER.md`
 |---|---|
 | Evidence index | [`docs/reports/verified-state.md`](docs/reports/verified-state.md) |
 | Verified campaigns | M0-M8 core 与 M9-01..07 见 Evidence index；M9-08..11 planned |
-| alpha.10 publication | GitHub/PyPI、42-commit public history、141-file mirror、wheel/sdist/3-plugin zip/`SHA256SUMS` 和 CI 通过 |
+| alpha.11 publication | GitHub `v0.1.0-alpha.11`、PyPI、43-commit public history、147-file mirror、wheel/sdist/plugin/`SHA256SUMS`、50 public tests 和 CI 通过 |
 | Coordination/views | shared Work、forge、notification、Project Graph、2,000-node Impact gates passed；authority violation `0` |
 | Release baseline | Linux/macOS/Windows native matrix `18/18`；local state bundle export/import/rollback available；public privacy scan `0` findings |
 | Documentation audit | README、USAGE、CHANGELOG、public docs、templates 与 policy 全文审阅；公开 Markdown 内部阶段标记 `0`，本地链接缺失 `0`，外部链接 `8/8` 可达；repository verification passed |
@@ -45,7 +45,7 @@ canonical plan：`MASTER.md`
 | M11 State-only | genesis `1/1`、proposal/checkpoint、可重试；State-only MCP/STATUS；stale Work 不注入；`134/134` |
 | M11 observability | bounded policy/retention/lock/cache/report `45/45`；不记录 transcript/source/tool body |
 | Repository gate | full `2082/2082` passed，`31` skipped；release focus `86/86`；public build `147` files |
-| Governance authority | `MASTER.md` revision 127 |
+| Governance authority | `MASTER.md` revision 128 |
 
 ## 恢复入口
 
