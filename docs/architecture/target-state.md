@@ -1,9 +1,9 @@
 # Context Control Plane Target-State Architecture
 
-版本：17  
-日期：2026-08-28  
+版本：18  
+日期：2026-09-04  
 状态：current architecture contract  
-governance authority：`MASTER.md` revision 118
+governance authority：`MASTER.md` revision 120
 
 ## 三文档默认投影
 
@@ -45,9 +45,9 @@ claim、lease 和 revision 独立裁决，切换项目不会复用另一项目�
 | `context.provider-integration` | `tiered-provider-adapters` | 默认 core adapter 仅加载 lifecycle hook 与 `<=512 B` startup projection，不注册 Skill、MCP 或命令门；auto compact 验证 checkpoint 后使用宿主原生续跑且零 packet 注入；bounded search 与 State 工具由独立可选 adapter 提供；成功的只读 inspect 直接终止恢复读取 | Codex core/search/state plugins；Claude 与其他 provider adapters | M4/M10/M11 |
 | `context.replay` | `checkpoint-canary-validator` | 压缩、切任务、换模型、崩溃后的确定性恢复门 | deterministic validator | M1/M5 |
 | `context.evidence` | `assertion-resolver` | 当前代码、标准、OS/软件官方文档的 version、validity 和 provenance | Git metadata、artifact store、`rg`、LSP、SCIP、RTFM | M6/M7 |
-| `context.code-intelligence` | `bounded-code-retrieval` | 精确搜索、受影响图、跨仓线索和 index freshness | `rg`、Zoekt、LSP、SCIP、CodeGraph | M6 |
+| `context.code-intelligence` | `bounded-code-retrieval` | 增量索引 Git tracked 文件的语言、符号位置和文件 hash；查询只返回有界 path/line 引用；索引是可丢弃候选，不授予 State 或 memory 权限 | `rg`、本地增量 index、Zoekt、LSP、SCIP、CodeGraph | M6/M11 |
 | `context.recall` | `candidate-memory-provider` | 提供偏好、历史讨论和时间性事实候选；权威提交权限为 0 | Hindsight / Mem0 / Graphiti SPI | M6 |
-| `context.information-access` | `bounded-information-plane` | 最小读取范围、artifact range、retrieval receipt 和 freshness；`continuity context search` 查询 Git tracked current worktree 并限制完整 JSON bytes，绑定 revision 与 file/line hash | State MCP、artifact store、Git worktree、索引、Recall SPI | M5/M6/M11 |
+| `context.information-access` | `bounded-information-plane` | 最小读取范围、artifact range、retrieval receipt 和 freshness；`continuity context search/lookup` 查询 Git tracked current worktree 并限制完整 JSON bytes，绑定 repository/index revision 与 file hash | State MCP、artifact store、Git worktree、增量索引、Recall SPI | M5/M6/M11 |
 | `context.adaptation` | `project-adaptation-loop` | 从已验证运行和明确纠正生成可审批、可回滚的 profile candidate；不得改变 active Work、claim、ownership、authorization、validator、evidence gate 或 effect 权限 | Typed State、OTel、A/B harness | M8-07 local/shadow contract verified；M10 production/profile migration |
 | `context.review` | `independent-reviewer` | 冲突检查、阶段 handoff 和承重证据复核；权威提交权限为 0 | 本地或外置模型 | M6/M7 |
 | `context.verification` | `continuous-integration-verifier` | push/PR 执行 test、compile、schema、projection、privacy、benchmark 和 secret gates；权威状态写权限为 0 | local verifier + Gitea Actions + Gitleaks | M0/M7/M8 |

@@ -336,6 +336,54 @@ The command reads only the Git-tracked current worktree and bounds the complete
 JSON receipt. The search plugin only prompts the Agent to prefer this command
 when the task matches.
 
+#### Incremental Code Index
+
+For large repositories, multiple Sessions, or another AI client that needs fast symbol lookup:
+
+```bash
+continuity context index --root .
+continuity context lookup --root . --query "Runtime" --max-results 20 --max-output-bytes 8192
+```
+
+`index` reads only Git-tracked files and stores file hashes, languages, and symbol locations in the
+user cache by default, outside the project. A second run reuses unchanged files; changing one file
+reparses one file. `lookup` returns short references with `repository_revision`, `index_revision`,
+and `file_sha256`, never source bodies. Any Agent can use the same contract through the CLI or API:
+
+```python
+from context_control_plane.code_index import lookup_code_index
+
+receipt = lookup_code_index(".", query="Runtime")
+```
+
+The index is a candidate-location layer and grants no State, memory, or side-effect authority.
+Verify the current worktree hash before opening source. A corrupt cache is treated as a miss and
+rebuilt, never as a reason to block project work.
+
+#### Incremental Code Index
+
+For large repositories, multiple Sessions, or another AI client that needs fast symbol lookup:
+
+```bash
+continuity context index --root .
+continuity context lookup --root . --query "Runtime" --max-results 20 --max-output-bytes 8192
+```
+
+`index` reads only Git-tracked files and stores file hashes, languages, and symbol locations in the
+user cache by default, outside the project. A second run reuses unchanged files; changing one file
+reparses one file. `lookup` returns short references with `repository_revision`, `index_revision`,
+and `file_sha256`, never source bodies. Any Agent can use the same contract through the CLI or API:
+
+```python
+from context_control_plane.code_index import lookup_code_index
+
+receipt = lookup_code_index(".", query="Runtime")
+```
+
+The index is a candidate-location layer and grants no State, memory, or side-effect authority.
+Verify the current worktree hash before opening source. A corrupt cache is treated as a miss and
+rebuilt, never as a reason to block project work.
+
 Install the advanced plugin only when Codex needs State tools:
 
 ```bash

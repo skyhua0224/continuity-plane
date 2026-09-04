@@ -34,6 +34,28 @@ Install the search plugin separately for bounded current-worktree lookup in larg
 codex plugin add continuity-plane-search@continuity-plane
 ```
 
+For symbol-oriented lookup, build and query the incremental index:
+
+```bash
+continuity context index --root .
+continuity context lookup --root . --query "build_runtime"
+```
+
+The index cache lives in the user cache directory by default, outside the project, so new
+Sessions and other AI clients can reuse it. Results contain only paths, line numbers, symbol
+kinds, and file hashes, never source bodies. Only changed files are reparsed.
+
+For symbol-oriented lookup, build and query the incremental index:
+
+```bash
+continuity context index --root .
+continuity context lookup --root . --query "build_runtime"
+```
+
+The index cache lives in the user cache directory by default, outside the project, so new
+Sessions and other AI clients can reuse it. Results contain only paths, line numbers, symbol
+kinds, and file hashes, never source bodies. Only changed files are reparsed.
+
 Install the advanced State plugin only when Codex must call resume, claim, checkpoint, or atomic
 Work transition tools:
 
@@ -114,6 +136,12 @@ These are scenario-level results from matched tasks and current fixtures, not on
 universal savings percentage. User tokens, useful window utilization, and accepted
 work between compactions are normalized by accepted Work and measured only when
 host traces expose the required signals. [Full methods and limitations](public/docs/benchmarks.en.md).
+
+The code index is a candidate-location layer; it does not replace current source, tests, or
+authoritative Typed State validation.
+
+The code index is a candidate-location layer; it does not replace current source, tests, or
+authoritative Typed State validation.
 
 ## Architecture At A Glance
 

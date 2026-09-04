@@ -24,6 +24,7 @@ import yaml
 
 from .artifact_store import ArtifactRef, LocalArtifactStore
 from .bounded_code_search import bounded_git_search
+from .code_index import build_code_index, lookup_code_index
 from .checkpoint import (
     CheckpointError,
     CheckpointStaleError,
@@ -449,6 +450,28 @@ def _context_search(args: argparse.Namespace) -> int:
     receipt = bounded_git_search(
         Path(args.root),
         query=args.query,
+        max_results=args.max_results,
+        max_output_bytes=args.max_output_bytes,
+    )
+    print(json.dumps(receipt, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def _context_index(args: argparse.Namespace) -> int:
+    receipt = build_code_index(
+        Path(args.root),
+        cache_path=args.cache_path,
+        max_files=args.max_files,
+    )
+    print(json.dumps(receipt, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def _context_lookup(args: argparse.Namespace) -> int:
+    receipt = lookup_code_index(
+        Path(args.root),
+        query=args.query,
+        cache_path=args.cache_path,
         max_results=args.max_results,
         max_output_bytes=args.max_output_bytes,
     )
@@ -3968,6 +3991,22 @@ def build_parser() -> argparse.ArgumentParser:
     context_search.add_argument("--max-results", type=int, default=40)
     context_search.add_argument("--max-output-bytes", type=int, default=8192)
     context_search.set_defaults(handler=_context_search)
+    context_index = context_commands.add_parser(
+        "index", help="incrementally index tracked code symbols into user-local cache"
+    )
+    context_index.add_argument("--root", default=".")
+    context_index.add_argument("--cache-path", default=None)
+    context_index.add_argument("--max-files", type=int, default=50_000)
+    context_index.set_defaults(handler=_context_index)
+    context_lookup = context_commands.add_parser(
+        "lookup", help="return bounded symbol and path references from the local code index"
+    )
+    context_lookup.add_argument("--root", default=".")
+    context_lookup.add_argument("--cache-path", default=None)
+    context_lookup.add_argument("--query", required=True)
+    context_lookup.add_argument("--max-results", type=int, default=20)
+    context_lookup.add_argument("--max-output-bytes", type=int, default=8192)
+    context_lookup.set_defaults(handler=_context_lookup)
     attach = commands.add_parser("attach", help="attach existing governance documents")
     attach_commands = attach.add_subparsers(dest="attach_command", required=True)
     plan = attach_commands.add_parser("plan", help="create a candidate import proposal")

@@ -32,6 +32,26 @@ codex plugin add continuity-plane@continuity-plane
 codex plugin add continuity-plane-search@continuity-plane
 ```
 
+符号、类或函数定位可以建立增量索引：
+
+```bash
+continuity context index --root .
+continuity context lookup --root . --query "build_runtime"
+```
+
+索引缓存默认保存在用户缓存目录，不写入项目；新 Session 或其他 AI 可复用它。返回值只有
+路径、行号、符号类型和文件 hash，不包含源码正文。源码变化后只重新解析变化文件。
+
+符号、类或函数定位可以建立增量索引：
+
+```bash
+continuity context index --root .
+continuity context lookup --root . --query "build_runtime"
+```
+
+索引缓存默认保存在用户缓存目录，不写入项目；新 Session 或其他 AI 可复用它。返回值只有
+路径、行号、符号类型和文件 hash，不包含源码正文。源码变化后只重新解析变化文件。
+
 只有明确需要在 Codex 中调用 resume、claim、checkpoint 或原子 Work transition 时，
 才安装 advanced State plugin：
 
@@ -108,6 +128,10 @@ continuity init --root /path/to/team-repo --project-id team-project --display-na
 这些是匹配任务和当前 fixture 的场景级结果，不能合成为所有用户的统一节省率。
 用户 token、窗口有效利用率和两次压缩之间的有效工作量，按 accepted Work 归一化，
 并在 host trace 可见时计量。[完整方法和限制](public/docs/benchmarks.md)。
+
+代码索引是候选定位层；它不替代当前源码、测试或 Typed State 的权威验证。
+
+代码索引是候选定位层；它不替代当前源码、测试或 Typed State 的权威验证。
 
 ## 架构概览
 

@@ -292,6 +292,52 @@ continuity context search --root . --query "Runtime" --max-results 40 --max-outp
 该命令只读取 Git tracked current worktree，完整 JSON receipt 不超过指定字节预算；
 search plugin 只负责在适用任务中提示 Agent 优先调用该命令。
 
+#### 增量代码索引
+
+适合大型仓库、多个 Session 或需要让其他 AI 快速定位符号的场景：
+
+```bash
+continuity context index --root .
+continuity context lookup --root . --query "Runtime" --max-results 20 --max-output-bytes 8192
+```
+
+`index` 只读取 Git tracked 文件，把文件 hash、语言和符号位置写入用户缓存目录；默认不写
+项目目录。第二次执行会复用未变化文件，修改一个文件只重新解析一个文件。`lookup` 返回
+带 `repository_revision`、`index_revision` 和 `file_sha256` 的短引用，不返回源码正文。
+任何 Agent 都可以通过 CLI 或 Python API 使用同一合同：
+
+```python
+from context_control_plane.code_index import lookup_code_index
+
+receipt = lookup_code_index(".", query="Runtime")
+```
+
+索引是候选定位，不授予 State、memory 或副作用权限；展开源码前仍需按返回的 hash 验证
+当前工作树。缓存损坏时会被当作未命中并重建，不会阻断项目工作。
+
+#### 增量代码索引
+
+适合大型仓库、多个 Session 或需要让其他 AI 快速定位符号的场景：
+
+```bash
+continuity context index --root .
+continuity context lookup --root . --query "Runtime" --max-results 20 --max-output-bytes 8192
+```
+
+`index` 只读取 Git tracked 文件，把文件 hash、语言和符号位置写入用户缓存目录；默认不写
+项目目录。第二次执行会复用未变化文件，修改一个文件只重新解析一个文件。`lookup` 返回
+带 `repository_revision`、`index_revision` 和 `file_sha256` 的短引用，不返回源码正文。
+任何 Agent 都可以通过 CLI 或 Python API 使用同一合同：
+
+```python
+from context_control_plane.code_index import lookup_code_index
+
+receipt = lookup_code_index(".", query="Runtime")
+```
+
+索引是候选定位，不授予 State、memory 或副作用权限；展开源码前仍需按返回的 hash 验证
+当前工作树。缓存损坏时会被当作未命中并重建，不会阻断项目工作。
+
 需要在 Codex 内调用 State 工具时额外安装：
 
 ```bash

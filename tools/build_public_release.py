@@ -87,6 +87,7 @@ _PUBLIC_MODULE_ROOTS = {
     "__init__",
     "artifact_store",
     "checkpoint",
+    "code_index",
     "cli",
     "codex_mcp_server",
     "collaboration_notifications",
