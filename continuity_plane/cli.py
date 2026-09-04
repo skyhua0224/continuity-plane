@@ -10,9 +10,11 @@ import io
 import json
 import os
 import re
+import shutil
 import sqlite3
 import subprocess
 import sys
+import tomllib
 import uuid
 from datetime import UTC, datetime, timedelta
 from importlib import resources
@@ -23,6 +25,7 @@ import yaml
 
 from .artifact_store import ArtifactRef, LocalArtifactStore
 from .bounded_code_search import bounded_git_search
+from .code_index import build_code_index, lookup_code_index
 from .checkpoint import (
     CheckpointError,
     CheckpointStaleError,
@@ -72,7 +75,7 @@ from .state_mcp import (
     StateMCPService,
 )
 
-VERSION = "0.1.0a10"
+VERSION = "0.1.0a11"
 _PROJECT_FIELDS = {
     "schema_version",
     "project_id",
@@ -254,7 +257,7 @@ def _state_service(
     )
 
 
-def _init(args: argparse.Namespace) -> int:
+def _initialize_new_project(args: argparse.Namespace) -> int:
     root = Path(args.root).resolve()
     if _ID_RE.fullmatch(args.project_id) is None:
         raise ValueError("project-id must be a lowercase bounded identifier")
@@ -289,6 +292,66 @@ def _init(args: argparse.Namespace) -> int:
     store = SQLiteStateStore(_state_file(root, project))
     store.initialize()
     store.create_project(_initial_state(args.project_id))
+    created_at = datetime.now(UTC).isoformat()
+    proposal = build_attach_proposal(
+        root=root,
+        project_id=args.project_id,
+        master_path=".continuity/MASTER.md",
+        status_path=".continuity/STATUS.md",
+        work_id="work-initial",
+        work_title="Define the first measurable outcome",
+        owner_ref="local-user",
+        scope_refs=[
+            {"scope_kind": "capability", "scope_ref": "project-governance"}
+        ],
+        created_at=created_at,
+    )
+    _write_json_atomic(target / "attach-proposal.json", proposal)
+
+    evidence = _build_attach_evidence(proposal, observed_at=created_at)
+    initial_work = copy.deepcopy(_initial_state(args.project_id)["works"][0])
+    initial_work["evidence_ids"] = [evidence["evidence_id"]]
+    initial_work["revision"] = 1
+    service = _state_service(
+        store,
+        authorizer=_LocalAttachAuthorizer(),
+        event_id_factory=lambda request_id: f"event-{request_id}",
+    )
+    request_id = f"init-{proposal['proposal_sha256'][:16]}"
+    committed = service.call_tool(
+        COMMIT_TOOL,
+        {
+            "schema_version": "context.state-mcp-request/v1alpha1",
+            "request_id": request_id,
+            "project_id": args.project_id,
+            "expected_revision": 0,
+            "causation_ref": f"init:{proposal['proposal_sha256']}",
+            "correlation_ref": f"project:{args.project_id}",
+            "supersedes_event_id": None,
+            "changes": [
+                {
+                    "collection": "evidence",
+                    "object_id": evidence["evidence_id"],
+                    "value": evidence,
+                },
+                {
+                    "collection": "works",
+                    "object_id": initial_work["work_id"],
+                    "value": initial_work,
+                },
+            ],
+        },
+        context=RequestContext("local-user", "local-attach-approved"),
+    )
+    if not committed["ok"]:
+        raise ValueError(committed["error"]["message"])
+    read_result = _read_state_result(store, args.project_id)
+    checkpoint_ref = publish_checkpoint(
+        read_result,
+        _checkpoint_store(root),
+        canonical_plan_sha256=_canonical_master_sha256(proposal),
+    )
+    _write_json_atomic(_checkpoint_ref_file(root), checkpoint_ref.to_document())
     print(
         json.dumps(
             {
@@ -303,6 +366,23 @@ def _init(args: argparse.Namespace) -> int:
     return 0
 
 
+def _init(args: argparse.Namespace) -> int:
+    root = Path(args.root).resolve()
+    target = root / ".continuity"
+    try:
+        target.mkdir(parents=True, exist_ok=False)
+    except FileExistsError as exc:
+        existing = next(iter(target.iterdir()), target) if target.is_dir() else target
+        raise FileExistsError(
+            f"initialization would overwrite: {existing}"
+        ) from exc
+    try:
+        return _initialize_new_project(args)
+    except BaseException:
+        shutil.rmtree(target, ignore_errors=True)
+        raise
+
+
 def _verify(args: argparse.Namespace) -> int:
     root = Path(args.root).resolve()
     project = _load_project(root)
@@ -315,24 +395,119 @@ def _verify(args: argparse.Namespace) -> int:
     return 0
 
 
+def _latest_codex_session_start(codex_home: Path) -> dict[str, Any] | None:
+    candidates = sorted(
+        codex_home.glob("plugins/data/continuity-plane*/live-events/*.jsonl"),
+        key=lambda path: path.stat().st_mtime_ns,
+        reverse=True,
+    )
+    for path in candidates:
+        try:
+            with path.open("rb") as stream:
+                stream.seek(max(0, path.stat().st_size - 64 * 1024))
+                lines = stream.read().splitlines()
+        except OSError:
+            continue
+        for line in reversed(lines):
+            try:
+                event = json.loads(line)
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                continue
+            if isinstance(event, dict) and event.get("event_type") == "session-start":
+                return event
+    return None
+
+
+def _codex_plugin_status(codex_home: Path) -> dict[str, Any]:
+    try:
+        config = tomllib.loads(
+            (codex_home / "config.toml").read_text(encoding="utf-8")
+        )
+    except (OSError, UnicodeError, tomllib.TOMLDecodeError):
+        config = {}
+    plugins = config.get("plugins")
+    plugins = plugins if isinstance(plugins, dict) else {}
+
+    def enabled(plugin_id: str) -> bool:
+        value = plugins.get(plugin_id)
+        return isinstance(value, dict) and value.get("enabled") is True
+
+    def mcp_auto_approved(plugin_id: str, server_id: str) -> bool:
+        plugin = plugins.get(plugin_id)
+        plugin = plugin if isinstance(plugin, dict) else {}
+        servers = plugin.get("mcp_servers")
+        servers = servers if isinstance(servers, dict) else {}
+        server = servers.get(server_id)
+        server = server if isinstance(server, dict) else {}
+        return (
+            server.get("enabled") is True
+            and server.get("default_tools_approval_mode") == "approve"
+        )
+
+    state_id = "continuity-plane-state@continuity-plane"
+    search_id = "continuity-plane-search@continuity-plane"
+    state_mcp_auto_approved = mcp_auto_approved(state_id, "continuity")
+    search_mcp_auto_approved = mcp_auto_approved(
+        search_id, "continuity-search"
+    )
+    hooks = config.get("hooks")
+    hooks = hooks if isinstance(hooks, dict) else {}
+    hook_state = hooks.get("state")
+    hook_state = hook_state if isinstance(hook_state, dict) else {}
+    trusted_hooks = sum(
+        isinstance(key, str)
+        and key.startswith("continuity-plane@continuity-plane:")
+        and isinstance(value, dict)
+        and isinstance(value.get("trusted_hash"), str)
+        for key, value in hook_state.items()
+    )
+    event = _latest_codex_session_start(codex_home)
+    session_start_observed = event is not None and event.get("plugin_loaded") is True
+    core_enabled = enabled("continuity-plane@continuity-plane")
+    state_enabled = enabled(state_id)
+    search_enabled = enabled(search_id)
+    configured = (
+        core_enabled
+        and (not state_enabled or state_mcp_auto_approved)
+        and (not search_enabled or search_mcp_auto_approved)
+    )
+    ready = configured and trusted_hooks >= 3
+    status = "active" if ready and session_start_observed else "configured" if ready else "misconfigured"
+    return {
+        "status": status,
+        "core_enabled": core_enabled,
+        "search_enabled": search_enabled,
+        "state_enabled": state_enabled,
+        "mcp_auto_approved": state_mcp_auto_approved,
+        "search_mcp_auto_approved": search_mcp_auto_approved,
+        "trusted_hooks": trusted_hooks,
+        "expected_hooks": 3,
+        "session_start_observed": session_start_observed,
+        "last_session_start_success": (
+            event.get("success") is True if event is not None else None
+        ),
+        "last_observed_at": event.get("observed_at") if event is not None else None,
+    }
+
+
 def _doctor(args: argparse.Namespace) -> int:
     root = Path(args.root).resolve()
     project = _load_project(root)
     _open_state_store(root, project)
     sqlite_version = sqlite3.sqlite_version
-    print(
-        json.dumps(
-            {
-                "status": "ready",
-                "project_id": project["project_id"],
-                "python": sys.version.split()[0],
-                "sqlite": sqlite_version,
-                "runtime_profile": project["runtime_profile"],
-                "external_services_required": 0,
-            },
-            sort_keys=True,
+    response = {
+        "status": "ready",
+        "project_id": project["project_id"],
+        "python": sys.version.split()[0],
+        "sqlite": sqlite_version,
+        "runtime_profile": project["runtime_profile"],
+        "external_services_required": 0,
+    }
+    if args.codex_home is not None:
+        response["codex_plugin"] = _codex_plugin_status(
+            Path(args.codex_home).expanduser().resolve()
         )
-    )
+    print(json.dumps(response, sort_keys=True))
     return 0
 
 
@@ -371,6 +546,28 @@ def _context_search(args: argparse.Namespace) -> int:
     receipt = bounded_git_search(
         Path(args.root),
         query=args.query,
+        max_results=args.max_results,
+        max_output_bytes=args.max_output_bytes,
+    )
+    print(json.dumps(receipt, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def _context_index(args: argparse.Namespace) -> int:
+    receipt = build_code_index(
+        Path(args.root),
+        cache_path=args.cache_path,
+        max_files=args.max_files,
+    )
+    print(json.dumps(receipt, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def _context_lookup(args: argparse.Namespace) -> int:
+    receipt = lookup_code_index(
+        Path(args.root),
+        query=args.query,
+        cache_path=args.cache_path,
         max_results=args.max_results,
         max_output_bytes=args.max_output_bytes,
     )
@@ -938,7 +1135,19 @@ def _attach_approve(args: argparse.Namespace) -> int:
         clock=lambda: now_text,
         event_id_factory=lambda request: f"event-{request}",
     )
-    if current["project"]["revision"] != 0:
+    initial_candidates = [
+        item for item in current["works"] if item["work_id"] == "work-initial"
+    ]
+    unattached_baseline = (
+        current["project"]["revision"] in {0, 1}
+        and current["project"]["active_work_ids"] == []
+        and current["project"]["primary_work_id"] is None
+        and current["claims"] == []
+        and len(current["works"]) == 1
+        and len(initial_candidates) == 1
+        and initial_candidates[0]["status"] == "proposed"
+    )
+    if not unattached_baseline:
         imported = next(
             (
                 item
@@ -1029,7 +1238,7 @@ def _attach_approve(args: argparse.Namespace) -> int:
     )
     initial_work = copy.deepcopy(initial_work)
     initial_work["status"] = "rejected"
-    initial_work["revision"] = 1
+    initial_work["revision"] += 1
     work = {
         "work_id": proposal["work"]["work_id"],
         "kind": "work",
@@ -1051,7 +1260,7 @@ def _attach_approve(args: argparse.Namespace) -> int:
         "schema_version": "context.state-mcp-request/v1alpha1",
         "request_id": request_id,
         "project_id": project["project_id"],
-        "expected_revision": 0,
+        "expected_revision": current["project"]["revision"],
         "causation_ref": f"attach:{proposal['proposal_sha256']}",
         "correlation_ref": f"project:{project['project_id']}",
         "supersedes_event_id": None,
@@ -1068,7 +1277,7 @@ def _attach_approve(args: argparse.Namespace) -> int:
         "schema_version": "context.state-mcp-request/v1alpha1",
         "request_id": f"{request_id}-claim",
         "project_id": project["project_id"],
-        "expected_revision": 1,
+        "expected_revision": committed["result"]["revision"],
         "work_id": work["work_id"],
         "claim_id": args.claim_id,
         "scope_owners": copy.deepcopy(work["scope_refs"]),
@@ -1098,6 +1307,7 @@ def _attach_approve(args: argparse.Namespace) -> int:
 
 def _resume(args: argparse.Namespace) -> int:
     root = Path(args.root).resolve()
+    persist = getattr(args, "persist", True)
     project = _load_project(root)
     proposal_path = root / ".continuity/attach-proposal.json"
     try:
@@ -1165,6 +1375,8 @@ def _resume(args: argparse.Namespace) -> int:
             expected_registry_digest=read_result["registry_digest"],
         )
     except CheckpointStaleError as exc:
+        if not persist:
+            raise ValueError("inspect requires a current verified checkpoint") from exc
         if not idle or not source_fresh:
             raise ValueError(str(exc)) from exc
         checkpoint_ref = publish_checkpoint(
@@ -1280,14 +1492,26 @@ def _resume(args: argparse.Namespace) -> int:
         interaction_cursor=interaction_cursor,
         skill_lock=skill_lock,
     )
-    path = root / ".continuity/resume-packet.json"
-    _write_json_atomic(path, packet)
-    try:
-        _ensure_status_projection(root, packet)
-    except (OSError, ValueError) as exc:
-        raise ValueError("status projection refresh failed") from exc
+    if persist:
+        path = root / ".continuity/resume-packet.json"
+        _write_json_atomic(path, packet)
+        try:
+            _ensure_status_projection(root, packet)
+        except (OSError, ValueError) as exc:
+            raise ValueError("status projection refresh failed") from exc
     print(json.dumps(packet, ensure_ascii=False, sort_keys=True))
     return 0
+
+
+def _inspect(args: argparse.Namespace) -> int:
+    return _resume(
+        argparse.Namespace(
+            root=args.root,
+            interaction_cursor=None,
+            skill_lock=None,
+            persist=False,
+        )
+    )
 
 
 def _capture_json_handler(handler: Any, args: argparse.Namespace) -> dict[str, Any]:
@@ -3952,6 +4176,7 @@ def build_parser() -> argparse.ArgumentParser:
     verify.set_defaults(handler=_verify)
     doctor = commands.add_parser("doctor", help="check local runtime prerequisites")
     doctor.add_argument("--root", default=".")
+    doctor.add_argument("--codex-home", default=None)
     doctor.set_defaults(handler=_doctor)
     state = commands.add_parser("state", help="read local authoritative state")
     state_commands = state.add_subparsers(dest="state_command", required=True)
@@ -3975,6 +4200,22 @@ def build_parser() -> argparse.ArgumentParser:
     context_search.add_argument("--max-results", type=int, default=40)
     context_search.add_argument("--max-output-bytes", type=int, default=8192)
     context_search.set_defaults(handler=_context_search)
+    context_index = context_commands.add_parser(
+        "index", help="incrementally index tracked code symbols into user-local cache"
+    )
+    context_index.add_argument("--root", default=".")
+    context_index.add_argument("--cache-path", default=None)
+    context_index.add_argument("--max-files", type=int, default=50_000)
+    context_index.set_defaults(handler=_context_index)
+    context_lookup = context_commands.add_parser(
+        "lookup", help="return bounded symbol and path references from the local code index"
+    )
+    context_lookup.add_argument("--root", default=".")
+    context_lookup.add_argument("--cache-path", default=None)
+    context_lookup.add_argument("--query", required=True)
+    context_lookup.add_argument("--max-results", type=int, default=20)
+    context_lookup.add_argument("--max-output-bytes", type=int, default=8192)
+    context_lookup.set_defaults(handler=_context_lookup)
     attach = commands.add_parser("attach", help="attach existing governance documents")
     attach_commands = attach.add_subparsers(dest="attach_command", required=True)
     plan = attach_commands.add_parser("plan", help="create a candidate import proposal")
@@ -4003,6 +4244,11 @@ def build_parser() -> argparse.ArgumentParser:
     resume.add_argument("--interaction-cursor", default=None)
     resume.add_argument("--skill-lock", default=None)
     resume.set_defaults(handler=_resume)
+    inspect = commands.add_parser(
+        "inspect", help="read the bounded packet without binding or writing projections"
+    )
+    inspect.add_argument("--root", default=".")
+    inspect.set_defaults(handler=_inspect)
     autorun = commands.add_parser(
         "autorun", help="continue the current Work from a verified checkpoint"
     )
@@ -4138,8 +4384,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     rollback.add_argument("--root", default=".")
     rollback.set_defaults(handler=_rollback_state)
-    observe = commands.add_parser("observe", help="inspect lightweight local observations")
-    observe_commands = observe.add_subparsers(dest="observe_command", required=True)
+    observe = commands.add_parser(
+        "observe", help="inspect lightweight local observations"
+    )
+    observe_commands = observe.add_subparsers(
+        dest="observe_command", required=True
+    )
     observe_report = observe_commands.add_parser(
         "report", help="build a bounded offline tuning report"
     )

@@ -1176,6 +1176,24 @@ class MCPProbeTests(unittest.TestCase):
             self.assertEqual(run_cli.call_count, 2)
             internal_binding.assert_not_called()
 
+    def test_alpha11_idle_sync_packets_never_grant_activation_authority(self) -> None:
+        for action in codex_mcp_server._STATE_SYNC_PENDING_ACTIONS:
+            with self.subTest(action=action):
+                envelope = json.loads(_stale_idle_envelope())
+                envelope["next_action"] = action
+                binding = codex_mcp_server._binding_from_output(json.dumps(envelope))
+                self.assertIsNotNone(binding)
+                stdout = StringIO()
+                with patch.object(codex_mcp_server.sys, "stdout", stdout):
+                    self.assertTrue(
+                        codex_mcp_server._write_activation_binding_error(1, binding=binding)
+                    )
+                self.assertEqual(json.loads(stdout.getvalue())["error"]["code"], -32002)
+                envelope["read_only"] = False
+                self.assertIsNone(
+                    codex_mcp_server._binding_from_output(json.dumps(envelope))
+                )
+
     def test_stale_idle_binding_allows_only_successor_source_rebind(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory)
@@ -1622,7 +1640,7 @@ class HookProbeTests(unittest.TestCase):
         with patch.object(codex_hook_launcher.sys, "argv", ["continuity-codex-hook"]):
             self.assertEqual(codex_hook_launcher.main(), 2)
 
-    def test_alpha10_core_and_state_plugin_ownership_remains_split(self) -> None:
+    def test_alpha11_core_search_and_state_plugin_ownership_remains_split(self) -> None:
         root = Path(__file__).parents[1]
         core = root / "plugins/continuity-plane"
         search = root / "plugins/continuity-plane-search"
@@ -1637,9 +1655,9 @@ class HookProbeTests(unittest.TestCase):
             (search / ".codex-plugin/plugin.json").read_text(encoding="utf-8")
         )
         self.assertNotIn("mcpServers", core_manifest)
-        self.assertNotIn("mcpServers", search_manifest)
+        self.assertIn("mcpServers", search_manifest)
         self.assertFalse((core / ".mcp.json").exists())
-        self.assertFalse((search / ".mcp.json").exists())
+        self.assertTrue((search / ".mcp.json").is_file())
         self.assertIn("mcpServers", state_manifest)
         self.assertTrue((state / ".mcp.json").is_file())
         self.assertFalse((core / "skills/continuity-plane-state").exists())

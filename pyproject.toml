@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "continuity-plane"
-version = "0.1.0a10"
+version = "0.1.0a11"
 description = "Durable task state, bounded context, evidence, and collaboration control for long-running AI-assisted work"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -36,6 +36,7 @@ dev = [
 continuity = "continuity_plane.cli:main"
 continuity-mcp = "continuity_plane.codex_mcp_server:main"
 continuity-codex-hook = "continuity_plane.codex_hook_launcher:main"
+continuity-search-mcp = "continuity_plane.context_mcp_server:main"
 
 [project.urls]
 Documentation = "https://github.com/skyhua0224/continuity-plane#readme"

@@ -21,21 +21,18 @@ from .light_observability import (
 
 
 def _cli_command(*arguments: str) -> list[str]:
-    """Run the CLI with the MCP server interpreter, independent of PATH."""
-
+    test_executable = os.environ.get("CONTINUITY_TEST_CLI_EXECUTABLE")
+    if test_executable:
+        return [test_executable, *arguments]
     return [sys.executable, "-m", "continuity_plane.cli", *arguments]
 
 
 def _effect_policy() -> str:
-    """Return the explicit strict mode or a non-blocking MCP default."""
-
     value = os.environ.get("CONTINUITY_EFFECT_POLICY", "auto").lower()
     return value if value in {"observe", "auto", "strict"} else "observe"
 
 
 def _load_session_probe(root: Path) -> SessionProbe:
-    """Load optional probes, degrading safely unless strict was explicit."""
-
     try:
         return SessionProbe(root, load_policy(root))
     except PolicyConfigError:
@@ -53,6 +50,23 @@ def _load_session_probe(root: Path) -> SessionProbe:
         return probe
 
 
+_READ_ONLY_ANNOTATIONS = {
+    "readOnlyHint": True,
+    "openWorldHint": False,
+    "destructiveHint": False,
+}
+_LOCAL_WRITE_ANNOTATIONS = {
+    "readOnlyHint": False,
+    "openWorldHint": False,
+    "destructiveHint": False,
+}
+_READ_ONLY_SCOPE_NOTE = "; ordinary project work remains allowed"
+_STATE_SYNC_PENDING_ACTIONS = {
+    "remain-read-only",
+    "continue-project-work-state-sync-pending",
+}
+
+
 def _reply(request_id: object, result: dict) -> None:
     print(json.dumps({"jsonrpc": "2.0", "id": request_id, "result": result}), flush=True)
 
@@ -63,6 +77,26 @@ def _error(request_id: object, code: int, message: str) -> None:
             {"jsonrpc": "2.0", "id": request_id, "error": {"code": code, "message": message}}
         ),
         flush=True,
+    )
+
+
+def _scoped_state_result_text(value: str) -> str:
+    try:
+        packet = json.loads(value)
+    except json.JSONDecodeError:
+        return value
+    if not isinstance(packet, dict) or packet.get("read_only") is not True:
+        return value
+    return json.dumps(
+        {
+            "continuity_state": packet,
+            "continuity_state_writes_ready": False,
+            "ordinary_project_work_allowed": True,
+            "project_next_action": "continue-ordinary-project-work",
+            "read_only_scope": "continuity-state",
+        },
+        ensure_ascii=False,
+        sort_keys=True,
     )
 
 
@@ -103,7 +137,11 @@ def _binding_from_output(output: str) -> dict | None:
             and envelope.get("checkpoint_verified") is True
             and envelope.get("lease_valid") is True
         )
-        if not fresh_activation and not stale_rebind:
+        pending_sync = (
+            next_action in _STATE_SYNC_PENDING_ACTIONS
+            and envelope.get("read_only") is True
+        )
+        if not fresh_activation and not stale_rebind and not pending_sync:
             return None
     return {
         "project_id": envelope.get("project_id"),
@@ -133,6 +171,15 @@ def _binding(root: Path) -> dict | None:
     if result.returncode != 0:
         return None
     return _binding_from_output(result.stdout)
+
+
+def _binding_is_writable(binding: dict) -> bool:
+    return (
+        not binding["read_only"]
+        and binding["source_fresh"]
+        and binding["checkpoint_verified"]
+        and binding["lease_valid"]
+    )
 
 
 def _requested_root(value: object, active_root: Path | None) -> Path | None:
@@ -186,17 +233,6 @@ def _run_cli_with_retry(command: list[str], root: Path) -> subprocess.CompletedP
     return last
 
 
-def _binding_is_writable(binding: dict) -> bool:
-    """Return whether a fresh binding may authorize an ordinary State write."""
-
-    return (
-        not binding["read_only"]
-        and binding["source_fresh"]
-        and binding["checkpoint_verified"]
-        and binding["lease_valid"]
-    )
-
-
 def _write_binding_error(
     request_id: object,
     *,
@@ -212,7 +248,7 @@ def _write_binding_error(
         _error(
             request_id,
             -32002,
-            "session binding is stale or read-only; write tools are disabled",
+            "Continuity State writes are not ready" + _READ_ONLY_SCOPE_NOTE,
         )
         return True
     if actor_ref is not None and actor_ref != binding["actor_ref"]:
@@ -244,7 +280,7 @@ def _write_transition_binding_error(
         _error(
             request_id,
             -32002,
-            "session binding is stale or read-only; write tools are disabled",
+            "Continuity State writes are not ready" + _READ_ONLY_SCOPE_NOTE,
         )
         return True
     if actor_ref != binding["actor_ref"]:
@@ -283,7 +319,7 @@ def _write_activation_binding_error(
         _error(
             request_id,
             -32002,
-            "session binding is stale or read-only; write tools are disabled",
+            "Continuity State writes are not ready" + _READ_ONLY_SCOPE_NOTE,
         )
         return True
     return False
@@ -316,13 +352,13 @@ def _claim_recovery_binding_error(
                 not binding["source_fresh"]
                 and binding["checkpoint_verified"]
                 and binding["lease_valid"]
-                and binding["next_action"] == "remain-read-only"
+                and binding["next_action"] in _STATE_SYNC_PENDING_ACTIONS
             )
             if not stale_source_recovery:
                 _error(
                     request_id,
                     -32002,
-                    "read-only heartbeat requires only a stale canonical source with a valid bound claim and verified checkpoint",
+                    "State writes are not ready; heartbeat recovery requires a stale canonical source with a valid bound claim and verified checkpoint" + _READ_ONLY_SCOPE_NOTE,
                 )
                 return True
         return False
@@ -332,13 +368,13 @@ def _claim_recovery_binding_error(
             and new_claim_id != claim_id
             and binding["checkpoint_verified"]
             and not binding["lease_valid"]
-            and binding["next_action"] == "remain-read-only"
+            and binding["next_action"] in _STATE_SYNC_PENDING_ACTIONS
         )
         if not expired_reclaim:
             _error(
                 request_id,
                 -32002,
-                "read-only session allows only recovery of its expired bound claim",
+                "State writes are not ready; only the expired bound claim can be recovered" + _READ_ONLY_SCOPE_NOTE,
             )
             return True
         return False
@@ -389,7 +425,7 @@ def main() -> int:
                         "protocolVersion", "2024-11-05"
                     ),
                     "capabilities": {"tools": {}},
-                    "serverInfo": {"name": "continuity", "version": "0.1.0-alpha.10"},
+                    "serverInfo": {"name": "continuity", "version": "0.1.0-alpha.11"},
                 },
             )
         elif method == "notifications/initialized":
@@ -400,8 +436,20 @@ def main() -> int:
                 {
                     "tools": [
                         {
+                            "name": "continuity_inspect",
+                            "description": "只读检查当前有界恢复状态，不建立写绑定或刷新投影 / Read bounded continuity state without binding writes or refreshing projections.",
+                            "annotations": _READ_ONLY_ANNOTATIONS,
+                            "inputSchema": {
+                                "type": "object",
+                                "additionalProperties": False,
+                                "required": ["root"],
+                                "properties": {"root": {"type": "string", "minLength": 1}},
+                            },
+                        },
+                        {
                             "name": "continuity_resume",
                             "description": "读取有界恢复包并绑定本 MCP Session 的项目根；全局插件首次调用需传绝对路径 / Read the bounded packet and bind this MCP session to the project root; use an absolute path for the first global-plugin call.",
+                            "annotations": _LOCAL_WRITE_ANNOTATIONS,
                             "inputSchema": {
                                 "type": "object",
                                 "additionalProperties": False,
@@ -412,6 +460,7 @@ def main() -> int:
                         {
                             "name": "continuity_autorun",
                             "description": "从已验证 checkpoint 继续当前 Work；同一 checkpoint 幂等，lease 临近或过期时按受控路径续租或换签 / Continue the current Work from a verified checkpoint; idempotent per checkpoint with controlled heartbeat or reclaim.",
+                            "annotations": _LOCAL_WRITE_ANNOTATIONS,
                             "inputSchema": {
                                 "type": "object",
                                 "additionalProperties": False,
@@ -422,6 +471,7 @@ def main() -> int:
                         {
                             "name": "continuity_checkpoint",
                             "description": "创建或验证 immutable checkpoint；本 MCP Session 须先调用 continuity_resume / Create or verify a checkpoint after continuity_resume binds this MCP session.",
+                            "annotations": _LOCAL_WRITE_ANNOTATIONS,
                             "inputSchema": {
                                 "type": "object",
                                 "additionalProperties": False,
@@ -435,6 +485,7 @@ def main() -> int:
                         {
                             "name": "continuity_work_complete",
                             "description": "用 checkpoint-bound evidence 完成 Work 并释放 claim；须先调用 continuity_resume / Complete Work and release its claim after continuity_resume binds this MCP session.",
+                            "annotations": _LOCAL_WRITE_ANNOTATIONS,
                             "inputSchema": {
                                 "type": "object",
                                 "additionalProperties": False,
@@ -462,6 +513,7 @@ def main() -> int:
                         {
                             "name": "continuity_work_transition",
                             "description": "完成当前依赖 Work，并在单一 State 事件中释放 claim、解析依赖 blocker、激活预声明 return point、签发新 claim 和刷新 checkpoint / Complete the active dependency and atomically return to its predeclared Work with a fresh claim and checkpoint.",
+                            "annotations": _LOCAL_WRITE_ANNOTATIONS,
                             "inputSchema": {
                                 "type": "object",
                                 "additionalProperties": False,
@@ -512,6 +564,7 @@ def main() -> int:
                         {
                             "name": "continuity_work_activate",
                             "description": "添加并认领下一个 source-bound Work；须先调用 continuity_resume / Add and claim the next Work after continuity_resume binds this MCP session.",
+                            "annotations": _LOCAL_WRITE_ANNOTATIONS,
                             "inputSchema": {
                                 "type": "object",
                                 "additionalProperties": False,
@@ -573,7 +626,8 @@ def main() -> int:
                         },
                         {
                             "name": "continuity_claim_recover",
-                            "description": "续租或恢复 claim，并在同一调用内受控刷新已变更的 canonical source 与 checkpoint；任一步失败均保持只读 / Heartbeat or reclaim and, when narrowly authorized, refresh changed canonical sources and the checkpoint in one call.",
+                            "description": "续租或恢复 claim，并在同一调用内受控刷新已变更的 canonical source 与 checkpoint；失败时仅 State 同步待恢复，普通项目工作继续 / Heartbeat or reclaim and, when narrowly authorized, refresh changed canonical sources and the checkpoint in one call; failure never blocks ordinary project work.",
+                            "annotations": _LOCAL_WRITE_ANNOTATIONS,
                             "inputSchema": {
                                 "type": "object",
                                 "additionalProperties": False,
@@ -607,6 +661,7 @@ def main() -> int:
                 continue
             tool_name = params.get("name")
             if tool_name not in {
+                "continuity_inspect",
                 "continuity_resume",
                 "continuity_autorun",
                 "continuity_checkpoint",
@@ -630,7 +685,7 @@ def main() -> int:
                 _error(request_id, -32000, "root does not match this MCP session project")
                 continue
             root_key = str(requested_root)
-            if tool_name != "continuity_resume" and root_key not in session_roots:
+            if tool_name not in {"continuity_inspect", "continuity_resume"} and root_key not in session_roots:
                 _error(
                     request_id,
                     -32001,
@@ -647,12 +702,12 @@ def main() -> int:
                 _error(
                     request_id,
                     -32004,
-                    "Continuity policy is invalid; this MCP session remains read-only",
+                    "Continuity policy is invalid; State tools are unavailable but ordinary project work remains allowed",
                 )
                 continue
             binding = (
                 None
-                if tool_name == "continuity_resume"
+                if tool_name in {"continuity_inspect", "continuity_resume"}
                 else session_bindings.get(root_key)
             )
             checkpoint_create = (
@@ -669,10 +724,9 @@ def main() -> int:
             if checkpoint_create or authority_write:
                 refresh_started = time.perf_counter()
                 binding = _binding(requested_root)
-                refresh_duration_ms = (time.perf_counter() - refresh_started) * 1000
                 probe.record_call(
                     "continuity_binding_refresh",
-                    duration_ms=refresh_duration_ms,
+                    duration_ms=(time.perf_counter() - refresh_started) * 1000,
                     success=binding is not None,
                 )
                 if binding is None:
@@ -680,7 +734,9 @@ def main() -> int:
                 else:
                     session_bindings[root_key] = binding
             command = _cli_command("resume", "--root", canonical_root)
-            if tool_name == "continuity_autorun":
+            if tool_name == "continuity_inspect":
+                command = _cli_command("inspect", "--root", canonical_root)
+            elif tool_name == "continuity_autorun":
                 if _write_binding_error(request_id, binding=binding):
                     continue
                 command = _cli_command(
@@ -1034,9 +1090,11 @@ def main() -> int:
             if tool_name == "continuity_checkpoint":
                 probe_tool_name = f"{tool_name}:{arguments.get('action')}"
             request_bytes = len(
-                json.dumps(arguments, ensure_ascii=False, separators=(",", ":")).encode(
-                    "utf-8"
-                )
+                json.dumps(
+                    arguments,
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                ).encode("utf-8")
             )
             response_bytes = len(text.encode("utf-8"))
             probe.record_call(
@@ -1056,31 +1114,36 @@ def main() -> int:
                         "duplicate_resumes": probe.duplicate_resumes,
                     },
                 )
-            elif checkpoint_create or tool_name in {
-                "continuity_autorun",
-                "continuity_work_complete",
-                "continuity_work_transition",
-                "continuity_work_activate",
-                "continuity_claim_recover",
-            }:
+            elif checkpoint_create or authority_write:
                 refresh_started = time.perf_counter()
                 refreshed_binding = _binding(requested_root)
-                refresh_duration_ms = (time.perf_counter() - refresh_started) * 1000
                 probe.record_call(
                     "continuity_binding_refresh",
-                    duration_ms=refresh_duration_ms,
+                    duration_ms=(time.perf_counter() - refresh_started) * 1000,
                     success=refreshed_binding is not None,
                 )
                 if refreshed_binding is None:
                     session_bindings.pop(root_key, None)
                 else:
                     session_bindings[root_key] = refreshed_binding
+            structured_content = None
+            if not failed and tool_name in {"continuity_inspect", "continuity_resume"}:
+                text = _scoped_state_result_text(text)
+                try:
+                    candidate = json.loads(text)
+                except json.JSONDecodeError:
+                    candidate = None
+                if isinstance(candidate, dict) and "read_only_scope" in candidate:
+                    structured_content = candidate
+            result_payload = {
+                "content": [{"type": "text", "text": text}],
+                "isError": failed,
+            }
+            if structured_content is not None:
+                result_payload["structuredContent"] = structured_content
             _reply(
                 request_id,
-                {
-                    "content": [{"type": "text", "text": text}],
-                    "isError": failed,
-                },
+                result_payload,
             )
         elif request_id is not None:
             _error(request_id, -32601, f"method not found: {method}")

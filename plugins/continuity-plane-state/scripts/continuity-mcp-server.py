@@ -1,16 +1,10 @@
 #!/usr/bin/env python3
-"""Forward the State plugin launcher to the canonical packaged MCP server."""
-
+"""Forward the State plugin launcher to the canonical package server."""
 import sys
 from pathlib import Path
-
-
-_RELEASE_ROOT = Path(__file__).resolve().parents[3]
-if (_RELEASE_ROOT / "continuity_plane" / "codex_mcp_server.py").is_file():
-    sys.path.insert(0, str(_RELEASE_ROOT))
-
+for package_root in Path(__file__).resolve().parents:
+    if any((package_root / name).is_dir() for name in ("continuity_plane", "continuity_plane")):
+        sys.path.insert(0, str(package_root)); break
 from continuity_plane.codex_mcp_server import main  # noqa: E402
-
-
 if __name__ == "__main__":
     raise SystemExit(main())

@@ -14,7 +14,7 @@ after compaction, task switches, crashes, and handoffs is deterministic.
 Install one CLI first:
 
 ```bash
-python -m pip install continuity-plane==0.1.0a10
+python -m pip install continuity-plane==0.1.0a11
 ```
 
 ### Codex plugin (optional)
@@ -24,7 +24,7 @@ lightweight core for bounded recovery and checkpoint lifecycle. It registers no 
 and does not block ordinary development commands:
 
 ```bash
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.10
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.11
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -34,6 +34,16 @@ Install the search plugin separately for bounded current-worktree lookup in larg
 codex plugin add continuity-plane-search@continuity-plane
 ```
 
+For symbol-oriented lookup, build and query the incremental index:
+
+```bash
+continuity context index --root .
+continuity context lookup --root . --query "build_runtime"
+```
+
+The index cache lives outside the project, so new Sessions and other AI clients can reuse it.
+Results contain paths, lines, symbols, and file hashes; only changed files are reparsed.
+
 Install the advanced State plugin only when Codex must call resume, claim, checkpoint, or atomic
 Work transition tools:
 
@@ -41,8 +51,19 @@ Work transition tools:
 codex plugin add continuity-plane-state@continuity-plane
 ```
 
-Start a new Session after installation. Authoritative state remains managed by the local
-CLI/State MCP.
+The search plugin exposes one `continuity_context_lookup` MCP tool. Other AI clients use the CLI;
+both paths share the repository-isolated user cache. The State plugin is not part of code lookup.
+
+Start or resume a Session after installation, then verify real adoption:
+
+```bash
+continuity doctor --root . --codex-home ~/.codex
+```
+
+`codex_plugin.status=active` means configuration, MCP policy, hook trust, and a real SessionStart
+observation all passed. Ordinary questions use the bounded lifecycle recovery context and do not call
+State tools. Inspect only for explicit State diagnosis; resume only before a State write. Authoritative
+state remains managed by the local CLI/State MCP.
 
 ### One Project
 
@@ -106,6 +127,10 @@ These are scenario-level results from matched tasks and current fixtures, not on
 universal savings percentage. User tokens, useful window utilization, and accepted
 work between compactions are normalized by accepted Work and measured only when
 host traces expose the required signals. [Full methods and limitations](docs/benchmarks.en.md).
+
+
+The code index is a candidate-location layer; it does not replace current source, tests, or
+authoritative Typed State validation.
 
 ## Architecture At A Glance
 
@@ -174,7 +199,7 @@ are optional enhancements.
 ## Documentation
 
 - [Usage guide](USAGE.en.md)
-- [Complete alpha.10 changes and upgrade notes](CHANGELOG.en.md#010-alpha10)
+- [Complete alpha.11 changes and upgrade notes](CHANGELOG.en.md#010-alpha11)
 - [Architecture](docs/architecture.en.md)
 - [Configuration](docs/configuration.en.md)
 - [Python API](docs/api.en.md)
@@ -187,7 +212,7 @@ are optional enhancements.
 
 ## Release And License
 
-The current alpha is available from [PyPI](https://pypi.org/project/continuity-plane/0.1.0a10/)
+The current alpha is available from [PyPI](https://pypi.org/project/continuity-plane/0.1.0a11/)
 and [GitHub Releases](https://github.com/skyhua0224/continuity-plane/releases).
 The GitHub release also provides the core wheel, source archive, Codex plugin marketplace, and SHA256SUMS; see the
 [changelog](CHANGELOG.en.md).

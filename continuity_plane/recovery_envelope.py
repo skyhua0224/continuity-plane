@@ -357,12 +357,12 @@ def validate_recovery_envelope(value: Any, *, verify_digest: bool = True) -> Non
     ):
         raise RecoveryEnvelopeError("read_only does not match source and lease status")
     _text(envelope["next_action"], "next_action")
-    idle_action = (
-        "activate-next-work"
+    idle_actions = (
+        {"activate-next-work"}
         if envelope["source_fresh"]
-        else "rebind-source-and-activate-next-work"
+        else {"rebind-source-and-activate-next-work", "remain-read-only"}
     )
-    if idle and envelope["next_action"] != idle_action:
+    if idle and envelope["next_action"] not in idle_actions:
         raise RecoveryEnvelopeError(
             "idle recovery action does not match source freshness"
         )
