@@ -1634,8 +1634,19 @@ class HookProbeTests(unittest.TestCase):
                 check=False,
                 env=environment,
             )
-        self.assertEqual(launched.returncode, 0, launched.stderr)
-        self.assertEqual(launched.stdout, "")
+            self.assertEqual(launched.returncode, 0, launched.stderr)
+            self.assertEqual(launched.stdout, "")
+
+            sentinel_hook = Path(directory) / "sentinel-hook.py"
+            sentinel_hook.write_text("def main():\n    return 37\n", encoding="utf-8")
+            delegated = subprocess.run(
+                [sys.executable, "-m", "continuity_plane.codex_hook_launcher", str(sentinel_hook)],
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=10,
+            )
+            self.assertEqual(delegated.returncode, 37, delegated.stderr)
 
         with patch.object(codex_hook_launcher.sys, "argv", ["continuity-codex-hook"]):
             self.assertEqual(codex_hook_launcher.main(), 2)

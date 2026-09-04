@@ -40,6 +40,89 @@ def _cli_json(arguments: list[str]) -> tuple[int, dict]:
 
 
 class PublicContractTests(unittest.TestCase):
+    def test_replanned_same_sources_create_current_attach_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            master = root / "MASTER.md"
+            status = root / "STATUS.md"
+            master.write_text("# Existing Master\n", encoding="utf-8")
+            status.write_text("# Existing Status\n", encoding="utf-8")
+            self.assertEqual(
+                _cli_json(
+                    ["init", "--root", str(root), "--project-id", "sample-app"]
+                )[0],
+                0,
+            )
+            self.assertEqual(
+                _cli_json(
+                    [
+                        "attach", "plan", "--root", str(root),
+                        "--master", "MASTER.md", "--status", "STATUS.md",
+                        "--work-id", "work-first", "--work-title", "First Work",
+                        "--owner-ref", "actor-one", "--scope", "capability:first",
+                    ]
+                )[0],
+                0,
+            )
+            self.assertEqual(
+                _cli_json(
+                    [
+                        "attach", "approve", "--root", str(root),
+                        "--actor-ref", "actor-one", "--claim-id", "claim-first",
+                    ]
+                )[0],
+                0,
+            )
+            self.assertEqual(
+                _cli_json(["checkpoint", "create", "--root", str(root)])[0],
+                0,
+            )
+            evidence = root / "evidence.txt"
+            evidence.write_text("verified completion\n", encoding="utf-8")
+            self.assertEqual(
+                _cli_json(
+                    [
+                        "work", "complete", "--root", str(root),
+                        "--work-id", "work-first", "--claim-id", "claim-first",
+                        "--actor-ref", "actor-one", "--evidence-file", str(evidence),
+                    ]
+                )[0],
+                0,
+            )
+            self.assertEqual(
+                _cli_json(
+                    [
+                        "attach", "plan", "--root", str(root),
+                        "--master", "MASTER.md", "--status", "STATUS.md",
+                        "--work-id", "work-next", "--work-title", "Next Work",
+                        "--owner-ref", "actor-two", "--scope", "capability:next",
+                    ]
+                )[0],
+                0,
+            )
+            proposal = json.loads(
+                (root / ".continuity/attach-proposal.json").read_text(encoding="utf-8")
+            )
+            result, response = _cli_json(
+                [
+                    "work", "activate", "--root", str(root),
+                    "--work-id", "work-next", "--work-title", "Next Work",
+                    "--owner-ref", "actor-two", "--claim-id", "claim-next",
+                    "--scope", "capability:next",
+                ]
+            )
+            state = SQLiteStateStore(root / ".continuity/state.sqlite3").read_project(
+                "sample-app"
+            )
+            work = next(item for item in state["works"] if item["work_id"] == "work-next")
+
+            self.assertEqual(result, 0)
+            self.assertEqual(response["status"], "activated")
+            self.assertIn(
+                f"evidence-attach-{proposal['proposal_sha256'][:16]}",
+                work["evidence_ids"],
+            )
+
     def test_idle_stale_sources_rebind_on_successor_activation(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

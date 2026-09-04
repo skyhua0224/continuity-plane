@@ -370,7 +370,7 @@ digest 失配或损坏 binding 会在 CLI/State 写入前拒绝，而不会静�
 项目 idle 且没有 active claim 时，如果 canonical MASTER 或 STATUS 发生变化，resume
 会返回只读 packet，并将 `next_action` 设为
 `rebind-source-and-activate-next-work`；checkpoint verify 会返回结构化的
-`source_rebind_required`，两者都不会写 State。下一次显式的标准
+`source_rebind_required`，两者都不会写 State。下一次显式的标准或完整绑定 delivery
 `continuity_work_activate` 会先验证变更前 checkpoint，再将刷新后的 source evidence、
 新 Work、claim 和最终 checkpoint 原子提交；已完成 Work 与 released claim 不会复活。
 checkpoint 生成前和 State commit 前都会重新校验不可变 source revision 与 evidence

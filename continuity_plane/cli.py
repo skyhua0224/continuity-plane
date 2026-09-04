@@ -3504,20 +3504,6 @@ def _work_activate_atomic(args: argparse.Namespace) -> int:
             root, project["project_id"], original_proposal
         )
         validate_attach_proposal(root, proposal, verify_sources=True)
-    if changed_sources and execution_class != "standard":
-        print(
-            json.dumps(
-                {
-                    "status": "denied",
-                    "project_id": project["project_id"],
-                    "failed_gate": "idle_source_rebind_standard_only",
-                    "state_changed": False,
-                    "next_action": "activate-standard-successor",
-                },
-                sort_keys=True,
-            )
-        )
-        return 2
     state_store = _open_state_store(root, project)
     read_result = _read_state_result(state_store, project["project_id"])
     snapshot = read_result["snapshot"]
@@ -3533,6 +3519,11 @@ def _work_activate_atomic(args: argparse.Namespace) -> int:
     except ValueError as exc:
         if str(exc) != "current canonical source evidence is not in State":
             raise
+        source_evidence = _build_attach_evidence(proposal)
+    expected_source_evidence_id = (
+        f"evidence-attach-{proposal['proposal_sha256'][:16]}"
+    )
+    if source_evidence["evidence_id"] != expected_source_evidence_id:
         source_evidence = _build_attach_evidence(proposal)
     source_evidence_id = source_evidence["evidence_id"]
     try:

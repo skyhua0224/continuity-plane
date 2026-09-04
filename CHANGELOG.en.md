@@ -2,6 +2,13 @@
 
 [中文](CHANGELOG.md)
 
+## Next Release (Unreleased)
+
+- Fix stale attach evidence reuse when a project is replanned with unchanged canonical content.
+- Fully bound delivery Work can also activate safely after an idle source rebind; large-repository
+  startup detection no longer retains the complete Git file list.
+- The current alpha11 tag and published assets remain unchanged.
+
 ## 0.1.0-alpha.11
 
 ### Changes Since 0.1.0-alpha.10

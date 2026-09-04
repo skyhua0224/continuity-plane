@@ -439,7 +439,7 @@ When a project is idle with no active claim and its canonical MASTER or STATUS
 changes, resume returns a read-only packet whose `next_action` is
 `rebind-source-and-activate-next-work`. Checkpoint verification returns the
 structured `source_rebind_required` gate; neither operation writes State. The
-next explicit standard `continuity_work_activate` verifies the pre-change
+next explicit standard or fully bound delivery `continuity_work_activate` verifies the pre-change
 checkpoint and atomically commits refreshed source evidence, the new Work and
 claim, and the final checkpoint. Completed Work and released claims stay
 closed. The immutable source revision and evidence identity are revalidated

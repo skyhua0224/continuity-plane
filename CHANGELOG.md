@@ -2,6 +2,13 @@
 
 [English](CHANGELOG.en.md)
 
+## 下一版本（未发布）
+
+- 修复同一 canonical 内容重新规划时复用旧 attach evidence 的问题。
+- 完整绑定的 delivery Work 也可在 idle source rebind 后安全激活；大型仓库启动检测不再保留完整
+  Git 文件列表。
+- 当前 alpha11 tag 和已发布资产不变。
+
 ## 0.1.0-alpha.11
 
 ### 相比 0.1.0-alpha.10
