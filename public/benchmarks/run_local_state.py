@@ -40,7 +40,7 @@ def run_benchmark(*, iterations: int = 1_000) -> dict[str, Any]:
             durations.append((time.perf_counter_ns() - started) / 1_000_000)
             if (
                 snapshot["project"]["project_id"] == "benchmark-project"
-                and snapshot["project"]["revision"] == 0
+                and snapshot["project"]["revision"] == 1
             ):
                 successful_reads += 1
     return {

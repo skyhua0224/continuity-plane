@@ -1,6 +1,6 @@
 # Continuity Plane MASTER
 
-版本：revision 126  
+版本：revision 127  
 日期：2026-09-04  
 状态：zero-friction core reset / live plugin adoption  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
@@ -394,6 +394,7 @@ M10-01/M10-11 的跨项目退出门包括：State revision 与 `STATUS.current` 
 | M11-02 | 🧑‍💻 | Incremental code index and provider-neutral lookup | 跨 Session、CLI 和其他 Agent 复用按仓库隔离的用户缓存，只返回带 revision/hash 的符号引用 | 降低大型仓库的重复扫描和上下文输入 | M6/M11-00 | Git tracked 输入；变更文件增量重算；缓存位于项目外且按 repository key 隔离；receipt 有界且 authority=`false`；缓存损坏静默重建；两个真实大型仓库二次重算 `0`；CLI/API 测试通过；启动提示优先 route 到 `lookup/search`；不增加命令门禁 |
 | M11-03 | 🧑‍💻 | Visible lookup routing and cache/context accounting | Search MCP 单独暴露 `continuity_context_lookup`，其他 Agent 使用同一 CLI/API；State 只读时普通项目工作仍可继续 | 提高索引采用率，量化 cache hit 与上下文输入输出 | M11-02 | 单工具 search MCP、read-only annotations、无 project write、Codex tools/list 可见；State MCP 不承载检索；旧 `rg/find` 不被拦截；source stale 返回 `continue=true`；真实默认采用 A/B 仍待完成 |
 | M11-04 | ✅ | State-only degradation and inspectable genesis | `init` 生成 proposal、genesis Event 与 verified checkpoint；State 同步失败不冻结 Session；MCP 外层和 STATUS 投影显式限定 State-only | 消除新项目首次恢复失败和 Agent 将 State 限制扩大为整个仓库只读 | M11-00/M11-03 | `init -> inspect` 零写入且 checkpoint 故障可原子重试；legacy revision 0 与 genesis revision 1 attach 均可继续；MCP 外层声明 `read_only_scope=continuity-state` 与 `ordinary_project_work_allowed=true`；STATUS 将旧字段投影为 `continue-project-work-state-sync-pending`；strict SessionStart 不注入 expired/stale Work；core/search/state 均不注入 Skill；受影响面 `134/134` 通过 |
+| M11-05 | ✅ | Bounded local observability and policy presets | 记录有界 lifecycle、State MCP、延迟、请求/响应大小和 cache 指标；不保存 transcript、源码或工具正文 | 让 token、上下文和采用效果可复盘，同时保持观测失败不阻断业务 | M11-00/M11-03 | `balanced`/`diagnostic`/`reliability-first` 策略、retention/锁/损坏/并发/禁用探针、CLI report、MCP binding cache、Windows/多进程边界和 plugin ownership `45/45`；observation I/O failure 不改变 State authority |
 
 M11-00 的运行策略分为三层：`auto` 默认自动绑定项目、恢复 Work、创建本地 claim、续租和继续下一动作且不阻断普通开发；`observe` 仅记录；`strict` 只由项目 Profile 显式启用，用于不可逆生产副作用。任何层级都不得将 stale packet、旧 Work 或陈旧 STATUS 注入当前 Session。M11-00 关闭前，不新增 effect gate、强制 PostgreSQL、Docmost 或人工 claim 操作。
 

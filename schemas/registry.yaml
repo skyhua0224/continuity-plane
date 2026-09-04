@@ -2216,6 +2216,26 @@ schemas:
     compatibility_mode: strict-versioned
     migrations: []
 
+  - schema_id: context.observability-policy
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.observability-policy/v1alpha1
+    supported_wire_versions: [context.observability-policy/v1alpha1]
+    artifact_path: schemas/m10-16/observability-policy.schema.json
+    content_sha256: 599c8ffd1f2e02b0b3dd82c769f89f7488e574fd4a56ad5a8f93f0b2645dc1ee
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
+  - schema_id: context.light-observation
+    current_semver: 1.0.0-alpha.1
+    current_wire_version: context.light-observation/v1alpha1
+    supported_wire_versions: [context.light-observation/v1alpha1]
+    artifact_path: schemas/m10-16/state-mcp-observation.schema.json
+    content_sha256: 4844d612f54c263a0c9d7cce88086d0e925d85bb1112f2e228d2c7b7f01667e7
+    status: current
+    compatibility_mode: strict-versioned
+    migrations: []
+
   - schema_id: context.status-projection
     current_semver: 1.0.0-alpha.1
     current_wire_version: context.status-projection/v1alpha1

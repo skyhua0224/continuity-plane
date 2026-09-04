@@ -185,6 +185,7 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
                 env={
                     **os.environ,
                     "PATH": f"{bin_dir}:{os.environ['PATH']}",
+                    "CONTINUITY_TEST_CLI_EXECUTABLE": str(binary),
                     "MCP_BINDING_CALLS": str(calls),
                     "BOUND_ROOT": str(bound_project),
                     "BOUND_PACKET": json.dumps(bound_packet),
@@ -295,6 +296,7 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
                 env={
                     **os.environ,
                     "PATH": f"{bin_dir}:{os.environ['PATH']}",
+                    "CONTINUITY_TEST_CLI_EXECUTABLE": str(binary),
                     "MCP_BINDING_CALLS": str(calls),
                     "MCP_BINDING_ENVELOPE": json.dumps(envelope),
                     "MCP_CHECKPOINT_FAIL": "1" if checkpoint_failure else "0",
@@ -487,7 +489,7 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
         responses, calls = self._run(requests, autorun_retry=True)
         self.assertNotIn("error", responses[1])
         self.assertEqual(sum(line.startswith("autorun ") for line in calls), 2)
-        self.assertEqual(sum(line.startswith("resume ") for line in calls), 3)
+        self.assertEqual(sum(line.startswith("resume ") for line in calls), 4)
 
     def test_transition_tool_is_exposed_and_executes_as_one_cli_operation(self) -> None:
         requests = [
@@ -881,6 +883,7 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
                 env={
                     **os.environ,
                     "PATH": f"{bin_dir}:{os.environ['PATH']}",
+                    "CONTINUITY_TEST_CLI_EXECUTABLE": str(launcher),
                     "PYTHONPATH": os.pathsep.join(
                         filter(None, [str(self.root), os.environ.get("PYTHONPATH", "")])
                     ),
@@ -1131,6 +1134,7 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
                 env={
                     **os.environ,
                     "PATH": f"{bin_dir}:{os.environ['PATH']}",
+                    "CONTINUITY_TEST_CLI_EXECUTABLE": str(launcher),
                     "PYTHONPATH": os.pathsep.join(
                         filter(
                             None,

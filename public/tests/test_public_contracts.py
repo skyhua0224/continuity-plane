@@ -30,8 +30,9 @@ class PublicContractTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             store = _initialized_store(Path(directory))
             initial = store.read_project("sample-app")
+            initial_events = store.read_events("sample-app")
             expected = copy.deepcopy(initial)
-            expected["project"]["revision"] = 1
+            expected["project"]["revision"] = initial["project"]["revision"] + 1
             expected["project"]["updated_at"] = (
                 (
                     datetime.fromisoformat(initial["project"]["updated_at"])
@@ -41,18 +42,18 @@ class PublicContractTests(unittest.TestCase):
                 .isoformat()
             )
             expected["works"][0]["status"] = "ready"
-            expected["works"][0]["revision"] = 1
+            expected["works"][0]["revision"] += 1
             event = build_state_event(
                 event_id="event-ready-initial",
                 event_type="state-transition",
                 project_id="sample-app",
-                sequence_no=1,
-                revision_before=0,
+                sequence_no=initial_events[-1]["sequence_no"] + 1,
+                revision_before=initial["project"]["revision"],
                 occurred_at=expected["project"]["updated_at"],
                 actor_ref="local-user",
                 causation_ref="work:work-initial",
                 correlation_ref="project:sample-app",
-                previous_event_sha256=None,
+                previous_event_sha256=initial_events[-1]["event_sha256"],
                 supersedes_event_id=None,
                 changes=[
                     {
@@ -66,17 +67,20 @@ class PublicContractTests(unittest.TestCase):
 
             store.commit_event(
                 project_id="sample-app",
-                expected_revision=0,
+                expected_revision=initial["project"]["revision"],
                 event=event,
                 expected_snapshot=expected,
             )
 
-            self.assertEqual(store.read_project("sample-app")["project"]["revision"], 1)
-            self.assertEqual(len(store.read_events("sample-app")), 1)
+            self.assertEqual(
+                store.read_project("sample-app")["project"]["revision"],
+                initial["project"]["revision"] + 1,
+            )
+            self.assertEqual(len(store.read_events("sample-app")), len(initial_events) + 1)
             with self.assertRaises(StateStoreConflict):
                 store.commit_event(
                     project_id="sample-app",
-                    expected_revision=0,
+                    expected_revision=initial["project"]["revision"],
                     event=event,
                     expected_snapshot=expected,
                 )
@@ -88,10 +92,14 @@ class PublicContractTests(unittest.TestCase):
             artifact_store = LocalArtifactStore(root / "artifacts")
             artifact_store.initialize()
             snapshot = state_store.read_project("sample-app")
+            events = state_store.read_events("sample-app")
             read_result = {
                 "snapshot": snapshot,
-                "revision": 0,
-                "event_head": None,
+                "revision": snapshot["project"]["revision"],
+                "event_head": {
+                    "sequence_no": events[-1]["sequence_no"],
+                    "event_sha256": events[-1]["event_sha256"],
+                },
                 "registry_digest": "b" * 64,
                 "capabilities": capability_manifest_to_document(
                     state_store.capability_manifest
@@ -107,8 +115,8 @@ class PublicContractTests(unittest.TestCase):
                 checkpoint_ref,
                 artifact_store,
                 expected_project_id="sample-app",
-                expected_revision=0,
-                expected_event_head=None,
+                expected_revision=snapshot["project"]["revision"],
+                expected_event_head=read_result["event_head"],
                 expected_governance_ref=snapshot["project"]["governance_ref"],
                 expected_plan_sha256="a" * 64,
                 expected_registry_digest="b" * 64,

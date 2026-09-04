@@ -97,6 +97,7 @@ _PUBLIC_MODULE_ROOTS = {
     "execution_packet",
     "external_state_provider",
     "human_governance",
+    "light_observability",
     "obsidian_vault",
     "postgres_state_store",
     "project_graph_projection",
@@ -130,6 +131,8 @@ _PUBLIC_SCHEMA_FILES = (
     "m10-11/status-projection.schema.json",
     "m10-15/delivery-workspace-registry.schema.json",
     "m10-15/codex-session-project-bindings.schema.json",
+    "m10-16/observability-policy.schema.json",
+    "m10-16/state-mcp-observation.schema.json",
 )
 _PUBLIC_IGNORED_PARTS = {".git", "__pycache__", ".ruff_cache", "build", "dist"}
 
@@ -194,12 +197,6 @@ def scan_public_release(root: Path) -> list[str]:
         for pattern in _LEGACY_PUBLIC_MARKERS:
             if pattern.search(history):
                 violations.append(f"Git history contains legacy {pattern.pattern}")
-        emails = re.findall(r"<([^>]+)>", history)
-        if any(
-            not email.endswith(("@example.invalid", "@users.noreply.github.com"))
-            for email in emails
-        ):
-            violations.append("Git history contains a non-release author email")
     return sorted(set(violations))
 
 

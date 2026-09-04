@@ -3,7 +3,7 @@
 版本：18  
 日期：2026-09-04  
 状态：current architecture contract  
-governance authority：`MASTER.md` revision 126
+governance authority：`MASTER.md` revision 127
 
 ## 三文档默认投影
 

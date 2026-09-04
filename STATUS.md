@@ -1,6 +1,6 @@
 # Continuity Plane Status
 
-版本：revision 126  
+版本：revision 127  
 日期：2026-09-04  
 canonical plan：`MASTER.md`
 
@@ -23,7 +23,7 @@ canonical plan：`MASTER.md`
 | next action | 发布并安装 alpha.11；随后继续 lookup matched A/B 与三项目回执 |
 | hard blocker | Platform 与 ProjectCompute input-token gate 均未达 `30%` |
 | repository mode | internal development repository + fresh-history public mirror |
-| production state | alpha.11 release candidate；版本、双语 changelog 和公开 search MCP 入口已准备；公共默认待 A/B |
+| production state | alpha.11 candidate；observability、双语 changelog、search MCP 已准备；公共默认待 A/B |
 
 ## 已验证摘要
 
@@ -42,9 +42,10 @@ canonical plan：`MASTER.md`
 | M11 bounded retrieval | current tracked worktree、revision/hash、完整 JSON budget 与 CLI `3/3` |
 | M11 code index | 两仓库实测二次重算 `0`、缓存隔离；[evidence](experiments/evidence/m11-02-code-index-real.json) |
 | M11 lookup routing | 单工具 search MCP + CLI/API；State MCP 不承载检索；source stale 继续普通开发；默认采用 A/B pending |
-| M11 State-only degradation | genesis `1/1` + proposal/checkpoint；故障可原子重试；State-only MCP/STATUS；expired/stale Work 不注入；`134/134` |
-| Repository gate | full `2037/2037` passed，`31` skipped；受影响面 `134/134`；public build `142` files |
-| Governance authority | `MASTER.md` revision 126 |
+| M11 State-only | genesis `1/1`、proposal/checkpoint、可重试；State-only MCP/STATUS；stale Work 不注入；`134/134` |
+| M11 observability | bounded policy/retention/lock/cache/report `45/45`；不记录 transcript/source/tool body |
+| Repository gate | full `2082/2082` passed，`31` skipped；release focus `86/86`；public build `147` files |
+| Governance authority | `MASTER.md` revision 127 |
 
 ## 恢复入口
 
