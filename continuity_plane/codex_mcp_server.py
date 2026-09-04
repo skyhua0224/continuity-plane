@@ -10,6 +10,7 @@ import sys
 from pathlib import Path
 
 
+
 _READ_ONLY_ANNOTATIONS = {
     "readOnlyHint": True,
     "openWorldHint": False,
@@ -19,6 +20,11 @@ _LOCAL_WRITE_ANNOTATIONS = {
     "readOnlyHint": False,
     "openWorldHint": False,
     "destructiveHint": False,
+}
+_READ_ONLY_SCOPE_NOTE = "; ordinary project work remains allowed"
+_STATE_SYNC_PENDING_ACTIONS = {
+    "remain-read-only",
+    "continue-project-work-state-sync-pending",
 }
 
 
@@ -32,6 +38,26 @@ def _error(request_id: object, code: int, message: str) -> None:
             {"jsonrpc": "2.0", "id": request_id, "error": {"code": code, "message": message}}
         ),
         flush=True,
+    )
+
+
+def _scoped_state_result_text(value: str) -> str:
+    try:
+        packet = json.loads(value)
+    except json.JSONDecodeError:
+        return value
+    if not isinstance(packet, dict) or packet.get("read_only") is not True:
+        return value
+    return json.dumps(
+        {
+            "continuity_state": packet,
+            "continuity_state_writes_ready": False,
+            "ordinary_project_work_allowed": True,
+            "project_next_action": "continue-ordinary-project-work",
+            "read_only_scope": "continuity-state",
+        },
+        ensure_ascii=False,
+        sort_keys=True,
     )
 
 
@@ -66,7 +92,7 @@ def _binding(root: Path) -> dict | None:
         return None
     if idle and envelope.get("next_action") not in {
         "activate-next-work",
-        "remain-read-only",
+        *_STATE_SYNC_PENDING_ACTIONS,
     }:
         return None
     return {
@@ -146,7 +172,11 @@ def _write_binding_error(
         _error(request_id, -32001, "session binding is unavailable; write tools are disabled")
         return True
     if binding["read_only"]:
-        _error(request_id, -32002, "session binding is read-only; write tools are disabled")
+        _error(
+            request_id,
+            -32002,
+            "Continuity State writes are not ready" + _READ_ONLY_SCOPE_NOTE,
+        )
         return True
     if actor_ref is not None and actor_ref != binding["actor_ref"]:
         _error(request_id, -32003, "actor binding does not match the session claim")
@@ -174,7 +204,11 @@ def _write_transition_binding_error(
         _error(request_id, -32001, "session binding is unavailable; write tools are disabled")
         return True
     if binding["read_only"]:
-        _error(request_id, -32002, "session binding is read-only; write tools are disabled")
+        _error(
+            request_id,
+            -32002,
+            "Continuity State writes are not ready" + _READ_ONLY_SCOPE_NOTE,
+        )
         return True
     if actor_ref != binding["actor_ref"]:
         _error(request_id, -32003, "actor binding does not match the session claim")
@@ -199,7 +233,11 @@ def _write_activation_binding_error(
         _error(request_id, -32001, "session binding is unavailable; write tools are disabled")
         return True
     if binding["read_only"]:
-        _error(request_id, -32002, "session binding is read-only; write tools are disabled")
+        _error(
+            request_id,
+            -32002,
+            "Continuity State writes are not ready" + _READ_ONLY_SCOPE_NOTE,
+        )
         return True
     if binding["mode"] != "idle":
         _error(request_id, -32003, "successor activation requires an idle session binding")
@@ -234,13 +272,13 @@ def _claim_recovery_binding_error(
                 not binding["source_fresh"]
                 and binding["checkpoint_verified"]
                 and binding["lease_valid"]
-                and binding["next_action"] == "remain-read-only"
+                and binding["next_action"] in _STATE_SYNC_PENDING_ACTIONS
             )
             if not stale_source_recovery:
                 _error(
                     request_id,
                     -32002,
-                    "read-only heartbeat requires only a stale canonical source with a valid bound claim and verified checkpoint",
+                    "State writes are not ready; heartbeat recovery requires a stale canonical source with a valid bound claim and verified checkpoint" + _READ_ONLY_SCOPE_NOTE,
                 )
                 return True
         return False
@@ -250,13 +288,13 @@ def _claim_recovery_binding_error(
             and new_claim_id != claim_id
             and binding["checkpoint_verified"]
             and not binding["lease_valid"]
-            and binding["next_action"] == "remain-read-only"
+            and binding["next_action"] in _STATE_SYNC_PENDING_ACTIONS
         )
         if not expired_reclaim:
             _error(
                 request_id,
                 -32002,
-                "read-only session allows only recovery of its expired bound claim",
+                "State writes are not ready; only the expired bound claim can be recovered" + _READ_ONLY_SCOPE_NOTE,
             )
             return True
         return False
@@ -491,7 +529,7 @@ def main() -> int:
                         },
                         {
                             "name": "continuity_claim_recover",
-                            "description": "续租或恢复 claim，并在同一调用内受控刷新已变更的 canonical source 与 checkpoint；任一步失败均保持只读 / Heartbeat or reclaim and, when narrowly authorized, refresh changed canonical sources and the checkpoint in one call.",
+                            "description": "续租或恢复 claim，并在同一调用内受控刷新已变更的 canonical source 与 checkpoint；失败时仅 State 同步待恢复，普通项目工作继续 / Heartbeat or reclaim and, when narrowly authorized, refresh changed canonical sources and the checkpoint in one call; failure never blocks ordinary project work.",
                             "annotations": _LOCAL_WRITE_ANNOTATIONS,
                             "inputSchema": {
                                 "type": "object",
@@ -906,12 +944,24 @@ def main() -> int:
             text = "\n".join(item.rstrip() for item in output if item.strip())
             if not text:
                 text = "operation failed" if failed else "operation completed"
+            structured_content = None
+            if not failed and tool_name in {"continuity_inspect", "continuity_resume"}:
+                text = _scoped_state_result_text(text)
+                try:
+                    candidate = json.loads(text)
+                except json.JSONDecodeError:
+                    candidate = None
+                if isinstance(candidate, dict) and "read_only_scope" in candidate:
+                    structured_content = candidate
+            result_payload = {
+                "content": [{"type": "text", "text": text}],
+                "isError": failed,
+            }
+            if structured_content is not None:
+                result_payload["structuredContent"] = structured_content
             _reply(
                 request_id,
-                {
-                    "content": [{"type": "text", "text": text}],
-                    "isError": failed,
-                },
+                result_payload,
             )
         elif request_id is not None:
             _error(request_id, -32601, f"method not found: {method}")

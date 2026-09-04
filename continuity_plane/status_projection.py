@@ -71,6 +71,11 @@ def render_status_projection(packet: Any, *, language: str = "zh-CN") -> str:
     event_head = current["event_head"]
     checkpoint = current["checkpoint_ref"]
     blockers = current["open_blockers"]
+    next_action = (
+        "continue-project-work-state-sync-pending"
+        if current["read_only"]
+        else _text(current["next_action"], "next_action")
+    )
     blocker_text = "none" if not blockers else "; ".join(
         _text(item.get("reason"), "blocker.reason")
         for item in blockers
@@ -87,8 +92,12 @@ def render_status_projection(packet: Any, *, language: str = "zh-CN") -> str:
             ("claim", "none" if claim is None else _text(claim.get("claim_id"), "claim.claim_id")),
             ("租约有效", _value(current["lease_valid"])),
             ("来源新鲜", _value(current["source_fresh"])),
-            ("只读", _value(current["read_only"])),
-            ("下一动作", _text(current["next_action"], "next_action")),
+            (
+                "Continuity State 写入",
+                "同步待恢复" if current["read_only"] else "可用",
+            ),
+            ("普通项目工作", "可继续"),
+            ("下一动作", next_action),
             ("checkpoint", _text(checkpoint.get("artifact_uri"), "checkpoint.artifact_uri")),
             ("阻塞", blocker_text),
         ]
@@ -105,8 +114,12 @@ def render_status_projection(packet: Any, *, language: str = "zh-CN") -> str:
             ("Claim", "none" if claim is None else _text(claim.get("claim_id"), "claim.claim_id")),
             ("Lease valid", _value(current["lease_valid"])),
             ("Source fresh", _value(current["source_fresh"])),
-            ("Read-only", _value(current["read_only"])),
-            ("Next action", _text(current["next_action"], "next_action")),
+            (
+                "Continuity State writes",
+                "Sync pending" if current["read_only"] else "Ready",
+            ),
+            ("Ordinary project work", "Continue"),
+            ("Next action", next_action),
             ("Checkpoint", _text(checkpoint.get("artifact_uri"), "checkpoint.artifact_uri")),
             ("Blocker", blocker_text),
         ]

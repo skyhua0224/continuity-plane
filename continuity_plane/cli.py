@@ -10,6 +10,7 @@ import io
 import json
 import os
 import re
+import shutil
 import sqlite3
 import subprocess
 import sys
@@ -253,7 +254,7 @@ def _state_service(
     )
 
 
-def _init(args: argparse.Namespace) -> int:
+def _initialize_new_project(args: argparse.Namespace) -> int:
     root = Path(args.root).resolve()
     if _ID_RE.fullmatch(args.project_id) is None:
         raise ValueError("project-id must be a lowercase bounded identifier")
@@ -288,6 +289,66 @@ def _init(args: argparse.Namespace) -> int:
     store = SQLiteStateStore(_state_file(root, project))
     store.initialize()
     store.create_project(_initial_state(args.project_id))
+    created_at = datetime.now(UTC).isoformat()
+    proposal = build_attach_proposal(
+        root=root,
+        project_id=args.project_id,
+        master_path=".continuity/MASTER.md",
+        status_path=".continuity/STATUS.md",
+        work_id="work-initial",
+        work_title="Define the first measurable outcome",
+        owner_ref="local-user",
+        scope_refs=[
+            {"scope_kind": "capability", "scope_ref": "project-governance"}
+        ],
+        created_at=created_at,
+    )
+    _write_json_atomic(target / "attach-proposal.json", proposal)
+
+    evidence = _build_attach_evidence(proposal, observed_at=created_at)
+    initial_work = copy.deepcopy(_initial_state(args.project_id)["works"][0])
+    initial_work["evidence_ids"] = [evidence["evidence_id"]]
+    initial_work["revision"] = 1
+    service = _state_service(
+        store,
+        authorizer=_LocalAttachAuthorizer(),
+        event_id_factory=lambda request_id: f"event-{request_id}",
+    )
+    request_id = f"init-{proposal['proposal_sha256'][:16]}"
+    committed = service.call_tool(
+        COMMIT_TOOL,
+        {
+            "schema_version": "context.state-mcp-request/v1alpha1",
+            "request_id": request_id,
+            "project_id": args.project_id,
+            "expected_revision": 0,
+            "causation_ref": f"init:{proposal['proposal_sha256']}",
+            "correlation_ref": f"project:{args.project_id}",
+            "supersedes_event_id": None,
+            "changes": [
+                {
+                    "collection": "evidence",
+                    "object_id": evidence["evidence_id"],
+                    "value": evidence,
+                },
+                {
+                    "collection": "works",
+                    "object_id": initial_work["work_id"],
+                    "value": initial_work,
+                },
+            ],
+        },
+        context=RequestContext("local-user", "local-attach-approved"),
+    )
+    if not committed["ok"]:
+        raise ValueError(committed["error"]["message"])
+    read_result = _read_state_result(store, args.project_id)
+    checkpoint_ref = publish_checkpoint(
+        read_result,
+        _checkpoint_store(root),
+        canonical_plan_sha256=_canonical_master_sha256(proposal),
+    )
+    _write_json_atomic(_checkpoint_ref_file(root), checkpoint_ref.to_document())
     print(
         json.dumps(
             {
@@ -300,6 +361,23 @@ def _init(args: argparse.Namespace) -> int:
         )
     )
     return 0
+
+
+def _init(args: argparse.Namespace) -> int:
+    root = Path(args.root).resolve()
+    target = root / ".continuity"
+    try:
+        target.mkdir(parents=True, exist_ok=False)
+    except FileExistsError as exc:
+        existing = next(iter(target.iterdir()), target) if target.is_dir() else target
+        raise FileExistsError(
+            f"initialization would overwrite: {existing}"
+        ) from exc
+    try:
+        return _initialize_new_project(args)
+    except BaseException:
+        shutil.rmtree(target, ignore_errors=True)
+        raise
 
 
 def _verify(args: argparse.Namespace) -> int:
@@ -351,16 +429,23 @@ def _codex_plugin_status(codex_home: Path) -> dict[str, Any]:
         value = plugins.get(plugin_id)
         return isinstance(value, dict) and value.get("enabled") is True
 
+    def mcp_auto_approved(plugin_id: str, server_id: str) -> bool:
+        plugin = plugins.get(plugin_id)
+        plugin = plugin if isinstance(plugin, dict) else {}
+        servers = plugin.get("mcp_servers")
+        servers = servers if isinstance(servers, dict) else {}
+        server = servers.get(server_id)
+        server = server if isinstance(server, dict) else {}
+        return (
+            server.get("enabled") is True
+            and server.get("default_tools_approval_mode") == "approve"
+        )
+
     state_id = "continuity-plane-state@continuity-plane"
-    state = plugins.get(state_id)
-    state = state if isinstance(state, dict) else {}
-    servers = state.get("mcp_servers")
-    servers = servers if isinstance(servers, dict) else {}
-    server = servers.get("continuity")
-    server = server if isinstance(server, dict) else {}
-    mcp_auto_approved = (
-        server.get("enabled") is True
-        and server.get("default_tools_approval_mode") == "approve"
+    search_id = "continuity-plane-search@continuity-plane"
+    state_mcp_auto_approved = mcp_auto_approved(state_id, "continuity")
+    search_mcp_auto_approved = mcp_auto_approved(
+        search_id, "continuity-search"
     )
     hooks = config.get("hooks")
     hooks = hooks if isinstance(hooks, dict) else {}
@@ -375,15 +460,23 @@ def _codex_plugin_status(codex_home: Path) -> dict[str, Any]:
     )
     event = _latest_codex_session_start(codex_home)
     session_start_observed = event is not None and event.get("plugin_loaded") is True
-    configured = enabled("continuity-plane@continuity-plane") and enabled(state_id)
-    ready = configured and mcp_auto_approved and trusted_hooks >= 3
+    core_enabled = enabled("continuity-plane@continuity-plane")
+    state_enabled = enabled(state_id)
+    search_enabled = enabled(search_id)
+    configured = (
+        core_enabled
+        and (not state_enabled or state_mcp_auto_approved)
+        and (not search_enabled or search_mcp_auto_approved)
+    )
+    ready = configured and trusted_hooks >= 3
     status = "active" if ready and session_start_observed else "configured" if ready else "misconfigured"
     return {
         "status": status,
-        "core_enabled": enabled("continuity-plane@continuity-plane"),
-        "search_enabled": enabled("continuity-plane-search@continuity-plane"),
-        "state_enabled": enabled(state_id),
-        "mcp_auto_approved": mcp_auto_approved,
+        "core_enabled": core_enabled,
+        "search_enabled": search_enabled,
+        "state_enabled": state_enabled,
+        "mcp_auto_approved": state_mcp_auto_approved,
+        "search_mcp_auto_approved": search_mcp_auto_approved,
         "trusted_hooks": trusted_hooks,
         "expected_hooks": 3,
         "session_start_observed": session_start_observed,
@@ -1039,7 +1132,19 @@ def _attach_approve(args: argparse.Namespace) -> int:
         clock=lambda: now_text,
         event_id_factory=lambda request: f"event-{request}",
     )
-    if current["project"]["revision"] != 0:
+    initial_candidates = [
+        item for item in current["works"] if item["work_id"] == "work-initial"
+    ]
+    unattached_baseline = (
+        current["project"]["revision"] in {0, 1}
+        and current["project"]["active_work_ids"] == []
+        and current["project"]["primary_work_id"] is None
+        and current["claims"] == []
+        and len(current["works"]) == 1
+        and len(initial_candidates) == 1
+        and initial_candidates[0]["status"] == "proposed"
+    )
+    if not unattached_baseline:
         imported = next(
             (
                 item
@@ -1130,7 +1235,7 @@ def _attach_approve(args: argparse.Namespace) -> int:
     )
     initial_work = copy.deepcopy(initial_work)
     initial_work["status"] = "rejected"
-    initial_work["revision"] = 1
+    initial_work["revision"] += 1
     work = {
         "work_id": proposal["work"]["work_id"],
         "kind": "work",
@@ -1152,7 +1257,7 @@ def _attach_approve(args: argparse.Namespace) -> int:
         "schema_version": "context.state-mcp-request/v1alpha1",
         "request_id": request_id,
         "project_id": project["project_id"],
-        "expected_revision": 0,
+        "expected_revision": current["project"]["revision"],
         "causation_ref": f"attach:{proposal['proposal_sha256']}",
         "correlation_ref": f"project:{project['project_id']}",
         "supersedes_event_id": None,
@@ -1169,7 +1274,7 @@ def _attach_approve(args: argparse.Namespace) -> int:
         "schema_version": "context.state-mcp-request/v1alpha1",
         "request_id": f"{request_id}-claim",
         "project_id": project["project_id"],
-        "expected_revision": 1,
+        "expected_revision": committed["result"]["revision"],
         "work_id": work["work_id"],
         "claim_id": args.claim_id,
         "scope_owners": copy.deepcopy(work["scope_refs"]),
