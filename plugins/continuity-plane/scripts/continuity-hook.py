@@ -1838,15 +1838,6 @@ def _session_start(payload: dict[str, Any], root: Path) -> int:
             return 0
         if _effect_policy() == "observe":
             return 0
-        if _effect_policy() == "auto" and payload.get("source") == "compact":
-            _observe(
-                payload,
-                root,
-                event_type="session-start",
-                success=True,
-                source_refreshed=False,
-            )
-            return 0
     source_refreshed = False
     if packet.get("source_fresh") is False:
         refreshed = _command(["attach", "refresh"], root)

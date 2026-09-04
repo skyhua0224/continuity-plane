@@ -1,5 +1,5 @@
 {
-  "file_count": 146,
+  "file_count": 147,
   "files": [
     {
       "path": ".agents/plugins/marketplace.json",
@@ -87,11 +87,11 @@
     },
     {
       "path": "USAGE.en.md",
-      "sha256": "bfa90dbf068ab540a106bbc09cf991f4cfde3903d4b3924b7ad54f2777b39995"
+      "sha256": "2054f771d907c99c5d454aa304aee4b325c9aec373bb23374ed6358b65ffbfa9"
     },
     {
       "path": "USAGE.md",
-      "sha256": "b136fd24085298e07c2b6c964d8e04326a22a99f44852f8d09ca44c495e15212"
+      "sha256": "1134c4933319e0937ce401b475d90a91e1254a91688228445fc084c4456368da"
     },
     {
       "path": "benchmarks/__init__.py",
@@ -144,6 +144,10 @@
     {
       "path": "continuity_plane/codegraph_verification.py",
       "sha256": "a3ac74c598d58a9758846ecf56aa1fa4a120980cfa23041f313d1d0ecc5f975b"
+    },
+    {
+      "path": "continuity_plane/codex_hook_launcher.py",
+      "sha256": "8804cc4dc596874dd3fd8c206c5549312c2a035c8d4a2c0f5813b175833c2b0f"
     },
     {
       "path": "continuity_plane/codex_mcp_server.py",
@@ -447,15 +451,15 @@
     },
     {
       "path": "plugins/continuity-plane/hooks/hooks.json",
-      "sha256": "15836b729e48ecac514991645d6f02db4f91a19a025095985f81729234c5a263"
+      "sha256": "1c3338a40487b506e89c0f21f3c6189e69190dabe4c191181b7ab9cf407bec85"
     },
     {
       "path": "plugins/continuity-plane/scripts/continuity-hook.py",
-      "sha256": "3cd1c179b10b4aa4960d413024000d7bda13d00475f062316734fc3f0d619a6f"
+      "sha256": "671b08bb22ae1fb2b1ef558da108a837885326b4c34f07d5c42db6925d3fe72c"
     },
     {
       "path": "pyproject.toml",
-      "sha256": "9236437314e0790cbab6dda8d079433f4e8c649a7f84ae72a4aa32752b1bdcdf"
+      "sha256": "f89d26723210dd951000fb71f6405047d75436c899fd79f125bc1d62a6066e67"
     },
     {
       "path": "schemas/m10-01/canonical-attach-proposal.schema.json",
@@ -571,7 +575,7 @@
     },
     {
       "path": "tests/test_light_observability.py",
-      "sha256": "65655672b55f2e5551b78b3575019bbca2e940e22b31657d312c27468a29b72c"
+      "sha256": "3e448e32c4c684d67a1f636fa98da43d7f6a79c128114c7e943ae5675e35062e"
     },
     {
       "path": "tests/test_public_benchmark.py",
@@ -579,7 +583,7 @@
     },
     {
       "path": "tests/test_public_contracts.py",
-      "sha256": "e84c99f5502848b43d07f2475668478671ef9061644e93b8937b8bfb155b9e27"
+      "sha256": "3093b87585f330a1e5de3db70f7bde825e3de17dfa976d2a4e31faff307dee59"
     },
     {
       "path": "tests/test_public_smoke.py",

@@ -19,7 +19,7 @@ from unittest.mock import patch
 import yaml
 from jsonschema import Draft202012Validator, ValidationError
 
-from continuity_plane import codex_mcp_server, light_observability
+from continuity_plane import codex_hook_launcher, codex_mcp_server, light_observability
 from continuity_plane.cli import main as cli_main
 from continuity_plane.light_observability import (
     MAX_OBSERVATION_BYTES,
@@ -1575,6 +1575,52 @@ class HookProbeTests(unittest.TestCase):
         )
         self.assertNotIn("PreToolUse", manifest["hooks"])
         self.assertNotIn("PostToolUse", manifest["hooks"])
+        commands = [
+            hook
+            for registrations in manifest["hooks"].values()
+            for registration in registrations
+            for hook in registration["hooks"]
+        ]
+        self.assertTrue(commands)
+        for hook in commands:
+            self.assertTrue(hook["command"].startswith("continuity-codex-hook "))
+            self.assertTrue(
+                hook["commandWindows"].startswith("continuity-codex-hook ")
+            )
+            self.assertNotIn("py -3", hook["commandWindows"])
+
+    def test_packaged_hook_launcher_runs_the_selected_plugin_hook(self) -> None:
+        hook = (
+            Path(__file__).parents[1]
+            / "plugins/continuity-plane/scripts/continuity-hook.py"
+        )
+        environment = os.environ.copy()
+        environment["CONTINUITY_EFFECT_POLICY"] = "observe"
+        with tempfile.TemporaryDirectory() as directory:
+            payload = json.dumps(
+                {
+                    "hook_event_name": "SessionStart",
+                    "session_id": "launcher-smoke",
+                    "source": "startup",
+                    "cwd": directory,
+                }
+            )
+            environment["PLUGIN_DATA"] = directory
+            launched = subprocess.run(
+                [sys.executable, "-m", "continuity_plane.codex_hook_launcher", str(hook)],
+                cwd=Path(__file__).parents[1],
+                input=payload,
+                capture_output=True,
+                text=True,
+                timeout=10,
+                check=False,
+                env=environment,
+            )
+        self.assertEqual(launched.returncode, 0, launched.stderr)
+        self.assertEqual(launched.stdout, "")
+
+        with patch.object(codex_hook_launcher.sys, "argv", ["continuity-codex-hook"]):
+            self.assertEqual(codex_hook_launcher.main(), 2)
 
     def test_alpha10_core_and_state_plugin_ownership_remains_split(self) -> None:
         root = Path(__file__).parents[1]

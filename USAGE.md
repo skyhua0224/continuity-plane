@@ -282,6 +282,13 @@ codex plugin add continuity-plane@continuity-plane
 `PreCompact`/`PostCompact` 执行 checkpoint 生命周期。普通问题不会推进保存的 Work，
 也不会输出恢复旁白。
 
+当前开发版的 hooks 使用核心包提供的 `continuity-codex-hook` 入口，复用安装该包的
+Python 环境，不依赖 Windows `py -3` 或系统 `python3`。从旧版源码升级时，需先在
+原环境重新执行 `python -m pip install --no-deps -e .` 生成入口，再刷新插件缓存。
+`auto` 模式压缩恢复会注入有界的当前 packet；只读/损坏状态仍非阻塞降级。
+hooks 不会从聊天中推测新 Work：启用 State 跟踪的项目需在真实执行任务边界激活
+Work，并在相关提交与验证完成后保存一次进展；不按消息轮次轮询或写入。
+
 大型仓库希望显式启用有界 current-worktree 检索时安装：
 
 ```bash

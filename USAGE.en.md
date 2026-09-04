@@ -325,6 +325,16 @@ Start a new Session after installation. The core plugin loads one bounded packet
 at SessionStart and runs checkpoint lifecycle hooks around compaction. Questions
 do not advance the saved Work or emit recovery narration.
 
+Development hooks use the core package's `continuity-codex-hook` entry point and
+its Python environment, without depending on Windows `py -3` or system
+`python3`. When upgrading an older source checkout, first rerun
+`python -m pip install --no-deps -e .` in its existing environment, then refresh
+the plugin cache. Auto-mode compaction recovery injects the bounded current
+packet; read-only or invalid state still degrades without blocking development.
+Hooks do not infer new Work from chat. Projects opting into State tracking must
+activate Work at real execution boundaries and save progress after related
+commits and verification, not poll or write on every message.
+
 Install the search plugin for explicit bounded current-worktree lookup in large repositories:
 
 ```bash

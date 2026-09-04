@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import copy
 import json
+import os
+import subprocess
+import sys
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -265,6 +268,64 @@ class PublicContractTests(unittest.TestCase):
             self.assertEqual(claim_by_id["claim-first"]["status"], "released")
             self.assertEqual(work_by_id["work-next"]["status"], "active")
             self.assertEqual(claim_by_id["claim-next"]["status"], "active")
+
+            # Exercise actual hook subprocesses against the isolated project:
+            # a successful auto compaction must return its current packet.
+            plugin = Path(__file__).parents[1] / "plugins/continuity-plane"
+            environment = os.environ.copy()
+            environment.update(
+                CONTINUITY_EFFECT_POLICY="auto",
+                PLUGIN_ROOT=str(plugin),
+                PLUGIN_DATA=str(root / "plugin-data"),
+            )
+            for event in ("PreCompact", "PostCompact", "SessionStart"):
+                completed = subprocess.run(
+                    [
+                        sys.executable,
+                        "-m",
+                        "continuity_plane.codex_hook_launcher",
+                        str(plugin / "scripts/continuity-hook.py"),
+                    ],
+                    cwd=Path(__file__).parents[1],
+                    input=json.dumps(
+                        {
+                            "hook_event_name": event,
+                            "cwd": str(root),
+                            "session_id": "isolated-compaction",
+                            "source": "compact",
+                            "trigger": "auto",
+                        }
+                    ),
+                    capture_output=True,
+                    text=True,
+                    timeout=15,
+                    check=False,
+                    env=environment,
+                )
+                self.assertEqual(completed.returncode, 0, completed.stderr)
+                if event == "SessionStart":
+                    response = json.loads(completed.stdout)
+                    context = response["hookSpecificOutput"]["additionalContext"]
+                    self.assertIn("work-next", context)
+                    self.assertIn("claim-next", context)
+                    self.assertLessEqual(len(context.encode("utf-8")), 12 * 1024)
+                else:
+                    self.assertEqual(completed.stdout, "")
+            observations = [
+                json.loads(line)
+                for path in (root / "plugin-data/live-events").glob("*.jsonl")
+                for line in path.read_text(encoding="utf-8").splitlines()
+            ]
+            self.assertEqual(
+                [item["event_type"] for item in observations],
+                ["precompact", "postcompact", "session-start"],
+            )
+            self.assertTrue(all(item["success"] for item in observations))
+            self.assertTrue(observations[1]["canary_passed"])
+            self.assertEqual(
+                _cli_json(["state", "show", "--root", str(root)])[1]["revision"],
+                final_state["revision"],
+            )
 
     def test_sqlite_event_commit_is_revision_guarded(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
