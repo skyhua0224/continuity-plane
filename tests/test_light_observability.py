@@ -1492,6 +1492,36 @@ class HookProbeTests(unittest.TestCase):
         )
         self.assertNotIn("PreToolUse", manifest["hooks"])
         self.assertNotIn("PostToolUse", manifest["hooks"])
+        commands = [
+            hook
+            for registrations in manifest["hooks"].values()
+            for registration in registrations
+            for hook in registration["hooks"]
+        ]
+        self.assertTrue(commands)
+        for hook in commands:
+            self.assertTrue(hook["command"].startswith("continuity-codex-hook "))
+            self.assertTrue(
+                hook["commandWindows"].startswith("continuity-codex-hook ")
+            )
+            self.assertNotIn("py -3", hook["commandWindows"])
+
+    def test_packaged_hook_launcher_delegates_to_the_selected_hook(self) -> None:
+        launcher = Path(__file__).parents[1] / "context_control_plane/codex_hook_launcher.py"
+        with tempfile.TemporaryDirectory() as directory:
+            hook = Path(directory) / "hook.py"
+            hook.write_text(
+                "def main():\n    return 37\n",
+                encoding="utf-8",
+            )
+            completed = subprocess.run(
+                [sys.executable, str(launcher), str(hook)],
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=10,
+            )
+        self.assertEqual(completed.returncode, 37, completed.stderr)
 
     def test_alpha11_core_search_and_state_plugin_ownership_remains_split(self) -> None:
         root = Path(__file__).parents[1]

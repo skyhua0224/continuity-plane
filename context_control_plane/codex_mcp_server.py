@@ -121,11 +121,28 @@ def _binding_from_output(output: str) -> dict | None:
         not isinstance(active_work, dict) or not isinstance(claim, dict)
     ):
         return None
-    if idle and envelope.get("next_action") not in {
-        "activate-next-work",
-        *_STATE_SYNC_PENDING_ACTIONS,
-    }:
-        return None
+    if idle:
+        next_action = envelope.get("next_action")
+        fresh_activation = (
+            next_action == "activate-next-work"
+            and envelope.get("source_fresh") is True
+            and envelope.get("read_only") is False
+            and envelope.get("checkpoint_verified") is True
+            and envelope.get("lease_valid") is True
+        )
+        stale_rebind = (
+            next_action == "rebind-source-and-activate-next-work"
+            and envelope.get("source_fresh") is False
+            and envelope.get("read_only") is True
+            and envelope.get("checkpoint_verified") is True
+            and envelope.get("lease_valid") is True
+        )
+        pending_sync = (
+            next_action in _STATE_SYNC_PENDING_ACTIONS
+            and envelope.get("read_only") is True
+        )
+        if not fresh_activation and not stale_rebind and not pending_sync:
+            return None
     return {
         "project_id": envelope.get("project_id"),
         "mode": "idle" if idle else "active",
@@ -288,15 +305,22 @@ def _write_activation_binding_error(
     if binding is None:
         _error(request_id, -32001, "session binding is unavailable; write tools are disabled")
         return True
-    if not _binding_is_writable(binding):
+    if binding["mode"] != "idle":
+        _error(request_id, -32003, "successor activation requires an idle session binding")
+        return True
+    stale_source_rebind = (
+        binding["read_only"]
+        and not binding["source_fresh"]
+        and binding["checkpoint_verified"]
+        and binding["lease_valid"]
+        and binding["next_action"] == "rebind-source-and-activate-next-work"
+    )
+    if not _binding_is_writable(binding) and not stale_source_rebind:
         _error(
             request_id,
             -32002,
             "Continuity State writes are not ready" + _READ_ONLY_SCOPE_NOTE,
         )
-        return True
-    if binding["mode"] != "idle":
-        _error(request_id, -32003, "successor activation requires an idle session binding")
         return True
     return False
 

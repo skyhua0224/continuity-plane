@@ -7,8 +7,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${PLUGIN_ROOT}/scripts/continuity-hook.py\"",
-            "commandWindows": "py -3 \"%PLUGIN_ROOT%\\scripts\\continuity-hook.py\"",
+            "command": "continuity-codex-hook \"${PLUGIN_ROOT}/scripts/continuity-hook.py\"",
+            "commandWindows": "continuity-codex-hook \"%PLUGIN_ROOT%\\scripts\\continuity-hook.py\"",
             "timeout": 10,
             "statusMessage": "Loading bounded continuity state",
             "additionalContextLimit": 5000
@@ -22,8 +22,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${PLUGIN_ROOT}/scripts/continuity-hook.py\"",
-            "commandWindows": "py -3 \"%PLUGIN_ROOT%\\scripts\\continuity-hook.py\"",
+            "command": "continuity-codex-hook \"${PLUGIN_ROOT}/scripts/continuity-hook.py\"",
+            "commandWindows": "continuity-codex-hook \"%PLUGIN_ROOT%\\scripts\\continuity-hook.py\"",
             "timeout": 10,
             "statusMessage": "Creating continuity checkpoint"
           }
@@ -36,8 +36,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${PLUGIN_ROOT}/scripts/continuity-hook.py\"",
-            "commandWindows": "py -3 \"%PLUGIN_ROOT%\\scripts\\continuity-hook.py\"",
+            "command": "continuity-codex-hook \"${PLUGIN_ROOT}/scripts/continuity-hook.py\"",
+            "commandWindows": "continuity-codex-hook \"%PLUGIN_ROOT%\\scripts\\continuity-hook.py\"",
             "timeout": 10,
             "statusMessage": "Verifying continuity checkpoint"
           }

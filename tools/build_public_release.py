@@ -89,6 +89,7 @@ _PUBLIC_MODULE_ROOTS = {
     "checkpoint",
     "code_index",
     "cli",
+    "codex_hook_launcher",
     "codex_mcp_server",
     "context_mcp_server",
     "collaboration_notifications",

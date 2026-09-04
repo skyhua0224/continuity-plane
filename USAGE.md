@@ -327,6 +327,20 @@ search plugin 提供 `continuity_context_lookup` MCP 工具。它只返回有界
 `cache_status` 与 `returned_bytes` 由 lookup receipt 直接计量；模型 input/output token 由
 host trace 计量。缓存命中不能单独证明 token 节省，必须和同任务的上下文输入输出 A/B 对账。
 
+### 压缩恢复与 source rebind
+
+核心 hook 通过已安装包的 `continuity-codex-hook` 入口运行，不依赖系统 Python 别名。
+`auto` 模式在压缩后的 `SessionStart(source=compact)` 注入当前有界 packet，并要求模型
+静默从 `next_action` 继续；hook 或 State 同步失败只记录观测，不停止普通代码编辑、构建
+和测试。
+
+项目 idle 且 canonical MASTER/STATUS 发生变化时，`resume` 返回
+`source_fresh=false`、`read_only=true` 和 `next_action=rebind-source-and-activate-next-work`；
+`checkpoint verify` 返回结构化 `source_rebind_required`，两者都不写 State。下一次显式
+`work activate`（standard 或已完整绑定的 delivery）会重新校验 source、生成当前 evidence、
+刷新 checkpoint，并在一次 State 提交中激活 Work。若 source 在校验期间再次变化，操作返回
+`source_fresh` 且 proposal、checkpoint 和 revision 保持不变。
+
 安装或恢复 Session 后验证实际采用状态：
 
 ```bash

@@ -97,8 +97,16 @@ class CheckpointCliTests(unittest.TestCase):
                 main(["checkpoint", "create", "--root", str(root)])
             (root / "MASTER.md").write_text("# Changed Master\n", encoding="utf-8")
 
-            with self.assertRaisesRegex(ValueError, "source.*changed"):
-                main(["checkpoint", "verify", "--root", str(root)])
+            output = StringIO()
+            with redirect_stdout(output):
+                result = main(["checkpoint", "verify", "--root", str(root)])
+            denied = json.loads(output.getvalue())
+            self.assertEqual(result, 2)
+            self.assertEqual(denied["failed_gate"], "source_rebind_required")
+            self.assertFalse(denied["state_changed"])
+            self.assertEqual(
+                denied["next_action"], "rebind-source-and-activate-next-work"
+            )
 
 
 if __name__ == "__main__":

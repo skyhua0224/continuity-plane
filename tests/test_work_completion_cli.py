@@ -335,6 +335,53 @@ class WorkCompletionCliTests(unittest.TestCase):
             self.assertTrue(resumed["checkpoint_verified"])
             self.assertFalse(resumed["read_only"])
 
+    def test_replanned_same_sources_create_current_attach_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            store = self._attached_project(root)
+            receipt = root / "verification.json"
+            receipt.write_text('{"status":"passed"}\n', encoding="utf-8")
+            with redirect_stdout(StringIO()):
+                main(
+                    [
+                        "work", "complete", "--root", str(root),
+                        "--work-id", "M10-09", "--claim-id", "claim-current",
+                        "--actor-ref", "agent-main", "--evidence-file", str(receipt),
+                    ]
+                )
+                main(
+                    [
+                        "attach", "plan", "--root", str(root),
+                        "--master", "MASTER.md", "--status", "STATUS.md",
+                        "--work-id", "M10-10", "--work-title", "Continue the re-planned work",
+                        "--owner-ref", "agent-main", "--scope", "capability:next",
+                    ]
+                )
+            proposal = json.loads(
+                (root / ".continuity/attach-proposal.json").read_text(encoding="utf-8")
+            )
+            output = StringIO()
+            with redirect_stdout(output):
+                result = main(
+                    [
+                        "work", "activate", "--root", str(root),
+                        "--work-id", "M10-10", "--work-title", "Continue the re-planned work",
+                        "--owner-ref", "agent-main", "--claim-id", "claim-next",
+                        "--scope", "capability:next",
+                    ]
+                )
+            response = json.loads(output.getvalue())
+            state = store.read_project("sample-app")
+            work = next(item for item in state["works"] if item["work_id"] == "M10-10")
+
+            self.assertEqual(result, 0)
+            self.assertEqual(response["status"], "activated")
+            self.assertEqual(response["revision"], 5)
+            self.assertIn(
+                f"evidence-attach-{proposal['proposal_sha256'][:16]}",
+                work["evidence_ids"],
+            )
+
     def test_idle_activation_checkpoint_failure_leaves_state_unclaimed(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -430,6 +477,7 @@ class WorkCompletionCliTests(unittest.TestCase):
                 capture_output=True,
                 check=True,
             ).stdout.strip()
+            (root / "MASTER.md").write_text("# Updated Master\n", encoding="utf-8")
             (root / "implementation-change.txt").write_text(
                 "verified but not committed\n", encoding="utf-8"
             )
@@ -472,6 +520,8 @@ class WorkCompletionCliTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             self.assertEqual(response["execution_class"], "delivery")
+            self.assertEqual(response["changed_sources"], ["master"])
+            self.assertTrue(response["source_evidence_rebound"])
             self.assertRegex(response["delivery_contract_sha256"], r"^[0-9a-f]{64}$")
             self.assertEqual(delivery["parent_work_id"], "M10-09")
             self.assertIn(implementation_evidence_id, delivery["evidence_ids"])

@@ -36,6 +36,7 @@ dev = [
 context-control-plane = "context_control_plane.cli:main"
 continuity = "context_control_plane.cli:main"
 continuity-mcp = "context_control_plane.codex_mcp_server:main"
+continuity-codex-hook = "context_control_plane.codex_hook_launcher:main"
 continuity-search-mcp = "context_control_plane.context_mcp_server:main"
 
 [tool.setuptools.packages.find]

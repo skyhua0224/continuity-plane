@@ -98,6 +98,14 @@ class M1100CodexPluginProfileTests(unittest.TestCase):
                 json.loads(generated.stdout)["result"]["serverInfo"]["name"],
                 "continuity",
             )
+            self.assertTrue(
+                (output / "continuity_plane/codex_hook_launcher.py").is_file()
+            )
+            public_pyproject = (output / "pyproject.toml").read_text(encoding="utf-8")
+            self.assertIn(
+                "continuity-codex-hook = \"continuity_plane.codex_hook_launcher:main\"",
+                public_pyproject,
+            )
 
     def test_public_marketplace_offers_core_and_state_separately(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

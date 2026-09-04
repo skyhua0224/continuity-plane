@@ -2,6 +2,19 @@
 
 [中文](CHANGELOG.md)
 
+## Next Release (Unreleased)
+
+- Integrate contributor PR3's idle source rebinding, checkpoint-bound source validation, and Codex
+  compaction recovery fixes.
+- Add the `continuity-codex-hook` package entry point so hooks reuse the installed Python runtime
+  instead of relying on stale paths or system Python aliases.
+- Create current attach evidence when a project is replanned with unchanged canonical bytes; fully
+  source-, workspace-, predecessor-, and effect-bound delivery activation can also use controlled
+  rebinding.
+- Count large repositories incrementally in the lifecycle hook instead of retaining the complete Git
+  file list in memory.
+- This is not released yet; the published alpha11 tag and behavior remain unchanged.
+
 ## 0.1.0-alpha.11
 
 ### Changes Since 0.1.0-alpha.10

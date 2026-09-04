@@ -573,16 +573,34 @@ def _project_root(cwd: str) -> Path | None:
 
 
 def _repository_is_large(root: Path, *, threshold: int = 200) -> bool:
+    """Detect a large repository without retaining its complete file list."""
+    process: subprocess.Popen[bytes] | None = None
     try:
-        result = subprocess.run(
+        process = subprocess.Popen(
             ["git", "-C", str(root), "ls-files", "-z"],
-            capture_output=True,
-            check=False,
-            timeout=COMMAND_TIMEOUT_SECONDS,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
         )
+        assert process.stdout is not None
+        count = 0
+        while count < threshold:
+            chunk = process.stdout.read(64 * 1024)
+            if not chunk:
+                break
+            count += chunk.count(b"\0")
+        if count >= threshold:
+            process.kill()
+            process.wait(timeout=1)
+            return True
+        return process.wait(timeout=COMMAND_TIMEOUT_SECONDS) == 0 and count >= threshold
     except (OSError, subprocess.SubprocessError):
+        if process is not None:
+            try:
+                process.kill()
+                process.wait(timeout=1)
+            except (OSError, subprocess.SubprocessError):
+                pass
         return False
-    return result.returncode == 0 and result.stdout.count(b"\0") >= threshold
 
 
 def _startup_search_context(root: Path) -> str | None:
@@ -1938,15 +1956,6 @@ def _session_start(payload: dict[str, Any], root: Path) -> int:
                 )
             return 0
         if _effect_policy() == "observe":
-            return 0
-        if _effect_policy() == "auto" and payload.get("source") == "compact":
-            _observe(
-                payload,
-                root,
-                event_type="session-start",
-                success=True,
-                source_refreshed=False,
-            )
             return 0
     source_refreshed = False
     if packet.get("source_fresh") is False:

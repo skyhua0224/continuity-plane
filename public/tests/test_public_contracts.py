@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import json
 import tempfile
 import unittest
 from contextlib import redirect_stdout
@@ -26,6 +27,74 @@ def _initialized_store(root: Path) -> SQLiteStateStore:
 
 
 class PublicContractTests(unittest.TestCase):
+    def test_replanned_same_sources_create_current_attach_evidence(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            master = root / "MASTER.md"
+            status = root / "STATUS.md"
+            master.write_text("# Existing Master\n", encoding="utf-8")
+            status.write_text("# Existing Status\n", encoding="utf-8")
+            with redirect_stdout(StringIO()):
+                main(["init", "--root", str(root), "--project-id", "sample-app"])
+                main(
+                    [
+                        "attach", "plan", "--root", str(root),
+                        "--master", "MASTER.md", "--status", "STATUS.md",
+                        "--work-id", "work-first", "--work-title", "First Work",
+                        "--owner-ref", "actor-one", "--scope", "capability:first",
+                    ]
+                )
+                main(
+                    [
+                        "attach", "approve", "--root", str(root),
+                        "--actor-ref", "actor-one", "--claim-id", "claim-first",
+                    ]
+                )
+                main(["checkpoint", "create", "--root", str(root)])
+            evidence = root / "evidence.txt"
+            evidence.write_text("verified completion\n", encoding="utf-8")
+            with redirect_stdout(StringIO()):
+                main(
+                    [
+                        "work", "complete", "--root", str(root),
+                        "--work-id", "work-first", "--claim-id", "claim-first",
+                        "--actor-ref", "actor-one", "--evidence-file", str(evidence),
+                    ]
+                )
+                main(
+                    [
+                        "attach", "plan", "--root", str(root),
+                        "--master", "MASTER.md", "--status", "STATUS.md",
+                        "--work-id", "work-next", "--work-title", "Next Work",
+                        "--owner-ref", "actor-two", "--scope", "capability:next",
+                    ]
+                )
+            proposal = json.loads(
+                (root / ".continuity/attach-proposal.json").read_text(encoding="utf-8")
+            )
+            output = StringIO()
+            with redirect_stdout(output):
+                result = main(
+                    [
+                        "work", "activate", "--root", str(root),
+                        "--work-id", "work-next", "--work-title", "Next Work",
+                        "--owner-ref", "actor-two", "--claim-id", "claim-next",
+                        "--scope", "capability:next",
+                    ]
+                )
+            response = json.loads(output.getvalue())
+            state = SQLiteStateStore(root / ".continuity/state.sqlite3").read_project(
+                "sample-app"
+            )
+            work = next(item for item in state["works"] if item["work_id"] == "work-next")
+
+            self.assertEqual(result, 0)
+            self.assertEqual(response["status"], "activated")
+            self.assertIn(
+                f"evidence-attach-{proposal['proposal_sha256'][:16]}",
+                work["evidence_ids"],
+            )
+
     def test_sqlite_event_commit_is_revision_guarded(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             store = _initialized_store(Path(directory))

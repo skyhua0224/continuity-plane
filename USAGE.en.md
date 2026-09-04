@@ -373,6 +373,22 @@ The lookup receipt measures `cache_status` and `returned_bytes`; host traces mea
 input/output tokens. A cache hit alone is not token savings and must be reconciled with matched
 context-input/output A/B results.
 
+### Compaction Recovery And Source Rebinding
+
+Core hooks run through the installed package's `continuity-codex-hook` entry point, without
+depending on a system Python alias. In `auto` mode, `SessionStart(source=compact)` injects the
+current bounded packet and directs the model to continue silently from `next_action`. Hook or
+State-sync failures are observed and degraded; they do not stop ordinary editing, builds, or tests.
+
+When an idle project's canonical MASTER or STATUS changes, `resume` returns
+`source_fresh=false`, `read_only=true`, and
+`next_action=rebind-source-and-activate-next-work`. `checkpoint verify` returns the structured
+`source_rebind_required` gate; neither command writes State. The next explicit `work activate`
+(standard or fully bound delivery) revalidates the source, creates current evidence, refreshes the
+checkpoint, and activates the Work in one State commit. If the source changes again during
+validation, the operation returns `source_fresh` and leaves the proposal, checkpoint, and revision
+unchanged.
+
 Verify actual adoption after starting or resuming a Session:
 
 ```bash

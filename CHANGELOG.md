@@ -2,6 +2,16 @@
 
 [English](CHANGELOG.en.md)
 
+## 下一版本（未发布）
+
+- 合入协作者 PR3 的 idle source rebind、checkpoint 前后 source 校验和 Codex 压缩恢复修复。
+- 新增 `continuity-codex-hook` 包入口，复用安装包的 Python 运行时，避免旧 hook 路径或系统
+  Python 别名导致 Session 被卡住。
+- 同一 canonical 内容重新规划时生成当前 attach evidence；delivery activation 也支持经过
+  完整 source、workspace、predecessor 和 effect 校验的受控 rebind。
+- 大型仓库启动检测按阈值读取 Git 文件列表，避免在 hook 中保留完整列表。
+- 该版本尚未发布；当前已发布的 alpha11 行为和 tag 不变。
+
 ## 0.1.0-alpha.11
 
 ### 相比 0.1.0-alpha.10

@@ -357,11 +357,15 @@ def validate_recovery_envelope(value: Any, *, verify_digest: bool = True) -> Non
     ):
         raise RecoveryEnvelopeError("read_only does not match source and lease status")
     _text(envelope["next_action"], "next_action")
-    if idle and envelope["next_action"] not in {
-        "activate-next-work",
-        "remain-read-only",
-    }:
-        raise RecoveryEnvelopeError("idle recovery action is invalid")
+    idle_actions = (
+        {"activate-next-work"}
+        if envelope["source_fresh"]
+        else {"rebind-source-and-activate-next-work", "remain-read-only"}
+    )
+    if idle and envelope["next_action"] not in idle_actions:
+        raise RecoveryEnvelopeError(
+            "idle recovery action does not match source freshness"
+        )
     if idle and (envelope["return_point_work_id"] is not None or not envelope["lease_valid"]):
         raise RecoveryEnvelopeError("idle recovery authority fields are invalid")
     action = _object(envelope["first_permitted_action"], _ACTION_FIELDS, "first action")

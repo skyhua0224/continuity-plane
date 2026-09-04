@@ -1641,7 +1641,7 @@ printf '%s\\n' '{"status":"ok"}'
         self.assertNotIn("perform only its next_action", context)
         self.assertNotIn("claim-active", context)
 
-    def test_auto_compact_uses_native_continuation_without_packet_injection(
+    def test_auto_compact_injects_the_bounded_current_packet(
         self,
     ) -> None:
         completed, calls, observations = self._run_hook(
@@ -1651,7 +1651,11 @@ printf '%s\\n' '{"status":"ok"}'
             projection_revision=8,
         )
 
-        self.assertEqual(completed.stdout, "")
+        output = json.loads(completed.stdout)
+        context = output["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("work-active", context)
+        self.assertIn("claim-active", context)
+        self.assertIn("Continue silently", context)
         self.assertEqual(len(calls), 1)
         self.assertIn('"event_type":"session-start"', observations)
         self.assertIn('"success":true', observations)
