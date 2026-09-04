@@ -36,11 +36,9 @@ class M1100CodexPluginProfileTests(unittest.TestCase):
             (self.search / ".codex-plugin/plugin.json").read_text(encoding="utf-8")
         )
         self.assertEqual(search_manifest["name"], "continuity-plane-search")
-        search_skill = self.search / "skills/bounded-search/SKILL.md"
-        self.assertTrue(search_skill.is_file())
-        search_text = search_skill.read_text(encoding="utf-8")
-        self.assertIn("continuity context search", search_text)
-        self.assertLessEqual(len(search_text.encode("utf-8")), 1024)
+        self.assertTrue((self.search / ".mcp.json").is_file())
+        self.assertNotIn("skills", search_manifest)
+        self.assertEqual(search_manifest["mcpServers"], "./.mcp.json")
         hooks = json.loads(
             (self.core / "hooks/hooks.json").read_text(encoding="utf-8")
         )["hooks"]
@@ -53,20 +51,8 @@ class M1100CodexPluginProfileTests(unittest.TestCase):
         self.assertEqual(state_manifest["name"], "continuity-plane-state")
         self.assertTrue((self.state / ".mcp.json").is_file())
         self.assertTrue((self.state / "scripts/continuity-mcp-server.py").is_file())
-        self.assertTrue(
-            (self.state / "skills/continuity-plane/SKILL.md").is_file()
-        )
+        self.assertNotIn("skills", state_manifest)
         self.assertFalse((self.state / "hooks/hooks.json").exists())
-
-    def test_state_skill_uses_one_bounded_inspection_per_turn(self) -> None:
-        skill = self.state / "skills/continuity-plane/SKILL.md"
-        text = skill.read_text(encoding="utf-8")
-
-        self.assertIn("continuity_inspect", text)
-        self.assertIn("once per turn", text)
-        self.assertIn("After a successful inspect, answer from its result", text)
-        self.assertIn("do not read `.continuity` or governance files", text)
-        self.assertLessEqual(len(text.encode("utf-8")), 1024)
 
     def test_state_launcher_runs_from_a_clean_working_directory(self) -> None:
         script = self.state / "scripts/continuity-mcp-server.py"
@@ -136,6 +122,15 @@ class M1100CodexPluginProfileTests(unittest.TestCase):
             )
             self.assertTrue(
                 (output / "plugins/continuity-plane-state/.mcp.json").is_file()
+            )
+            self.assertTrue(
+                (output / "plugins/continuity-plane-search/.mcp.json").is_file()
+            )
+            self.assertFalse(
+                (output / "plugins/continuity-plane-search/skills").exists()
+            )
+            self.assertFalse(
+                (output / "plugins/continuity-plane-state/skills").exists()
             )
             for readme in ("README.md", "README.en.md"):
                 text = (output / readme).read_text(encoding="utf-8")

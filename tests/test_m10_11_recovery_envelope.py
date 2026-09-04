@@ -277,7 +277,8 @@ class M1011RecoveryEnvelopeTests(unittest.TestCase):
         self.assertTrue(envelope["read_only"])
         self.assertEqual(envelope["next_action"], "remain-read-only")
         self.assertEqual(
-            envelope["first_permitted_action"]["target"], "remain-read-only"
+            envelope["first_permitted_action"]["target"],
+            "remain-read-only",
         )
 
 

@@ -90,6 +90,7 @@ _PUBLIC_MODULE_ROOTS = {
     "code_index",
     "cli",
     "codex_mcp_server",
+    "context_mcp_server",
     "collaboration_notifications",
     "decision_evidence_projection",
     "durable_operation",
@@ -287,14 +288,13 @@ def _copy_public_plugin(source: Path, destination: Path) -> None:
     elif source.name == "continuity-plane-search":
         files = [
             source / ".codex-plugin/plugin.json",
-            source / "skills/bounded-search/SKILL.md",
+            source / ".mcp.json",
         ]
     elif source.name == "continuity-plane-state":
         files = [
             source / ".codex-plugin/plugin.json",
             source / ".mcp.json",
             source / "scripts/continuity-mcp-server.py",
-            source / "skills/continuity-plane/SKILL.md",
         ]
     else:
         raise RuntimeError(f"unsupported public Codex plugin: {source.name}")

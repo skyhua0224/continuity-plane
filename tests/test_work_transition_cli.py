@@ -192,10 +192,10 @@ class WorkTransitionCliTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             self.assertEqual(response["status"], "transitioned")
-            self.assertEqual(response["revision"], 5)
+            self.assertEqual(response["revision"], 6)
             self.assertEqual(len(events), len(before_events) + 1)
-            self.assertEqual(events[-1]["revision_before"], 4)
-            self.assertEqual(events[-1]["revision_after"], 5)
+            self.assertEqual(events[-1]["revision_before"], 5)
+            self.assertEqual(events[-1]["revision_after"], 6)
             self.assertEqual(child["status"], "completed")
             self.assertEqual(parent["status"], "active")
             self.assertEqual(state["project"]["active_work_ids"], ["N-69-06"])
@@ -222,7 +222,7 @@ class WorkTransitionCliTests(unittest.TestCase):
             self.assertEqual(replay_result, 0)
             self.assertEqual(replay["status"], "already-transitioned")
             self.assertEqual(len(store.read_events("sample-app")), len(events))
-            self.assertEqual(replay["revision"], 5)
+            self.assertEqual(replay["revision"], 6)
 
     def test_transition_accepts_a_registered_external_delivery_workspace(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

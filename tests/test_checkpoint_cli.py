@@ -82,7 +82,7 @@ class CheckpointCliTests(unittest.TestCase):
             self.assertEqual(verified["status"], "verified")
             self.assertEqual(verified["checkpoint_ref"], first["checkpoint_ref"])
             self.assertEqual(verified["project_id"], "sample-app")
-            self.assertEqual(verified["revision"], 2)
+            self.assertEqual(verified["revision"], 3)
             self.assertEqual(verified["active_work_ids"], ["M10-09"])
             self.assertEqual(verified["primary_work_id"], "M10-09")
             self.assertTrue(

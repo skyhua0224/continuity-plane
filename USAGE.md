@@ -290,30 +290,7 @@ continuity context search --root . --query "Runtime" --max-results 40 --max-outp
 ```
 
 该命令只读取 Git tracked current worktree，完整 JSON receipt 不超过指定字节预算；
-search plugin 只负责在适用任务中提示 Agent 优先调用该命令。
-
-#### 增量代码索引
-
-适合大型仓库、多个 Session 或需要让其他 AI 快速定位符号的场景：
-
-```bash
-continuity context index --root .
-continuity context lookup --root . --query "Runtime" --max-results 20 --max-output-bytes 8192
-```
-
-`index` 只读取 Git tracked 文件，把文件 hash、语言和符号位置写入用户缓存目录；默认不写
-项目目录。第二次执行会复用未变化文件，修改一个文件只重新解析一个文件。`lookup` 返回
-带 `repository_revision`、`index_revision` 和 `file_sha256` 的短引用，不返回源码正文。
-任何 Agent 都可以通过 CLI 或 Python API 使用同一合同：
-
-```python
-from context_control_plane.code_index import lookup_code_index
-
-receipt = lookup_code_index(".", query="Runtime")
-```
-
-索引是候选定位，不授予 State、memory 或副作用权限；展开源码前仍需按返回的 hash 验证
-当前工作树。缓存损坏时会被当作未命中并重建，不会阻断项目工作。
+search plugin 只注册一个 lookup MCP 工具，不加载额外 Skill。
 
 #### 增量代码索引
 
@@ -344,21 +321,31 @@ receipt = lookup_code_index(".", query="Runtime")
 codex plugin add continuity-plane-state@continuity-plane
 ```
 
+search plugin 提供 `continuity_context_lookup` MCP 工具。它只返回有界的 symbol/path/hash
+引用，刷新用户缓存，不建立 State binding，也不拦截 shell。其他 AI 通过 CLI 使用同一合同。
+
+`cache_status` 与 `returned_bytes` 由 lookup receipt 直接计量；模型 input/output token 由
+host trace 计量。缓存命中不能单独证明 token 节省，必须和同任务的上下文输入输出 A/B 对账。
+
 安装或恢复 Session 后验证实际采用状态：
 
 ```bash
 continuity doctor --root . --codex-home ~/.codex
-continuity inspect --root .
 ```
 
 doctor 只读取插件配置、MCP policy、hook trust 和脱敏 lifecycle observation，不读取聊天
 正文。`active` 表示已出现真实 SessionStart；`configured` 表示配置完成但尚无运行事件；
 `misconfigured` 表示至少一项安装门未通过。
 
+CLI v1 packet 中的 `read_only` 仅指 Continuity State 写入。State MCP 的 inspect/resume
+外层返回 `read_only_scope=continuity-state` 与 `ordinary_project_work_allowed=true`；生成的
+STATUS 将项目动作显示为 `continue-project-work-state-sync-pending`。代码编辑、编译、测试
+和读取继续进行，不等待外部 Session。
+
 ### 一个 Session 管理多个项目
 
 安装 advanced State plugin 后，同一个 Session 同时处理治理仓、实现仓和另一个项目时，
-普通读取先对治理根执行一次只读 inspect；只有下一步需要 State 写入时才执行一次 resume：
+只有显式诊断 State 才对治理根执行一次 inspect；需要 State 写入时执行一次 resume：
 
 ```text
 continuity_inspect(root=/path/to/project-a)

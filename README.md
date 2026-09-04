@@ -39,18 +39,8 @@ continuity context index --root .
 continuity context lookup --root . --query "build_runtime"
 ```
 
-索引缓存默认保存在用户缓存目录，不写入项目；新 Session 或其他 AI 可复用它。返回值只有
-路径、行号、符号类型和文件 hash，不包含源码正文。源码变化后只重新解析变化文件。
-
-符号、类或函数定位可以建立增量索引：
-
-```bash
-continuity context index --root .
-continuity context lookup --root . --query "build_runtime"
-```
-
-索引缓存默认保存在用户缓存目录，不写入项目；新 Session 或其他 AI 可复用它。返回值只有
-路径、行号、符号类型和文件 hash，不包含源码正文。源码变化后只重新解析变化文件。
+索引缓存默认在项目外，返回路径、行号、符号和文件 hash；新 Session 或其他 AI 可复用，
+源码变化后只重解析变化文件。
 
 只有明确需要在 Codex 中调用 resume、claim、checkpoint 或原子 Work transition 时，
 才安装 advanced State plugin：
@@ -59,16 +49,18 @@ continuity context lookup --root . --query "build_runtime"
 codex plugin add continuity-plane-state@continuity-plane
 ```
 
-安装后新建或恢复一个 Session。用只读命令确认插件已真实运行：
+安装 search plugin 后，Codex 会看到单工具 `continuity_context_lookup` MCP；不支持 MCP 的
+其他 AI 使用上面的 CLI，二者共享按仓库隔离的用户缓存。State plugin 不参与代码检索。
+
+安装后新建或恢复一个 Session。确认插件已真实运行：
 
 ```bash
 continuity doctor --root . --codex-home ~/.codex
-continuity inspect --root .
 ```
 
 `codex_plugin.status=active` 表示配置、MCP policy、hook trust 和真实 SessionStart
-观测均已通过。普通问题只 inspect 一次；显式 State 写入前才 resume。权威状态仍由本地
-CLI/State MCP 管理。
+观测均已通过。普通问题直接使用 lifecycle 提供的有界恢复信息，不调用 State 工具；只有
+显式诊断 State 时才 inspect，写入 State 前才 resume。权威状态仍由本地 CLI/State MCP 管理。
 
 ### 单项目
 
@@ -129,7 +121,6 @@ continuity init --root /path/to/team-repo --project-id team-project --display-na
 用户 token、窗口有效利用率和两次压缩之间的有效工作量，按 accepted Work 归一化，
 并在 host trace 可见时计量。[完整方法和限制](public/docs/benchmarks.md)。
 
-代码索引是候选定位层；它不替代当前源码、测试或 Typed State 的权威验证。
 
 代码索引是候选定位层；它不替代当前源码、测试或 Typed State 的权威验证。
 

@@ -244,25 +244,37 @@ printf '%s\\n' '{"status":"ok"}'
             5000,
         )
 
-    def test_plugin_skill_avoids_reloading_governance_after_a_healthy_packet(
-        self,
-    ) -> None:
-        skill = (self.state_plugin / "skills/continuity-plane/SKILL.md").read_text(
-            encoding="utf-8"
+    def test_state_mcp_does_not_inject_a_skill_into_ordinary_turns(self) -> None:
+        manifest = json.loads(
+            (self.state_plugin / ".codex-plugin/plugin.json").read_text(
+                encoding="utf-8"
+            )
         )
 
-        self.assertIn(
-            "do not re-read STATUS, MASTER, AGENTS, or SKILL files",
-            skill,
+        self.assertNotIn("skills", manifest)
+
+    def test_startup_hint_routes_unfamiliar_code_through_the_incremental_index(self) -> None:
+        completed, calls, _ = self._run_hook(
+            "SessionStart",
+            session_source="startup",
+            effect_policy="auto",
+            projection_revision=8,
         )
-        self.assertIn("when no healthy packet was injected", skill)
-        self.assertIn(
-            "auto and observe modes never block normal project work",
-            skill,
-        )
-        self.assertIn("Strict mode applies only when the project explicitly opts in", skill)
-        self.assertNotIn("Treat `read_only: true` as a veto", skill)
-        self.assertLessEqual(len(skill.encode("utf-8")), 2048)
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertEqual(len(calls), 1)
+        output = json.loads(completed.stdout)
+        context = output["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("continuity context lookup", context)
+        self.assertIn("before broad", context)
+        self.assertLessEqual(len(context.encode("utf-8")), 12 * 1024)
+
+    def test_large_repository_gets_a_non_blocking_lookup_hint_without_state(self) -> None:
+        module = self._hook_module()
+        with mock.patch.object(module, "_repository_is_large", return_value=True):
+            hint = module._startup_search_context(Path("/tmp/project"))
+        self.assertIn("continuity_context_lookup", hint)
+        self.assertIn("cache_status", hint)
+        self.assertLessEqual(len(hint.encode("utf-8")), 512)
 
     def test_explicit_resume_binding_outlives_an_unrelated_session_cwd(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -482,8 +494,10 @@ printf '%s\\n' '{"status":"ok"}'
             )
 
             response = json.loads(completed.stdout)
-            self.assertFalse(response["continue"])
-            self.assertIn("binding", response["stopReason"].lower())
+            self.assertTrue(response["continue"])
+            self.assertNotIn("stopReason", response)
+            self.assertNotIn("read-only", response["systemMessage"].lower())
+            self.assertIn("Continue ordinary project work", response["systemMessage"])
             self.assertFalse(calls.exists())
 
     def test_auto_mode_ignores_an_invalid_session_binding(self) -> None:
@@ -1668,6 +1682,76 @@ printf '%s\\n' '{"status":"ok"}'
         self.assertIn('"event_type":"session-start"', observations)
         self.assertIn('"success":false', observations)
 
+    def test_strict_session_start_never_freezes_ordinary_project_work(self) -> None:
+        completed, calls, observations = self._run_hook(
+            "SessionStart",
+            fail_resume=True,
+            effect_policy="strict",
+        )
+
+        output = json.loads(completed.stdout)
+        self.assertEqual(completed.returncode, 0)
+        self.assertTrue(output["continue"])
+        self.assertNotIn("stopReason", output)
+        self.assertNotIn("read-only", output["systemMessage"].lower())
+        self.assertIn("Continue ordinary project work", output["systemMessage"])
+        self.assertEqual(len(calls), 1)
+        self.assertIn('"success":false', observations)
+
+    def test_strict_session_start_drops_an_expired_claim_without_injecting_old_work(self) -> None:
+        expired = {
+            "schema_version": "context.recovery-envelope/v1alpha1",
+            "project_id": "portable-project",
+            "revision": 8,
+            "active_work": {"work_id": "expired-work", "title": "Expired work"},
+            "claim": {"claim_id": "expired-claim", "actor_ref": "old-actor"},
+            "next_action": "continue-project-work-state-sync-pending",
+            "source_fresh": True,
+            "lease_valid": False,
+            "checkpoint_verified": True,
+            "read_only": True,
+        }
+        completed, calls, _ = self._run_hook(
+            "SessionStart",
+            resume_packet=expired,
+            effect_policy="strict",
+            projection_revision=8,
+        )
+
+        output = json.loads(completed.stdout)
+        self.assertTrue(output["continue"])
+        self.assertNotIn("hookSpecificOutput", output)
+        self.assertNotIn("expired-work", completed.stdout)
+        self.assertIn("Continue ordinary project work", output["systemMessage"])
+        self.assertEqual(len(calls), 1)
+
+    def test_strict_session_start_drops_work_from_a_stale_status_projection(self) -> None:
+        current = {
+            "schema_version": "context.recovery-envelope/v1alpha1",
+            "project_id": "portable-project",
+            "revision": 8,
+            "active_work": {"work_id": "unverified-work", "title": "Unverified work"},
+            "claim": {"claim_id": "current-claim", "actor_ref": "current-actor"},
+            "next_action": "continue-active-work",
+            "source_fresh": True,
+            "lease_valid": True,
+            "checkpoint_verified": True,
+            "read_only": False,
+        }
+        completed, calls, _ = self._run_hook(
+            "SessionStart",
+            resume_packet=current,
+            effect_policy="strict",
+            projection_revision=7,
+        )
+
+        output = json.loads(completed.stdout)
+        self.assertTrue(output["continue"])
+        self.assertNotIn("hookSpecificOutput", output)
+        self.assertNotIn("unverified-work", completed.stdout)
+        self.assertIn("Continue ordinary project work", output["systemMessage"])
+        self.assertEqual(len(calls), 1)
+
     def test_auto_mode_idle_session_does_not_invent_the_next_work(self) -> None:
         idle = {
             "schema_version": "context.recovery-envelope/v1alpha1",
@@ -1836,15 +1920,21 @@ printf '%s\\n' '{"status":"ok"}'
         self.assertEqual(len(calls), 2)
         self.assertTrue(calls[0].startswith("resume "))
         self.assertTrue(calls[1].startswith("attach refresh "))
-        self.assertIn("explicit governance approval", completed.stdout.lower())
+        output = json.loads(completed.stdout)
+        self.assertTrue(output["continue"])
+        self.assertNotIn("read-only", output["systemMessage"].lower())
+        self.assertIn("Continue ordinary project work", output["systemMessage"])
 
-    def test_compact_session_start_stops_if_refresh_does_not_make_source_fresh(self) -> None:
+    def test_compact_session_start_keeps_project_work_writable_when_state_is_stale(self) -> None:
         completed, calls, observations = self._run_hook(
             "SessionStart", auto_refresh=True, always_stale=True
         )
         self.assertEqual(completed.returncode, 0, completed.stderr)
         self.assertEqual(len(calls), 2)
-        self.assertIn("read-only", completed.stdout)
+        output = json.loads(completed.stdout)
+        self.assertTrue(output["continue"])
+        self.assertNotIn("read-only", output["systemMessage"].lower())
+        self.assertIn("Continue ordinary project work", output["systemMessage"])
         self.assertIn('"success":false', observations)
 
     def test_observe_mode_drops_stale_resume_context_without_stopping_the_session(self) -> None:

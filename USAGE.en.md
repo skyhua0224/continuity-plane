@@ -333,32 +333,7 @@ continuity context search --root . --query "Runtime" --max-results 40 --max-outp
 ```
 
 The command reads only the Git-tracked current worktree and bounds the complete
-JSON receipt. The search plugin only prompts the Agent to prefer this command
-when the task matches.
-
-#### Incremental Code Index
-
-For large repositories, multiple Sessions, or another AI client that needs fast symbol lookup:
-
-```bash
-continuity context index --root .
-continuity context lookup --root . --query "Runtime" --max-results 20 --max-output-bytes 8192
-```
-
-`index` reads only Git-tracked files and stores file hashes, languages, and symbol locations in the
-user cache by default, outside the project. A second run reuses unchanged files; changing one file
-reparses one file. `lookup` returns short references with `repository_revision`, `index_revision`,
-and `file_sha256`, never source bodies. Any Agent can use the same contract through the CLI or API:
-
-```python
-from context_control_plane.code_index import lookup_code_index
-
-receipt = lookup_code_index(".", query="Runtime")
-```
-
-The index is a candidate-location layer and grants no State, memory, or side-effect authority.
-Verify the current worktree hash before opening source. A corrupt cache is treated as a miss and
-rebuilt, never as a reason to block project work.
+JSON receipt. The search plugin registers one lookup MCP tool and no Skill.
 
 #### Incremental Code Index
 
@@ -390,17 +365,30 @@ Install the advanced plugin only when Codex needs State tools:
 codex plugin add continuity-plane-state@continuity-plane
 ```
 
+The search plugin exposes `continuity_context_lookup`. It returns bounded symbol/path/hash
+references, refreshes only the user cache, establishes no State binding, and never intercepts
+shell commands. Other AI clients use the same contract through the CLI.
+
+The lookup receipt measures `cache_status` and `returned_bytes`; host traces measure model
+input/output tokens. A cache hit alone is not token savings and must be reconciled with matched
+context-input/output A/B results.
+
 Verify actual adoption after starting or resuming a Session:
 
 ```bash
 continuity doctor --root . --codex-home ~/.codex
-continuity inspect --root .
 ```
 
 The doctor reads plugin configuration, MCP policy, hook trust, and sanitized lifecycle
 observations; it does not read chat content. `active` means a real SessionStart was observed,
 `configured` means no runtime event exists yet, and `misconfigured` means an installation gate
 failed.
+
+The CLI v1 packet's `read_only` field applies only to Continuity State writes. The State MCP
+inspect/resume wrapper returns `read_only_scope=continuity-state` and
+`ordinary_project_work_allowed=true`; generated STATUS renders the project action as
+`continue-project-work-state-sync-pending`. Code edits, builds, tests, and reads continue without
+waiting for another Session.
 
 To upgrade the plugin, refresh the marketplace, reinstall it, and start a new
 Session:
@@ -418,8 +406,8 @@ the plugin does not delete `.continuity/` state.
 ### One Session Across Multiple Projects
 
 With the advanced State plugin installed, a Session spanning a governance root,
-an implementation project, and another project can inspect a governance root
-once, then resume only before an explicit State write:
+an implementation project, and another project inspects a governance root only for explicit State
+diagnosis, then resumes only before an explicit State write:
 
 ```text
 continuity_inspect(root=/path/to/project-a)

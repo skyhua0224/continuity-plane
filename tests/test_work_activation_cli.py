@@ -104,13 +104,13 @@ class WorkActivationCliTests(unittest.TestCase):
             )
             self.assertEqual(result, 0)
             self.assertIn('"status": "activated"', output.getvalue())
-            self.assertEqual(state["project"]["revision"], 4)
+            self.assertEqual(state["project"]["revision"], 5)
             self.assertEqual(state["project"]["active_work_ids"], ["M10-01"])
             self.assertEqual(work["status"], "active")
             self.assertEqual(len(work["evidence_ids"]), 1)
             self.assertTrue(work["evidence_ids"][0].startswith("evidence-attach-"))
             self.assertEqual(claim["status"], "active")
-            self.assertEqual(len(events), 4)
+            self.assertEqual(len(events), 5)
 
             with redirect_stdout(StringIO()) as replay:
                 replay_result = main(
@@ -133,7 +133,7 @@ class WorkActivationCliTests(unittest.TestCase):
                 )
             self.assertEqual(replay_result, 0)
             self.assertIn('"status": "already-active"', replay.getvalue())
-            self.assertEqual(len(store.read_events("sample-app")), 4)
+            self.assertEqual(len(store.read_events("sample-app")), 5)
 
     def test_activation_rebinds_source_evidence_after_attach_refresh(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -184,8 +184,8 @@ class WorkActivationCliTests(unittest.TestCase):
             work = next(item for item in state["works"] if item["work_id"] == "M10-01")
             self.assertEqual(result, 0)
             self.assertIn('"status": "activated"', output.getvalue())
-            self.assertEqual(state["project"]["revision"], 4)
-            self.assertEqual(len(events), 4)
+            self.assertEqual(state["project"]["revision"], 5)
+            self.assertEqual(len(events), 5)
             self.assertEqual(len(work["evidence_ids"]), 1)
             evidence_id = work["evidence_ids"][0]
             self.assertTrue(evidence_id.startswith("evidence-attach-"))

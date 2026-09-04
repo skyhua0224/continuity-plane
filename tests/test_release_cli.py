@@ -10,15 +10,63 @@ import unittest
 from contextlib import redirect_stdout
 from io import StringIO
 from pathlib import Path
+from unittest import mock
 
 import yaml
 from jsonschema import Draft202012Validator, ValidationError
 
-from context_control_plane.cli import main
+from context_control_plane.cli import _initial_state, main
 from context_control_plane.sqlite_state_store import SQLiteStateStore
 
 
 class ReleaseCliTests(unittest.TestCase):
+    def test_initialized_project_is_immediately_inspectable_without_writes(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with redirect_stdout(StringIO()):
+                main(["init", "--root", str(root), "--project-id", "sample-app"])
+            before = {
+                path.relative_to(root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+                for path in (root / ".continuity").rglob("*")
+                if path.is_file()
+            }
+            output = StringIO()
+            with redirect_stdout(output):
+                result = main(["inspect", "--root", str(root)])
+            packet = json.loads(output.getvalue())
+            after = {
+                path.relative_to(root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+                for path in (root / ".continuity").rglob("*")
+                if path.is_file()
+            }
+            self.assertEqual(result, 0)
+            self.assertEqual(packet["project_id"], "sample-app")
+            self.assertIsNone(packet["active_work"])
+            self.assertIsNone(packet["claim"])
+            self.assertTrue(packet["checkpoint_verified"])
+            self.assertTrue(packet["source_fresh"])
+            self.assertFalse(packet["read_only"])
+            self.assertEqual(before, after)
+
+    def test_initialization_failure_leaves_no_partial_project_and_can_retry(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with mock.patch(
+                "context_control_plane.cli.publish_checkpoint",
+                side_effect=RuntimeError("checkpoint fault"),
+            ):
+                with self.assertRaisesRegex(RuntimeError, "checkpoint fault"):
+                    main(["init", "--root", str(root), "--project-id", "sample-app"])
+            self.assertFalse((root / ".continuity").exists())
+
+            with redirect_stdout(StringIO()):
+                self.assertEqual(
+                    main(["init", "--root", str(root), "--project-id", "sample-app"]),
+                    0,
+                )
+            with redirect_stdout(StringIO()):
+                self.assertEqual(main(["inspect", "--root", str(root)]), 0)
+
     def test_doctor_reports_real_codex_plugin_adoption_without_transcripts(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory)
@@ -33,6 +81,9 @@ class ReleaseCliTests(unittest.TestCase):
                 "enabled = true\n"
                 "[plugins.\"continuity-plane-search@continuity-plane\"]\n"
                 "enabled = true\n"
+                "[plugins.\"continuity-plane-search@continuity-plane\".mcp_servers.\"continuity-search\"]\n"
+                "enabled = true\n"
+                "default_tools_approval_mode = \"approve\"\n"
                 "[plugins.\"continuity-plane-state@continuity-plane\"]\n"
                 "enabled = true\n"
                 "[plugins.\"continuity-plane-state@continuity-plane\".mcp_servers.continuity]\n"
@@ -80,6 +131,7 @@ class ReleaseCliTests(unittest.TestCase):
             self.assertEqual(report["codex_plugin"]["trusted_hooks"], 3)
             self.assertEqual(report["codex_plugin"]["expected_hooks"], 3)
             self.assertTrue(report["codex_plugin"]["mcp_auto_approved"])
+            self.assertTrue(report["codex_plugin"]["search_mcp_auto_approved"])
             self.assertTrue(report["codex_plugin"]["session_start_observed"])
             self.assertNotIn("transcript", json.dumps(report).lower())
 
@@ -144,7 +196,7 @@ class ReleaseCliTests(unittest.TestCase):
             self.assertEqual(proposal["work"]["work_id"], "M10-09")
             self.assertEqual(proposal["sources"][0]["kind"], "master")
             self.assertEqual(proposal["state_write_authority"], False)
-            self.assertEqual(state["project"]["revision"], 0)
+            self.assertEqual(state["project"]["revision"], 1)
             self.assertEqual(state["project"]["active_work_ids"], [])
 
     def test_attach_approve_commits_ready_work_then_claims_it(self) -> None:
@@ -199,13 +251,13 @@ class ReleaseCliTests(unittest.TestCase):
             response = json.loads(output.getvalue())
             self.assertEqual(result, 0)
             self.assertEqual(response["status"], "attached")
-            self.assertEqual(response["revision"], 2)
+            self.assertEqual(response["revision"], 3)
             self.assertEqual(state["project"]["active_work_ids"], ["M10-09"])
             self.assertEqual(state["project"]["primary_work_id"], "M10-09")
             self.assertEqual(work["status"], "active")
             self.assertEqual(claim["actor_ref"], "agent-main")
             self.assertEqual(initial["status"], "rejected")
-            self.assertEqual(len(events), 2)
+            self.assertEqual(len(events), 3)
 
             replay_output = StringIO()
             with redirect_stdout(replay_output):
@@ -225,7 +277,7 @@ class ReleaseCliTests(unittest.TestCase):
             self.assertEqual(
                 json.loads(replay_output.getvalue())["status"], "already-attached"
             )
-            self.assertEqual(len(store.read_events("sample-app")), 2)
+            self.assertEqual(len(store.read_events("sample-app")), 3)
 
             with redirect_stdout(StringIO()):
                 main(["checkpoint", "create", "--root", str(root)])
@@ -240,7 +292,7 @@ class ReleaseCliTests(unittest.TestCase):
             self.assertEqual(
                 packet["schema_version"], "context.recovery-envelope/v1alpha1"
             )
-            self.assertEqual(packet["revision"], 2)
+            self.assertEqual(packet["revision"], 3)
             self.assertEqual(packet["active_work"]["work_id"], "M10-09")
             self.assertEqual(packet["claim"]["claim_id"], "claim-current")
             self.assertEqual(packet["source_fresh"], True)
@@ -248,7 +300,7 @@ class ReleaseCliTests(unittest.TestCase):
             self.assertRegex(packet["packet_sha256"], r"^[0-9a-f]{64}$")
             projection_path = root / ".continuity/status-projection.json"
             projection = json.loads(projection_path.read_text(encoding="utf-8"))
-            self.assertEqual(projection["revision"], 2)
+            self.assertEqual(projection["revision"], 3)
             self.assertEqual(
                 projection["source_packet_sha256"], packet["packet_sha256"]
             )
@@ -317,10 +369,10 @@ class ReleaseCliTests(unittest.TestCase):
             )
             self.assertEqual(refresh_result, 0)
             self.assertEqual(json.loads(refresh_output.getvalue())["status"], "refreshed")
-            self.assertEqual(refreshed["project"]["revision"], 3)
-            self.assertEqual(refreshed_claim["expected_project_revision"], 3)
+            self.assertEqual(refreshed["project"]["revision"], 4)
+            self.assertEqual(refreshed_claim["expected_project_revision"], 4)
             self.assertEqual(len(refreshed_work["evidence_ids"]), 2)
-            self.assertEqual(len(store.read_events("sample-app")), 3)
+            self.assertEqual(len(store.read_events("sample-app")), 4)
 
             with redirect_stdout(StringIO()):
                 main(["checkpoint", "create", "--root", str(root)])
@@ -328,6 +380,41 @@ class ReleaseCliTests(unittest.TestCase):
             with redirect_stdout(refreshed_resume):
                 main(["resume", "--root", str(root)])
             self.assertEqual(json.loads(refreshed_resume.getvalue())["read_only"], False)
+
+    def test_legacy_revision_zero_project_can_attach_without_reinitializing(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "MASTER.md").write_text("# Existing Master\n", encoding="utf-8")
+            (root / "STATUS.md").write_text("# Existing Status\n", encoding="utf-8")
+            with redirect_stdout(StringIO()):
+                main(["init", "--root", str(root), "--project-id", "sample-app"])
+            state_path = root / ".continuity/state.sqlite3"
+            state_path.unlink()
+            store = SQLiteStateStore(state_path)
+            store.initialize()
+            store.create_project(_initial_state("sample-app"))
+
+            with redirect_stdout(StringIO()):
+                main(
+                    [
+                        "attach", "plan", "--root", str(root),
+                        "--master", "MASTER.md", "--status", "STATUS.md",
+                        "--work-id", "legacy-work", "--work-title", "Continue legacy work",
+                        "--owner-ref", "agent-main", "--scope", "capability:legacy-work",
+                    ]
+                )
+            output = StringIO()
+            with redirect_stdout(output):
+                result = main(
+                    [
+                        "attach", "approve", "--root", str(root),
+                        "--actor-ref", "agent-main", "--claim-id", "claim-legacy",
+                    ]
+                )
+
+            self.assertEqual(result, 0)
+            self.assertEqual(json.loads(output.getvalue())["revision"], 2)
+            self.assertEqual(len(store.read_events("sample-app")), 2)
 
     def test_attach_approve_rejects_stale_source(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -376,7 +463,7 @@ class ReleaseCliTests(unittest.TestCase):
             state = SQLiteStateStore(root / ".continuity/state.sqlite3").read_project(
                 "sample-app"
             )
-            self.assertEqual(state["project"]["revision"], 0)
+            self.assertEqual(state["project"]["revision"], 1)
 
     def test_suspend_dependency_preserves_incomplete_work_and_activates_prerequisite(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -432,7 +519,7 @@ class ReleaseCliTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             self.assertEqual(response["status"], "dependency-transitioned")
-            self.assertEqual(response["revision"], 4)
+            self.assertEqual(response["revision"], 5)
             self.assertEqual(response["active_work_id"], "M10-09-IO")
             self.assertEqual(response["claim_id"], active_claim["claim_id"])
             self.assertEqual(response["next_action"], "continue-active-work")
@@ -496,7 +583,7 @@ class ReleaseCliTests(unittest.TestCase):
                 proposal["sources"][1]["content_sha256"],
                 "0" * 64,
             )
-            self.assertEqual(state["project"]["revision"], 0)
+            self.assertEqual(state["project"]["revision"], 1)
 
     def test_attach_refresh_without_source_change_preserves_source_identity(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -557,9 +644,19 @@ class ReleaseCliTests(unittest.TestCase):
             state = SQLiteStateStore(
                 root / ".continuity/state.sqlite3"
             ).read_project("sample-app")
-            self.assertEqual(state["project"]["revision"], 0)
+            self.assertEqual(state["project"]["revision"], 1)
             self.assertEqual(state["project"]["primary_work_id"], None)
             self.assertEqual(state["works"][0]["work_id"], "work-initial")
+            self.assertEqual(
+                len(
+                    SQLiteStateStore(
+                        root / ".continuity/state.sqlite3"
+                    ).read_events("sample-app")
+                ),
+                1,
+            )
+            self.assertTrue((root / ".continuity/attach-proposal.json").is_file())
+            self.assertTrue((root / ".continuity/checkpoint-ref.json").is_file())
             self.assertEqual(json.loads(output.getvalue())["status"], "initialized")
 
     def test_init_never_overwrites_existing_files(self) -> None:
@@ -573,6 +670,14 @@ class ReleaseCliTests(unittest.TestCase):
             with self.assertRaises(FileExistsError):
                 main(["init", "--root", str(root), "--project-id", "sample-app"])
             self.assertEqual(project.read_text(), "owned: true\n")
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            target = root / ".continuity"
+            target.write_text("owned file\n", encoding="utf-8")
+            with self.assertRaises(FileExistsError):
+                main(["init", "--root", str(root), "--project-id", "sample-app"])
+            self.assertEqual(target.read_text(encoding="utf-8"), "owned file\n")
 
     def test_git_main_root_and_sibling_worktree_share_one_continuity_state(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -657,8 +762,8 @@ class ReleaseCliTests(unittest.TestCase):
             )
 
             self.assertEqual(packet["project_id"], "sample-app")
-            self.assertEqual(packet["revision"], 2)
-            self.assertEqual(state["revision"], 2)
+            self.assertEqual(packet["revision"], 3)
+            self.assertEqual(state["revision"], 3)
             self.assertEqual(Path(binding["control_root"]), execution_root.resolve())
             self.assertFalse((main_root / ".continuity").exists())
             self.assertFalse((sibling_root / ".continuity").exists())
@@ -737,8 +842,8 @@ class ReleaseCliTests(unittest.TestCase):
             self.assertEqual(result, 0)
             self.assertEqual(response["status"], "ok")
             self.assertEqual(response["project_id"], "sample-app")
-            self.assertEqual(response["revision"], 0)
-            self.assertEqual(response["event_head"], None)
+            self.assertEqual(response["revision"], 1)
+            self.assertEqual(response["event_head"]["sequence_no"], 1)
             self.assertEqual(response["state"]["works"][0]["work_id"], "work-initial")
 
     def test_public_templates_have_no_internal_markers(self) -> None:

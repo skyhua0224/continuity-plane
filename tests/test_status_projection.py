@@ -61,6 +61,25 @@ class StatusProjectionTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             render_status_projection(packet, language="en")
 
+    def test_projection_scopes_state_sync_failure_without_stopping_project_work(self) -> None:
+        packet = self._packet()
+        packet["source_fresh"] = False
+        packet["read_only"] = True
+        packet["next_action"] = "remain-read-only"
+
+        chinese = render_status_projection(packet, language="zh-CN")
+        english = render_status_projection(packet, language="en")
+        self.assertNotIn("| 只读 |", chinese)
+        self.assertNotIn("| Read-only |", english)
+        self.assertIn("Continuity State 写入 | 同步待恢复", chinese)
+        self.assertIn("普通项目工作 | 可继续", chinese)
+        self.assertIn("Continuity State writes | Sync pending", english)
+        self.assertIn("Ordinary project work | Continue", english)
+        self.assertIn("continue-project-work-state-sync-pending", chinese)
+        self.assertIn("continue-project-work-state-sync-pending", english)
+        self.assertNotIn("remain-read-only", chinese)
+        self.assertNotIn("remain-read-only", english)
+
     def test_projection_schema_is_strict_and_registry_hash_matches(self) -> None:
         root = Path(__file__).parents[1]
         schema_path = root / "schemas/m10-11/status-projection.schema.json"

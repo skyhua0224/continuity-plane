@@ -41,20 +41,8 @@ continuity context index --root .
 continuity context lookup --root . --query "build_runtime"
 ```
 
-The index cache lives in the user cache directory by default, outside the project, so new
-Sessions and other AI clients can reuse it. Results contain only paths, line numbers, symbol
-kinds, and file hashes, never source bodies. Only changed files are reparsed.
-
-For symbol-oriented lookup, build and query the incremental index:
-
-```bash
-continuity context index --root .
-continuity context lookup --root . --query "build_runtime"
-```
-
-The index cache lives in the user cache directory by default, outside the project, so new
-Sessions and other AI clients can reuse it. Results contain only paths, line numbers, symbol
-kinds, and file hashes, never source bodies. Only changed files are reparsed.
+The index cache lives outside the project, so new Sessions and other AI clients can reuse it.
+Results contain paths, lines, symbols, and file hashes; only changed files are reparsed.
 
 Install the advanced State plugin only when Codex must call resume, claim, checkpoint, or atomic
 Work transition tools:
@@ -63,16 +51,19 @@ Work transition tools:
 codex plugin add continuity-plane-state@continuity-plane
 ```
 
-Start or resume a Session after installation, then verify real adoption with read-only commands:
+The search plugin exposes one `continuity_context_lookup` MCP tool. Other AI clients use the CLI;
+both paths share the repository-isolated user cache. The State plugin is not part of code lookup.
+
+Start or resume a Session after installation, then verify real adoption:
 
 ```bash
 continuity doctor --root . --codex-home ~/.codex
-continuity inspect --root .
 ```
 
 `codex_plugin.status=active` means configuration, MCP policy, hook trust, and a real SessionStart
-observation all passed. Ordinary questions inspect at most once; resume is reserved for an explicit
-State write. Authoritative state remains managed by the local CLI/State MCP.
+observation all passed. Ordinary questions use the bounded lifecycle recovery context and do not call
+State tools. Inspect only for explicit State diagnosis; resume only before a State write. Authoritative
+state remains managed by the local CLI/State MCP.
 
 ### One Project
 
@@ -137,8 +128,6 @@ universal savings percentage. User tokens, useful window utilization, and accept
 work between compactions are normalized by accepted Work and measured only when
 host traces expose the required signals. [Full methods and limitations](public/docs/benchmarks.en.md).
 
-The code index is a candidate-location layer; it does not replace current source, tests, or
-authoritative Typed State validation.
 
 The code index is a candidate-location layer; it does not replace current source, tests, or
 authoritative Typed State validation.

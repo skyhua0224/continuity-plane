@@ -1,6 +1,6 @@
 # Continuity Plane MASTER
 
-版本：revision 120  
+版本：revision 125  
 日期：2026-09-04  
 状态：zero-friction core reset / live plugin adoption  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
@@ -162,7 +162,7 @@ Idea 的默认路由是 `capture-and-continue`：记录候选、保留当前 act
 
 当 Idea 需要立即处理时，先为原任务提交滚动 checkpoint，再写入 `task_suspended` 与 `task_activated` 事件。Checkpoint 必须保留原任务的 canonical digest、active leaf、latest decision、reverted/rejected decision、hard blocker、return point、验证缺口和禁止副作用。恢复原任务时，只加载其 Execution Packet 和 checkpoint。Execution Packet 只携带与当前任务相关的 Idea ID 和单行摘要；完整 Idea 通过 bounded lookup 展开。其他 parked/candidate Ideas 保留在状态服务，不进入 prompt、Skill 或执行权限。
 
-压缩前冻结新的外部副作用并提交增量 checkpoint。压缩后 validator 先恢复原 active task，再允许读取 Idea 候选或发起 switch proposal。若 checkpoint、revision、path ownership 或 current evidence 不一致，权限降级为只读，禁止写代码、提交、部署和新任务派发。
+压缩前冻结新的外部副作用并提交增量 checkpoint。压缩后 validator 先恢复原 active task，再允许读取 Idea 候选或发起 switch proposal。若 checkpoint、revision、path ownership 或 current evidence 不一致，State 写入与受控外部副作用降级为只读；普通代码读取、编辑、编译和测试继续执行。
 
 Idea 分类、去重、correction 写保护、自然语言交互和回返 packet 的完整合同见 [`docs/architecture/idea-continuity.md`](docs/architecture/idea-continuity.md)。
 
@@ -391,13 +391,15 @@ M10-01/M10-11 的跨项目退出门包括：State revision 与 `STATUS.current` 
 | ID | 状态 | 内容 | 效果 | 目的 | 依赖 | 完成门 |
 |---|---|---|---|---|---|---|
 | M11-00 | 🟡 | Zero-friction continuity core | 默认恢复、自动推进和上下文优化不干扰业务 Session | 回到项目初衷并给后续严格能力建立可验证边界 | M5/M7/M8/M10-11 | 默认 integration policy 为非阻断 `auto`；三个真实项目无命令误阻断；stale/read-only packet 不停止或注入；普通 Work 的 Continuity 手动操作为 `0`；三项目各 `3` 段 matched baseline/candidate；旧 Work 复活、重复回答、错误首动作和副作用误阻断均为 `0`；恢复读取 p95 相对基线下降 `>=30%`；history-heavy input/accepted Work 与压缩间隔不劣于基线且目标下降 `>=30%`；未达到目标时不得进入公共默认启用或 stable release |
-| M11-02 | 🧑‍💻 | Incremental code index and provider-neutral lookup | 跨 Session、CLI 和其他 Agent 复用按仓库隔离的用户缓存，只返回带 revision/hash 的符号引用 | 降低大型仓库的重复扫描和上下文输入 | M6/M11-00 | Git tracked 输入；变更文件增量重算；缓存位于项目外且按 repository key 隔离；receipt 有界且 authority=`false`；缓存损坏静默重建；两个真实大型仓库二次重算 `0`；CLI/API 测试通过；不增加命令门禁 |
+| M11-02 | 🧑‍💻 | Incremental code index and provider-neutral lookup | 跨 Session、CLI 和其他 Agent 复用按仓库隔离的用户缓存，只返回带 revision/hash 的符号引用 | 降低大型仓库的重复扫描和上下文输入 | M6/M11-00 | Git tracked 输入；变更文件增量重算；缓存位于项目外且按 repository key 隔离；receipt 有界且 authority=`false`；缓存损坏静默重建；两个真实大型仓库二次重算 `0`；CLI/API 测试通过；启动提示优先 route 到 `lookup/search`；不增加命令门禁 |
+| M11-03 | 🧑‍💻 | Visible lookup routing and cache/context accounting | Search MCP 单独暴露 `continuity_context_lookup`，其他 Agent 使用同一 CLI/API；State 只读时普通项目工作仍可继续 | 提高索引采用率，量化 cache hit 与上下文输入输出 | M11-02 | 单工具 search MCP、read-only annotations、无 project write、Codex tools/list 可见；State MCP 不承载检索；旧 `rg/find` 不被拦截；source stale 返回 `continue=true`；真实默认采用 A/B 仍待完成 |
+| M11-04 | ✅ | State-only degradation and inspectable genesis | `init` 生成 proposal、genesis Event 与 verified checkpoint；State 同步失败不冻结 Session；MCP 外层和 STATUS 投影显式限定 State-only | 消除新项目首次恢复失败和 Agent 将 State 限制扩大为整个仓库只读 | M11-00/M11-03 | `init -> inspect` 零写入且 checkpoint 故障可原子重试；legacy revision 0 与 genesis revision 1 attach 均可继续；MCP 外层声明 `read_only_scope=continuity-state` 与 `ordinary_project_work_allowed=true`；STATUS 将旧字段投影为 `continue-project-work-state-sync-pending`；strict SessionStart 不注入 expired/stale Work；core/search/state 均不注入 Skill；受影响面 `134/134` 通过 |
 
 M11-00 的运行策略分为三层：`auto` 默认自动绑定项目、恢复 Work、创建本地 claim、续租和继续下一动作且不阻断普通开发；`observe` 仅记录；`strict` 只由项目 Profile 显式启用，用于不可逆生产副作用。任何层级都不得将 stale packet、旧 Work 或陈旧 STATUS 注入当前 Session。M11-00 关闭前，不新增 effect gate、强制 PostgreSQL、Docmost 或人工 claim 操作。
 
 Codex `auto` compaction 在 `PreCompact` 创建 checkpoint、`PostCompact` 验证 canary，并由宿主原生上下文继续同一轮；`SessionStart(source=compact)` 不注入 packet。显式 `strict` 或恢复模式可在 canary 后注入 bounded fallback。普通 `PostToolUse` 不调用 autorun 或注入当前 Work。
 
-Codex 默认 plugin 采用 core profile，仅包含 lifecycle hook 与不超过 `512 B` 的 startup return-point projection，不注册 Skill、MCP 或命令门。`continuity-plane-search` 提供显式选择的有界 current-worktree 检索 Skill；`continuity-plane-state` 承载 resume、claim、checkpoint 与 Work transition 工具。两个扩展均按需单独安装。
+Codex 默认 plugin 采用 core profile，仅包含 lifecycle hook 与不超过 `512 B` 的 startup return-point projection，不注册 Skill、MCP 或命令门。`continuity-plane-search` 仅提供一个有界 lookup MCP 工具，不注册 Skill；`continuity-plane-state` 承载 resume、claim、checkpoint 与 Work transition 工具。两个扩展均按需单独安装。
 
 本机或受控试点可由用户显式启用 core、search 和 state 三个 profile 进行 dogfood。全量安装不授予命令拦截权限；State 或检索 adapter 失败时继续业务执行。公共默认启用仍受 M11-00 matched gate 约束。
 

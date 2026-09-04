@@ -154,7 +154,7 @@ class LocalClaimRecoveryTests(unittest.TestCase):
             self.assertEqual(new["status"], "active")
             self.assertEqual(new["actor_ref"], "agent-main")
             self.assertEqual(state["project"]["revision"], before["project"]["revision"] + 1)
-            self.assertEqual(len(store.read_events("sample-app")), 3)
+            self.assertEqual(len(store.read_events("sample-app")), 4)
 
     def test_expired_claim_cannot_be_heartbeat_extended(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -337,15 +337,15 @@ class LocalClaimRecoveryTests(unittest.TestCase):
 
             self.assertEqual(first_result, 0)
             self.assertEqual(second_result, 0)
-            self.assertEqual(json.loads(first.getvalue())["revision"], 3)
+            self.assertEqual(json.loads(first.getvalue())["revision"], 4)
             second_response = json.loads(second.getvalue())
-            self.assertEqual(second_response["revision"], 4)
+            self.assertEqual(second_response["revision"], 5)
             self.assertTrue(second_response["checkpoint_verified"])
             self.assertEqual(
                 second_response["checkpoint_ref"]["artifact_uri"],
                 f"artifact://sha256/{second_response['checkpoint_ref']['digest']}",
             )
-            self.assertEqual(len(store.read_events("sample-app")), 4)
+            self.assertEqual(len(store.read_events("sample-app")), 5)
             self.assertNotEqual(
                 store.read_events("sample-app")[-1]["event_id"],
                 store.read_events("sample-app")[-2]["event_id"],
@@ -354,7 +354,7 @@ class LocalClaimRecoveryTests(unittest.TestCase):
             with redirect_stdout(resumed):
                 self.assertEqual(main(["resume", "--root", str(root)]), 0)
             packet = json.loads(resumed.getvalue())
-            self.assertEqual(packet["revision"], 4)
+            self.assertEqual(packet["revision"], 5)
             self.assertTrue(packet["checkpoint_verified"])
             self.assertFalse(packet["read_only"])
 

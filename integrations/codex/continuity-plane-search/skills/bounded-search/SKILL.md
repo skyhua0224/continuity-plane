@@ -1,11 +1,12 @@
 ---
 name: bounded-code-search
-description: Use for large-repository architecture, build, test, or symbol lookup when broad shell scans would return excessive output.
+description: Bounded large-repository code lookup.
 ---
 
 # Bounded Code Search / 有界代码检索
 
-- 宽泛 `rg`、`find` 或整文件读取前运行 `continuity context search --root . --query "<exact term>" --max-results 40 --max-output-bytes 8192`。 / Use bounded search before broad scans.
-- 符号、类或函数优先运行 `continuity context lookup --root . --query "<name>"`，只返回 hash/path/line 引用。 / Prefer bounded symbol lookup.
-- 使用 1–3 个精确术语逐步缩小范围，只展开 receipt 返回的当前文件与行号。 / Narrow with 1–3 exact terms and expand only returned current paths and lines.
-- 该命令只搜索 Git tracked current worktree，输出含 revision/hash 且无写权限。无结果时再使用带范围限制的 `rg`、LSP 或项目索引。 / It is read-only and hash-bound; fall back to bounded `rg`, LSP, or the project index only when needed.
+- 陌生符号先调用一次 MCP `continuity_context_lookup`；仅工具不可用/报错时用 CLI `continuity context lookup`。 / Call MCP lookup first; CLI is fallback only.
+- lookup 命中后直接复用，不查 help/cache，不再 `rg/find/read`。 / Reuse a hit without follow-up discovery.
+- 文本检索运行 `continuity context search --root . --query "<term>" --max-results 40 --max-output-bytes 8192`。 / Use bounded text search.
+- 用 1–3 个精确术语，只展开 receipt 的文件与行号。 / Use 1–3 terms and expand only returned refs.
+- 只搜索 Git tracked current worktree；输出有 revision/hash，无权限。 / Tracked-worktree only; hash-bound and authority-free.

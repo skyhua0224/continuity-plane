@@ -1,6 +1,6 @@
 # Continuity Plane Status
 
-版本：revision 120  
+版本：revision 125  
 日期：2026-09-04  
 canonical plan：`MASTER.md`
 
@@ -20,10 +20,10 @@ canonical plan：`MASTER.md`
 |---|---|
 | 当前 Campaign | M11 零阻断收口 |
 | active work | M11-00：真实插件采用与旧线程原位恢复（🟡） |
-| next action | 三项目回执；大型仓库索引 A/B |
+| next action | exact `rg` 与 fuzzy/multi-symbol lookup matched A/B；三项目回执 |
 | hard blocker | Platform 与 ProjectCompute input-token gate 均未达 `30%` |
 | repository mode | internal development repository + fresh-history public mirror |
-| production state | alpha.10 已发布；本机 candidate `20260904045120` 已安装；索引候选已验证；公共默认待 A/B |
+| production state | alpha.10 已发布；candidate `20260904161600` 已安装；Search/State MCP auto-approved；公共默认待 A/B |
 
 ## 已验证摘要
 
@@ -41,8 +41,10 @@ canonical plan：`MASTER.md`
 | M11 ProjectCompute A/B | `3+3`：input/output/tool `-2.36%/-13.70%/+2.62%`；veto `0`；未过 input gate |
 | M11 bounded retrieval | current tracked worktree、revision/hash、完整 JSON budget 与 CLI `3/3` |
 | M11 code index | 两仓库实测二次重算 `0`、缓存隔离；[evidence](experiments/evidence/m11-02-code-index-real.json) |
-| Repository gate | full `2014/2014` passed，`31` skipped；release `76/76`、governance `49/49`、public `5/5` |
-| Governance authority | `MASTER.md` revision 120 |
+| M11 lookup routing | 单工具 search MCP + CLI/API；State MCP 不承载检索；source stale 继续普通开发；默认采用 A/B pending |
+| M11 State-only degradation | genesis `1/1` + proposal/checkpoint；故障可原子重试；State-only MCP/STATUS；expired/stale Work 不注入；`134/134` |
+| Repository gate | full `2037/2037` passed，`31` skipped；受影响面 `134/134`；public build `142` files |
+| Governance authority | `MASTER.md` revision 125 |
 
 ## 恢复入口
 

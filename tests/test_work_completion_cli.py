@@ -158,14 +158,14 @@ class WorkCompletionCliTests(unittest.TestCase):
 
             self.assertEqual(result, 0)
             self.assertEqual(response["status"], "completed")
-            self.assertEqual(response["revision"], 3)
+            self.assertEqual(response["revision"], 4)
             self.assertEqual(work["status"], "completed")
             self.assertEqual(work["revision"], 2)
             self.assertEqual(claim["status"], "released")
             self.assertIsNotNone(claim["released_at"])
             self.assertEqual(state["project"]["active_work_ids"], [])
             self.assertIsNone(state["project"]["primary_work_id"])
-            self.assertEqual(len(events), 3)
+            self.assertEqual(len(events), 4)
             self.assertEqual(len(response["evidence_ids"]), 2)
             self.assertTrue(set(response["evidence_ids"]).issubset(work["evidence_ids"]))
 
@@ -189,7 +189,7 @@ class WorkCompletionCliTests(unittest.TestCase):
                 )
             self.assertEqual(replay_result, 0)
             self.assertEqual(json.loads(replay.getvalue())["status"], "already-completed")
-            self.assertEqual(len(store.read_events("sample-app")), 3)
+            self.assertEqual(len(store.read_events("sample-app")), 4)
 
     def test_completion_rejects_missing_evidence_without_state_change(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -216,7 +216,7 @@ class WorkCompletionCliTests(unittest.TestCase):
                 )
 
             self.assertEqual(store.read_project("sample-app"), before)
-            self.assertEqual(len(store.read_events("sample-app")), 2)
+            self.assertEqual(len(store.read_events("sample-app")), 3)
 
     def test_complete_idle_resume_and_activate_successor_without_external_session(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -247,14 +247,14 @@ class WorkCompletionCliTests(unittest.TestCase):
                     0,
                 )
             completed = json.loads(completed_output.getvalue())
-            self.assertEqual(completed["revision"], 3)
+            self.assertEqual(completed["revision"], 4)
             self.assertTrue(completed["checkpoint_verified"])
             completed_projection = json.loads(
                 (root / ".continuity/status-projection.json").read_text(
                     encoding="utf-8"
                 )
             )
-            self.assertEqual(completed_projection["revision"], 3)
+            self.assertEqual(completed_projection["revision"], 4)
             self.assertIn(
                 "active Work | none",
                 (root / ".continuity/STATUS.current.md").read_text(encoding="utf-8"),
@@ -306,21 +306,21 @@ class WorkCompletionCliTests(unittest.TestCase):
             active_claims = [item for item in state["claims"] if item["status"] == "active"]
 
             self.assertEqual(activated["status"], "activated")
-            self.assertEqual(activated["revision"], 4)
+            self.assertEqual(activated["revision"], 5)
             self.assertTrue(activated["checkpoint_verified"])
             activated_projection = json.loads(
                 (root / ".continuity/status-projection.json").read_text(
                     encoding="utf-8"
                 )
             )
-            self.assertEqual(activated_projection["revision"], 4)
+            self.assertEqual(activated_projection["revision"], 5)
             self.assertIn(
                 "N-69-07",
                 (root / ".continuity/STATUS.current.md").read_text(encoding="utf-8"),
             )
-            self.assertEqual(len(events), 4)
-            self.assertEqual(events[-1]["revision_before"], 3)
-            self.assertEqual(events[-1]["revision_after"], 4)
+            self.assertEqual(len(events), 5)
+            self.assertEqual(events[-1]["revision_before"], 4)
+            self.assertEqual(events[-1]["revision_after"], 5)
             self.assertEqual(state["project"]["active_work_ids"], ["N-69-07"])
             self.assertEqual(state["project"]["primary_work_id"], "N-69-07")
             self.assertEqual(len(active_claims), 1)

@@ -272,7 +272,7 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
             binary.write_text(
                 "#!/bin/sh\n"
                 'printf \'%s\\n\' "$*" >> "$MCP_BINDING_CALLS"\n'
-                'if [ "$1" = "resume" ]; then printf \'%s\\n\' "$MCP_BINDING_ENVELOPE"; fi\n'
+                'if [ "$1" = "resume" ] || [ "$1" = "inspect" ]; then printf \'%s\\n\' "$MCP_BINDING_ENVELOPE"; fi\n'
                 'if [ "$1" = "checkpoint" ] && [ "$2" = "create" ] && '
                 '[ "$MCP_CHECKPOINT_FAIL" = "1" ]; then '
                 'printf \'checkpoint refresh failed\\n\' >&2; exit 9; fi\n'
@@ -357,7 +357,10 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
             },
         ]
 
-        responses, calls = self._run(requests, start_from_plugin_cache=True)
+        responses, calls = self._run(
+            requests,
+            start_from_plugin_cache=True,
+        )
 
         self.assertIn("error", responses[0])
         self.assertIn("continuity_resume", responses[0]["error"]["message"])
@@ -392,7 +395,11 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
             ),
         ]
 
-        responses, calls = self._run(requests, start_from_plugin_cache=True)
+        responses, calls = self._run(
+            requests,
+            start_from_plugin_cache=True,
+            read_only=True,
+        )
 
         tools = {
             item["name"]: item for item in responses[0]["result"]["tools"]
@@ -406,10 +413,27 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
             },
         )
         self.assertTrue(all("annotations" in item for item in tools.values()))
+        self.assertIn(
+            "普通项目工作继续",
+            tools["continuity_claim_recover"]["description"],
+        )
         self.assertFalse(
             any(item["annotations"]["readOnlyHint"] for name, item in tools.items() if name != "continuity_inspect")
         )
         self.assertNotIn("error", responses[1])
+        inspect_result = json.loads(
+            responses[1]["result"]["content"][0]["text"]
+        )
+        self.assertEqual(
+            responses[1]["result"]["structuredContent"],
+            inspect_result,
+        )
+        self.assertEqual(inspect_result["read_only_scope"], "continuity-state")
+        self.assertTrue(inspect_result["ordinary_project_work_allowed"])
+        self.assertEqual(
+            inspect_result["project_next_action"],
+            "continue-ordinary-project-work",
+        )
         self.assertEqual(sum(line.startswith("inspect --root ") for line in calls), 1)
         self.assertEqual(sum(line.startswith("resume --root ") for line in calls), 0)
 
@@ -773,7 +797,9 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
 
         denied, denied_calls = self._run(requests, read_only=True)
         self.assertIn("error", denied[1])
-        self.assertIn("read-only", denied[1]["error"]["message"].lower())
+        self.assertNotIn("read-only", denied[1]["error"]["message"].lower())
+        self.assertIn("State writes are not ready", denied[1]["error"]["message"])
+        self.assertIn("ordinary project work remains allowed", denied[1]["error"]["message"])
         self.assertEqual(sum("work recover heartbeat" in line for line in denied_calls), 0)
 
     def test_source_stale_owner_heartbeat_recovers_source_and_checkpoint(self) -> None:
@@ -1175,7 +1201,8 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
     def _tool_text(self, response: dict) -> dict:
         self.assertNotIn("error", response, response)
         self.assertFalse(response["result"]["isError"], response)
-        return json.loads(response["result"]["content"][0]["text"])
+        document = json.loads(response["result"]["content"][0]["text"])
+        return document.get("continuity_state", document)
 
 
 if __name__ == "__main__":
