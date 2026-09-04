@@ -1,6 +1,6 @@
 # Continuity Plane MASTER
 
-版本：revision 125  
+版本：revision 126  
 日期：2026-09-04  
 状态：zero-friction core reset / live plugin adoption  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作

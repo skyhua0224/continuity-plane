@@ -2,6 +2,52 @@
 
 [中文](CHANGELOG.md)
 
+## 0.1.0-alpha.11
+
+### Changes Since 0.1.0-alpha.10
+
+- Ordinary code edits, builds, tests, and reads now continue when Continuity State writes are
+  temporarily unavailable. MCP results scope the condition with
+  `read_only_scope=continuity-state`, `ordinary_project_work_allowed=true`, and
+  `project_next_action=continue-ordinary-project-work`; generated STATUS no longer presents the
+  whole Session as read-only.
+- The lifecycle adapter no longer injects an old Work when a claim expires, canonical sources are
+  stale, or a projection lags. Startup, compaction, and adapter failures remain non-blocking. The
+  core still registers only `SessionStart`, `PreCompact`, and `PostCompact`, with no command hook.
+- `continuity init` now creates a proposal, genesis Event, and verified checkpoint as one retryable
+  initialization boundary. A checkpoint publication failure removes only that attempt's files, and
+  legacy revision-0 projects remain attachable.
+- Added a repository-isolated incremental code index over Git-tracked files. It reuses unchanged
+  files and returns only path, line, symbol, and file-hash references. The optional search plugin
+  exposes one `continuity_context_lookup` MCP tool without loading a Skill or creating State binding.
+- The State plugin is MCP-only, so installing it no longer makes ordinary questions load a State
+  Skill or call inspect. `continuity doctor` now verifies State MCP and Search MCP adoption
+  independently.
+- Fixed the public wheel to install the `continuity-search-mcp` entry point. PyPI installations and
+  local development builds now expose the same search-plugin command contract.
+
+### Verification And Boundaries
+
+- The full suite passes `2037/2037`, with `31` environment skips. The affected surface passes
+  `134/134`; the 142-file public build, repository verifier, privacy scan, real init/inspect, and
+  stale-State MCP smoke all pass.
+- Existing matched A/B input-token reductions remain below the `30%` target. Alpha.11 makes no
+  universal token-savings claim and does not treat cache hits as proof of lower context cost.
+- Under the official Codex plugin loading model, new tools become available in a new Session after
+  installation. An already-running Session must start a new Session to reliably load the alpha.11
+  plugin manifest and MCP tool list.
+
+### Installation
+
+```bash
+python -m pip install --upgrade continuity-plane==0.1.0a11
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.11
+codex plugin add continuity-plane@continuity-plane
+```
+
+Install `continuity-plane-search` for large-repository lookup and
+`continuity-plane-state` only for explicit State operations. Start a new Session after upgrading.
+
 ## 0.1.0-alpha.10
 
 ### Changes Since 0.1.0-alpha.9

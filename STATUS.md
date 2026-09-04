@@ -1,6 +1,6 @@
 # Continuity Plane Status
 
-版本：revision 125  
+版本：revision 126  
 日期：2026-09-04  
 canonical plan：`MASTER.md`
 
@@ -20,10 +20,10 @@ canonical plan：`MASTER.md`
 |---|---|
 | 当前 Campaign | M11 零阻断收口 |
 | active work | M11-00：真实插件采用与旧线程原位恢复（🟡） |
-| next action | exact `rg` 与 fuzzy/multi-symbol lookup matched A/B；三项目回执 |
+| next action | 发布并安装 alpha.11；随后继续 lookup matched A/B 与三项目回执 |
 | hard blocker | Platform 与 ProjectCompute input-token gate 均未达 `30%` |
 | repository mode | internal development repository + fresh-history public mirror |
-| production state | alpha.10 已发布；candidate `20260904161600` 已安装；Search/State MCP auto-approved；公共默认待 A/B |
+| production state | alpha.11 release candidate；版本、双语 changelog 和公开 search MCP 入口已准备；公共默认待 A/B |
 
 ## 已验证摘要
 
@@ -44,7 +44,7 @@ canonical plan：`MASTER.md`
 | M11 lookup routing | 单工具 search MCP + CLI/API；State MCP 不承载检索；source stale 继续普通开发；默认采用 A/B pending |
 | M11 State-only degradation | genesis `1/1` + proposal/checkpoint；故障可原子重试；State-only MCP/STATUS；expired/stale Work 不注入；`134/134` |
 | Repository gate | full `2037/2037` passed，`31` skipped；受影响面 `134/134`；public build `142` files |
-| Governance authority | `MASTER.md` revision 125 |
+| Governance authority | `MASTER.md` revision 126 |
 
 ## 恢复入口
 

@@ -11,7 +11,7 @@ AMD64.
 ### Install From PyPI
 
 ```bash
-python -m pip install continuity-plane==0.1.0a10
+python -m pip install continuity-plane==0.1.0a11
 ```
 
 For a source checkout:
@@ -27,7 +27,7 @@ Download a wheel or source archive from
 [Continuity Plane Releases](https://github.com/skyhua0224/continuity-plane/releases):
 
 ```bash
-python -m pip install /path/to/continuity_plane-0.1.0a10-py3-none-any.whl
+python -m pip install /path/to/continuity_plane-0.1.0a11-py3-none-any.whl
 ```
 
 ### Install Once For Many Projects
@@ -38,7 +38,7 @@ projects:
 ```bash
 python3 -m venv ~/.local/share/continuity-plane/venv
 ~/.local/share/continuity-plane/venv/bin/python \
-  -m pip install continuity-plane==0.1.0a10
+  -m pip install continuity-plane==0.1.0a11
 ```
 
 Run the installed CLI with an explicit project root whenever the command is not
@@ -56,7 +56,7 @@ For a project that pins its own control-plane version:
 ```bash
 cd /path/to/project
 python3 -m venv .venv
-.venv/bin/python -m pip install continuity-plane==0.1.0a10
+.venv/bin/python -m pip install continuity-plane==0.1.0a11
 .venv/bin/continuity init --root . --project-id my-project
 ```
 
@@ -223,7 +223,7 @@ single-user installation. Install the optional extra in the environment that
 will run the adapter:
 
 ```bash
-python -m pip install 'continuity-plane[postgres]==0.1.0a10'
+python -m pip install 'continuity-plane[postgres]==0.1.0a11'
 ```
 
 The alpha CLI still defaults to SQLite. PostgreSQL is selected by an explicit
@@ -316,8 +316,8 @@ the advanced State plugin only for explicit State operations.
 Install the core package, then add this GitHub repository as a marketplace:
 
 ```bash
-python -m pip install continuity-plane==0.1.0a10
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.10
+python -m pip install continuity-plane==0.1.0a11
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.11
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -546,7 +546,7 @@ storage.
 
 The current version is available from PyPI and GitHub Releases:
 
-<https://pypi.org/project/continuity-plane/0.1.0a10/>  
+<https://pypi.org/project/continuity-plane/0.1.0a11/>  
 <https://github.com/skyhua0224/continuity-plane/releases>
 
 The current public release used a controlled PyPI token. A GitHub Actions OIDC
