@@ -282,7 +282,11 @@ codex plugin add continuity-plane@continuity-plane
 
 安装后新建 Session。core plugin 在 `SessionStart` 加载有界 packet，并在
 `PreCompact`/`PostCompact` 执行 checkpoint 生命周期。普通问题不会推进保存的 Work，
-也不会输出恢复旁白。
+也不会输出恢复旁白。alpha12 只注册生命周期 hook；下文的 advisory 工具 hook 属于未发布改动。
+
+Codex 将 hook 信任与插件安装分开。通过 `/hooks` 审核并信任当前定义；升级后定义变化需要
+重新确认。未受信任的 hook 会被宿主跳过，不能报告为已采用，也不应触发反复重装或改写
+模型、provider、key 配置。
 
 大型仓库希望显式启用有界 current-worktree 检索时安装：
 
@@ -335,6 +339,14 @@ host trace 计量。缓存命中不能单独证明 token 节省，必须和同�
 `auto` 模式在压缩后的 `SessionStart(source=compact)` 注入当前有界 packet，并要求模型
 静默从 `next_action` 继续；hook 或 State 同步失败只记录观测，不停止普通代码编辑、构建
 和测试。
+
+未发布开发版的独立 advisory hook 不调用 State、不拒绝命令，即使环境残留 `strict` 也如此。
+普通成功操作按 `1/16` 采样；失败、识别到的副作用和 Continuity MCP 调用保留观测。
+压缩恢复漏送时，下次工具调用最多补一次 `1 KiB` 检索提示；若先收到用户消息，则尝试一次
+当前 resume。标记按项目/Session 隔离，10 分钟过期，原子消费；正常恢复送达就清除。
+正常操作零上下文输出；hook 不重装插件、不改 Codex 配置、不改写命令、不激活 Work、不无限重试。
+如果当前 Session 仍引用已经删除的插件缓存，launcher 会尝试当前 `PLUGIN_ROOT`；不可用时
+静默跳过，不影响普通命令，也不会自动切换到另一版本。
 
 项目 idle 且 canonical MASTER/STATUS 发生变化时，`resume` 返回
 `source_fresh=false`、`read_only=true` 和 `next_action=rebind-source-and-activate-next-work`；

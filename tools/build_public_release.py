@@ -283,6 +283,14 @@ def _copy_public_plugin(source: Path, destination: Path) -> None:
             source / "hooks/hooks.json",
             source / "scripts/continuity-hook.py",
         ]
+        hook_config = json.loads((source / "hooks/hooks.json").read_text(encoding="utf-8"))
+        if any(
+            "continuity-advisory-hook.py" in handler.get("command", "")
+            for groups in hook_config.get("hooks", {}).values()
+            for group in groups
+            for handler in group.get("hooks", [])
+        ):
+            files.append(source / "scripts/continuity-advisory-hook.py")
     elif source.name == "continuity-plane-search":
         files = [
             source / ".codex-plugin/plugin.json",

@@ -231,6 +231,8 @@ def _scenarios(
     signer: HMACExternalStateProjectionSigner,
 ) -> dict[str, Any]:
     baseline = build_idea_snapshot()
+    # The health scenario requires an expired lease, independent of the shared fixture.
+    baseline["claims"][0]["lease_expires_at"] = "2026-08-14T10:00:00+08:00"
 
     cycle = _legacy_team(root)
     cycle["works"][0]["parent_work_id"] = cycle["works"][1]["work_id"]

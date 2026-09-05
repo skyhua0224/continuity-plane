@@ -26,6 +26,10 @@ COMMAND_TIMEOUT_SECONDS = 3
 RECOVERY_WINDOW_SECONDS = 5 * 60
 RECOVERY_READ_BUDGET_BYTES = 12 * 1024
 EFFECT_INTENT_SECONDS = 2 * 60
+CONTINUATION_PENDING_SCHEMA = "context.codex-continuation-pending/v1alpha1"
+CONTINUATION_PENDING_TTL_SECONDS = 10 * 60
+OPERATION_SAMPLE_RATE_DEFAULT = 16
+OPERATION_SAMPLE_RATE_MAX = 64
 RECOVERY_RULE_IDS = [
     "continuity.answer.bounded",
     "continuity.answer.direct",
@@ -101,6 +105,31 @@ def _effect_policy() -> str:
     """Return the non-blocking default or an explicitly selected policy."""
     value = os.environ.get("CONTINUITY_EFFECT_POLICY", "auto").lower()
     return value if value in {"observe", "auto", "strict"} else "observe"
+
+
+def _operation_sample_rate() -> int:
+    value = os.environ.get("CONTINUITY_OPERATION_SAMPLE_RATE", "")
+    try:
+        rate = int(value)
+    except (TypeError, ValueError):
+        return OPERATION_SAMPLE_RATE_DEFAULT
+    return max(1, min(rate, OPERATION_SAMPLE_RATE_MAX))
+
+
+def _operation_is_sampled(payload: dict[str, Any]) -> bool:
+    rate = _operation_sample_rate()
+    if rate == 1:
+        return True
+    session_id = payload.get("session_id")
+    tool_use_id = payload.get("tool_use_id")
+    tool_name = payload.get("tool_name")
+    if not all(
+        isinstance(value, str) and value
+        for value in (session_id, tool_use_id, tool_name)
+    ):
+        return True
+    identity = f"{session_id}:{tool_use_id}:{tool_name}"
+    return int(_hash(identity)[:8], 16) % rate == 0
 
 
 def _status_projection_is_current(root: Path, packet: dict[str, Any]) -> bool:
@@ -572,6 +601,15 @@ def _project_root(cwd: str) -> Path | None:
     return None
 
 
+def _local_project_root(cwd: str) -> Path | None:
+    """Resolve an ordinary tool's local root without invoking Git."""
+    start = Path(cwd).resolve()
+    for candidate in (start, *start.parents):
+        if (candidate / ".continuity/project.yaml").is_file():
+            return candidate
+    return None
+
+
 def _repository_is_large(root: Path, *, threshold: int = 200) -> bool:
     """Detect a large repository without retaining its complete file list."""
     process: subprocess.Popen[bytes] | None = None
@@ -740,6 +778,96 @@ def _read_cursor(payload: dict[str, Any]) -> dict[str, Any] | None:
     return cursor
 
 
+def _continuation_pending_path(payload: dict[str, Any], root: Path | None = None) -> Path | None:
+    data = _plugin_data_root()
+    session_id = payload.get("session_id")
+    if data is None or not isinstance(session_id, str) or not session_id:
+        return None
+    directory = data / "continuation-pending"
+    root_key = _hash(str(root.resolve())) if root is not None else "unbound"
+    marker_key = _hash(session_id) + "-" + root_key
+    return directory / f"{marker_key}.json"
+
+
+def _write_continuation_pending(payload: dict[str, Any], root: Path) -> None:
+    """Leave one short-lived adoption retry marker at a compaction boundary."""
+    path = _continuation_pending_path(payload, root)
+    if path is None:
+        return
+    now = time.time()
+    document = {
+        "schema_version": CONTINUATION_PENDING_SCHEMA,
+        "session_sha256": _hash(str(payload["session_id"])),
+        "project_root_sha256": _hash(str(root.resolve())),
+        "created_at": now,
+        "expires_at": now + CONTINUATION_PENDING_TTL_SECONDS,
+        "marker_sha256": "",
+    }
+    document["marker_sha256"] = _hash(
+        _canonical(
+            {key: value for key, value in document.items() if key != "marker_sha256"}
+        )
+    )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(f".{os.getpid()}.{time.monotonic_ns()}.tmp")
+    descriptor = os.open(temporary, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+        stream.write(_canonical(document) + "\n")
+    os.replace(temporary, path)
+
+
+def _take_continuation_pending(
+    payload: dict[str, Any], root: Path
+) -> dict[str, Any] | None:
+    path = _continuation_pending_path(payload, root)
+    if path is None:
+        return None
+    consumed = path.with_suffix(f".{os.getpid()}.{time.monotonic_ns()}.used")
+    try:
+        # Atomic rename gives at most one caller this boundary's single retry.
+        os.replace(path, consumed)
+    except OSError:
+        return None
+    try:
+        with consumed.open("rb") as stream:
+            encoded = stream.read(2049)
+        if len(encoded) > 2048:
+            return None
+        document = json.loads(encoded)
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return None
+    finally:
+        consumed.unlink(missing_ok=True)
+    if not isinstance(document, dict) or document.get("schema_version") != CONTINUATION_PENDING_SCHEMA:
+        return None
+    expected = _hash(
+        _canonical(
+            {key: value for key, value in document.items() if key != "marker_sha256"}
+        )
+    )
+    if document.get("marker_sha256") != expected:
+        return None
+    if document.get("session_sha256") != _hash(str(payload.get("session_id", ""))):
+        return None
+    if document.get("project_root_sha256") != _hash(str(root.resolve())):
+        return None
+    created = document.get("created_at")
+    expires = document.get("expires_at")
+    if (
+        type(created) not in {int, float} or type(expires) not in {int, float}
+        or not created <= time.time() <= expires
+        or expires - created > CONTINUATION_PENDING_TTL_SECONDS
+    ):
+        return None
+    return document
+
+
+def _clear_continuation_pending(payload: dict[str, Any], root: Path) -> None:
+    path = _continuation_pending_path(payload, root)
+    if path is not None:
+        path.unlink(missing_ok=True)
+
+
 def _observe(
     payload: dict[str, Any],
     root: Path,
@@ -755,6 +883,8 @@ def _observe(
     recovery_read_budget_bytes: int | None = None,
     tool_output_bytes: int | None = None,
     context_admitted: bool | None = None,
+    context_emitted: bool | None = None,
+    failed_gate: str | None = None,
 ) -> None:
     path = _observation_path(payload)
     if path is None:
@@ -769,7 +899,7 @@ def _observe(
         ),
         "project_root_sha256": _hash(str(root)),
         "trigger": payload.get("trigger") or payload.get("source"),
-        "model_id": payload.get("model"),
+        "model_id": _observation_label(payload.get("model")),
         "success": success,
         "canary_passed": canary_passed,
         "raw_transcript_admission": False,
@@ -777,13 +907,15 @@ def _observe(
         "completion_authority": False,
         "source_refreshed": source_refreshed,
         "plugin_loaded": True,
-        "tool_name": tool_name,
+        "tool_name": _observation_label(tool_name),
         "effect_class": effect_class,
         "decision": decision,
         "recovery_read_bytes": recovery_read_bytes,
         "recovery_read_budget_bytes": recovery_read_budget_bytes,
         "tool_output_bytes": tool_output_bytes,
         "context_admitted": context_admitted,
+        "context_emitted": context_emitted,
+        "failed_gate": failed_gate,
         "plugin_manifest_sha256": _file_hash(
             Path(os.environ.get("PLUGIN_ROOT", "")) / ".codex-plugin/plugin.json"
         ),
@@ -797,6 +929,12 @@ def _observe(
         os.write(descriptor, serialized.encode("utf-8"))
     finally:
         os.close(descriptor)
+
+
+def _observation_label(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    return value if re.fullmatch(r"[A-Za-z0-9_.:/+-]{1,128}", value) else "other"
 
 
 def _stop(reason: str) -> None:
@@ -827,10 +965,11 @@ def _continuation_context(packet: dict[str, Any], *, source: str) -> str | None:
         context = (
             "Continuity context. Continue silently: do not mention recovery, "
             "compaction, hooks, or reloading. Keep the packet as the current return "
-            "point. "
+            "point, not a new task. Current user intent wins. "
             "Continue the interrupted turn from its next_action. Do not answer "
             "acknowledged input again or restate text visible before compaction. "
-            "Packet: "
+            + _adoption_context()
+            + " Packet: "
             + _canonical(packet)
         )
     else:
@@ -856,6 +995,101 @@ def _continuation_context(packet: dict[str, Any], *, source: str) -> str | None:
     if len(context.encode("utf-8")) > MAX_CONTEXT_BYTES:
         return None
     return context
+
+
+def _adoption_context() -> str:
+    return (
+        "For unfamiliar code, use MCP continuity_context_lookup or `continuity context lookup` "
+        "before broad reads; reuse hash-bound references. If unavailable, try the CLI once, "
+        "then narrow rg. Do not reinstall or change Codex configuration during project work. "
+        "Retrieval needs no claim; resume only before explicit State writes."
+    )
+
+
+def _session_start_fallback(
+    payload: dict[str, Any], root: Path, *, failed_gate: str | None
+) -> int:
+    # Preserve adoption guidance without replaying an unverified Work or claim.
+    context = (
+        "Continue ordinary project work from the native continuation and latest user intent. "
+        "No saved Work or claim is authoritative here. Do not repeat answered input or "
+        "narrate recovery. " + _adoption_context()
+    )
+    print(_canonical({
+        "continue": True,
+        "hookSpecificOutput": {
+            "hookEventName": payload.get("hook_event_name", "SessionStart"),
+            "additionalContext": context,
+        },
+    }))
+    try:
+        _clear_continuation_pending(payload, root)
+        _observe(
+            payload, root,
+            event_type="prompt-recovery" if payload.get("hook_event_name") == "UserPromptSubmit" else "session-start",
+            success=failed_gate is None,
+            context_emitted=True, failed_gate=failed_gate,
+        )
+    except OSError:
+        pass
+    return 0
+
+
+def _prompt_recovery(payload: dict[str, Any], root: Path) -> int:
+    if _take_continuation_pending(payload, root) is None:
+        return 0
+    # New user input wins; never reuse the pre-compaction interaction cursor.
+    # Keep the compact source so the one-shot fallback receives the full bounded
+    # packet, while the hook-event guard still prevents cursor replay.
+    return _session_start({**payload, "source": "compact"}, root)
+
+
+def _continuity_tool_observation(payload: dict[str, Any], root: Path) -> int:
+    tool_name = payload.get("tool_name")
+    response = payload.get("tool_response")
+    success = not isinstance(response, dict) or response.get("isError") is not True
+    _observe_operation_boundary(payload, root, phase="post")
+    _observe(
+        payload,
+        root,
+        event_type="posttooluse",
+        success=success,
+        tool_name=tool_name if isinstance(tool_name, str) else None,
+    )
+    return 0
+
+
+def _observe_operation_boundary(
+    payload: dict[str, Any], root: Path, *, phase: str
+) -> None:
+    """Record a local, redacted tool boundary without invoking Continuity."""
+    tool_name = payload.get("tool_name")
+    if not isinstance(tool_name, str) or not tool_name:
+        return
+    success = True
+    if phase == "post":
+        response = payload.get("tool_response")
+        if isinstance(response, dict):
+            if response.get("isError") is True:
+                success = False
+            exit_code = response.get("exit_code")
+            if type(exit_code) is int:
+                success = success and exit_code == 0
+    continuity_tool = tool_name.startswith(("mcp__continuity__", "mcp__continuity_search__"))
+    effect = _effect_class(_shell_command(payload))
+    if success and not continuity_tool and effect is None and not _operation_is_sampled(payload):
+        return
+    try:
+        _observe(
+            payload,
+            root,
+            event_type=f"operation-{phase}",
+            success=success,
+            tool_name=tool_name,
+        )
+    except OSError:
+        # Telemetry is best effort and must never affect the tool call.
+        return
 
 
 def _load_resume_packet(encoded: bytes) -> dict[str, Any] | None:
@@ -1620,6 +1854,7 @@ def _deny_tool(reason: str) -> None:
 def _pretooluse(payload: dict[str, Any], root: Path) -> int:
     tool_name = payload.get("tool_name")
     command = _shell_command(payload)
+    _observe_operation_boundary(payload, root, phase="pre")
     if tool_name != "Bash" and _effect_class(command) is None:
         return 0
     recovery_budget = _active_recovery_budget(payload, root)
@@ -1773,6 +2008,7 @@ def _pretooluse(payload: dict[str, Any], root: Path) -> int:
 
 def _posttooluse(payload: dict[str, Any], root: Path) -> int:
     command = _shell_command(payload)
+    _observe_operation_boundary(payload, root, phase="post")
     if payload.get("tool_name") != "Bash" and _effect_class(command) is None:
         return 0
     if _effect_policy() == "observe":
@@ -1823,6 +2059,8 @@ def _precompact(payload: dict[str, Any], root: Path) -> int:
 def _postcompact(payload: dict[str, Any], root: Path) -> int:
     if _effect_policy() == "observe":
         return 0
+    # Adoption guidance is useful even if State verification subsequently fails.
+    _write_continuation_pending(payload, root)
     completed = _command(["checkpoint", "verify"], root)
     success = completed.returncode == 0
     _observe(
@@ -1838,7 +2076,11 @@ def _postcompact(payload: dict[str, Any], root: Path) -> int:
 
 
 def _session_start(payload: dict[str, Any], root: Path) -> int:
-    cursor_path = _cursor_path(payload)
+    cursor_path = (
+        None
+        if payload.get("hook_event_name") == "UserPromptSubmit"
+        else _cursor_path(payload)
+    )
     skill_lock_path = _skill_lock_path()
     arguments = ["resume"]
     if cursor_path is not None and cursor_path.is_file():
@@ -1848,6 +2090,8 @@ def _session_start(payload: dict[str, Any], root: Path) -> int:
     completed = _command(arguments, root)
     success = completed.returncode == 0
     if not success:
+        if _effect_policy() == "auto":
+            return _session_start_fallback(payload, root, failed_gate="resume_unavailable")
         _observe(payload, root, event_type="session-start", success=False)
         if _effect_policy() == "strict":
             _state_sync_notice(
@@ -1858,12 +2102,20 @@ def _session_start(payload: dict[str, Any], root: Path) -> int:
     encoded = completed.stdout.strip().encode("utf-8")
     packet = _load_resume_packet(encoded)
     if packet is None:
+        if _effect_policy() == "auto":
+            return _session_start_fallback(payload, root, failed_gate="resume_packet")
         _observe(payload, root, event_type="session-start", success=False)
         if _effect_policy() == "strict":
             _state_sync_notice(
                 "Continuity State returned no usable recovery packet. Continue ordinary "
                 "project work; no stale state was injected."
             )
+        return 0
+    if packet.get("active_work") is not None and packet.get("source_fresh") is True and packet.get("read_only") is False and (
+        packet.get("checkpoint_verified") is not True or packet.get("lease_valid") is not True
+    ):
+        if _effect_policy() == "auto":
+            return _session_start_fallback(payload, root, failed_gate="recovery_health")
         return 0
     projection_path = root / ".continuity/status-projection.json"
     projection_stale = (
@@ -1874,6 +2126,10 @@ def _session_start(payload: dict[str, Any], root: Path) -> int:
         packet.get("source_fresh") is True
         and packet.get("read_only") is True
     ) or projection_stale:
+        if _effect_policy() == "auto":
+            return _session_start_fallback(
+                payload, root, failed_gate="projection_fresh" if projection_stale else "state_read_only"
+            )
         hint = _startup_search_context(root)
         _observe(
             payload,
@@ -1904,6 +2160,8 @@ def _session_start(payload: dict[str, Any], root: Path) -> int:
         packet.get("source_fresh") is False
         or packet.get("read_only") is True
     ):
+        if _effect_policy() == "auto":
+            return _session_start_fallback(payload, root, failed_gate="source_fresh")
         hint = _startup_search_context(root)
         _observe(
             payload,
@@ -1934,6 +2192,8 @@ def _session_start(payload: dict[str, Any], root: Path) -> int:
         }
         binding_result = _record_resume_binding(binding_payload)
         if binding_result == "conflict":
+            if _effect_policy() == "auto":
+                return _session_start_fallback(payload, root, failed_gate="project_binding")
             if _effect_policy() == "strict":
                 _state_sync_notice(
                     "Continuity State binding conflicts with the current root. Continue "
@@ -1941,6 +2201,8 @@ def _session_start(payload: dict[str, Any], root: Path) -> int:
                 )
             return 0
         if packet.get("active_work") is None or packet.get("claim") is None:
+            if _effect_policy() == "auto":
+                return _session_start_fallback(payload, root, failed_gate=None)
             hint = _startup_search_context(root)
             if hint is not None:
                 print(
@@ -1986,13 +2248,6 @@ def _session_start(payload: dict[str, Any], root: Path) -> int:
             "approval. Continue ordinary project work."
         )
         return 0
-    _observe(
-        payload,
-        root,
-        event_type="session-start",
-        success=True,
-        source_refreshed=source_refreshed,
-    )
     if payload.get("source") == "compact":
         requested_budget = packet.get("recovery_read_budget_bytes")
         budget = (
@@ -2004,6 +2259,8 @@ def _session_start(payload: dict[str, Any], root: Path) -> int:
         _start_recovery_window(payload, root, budget_bytes=budget)
     context = _continuation_context(packet, source=str(payload.get("source", "startup")))
     if context is None:
+        if _effect_policy() == "auto":
+            return _session_start_fallback(payload, root, failed_gate="context_budget")
         _state_sync_notice(
             "Continuity recovery context exceeded its byte budget. Continue ordinary "
             "project work; no oversized context was injected."
@@ -2012,7 +2269,7 @@ def _session_start(payload: dict[str, Any], root: Path) -> int:
     response = {
         "continue": True,
         "hookSpecificOutput": {
-            "hookEventName": "SessionStart",
+            "hookEventName": payload.get("hook_event_name", "SessionStart"),
             "additionalContext": context,
         },
     }
@@ -2024,6 +2281,22 @@ def _session_start(payload: dict[str, Any], root: Path) -> int:
             f"Continuity active · {project_id} · revision {packet['revision']}"
         )
     print(_canonical(response))
+    try:
+        _clear_continuation_pending(payload, root)
+        _observe(
+            payload,
+            root,
+            event_type=(
+                "prompt-recovery"
+                if payload.get("hook_event_name") == "UserPromptSubmit"
+                else "session-start"
+            ),
+            success=True,
+            source_refreshed=source_refreshed,
+            context_emitted=True,
+        )
+    except OSError:
+        pass
     return 0
 
 
@@ -2035,21 +2308,52 @@ def main() -> int:
     if not isinstance(payload, dict) or not isinstance(payload.get("cwd"), str):
         return 0
     event = payload.get("hook_event_name")
-    if event == "PostToolUse" and payload.get("tool_name") in CONTINUITY_RESUME_TOOLS:
-        binding_result = _record_resume_binding(payload)
-        if binding_result == "conflict":
-            print(
-                _canonical(
-                    {
-                        "decision": "block",
-                        "reason": (
-                            "Continuity session binding conflicts with the requested "
-                            "project root; the existing project identity was preserved."
-                        ),
-                    }
-                )
+    continuity_tool_name = str(payload.get("tool_name", ""))
+    if event == "PostToolUse" and (
+        continuity_tool_name.startswith("mcp__continuity__")
+        or continuity_tool_name.startswith("mcp__continuity_search__")
+        or continuity_tool_name in CONTINUITY_RESUME_TOOLS
+    ):
+        try:
+            if payload.get("tool_name") in CONTINUITY_RESUME_TOOLS:
+                _record_resume_binding(payload)
+            tool_input = payload.get("tool_input")
+            requested_root = tool_input.get("root") if isinstance(tool_input, dict) else None
+            observation_root = (
+                Path(requested_root)
+                if isinstance(requested_root, str) and Path(requested_root).is_absolute()
+                else Path(payload["cwd"])
             )
-        return 0
+            return _continuity_tool_observation(payload, observation_root)
+        except (OSError, ValueError):
+            return 0
+    if event == "UserPromptSubmit":
+        if _effect_policy() != "auto":
+            return 0
+        try:
+            data = _plugin_data_root()
+            session_id = payload.get("session_id")
+            if data is None or not isinstance(session_id, str) or not session_id:
+                return 0
+            pattern = f"{_hash(session_id)}-*.json"
+            if next((data / "continuation-pending").glob(pattern), None) is None:
+                return 0
+        except OSError:
+            return 0
+    if event in {"PreToolUse", "PostToolUse"}:
+        command = _shell_command(payload)
+        if _effect_class(command) is None and not _is_recovery_read(command):
+            try:
+                root = _local_project_root(payload["cwd"])
+                if root is not None:
+                    _observe_operation_boundary(
+                        payload,
+                        root,
+                        phase="pre" if event == "PreToolUse" else "post",
+                    )
+            except (OSError, RuntimeError, ValueError):
+                pass
+            return 0
     binding_path = _session_binding_path(payload)
     bound_root = _session_bound_root(payload)
     if binding_path is not None and binding_path.exists() and bound_root is None:
@@ -2093,7 +2397,11 @@ def main() -> int:
     # root for effect accounting. This lets an already-running Session recover
     # from a host-side binding that still points at another project without
     # granting arbitrary cross-project access.
-    root = discovered_root or bound_root or _project_root(payload["cwd"])
+    try:
+        root = discovered_root or bound_root or _project_root(payload["cwd"])
+    except (OSError, RuntimeError, ValueError):
+        # Ambiguous or unavailable discovery must never stop ordinary work.
+        return 0
     if root is None:
         return 0
     try:
@@ -2103,11 +2411,17 @@ def main() -> int:
             return _postcompact(payload, root)
         if event == "SessionStart":
             return _session_start(payload, root)
+        if event == "UserPromptSubmit":
+            return _prompt_recovery(payload, root)
         if event == "PreToolUse":
             return _pretooluse(payload, root)
         if event == "PostToolUse":
             return _posttooluse(payload, root)
     except (OSError, RuntimeError, subprocess.SubprocessError):
+        if event == "UserPromptSubmit":
+            return _session_start_fallback(payload, root, failed_gate="hook_execution")
+        if event == "SessionStart" and _effect_policy() == "auto":
+            return _session_start_fallback(payload, root, failed_gate="hook_execution")
         _observe(payload, root, event_type="hook-error", success=False)
         if _effect_policy() != "strict":
             return 0
@@ -2123,6 +2437,49 @@ def main() -> int:
             )
         else:
             _stop("Continuity lifecycle hook failed; this lifecycle operation was stopped.")
+    return 0
+
+
+def advisory_main() -> int:
+    """Observe ordinary local tool boundaries without any State or effect policy."""
+    try:
+        encoded = sys.stdin.read(512 * 1024 + 1)
+        if len(encoded) > 512 * 1024:
+            return 0
+        payload = json.loads(encoded)
+    except (OSError, ValueError, TypeError, RecursionError):
+        return 0
+    if not isinstance(payload, dict) or not isinstance(payload.get("cwd"), str):
+        return 0
+    event = payload.get("hook_event_name")
+    if event not in {"PreToolUse", "PostToolUse"}:
+        return 0
+    try:
+        tool_input = payload.get("tool_input")
+        explicit_root = tool_input.get("root") if isinstance(tool_input, dict) else None
+        tool_name = str(payload.get("tool_name", ""))
+        bound = _session_bound_root(payload)
+        root = bound or _local_project_root(payload["cwd"])
+        workdir = tool_input.get("workdir") if isinstance(tool_input, dict) else None
+        if isinstance(workdir, str) and Path(workdir).is_absolute():
+            root = _local_project_root(workdir)
+        if tool_name.startswith(("mcp__continuity__", "mcp__continuity_search__")) and isinstance(explicit_root, str) and Path(explicit_root).is_absolute():
+            root = _local_project_root(explicit_root)
+        if root is not None:
+            if event == "PreToolUse" and _take_continuation_pending(payload, root) is not None:
+                # A missed lifecycle entry must not make the next tool a State gate.
+                context = (
+                    "Continue ordinary project work from the native continuation and latest user intent. "
+                    "Do not repeat answered input or narrate recovery. " + _adoption_context()
+                )
+                print(_canonical({"hookSpecificOutput": {
+                    "hookEventName": "PreToolUse", "additionalContext": context,
+                }}))
+            _observe_operation_boundary(
+                payload, root, phase="pre" if event == "PreToolUse" else "post"
+            )
+    except (OSError, RuntimeError, ValueError, TypeError, KeyError):
+        pass
     return 0
 
 

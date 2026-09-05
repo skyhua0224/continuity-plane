@@ -1485,10 +1485,16 @@ class HookProbeTests(unittest.TestCase):
         path = root / "plugins/continuity-plane/hooks/hooks.json"
         manifest = json.loads(path.read_text(encoding="utf-8"))
         self.assertEqual(
-            set(manifest["hooks"]), {"SessionStart", "PreCompact", "PostCompact"}
+            set(manifest["hooks"]),
+            {
+                "SessionStart",
+                "PreCompact",
+                "PostCompact",
+                "PreToolUse",
+                "PostToolUse",
+                "UserPromptSubmit",
+            },
         )
-        self.assertNotIn("PreToolUse", manifest["hooks"])
-        self.assertNotIn("PostToolUse", manifest["hooks"])
         commands = [
             hook
             for registrations in manifest["hooks"].values()
@@ -1502,6 +1508,11 @@ class HookProbeTests(unittest.TestCase):
                 hook["commandWindows"].startswith("continuity-codex-hook ")
             )
             self.assertNotIn("py -3", hook["commandWindows"])
+
+        for event in ("PreToolUse", "PostToolUse"):
+            self.assertTrue(
+                "continuity-advisory-hook.py" in manifest["hooks"][event][0]["hooks"][0]["command"]
+            )
 
     def test_packaged_hook_launcher_delegates_to_the_selected_hook(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -1626,7 +1637,9 @@ class HookProbeTests(unittest.TestCase):
                 self.assertEqual(hook._precompact(payload, root), 0)
                 self.assertEqual(hook._postcompact(payload, root), 0)
                 self.assertEqual(hook._session_start(payload, root), 0)
-            self.assertEqual(stdout.getvalue(), "")
+            output = json.loads(stdout.getvalue())
+            self.assertTrue(output["continue"])
+            self.assertIn("continuity_context_lookup", output["hookSpecificOutput"]["additionalContext"])
 
     def test_observe_lifecycle_does_not_execute_checkpoint_commands(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

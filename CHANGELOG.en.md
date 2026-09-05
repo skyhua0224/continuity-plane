@@ -4,7 +4,26 @@
 
 ## Next Release (Unreleased)
 
-- No next-release items are scheduled.
+- Added independent advisory pre/post tool hooks. Ordinary successes use `1/16` sampling; failures,
+  recognized effects, and Continuity MCP calls retain observations. This entry cannot access State,
+  run Git, rewrite input, or reject commands, even with a leftover `strict` environment setting.
+  Records contain no commands, source code, or response bodies.
+- If the compact recovery entry is missed, the next tool gets one retrieval hint of at most `1 KiB`;
+  if a user message arrives first, it attempts current resume once. Markers are Session/project
+  scoped, expire after 10 minutes, and are atomically consumed or cleared after delivery. Failure
+  continues ordinary work without reinstalling plugins, editing Codex configuration, or reviving
+  unverified Work.
+- Doctor matches observations to the requested project and distinguishes successful recovery from
+  degraded guidance; installation alone is not proof of adoption.
+- The advisory script works with the released alpha12 launcher without requiring a new CLI argument.
+  Observations follow explicit working directories, free-text labels are bounded, and unverified
+  checkpoints or expired leases cannot inject an active Work into context.
+- Added a native-host probe that checks hook discovery before invoking real compaction. Untrusted or
+  unloaded hooks do not count as adoption. Actual host windows and configured limits are recorded
+  separately, and cache hits are not treated as token savings.
+- The hook launcher now falls back from a deleted plugin-cache path to the current `PLUGIN_ROOT`.
+  With no usable script it exits quietly, so stale caches do not turn ordinary operations into tool
+  errors or cause an untrusted version to be loaded.
 
 ## 0.1.0-alpha.12
 

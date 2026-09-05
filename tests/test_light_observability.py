@@ -1488,10 +1488,16 @@ class HookProbeTests(unittest.TestCase):
         path = root / "integrations/codex/continuity-plane/hooks/hooks.json"
         manifest = json.loads(path.read_text(encoding="utf-8"))
         self.assertEqual(
-            set(manifest["hooks"]), {"SessionStart", "PreCompact", "PostCompact"}
+            set(manifest["hooks"]),
+            {
+                "SessionStart",
+                "PreCompact",
+                "PostCompact",
+                "PreToolUse",
+                "PostToolUse",
+                "UserPromptSubmit",
+            },
         )
-        self.assertNotIn("PreToolUse", manifest["hooks"])
-        self.assertNotIn("PostToolUse", manifest["hooks"])
         commands = [
             hook
             for registrations in manifest["hooks"].values()
@@ -1518,6 +1524,24 @@ class HookProbeTests(unittest.TestCase):
                 [sys.executable, str(launcher), str(hook)],
                 capture_output=True,
                 text=True,
+                check=False,
+                timeout=10,
+            )
+        self.assertEqual(completed.returncode, 37, completed.stderr)
+
+    def test_packaged_hook_launcher_recovers_a_stale_plugin_path(self) -> None:
+        launcher = Path(__file__).parents[1] / "context_control_plane/codex_hook_launcher.py"
+        with tempfile.TemporaryDirectory() as directory:
+            plugin_root = Path(directory) / "plugin"
+            hook = plugin_root / "scripts/continuity-hook.py"
+            hook.parent.mkdir(parents=True)
+            hook.write_text("def main():\n    return 37\n", encoding="utf-8")
+            stale = Path(directory) / "removed-cache/scripts/continuity-hook.py"
+            completed = subprocess.run(
+                [sys.executable, str(launcher), str(stale)],
+                capture_output=True,
+                text=True,
+                env={**os.environ, "PLUGIN_ROOT": str(plugin_root)},
                 check=False,
                 timeout=10,
             )
@@ -1624,7 +1648,9 @@ class HookProbeTests(unittest.TestCase):
                 self.assertEqual(hook._precompact(payload, root), 0)
                 self.assertEqual(hook._postcompact(payload, root), 0)
                 self.assertEqual(hook._session_start(payload, root), 0)
-            self.assertEqual(stdout.getvalue(), "")
+            output = json.loads(stdout.getvalue())
+            self.assertTrue(output["continue"])
+            self.assertIn("continuity_context_lookup", output["hookSpecificOutput"]["additionalContext"])
 
     def test_observe_lifecycle_does_not_execute_checkpoint_commands(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

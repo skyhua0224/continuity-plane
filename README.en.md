@@ -22,8 +22,9 @@ The current public version is alpha12, including the PR3/PR4 recovery and plugin
 ### Codex plugin (optional)
 
 The core package does not depend on a plugin. The default `continuity-plane` plugin is a
-lightweight core for bounded recovery and checkpoint lifecycle. It registers no State MCP tools
-and does not block ordinary development commands:
+lightweight core for bounded recovery and checkpoint lifecycle, with no State MCP tools or ordinary
+command gates. Advisory tool hooks and one-shot recovery compensation are in development, not in
+alpha12; see the [unreleased changes](CHANGELOG.en.md#next-release-unreleased).
 
 ```bash
 codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.12

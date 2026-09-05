@@ -1,0 +1,41 @@
+{
+  "business_state_writes": 0,
+  "config_unchanged": true,
+  "context_window": 1000000,
+  "discovery_diagnostics": {
+    "errors": 0,
+    "layer_count": 3,
+    "layers": [
+      {
+        "disabled": true,
+        "type": "project"
+      },
+      {
+        "disabled": false,
+        "type": "user"
+      },
+      {
+        "disabled": false,
+        "type": "system"
+      }
+    ],
+    "warnings": 0
+  },
+  "ephemeral": true,
+  "failed_gate": "host_hook_discovery",
+  "host_observations": {
+    "hook_context_bytes": 0,
+    "hook_counts": {},
+    "lookup_calls": 0,
+    "native_compaction_observed": false,
+    "tool_calls": 0,
+    "usage": null
+  },
+  "installed_plugin_acceptance": false,
+  "measurement_source": "codex-app-server-native",
+  "model": "gpt-5.6-sol",
+  "observed_at": "2026-09-05T11:52:42.302972+00:00",
+  "phases": [],
+  "preflight_hooks": [],
+  "status": "failed"
+}

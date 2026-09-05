@@ -95,7 +95,13 @@ class ReleaseCliTests(unittest.TestCase):
                 "[hooks.state.\"continuity-plane@continuity-plane:hooks/hooks.json:post_compact:0:0\"]\n"
                 f"trusted_hash = \"sha256:{'2' * 64}\"\n"
                 "[hooks.state.\"continuity-plane@continuity-plane:hooks/hooks.json:session_start:0:0\"]\n"
-                f"trusted_hash = \"sha256:{'3' * 64}\"\n",
+                f"trusted_hash = \"sha256:{'3' * 64}\"\n"
+                "[hooks.state.\"continuity-plane@continuity-plane:hooks/hooks.json:post_tool_use:0:0\"]\n"
+                f"trusted_hash = \"sha256:{'4' * 64}\"\n"
+                "[hooks.state.\"continuity-plane@continuity-plane:hooks/hooks.json:user_prompt_submit:0:0\"]\n"
+                f"trusted_hash = \"sha256:{'5' * 64}\"\n"
+                "[hooks.state.\"continuity-plane@continuity-plane:hooks/hooks.json:pre_tool_use:0:0\"]\n"
+                f"trusted_hash = \"sha256:{'6' * 64}\"\n",
                 encoding="utf-8",
             )
             events = (
@@ -108,6 +114,8 @@ class ReleaseCliTests(unittest.TestCase):
                 "observed_at": "2026-09-02T03:56:55+00:00",
                 "plugin_loaded": True,
                 "success": True,
+                "context_emitted": True,
+                "project_root_sha256": hashlib.sha256(str(root).encode()).hexdigest(),
             }
             (events / f"{hashlib.sha256(b'session').hexdigest()}.jsonl").write_text(
                 json.dumps(event) + "\n", encoding="utf-8"
@@ -128,12 +136,25 @@ class ReleaseCliTests(unittest.TestCase):
             report = json.loads(output.getvalue())
             self.assertEqual(result, 0)
             self.assertEqual(report["codex_plugin"]["status"], "active")
-            self.assertEqual(report["codex_plugin"]["trusted_hooks"], 3)
-            self.assertEqual(report["codex_plugin"]["expected_hooks"], 3)
+            self.assertEqual(report["codex_plugin"]["trusted_hooks"], 6)
+            self.assertEqual(report["codex_plugin"]["expected_hooks"], 6)
             self.assertTrue(report["codex_plugin"]["mcp_auto_approved"])
             self.assertTrue(report["codex_plugin"]["search_mcp_auto_approved"])
             self.assertTrue(report["codex_plugin"]["session_start_observed"])
             self.assertNotIn("transcript", json.dumps(report).lower())
+
+            event_path = events / f"{hashlib.sha256(b'session').hexdigest()}.jsonl"
+            for changes in (
+                {"success": False, "failed_gate": "resume_unavailable"},
+                {"context_emitted": False},
+                {"project_root_sha256": "0" * 64},
+            ):
+                with self.subTest(changes=changes):
+                    event_path.write_text(json.dumps({**event, **changes}) + "\n", encoding="utf-8")
+                    output = StringIO()
+                    with redirect_stdout(output):
+                        main(["doctor", "--root", str(root), "--codex-home", str(codex_home)])
+                    self.assertNotEqual(json.loads(output.getvalue())["codex_plugin"]["status"], "active")
 
     def test_resume_packet_has_a_registered_strict_schema(self) -> None:
         root = Path(__file__).parents[1]

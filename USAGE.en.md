@@ -325,7 +325,13 @@ codex plugin add continuity-plane@continuity-plane
 
 Start a new Session after installation. The core plugin loads one bounded packet
 at SessionStart and runs checkpoint lifecycle hooks around compaction. Questions
-do not advance the saved Work or emit recovery narration.
+do not advance the saved Work or emit recovery narration. Alpha12 registers only lifecycle hooks.
+The advisory tool hooks described below are unreleased development changes.
+
+Codex tracks hook trust separately from plugin installation. Review the current definitions in
+`/hooks`; changed definitions require renewed trust after an upgrade. Untrusted hooks are skipped by
+the host and must not be reported as adopted. Missing trust is not a reason to repeatedly reinstall
+plugins or rewrite model, provider, or key configuration.
 
 Install the search plugin for explicit bounded current-worktree lookup in large repositories:
 
@@ -381,6 +387,16 @@ Core hooks run through the installed package's `continuity-codex-hook` entry poi
 depending on a system Python alias. In `auto` mode, `SessionStart(source=compact)` injects the
 current bounded packet and directs the model to continue silently from `next_action`. Hook or
 State-sync failures are observed and degraded; they do not stop ordinary editing, builds, or tests.
+
+In the unreleased build, independent advisory hooks observe local tool boundaries without State calls
+or command gates, including under a leftover `strict` setting. Ordinary successes use `1/16` sampling;
+failures, recognized effects, and Continuity MCP calls retain observations. Missing compaction entry
+gets one retrieval hint (at most `1 KiB`) on the next tool, or one resume attempt on the next user
+message. Markers are project/session scoped, expire after 10 minutes, and are atomically consumed.
+Delivered recovery clears the marker. Normal operations emit no context; no hook installs plugins,
+changes Codex configuration, rewrites commands, activates Work, or retries indefinitely.
+If a Session still references a deleted plugin-cache path, the launcher tries the current `PLUGIN_ROOT`;
+when it is unavailable it exits quietly and leaves ordinary commands alone without switching versions.
 
 When an idle project's canonical MASTER or STATUS changes, `resume` returns
 `source_fresh=false`, `read_only=true`, and

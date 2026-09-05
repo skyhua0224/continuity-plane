@@ -53,6 +53,8 @@ Work、claim、revision、checkpoint 和完成状态已经由 State/Event Log �
 
 - Hook 生命周期：`session-start`、`precompact`、`postcompact`、`autorun`、
   `hook-error`；
+- 本地工具边界：`operation-pre`、`operation-post` 仅按固定比例采样；失败、外部副作用和
+  Continuity 调用始终保留；这些事件不包含命令、输入或响应正文；
 - MCP 边界：`resume`、`state_write_completed`、`state_write_failed`、
   `tool_call_failed`、`slow_call`、`session_end`；
 - `diagnostic` 模式额外允许 `tool_call`。
@@ -136,8 +138,9 @@ PreCompact checkpoint、State revision/CAS、claim fencing、失败记录和恢�
 ## 轻量探针与调优闭环
 
 探针默认开启，但必须比被测操作更轻。探针记录原始事实，不在热路径计算复杂评分，也不
-自动修改配置。v1 只在 Session 内维护计数器和固定桶直方图，并在边界事件或 Session
-汇总时一次落盘。
+自动修改配置。核心 hook 在每个本地工具边界运行一次常量级检查，成功的普通操作按固定
+比例采样，失败、外部副作用和 Continuity 调用始终记录；它不调用 MCP、不注入上下文，
+也不改变工具输入。其余探针只在边界事件或 Session 汇总时落盘。
 
 ### 默认探针
 
@@ -353,8 +356,9 @@ v1 不引入复杂归档系统。State MCP 默认上限为 64 MiB，在 Session 
 
 已实现的最小测试集：
 
-1. core manifest 仅注册 SessionStart、PreCompact、PostCompact，默认 auto/observe 不阻塞；
-2. 普通读取只增加内存计数，不产生逐调用持久记录；
+1. 未发布 core 注册生命周期、UserPromptSubmit，以及独立 advisory PreToolUse/PostToolUse；
+   advisory 不调用 State、不拒绝命令；漏送压缩入口仅发一次有界检索提示；
+2. State MCP 普通读取只增加内存计数；core 工具边界默认按 1/16 采样持久记录；
 3. 关闭可选探针后只保留强制安全记录，并以 `session_end` 形成可回收文件；
 4. provider usage 缺失时不出现伪造 token 值；
 5. 线程和真实多进程 append+prune 不发生交叉、半行或锁删除竞态，锁繁忙立即降级；

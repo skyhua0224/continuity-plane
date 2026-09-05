@@ -43,6 +43,49 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "continuity-codex-hook \"${PLUGIN_ROOT}/scripts/continuity-advisory-hook.py\"",
+            "commandWindows": "continuity-codex-hook \"%PLUGIN_ROOT%\\scripts\\continuity-advisory-hook.py\"",
+            "timeout": 3,
+            "statusMessage": "Checking continuity boundary"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "continuity-codex-hook \"${PLUGIN_ROOT}/scripts/continuity-advisory-hook.py\"",
+            "commandWindows": "continuity-codex-hook \"%PLUGIN_ROOT%\\scripts\\continuity-advisory-hook.py\"",
+            "timeout": 3,
+            "statusMessage": "Recording continuity use"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "continuity-codex-hook \"${PLUGIN_ROOT}/scripts/continuity-hook.py\"",
+            "commandWindows": "continuity-codex-hook \"%PLUGIN_ROOT%\\scripts\\continuity-hook.py\"",
+            "timeout": 10,
+            "statusMessage": "Restoring continuity entry",
+            "additionalContextLimit": 5000
+          }
+        ]
+      }
     ]
   }
 }

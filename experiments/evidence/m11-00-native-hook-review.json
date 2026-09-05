@@ -1,0 +1,121 @@
+{
+  "business_state_writes": 0,
+  "config_unchanged": true,
+  "context_window": 1000000,
+  "effective_model": "gpt-5.6-sol",
+  "ephemeral": true,
+  "failed_gate": "native_adoption_or_memory",
+  "hook_context_bytes": 0,
+  "hook_counts": {},
+  "host_observations": {
+    "hook_context_bytes": 0,
+    "hook_counts": {},
+    "lookup_calls": 0,
+    "native_compaction_observed": true,
+    "tool_calls": 11,
+    "usage": {
+      "last": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 36608,
+        "inputTokens": 37888,
+        "outputTokens": 598,
+        "reasoningOutputTokens": 516,
+        "totalTokens": 38486
+      },
+      "modelContextWindow": 828400,
+      "total": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 285952,
+        "inputTokens": 364332,
+        "outputTokens": 2384,
+        "reasoningOutputTokens": 1098,
+        "totalTokens": 366716
+      }
+    }
+  },
+  "installed_plugin_acceptance": false,
+  "lookup_calls": 0,
+  "measurement_source": "codex-app-server-native",
+  "model": "gpt-5.6-sol",
+  "native_compaction_observed": true,
+  "observed_at": "2026-09-05T11:23:20.059822+00:00",
+  "phases": [
+    {
+      "hook_context_bytes": 0,
+      "hook_counts": {},
+      "lookup_calls": 0,
+      "marker_retained": true,
+      "native_compaction_observed": false,
+      "tool_calls": 2,
+      "turn_status": "completed",
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 28416,
+          "inputTokens": 30298,
+          "outputTokens": 107,
+          "reasoningOutputTokens": 80,
+          "totalTokens": 30405
+        },
+        "modelContextWindow": 828400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 60672,
+          "inputTokens": 88082,
+          "outputTokens": 418,
+          "reasoningOutputTokens": 195,
+          "totalTokens": 88500
+        }
+      }
+    },
+    {
+      "hook_context_bytes": 0,
+      "hook_counts": {},
+      "lookup_calls": 0,
+      "marker_retained": true,
+      "native_compaction_observed": false,
+      "tool_calls": 9,
+      "turn_status": "completed",
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 36608,
+          "inputTokens": 37888,
+          "outputTokens": 598,
+          "reasoningOutputTokens": 516,
+          "totalTokens": 38486
+        },
+        "modelContextWindow": 828400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 285952,
+          "inputTokens": 364332,
+          "outputTokens": 2384,
+          "reasoningOutputTokens": 1098,
+          "totalTokens": 366716
+        }
+      }
+    }
+  ],
+  "status": "failed",
+  "tool_calls": 11,
+  "usage": {
+    "last": {
+      "cacheWriteInputTokens": 0,
+      "cachedInputTokens": 36608,
+      "inputTokens": 37888,
+      "outputTokens": 598,
+      "reasoningOutputTokens": 516,
+      "totalTokens": 38486
+    },
+    "modelContextWindow": 828400,
+    "total": {
+      "cacheWriteInputTokens": 0,
+      "cachedInputTokens": 285952,
+      "inputTokens": 364332,
+      "outputTokens": 2384,
+      "reasoningOutputTokens": 1098,
+      "totalTokens": 366716
+    }
+  }
+}

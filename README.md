@@ -21,7 +21,8 @@ python -m pip install continuity-plane==0.1.0a12
 ### Codex 插件（可选）
 
 核心包不依赖插件。默认 `continuity-plane` plugin 是轻量 core，只提供有界恢复和
-checkpoint lifecycle，不注册 State MCP 工具，也不阻断普通开发命令：
+checkpoint lifecycle，不注册 State MCP 工具，也不阻断普通开发命令。
+开发中的操作前后 advisory hook 与一次性恢复补偿尚未发布，详见[下一版本](CHANGELOG.md#下一版本未发布)。
 
 ```bash
 codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.12

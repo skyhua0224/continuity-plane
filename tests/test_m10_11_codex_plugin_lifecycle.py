@@ -57,7 +57,7 @@ if [ \"$1\" = \"resume\" ]; then
   elif [ \"${AUTO_REFRESH:-0}\" = \"1\" ] && [ ! -f \"$FAKE_CONTINUITY_REFRESHED\" ]; then
     printf '%s\\n' '{"schema_version":"context.resume-packet/v1alpha1","project_id":"portable-project","revision":7,"active_work":{"work_id":"work-active","title":"Continue active work"},"claim":{"claim_id":"claim-active","actor_ref":"actor-active"},"next_action":"remain-read-only","source_fresh":false,"read_only":true}'
   else
-    printf '%s\\n' '{"schema_version":"context.resume-packet/v1alpha1","project_id":"portable-project","revision":8,"active_work":{"work_id":"work-active","title":"Continue active work"},"claim":{"claim_id":"claim-active","actor_ref":"actor-active"},"next_action":"continue-active-work","source_fresh":true,"read_only":false}'
+    printf '%s\\n' '{"schema_version":"context.resume-packet/v1alpha1","project_id":"portable-project","revision":8,"active_work":{"work_id":"work-active","title":"Continue active work"},"claim":{"claim_id":"claim-active","actor_ref":"actor-active"},"next_action":"continue-active-work","source_fresh":true,"read_only":false,"checkpoint_verified":true,"lease_valid":true}'
   fi
   exit 0
 fi
@@ -102,6 +102,7 @@ printf '%s\\n' '{"status":"ok"}'
         fail_resume: bool = False,
         effect_policy: str | None = "strict",
         projection_revision: int | None = None,
+        operation_sample_rate: int | None = None,
     ) -> tuple[subprocess.CompletedProcess[str], list[str], str]:
         with tempfile.TemporaryDirectory() as directory:
             temp = Path(directory)
@@ -204,6 +205,8 @@ printf '%s\\n' '{"status":"ok"}'
             }
             if effect_policy is not None:
                 environment["CONTINUITY_EFFECT_POLICY"] = effect_policy
+            if operation_sample_rate is not None:
+                environment["CONTINUITY_OPERATION_SAMPLE_RATE"] = str(operation_sample_rate)
             completed = subprocess.run(
                 ["python3", str(self.script)],
                 input=json.dumps(payload),
@@ -228,13 +231,18 @@ printf '%s\\n' '{"status":"ok"}'
                 "SessionStart",
                 "PreCompact",
                 "PostCompact",
+                "PreToolUse",
+                "PostToolUse",
+                "UserPromptSubmit",
             },
         )
         self.assertEqual(hooks["PreCompact"][0]["matcher"], "manual|auto")
         self.assertEqual(hooks["PostCompact"][0]["matcher"], "manual|auto")
         self.assertIn("compact", hooks["SessionStart"][0]["matcher"])
-        self.assertNotIn("PreToolUse", hooks)
-        self.assertNotIn("PostToolUse", hooks)
+        self.assertIn("UserPromptSubmit", hooks)
+        self.assertIn("PostToolUse", hooks)
+        self.assertEqual(hooks["PreToolUse"][0]["matcher"], "")
+        self.assertEqual(hooks["PostToolUse"][0]["matcher"], "")
         for groups in hooks.values():
             handler = groups[0]["hooks"][0]
             self.assertIn("command", handler)
@@ -243,6 +251,111 @@ printf '%s\\n' '{"status":"ok"}'
             hooks["SessionStart"][0]["hooks"][0]["additionalContextLimit"],
             5000,
         )
+
+    def test_generic_tool_boundaries_are_observation_only(self) -> None:
+        pre, pre_calls, pre_observations = self._run_hook(
+            "PreToolUse",
+            tool_name="apply_patch",
+            tool_input={"patch": "*** Begin Patch\n*** End Patch"},
+            effect_policy="auto",
+            operation_sample_rate=1,
+        )
+        post, post_calls, post_observations = self._run_hook(
+            "PostToolUse",
+            tool_name="apply_patch",
+            tool_input={"patch": "*** Begin Patch\n*** End Patch"},
+            stage_success=True,
+            effect_policy="auto",
+            operation_sample_rate=1,
+        )
+
+        self.assertEqual(pre.returncode, 0)
+        self.assertEqual(post.returncode, 0)
+        self.assertEqual(pre.stdout, "")
+        self.assertEqual(post.stdout, "")
+        self.assertEqual(pre_calls, [])
+        self.assertEqual(post_calls, [])
+        self.assertIn('"event_type":"operation-pre"', pre_observations)
+        self.assertIn('"event_type":"operation-post"', post_observations)
+        self.assertIn('"tool_name":"apply_patch"', pre_observations)
+        self.assertIn('"tool_name":"apply_patch"', post_observations)
+
+    def test_generic_boundaries_never_resume_or_inject_context(self) -> None:
+        completed, calls, observations = self._run_hook(
+            "PostToolUse",
+            tool_name="mcp__filesystem__read_file",
+            tool_input={"path": "src/main.py"},
+            stage_success=True,
+            effect_policy="auto",
+            operation_sample_rate=1,
+        )
+
+        self.assertEqual(completed.returncode, 0)
+        self.assertEqual(completed.stdout, "")
+        self.assertEqual(calls, [])
+        self.assertIn('"event_type":"operation-post"', observations)
+        self.assertNotIn("additionalContext", observations)
+
+    def test_operation_boundary_sampling_is_bounded_but_failures_are_kept(self) -> None:
+        module = self._hook_module()
+        with tempfile.TemporaryDirectory() as directory, mock.patch.dict(
+            os.environ,
+            {"PLUGIN_DATA": directory, "CONTINUITY_OPERATION_SAMPLE_RATE": "64"},
+            clear=False,
+        ):
+            root = Path(directory) / "repo"
+            root.mkdir()
+            sampled_payload = {
+                "session_id": "session-a",
+                "turn_id": "turn-a",
+                "tool_use_id": "tool-0",
+                "tool_name": "apply_patch",
+                "tool_response": {"exit_code": 0},
+            }
+            with mock.patch.object(module, "_observe") as observe:
+                module._observe_operation_boundary(
+                    sampled_payload, root, phase="post"
+                )
+                self.assertEqual(observe.call_count, 0)
+            failed_payload = {
+                **sampled_payload,
+                "tool_response": {"exit_code": 1},
+            }
+            with mock.patch.object(module, "_observe") as observe:
+                module._observe_operation_boundary(failed_payload, root, phase="post")
+                self.assertEqual(observe.call_count, 1)
+
+    def test_generic_boundary_uses_lightweight_root_discovery(self) -> None:
+        module = self._hook_module()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "repo"
+            (root / ".continuity").mkdir(parents=True)
+            (root / ".continuity/project.yaml").write_text(
+                "schema_version: context.project/v1alpha1\n", encoding="utf-8"
+            )
+            payload = {
+                "session_id": "session-a",
+                "cwd": str(root),
+                "hook_event_name": "PreToolUse",
+                "tool_name": "apply_patch",
+                "tool_use_id": "tool-a",
+                "tool_input": {"patch": "*** Begin Patch\n*** End Patch"},
+            }
+            with (
+                mock.patch.dict(
+                    os.environ,
+                    {
+                        "PLUGIN_DATA": str(Path(directory) / "plugin-data"),
+                        "CONTINUITY_EFFECT_POLICY": "auto",
+                        "CONTINUITY_OPERATION_SAMPLE_RATE": "1",
+                    },
+                    clear=False,
+                ),
+                mock.patch.object(module, "_project_root", side_effect=AssertionError),
+                mock.patch.object(module.sys, "stdin", io.StringIO(json.dumps(payload))),
+                mock.patch.object(module.sys, "stdout", io.StringIO()),
+            ):
+                self.assertEqual(module.main(), 0)
 
     def test_state_mcp_does_not_inject_a_skill_into_ordinary_turns(self) -> None:
         manifest = json.loads(
@@ -1668,7 +1781,9 @@ printf '%s\\n' '{"status":"ok"}'
         )
 
         self.assertEqual(completed.returncode, 0)
-        self.assertEqual(completed.stdout, "")
+        output = json.loads(completed.stdout)
+        self.assertIn("continuity_context_lookup", output["hookSpecificOutput"]["additionalContext"])
+        self.assertIn("Continue ordinary project work", output["hookSpecificOutput"]["additionalContext"])
         self.assertEqual(len(calls), 1)
         self.assertIn('"event_type":"session-start"', observations)
         self.assertIn('"success":false', observations)
@@ -1681,7 +1796,8 @@ printf '%s\\n' '{"status":"ok"}'
         )
 
         self.assertEqual(completed.returncode, 0)
-        self.assertEqual(completed.stdout, "")
+        output = json.loads(completed.stdout)
+        self.assertIn("continuity_context_lookup", output["hookSpecificOutput"]["additionalContext"])
         self.assertEqual(len(calls), 1)
         self.assertIn('"event_type":"session-start"', observations)
         self.assertIn('"success":false', observations)
@@ -1776,7 +1892,8 @@ printf '%s\\n' '{"status":"ok"}'
             projection_revision=8,
         )
 
-        self.assertEqual(completed.stdout, "")
+        output = json.loads(completed.stdout)
+        self.assertIn("continuity_context_lookup", output["hookSpecificOutput"]["additionalContext"])
         self.assertEqual(len(calls), 1)
 
     def test_postcompact_auto_defers_continuation_to_compact_session_start(self) -> None:
@@ -1797,6 +1914,104 @@ printf '%s\\n' '{"status":"ok"}'
         self.assertEqual(completed.stdout, "")
         self.assertEqual(len(calls), 1)
         self.assertTrue(calls[0].startswith("checkpoint verify --root "))
+
+    def test_prompt_recovers_once_when_compact_session_start_was_not_delivered(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            temp = Path(directory)
+            project = temp / "portable-project"
+            project.mkdir()
+            (project / ".continuity").mkdir()
+            (project / ".continuity/project.yaml").write_text(
+                "schema_version: context.project/v1alpha1\n", encoding="utf-8"
+            )
+            (project / ".continuity/status-projection.json").write_text(
+                json.dumps({"revision": 8}), encoding="utf-8"
+            )
+            subprocess.run(["git", "init", "-q", str(project)], check=True)
+            subprocess.run(["git", "-C", str(project), "config", "user.email", "test@example.invalid"], check=True)
+            subprocess.run(["git", "-C", str(project), "config", "user.name", "Continuity Test"], check=True)
+            (project / "README.md").write_text("fixture\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(project), "add", "README.md"], check=True)
+            subprocess.run(["git", "-C", str(project), "commit", "-qm", "test: initialize"], check=True)
+            bin_dir = temp / "bin"
+            bin_dir.mkdir()
+            _, calls = self._fake_continuity(bin_dir)
+            plugin_data = temp / "plugin-data"
+            packet = {
+                "schema_version": "context.recovery-envelope/v1alpha1",
+                "project_id": "portable-project",
+                "revision": 8,
+                "active_work": {"work_id": "work-active"},
+                "claim": {"claim_id": "claim-active", "actor_ref": "actor-active"},
+                "next_action": "continue-active-work",
+                "source_fresh": True,
+                "lease_valid": True,
+                "checkpoint_verified": True,
+                "read_only": False,
+            }
+            environment = {
+                **os.environ,
+                "PATH": f"{bin_dir}:{os.environ['PATH']}",
+                "PLUGIN_DATA": str(plugin_data),
+                "PLUGIN_ROOT": str(self.plugin),
+                "FAKE_CONTINUITY_CALLS": str(calls),
+                "MCP_BINDING_ENVELOPE": json.dumps(packet),
+                "CONTINUITY_EFFECT_POLICY": "auto",
+            }
+            base = {
+                "session_id": "prompt-recovery-session",
+                "cwd": str(project),
+                "model": "provider-model",
+            }
+            post = subprocess.run(
+                [sys.executable, str(self.script)],
+                input=json.dumps({**base, "hook_event_name": "PostCompact", "trigger": "auto"}),
+                text=True,
+                capture_output=True,
+                env=environment,
+                check=False,
+            )
+            self.assertEqual(post.returncode, 0, post.stderr)
+            self.assertEqual(post.stdout, "")
+            pending = list((plugin_data / "continuation-pending").glob("*.json"))
+            self.assertEqual(len(pending), 1)
+            prompt = subprocess.run(
+                [sys.executable, str(self.script)],
+                input=json.dumps({**base, "hook_event_name": "UserPromptSubmit", "prompt": "continue"}),
+                text=True,
+                capture_output=True,
+                env=environment,
+                check=False,
+            )
+            self.assertEqual(prompt.returncode, 0, prompt.stderr)
+            output = json.loads(prompt.stdout)
+            context = output["hookSpecificOutput"]["additionalContext"]
+            self.assertIn("work-active", context)
+            self.assertIn("Current user intent wins", context)
+            self.assertEqual(len(list((plugin_data / "continuation-pending").glob("*.json"))), 0)
+            second = subprocess.run(
+                [sys.executable, str(self.script)],
+                input=json.dumps({**base, "hook_event_name": "UserPromptSubmit", "prompt": "continue again"}),
+                text=True,
+                capture_output=True,
+                env=environment,
+                check=False,
+            )
+            self.assertEqual(second.stdout, "")
+            self.assertEqual(len([line for line in calls.read_text(encoding="utf-8").splitlines() if line.startswith("resume ")]), 1)
+
+    def test_continuity_tool_post_use_is_observation_only(self) -> None:
+        completed, calls, observations = self._run_hook(
+            "PostToolUse",
+            tool_name="mcp__continuity__continuity_resume",
+            tool_input={"root": "/tmp/project"},
+            stage_success=True,
+            effect_policy="auto",
+        )
+        self.assertEqual(completed.returncode, 0)
+        self.assertEqual(completed.stdout, "")
+        self.assertEqual(calls, [])
+        self.assertIn('"event_type":"posttooluse"', observations)
 
     def test_successful_stage_test_uses_the_native_tool_continuation(self) -> None:
         packet = {

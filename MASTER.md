@@ -1,7 +1,7 @@
 # Continuity Plane MASTER
 
-版本：revision 128  
-日期：2026-09-04  
+版本：revision 129  
+日期：2026-09-05  
 状态：zero-friction core reset / live plugin adoption  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
 
@@ -398,11 +398,13 @@ M10-01/M10-11 的跨项目退出门包括：State revision 与 `STATUS.current` 
 
 M11-00 的运行策略分为三层：`auto` 默认自动绑定项目、恢复 Work、创建本地 claim、续租和继续下一动作且不阻断普通开发；`observe` 仅记录；`strict` 只由项目 Profile 显式启用，用于不可逆生产副作用。任何层级都不得将 stale packet、旧 Work 或陈旧 STATUS 注入当前 Session。M11-00 关闭前，不新增 effect gate、强制 PostgreSQL、Docmost 或人工 claim 操作。
 
-Codex `auto` compaction 在 `PreCompact` 创建 checkpoint、`PostCompact` 验证 canary，并由宿主原生上下文继续同一轮；`SessionStart(source=compact)` 不注入 packet。显式 `strict` 或恢复模式可在 canary 后注入 bounded fallback。普通 `PostToolUse` 不调用 autorun 或注入当前 Work。
+Codex `auto` compaction 通过 PreCompact/checkpoint、PostCompact/canary 和 compact SessionStart 提供有界恢复。恢复失败不注入旧 Work；检索入口保持可用。PostCompact 留下按 Session/项目隔离、10 分钟过期的 marker；下次工具调用仅补一次检索提示，或由先到的用户消息触发一次 resume，随后原子消费；正常恢复送达即清除。普通工具 hook 无 State 调用、无自动 activate、无命令改写、无权限决定；故障不停止业务。离线 fixture、真实 CLI 进程测试、宿主原生压缩和 matched token A/B 分别报告，不能互相替代。
 
-Codex 默认 plugin 采用 core profile，仅包含 lifecycle hook 与不超过 `512 B` 的 startup return-point projection，不注册 Skill、MCP 或命令门。`continuity-plane-search` 仅提供一个有界 lookup MCP 工具，不注册 Skill；`continuity-plane-state` 承载 resume、claim、checkpoint 与 Work transition 工具。两个扩展均按需单独安装。
+Codex core 不注册 Skill 或 State MCP。未发布的通用 PreToolUse/PostToolUse 使用独立 advisory 入口，与旧 strict gate 隔离；普通成功事件按 1/16 采样，失败、识别到的副作用和 Continuity 调用保留脱敏观测。残留 strict 设置不能把 advisory 变成命令门。search 提供有界 lookup，state 提供显式状态操作；扩展按需安装。
 
 本机或受控试点可由用户显式启用 core、search 和 state 三个 profile 进行 dogfood。全量安装不授予命令拦截权限；State 或检索 adapter 失败时继续业务执行。公共默认启用仍受 M11-00 matched gate 约束。
+
+候选验证依次完成新旧 launcher 兼容、负向 packet/观测审查、全量回归、宿主 hook 装载与信任、原生压缩、三项目 matched A/B。未受信任的项目层或 hook 不视为采用成功；模型请求前检查装载，避免无效重复付费测量。宿主实际 context window 与用户配置值分别计量；信任配置变更不得替换模型、provider、key 或 cc-switch 配置。
 
 2026-09-02 的 alpha.10 live adoption 合同要求：State launcher 可从发布根加载唯一 package
 MCP server；`continuity_inspect` 只读且每 turn 最多调用一次；所有 MCP 工具声明准确安全

@@ -42,7 +42,17 @@ class M1100CodexPluginProfileTests(unittest.TestCase):
         hooks = json.loads(
             (self.core / "hooks/hooks.json").read_text(encoding="utf-8")
         )["hooks"]
-        self.assertEqual(set(hooks), {"SessionStart", "PreCompact", "PostCompact"})
+        self.assertEqual(
+            set(hooks),
+            {
+                "SessionStart",
+                "PreCompact",
+                "PostCompact",
+                "PreToolUse",
+                "PostToolUse",
+                "UserPromptSubmit",
+            },
+        )
 
     def test_state_tools_are_an_explicit_advanced_plugin(self) -> None:
         state_manifest = json.loads(
@@ -116,6 +126,24 @@ class M1100CodexPluginProfileTests(unittest.TestCase):
                     encoding="utf-8"
                 )
             )
+            advisory = output / "plugins/continuity-plane/scripts/continuity-advisory-hook.py"
+            self.assertTrue(advisory.is_file(), "the public plugin must ship its registered entry")
+            project = Path(directory) / "project"
+            (project / ".continuity").mkdir(parents=True)
+            (project / ".continuity/project.yaml").write_text("project_id: sample\n")
+            data = Path(directory) / "data"
+            for event in ("PreToolUse", "PostToolUse"):
+                result = subprocess.run(
+                    [sys.executable, str(output / "continuity_plane/codex_hook_launcher.py"), str(advisory)],
+                    input=json.dumps({"cwd": str(project), "session_id": "public-test", "hook_event_name": event,
+                                      "tool_name": "Bash", "tool_input": {"command": "git push origin main"}}),
+                    env={**os.environ, "PLUGIN_DATA": str(data), "CONTINUITY_EFFECT_POLICY": "strict"},
+                    cwd=project, capture_output=True, text=True, timeout=5,
+                )
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, "")
+            observations = next((data / "live-events").glob("*.jsonl")).read_text().splitlines()
+            self.assertEqual(len(observations), 2)
 
             self.assertEqual(
                 [plugin["name"] for plugin in marketplace["plugins"]],

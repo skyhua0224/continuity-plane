@@ -126,6 +126,7 @@ class M902ProjectGraphProjectionTests(unittest.TestCase):
 
     def test_same_revision_projection_contains_graph_active_set_and_ledger(self) -> None:
         snapshot = build_idea_snapshot()
+        snapshot["claims"][0]["lease_expires_at"] = "2026-08-14T10:00:00+08:00"
         source = self.external_projection(snapshot)
 
         projection = build_project_graph_projection(
@@ -525,7 +526,9 @@ class M902ProjectGraphProjectionTests(unittest.TestCase):
             )
 
     def test_tampering_and_invalid_source_fail_closed(self) -> None:
-        source = self.external_projection(build_idea_snapshot())
+        snapshot = build_idea_snapshot()
+        snapshot["claims"][0]["lease_expires_at"] = "2026-08-14T10:00:00+08:00"
+        source = self.external_projection(snapshot)
         projection = build_project_graph_projection(
             source,
             signer=self.signer,

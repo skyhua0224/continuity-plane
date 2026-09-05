@@ -259,6 +259,14 @@ class _DispatchBarrierStore(SQLiteDurableOperationStore):
     def __init__(self, database_path: Path, barrier: Barrier) -> None:
         super().__init__(database_path)
         self._dispatch_barrier = barrier
+        self._initial_read = True
+
+    def read_history(self, operation_id: str) -> list[dict]:
+        history = super().read_history(operation_id)
+        if self._initial_read:
+            self._initial_read = False
+            self._dispatch_barrier.wait(timeout=5)
+        return history
 
     def append_transition_owned(
         self, operation: dict, *, expected_record_sha256: str
@@ -308,7 +316,9 @@ class M801DurableOperationRunnerTests(unittest.TestCase):
         barrier = Barrier(2)
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "operation.sqlite3"
-            SQLiteDurableOperationStore(path).initialize()
+            seed = SQLiteDurableOperationStore(path)
+            seed.initialize()
+            seed.create_operation(prepared)
 
             def run(worker: int) -> str:
                 from context_control_plane.durable_operation_store import (

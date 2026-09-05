@@ -15,9 +15,9 @@
   "measurement": {
     "events_per_run": 1,
     "ideas_per_run": 1,
-    "max_total_ms": 6.45991,
-    "p50_total_ms": 3.309943,
-    "p95_total_ms": 4.387763,
+    "max_total_ms": 6.418539,
+    "p50_total_ms": 3.363584,
+    "p95_total_ms": 5.285423,
     "samples": 1000,
     "successful_runs": 1000
   },
@@ -32,7 +32,7 @@
     "runner_sha256": "1b0f71b2e50014cb31cdc33d8aec4597fb2569d4da42b014654e265cea34544d",
     "sqlite_state_store_sha256": "bc80a19b025170dce595489cb06c8f1872f7b1d156447a2615f8b13be5dc2fc7",
     "state_events_sha256": "b99078df3a3ad1d74a54debf764980372f097db63bc8579c04fa6b6bde889483",
-    "state_mcp_sha256": "2c9817da65c4b15eb0465600dcf450fee48ec3dd5f24ff520345efe6b0670ab2",
+    "state_mcp_sha256": "bcbcc14cb4d6eacec3e287476f728bc577fdb426ffe39611ca3bdaa97763b12b",
     "typed_state_sha256": "9151f130c9cbe426e5c8e55fd1f2c42bad5d5c093254a67cfa5ee7e16b9447c4"
   },
   "schema_version": "context.idea-continuity-benchmark/v1alpha1"
