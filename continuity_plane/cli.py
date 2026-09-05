@@ -395,7 +395,13 @@ def _verify(args: argparse.Namespace) -> int:
     return 0
 
 
-def _latest_codex_session_start(codex_home: Path) -> dict[str, Any] | None:
+def _latest_codex_session_start(
+    codex_home: Path, *, project_root: Path | None = None
+) -> dict[str, Any] | None:
+    root_digest = (
+        hashlib.sha256(str(project_root.resolve()).encode()).hexdigest()
+        if project_root is not None else None
+    )
     candidates = sorted(
         codex_home.glob("plugins/data/continuity-plane*/live-events/*.jsonl"),
         key=lambda path: path.stat().st_mtime_ns,
@@ -413,12 +419,18 @@ def _latest_codex_session_start(codex_home: Path) -> dict[str, Any] | None:
                 event = json.loads(line)
             except (UnicodeDecodeError, json.JSONDecodeError):
                 continue
-            if isinstance(event, dict) and event.get("event_type") == "session-start":
+            if (
+                isinstance(event, dict)
+                and event.get("event_type") == "session-start"
+                and (root_digest is None or event.get("project_root_sha256") == root_digest)
+            ):
                 return event
     return None
 
 
-def _codex_plugin_status(codex_home: Path) -> dict[str, Any]:
+def _codex_plugin_status(
+    codex_home: Path, *, project_root: Path | None = None
+) -> dict[str, Any]:
     try:
         config = tomllib.loads(
             (codex_home / "config.toml").read_text(encoding="utf-8")
@@ -454,15 +466,21 @@ def _codex_plugin_status(codex_home: Path) -> dict[str, Any]:
     hooks = hooks if isinstance(hooks, dict) else {}
     hook_state = hooks.get("state")
     hook_state = hook_state if isinstance(hook_state, dict) else {}
+    expected_hook_keys = {
+        f"continuity-plane@continuity-plane:hooks/hooks.json:{event}:0:0"
+        for event in ("session_start", "pre_compact", "post_compact", "pre_tool_use", "post_tool_use", "user_prompt_submit")
+    }
     trusted_hooks = sum(
-        isinstance(key, str)
-        and key.startswith("continuity-plane@continuity-plane:")
+        key in expected_hook_keys
         and isinstance(value, dict)
+        and value.get("enabled") is not False
         and isinstance(value.get("trusted_hash"), str)
         for key, value in hook_state.items()
     )
-    event = _latest_codex_session_start(codex_home)
+    event = _latest_codex_session_start(codex_home, project_root=project_root)
     session_start_observed = event is not None and event.get("plugin_loaded") is True
+    context_emitted = event is not None and event.get("context_emitted") is True
+    recovery_succeeded = event is not None and event.get("success") is True
     core_enabled = enabled("continuity-plane@continuity-plane")
     state_enabled = enabled(state_id)
     search_enabled = enabled(search_id)
@@ -471,8 +489,11 @@ def _codex_plugin_status(codex_home: Path) -> dict[str, Any]:
         and (not state_enabled or state_mcp_auto_approved)
         and (not search_enabled or search_mcp_auto_approved)
     )
-    ready = configured and trusted_hooks >= 3
-    status = "active" if ready and session_start_observed else "configured" if ready else "misconfigured"
+    ready = configured and trusted_hooks >= 6
+    status = (
+        "active" if ready and session_start_observed and context_emitted and recovery_succeeded
+        else "configured" if ready else "misconfigured"
+    )
     return {
         "status": status,
         "core_enabled": core_enabled,
@@ -481,8 +502,11 @@ def _codex_plugin_status(codex_home: Path) -> dict[str, Any]:
         "mcp_auto_approved": state_mcp_auto_approved,
         "search_mcp_auto_approved": search_mcp_auto_approved,
         "trusted_hooks": trusted_hooks,
-        "expected_hooks": 3,
+        "expected_hooks": 6,
         "session_start_observed": session_start_observed,
+        "context_emitted": context_emitted,
+        "model_adoption_verified": False,
+        "last_failed_gate": event.get("failed_gate") if event is not None else None,
         "last_session_start_success": (
             event.get("success") is True if event is not None else None
         ),
@@ -505,7 +529,7 @@ def _doctor(args: argparse.Namespace) -> int:
     }
     if args.codex_home is not None:
         response["codex_plugin"] = _codex_plugin_status(
-            Path(args.codex_home).expanduser().resolve()
+            Path(args.codex_home).expanduser().resolve(), project_root=root
         )
     print(json.dumps(response, sort_keys=True))
     return 0
