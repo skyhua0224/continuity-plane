@@ -14,6 +14,10 @@ AMD64.
 python -m pip install continuity-plane==0.1.0a11
 ```
 
+The alpha12 candidate in this checkout is not on PyPI. To verify the latest recovery and hook
+fixes, install the locally built `continuity_plane-0.1.0a12` wheel and the three plugins from its
+local marketplace.
+
 For a source checkout:
 
 ```bash

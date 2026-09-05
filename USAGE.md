@@ -13,6 +13,9 @@ Windows AMD64 完成安装、verify 和卸载。
 python -m pip install continuity-plane==0.1.0a11
 ```
 
+当前源码的 alpha12 candidate 尚未发布到 PyPI。需要验证最新恢复和 hook 修复时，使用本地
+构建的 `continuity_plane-0.1.0a12` wheel，并从对应本地 marketplace 安装三个插件。
+
 从源码 checkout 开发时：
 
 ```bash

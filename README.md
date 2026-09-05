@@ -16,6 +16,9 @@ Continuity Plane 是面向长期 AI 辅助软件工作的 provider-neutral 控�
 python -m pip install continuity-plane==0.1.0a11
 ```
 
+仓库当前同时包含未发布的 alpha12 candidate（PR3/PR4 修复）。它只用于本机或团队
+验证，不替代 PyPI 上的 alpha11；candidate 应从本地 wheel 和插件 marketplace 安装。
+
 ### Codex 插件（可选）
 
 核心包不依赖插件。默认 `continuity-plane` plugin 是轻量 core，只提供有界恢复和

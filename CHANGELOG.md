@@ -4,13 +4,41 @@
 
 ## 下一版本（未发布）
 
-- 合入协作者 PR3 的 idle source rebind、checkpoint 前后 source 校验和 Codex 压缩恢复修复。
-- 新增 `continuity-codex-hook` 包入口，复用安装包的 Python 运行时，避免旧 hook 路径或系统
-  Python 别名导致 Session 被卡住。
-- 同一 canonical 内容重新规划时生成当前 attach evidence；delivery activation 也支持经过
-  完整 source、workspace、predecessor 和 effect 校验的受控 rebind。
-- 大型仓库启动检测按阈值读取 Git 文件列表，避免在 hook 中保留完整列表。
-- 该版本尚未发布；当前已发布的 alpha11 行为和 tag 不变。
+- 暂无下一版本条目；当前开发版见 `0.1.0-alpha.12` candidate。
+
+## 0.1.0-alpha.12（本地 candidate，未发布）
+
+### 相比 0.1.0-alpha.11
+
+- 合入 idle source rebind、checkpoint 前后 source/evidence 校验和压缩恢复修复。来源变化
+  时恢复会明确报告门条件，不再把旧 Work 静默注入当前 Session。
+- 新增 `continuity-codex-hook` 包入口，hook 复用已安装的 Python 运行时，不再依赖失效的
+  旧缓存路径或平台特定的 `python3`/`py -3` 别名。
+- 同一 canonical 内容重新规划时生成新的 attach evidence；完全绑定的 delivery Work 可以
+  在 source、workspace、predecessor、expected ref 和 effect 均通过校验后受控 rebind。
+- 大型仓库启动检测按块读取 Git 文件列表，降低 hook 的峰值内存和上下文输入；压缩后的
+  `SessionStart(source=compact)` 继续使用有界 packet，不重复注入完整历史。
+- 保持 alpha.11 的零阻断 core、可选 search/State MCP、增量索引、非阻断 checkpoint 和
+  原子 Work transition。普通编辑、构建、测试和读取不因 State 暂不可写而停下。
+
+### 验证与边界
+
+- 受影响恢复、activation、MCP binding、插件和公开构建聚焦测试 `91/91`；公开镜像构建
+  `148` 文件，公开测试 `52/52`，隐私/依赖/仓库校验通过。
+- 这是本地 candidate，尚未上传 PyPI 或 GitHub Release；已发布的 alpha.11 仍是公共安装
+  默认。当前 matched A/B 没有达到统一的 `30%` 输入 token 门，不宣称普遍 token 节省。
+
+### 本地安装
+
+```bash
+python -m pip install --upgrade /path/to/continuity_plane-0.1.0a12-py3-none-any.whl
+codex plugin marketplace add /path/to/continuity-public-alpha12
+codex plugin add continuity-plane@continuity-plane-alpha12
+codex plugin add continuity-plane-search@continuity-plane-alpha12
+codex plugin add continuity-plane-state@continuity-plane-alpha12
+```
+
+安装插件后新建 Session，确保新的 manifest、MCP 工具表和 hook hash 被加载。
 
 ## 0.1.0-alpha.11
 

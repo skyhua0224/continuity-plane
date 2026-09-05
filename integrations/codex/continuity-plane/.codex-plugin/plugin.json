@@ -1,6 +1,6 @@
 {
   "name": "continuity-plane",
-  "version": "0.1.0-alpha.11",
+  "version": "0.1.0-alpha.12+codex.20260905050859",
   "description": "Zero-friction bounded recovery and checkpoint canaries for Codex",
   "author": {
     "name": "SkyHua"

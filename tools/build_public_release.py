@@ -13,7 +13,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-PUBLIC_RELEASE_VERSION = "0.1.0-alpha.11"
+PUBLIC_RELEASE_VERSION = "0.1.0-alpha.12"
 
 _ROOT_FILES = (
     "README.md",
@@ -368,7 +368,7 @@ def _write_public_plugin_marketplace(output: Path) -> None:
 
 def _normalize_public_identity(text: str) -> str:
     # Source documentation lives under public/docs; the projected mirror flattens it to docs.
-    text = text.replace('version = "0.1.0a10"', 'version = "0.1.0a11"')
+    text = text.replace('version = "0.1.0a11"', 'version = "0.1.0a12"')
     text = text.replace("public/docs/", "docs/")
     text = text.replace("Context Control Plane", "Continuity Plane")
     text = text.replace(".context-control-plane", ".continuity")

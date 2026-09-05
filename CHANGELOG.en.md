@@ -4,16 +4,49 @@
 
 ## Next Release (Unreleased)
 
-- Integrate contributor PR3's idle source rebinding, checkpoint-bound source validation, and Codex
-  compaction recovery fixes.
-- Add the `continuity-codex-hook` package entry point so hooks reuse the installed Python runtime
-  instead of relying on stale paths or system Python aliases.
-- Create current attach evidence when a project is replanned with unchanged canonical bytes; fully
-  source-, workspace-, predecessor-, and effect-bound delivery activation can also use controlled
-  rebinding.
-- Count large repositories incrementally in the lifecycle hook instead of retaining the complete Git
-  file list in memory.
-- This is not released yet; the published alpha11 tag and behavior remain unchanged.
+- No next-release items are scheduled; the current development build is the `0.1.0-alpha.12`
+  candidate below.
+
+## 0.1.0-alpha.12 (local candidate, unreleased)
+
+### Changes Since 0.1.0-alpha.11
+
+- Integrated idle source rebinding, checkpoint-bound source/evidence validation, and compaction
+  recovery fixes. When a source changes, recovery reports the exact gate instead of silently
+  injecting an old Work into the current Session.
+- Added the `continuity-codex-hook` entry point. Hooks reuse the installed Python runtime and no
+  longer depend on stale cache paths or platform-specific `python3`/`py -3` aliases.
+- Replanning unchanged canonical bytes now creates current attach evidence. A fully bound delivery
+  Work can use controlled rebinding only after source, workspace, predecessor, expected ref, and
+  effect checks pass.
+- Large-repository startup checks read Git file lists in bounded chunks, reducing hook peak memory
+  and context input. `SessionStart(source=compact)` continues to use a bounded packet without
+  reinjecting the full history.
+- Retained alpha11's zero-blocking core, optional search/State MCP profiles, incremental index,
+  non-blocking checkpoint lifecycle, and atomic Work transition. Ordinary edits, builds, tests, and
+  reads continue when State writes are temporarily unavailable.
+
+### Verification And Boundaries
+
+- Focused recovery, activation, MCP binding, plugin, and public-build tests pass `91/91`; the public
+  mirror contains `148` files, public tests pass `52/52`, and privacy/dependency/repository checks
+  pass.
+- This is a local candidate and has not been uploaded to PyPI or GitHub Releases. Published alpha.11
+  remains the public installation default. Current matched A/B runs do not meet the uniform `30%`
+  input-token gate, so no universal token-savings claim is made.
+
+### Local Installation
+
+```bash
+python -m pip install --upgrade /path/to/continuity_plane-0.1.0a12-py3-none-any.whl
+codex plugin marketplace add /path/to/continuity-public-alpha12
+codex plugin add continuity-plane@continuity-plane-alpha12
+codex plugin add continuity-plane-search@continuity-plane-alpha12
+codex plugin add continuity-plane-state@continuity-plane-alpha12
+```
+
+Start a new Session after installing the plugins so the new manifest, MCP tool list, and hook hashes
+are loaded.
 
 ## 0.1.0-alpha.11
 

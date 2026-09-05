@@ -17,6 +17,10 @@ Install one CLI first:
 python -m pip install continuity-plane==0.1.0a11
 ```
 
+This checkout also contains an unreleased alpha12 candidate with the PR3/PR4 fixes. It is for
+local or team validation only and does not replace the alpha11 package on PyPI; install the
+candidate from its local wheel and plugin marketplace.
+
 ### Codex plugin (optional)
 
 The core package does not depend on a plugin. The default `continuity-plane` plugin is a

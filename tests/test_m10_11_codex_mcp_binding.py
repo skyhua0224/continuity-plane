@@ -41,6 +41,12 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
         self.assertEqual(server, {"command": "continuity-mcp", "args": []})
         command = [server["command"], *server["args"]]
         with tempfile.TemporaryDirectory() as directory:
+            environment = os.environ.copy()
+            # Resolve the console script from the interpreter running this test;
+            # a user's older global pipx install must not change the handshake.
+            interpreter_bin = str(Path(sys.executable).parent)
+            environment["PATH"] = interpreter_bin + os.pathsep + environment.get("PATH", "")
+            environment["PYTHONPATH"] = str(self.root) + os.pathsep + environment.get("PYTHONPATH", "")
             completed = subprocess.run(
                 command,
                 cwd=directory,
@@ -55,13 +61,14 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
                 + "\n",
                 text=True,
                 capture_output=True,
+                env=environment,
                 check=False,
             )
         self.assertEqual(completed.returncode, 0, completed.stderr)
         response = json.loads(completed.stdout)
         self.assertEqual(response["id"], 1)
         self.assertEqual(response["result"]["serverInfo"]["name"], "continuity")
-        self.assertEqual(response["result"]["serverInfo"]["version"], "0.1.0-alpha.11")
+        self.assertEqual(response["result"]["serverInfo"]["version"], "0.1.0-alpha.12")
 
     def test_packaged_and_plugin_mcp_servers_have_the_same_contract(self) -> None:
         packaged = "context_control_plane.codex_mcp_server"
