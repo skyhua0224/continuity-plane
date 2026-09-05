@@ -4,9 +4,9 @@
 
 ## 下一版本（未发布）
 
-- 暂无下一版本条目；当前开发版见 `0.1.0-alpha.12` candidate。
+- 暂无下一版本条目。
 
-## 0.1.0-alpha.12（本地 candidate，未发布）
+## 0.1.0-alpha.12
 
 ### 相比 0.1.0-alpha.11
 
@@ -25,17 +25,17 @@
 
 - 受影响恢复、activation、MCP binding、插件和公开构建聚焦测试 `91/91`；公开镜像构建
   `148` 文件，公开测试 `52/52`，隐私/依赖/仓库校验通过。
-- 这是本地 candidate，尚未上传 PyPI 或 GitHub Release；已发布的 alpha.11 仍是公共安装
-  默认。当前 matched A/B 没有达到统一的 `30%` 输入 token 门，不宣称普遍 token 节省。
+- alpha12 已发布到 PyPI 和 GitHub Releases。当前 matched A/B 没有达到统一的 `30%` 输入
+  token 门，不宣称普遍 token 节省。
 
-### 本地安装
+### 安装
 
 ```bash
-python -m pip install --upgrade /path/to/continuity_plane-0.1.0a12-py3-none-any.whl
-codex plugin marketplace add /path/to/continuity-public-alpha12
-codex plugin add continuity-plane@continuity-plane-alpha12
-codex plugin add continuity-plane-search@continuity-plane-alpha12
-codex plugin add continuity-plane-state@continuity-plane-alpha12
+python -m pip install --upgrade continuity-plane==0.1.0a12
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.12
+codex plugin add continuity-plane@continuity-plane
+codex plugin add continuity-plane-search@continuity-plane
+codex plugin add continuity-plane-state@continuity-plane
 ```
 
 安装插件后新建 Session，确保新的 manifest、MCP 工具表和 hook hash 被加载。

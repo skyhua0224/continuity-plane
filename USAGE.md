@@ -10,11 +10,10 @@ Windows AMD64 完成安装、verify 和卸载。
 ### 从 PyPI 安装
 
 ```bash
-python -m pip install continuity-plane==0.1.0a11
+python -m pip install continuity-plane==0.1.0a12
 ```
 
-当前源码的 alpha12 candidate 尚未发布到 PyPI。需要验证最新恢复和 hook 修复时，使用本地
-构建的 `continuity_plane-0.1.0a12` wheel，并从对应本地 marketplace 安装三个插件。
+当前公开版本为 alpha12，包含最新恢复和 hook 修复。
 
 从源码 checkout 开发时：
 
@@ -29,7 +28,7 @@ python -m venv .venv
 下载 wheel 或 source archive：
 
 ```bash
-python -m pip install /path/to/continuity_plane-0.1.0a11-py3-none-any.whl
+python -m pip install /path/to/continuity_plane-0.1.0a12-py3-none-any.whl
 ```
 
 ### 全局安装，管理多个项目
@@ -39,7 +38,7 @@ python -m pip install /path/to/continuity_plane-0.1.0a11-py3-none-any.whl
 ```bash
 python3 -m venv ~/.local/share/continuity-plane/venv
 ~/.local/share/continuity-plane/venv/bin/python \
-  -m pip install continuity-plane==0.1.0a11
+  -m pip install continuity-plane==0.1.0a12
 
 ~/.local/share/continuity-plane/venv/bin/continuity \
   init --root /path/to/project --project-id my-project
@@ -50,7 +49,7 @@ python3 -m venv ~/.local/share/continuity-plane/venv
 ```bash
 cd /path/to/project
 python3 -m venv .venv
-.venv/bin/python -m pip install continuity-plane==0.1.0a11
+.venv/bin/python -m pip install continuity-plane==0.1.0a12
 .venv/bin/continuity init --root . --project-id my-project
 ```
 
@@ -276,8 +275,8 @@ MCP 写工具，也不阻断普通开发。需要显式 State 操作时再安装
 先安装核心包，再把本项目 GitHub 仓库作为 marketplace：
 
 ```bash
-python -m pip install continuity-plane==0.1.0a11
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.11
+python -m pip install continuity-plane==0.1.0a12
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.12
 codex plugin add continuity-plane@continuity-plane
 ```
 

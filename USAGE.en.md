@@ -11,12 +11,10 @@ AMD64.
 ### Install From PyPI
 
 ```bash
-python -m pip install continuity-plane==0.1.0a11
+python -m pip install continuity-plane==0.1.0a12
 ```
 
-The alpha12 candidate in this checkout is not on PyPI. To verify the latest recovery and hook
-fixes, install the locally built `continuity_plane-0.1.0a12` wheel and the three plugins from its
-local marketplace.
+The current public version is alpha12 and includes the latest recovery and hook fixes.
 
 For a source checkout:
 
@@ -31,7 +29,7 @@ Download a wheel or source archive from
 [Continuity Plane Releases](https://github.com/skyhua0224/continuity-plane/releases):
 
 ```bash
-python -m pip install /path/to/continuity_plane-0.1.0a11-py3-none-any.whl
+python -m pip install /path/to/continuity_plane-0.1.0a12-py3-none-any.whl
 ```
 
 ### Install Once For Many Projects
@@ -42,7 +40,7 @@ projects:
 ```bash
 python3 -m venv ~/.local/share/continuity-plane/venv
 ~/.local/share/continuity-plane/venv/bin/python \
-  -m pip install continuity-plane==0.1.0a11
+  -m pip install continuity-plane==0.1.0a12
 ```
 
 Run the installed CLI with an explicit project root whenever the command is not
@@ -60,7 +58,7 @@ For a project that pins its own control-plane version:
 ```bash
 cd /path/to/project
 python3 -m venv .venv
-.venv/bin/python -m pip install continuity-plane==0.1.0a11
+.venv/bin/python -m pip install continuity-plane==0.1.0a12
 .venv/bin/continuity init --root . --project-id my-project
 ```
 
@@ -320,8 +318,8 @@ the advanced State plugin only for explicit State operations.
 Install the core package, then add this GitHub repository as a marketplace:
 
 ```bash
-python -m pip install continuity-plane==0.1.0a11
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.11
+python -m pip install continuity-plane==0.1.0a12
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.12
 codex plugin add continuity-plane@continuity-plane
 ```
 

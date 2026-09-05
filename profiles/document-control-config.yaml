@@ -57,7 +57,7 @@ documents:
 - document_id: changelog-en
   path: CHANGELOG.en.md
   category: policy
-  document_revision: 13
+  document_revision: 14
   authority:
     governance_authority: false
     active_state_authority: false
@@ -65,19 +65,19 @@ documents:
   change:
     change_type: decision
     authority_ref: governance-event://master/revision/128
-    supersedes: context.document://changelog-en/revision/12
+    supersedes: context.document://changelog-en/revision/13
     affected_tasks:
     - M0-10
     next_review: null
     supersedes_provenance:
-      git_commit: a3be49684f7c90b3963c13c3c33806af75926a4a
-      manifest_sha256: cf091056959f7ba23d9440535d0dd0d17d2417f4e33e6a817fadfd114d48b56d
-      content_sha256: fac8d5b80eae0f41214c3d7618cbb023d50be1bf8398b7a8621eae2081fb0f9b
+      git_commit: a7899424cdc9fe0c73e6919254689e163df27736
+      manifest_sha256: 7f8aa8342c33522913e4589c04efdd444bab9d5cefd2bb68cf4e1771c8e2edaf
+      content_sha256: af981812f3f9842154992a3aac7f8ee8f3400962235aeb1e38dcbd3da8d0b574
   evidence_refs: []
 - document_id: changelog
   path: CHANGELOG.md
   category: policy
-  document_revision: 13
+  document_revision: 14
   authority:
     governance_authority: false
     active_state_authority: false
@@ -85,15 +85,15 @@ documents:
   change:
     change_type: decision
     authority_ref: governance-event://master/revision/128
-    supersedes: context.document://changelog/revision/12
+    supersedes: context.document://changelog/revision/13
     affected_tasks:
     - M0-10
     - M10-08
     next_review: null
     supersedes_provenance:
-      git_commit: a3be49684f7c90b3963c13c3c33806af75926a4a
-      manifest_sha256: cf091056959f7ba23d9440535d0dd0d17d2417f4e33e6a817fadfd114d48b56d
-      content_sha256: 4e43096ce6dd5835c2dd285271c1f53588c097c7c1ea8692eb26a62f2d7d0b92
+      git_commit: a7899424cdc9fe0c73e6919254689e163df27736
+      manifest_sha256: 7f8aa8342c33522913e4589c04efdd444bab9d5cefd2bb68cf4e1771c8e2edaf
+      content_sha256: a00325c65692683a763d30d128a3052bd8a58268be9df21dd194639de2696656
   evidence_refs: []
 - document_id: contributing-en
   path: CONTRIBUTING.en.md
@@ -313,7 +313,7 @@ documents:
 - document_id: readme-en
   path: README.en.md
   category: policy
-  document_revision: 16
+  document_revision: 17
   authority:
     governance_authority: false
     active_state_authority: false
@@ -321,19 +321,19 @@ documents:
   change:
     change_type: decision
     authority_ref: governance-event://master/revision/128
-    supersedes: context.document://readme-en/revision/15
+    supersedes: context.document://readme-en/revision/16
     affected_tasks:
     - M0-10
     next_review: null
     supersedes_provenance:
-      git_commit: a3be49684f7c90b3963c13c3c33806af75926a4a
-      manifest_sha256: cf091056959f7ba23d9440535d0dd0d17d2417f4e33e6a817fadfd114d48b56d
-      content_sha256: 6aa595258aa69f40e06fad9952a99dffb80e451114b306a081e4302021c19452
+      git_commit: a7899424cdc9fe0c73e6919254689e163df27736
+      manifest_sha256: 7f8aa8342c33522913e4589c04efdd444bab9d5cefd2bb68cf4e1771c8e2edaf
+      content_sha256: fe1aac47a78a57bd0672da6432d5dd8f4dd58c47740afe2f7ba75cdd3fe25533
   evidence_refs: []
 - document_id: readme
   path: README.md
   category: projection
-  document_revision: 17
+  document_revision: 18
   authority:
     governance_authority: false
     active_state_authority: false
@@ -341,15 +341,15 @@ documents:
   change:
     change_type: projection
     authority_ref: state-revision://repository/128
-    supersedes: context.document://readme/revision/16
+    supersedes: context.document://readme/revision/17
     affected_tasks:
     - M0-10
     - M10-08
     next_review: null
     supersedes_provenance:
-      git_commit: a3be49684f7c90b3963c13c3c33806af75926a4a
-      manifest_sha256: cf091056959f7ba23d9440535d0dd0d17d2417f4e33e6a817fadfd114d48b56d
-      content_sha256: 8ba5f8183cbad5e5cf00261172d0cfde5ae8f5005bdd07af3f1c767d3abd4ca2
+      git_commit: a7899424cdc9fe0c73e6919254689e163df27736
+      manifest_sha256: 7f8aa8342c33522913e4589c04efdd444bab9d5cefd2bb68cf4e1771c8e2edaf
+      content_sha256: c8ba4646d0ffe4c2779a05290c7fb9670ddbcfff230a0633ed87df4ade7512bb
   evidence_refs: []
   projection_binding:
     source_state_revision: 128
@@ -589,7 +589,7 @@ documents:
 - document_id: usage-en
   path: USAGE.en.md
   category: policy
-  document_revision: 17
+  document_revision: 18
   authority:
     governance_authority: false
     active_state_authority: false
@@ -597,19 +597,19 @@ documents:
   change:
     change_type: decision
     authority_ref: governance-event://master/revision/128
-    supersedes: context.document://usage-en/revision/16
+    supersedes: context.document://usage-en/revision/17
     affected_tasks:
     - M0-10
     next_review: null
     supersedes_provenance:
-      git_commit: a3be49684f7c90b3963c13c3c33806af75926a4a
-      manifest_sha256: cf091056959f7ba23d9440535d0dd0d17d2417f4e33e6a817fadfd114d48b56d
-      content_sha256: 0d050a5677ef33f4bec29a5c4d316f7969a284fb4808314132ea74dfbf4cf2db
+      git_commit: a7899424cdc9fe0c73e6919254689e163df27736
+      manifest_sha256: 7f8aa8342c33522913e4589c04efdd444bab9d5cefd2bb68cf4e1771c8e2edaf
+      content_sha256: 08ae716a5a6340bb9865d08fe5e387dc7ce76b220799a4cb6d847b1cd5418bb2
   evidence_refs: []
 - document_id: usage
   path: USAGE.md
   category: policy
-  document_revision: 17
+  document_revision: 18
   authority:
     governance_authority: false
     active_state_authority: false
@@ -617,15 +617,15 @@ documents:
   change:
     change_type: decision
     authority_ref: governance-event://master/revision/128
-    supersedes: context.document://usage/revision/16
+    supersedes: context.document://usage/revision/17
     affected_tasks:
     - M0-10
     - M10-08
     next_review: null
     supersedes_provenance:
-      git_commit: a3be49684f7c90b3963c13c3c33806af75926a4a
-      manifest_sha256: cf091056959f7ba23d9440535d0dd0d17d2417f4e33e6a817fadfd114d48b56d
-      content_sha256: a5981b1bafc0fe1fc5fe63efb72a010a6e0a3c4f6d7f2dac4d8f47cd94053fab
+      git_commit: a7899424cdc9fe0c73e6919254689e163df27736
+      manifest_sha256: 7f8aa8342c33522913e4589c04efdd444bab9d5cefd2bb68cf4e1771c8e2edaf
+      content_sha256: 9b1e8fb1baa0e9436635a8a401ea105740445e9196cf577c16cf86e75b9b14a4
   evidence_refs: []
 - document_id: context-control-plane-templates-master-en
   path: context_control_plane/templates/MASTER.en.md

@@ -14,12 +14,10 @@ after compaction, task switches, crashes, and handoffs is deterministic.
 Install one CLI first:
 
 ```bash
-python -m pip install continuity-plane==0.1.0a11
+python -m pip install continuity-plane==0.1.0a12
 ```
 
-This checkout also contains an unreleased alpha12 candidate with the PR3/PR4 fixes. It is for
-local or team validation only and does not replace the alpha11 package on PyPI; install the
-candidate from its local wheel and plugin marketplace.
+The current public version is alpha12, including the PR3/PR4 recovery and plugin integration fixes.
 
 ### Codex plugin (optional)
 
@@ -28,7 +26,7 @@ lightweight core for bounded recovery and checkpoint lifecycle. It registers no 
 and does not block ordinary development commands:
 
 ```bash
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.11
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.12
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -203,7 +201,7 @@ are optional enhancements.
 ## Documentation
 
 - [Usage guide](USAGE.en.md)
-- [Complete alpha.11 changes and upgrade notes](CHANGELOG.en.md#010-alpha11)
+- [Complete alpha.12 changes and upgrade notes](CHANGELOG.en.md#010-alpha12)
 - [Architecture](docs/architecture.en.md)
 - [Configuration](docs/configuration.en.md)
 - [Python API](docs/api.en.md)
@@ -216,7 +214,7 @@ are optional enhancements.
 
 ## Release And License
 
-The current alpha is available from [PyPI](https://pypi.org/project/continuity-plane/0.1.0a11/)
+The current alpha is available from [PyPI](https://pypi.org/project/continuity-plane/0.1.0a12/)
 and [GitHub Releases](https://github.com/skyhua0224/continuity-plane/releases).
 The GitHub release also provides the core wheel, source archive, Codex plugin marketplace, and SHA256SUMS; see the
 [changelog](CHANGELOG.en.md).

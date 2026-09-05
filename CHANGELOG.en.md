@@ -4,10 +4,9 @@
 
 ## Next Release (Unreleased)
 
-- No next-release items are scheduled; the current development build is the `0.1.0-alpha.12`
-  candidate below.
+- No next-release items are scheduled.
 
-## 0.1.0-alpha.12 (local candidate, unreleased)
+## 0.1.0-alpha.12
 
 ### Changes Since 0.1.0-alpha.11
 
@@ -31,18 +30,17 @@
 - Focused recovery, activation, MCP binding, plugin, and public-build tests pass `91/91`; the public
   mirror contains `148` files, public tests pass `52/52`, and privacy/dependency/repository checks
   pass.
-- This is a local candidate and has not been uploaded to PyPI or GitHub Releases. Published alpha.11
-  remains the public installation default. Current matched A/B runs do not meet the uniform `30%`
-  input-token gate, so no universal token-savings claim is made.
+- Alpha12 is published to PyPI and GitHub Releases. Current matched A/B runs do not meet the uniform
+  `30%` input-token gate, so no universal token-savings claim is made.
 
-### Local Installation
+### Installation
 
 ```bash
-python -m pip install --upgrade /path/to/continuity_plane-0.1.0a12-py3-none-any.whl
-codex plugin marketplace add /path/to/continuity-public-alpha12
-codex plugin add continuity-plane@continuity-plane-alpha12
-codex plugin add continuity-plane-search@continuity-plane-alpha12
-codex plugin add continuity-plane-state@continuity-plane-alpha12
+python -m pip install --upgrade continuity-plane==0.1.0a12
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.12
+codex plugin add continuity-plane@continuity-plane
+codex plugin add continuity-plane-search@continuity-plane
+codex plugin add continuity-plane-state@continuity-plane
 ```
 
 Start a new Session after installing the plugins so the new manifest, MCP tool list, and hook hashes
