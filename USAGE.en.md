@@ -312,6 +312,12 @@ Python API, or a provider adapter. The core package requires no Agent plugin.
 The default Codex plugin provides bounded packets and checkpoint lifecycle only;
 it registers no MCP write tools and does not block ordinary development. Install
 the advanced State plugin only for explicit State operations.
+Read-only resume responses also include a non-authorizing
+`continuity_state_recovery` hint: an expired claim requires reclaim with a new
+claim identity when the saved Work and owner still match, source-only drift uses
+a same-owner heartbeat, and idle source rebind requires a real next Work. The
+hint never marks writes ready; an unverified checkpoint or identity mismatch
+still denies recovery.
 
 ### Install The Public Codex Plugin
 

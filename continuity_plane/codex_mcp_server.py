@@ -87,10 +87,13 @@ def _scoped_state_result_text(value: str) -> str:
         return value
     if not isinstance(packet, dict) or packet.get("read_only") is not True:
         return value
+    recovery = _state_recovery_hint(packet)
     return json.dumps(
         {
             "continuity_state": packet,
             "continuity_state_writes_ready": False,
+            "continuity_state_recovery_available": recovery is not None,
+            "continuity_state_recovery": recovery,
             "ordinary_project_work_allowed": True,
             "project_next_action": "continue-ordinary-project-work",
             "read_only_scope": "continuity-state",
@@ -98,6 +101,49 @@ def _scoped_state_result_text(value: str) -> str:
         ensure_ascii=False,
         sort_keys=True,
     )
+
+
+def _state_recovery_hint(packet: dict) -> dict | None:
+    """Describe a fail-closed State recovery path without granting authority."""
+    if packet.get("checkpoint_verified") is not True:
+        return None
+    work = packet.get("active_work")
+    claim = packet.get("claim")
+    if isinstance(work, dict) and isinstance(claim, dict):
+        if packet.get("lease_valid") is False:
+            return {
+                "tool": "continuity_claim_recover",
+                "action": "reclaim",
+                "actor_ref": claim.get("actor_ref"),
+                "claim_id": claim.get("claim_id"),
+                "new_claim_id_required": True,
+                "source_refresh_included": packet.get("source_fresh") is False,
+                "condition": "saved Work and actor must match the real current task",
+            }
+        if packet.get("source_fresh") is False:
+            return {
+                "tool": "continuity_claim_recover",
+                "action": "heartbeat",
+                "actor_ref": claim.get("actor_ref"),
+                "claim_id": claim.get("claim_id"),
+                "new_claim_id_required": False,
+                "source_refresh_included": True,
+                "condition": "same owner and current Work only",
+            }
+    if (
+        work is None
+        and claim is None
+        and packet.get("source_fresh") is False
+        and packet.get("lease_valid") is True
+    ):
+        return {
+            "tool": "continuity_work_activate",
+            "action": "standard-activation-with-source-rebind",
+            "new_claim_id_required": True,
+            "source_refresh_included": True,
+            "condition": "a real user-authorized next Work is required",
+        }
+    return None
 
 
 def _binding_from_output(output: str) -> dict | None:

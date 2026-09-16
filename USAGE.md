@@ -269,6 +269,10 @@ continuity rollback --root /path/to/target
 Agent plugin。默认 Codex plugin 只提供有界 packet 和 checkpoint lifecycle，不注册
 MCP 写工具，也不阻断普通开发。需要显式 State 操作时再安装 advanced State plugin；
 写入仍经过 authorization、revision/CAS、validator、claim 和 checkpoint。
+只读 resume 会额外返回非授权性的 `continuity_state_recovery` 提示：匹配当前 Work/owner
+的过期 claim 使用新 claim identity 执行 reclaim，仅 source 过期时使用同 owner heartbeat，
+idle source rebind 则要求真实的下一 Work。该提示不把 `writes_ready` 改为 true；checkpoint
+未验证或身份不匹配时仍不得恢复写入。
 
 ### 安装公开 Codex plugin
 

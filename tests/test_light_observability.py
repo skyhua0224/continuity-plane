@@ -1003,6 +1003,56 @@ class ObservationTests(unittest.TestCase):
 
 
 class MCPProbeTests(unittest.TestCase):
+    def test_read_only_resume_explains_narrow_recovery_without_authority(self) -> None:
+        active = json.loads(_active_envelope())
+        cases = [
+            (False, False, "reclaim", True),
+            (True, False, "heartbeat", False),
+        ]
+        for lease_valid, source_fresh, action, new_identity in cases:
+            with self.subTest(action=action):
+                packet = dict(active)
+                packet.update(
+                    read_only=True,
+                    lease_valid=lease_valid,
+                    source_fresh=source_fresh,
+                    next_action="remain-read-only",
+                )
+                result = json.loads(
+                    codex_mcp_server._scoped_state_result_text(json.dumps(packet))
+                )
+                self.assertFalse(result["continuity_state_writes_ready"])
+                self.assertTrue(result["continuity_state_recovery_available"])
+                recovery = result["continuity_state_recovery"]
+                self.assertEqual(recovery["action"], action)
+                self.assertEqual(recovery["actor_ref"], "actor-1")
+                self.assertEqual(recovery["claim_id"], "claim-1")
+                self.assertEqual(recovery["new_claim_id_required"], new_identity)
+
+        packet = dict(active)
+        packet.update(read_only=True, checkpoint_verified=False)
+        result = json.loads(
+            codex_mcp_server._scoped_state_result_text(json.dumps(packet))
+        )
+        self.assertFalse(result["continuity_state_recovery_available"])
+        self.assertIsNone(result["continuity_state_recovery"])
+
+        idle = json.loads(_idle_envelope())
+        idle.update(
+            read_only=True,
+            source_fresh=False,
+            next_action="rebind-source-and-activate-next-work",
+        )
+        result = json.loads(
+            codex_mcp_server._scoped_state_result_text(json.dumps(idle))
+        )
+        recovery = result["continuity_state_recovery"]
+        self.assertEqual(recovery["tool"], "continuity_work_activate")
+        self.assertEqual(
+            recovery["action"], "standard-activation-with-source-rebind"
+        )
+        self.assertTrue(recovery["new_claim_id_required"])
+
     def test_cli_commands_use_current_interpreter_without_path_lookup(self) -> None:
         self.assertEqual(
             codex_mcp_server._cli_command("resume", "--root", "project"),

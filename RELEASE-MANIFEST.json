@@ -87,11 +87,11 @@
     },
     {
       "path": "USAGE.en.md",
-      "sha256": "ea4c75ee38df29ebdac6e7a3c5151ba598e016d799fc942343d050c4738e0e8b"
+      "sha256": "263b3b7b56b73b5d02de503e1f8f57da3e519b856e5f4d1c7b89576e97b93ea1"
     },
     {
       "path": "USAGE.md",
-      "sha256": "cecbbef3c6c4536291c0cc213c70ac910ab2be2c1f65f72ecde9e13490ea0445"
+      "sha256": "d9f35286054db7af965559234818978af63edff32bd33ff74c241dd10edea598"
     },
     {
       "path": "benchmarks/__init__.py",
@@ -155,7 +155,7 @@
     },
     {
       "path": "continuity_plane/codex_mcp_server.py",
-      "sha256": "a4b81649b2596eff1b7078e15c205acb90f4b258a1335d7fad67c4d3337b1d79"
+      "sha256": "ba96aaa034cdd3cc66a15514d2836f7215b45d97c3d14f1486d93c093aa64c27"
     },
     {
       "path": "continuity_plane/collaboration_notifications.py",
@@ -430,18 +430,6 @@
       "sha256": "4ef226ac1cddd7305c4d70304a7be74b951a9802d1ef82c441d5bf69e3c9f002"
     },
     {
-      "path": "plugins/continuity-plane/.codex-plugin/plugin.json",
-      "sha256": "97cd51485117ac95bd769a05273342302bd029a31cd5fe2792f726adf52fb6e0"
-    },
-    {
-      "path": "plugins/continuity-plane/hooks/hooks.json",
-      "sha256": "1c3338a40487b506e89c0f21f3c6189e69190dabe4c191181b7ab9cf407bec85"
-    },
-    {
-      "path": "plugins/continuity-plane/scripts/continuity-hook.py",
-      "sha256": "e4cd3b04489feea310ef8eefa4da1c6d0e439434f1998310d2740ffcd6b52ce3"
-    },
-    {
       "path": "plugins/continuity-plane-search/.codex-plugin/plugin.json",
       "sha256": "6d0be894571671c62e38bb7f4b37ff0ba016b2bf85d272f538817edd53ff33c5"
     },
@@ -460,6 +448,18 @@
     {
       "path": "plugins/continuity-plane-state/scripts/continuity-mcp-server.py",
       "sha256": "047d21d3306167bfa6d38ad5a8b235ed41c7bc42dce572293d07664c577f814b"
+    },
+    {
+      "path": "plugins/continuity-plane/.codex-plugin/plugin.json",
+      "sha256": "97cd51485117ac95bd769a05273342302bd029a31cd5fe2792f726adf52fb6e0"
+    },
+    {
+      "path": "plugins/continuity-plane/hooks/hooks.json",
+      "sha256": "1c3338a40487b506e89c0f21f3c6189e69190dabe4c191181b7ab9cf407bec85"
+    },
+    {
+      "path": "plugins/continuity-plane/scripts/continuity-hook.py",
+      "sha256": "e4cd3b04489feea310ef8eefa4da1c6d0e439434f1998310d2740ffcd6b52ce3"
     },
     {
       "path": "pyproject.toml",
@@ -579,7 +579,7 @@
     },
     {
       "path": "tests/test_light_observability.py",
-      "sha256": "2186d047c472271635fb6b5f750a5d6c90d66cad677dfe8bf756047b0628ca0b"
+      "sha256": "d92c2930d4d0ea93a7a7aa56f63542367a623ad81c63f9f6f72a334830f8e88f"
     },
     {
       "path": "tests/test_public_benchmark.py",
