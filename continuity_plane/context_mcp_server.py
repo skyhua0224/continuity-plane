@@ -44,7 +44,8 @@ def _tool() -> dict:
         "name": "continuity_context_lookup",
         "description": (
             "Return bounded hash-bound symbol and path references from an incremental Git-tracked "
-            "code index. Its transparent cache never changes project State or source."
+            "code index. Its transparent cache never changes project State or source. "
+            "An empty result is a normal miss; continue with bounded CLI or narrow search."
         ),
         "annotations": _ANNOTATIONS,
         "inputSchema": {
@@ -99,6 +100,11 @@ def _call_lookup(request_id: object, arguments: object) -> None:
         {
             "content": [{"type": "text", "text": json.dumps(result, ensure_ascii=False, sort_keys=True)}],
             "structuredContent": result,
+            # Keep guidance outside the hashed, byte-bounded receipt.
+            "_meta": {"continuity": {
+                "lookup_status": "hit" if result["matches"] else "empty",
+                "fallback": "none" if result["matches"] else "narrow-search",
+            }},
             "isError": False,
         },
     )

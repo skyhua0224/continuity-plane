@@ -18,6 +18,7 @@ from .light_observability import (
     load_policy,
     resolve_policy,
 )
+from .workspace_binding import WorkspaceBindingError, resolve_control_root
 
 
 def _cli_command(*arguments: str) -> list[str]:
@@ -195,6 +196,14 @@ def _requested_root(value: object, active_root: Path | None) -> Path | None:
             resolved = (active_root / path).resolve()
     except OSError:
         return None
+    # A delivery/worktree path may carry a copied profile, but its authoritative
+    # State belongs to the registered control root for the Git common dir.  Use
+    # the same binding resolver as the lifecycle hook so MCP and shell paths do
+    # not disagree about the project identity.
+    try:
+        resolved = resolve_control_root(resolved)
+    except (OSError, WorkspaceBindingError):
+        pass
     if not (resolved / ".continuity/project.yaml").is_file():
         return None
     return resolved
