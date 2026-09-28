@@ -428,6 +428,118 @@ def _latest_codex_session_start(
     return None
 
 
+def _normalize_public_plugin_version(value: str) -> str:
+    base = value.split("+", 1)[0].strip()
+    return re.sub(r"-alpha\.(\d+)$", r"a\1", base)
+
+
+def _codex_continuity_hook_runtime(
+    codex_home: Path, config: dict[str, Any]
+) -> dict[str, Any]:
+    """Resolve the registered local plugin, not only retained trust records."""
+    marketplaces = config.get("marketplaces")
+    marketplaces = marketplaces if isinstance(marketplaces, dict) else {}
+    marketplace = marketplaces.get("continuity-plane")
+    marketplace = marketplace if isinstance(marketplace, dict) else {}
+    source = marketplace.get("source")
+    source = source if isinstance(source, str) else ""
+    marketplace_root = (
+        Path(source).expanduser().resolve()
+        if source
+        else codex_home / "dev-marketplaces/continuity-plane-current"
+    )
+    manifest_path = marketplace_root / ".agents/plugins/marketplace.json"
+    try:
+        marketplace_document = json.loads(manifest_path.read_text(encoding="utf-8"))
+        core = next(
+            item
+            for item in marketplace_document["plugins"]
+            if item.get("name") == "continuity-plane"
+        )
+        relative = core["source"]["path"]
+        if not isinstance(relative, str):
+            raise ValueError("plugin source path is invalid")
+        plugin_root = (marketplace_root / relative).resolve()
+        plugin_manifest = json.loads(
+            (plugin_root / ".codex-plugin/plugin.json").read_text(encoding="utf-8")
+        )
+        plugin_version = plugin_manifest.get("version")
+        hooks = json.loads(
+            (plugin_root / "hooks/hooks.json").read_text(encoding="utf-8")
+        )["hooks"]
+    except (OSError, UnicodeError, json.JSONDecodeError, KeyError, StopIteration, TypeError, ValueError):
+        return {
+            "status": "missing",
+            "issue": "plugin_runtime_unresolved",
+            "plugin_version": None,
+            "version_matches_package": False,
+        }
+
+    expected_scripts = {
+        "SessionStart": "continuity-hook.py",
+        "PreCompact": "continuity-hook.py",
+        "PostCompact": "continuity-hook.py",
+        "UserPromptSubmit": "continuity-hook.py",
+        "PreToolUse": "continuity-advisory-hook.py",
+        "PostToolUse": "continuity-advisory-hook.py",
+    }
+    commands = 0
+    scripts: set[str] = set()
+    issue: str | None = None
+    for event, script in expected_scripts.items():
+        event_entries = hooks.get(event)
+        event_commands: list[str] = []
+        if isinstance(event_entries, list):
+            for matcher in event_entries:
+                if not isinstance(matcher, dict):
+                    continue
+                for hook in matcher.get("hooks", []):
+                    if isinstance(hook, dict) and isinstance(hook.get("command"), str):
+                        event_commands.append(hook["command"])
+        suffix = "/scripts/" + script
+        if any(suffix in command for command in event_commands):
+            commands += 1
+            scripts.add(script)
+
+    if commands != len(expected_scripts):
+        issue = "hook_command_mismatch"
+    else:
+        for script in sorted(scripts):
+            path = plugin_root / "scripts" / script
+            try:
+                content = path.read_text(encoding="utf-8")
+            except (OSError, UnicodeError):
+                issue = "hook_script_missing"
+                break
+            if len(content.encode("utf-8")) < 256 or "Emergency no-op bridge" in content:
+                issue = "noop_hook_runtime"
+                break
+            required = (
+                "def advisory_main("
+                if script == "continuity-hook.py"
+                else "def main("
+            )
+            if required not in content:
+                issue = "hook_entrypoint_missing"
+                break
+
+    version_matches = (
+        isinstance(plugin_version, str)
+        and _normalize_public_plugin_version(plugin_version) == VERSION
+    )
+    if issue is None and not version_matches:
+        issue = "plugin_version_mismatch"
+    return {
+        "status": "active" if issue is None else "misconfigured",
+        "issue": issue,
+        "plugin_version": plugin_version if isinstance(plugin_version, str) else None,
+        "version_matches_package": version_matches,
+        "hook_commands_resolved": commands,
+        "expected_hook_commands": len(expected_scripts),
+        "plugin_root": str(plugin_root),
+    }
+
+
 def _codex_plugin_status(
     codex_home: Path, *, project_root: Path | None = None
 ) -> dict[str, Any]:
@@ -484,10 +596,12 @@ def _codex_plugin_status(
     core_enabled = enabled("continuity-plane@continuity-plane")
     state_enabled = enabled(state_id)
     search_enabled = enabled(search_id)
+    runtime = _codex_continuity_hook_runtime(codex_home, config)
     configured = (
         core_enabled
         and (not state_enabled or state_mcp_auto_approved)
         and (not search_enabled or search_mcp_auto_approved)
+        and runtime["status"] == "active"
     )
     ready = configured and trusted_hooks >= 6
     status = (
@@ -511,13 +625,100 @@ def _codex_plugin_status(
             event.get("success") is True if event is not None else None
         ),
         "last_observed_at": event.get("observed_at") if event is not None else None,
+        "runtime": runtime,
+    }
+
+
+def _continuity_state_health(
+    store: SQLiteStateStore, project_id: str
+) -> dict[str, Any]:
+    snapshot = _read_state_result(store, project_id)["snapshot"]
+    active_claims = [
+        claim for claim in snapshot.get("claims", []) if claim.get("status") == "active"
+    ]
+    if not active_claims:
+        return {"status": "idle", "next_action": None}
+    if len(active_claims) != 1:
+        return {
+            "status": "conflict",
+            "active_claims": len(active_claims),
+            "next_action": "resolve duplicate active claims with State recovery",
+        }
+    claim = active_claims[0]
+    try:
+        expires = datetime.fromisoformat(
+            str(claim["lease_expires_at"]).replace("Z", "+00:00")
+        )
+        claimed = datetime.fromisoformat(
+            str(claim["claimed_at"]).replace("Z", "+00:00")
+        )
+    except (KeyError, ValueError):
+        return {
+            "status": "conflict",
+            "claim_id": claim.get("claim_id"),
+            "next_action": "repair the invalid active lease timestamp",
+        }
+    now = datetime.now(UTC)
+    remaining = expires - now
+    expired = remaining.total_seconds() <= 0
+    total = expires - claimed
+    consumed_percent = (
+        min(100.0, max(0.0, (now - claimed).total_seconds() / total.total_seconds() * 100))
+        if total.total_seconds() > 0
+        else 100.0
+    )
+    lease_warning = not expired and consumed_percent >= 80.0
+    return {
+        "status": (
+            "recoverable"
+            if expired
+            else "lease-warning"
+            if lease_warning
+            else "healthy"
+        ),
+        "work_id": claim.get("work_id"),
+        "claim_id": claim.get("claim_id"),
+        "actor_ref": claim.get("actor_ref"),
+        "lease_expires_at": claim.get("lease_expires_at"),
+        "lease_remaining_seconds": max(0, int(remaining.total_seconds())),
+        "lease_consumed_percent": round(consumed_percent, 3),
+        "lease_warning": lease_warning,
+        "next_action": (
+            "run continuity autorun with this session-id to reclaim the expired claim"
+            if expired
+            else "heartbeat the active claim before lease expiry"
+            if lease_warning
+            else None
+        ),
+    }
+
+
+def _continuity_packet_health(root: Path) -> dict[str, Any]:
+    path = root / ".continuity/resume-packet.json"
+    try:
+        size = path.stat().st_size
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return {"status": "idle", "path": str(path), "size_bytes": None}
+    valid_shape = isinstance(document, dict) and isinstance(
+        document.get("schema_version"), str
+    )
+    oversized = size > 8 * 1024
+    return {
+        "status": "oversized" if oversized else "active" if valid_shape else "invalid",
+        "path": str(path),
+        "size_bytes": size,
+        "max_bytes": 8 * 1024,
+        "schema_version": document.get("schema_version") if valid_shape else None,
     }
 
 
 def _doctor(args: argparse.Namespace) -> int:
     root = Path(args.root).resolve()
     project = _load_project(root)
-    _open_state_store(root, project)
+    store = _open_state_store(root, project)
+    state_health = _continuity_state_health(store, project["project_id"])
+    packet_health = _continuity_packet_health(root)
     sqlite_version = sqlite3.sqlite_version
     response = {
         "status": "ready",
@@ -531,6 +732,18 @@ def _doctor(args: argparse.Namespace) -> int:
         response["codex_plugin"] = _codex_plugin_status(
             Path(args.codex_home).expanduser().resolve(), project_root=root
         )
+    response["state_health"] = state_health
+    response["packet_health"] = packet_health
+    integration_status = response.get("codex_plugin", {}).get("status")
+    if (
+        state_health["status"] == "conflict"
+        or state_health["status"] == "lease-warning"
+        or packet_health["status"] in ("invalid", "oversized")
+        or integration_status not in (None, "active")
+    ):
+        response["status"] = "degraded"
+    elif state_health["status"] == "recoverable":
+        response["status"] = "recoverable"
     print(json.dumps(response, sort_keys=True))
     return 0
 

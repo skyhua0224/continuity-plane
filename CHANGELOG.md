@@ -4,6 +4,9 @@
 
 ## 下一版本（未发布）
 
+- 开发安装器仅修改 Continuity 集成字段，使用只读指纹校验保护 provider 凭据、认证文件、
+  模型、路由与独立 profile；拒绝在公共片段中夹带认证信息，不在竞态后整份回滚配置。
+  安装器不成为业务命令门。原生探针改为验证真实插件信任，并等待压缩轮次结束后再续跑。
 - 新增独立 advisory 前后工具 hook，普通成功操作默认按 `1/16` 采样，失败、识别到的副作用和
   Continuity MCP 调用保留观测。它不访问 State、不运行 Git、不改写工具输入；残留 `strict`
   环境变量也不能让这个入口拒绝命令。记录不包含命令、源码或响应正文。
@@ -17,6 +20,17 @@
   不构成采用证据；宿主实际窗口与配置值分别记录，不用缓存命中代替 token 收益。
 - hook launcher 在已删除的插件缓存路径失效时，会回退到当前 `PLUGIN_ROOT`；没有可用脚本时
   静默退出，避免旧缓存把普通操作变成工具错误，也不会擅自加载另一版本的 hook。
+- 安装器检测到 cc-switch 接管 Codex 配置时改为 `deferred` 并在写入前退出；不与 provider
+  投影竞写，也不把 marketplace/hook/MCP 的瞬时写入误报为持续生效。
+- 明确检索降级指引：工具不可用时可使用 CLI，成功但零命中后直接窄检索。空结果在 MCP
+  元数据中标记，保留原回执哈希和字节合同；未宣称修复宿主工具可见性或完成真实任务验收。
+- 修复长测试/构建句柄被阶段性汇报遗忘的采用缺口：advisory `PostToolUse` 发现仍运行的
+  shell `session_id` 时，只注入一次 `write_stdin` 轮询提示；不调用 State、不获取 claim、
+  不阻断命令，已完成命令不会产生提示。
+- doctor 会解析 marketplace 实际指向的插件，校验 6 条 hook 命令、脚本入口、no-op stub、
+  包版本、active claim 80% 租约预警和 resume packet 体积；陈旧 cache 不再被误报为 ready。
+  Interaction Cursor 将明确“继续/执行/完成”的用户输入保持为 continuation，信息型问题才
+  进入 answer-only；PostCompact 只做 canary，恢复上下文仍由 compact SessionStart 注入一次。
 
 ## 0.1.0-alpha.12
 

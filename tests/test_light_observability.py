@@ -1648,9 +1648,12 @@ class HookProbeTests(unittest.TestCase):
                 self.assertEqual(hook._precompact(payload, root), 0)
                 self.assertEqual(hook._postcompact(payload, root), 0)
                 self.assertEqual(hook._session_start(payload, root), 0)
-            output = json.loads(stdout.getvalue())
-            self.assertTrue(output["continue"])
-            self.assertIn("continuity_context_lookup", output["hookSpecificOutput"]["additionalContext"])
+            outputs = [json.loads(line) for line in stdout.getvalue().splitlines()]
+            self.assertEqual(len(outputs), 2)
+            self.assertTrue(all(output["continue"] for output in outputs))
+            contexts = [output["hookSpecificOutput"]["additionalContext"] for output in outputs]
+            self.assertTrue(any("continuity_context_lookup" in context for context in contexts))
+            self.assertTrue(any("next_action" in context for context in contexts))
 
     def test_observe_lifecycle_does_not_execute_checkpoint_commands(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

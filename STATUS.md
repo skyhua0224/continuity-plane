@@ -1,15 +1,15 @@
 # Continuity Plane Status
 
-版本：revision 129  
-日期：2026-09-05  
+版本：revision 135  
+日期：2026-09-28  
 canonical plan：`MASTER.md`
 
 ## 当前安全姿态与收口目标
 
 | 字段 | 值 |
 |---|---|
-| integration posture | `auto`；advisory candidate 未安装到业务 Session |
-| 业务影响 | 本轮未修改业务仓库、State 或 Codex 配置 |
+| integration posture | alpha12 marketplace runtime active；doctor 已解析 6/6 hook 命令、真实脚本入口与包版本；6/6 trusted；不调用会重写整份配置的 `cc-switch config common set` |
+| 业务影响 | 已停止配置写入；业务代码与 State 未修改；provider 并发变化未归因 |
 | 收口目标 | M11-00：Zero-friction continuity core |
 | 收口条件 | 三项目各 `3` 段 A/B；复活、重复、误阻断为 `0`；恢复与 history token 达标 |
 | 未达标策略 | 保持本机非阻断；不启用公共默认 |
@@ -20,10 +20,10 @@ canonical plan：`MASTER.md`
 |---|---|
 | 当前 Campaign | M11 零阻断收口 |
 | active work | M11-00：真实插件采用与旧线程原位恢复（🟡） |
-| next action | 确认宿主项目/hook 信任；再做候选原生压缩、三项目 A/B |
-| hard blocker | 宿主未装载候选 hook；原生验收失败，禁止据此发版 |
+| next action | 用修订后的候选执行显式 guarded install 后，完成宿主原生 compaction 回归与三项目 matched A/B；不迁移聊天、不切换 provider |
+| hard blocker | 持续检索采用与 token 收益未达标；暂不发版 |
 | repository mode | internal development repository + fresh-history public mirror |
-| production state | alpha12 已发布；本轮改动未发布、未安装 |
+| production state | alpha12 公开；本机 marketplace core 候选 `+codex.20260909124804`，未发 alpha13 |
 
 ## 已验证摘要
 
@@ -32,9 +32,8 @@ canonical plan：`MASTER.md`
 | Evidence index | [`docs/reports/verified-state.md`](docs/reports/verified-state.md) |
 | Verified campaigns | M0-M8 core 与 M9-01..07 见 Evidence index；M9-08..11 planned |
 | Publication | 历史发行与验收见 CHANGELOG |
-| Coordination/views | shared Work、forge、notification、Project Graph、2,000-node Impact gates passed；authority violation `0` |
-| Release baseline | Linux/macOS/Windows native matrix `18/18`；local state bundle export/import/rollback available；public privacy scan `0` findings |
-| Documentation audit | 双语文档区分未发布改动；模型/key/config 未改 |
+| Release baseline | 历史跨平台与视图验收见 Evidence index |
+| Documentation audit | 双语文档区分公开版与本机候选 |
 | M11 adoption | 历史基线见 [evidence](experiments/evidence/m11-00-codex-adoption-probe.json)；不代表候选当前已采用 |
 | M11 hook efficiency | `40` 组：calls `-33.33%`；context `-83.73%`；stdout `-85.18%`；deny/stop `0/0`；[evidence](experiments/evidence/m11-00-codex-hook-efficiency.json) |
 | M11 Platform A/B | `3+3`：input/output/tool `-12.14%/-28.84%/-41.46%`；veto `0`；未过 input gate |
@@ -46,8 +45,14 @@ canonical plan：`MASTER.md`
 | M11 observability | bounded policy/retention/lock/cache/report `45/45`；不记录 transcript/source/tool body |
 | M11 advisory fixture | 真实 CLI、多进程、零 State 修改；[receipt](experiments/evidence/m11-00-advisory-hook-real-cli.json)；非宿主原生压缩 |
 | Repository gate | full `2117`、skip `31`；已知失败组修复；候选审查 5 个负向复现通过 |
-| Native probe | 真实压缩已发生、marker 保留；hook/lookup 为 0；配置 1M、实报 828400；[receipt](experiments/evidence/m11-00-native-hook-review.json)；未通过 |
-| Governance authority | `MASTER.md` revision 129 |
+| Native probe | 前后 hook 执行、marker 保留；lookup `1/0`，采用门未过；实报窗口 828400；[receipt](experiments/evidence/m11-00-installed-hook-native.json) |
+| Safe installation | [历史收据](experiments/evidence/m11-00-safe-codex-install.json)仅证明安装时校验；不证明当前任务可见或持续启用 |
+| M11 retrieval fallback | 本地候选：空结果成功返回，原回执哈希/字节合同保持；不可用或零命中不触发安装；未部署到业务任务 |
+| M11 live-command continuation | advisory PostToolUse 识别仍运行的 shell handle，仅注入一次 `write_stdin` 轮询提示；State/claim/命令门均为 `0`；完成命令无提示；复现与验证见 [receipt](experiments/evidence/m11-03-live-command-handle.json) |
+| M11 safe plugin replacement | 本机候选 `0.1.0-alpha.12+codex.20260909122445`；受保护 provider/model/auth/proxy 指纹 `70` 条保持不变；Codex 原生发现 6/6 plugin hooks trusted/enabled；无业务 State 写入；[install receipt](experiments/evidence/m11-00-safe-codex-install-replace.json)、[preflight](experiments/evidence/m11-00-replaced-hook-preflight.json) |
+| M11 hook continuation contract | compact SessionStart 注入静默 next_action 合同；PostCompact 仅校验 canary；每个 turn 至多一次 bounded-read 提示和长命令 next-action 提示；不阻断、不调用 State；Git worktree resume 解析到注册治理根；[install receipt](experiments/evidence/m11-00-safe-codex-install-hooks-v2.json)、[preflight](experiments/evidence/m11-00-installed-hook-preflight-v2.json) |
+| M11 runtime diagnosis | doctor 解析 marketplace 实际 plugin，检测 no-op stub、入口缺失、hook 命令缺口、版本漂移、active claim 80% lease 预警与 resume packet 体积；明确执行意图不再被 cursor 降级为只答问题；PostCompact 恢复为静默 canary，不重复注入；lifecycle/release/autorun focused `84/84` 与新增 doctor 回归通过 |
+| Governance authority | `MASTER.md` revision 135 |
 
 ## 恢复入口
 

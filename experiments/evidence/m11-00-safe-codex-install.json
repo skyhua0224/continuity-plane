@@ -1,0 +1,18 @@
+{
+  "applied": true,
+  "candidate_version": "0.1.0-alpha.12+codex.20260905135148",
+  "guarded_operations": 4,
+  "observed_at": "2026-09-05T13:51:48.059263+00:00",
+  "plaintext_credentials_emitted": false,
+  "protected_surfaces_unchanged": true,
+  "provider_rows_checked": 89,
+  "stages": [
+    "candidate-prepared",
+    "plugin-installed",
+    "common-persisted",
+    "live-integration-merged",
+    "trust-verified"
+  ],
+  "status": "passed",
+  "trusted_hooks": 6
+}

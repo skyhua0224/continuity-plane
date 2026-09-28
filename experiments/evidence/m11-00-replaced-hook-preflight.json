@@ -1,0 +1,73 @@
+{
+  "business_state_writes": 0,
+  "config_unchanged": true,
+  "context_window": null,
+  "discovery_diagnostics": {
+    "errors": 0,
+    "layer_count": 2,
+    "layers": [
+      {
+        "disabled": false,
+        "type": "user"
+      },
+      {
+        "disabled": false,
+        "type": "system"
+      }
+    ],
+    "warnings": 0
+  },
+  "ephemeral": true,
+  "host_observations": {
+    "hook_context_bytes": 0,
+    "hook_counts": {},
+    "lookup_calls": 0,
+    "native_compaction_observed": false,
+    "tool_calls": 0,
+    "usage": null
+  },
+  "installed_plugin_acceptance": true,
+  "measurement_source": "codex-app-server-native",
+  "model": "gpt-6-astra",
+  "observed_at": "2026-09-09T12:26:18.864607+00:00",
+  "phases": [],
+  "preflight_hooks": [
+    {
+      "enabled": true,
+      "eventName": "preToolUse",
+      "source": "plugin",
+      "trustStatus": "trusted"
+    },
+    {
+      "enabled": true,
+      "eventName": "postToolUse",
+      "source": "plugin",
+      "trustStatus": "trusted"
+    },
+    {
+      "enabled": true,
+      "eventName": "preCompact",
+      "source": "plugin",
+      "trustStatus": "trusted"
+    },
+    {
+      "enabled": true,
+      "eventName": "postCompact",
+      "source": "plugin",
+      "trustStatus": "trusted"
+    },
+    {
+      "enabled": true,
+      "eventName": "sessionStart",
+      "source": "plugin",
+      "trustStatus": "trusted"
+    },
+    {
+      "enabled": true,
+      "eventName": "userPromptSubmit",
+      "source": "plugin",
+      "trustStatus": "trusted"
+    }
+  ],
+  "status": "preflight-passed"
+}

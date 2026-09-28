@@ -15,11 +15,59 @@ from unittest import mock
 import yaml
 from jsonschema import Draft202012Validator, ValidationError
 
-from context_control_plane.cli import _initial_state, main
+from context_control_plane.cli import _codex_plugin_status, _initial_state, main
 from context_control_plane.sqlite_state_store import SQLiteStateStore
 
 
 class ReleaseCliTests(unittest.TestCase):
+    def _write_plugin_runtime(
+        self, codex_home: Path, *, noop: bool = False, version: str = "0.1.0a12"
+    ) -> None:
+        marketplace = codex_home / "dev-marketplaces/continuity-plane-current"
+        agents = marketplace / ".agents/plugins"
+        plugin = marketplace / "plugins/continuity-plane"
+        (agents).mkdir(parents=True, exist_ok=True)
+        (plugin / ".codex-plugin").mkdir(parents=True, exist_ok=True)
+        (plugin / "scripts").mkdir(parents=True, exist_ok=True)
+        (plugin / "hooks").mkdir(parents=True, exist_ok=True)
+        (agents / "marketplace.json").write_text(
+            json.dumps(
+                {
+                    "name": "continuity-plane",
+                    "plugins": [
+                        {
+                            "name": "continuity-plane",
+                            "source": {"source": "local", "path": "./plugins/continuity-plane"},
+                        }
+                    ],
+                }
+            ),
+            encoding="utf-8",
+        )
+        (plugin / ".codex-plugin/plugin.json").write_text(
+            json.dumps({"name": "continuity-plane", "version": version}),
+            encoding="utf-8",
+        )
+        hook = "# Emergency no-op bridge\nimport sys\nsys.exit(0)\n" if noop else (
+            "def main():\n    return 0\n" + ("# padding\n" * 80) + "\ndef advisory_main():\n    return 0\n"
+        )
+        advisory = "# Emergency no-op bridge\nimport sys\nsys.exit(0)\n" if noop else (
+            "def main():\n    return 0\n" + ("# padding\n" * 80)
+        )
+        (plugin / "scripts/continuity-hook.py").write_text(hook, encoding="utf-8")
+        (plugin / "scripts/continuity-advisory-hook.py").write_text(advisory, encoding="utf-8")
+        hooks = {}
+        for event, script in (
+            ("SessionStart", "continuity-hook.py"),
+            ("PreCompact", "continuity-hook.py"),
+            ("PostCompact", "continuity-hook.py"),
+            ("UserPromptSubmit", "continuity-hook.py"),
+            ("PreToolUse", "continuity-advisory-hook.py"),
+            ("PostToolUse", "continuity-advisory-hook.py"),
+        ):
+            hooks[event] = [{"hooks": [{"type": "command", "command": f"python ${{PLUGIN_ROOT}}/scripts/{script}"}]}]
+        (plugin / "hooks/hooks.json").write_text(json.dumps({"hooks": hooks}), encoding="utf-8")
+
     def test_initialized_project_is_immediately_inspectable_without_writes(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -74,9 +122,12 @@ class ReleaseCliTests(unittest.TestCase):
             codex_home = base / "codex-home"
             root.mkdir()
             codex_home.mkdir()
+            self._write_plugin_runtime(codex_home)
             with redirect_stdout(StringIO()):
                 main(["init", "--root", str(root), "--project-id", "sample-app"])
             (codex_home / "config.toml").write_text(
+                "[marketplaces.continuity-plane]\n"
+                f"source_type = \"local\"\nsource = \"{(codex_home / 'dev-marketplaces/continuity-plane-current').as_posix()}\"\n"
                 "[plugins.\"continuity-plane@continuity-plane\"]\n"
                 "enabled = true\n"
                 "[plugins.\"continuity-plane-search@continuity-plane\"]\n"
@@ -136,6 +187,11 @@ class ReleaseCliTests(unittest.TestCase):
             report = json.loads(output.getvalue())
             self.assertEqual(result, 0)
             self.assertEqual(report["codex_plugin"]["status"], "active")
+            self.assertEqual(report["codex_plugin"]["runtime"]["issue"], None)
+            self.assertTrue(report["codex_plugin"]["runtime"]["version_matches_package"])
+            self.assertEqual(
+                report["codex_plugin"]["runtime"]["hook_commands_resolved"], 6
+            )
             self.assertEqual(report["codex_plugin"]["trusted_hooks"], 6)
             self.assertEqual(report["codex_plugin"]["expected_hooks"], 6)
             self.assertTrue(report["codex_plugin"]["mcp_auto_approved"])
@@ -155,6 +211,62 @@ class ReleaseCliTests(unittest.TestCase):
                     with redirect_stdout(output):
                         main(["doctor", "--root", str(root), "--codex-home", str(codex_home)])
                     self.assertNotEqual(json.loads(output.getvalue())["codex_plugin"]["status"], "active")
+
+    def test_doctor_rejects_a_trusted_but_noop_plugin_runtime(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            root = base / "project"
+            codex_home = base / "codex-home"
+            root.mkdir()
+            codex_home.mkdir()
+            self._write_plugin_runtime(codex_home, noop=True)
+            with redirect_stdout(StringIO()):
+                main(["init", "--root", str(root), "--project-id", "sample-app"])
+            (codex_home / "config.toml").write_text(
+                "[marketplaces.continuity-plane]\n"
+                f"source_type = \"local\"\nsource = \"{(codex_home / 'dev-marketplaces/continuity-plane-current').as_posix()}\"\n"
+                "[plugins.\"continuity-plane@continuity-plane\"]\nenabled = true\n",
+                encoding="utf-8",
+            )
+            status = _codex_plugin_status(codex_home, project_root=root)
+            self.assertEqual(status["status"], "misconfigured")
+            self.assertEqual(status["runtime"]["issue"], "noop_hook_runtime")
+            self.assertEqual(status["trusted_hooks"], 0)
+
+    def test_doctor_reports_plugin_version_drift(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            codex_home = base / "codex-home"
+            codex_home.mkdir()
+            self._write_plugin_runtime(codex_home, version="0.1.0-alpha.9")
+            (codex_home / "config.toml").write_text(
+                "[marketplaces.continuity-plane]\n"
+                f"source_type = \"local\"\nsource = \"{(codex_home / 'dev-marketplaces/continuity-plane-current').as_posix()}\"\n"
+                "[plugins.\"continuity-plane@continuity-plane\"]\nenabled = true\n",
+                encoding="utf-8",
+            )
+            status = _codex_plugin_status(codex_home)
+            self.assertEqual(status["status"], "misconfigured")
+            self.assertEqual(status["runtime"]["issue"], "plugin_version_mismatch")
+            self.assertEqual(status["runtime"]["plugin_version"], "0.1.0-alpha.9")
+
+    def test_doctor_rejects_an_oversized_recovery_packet(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with redirect_stdout(StringIO()):
+                main(["init", "--root", str(root), "--project-id", "sample-app"])
+            packet = root / ".continuity/resume-packet.json"
+            packet.write_text(
+                "{\"schema_version\":\"test\",\"padding\":\"" + "x" * 8200 + "\"}",
+                encoding="utf-8",
+            )
+            output = StringIO()
+            with redirect_stdout(output):
+                main(["doctor", "--root", str(root)])
+            report = json.loads(output.getvalue())
+            self.assertEqual(report["status"], "degraded")
+            self.assertEqual(report["packet_health"]["status"], "oversized")
+            self.assertGreater(report["packet_health"]["size_bytes"], 8192)
 
     def test_resume_packet_has_a_registered_strict_schema(self) -> None:
         root = Path(__file__).parents[1]

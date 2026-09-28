@@ -1749,7 +1749,8 @@ printf '%s\\n' '{"status":"ok"}'
             "additionalContext"
         ]
         self.assertLessEqual(len(context.encode("utf-8")), 512)
-        self.assertIn("Answer a question directly without advancing the Work", context)
+        self.assertIn("only when it requests information", context)
+        self.assertIn("explicit execution or completion instruction advances the Work", context)
         self.assertIn("continuity context search", context)
         self.assertNotIn("perform only its next_action", context)
         self.assertNotIn("claim-active", context)
@@ -2358,6 +2359,23 @@ printf '%s\\n' '{"status":"ok"}'
                 final_cursor["confirmed_input_refs"],
                 [final_cursor["current_input_ref"]],
             )
+
+    def test_explicit_execution_input_remains_a_continuation_cursor(self) -> None:
+        hook = self._hook_module()
+        with tempfile.TemporaryDirectory() as directory:
+            transcript = Path(directory) / "rollout.jsonl"
+            event = {
+                "type": "response_item",
+                "payload": {
+                    "type": "message",
+                    "role": "user",
+                    "content": [{"type": "input_text", "text": "继续按顺序完成，直到验收通过"}],
+                },
+            }
+            transcript.write_text(json.dumps(event) + "\n", encoding="utf-8")
+            cursor = hook.derive_recent_interaction_cursor(transcript)
+            self.assertEqual(cursor["response_mode"], "continue-silently")
+            self.assertNotIn("继续按顺序完成", json.dumps(cursor, ensure_ascii=False))
 
 
 if __name__ == "__main__":

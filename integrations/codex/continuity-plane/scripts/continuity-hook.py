@@ -35,7 +35,8 @@ RECOVERY_RULE_IDS = [
     "continuity.answer.direct",
     "continuity.answer.no-recovery-narration",
     "continuity.effect.read-only",
-    "continuity.question.no-advance",
+    "continuity.question.intent-scoped",
+    "continuity.execution.explicit-wins",
     "continuity.resume.bounded-read",
     "continuity.resume.current-state",
     "continuity.work.sticky",
@@ -426,6 +427,17 @@ def _message_text(content: Any) -> str:
     return "\n".join(parts)
 
 
+_EXPLICIT_EXECUTION_RE = re.compile(
+    r"(?:继续|开始|执行|推进|完成|做完|按顺序|不要停|直到|continue|start|execute|proceed|finish|complete|keep going)",
+    re.IGNORECASE,
+)
+
+
+def _explicit_execution_intent(text: str) -> bool:
+    """Classify execution authorization without retaining the prompt text."""
+    return _EXPLICIT_EXECUTION_RE.search(text) is not None
+
+
 def _tail_json(path: Path) -> list[dict[str, Any]]:
     try:
         with path.open("rb") as source:
@@ -465,6 +477,7 @@ def derive_recent_interaction_cursor(path: Path) -> dict[str, Any] | None:
         turn_id = metadata.get("turn_id") if isinstance(metadata, dict) else None
         if role == "user" and text:
             content_sha = _hash(text)
+            execution_intent = _explicit_execution_intent(text)
             current = {
                 "current_input_ref": f"input://sha256/{content_sha}",
                 "current_input_sha256": content_sha,
@@ -472,7 +485,9 @@ def derive_recent_interaction_cursor(path: Path) -> dict[str, Any] | None:
                 "confirmed_input_refs": [],
                 "visible_output_high_watermark_sha256": None,
                 "visible_output_phase": None,
-                "response_mode": "answer-current-input",
+                "response_mode": (
+                    "continue-silently" if execution_intent else "answer-current-input"
+                ),
                 "no_restate": False,
             }
         elif role == "assistant" and text and current is not None:
@@ -645,9 +660,11 @@ def _startup_search_context(root: Path) -> str | None:
     if not _repository_is_large(root):
         return None
     return (
-        "Large repository route: for unfamiliar symbols call MCP "
-        "continuity_context_lookup (or `continuity context lookup`) first; "
-        "reuse its cache_status and hash-bound references before broad rg/find/read."
+        "Large repository route: for unfamiliar symbols prefer available MCP "
+        "continuity_context_lookup. If unavailable, try CLI once; after an empty "
+        "lookup use narrow rg without repeating the lookup; "
+        "reuse cache_status and hash-bound references when present; this route "
+        "never pauses ordinary work."
     )
 
 
@@ -965,7 +982,8 @@ def _continuation_context(packet: dict[str, Any], *, source: str) -> str | None:
         context = (
             "Continuity context. Continue silently: do not mention recovery, "
             "compaction, hooks, or reloading. Keep the packet as the current return "
-            "point, not a new task. Current user intent wins. "
+            "point, not a new task. Current user intent wins; an explicit execution "
+            "or completion instruction advances the current Work. "
             "Continue the interrupted turn from its next_action. Do not answer "
             "acknowledged input again or restate text visible before compaction. "
             + _adoption_context()
@@ -986,7 +1004,8 @@ def _continuation_context(packet: dict[str, Any], *, source: str) -> str | None:
         }
         context = (
             "Continuity return point. Current user intent wins. Answer a "
-            "question directly without advancing the Work. Preserve unrelated ideas "
+            "question directly only when it requests information; an explicit "
+            "execution or completion instruction advances the Work. Preserve unrelated ideas "
             "without replacing it. Do not re-read STATUS, MASTER, AGENTS, or Skill "
             "files. When code is unfamiliar, use continuity context lookup or continuity "
             "context search before broad rg/find/read. State: "
@@ -999,10 +1018,136 @@ def _continuation_context(packet: dict[str, Any], *, source: str) -> str | None:
 
 def _adoption_context() -> str:
     return (
-        "For unfamiliar code, use MCP continuity_context_lookup or `continuity context lookup` "
-        "before broad reads; reuse hash-bound references. If unavailable, try the CLI once, "
-        "then narrow rg. Do not reinstall or change Codex configuration during project work. "
+        "For unfamiliar code, prefer available MCP continuity_context_lookup before broad reads; "
+        "reuse hash-bound references. If unavailable, try CLI once. After a successful empty "
+        "lookup, use narrow rg without repeating lookup or narrating routine fallback. "
+        "Do not reinstall or change Codex configuration during project work. "
         "Retrieval needs no claim; resume only before explicit State writes."
+    )
+
+
+def _live_command_poll_context(payload: dict[str, Any]) -> str | None:
+    """Return a one-shot hint when Bash handed back a live process handle.
+
+    Codex's shell bridge returns a numeric ``session_id`` when a command is still
+    running.  Losing that handle is particularly costly for long benchmarks: the
+    next model turn may start inspecting unrelated files instead of polling the
+    process that already owns the authoritative result.  This is deliberately a
+    local, non-blocking hint; it never calls State, changes a claim, or denies a
+    tool.
+    """
+    if payload.get("hook_event_name") != "PostToolUse":
+        return None
+    if str(payload.get("tool_name", "")) not in {
+        "Bash", "exec", "exec_command", "functions.exec",
+    }:
+        return None
+    response = payload.get("tool_response")
+    if not isinstance(response, dict) or response.get("isError") is True:
+        return None
+    session_id = response.get("session_id")
+    if isinstance(session_id, bool):
+        return None
+    if isinstance(session_id, int):
+        handle = str(session_id) if session_id > 0 else None
+    elif isinstance(session_id, str) and re.fullmatch(r"[1-9][0-9]{0,9}", session_id):
+        handle = session_id
+    else:
+        handle = None
+    if handle is None:
+        return None
+    return (
+        f"A live shell command handle ({handle}) is still running. "
+        "Poll it with write_stdin before reading new code, starting a duplicate "
+        "command, or reporting progress; use a bounded wait and then continue "
+        "from its result."
+    )
+
+
+def _advisory_once(payload: dict[str, Any], kind: str) -> bool:
+    """Admit one small guidance entry per turn without adding State writes."""
+    data = _plugin_data_root()
+    session_id = payload.get("session_id")
+    turn_id = payload.get("turn_id")
+    if data is None or not isinstance(session_id, str) or not session_id:
+        return False
+    if not isinstance(turn_id, str) or not turn_id:
+        return False
+    directory = data / "advisory-once"
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+        marker = directory / f"{_hash(session_id + ':' + turn_id + ':' + kind)}.marker"
+        descriptor = os.open(marker, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        os.close(descriptor)
+        return True
+    except FileExistsError:
+        return False
+    except OSError:
+        return False
+
+
+def _compact_continuation_context() -> str:
+    return (
+        "Continue silently from the saved return point. Treat the current next_action as "
+        "the active task: do not repeat answered input, do not invent a new task, and do "
+        "not stop after an intermediate command. For unfamiliar code, use "
+        "continuity_context_lookup first; on an empty result use one bounded CLI or narrow "
+        "rg and inspect only relevant line ranges. If a shell handle is live, poll it with "
+        "write_stdin before reading unrelated files. Pause only for a real blocker or a "
+        "user decision."
+    )
+
+
+def _bounded_code_read_context(payload: dict[str, Any]) -> str | None:
+    tool_name = str(payload.get("tool_name", ""))
+    if tool_name not in {"Bash", "exec", "exec_command", "functions.exec"}:
+        return None
+    command = _shell_command(payload)
+    lowered = command.lower()
+    broad = (
+        re.search(r"(?:^|[;&|])\s*find\s+", lowered)
+        or re.search(r"\brg\s+--files\b", lowered)
+        or re.search(r"(?:^|[;&|])\s*cat\s+[^|;&]+$", lowered)
+        or re.search(r"\bgit\s+show\s+[^|;&]+$", lowered)
+    )
+    bounded = re.search(
+        r"(?:--max-count|--max-results|--max-output-bytes|\bhead\b|\btail\b|\bsed\s+-n|\bawk\s+.{0,80}NR)",
+        lowered,
+    )
+    if not broad or bounded:
+        return None
+    if not _advisory_once(payload, "bounded-read"):
+        return None
+    return (
+        "Use a bounded code-read route: prefer continuity_context_lookup for unfamiliar "
+        "symbols, then one narrow rg/line-range read on a miss. Avoid whole-tree or whole-file "
+        "output; keep the current task and next_action moving."
+    )
+
+
+def _progress_context(payload: dict[str, Any]) -> str | None:
+    """Nudge the model past a long successful step without creating a gate."""
+    tool_name = str(payload.get("tool_name", ""))
+    if tool_name not in {"Bash", "exec", "exec_command", "functions.exec"}:
+        return None
+    response = payload.get("tool_response")
+    if not isinstance(response, dict) or response.get("isError") is True:
+        return None
+    if response.get("session_id") is not None:
+        return None
+    elapsed = response.get("wall_time_seconds")
+    if not isinstance(elapsed, (int, float)) or elapsed < 5:
+        return None
+    if response.get("exit_code") not in (None, 0):
+        return None
+    if not re.search(r"\b(?:pytest|cmake|make|ninja|cargo|npm|pnpm|yarn|dotnet|gradle|mvn)\b", _shell_command(payload), re.I):
+        return None
+    if not _advisory_once(payload, "progress"):
+        return None
+    return (
+        "The long-running step completed. Inspect its bounded result, then continue the "
+        "next planned action in the current Work; do not treat an intermediate green check "
+        "as the end of the task."
     )
 
 
@@ -2478,6 +2623,25 @@ def advisory_main() -> int:
             _observe_operation_boundary(
                 payload, root, phase="pre" if event == "PreToolUse" else "post"
             )
+            contexts: list[str] = []
+            if event == "PreToolUse":
+                bounded = _bounded_code_read_context(payload)
+                if bounded is not None:
+                    contexts.append(bounded)
+            if event == "PostToolUse":
+                live = _live_command_poll_context(payload)
+                if live is not None:
+                    contexts.append(live)
+                progress = _progress_context(payload)
+                if progress is not None:
+                    contexts.append(progress)
+            if contexts:
+                print(_canonical({
+                    "hookSpecificOutput": {
+                        "hookEventName": event,
+                        "additionalContext": " ".join(contexts),
+                    }
+                }))
     except (OSError, RuntimeError, ValueError, TypeError, KeyError):
         pass
     return 0

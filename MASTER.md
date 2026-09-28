@@ -1,7 +1,7 @@
 # Continuity Plane MASTER
 
-版本：revision 129  
-日期：2026-09-05  
+版本：revision 135  
+日期：2026-09-28  
 状态：zero-friction core reset / live plugin adoption  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
 
@@ -392,7 +392,7 @@ M10-01/M10-11 的跨项目退出门包括：State revision 与 `STATUS.current` 
 |---|---|---|---|---|---|---|
 | M11-00 | 🟡 | Zero-friction continuity core | 默认恢复、自动推进和上下文优化不干扰业务 Session | 回到项目初衷并给后续严格能力建立可验证边界 | M5/M7/M8/M10-11 | 默认 integration policy 为非阻断 `auto`；三个真实项目无命令误阻断；stale/read-only packet 不停止或注入；普通 Work 的 Continuity 手动操作为 `0`；三项目各 `3` 段 matched baseline/candidate；旧 Work 复活、重复回答、错误首动作和副作用误阻断均为 `0`；恢复读取 p95 相对基线下降 `>=30%`；history-heavy input/accepted Work 与压缩间隔不劣于基线且目标下降 `>=30%`；未达到目标时不得进入公共默认启用或 stable release |
 | M11-02 | 🧑‍💻 | Incremental code index and provider-neutral lookup | 跨 Session、CLI 和其他 Agent 复用按仓库隔离的用户缓存，只返回带 revision/hash 的符号引用 | 降低大型仓库的重复扫描和上下文输入 | M6/M11-00 | Git tracked 输入；变更文件增量重算；缓存位于项目外且按 repository key 隔离；receipt 有界且 authority=`false`；缓存损坏静默重建；两个真实大型仓库二次重算 `0`；CLI/API 测试通过；启动提示优先 route 到 `lookup/search`；不增加命令门禁 |
-| M11-03 | 🧑‍💻 | Visible lookup routing and cache/context accounting | Search MCP 单独暴露 `continuity_context_lookup`，其他 Agent 使用同一 CLI/API；State 只读时普通项目工作仍可继续 | 提高索引采用率，量化 cache hit 与上下文输入输出 | M11-02 | 单工具 search MCP、read-only annotations、无 project write、Codex tools/list 可见；State MCP 不承载检索；旧 `rg/find` 不被拦截；source stale 返回 `continue=true`；真实默认采用 A/B 仍待完成 |
+| M11-03 | 🧑‍💻 | Visible lookup routing and cache/context accounting | Search MCP 单独暴露 `continuity_context_lookup`，其他 Agent 使用同一 CLI/API；State 只读时普通项目工作仍可继续；长命令返回 live handle 时提示同一 Session 先轮询再继续；Git worktree 自动回到注册治理根 | 提高索引采用率，量化 cache hit 与上下文输入输出，并避免丢弃仍在运行的测试句柄和错误项目绑定 | M11-02 | 单工具 search MCP、read-only annotations、无 project write；工具在既有 Session 不可见、transport 失败或零命中均显式标记 normal miss，并降级到一次 bounded CLI/窄检索；State MCP 不承载检索；旧 `rg/find` 不被拦截；source stale 返回 `continue=true`；PostToolUse 识别 live shell handle 只注入一次 poll hint、长命令完成提示继续 next action；MCP 与 hook 共用 Git workspace binding；真实默认采用 A/B 仍待完成 |
 | M11-04 | ✅ | State-only degradation and inspectable genesis | `init` 生成 proposal、genesis Event 与 verified checkpoint；State 同步失败不冻结 Session；MCP 外层和 STATUS 投影显式限定 State-only | 消除新项目首次恢复失败和 Agent 将 State 限制扩大为整个仓库只读 | M11-00/M11-03 | `init -> inspect` 零写入且 checkpoint 故障可原子重试；legacy revision 0 与 genesis revision 1 attach 均可继续；MCP 外层声明 `read_only_scope=continuity-state` 与 `ordinary_project_work_allowed=true`；STATUS 将旧字段投影为 `continue-project-work-state-sync-pending`；strict SessionStart 不注入 expired/stale Work；core/search/state 均不注入 Skill；受影响面 `134/134` 通过 |
 | M11-05 | ✅ | Bounded local observability and policy presets | 记录有界 lifecycle、State MCP、延迟、请求/响应大小和 cache 指标；不保存 transcript、源码或工具正文 | 让 token、上下文和采用效果可复盘，同时保持观测失败不阻断业务 | M11-00/M11-03 | `balanced`/`diagnostic`/`reliability-first` 策略、retention/锁/损坏/并发/禁用探针、CLI report、MCP binding cache、Windows/多进程边界和 plugin ownership `45/45`；observation I/O failure 不改变 State authority |
 
@@ -400,21 +400,27 @@ M11-00 的运行策略分为三层：`auto` 默认自动绑定项目、恢复 Wo
 
 Codex `auto` compaction 通过 PreCompact/checkpoint、PostCompact/canary 和 compact SessionStart 提供有界恢复。恢复失败不注入旧 Work；检索入口保持可用。PostCompact 留下按 Session/项目隔离、10 分钟过期的 marker；下次工具调用仅补一次检索提示，或由先到的用户消息触发一次 resume，随后原子消费；正常恢复送达即清除。普通工具 hook 无 State 调用、无自动 activate、无命令改写、无权限决定；故障不停止业务。离线 fixture、真实 CLI 进程测试、宿主原生压缩和 matched token A/B 分别报告，不能互相替代。
 
+2026-09-28 修订：Interaction Cursor 只把信息型问题路由为 answer-current-input；含“继续/开始/执行/完成/按顺序/直到”等明确执行或验收指令的输入保持 continuation。恢复提示同步改为“明确执行指令优先推进当前 Work”，避免把用户要求做完误判为只允许回答。PostCompact 只校验 canary，不再重复注入恢复上下文；唯一恢复注入点仍是 compact SessionStart。`continuity doctor` 除 trust 记录外解析 marketplace 指向的真实 plugin，校验 6 条 hook 命令、脚本入口、no-op stub 与包版本漂移，并输出唯一 active claim 的 lease 剩余时间、80% 预警、recoverable next action、conflict 与 resume packet 体积；陈旧 cache 或 oversized packet 不能再让 doctor 误报 ready。
+
 Codex core 不注册 Skill 或 State MCP。未发布的通用 PreToolUse/PostToolUse 使用独立 advisory 入口，与旧 strict gate 隔离；普通成功事件按 1/16 采样，失败、识别到的副作用和 Continuity 调用保留脱敏观测。残留 strict 设置不能把 advisory 变成命令门。search 提供有界 lookup，state 提供显式状态操作；扩展按需安装。
 
 本机或受控试点可由用户显式启用 core、search 和 state 三个 profile 进行 dogfood。全量安装不授予命令拦截权限；State 或检索 adapter 失败时继续业务执行。公共默认启用仍受 M11-00 matched gate 约束。
 
 候选验证依次完成新旧 launcher 兼容、负向 packet/观测审查、全量回归、宿主 hook 装载与信任、原生压缩、三项目 matched A/B。未受信任的项目层或 hook 不视为采用成功；模型请求前检查装载，避免无效重复付费测量。宿主实际 context window 与用户配置值分别计量；信任配置变更不得替换模型、provider、key 或 cc-switch 配置。
 
+配置接入仅允许 Continuity plugin 与精确 hook trust 项；凭据、provider 路由、模型、认证文件和独立 profile 必须保留。cc-switch 公共片段禁止认证/路由字段，保留各 provider 的公共片段选择；安装前后用进程内指纹验证，竞态时停止安装，不恢复整份旧配置。此检查仅用于显式安装，不注册为业务 hook，不冻结项目工作。
+
 2026-09-02 的 alpha.10 live adoption 合同要求：State launcher 可从发布根加载唯一 package
 MCP server；`continuity_inspect` 只读且每 turn 最多调用一次；所有 MCP 工具声明准确安全
 annotations；显式 State 写入前才 resume；`continuity doctor --codex-home` 同时验证 plugin
-配置、MCP policy、hook trust `3/3` 与脱敏 SessionStart observation。已安装 cache、插件列表
+配置、MCP policy、hook trust `6/6`、实际 marketplace hook runtime 与脱敏 SessionStart observation。已安装 cache、插件列表
 或 app-server 重载本身均不构成采用证据；旧线程必须在原线程恢复后获得新能力且保留历史。
 成功的 `continuity_inspect` 是该 turn 的只读恢复终点；除非用户明确要求诊断投影或 State
 不一致，Agent 必须直接复用返回值，不得继续读取 `.continuity`、MASTER 或 STATUS。
 
 `continuity context search` 只查询 Git tracked current worktree，绑定 repository revision、file/line hash 和完整 JSON 输出预算。自动 Skill adoption 必须按项目与任务类通过 matched provider gate；未通过时保持显式安装，不进入默认 core。
+
+长命令的 `PostToolUse` 若返回仍运行的 shell handle，advisory hook 只在当前边界注入一次短提示，要求先用 `write_stdin` 轮询该 handle，再开始新的读取或汇报。该提示不调用 State、不获取 claim、不修改命令、不阻断普通开发；已完成命令不会产生提示。这样可覆盖“测试仍在运行但模型先发阶段性汇报”的真实失败路径。
 
 ## 8. E0-E9 实验链路
 

@@ -288,6 +288,15 @@ Codex 将 hook 信任与插件安装分开。通过 `/hooks` 审核并信任当�
 重新确认。未受信任的 hook 会被宿主跳过，不能报告为已采用，也不应触发反复重装或改写
 模型、provider、key 配置。
 
+使用 cc-switch 时，不要把 live `config.toml` 或 `auth.json` 整体复制到公共片段或其他
+provider。公共集成片段仅包含插件开关与 hook 信任，不包含认证、路由或模型选择字段。
+变更前后应检查所有 provider 凭据和路由是否保持不变；发现并发变化时停止安装，不覆盖
+回旧文件。公共片段只对选择启用它的 provider 生效，不应擅自改变其他 provider 的选择。
+
+如果 cc-switch 正在接管 Codex live 配置，安装器会在任何写入前返回 `deferred`。这是配置
+所有权提示，不是项目工作门禁；继续当前工作。独立 profile 的持久化接入仍待验证，不要求
+业务任务切换 profile、停止代理或重建聊天。不要反复执行安装器或手工合并 provider 配置。
+
 大型仓库希望显式启用有界 current-worktree 检索时安装：
 
 ```bash
@@ -333,6 +342,10 @@ search plugin 提供 `continuity_context_lookup` MCP 工具。它只返回有界
 `cache_status` 与 `returned_bytes` 由 lookup receipt 直接计量；模型 input/output token 由
 host trace 计量。缓存命中不能单独证明 token 节省，必须和同任务的上下文输入输出 A/B 对账。
 
+MCP 不可见或连接失败属于检索不可用；空结果是查询成功但无匹配。两者均不授予或撤销
+项目权限。工具不可用时可使用一次 CLI 查询；成功但零命中后直接窄检索，不重复相同 lookup。
+正常降级无需暂停、重装或逐次汇报；只有显式 State 写入才需要 resume。
+
 ### 压缩恢复与 source rebind
 
 核心 hook 通过已安装包的 `continuity-codex-hook` 入口运行，不依赖系统 Python 别名。
@@ -345,6 +358,8 @@ host trace 计量。缓存命中不能单独证明 token 节省，必须和同�
 压缩恢复漏送时，下次工具调用最多补一次 `1 KiB` 检索提示；若先收到用户消息，则尝试一次
 当前 resume。标记按项目/Session 隔离，10 分钟过期，原子消费；正常恢复送达就清除。
 正常操作零上下文输出；hook 不重装插件、不改 Codex 配置、不改写命令、不激活 Work、不无限重试。
+如果 Bash 返回仍在运行的 `session_id`，advisory hook 只补一次短提示，要求先用
+`write_stdin` 轮询该句柄再开始新的读取或阶段汇报；已完成命令不提示，也不调用 State。
 如果当前 Session 仍引用已经删除的插件缓存，launcher 会尝试当前 `PLUGIN_ROOT`；不可用时
 静默跳过，不影响普通命令，也不会自动切换到另一版本。
 
@@ -361,9 +376,11 @@ host trace 计量。缓存命中不能单独证明 token 节省，必须和同�
 continuity doctor --root . --codex-home ~/.codex
 ```
 
-doctor 只读取插件配置、MCP policy、hook trust 和脱敏 lifecycle observation，不读取聊天
-正文。`active` 表示已出现真实 SessionStart；`configured` 表示配置完成但尚无运行事件；
-`misconfigured` 表示至少一项安装门未通过。
+doctor 只读取插件配置、MCP policy、hook trust、marketplace 实际插件、active claim 租约、
+resume packet 体积和脱敏 lifecycle observation，不读取聊天正文。`active` 表示真实插件
+运行时与 SessionStart 均可用；`configured` 表示配置完成但尚无运行事件；`misconfigured`
+表示安装门未通过；`degraded` 表示租约预警、packet 超限或运行时漂移；`recoverable`
+表示过期 claim 可由 autorun 受控换签。
 
 CLI v1 packet 中的 `read_only` 仅指 Continuity State 写入。State MCP 的 inspect/resume
 外层返回 `read_only_scope=continuity-state` 与 `ordinary_project_work_allowed=true`；生成的

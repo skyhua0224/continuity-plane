@@ -333,6 +333,17 @@ Codex tracks hook trust separately from plugin installation. Review the current 
 the host and must not be reported as adopted. Missing trust is not a reason to repeatedly reinstall
 plugins or rewrite model, provider, or key configuration.
 
+With cc-switch, never copy the live `config.toml` or `auth.json` wholesale into a common snippet or
+another provider. Shared integration settings contain only plugin switches and hook trust, not auth,
+routing, or model selection. Verify provider credentials and routes before and after changes; stop
+installation on concurrent drift without restoring an old whole file. Common snippets apply only to
+providers that opted in; preserve the other providers' choices.
+
+When cc-switch owns the Codex live configuration, the installer returns `deferred` before writing
+anything. This is a configuration-ownership notice, not a project-work gate; continue current work.
+Persistent profile integration is not yet verified. Business tasks need not switch profiles, stop
+the proxy, or recreate chats. Do not retry installation or merge provider configuration by hand.
+
 Install the search plugin for explicit bounded current-worktree lookup in large repositories:
 
 ```bash
@@ -381,6 +392,11 @@ The lookup receipt measures `cache_status` and `returned_bytes`; host traces mea
 input/output tokens. A cache hit alone is not token savings and must be reconciled with matched
 context-input/output A/B results.
 
+A missing MCP tool or connection failure means retrieval is unavailable; an empty result means
+the query succeeded without matches. Neither changes project permissions. Try CLI once when the
+tool is unavailable; after a successful empty lookup, use narrow search without repeating the same
+lookup. Routine fallback needs no pause, reinstall, or narration. Only State writes need `resume`.
+
 ### Compaction Recovery And Source Rebinding
 
 Core hooks run through the installed package's `continuity-codex-hook` entry point, without
@@ -394,7 +410,10 @@ failures, recognized effects, and Continuity MCP calls retain observations. Miss
 gets one retrieval hint (at most `1 KiB`) on the next tool, or one resume attempt on the next user
 message. Markers are project/session scoped, expire after 10 minutes, and are atomically consumed.
 Delivered recovery clears the marker. Normal operations emit no context; no hook installs plugins,
-changes Codex configuration, rewrites commands, activates Work, or retries indefinitely.
+changes Codex configuration, rewrites commands, activates Work, or retries indefinitely. When Bash
+returns a still-running `session_id`, the advisory hook emits one short hint to poll that handle
+with `write_stdin` before new reads or progress reports; completed commands remain silent and State
+is never called.
 If a Session still references a deleted plugin-cache path, the launcher tries the current `PLUGIN_ROOT`;
 when it is unavailable it exits quietly and leaves ordinary commands alone without switching versions.
 
@@ -413,10 +432,12 @@ Verify actual adoption after starting or resuming a Session:
 continuity doctor --root . --codex-home ~/.codex
 ```
 
-The doctor reads plugin configuration, MCP policy, hook trust, and sanitized lifecycle
-observations; it does not read chat content. `active` means a real SessionStart was observed,
-`configured` means no runtime event exists yet, and `misconfigured` means an installation gate
-failed.
+The doctor reads plugin configuration, MCP policy, hook trust, the marketplace-selected plugin,
+active lease state, resume packet size, and sanitized lifecycle observations; it does not read chat
+content. `active` means the real plugin runtime and SessionStart are available, `configured`
+means no runtime event exists yet, `misconfigured` means an installation gate failed,
+`degraded` means a lease warning, oversized packet, or runtime drift, and `recoverable` means
+an expired claim can be reclaimed through autorun.
 
 The CLI v1 packet's `read_only` field applies only to Continuity State writes. The State MCP
 inspect/resume wrapper returns `read_only_scope=continuity-state` and

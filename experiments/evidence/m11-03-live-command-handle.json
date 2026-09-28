@@ -1,0 +1,28 @@
+{
+  "schema_version": "context.m11-03-live-command-handle/v1alpha1",
+  "generated_at": "2026-09-09T00:00:00+08:00",
+  "fixture": "sanitized-long-running-shell-command",
+  "observed_failure": {
+    "kind": "live_handle_not_polled",
+    "effect": "agent started a progress turn without first polling the still-running command"
+  },
+  "change": {
+    "entry": "advisory PostToolUse",
+    "behavior": "one bounded write_stdin polling hint when a positive shell session_id is returned",
+    "state_calls": 0,
+    "effect_denials": 0,
+    "completed_command_hint": false
+  },
+  "verification": {
+    "focused_tests": "95/95",
+    "advisory_tests": "9/9",
+    "repository_verification": "passed",
+    "diff_check": "passed",
+    "ruff": "passed"
+  },
+  "claims": {
+    "automatic_turn_continuation": false,
+    "token_savings": false,
+    "ordinary_work_blocking": false
+  }
+}

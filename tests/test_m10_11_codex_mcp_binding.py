@@ -16,6 +16,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 from context_control_plane.cli import main as continuity_main
+from context_control_plane import codex_mcp_server
+from context_control_plane.workspace_binding import register_control_root
 
 
 class _ExpiredClaimDateTime(datetime):
@@ -213,6 +215,28 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
             self.assertEqual(
                 call_lines,
                 [f"resume --root {bound_project}", f"resume --root {cwd_project}"],
+            )
+
+    def test_registered_git_worktree_resolves_to_its_control_root(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            control = base / "control"
+            control.mkdir()
+            subprocess.run(["git", "init", "-q", str(control)], check=True)
+            subprocess.run(["git", "-C", str(control), "config", "user.email", "test@example.invalid"], check=True)
+            subprocess.run(["git", "-C", str(control), "config", "user.name", "Test"], check=True)
+            (control / ".continuity").mkdir()
+            (control / ".continuity/project.yaml").write_text("project_id: bound-project\n", encoding="utf-8")
+            (control / "README").write_text("fixture\n", encoding="utf-8")
+            subprocess.run(["git", "-C", str(control), "add", "."], check=True)
+            subprocess.run(["git", "-C", str(control), "commit", "-qm", "fixture"], check=True)
+            worktree = base / "worktree"
+            subprocess.run(["git", "-C", str(control), "worktree", "add", "-q", str(worktree), "HEAD"], check=True)
+            register_control_root(control)
+
+            self.assertEqual(
+                codex_mcp_server._requested_root(str(worktree), None),
+                control.resolve(),
             )
 
     def _run(

@@ -21,9 +21,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def scoped_overrides(config, hook_config):
+def scoped_overrides(config, hook_config, *, keep_continuity=False):
     overrides = {"hooks": hook_config, "features.hooks": True}
     for plugin in config.get("plugins", {}):
+        if keep_continuity and plugin in {
+            "continuity-plane@continuity-plane", "continuity-plane-search@continuity-plane", "continuity-plane-state@continuity-plane",
+        }:
+            continue
         overrides[f"plugins.{plugin}.enabled"] = False
     for server in config.get("mcp_servers", {}):
         overrides[f"mcp_servers.{server}.enabled"] = False
@@ -53,13 +57,16 @@ def summarize(events):
                 result["tool_calls"] += 1
                 command = item.get("command", "")
                 result["lookup_calls"] += bool(re.search(r"\bcontinuity\s+context\s+(?:lookup|search)\b", command))
+            if item.get("type") == "mcpToolCall":
+                result["tool_calls"] += 1
+                result["lookup_calls"] += item.get("tool") == "continuity_context_lookup" and item.get("server") in {"continuity-search", "continuity_search"}
     return result
 
 
 class Host:
     def __init__(self, environment, project=None):
         self.process = subprocess.Popen(
-            ["codex", "--dangerously-bypass-hook-trust", "app-server", "--stdio"],
+            ["codex", "app-server", "--stdio"],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
             text=True, env=environment, cwd=ROOT,
         )
@@ -129,17 +136,62 @@ class Host:
             self.process.wait(timeout=5)
 
 
+def wait_for_compaction(host, cursor):
+    completed = [e for e in host.events[cursor:] if e.get("method") == "turn/completed"]
+    event = completed[-1] if completed else host.until(lambda e: e.get("method") == "turn/completed")
+    if event["params"]["turn"]["status"] != "completed":
+        raise RuntimeError("host_compaction_failed")
+    if not summarize(host.events[cursor:])["native_compaction_observed"]:
+        raise RuntimeError("host_compaction_not_observed")
+
+
+def run_probe_turns(host, project, config, receipt):
+    overrides = scoped_overrides(config, {}, keep_continuity=receipt["installed_plugin_acceptance"])
+    overrides.pop("hooks")
+    started = host.call("thread/start", {"cwd": str(project), "ephemeral": True,
+                                         "approvalPolicy": "never", "sandbox": "read-only", "config": overrides})
+    thread_id = started["thread"]["id"]
+    receipt["effective_model"] = started.get("model")
+    prompts = [
+        "Read-only: locate advisory_main and report its supported event names in one sentence. "
+        "After that the next task is inspect _operation_is_sampled, but do not do that next task yet. "
+        "Keep marker quiet-river-42 for your final response on the next task. Do not edit files.",
+        "Continue the saved next task and include the saved marker. Do not repeat the previous answer. Do not edit files.",
+    ]
+    for index, prompt in enumerate(prompts):
+        if index:
+            prior = len(host.events)
+            host.call("thread/compact/start", {"threadId": thread_id})
+            wait_for_compaction(host, prior)
+        prior = len(host.events)
+        host.call("turn/start", {"threadId": thread_id, "input": [{"type": "text", "text": prompt}]})
+        completed = host.until(lambda e: e.get("method") == "turn/completed")
+        events = host.events[prior:]
+        phase = summarize(events)
+        answers = [e["params"]["item"].get("text", "") for e in events if e.get("method") == "item/completed" and e.get("params", {}).get("item", {}).get("type") == "agentMessage"]
+        phase["marker_retained"] = any("quiet-river-42" in answer for answer in answers)
+        phase["turn_status"] = completed["params"]["turn"]["status"]
+        receipt["phases"].append(phase)
+        if phase["turn_status"] != "completed":
+            raise RuntimeError("provider_turn_failed")
+    receipt.update(summarize(host.events))
+    receipt["status"] = "passed" if receipt["native_compaction_observed"] and receipt["phases"][-1]["marker_retained"] and all(p["lookup_calls"] > 0 for p in receipt["phases"]) else "failed"
+    if receipt["status"] != "passed":
+        receipt["failed_gate"] = "native_adoption_or_memory"
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--preflight-only", action="store_true")
+    parser.add_argument("--installed-plugin", action="store_true")
     args = parser.parse_args()
     config_path = Path.home() / ".codex/config.toml"
     original_config = config_path.read_bytes()
     config = tomllib.loads(original_config.decode())
     receipt = {"observed_at": datetime.now(UTC).isoformat(), "status": "failed",
                "measurement_source": "codex-app-server-native", "ephemeral": True,
-               "business_state_writes": 0, "installed_plugin_acceptance": False,
+               "business_state_writes": 0, "installed_plugin_acceptance": args.installed_plugin,
                "model": config.get("model"), "context_window": config.get("model_context_window"),
                "config_unchanged": False, "phases": []}
     host = None
@@ -165,14 +217,15 @@ def main():
                 break
         else:
             try:
-                # Only these already-reviewed local scripts bypass trust in this disposable host.
+                # Host trust is verified before any model request.
                 environment = {**os.environ, "PLUGIN_ROOT": str(source.parent.parent),
                                "PLUGIN_DATA": str(temp / "plugin-data"), "CONTINUITY_EFFECT_POLICY": "auto",
                                "PATH": str(Path(sys.executable).parent) + os.pathsep + os.environ["PATH"]}
                 hook_config = json.loads((source.parent.parent / "hooks/hooks.json").read_text())["hooks"]
-                (project / ".codex").mkdir()
-                (project / ".codex/config.toml").write_text("# Isolated probe configuration layer.\n")
-                (project / ".codex/hooks.json").write_text(json.dumps({"hooks": hook_config}))
+                if not args.installed_plugin:
+                    (project / ".codex").mkdir()
+                    (project / ".codex/config.toml").write_text("# Isolated probe configuration layer.\n")
+                    (project / ".codex/hooks.json").write_text(json.dumps({"hooks": hook_config}))
                 host = Host(environment, project)
                 host.call("initialize", {"clientInfo": {"name": "continuity-native-probe", "version": "1"},
                                          "capabilities": {"experimentalApi": True}})
@@ -185,46 +238,17 @@ def main():
                     "errors": sum(len(entry.get("errors", [])) for entry in listed.get("data", [])),
                     "warnings": sum(len(entry.get("warnings", [])) for entry in listed.get("data", [])),
                 }
-                found = [h for entry in listed.get("data", []) for h in entry.get("hooks", []) if h.get("source") == "project"]
+                found = [h for entry in listed.get("data", []) for h in entry.get("hooks", [])
+                         if (h.get("pluginId") == "continuity-plane@continuity-plane" if args.installed_plugin else h.get("source") == "project")]
                 receipt["preflight_hooks"] = [{k: h.get(k) for k in ("eventName", "enabled", "trustStatus", "source")} for h in found]
                 if len(found) != 6:
                     raise RuntimeError("host_hook_discovery")
+                if any(not h["enabled"] or h["trustStatus"] not in {"trusted", "managed"} for h in found):
+                    raise RuntimeError("host_hook_trust")
                 if args.preflight_only:
                     receipt["status"] = "preflight-passed"
-                    raise RuntimeError("preflight_only_no_model_invocation")
-                overrides = scoped_overrides(config, {})
-                overrides.pop("hooks")
-                started = host.call("thread/start", {"cwd": str(project), "ephemeral": True,
-                                                     "approvalPolicy": "never", "sandbox": "read-only", "config": overrides})
-                thread_id = started["thread"]["id"]
-                receipt["effective_model"] = started.get("model")
-                prompts = [
-                    "Read-only: locate advisory_main and report its supported event names in one sentence. "
-                    "After that the next task is inspect _operation_is_sampled, but do not do that next task yet. "
-                    "Keep marker quiet-river-42 for your final response on the next task. Do not edit files.",
-                    "Continue the saved next task and include the saved marker. Do not repeat the previous answer. Do not edit files.",
-                ]
-                for index, prompt in enumerate(prompts):
-                    if index:
-                        prior = len(host.events)
-                        host.call("thread/compact/start", {"threadId": thread_id})
-                        if not summarize(host.events[prior:])["native_compaction_observed"]:
-                            host.until(lambda e: summarize([e])["native_compaction_observed"])
-                    prior = len(host.events)
-                    host.call("turn/start", {"threadId": thread_id, "input": [{"type": "text", "text": prompt}]})
-                    completed = host.until(lambda e: e.get("method") == "turn/completed")
-                    events = host.events[prior:]
-                    phase = summarize(events)
-                    answers = [e["params"]["item"].get("text", "") for e in events if e.get("method") == "item/completed" and e.get("params", {}).get("item", {}).get("type") == "agentMessage"]
-                    phase["marker_retained"] = any("quiet-river-42" in answer for answer in answers)
-                    phase["turn_status"] = completed["params"]["turn"]["status"]
-                    receipt["phases"].append(phase)
-                    if phase["turn_status"] != "completed":
-                        raise RuntimeError("provider_turn_failed")
-                receipt.update(summarize(host.events))
-                receipt["status"] = "passed" if receipt["native_compaction_observed"] and receipt["phases"][-1]["marker_retained"] and all(p["lookup_calls"] > 0 for p in receipt["phases"]) else "failed"
-                if receipt["status"] != "passed":
-                    receipt["failed_gate"] = "native_adoption_or_memory"
+                else:
+                    run_probe_turns(host, project, config, receipt)
             except (RuntimeError, OSError, KeyError, ValueError) as exc:
                 receipt["failed_gate"] = str(exc) if isinstance(exc, RuntimeError) else type(exc).__name__
                 if host is not None and host.rpc_error is not None:
@@ -238,7 +262,7 @@ def main():
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n")
     print(json.dumps(receipt, sort_keys=True))
-    return 0 if receipt["status"] == "passed" else 1
+    return 0 if receipt["status"] in {"passed", "preflight-passed"} else 1
 
 
 if __name__ == "__main__":

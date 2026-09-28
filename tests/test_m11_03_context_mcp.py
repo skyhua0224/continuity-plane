@@ -7,6 +7,8 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from context_control_plane.code_index import validate_code_index_receipt
+
 
 class M1103ContextMCPTests(unittest.TestCase):
     root = Path(__file__).resolve().parents[1]
@@ -110,6 +112,8 @@ class M1103ContextMCPTests(unittest.TestCase):
             ]
         )
         result = json.loads(responses[0]["result"]["content"][0]["text"])
+        self.assertEqual(responses[0]["result"]["structuredContent"], result)
+        validate_code_index_receipt(result, root=self.project)
         self.assertEqual(result["matches"][0]["path"], "runtime.py")
         self.assertEqual(result["matches"][0]["line"], 4)
         self.assertNotIn("return Runtime", json.dumps(result))
@@ -121,6 +125,35 @@ class M1103ContextMCPTests(unittest.TestCase):
             text=True,
         ).stdout
         self.assertEqual(before, after)
+
+    def test_empty_lookup_is_an_explicit_non_blocking_miss(self) -> None:
+        responses = self._call(
+            [
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "tools/call",
+                    "params": {
+                        "name": "continuity_context_lookup",
+                        "arguments": {
+                            "root": str(self.project),
+                            "query": "not_present_anywhere",
+                            "cache_path": str(self.cache),
+                            "max_results": 5,
+                            "max_output_bytes": 2048,
+                        },
+                    },
+                }
+            ]
+        )
+        result = responses[0]["result"]["structuredContent"]
+        self.assertEqual(result, json.loads(responses[0]["result"]["content"][0]["text"]))
+        validate_code_index_receipt(result, root=self.project)
+        metadata = responses[0]["result"]["_meta"]["continuity"]
+        self.assertEqual(metadata["lookup_status"], "empty")
+        self.assertEqual(metadata["fallback"], "narrow-search")
+        self.assertEqual(result["matches"], [])
+        self.assertFalse(responses[0]["result"]["isError"])
 
 
 if __name__ == "__main__":

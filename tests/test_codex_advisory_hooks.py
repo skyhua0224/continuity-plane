@@ -90,6 +90,62 @@ class AdvisoryHookTests(unittest.TestCase):
         with mock.patch.object(self.hook, "_observe", side_effect=OSError("full disk")):
             self.assertEqual(self.invoke(self.payload("PostToolUse", tool_response={"isError": True})), "")
 
+    def test_running_command_handle_gets_one_poll_hint_without_state_access(self):
+        payload = self.payload(
+            "PostToolUse",
+            tool_response={"session_id": 8913, "output": "", "chunk_id": "4c0a6a"},
+        )
+        with mock.patch.object(self.hook, "_command", side_effect=AssertionError("State called")):
+            output = self.invoke(payload)
+        context = json.loads(output)["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("8913", context)
+        self.assertIn("poll", context.lower())
+        self.assertIn("before", context.lower())
+        self.assertNotIn("Continuity", context)
+
+    def test_completed_command_does_not_emit_poll_noise(self):
+        payload = self.payload(
+            "PostToolUse",
+            tool_response={"exit_code": 0, "output": "done"},
+        )
+        with mock.patch.object(self.hook, "_command", side_effect=AssertionError("State called")):
+            self.assertEqual(self.invoke(payload), "")
+
+    def test_postcompact_emits_silent_continuation_contract(self):
+        payload = self.payload("PostCompact", trigger="auto")
+        output = io.StringIO()
+        with mock.patch.object(self.hook, "_command", return_value=subprocess.CompletedProcess([], 0, "{}\n", "")), \
+                mock.patch.object(self.hook.sys, "stdout", output):
+            self.assertEqual(self.hook._postcompact(payload, self.project), 0)
+        context = json.loads(output.getvalue())["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("next_action", context)
+        self.assertIn("do not repeat", context.lower())
+        self.assertIn("continuity_context_lookup", context)
+        self.assertIn("write_stdin", context)
+        self.assertNotIn("compaction", context.lower())
+
+    def test_broad_code_read_gets_one_bounded_lookup_hint(self):
+        payload = self.payload(
+            "PreToolUse",
+            turn_id="turn-read-1",
+            tool_input={"command": "find . -type f -print"},
+        )
+        context = json.loads(self.invoke(payload))["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("continuity_context_lookup", context)
+        self.assertIn("bounded", context.lower())
+        self.assertIn("narrow", context.lower())
+
+    def test_slow_completed_command_gets_one_progress_hint(self):
+        payload = self.payload(
+            "PostToolUse",
+            turn_id="turn-progress-1",
+            tool_input={"command": "pytest -q tests/test_example.py"},
+            tool_response={"exit_code": 0, "wall_time_seconds": 8.0, "output": "passed"},
+        )
+        context = json.loads(self.invoke(payload))["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("next planned action", context.lower())
+        self.assertIn("continue", context.lower())
+
     def test_real_launcher_with_strict_env_and_broken_binding_never_denies(self):
         binding = self.hook._session_binding_path(self.payload())
         binding.parent.mkdir(parents=True)
@@ -128,7 +184,8 @@ class AdvisoryHookTests(unittest.TestCase):
         output, _ = invoke({**base, "hook_event_name": "PreCompact", "trigger": "auto"})
         self.assertEqual(output, "")
         output, _ = invoke({**base, "hook_event_name": "PostCompact", "trigger": "auto"})
-        self.assertEqual(output, "")
+        self.assertIn("next_action", output)
+        self.assertIn("continuity_context_lookup", output)
         def state_hashes():
             return {p.relative_to(project).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
                     for p in (project / ".continuity").rglob("*") if p.is_file()}

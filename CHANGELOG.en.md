@@ -4,6 +4,11 @@
 
 ## Next Release (Unreleased)
 
+- The development installer limits edits to Continuity integration fields and uses read-only
+  fingerprints to protect provider credentials, auth files, models, routing, and independent profiles.
+  Common snippets reject authentication data; concurrent changes never trigger whole-file rollback.
+  This installer is not a business-command gate. The native probe verifies actual plugin trust and
+  waits for the compaction turn to finish before continuing.
 - Added independent advisory pre/post tool hooks. Ordinary successes use `1/16` sampling; failures,
   recognized effects, and Continuity MCP calls retain observations. This entry cannot access State,
   run Git, rewrite input, or reject commands, even with a leftover `strict` environment setting.
@@ -24,6 +29,21 @@
 - The hook launcher now falls back from a deleted plugin-cache path to the current `PLUGIN_ROOT`.
   With no usable script it exits quietly, so stale caches do not turn ordinary operations into tool
   errors or cause an untrusted version to be loaded.
+- The installer now detects Codex configuration takeover by cc-switch and returns `deferred` before
+  any write. It never races provider projection or reports a transient marketplace, hook, or MCP
+  write as persistently active.
+- Clarified retrieval fallback guidance: use CLI for an unavailable tool and narrow search after a
+  successful empty lookup. MCP metadata labels empty results while preserving receipt hashes and
+  byte accounting. This does not establish host tool visibility or real-task acceptance.
+- Fixed a live-handle adoption gap for long tests and builds: when advisory `PostToolUse` sees a
+  still-running shell `session_id`, it emits one `write_stdin` polling hint before new reads or
+  progress reports. It does not call State, acquire a claim, or block commands; completed commands
+  remain silent.
+- Doctor now resolves the plugin selected by the marketplace and validates all six hook commands,
+  script entrypoints, no-op stubs, package version, the 80% active-lease warning, and resume packet
+  size. A stale cache can no longer be reported as ready. The interaction cursor preserves explicit
+  continue/execute/finish requests as continuations while only information requests answer in place;
+  PostCompact only verifies the canary, leaving one recovery injection at compact SessionStart.
 
 ## 0.1.0-alpha.12
 
