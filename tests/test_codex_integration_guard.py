@@ -75,6 +75,44 @@ class IntegrationGuardTests(unittest.TestCase):
         g.validate_codex_home(Path("/expected"), {"codexConfigDir": "/expected"})
         g.validate_codex_home(Path("/expected"), {})
 
+    def test_uninstalled_cc_switch_and_opencodex_surface_are_protected(self):
+        g = self.load()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            codex_home = root / "codex"
+            switch_home = root / "cc-switch"
+            codex_home.mkdir()
+            (codex_home / "config.toml").write_text(
+                'model_provider="opencodex"\nmodel="test-model"\n',
+                encoding="utf-8",
+            )
+            (codex_home / "opencodex.config.toml").write_text(
+                'model_provider="opencodex"\n', encoding="utf-8"
+            )
+            snapshot = g.CredentialSnapshot(codex_home, switch_home)
+            baseline = snapshot()
+            self.assertEqual(snapshot.provider_count, 0)
+            self.assertEqual(baseline["switch_settings"], snapshot.digest(b"uninstalled"))
+            self.assertIn("opencodex_nonintegration", baseline)
+            guard = g.IntegrationGuard(snapshot)
+            with self.assertRaises(g.GuardError):
+                guard.run(lambda: (codex_home / "opencodex.config.toml").write_text(
+                    'model_provider="changed"\n', encoding="utf-8"
+                ))
+
+    def test_partial_cc_switch_installation_remains_fail_closed(self):
+        g = self.load()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            codex_home = root / "codex"
+            switch_home = root / "cc-switch"
+            codex_home.mkdir()
+            switch_home.mkdir()
+            (codex_home / "config.toml").write_text('model="test-model"\n', encoding="utf-8")
+            (switch_home / "settings.json").write_text("{}", encoding="utf-8")
+            with self.assertRaisesRegex(g.GuardError, "credential_snapshot_unavailable"):
+                g.CredentialSnapshot(codex_home, switch_home)()
+
     def test_cc_switch_takeover_is_detected_without_reading_provider_data(self):
         path = Path(__file__).parents[1] / "tools/configure_codex_continuity.py"
         spec = importlib.util.spec_from_file_location("configure_codex_continuity", path)

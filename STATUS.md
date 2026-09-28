@@ -1,6 +1,6 @@
 # Continuity Plane Status
 
-版本：revision 135  
+版本：revision 136  
 日期：2026-09-28  
 canonical plan：`MASTER.md`
 
@@ -8,7 +8,7 @@ canonical plan：`MASTER.md`
 
 | 字段 | 值 |
 |---|---|
-| integration posture | alpha12 marketplace runtime active；doctor 已解析 6/6 hook 命令、真实脚本入口与包版本；6/6 trusted；不调用会重写整份配置的 `cc-switch config common set` |
+| integration posture | 本机候选 `+codex.20260928070005` active；doctor 已解析 6/6 hook 命令、真实脚本入口与包版本；6/6 trusted；cc-switch 已卸载，opencodex 稳定配置面纳入 HMAC 保护 |
 | 业务影响 | 已停止配置写入；业务代码与 State 未修改；provider 并发变化未归因 |
 | 收口目标 | M11-00：Zero-friction continuity core |
 | 收口条件 | 三项目各 `3` 段 A/B；复活、重复、误阻断为 `0`；恢复与 history token 达标 |
@@ -23,7 +23,7 @@ canonical plan：`MASTER.md`
 | next action | 用修订后的候选执行显式 guarded install 后，完成宿主原生 compaction 回归与三项目 matched A/B；不迁移聊天、不切换 provider |
 | hard blocker | 持续检索采用与 token 收益未达标；暂不发版 |
 | repository mode | internal development repository + fresh-history public mirror |
-| production state | alpha12 公开；本机 marketplace core 候选 `+codex.20260909124804`，未发 alpha13 |
+| production state | alpha12 公开；本机 marketplace core 候选 `+codex.20260928070005`，未发 alpha13 |
 
 ## 已验证摘要
 
@@ -52,7 +52,8 @@ canonical plan：`MASTER.md`
 | M11 safe plugin replacement | 本机候选 `0.1.0-alpha.12+codex.20260909122445`；受保护 provider/model/auth/proxy 指纹 `70` 条保持不变；Codex 原生发现 6/6 plugin hooks trusted/enabled；无业务 State 写入；[install receipt](experiments/evidence/m11-00-safe-codex-install-replace.json)、[preflight](experiments/evidence/m11-00-replaced-hook-preflight.json) |
 | M11 hook continuation contract | compact SessionStart 注入静默 next_action 合同；PostCompact 仅校验 canary；每个 turn 至多一次 bounded-read 提示和长命令 next-action 提示；不阻断、不调用 State；Git worktree resume 解析到注册治理根；[install receipt](experiments/evidence/m11-00-safe-codex-install-hooks-v2.json)、[preflight](experiments/evidence/m11-00-installed-hook-preflight-v2.json) |
 | M11 runtime diagnosis | doctor 解析 marketplace 实际 plugin，检测 no-op stub、入口缺失、hook 命令缺口、版本漂移、active claim 80% lease 预警与 resume packet 体积；明确执行意图不再被 cursor 降级为只答问题；PostCompact 恢复为静默 canary，不重复注入；lifecycle/release/autorun focused `84/84` 与新增 doctor 回归通过 |
-| Governance authority | `MASTER.md` revision 135 |
+| M11 opencodex-safe install | cc-switch 完全卸载可继续 guarded install，部分残留仍 fail-closed；opencodex config/catalog/systemd/basic-auth 稳定表面变更会中止；部署收据见 [v3](experiments/evidence/m11-00-safe-codex-install-hooks-v3.json)，preflight 见 [v3](experiments/evidence/m11-00-installed-hook-preflight-v3.json) |
+| Governance authority | `MASTER.md` revision 136 |
 
 ## 恢复入口
 

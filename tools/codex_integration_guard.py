@@ -110,7 +110,12 @@ def safe_common(text):
 
 
 class CredentialSnapshot:
-    """Read-only, process-keyed fingerprints; no raw credentials leave this object."""
+    """Read-only, process-keyed fingerprints; no raw credentials leave this object.
+
+    Provider managers are optional.  A completely absent cc-switch home is a
+    supported uninstall state, while a partially present one remains fail-closed.
+    OpenCodex's stable Codex integration surfaces are protected independently.
+    """
 
     def __init__(self, codex_home, switch_home):
         self.codex_home = Path(codex_home)
@@ -130,37 +135,61 @@ class CredentialSnapshot:
             auth = self.codex_home / "auth.json"
             result["auth_file"] = self.digest(auth.read_bytes() if auth.exists() else b"absent")
             result["profiles"] = self.digest({p.name: self.digest(p.read_bytes()) for p in self.codex_home.glob("*.config.toml")})
-            settings = self.switch_home / "settings.json"
-            settings_bytes = settings.read_bytes() if settings.exists() else b"{}"
-            validate_codex_home(self.codex_home, json.loads(settings_bytes))
-            result["switch_settings"] = self.digest(settings_bytes)
             database = self.switch_home / "cc-switch.db"
-            connection = sqlite3.connect(database.as_uri() + "?mode=ro", uri=True)
-            try:
-                connection.execute("PRAGMA query_only=ON")
-                connection.execute("BEGIN")
-                row = connection.execute("SELECT value FROM settings WHERE key='common_config_codex'").fetchone()
-                common = safe_common(row[0] if row and row[0] else "")
-                result["common_nonintegration"] = self.digest(protected_config(common))
-                providers = []
-                for identity, app, raw, current, category, meta in connection.execute(
-                    "SELECT id,app_type,settings_config,is_current,category,meta FROM providers ORDER BY app_type,id"
-                ):
-                    document = json.loads(raw)
-                    metadata = json.loads(meta)
-                    if app == "codex":
-                        own_config = tomllib.loads(document.get("config") or "")
-                        if metadata.get("commonConfigEnabled") is True:
-                            own_config = _merge(own_config, common)
-                        document["config"] = protected_config(own_config)
-                    providers.append((identity, app, document, current, category, metadata))
-                self.provider_count = len(providers)
-                result["all_providers"] = self.digest(providers)
-                # The proxy may update usage counters; its routing configuration must stay fixed.
-                for table in ("proxy_config",):
-                    result[table] = self.digest(connection.execute(f"SELECT * FROM {table} ORDER BY app_type").fetchall())
-            finally:
-                connection.close()
+            settings = self.switch_home / "settings.json"
+            if not settings.exists() and not database.exists():
+                result["switch_settings"] = self.digest(b"uninstalled")
+                result["all_providers"] = self.digest(())
+            else:
+                settings_bytes = settings.read_bytes() if settings.exists() else b"{}"
+                validate_codex_home(self.codex_home, json.loads(settings_bytes))
+                result["switch_settings"] = self.digest(settings_bytes)
+                connection = sqlite3.connect(database.as_uri() + "?mode=ro", uri=True)
+                try:
+                    connection.execute("PRAGMA query_only=ON")
+                    connection.execute("BEGIN")
+                    row = connection.execute("SELECT value FROM settings WHERE key='common_config_codex'").fetchone()
+                    common = safe_common(row[0] if row and row[0] else "")
+                    result["common_nonintegration"] = self.digest(protected_config(common))
+                    providers = []
+                    for identity, app, raw, current, category, meta in connection.execute(
+                        "SELECT id,app_type,settings_config,is_current,category,meta FROM providers ORDER BY app_type,id"
+                    ):
+                        document = json.loads(raw)
+                        metadata = json.loads(meta)
+                        if app == "codex":
+                            own_config = tomllib.loads(document.get("config") or "")
+                            if metadata.get("commonConfigEnabled") is True:
+                                own_config = _merge(own_config, common)
+                            document["config"] = protected_config(own_config)
+                        providers.append((identity, app, document, current, category, metadata))
+                    self.provider_count = len(providers)
+                    result["all_providers"] = self.digest(providers)
+                    # The proxy may update usage counters; its routing configuration must stay fixed.
+                    for table in ("proxy_config",):
+                        result[table] = self.digest(connection.execute(f"SELECT * FROM {table} ORDER BY app_type").fetchall())
+                finally:
+                    connection.close()
+            opencodex_files = {
+                path.name: path.read_bytes()
+                for path in (
+                    self.codex_home / "opencodex.config.toml",
+                    self.codex_home / "opencodex-catalog.json",
+                )
+                if path.is_file()
+            }
+            service_root = Path.home() / ".config/systemd/user"
+            service_dropins = service_root / "opencodex-proxy.service.d"
+            service_paths = [
+                service_root / "opencodex-proxy.service",
+                service_root / "opencodex-basic-auth.service",
+            ]
+            if service_dropins.is_dir():
+                service_paths.extend(sorted(service_dropins.glob("*")))
+            for path in service_paths:
+                if path.is_file():
+                    opencodex_files[str(path.relative_to(service_root))] = path.read_bytes()
+            result["opencodex_nonintegration"] = self.digest(opencodex_files)
         except GuardError:
             raise
         except Exception:

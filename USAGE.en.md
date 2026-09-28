@@ -344,6 +344,11 @@ anything. This is a configuration-ownership notice, not a project-work gate; con
 Persistent profile integration is not yet verified. Business tasks need not switch profiles, stop
 the proxy, or recreate chats. Do not retry installation or merge provider configuration by hand.
 
+If cc-switch is completely uninstalled, installation may continue. OpenCodex's Codex
+config/catalog and stable systemd/basic-auth surfaces are fingerprinted before and after the edit;
+OpenCodex does not need to stop or restart. A partial leftover cc-switch data directory fails the
+installation rather than guessing provider configuration.
+
 Install the search plugin for explicit bounded current-worktree lookup in large repositories:
 
 ```bash

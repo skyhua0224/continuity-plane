@@ -1,6 +1,6 @@
 # Continuity Plane MASTER
 
-版本：revision 135  
+版本：revision 136  
 日期：2026-09-28  
 状态：zero-friction core reset / live plugin adoption  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
@@ -406,9 +406,9 @@ Codex core 不注册 Skill 或 State MCP。未发布的通用 PreToolUse/PostToo
 
 本机或受控试点可由用户显式启用 core、search 和 state 三个 profile 进行 dogfood。全量安装不授予命令拦截权限；State 或检索 adapter 失败时继续业务执行。公共默认启用仍受 M11-00 matched gate 约束。
 
-候选验证依次完成新旧 launcher 兼容、负向 packet/观测审查、全量回归、宿主 hook 装载与信任、原生压缩、三项目 matched A/B。未受信任的项目层或 hook 不视为采用成功；模型请求前检查装载，避免无效重复付费测量。宿主实际 context window 与用户配置值分别计量；信任配置变更不得替换模型、provider、key 或 cc-switch 配置。
+候选验证依次完成新旧 launcher 兼容、负向 packet/观测审查、全量回归、宿主 hook 装载与信任、原生压缩、三项目 matched A/B。未受信任的项目层或 hook 不视为采用成功；模型请求前检查装载，避免无效重复付费测量。宿主实际 context window 与用户配置值分别计量；信任配置变更不得替换模型、provider、key、cc-switch 或 opencodex 配置。
 
-配置接入仅允许 Continuity plugin 与精确 hook trust 项；凭据、provider 路由、模型、认证文件和独立 profile 必须保留。cc-switch 公共片段禁止认证/路由字段，保留各 provider 的公共片段选择；安装前后用进程内指纹验证，竞态时停止安装，不恢复整份旧配置。此检查仅用于显式安装，不注册为业务 hook，不冻结项目工作。
+配置接入仅允许 Continuity plugin 与精确 hook trust 项；凭据、provider 路由、模型、认证文件和独立 profile 必须保留。cc-switch 公共片段禁止认证/路由字段，保留各 provider 的公共片段选择；cc-switch 完全卸载是合法状态，安装器同时把 opencodex 的 Codex config/catalog 与 systemd/basic-auth 稳定配置纳入进程内指纹。安装前后验证这些表面，竞态时停止安装，不恢复整份旧配置。此检查仅用于显式安装，不注册为业务 hook，不冻结项目工作。
 
 2026-09-02 的 alpha.10 live adoption 合同要求：State launcher 可从发布根加载唯一 package
 MCP server；`continuity_inspect` 只读且每 turn 最多调用一次；所有 MCP 工具声明准确安全

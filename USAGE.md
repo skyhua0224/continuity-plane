@@ -297,6 +297,10 @@ provider。公共集成片段仅包含插件开关与 hook 信任，不包含认
 所有权提示，不是项目工作门禁；继续当前工作。独立 profile 的持久化接入仍待验证，不要求
 业务任务切换 profile、停止代理或重建聊天。不要反复执行安装器或手工合并 provider 配置。
 
+cc-switch 已完全卸载时，安装器可以继续；它会把 opencodex 的 Codex config/catalog 和
+systemd/basic-auth 稳定配置纳入变更前后指纹。opencodex 不需要停止或重启。若只残留半个
+cc-switch 数据目录，安装会失败并要求先明确清理状态，不会猜测 provider 配置。
+
 大型仓库希望显式启用有界 current-worktree 检索时安装：
 
 ```bash

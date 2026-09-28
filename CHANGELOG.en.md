@@ -32,6 +32,9 @@
 - The installer now detects Codex configuration takeover by cc-switch and returns `deferred` before
   any write. It never races provider projection or reports a transient marketplace, hook, or MCP
   write as persistently active.
+- A fully uninstalled cc-switch is now a supported machine state, while partial leftovers remain
+  fail-closed. OpenCodex-managed Codex config/catalog and stable systemd/basic-auth surfaces are
+  covered by process-keyed HMAC fingerprints; concurrent drift aborts the Continuity installation.
 - Clarified retrieval fallback guidance: use CLI for an unavailable tool and narrow search after a
   successful empty lookup. MCP metadata labels empty results while preserving receipt hashes and
   byte accounting. This does not establish host tool visibility or real-task acceptance.

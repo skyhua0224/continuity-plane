@@ -22,6 +22,9 @@
   静默退出，避免旧缓存把普通操作变成工具错误，也不会擅自加载另一版本的 hook。
 - 安装器检测到 cc-switch 接管 Codex 配置时改为 `deferred` 并在写入前退出；不与 provider
   投影竞写，也不把 marketplace/hook/MCP 的瞬时写入误报为持续生效。
+- cc-switch 完全卸载成为受支持的机器状态；部分残留仍拒绝安装。当前 opencodex 管理的
+  Codex config/catalog 与 systemd/basic-auth 稳定配置纳入进程内 HMAC 指纹，任何并发漂移
+  都会中止 Continuity 安装。
 - 明确检索降级指引：工具不可用时可使用 CLI，成功但零命中后直接窄检索。空结果在 MCP
   元数据中标记，保留原回执哈希和字节合同；未宣称修复宿主工具可见性或完成真实任务验收。
 - 修复长测试/构建句柄被阶段性汇报遗忘的采用缺口：advisory `PostToolUse` 发现仍运行的
