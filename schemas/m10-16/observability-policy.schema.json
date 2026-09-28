@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.continuity-plane.dev/context.observability-policy/v1alpha1",
+  "title": "Continuity Plane Observability Policy",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version"],
+  "properties": {
+    "schema_version": {
+      "const": "context.observability-policy/v1alpha1"
+    },
+    "preset": {
+      "enum": ["balanced", "diagnostic", "reliability-first"]
+    },
+    "resume": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "explicit_policy": {
+          "enum": ["once_per_connection", "every_call"]
+        }
+      }
+    },
+    "checkpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "on_pre_compact": {"const": true},
+        "on_work_complete": {"const": true},
+        "after_state_writes": {"type": "boolean"},
+        "min_interval_seconds": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 86400
+        }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "startup_scope": {"enum": ["recent", "deep"]},
+        "deep_verify": {"enum": ["manual", "on_error", "startup"]}
+      }
+    },
+    "observability": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {"enum": ["minimal", "diagnostic"]},
+        "probes_enabled": {"type": "boolean"},
+        "slow_call_threshold_ms": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 600000
+        },
+        "resource_sampling": {
+          "enum": ["disabled", "boundaries_failures_and_slow", "every_call"]
+        },
+        "retention_max_bytes": {
+          "type": "integer",
+          "minimum": 1048576,
+          "maximum": 1073741824
+        }
+      }
+    }
+  }
+}
