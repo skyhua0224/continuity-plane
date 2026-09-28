@@ -1,6 +1,6 @@
 # Continuity Plane Status
 
-版本：revision 136  
+版本：revision 137  
 日期：2026-09-28  
 canonical plan：`MASTER.md`
 
@@ -8,7 +8,7 @@ canonical plan：`MASTER.md`
 
 | 字段 | 值 |
 |---|---|
-| integration posture | 本机候选 `+codex.20260928070005` active；doctor 已解析 6/6 hook 命令、真实脚本入口与包版本；6/6 trusted；cc-switch 已卸载，opencodex 稳定配置面纳入 HMAC 保护 |
+| integration posture | 本机 PyPI CLI `0.1.0a13`；marketplace 候选 `+codex.20260928091906` active；doctor 已解析 6/6 hook 命令、真实脚本入口与包版本；6/6 trusted；opencodex 保护面不变 |
 | 业务影响 | 已停止配置写入；业务代码与 State 未修改；provider 并发变化未归因 |
 | 收口目标 | M11-00：Zero-friction continuity core |
 | 收口条件 | 三项目各 `3` 段 A/B；复活、重复、误阻断为 `0`；恢复与 history token 达标 |
@@ -20,40 +20,22 @@ canonical plan：`MASTER.md`
 |---|---|
 | 当前 Campaign | M11 零阻断收口 |
 | active work | M11-00：真实插件采用与旧线程原位恢复（🟡） |
-| next action | 用修订后的候选执行显式 guarded install 后，完成宿主原生 compaction 回归与三项目 matched A/B；不迁移聊天、不切换 provider |
-| hard blocker | 持续检索采用与 token 收益未达标；暂不发版 |
+| next action | 在真实业务任务中验证 alpha.13 adoption 与 matched A/B；不迁移聊天、不切换 provider、不重复安装 |
+| hard blocker | 持续检索采用与 token 收益未达标；alpha.13 只作为非阻断候选发布，不宣称普遍 token 节省 |
 | repository mode | internal development repository + fresh-history public mirror |
-| production state | alpha12 公开；本机 marketplace core 候选 `+codex.20260928070005`，未发 alpha13 |
+| production state | alpha13 已发布到 GitHub Release 与 PyPI；GitHub main/tag CI 和 Publish workflow 均通过 |
 
 ## 已验证摘要
 
 | 对象 | 状态 |
 |---|---|
 | Evidence index | [`docs/reports/verified-state.md`](docs/reports/verified-state.md) |
-| Verified campaigns | M0-M8 core 与 M9-01..07 见 Evidence index；M9-08..11 planned |
 | Publication | 历史发行与验收见 CHANGELOG |
-| Release baseline | 历史跨平台与视图验收见 Evidence index |
-| Documentation audit | 双语文档区分公开版与本机候选 |
-| M11 adoption | 历史基线见 [evidence](experiments/evidence/m11-00-codex-adoption-probe.json)；不代表候选当前已采用 |
-| M11 hook efficiency | `40` 组：calls `-33.33%`；context `-83.73%`；stdout `-85.18%`；deny/stop `0/0`；[evidence](experiments/evidence/m11-00-codex-hook-efficiency.json) |
-| M11 Platform A/B | `3+3`：input/output/tool `-12.14%/-28.84%/-41.46%`；veto `0`；未过 input gate |
-| M11 ProjectCompute A/B | `3+3`：input/output/tool `-2.36%/-13.70%/+2.62%`；veto `0`；未过 input gate |
-| M11 bounded retrieval | current tracked worktree、revision/hash、完整 JSON budget 与 CLI `3/3` |
-| M11 code index | 两仓库实测二次重算 `0`、缓存隔离；[evidence](experiments/evidence/m11-02-code-index-real.json) |
-| M11 lookup routing | 单工具 search MCP + CLI/API；State MCP 不承载检索；source stale 继续普通开发；默认采用 A/B pending |
-| M11 State-only | genesis `1/1`、proposal/checkpoint、可重试；State-only MCP/STATUS；stale Work 不注入；`134/134` |
-| M11 observability | bounded policy/retention/lock/cache/report `45/45`；不记录 transcript/source/tool body |
-| M11 advisory fixture | 真实 CLI、多进程、零 State 修改；[receipt](experiments/evidence/m11-00-advisory-hook-real-cli.json)；非宿主原生压缩 |
-| Repository gate | full `2117`、skip `31`；已知失败组修复；候选审查 5 个负向复现通过 |
-| Native probe | 前后 hook 执行、marker 保留；lookup `1/0`，采用门未过；实报窗口 828400；[receipt](experiments/evidence/m11-00-installed-hook-native.json) |
-| Safe installation | [历史收据](experiments/evidence/m11-00-safe-codex-install.json)仅证明安装时校验；不证明当前任务可见或持续启用 |
-| M11 retrieval fallback | 本地候选：空结果成功返回，原回执哈希/字节合同保持；不可用或零命中不触发安装；未部署到业务任务 |
-| M11 live-command continuation | advisory PostToolUse 识别仍运行的 shell handle，仅注入一次 `write_stdin` 轮询提示；State/claim/命令门均为 `0`；完成命令无提示；复现与验证见 [receipt](experiments/evidence/m11-03-live-command-handle.json) |
-| M11 safe plugin replacement | 本机候选 `0.1.0-alpha.12+codex.20260909122445`；受保护 provider/model/auth/proxy 指纹 `70` 条保持不变；Codex 原生发现 6/6 plugin hooks trusted/enabled；无业务 State 写入；[install receipt](experiments/evidence/m11-00-safe-codex-install-replace.json)、[preflight](experiments/evidence/m11-00-replaced-hook-preflight.json) |
-| M11 hook continuation contract | compact SessionStart 注入静默 next_action 合同；PostCompact 仅校验 canary；每个 turn 至多一次 bounded-read 提示和长命令 next-action 提示；不阻断、不调用 State；Git worktree resume 解析到注册治理根；[install receipt](experiments/evidence/m11-00-safe-codex-install-hooks-v2.json)、[preflight](experiments/evidence/m11-00-installed-hook-preflight-v2.json) |
-| M11 runtime diagnosis | doctor 解析 marketplace 实际 plugin，检测 no-op stub、入口缺失、hook 命令缺口、版本漂移、active claim 80% lease 预警与 resume packet 体积；明确执行意图不再被 cursor 降级为只答问题；PostCompact 恢复为静默 canary，不重复注入；lifecycle/release/autorun focused `84/84` 与新增 doctor 回归通过 |
-| M11 opencodex-safe install | cc-switch 完全卸载可继续 guarded install，部分残留仍 fail-closed；opencodex config/catalog/systemd/basic-auth 稳定表面变更会中止；部署收据见 [v3](experiments/evidence/m11-00-safe-codex-install-hooks-v3.json)，preflight 见 [v3](experiments/evidence/m11-00-installed-hook-preflight-v3.json) |
-| Governance authority | `MASTER.md` revision 136 |
+| Native probe | hook 前后执行、marker 保留；lookup `1/0`，采用门未过；[receipt](experiments/evidence/m11-00-installed-hook-native.json) |
+| Runtime diagnosis | doctor 校验真实 plugin、6/6 hook、版本、lease 预警与 packet 体积；明确执行意图保持 continuation |
+| opencodex-safe install | [install v5](experiments/evidence/m11-00-safe-codex-install-hooks-v5.json)、[preflight v4](experiments/evidence/m11-00-installed-hook-preflight-v4.json)；保护面未变 |
+| alpha.13 publication | GitHub main/tag CI、release workflow、PyPI workflow 均通过；发行说明见 [alpha.13](docs/releases/0.1.0-alpha.13.md)；本机原生 compaction hook 全部执行且 marker 保留，但 lookup `0`，adoption gate 未通过 |
+| Governance authority | `MASTER.md` revision 137 |
 
 ## 恢复入口
 

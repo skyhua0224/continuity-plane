@@ -111,18 +111,13 @@ class AdvisoryHookTests(unittest.TestCase):
         with mock.patch.object(self.hook, "_command", side_effect=AssertionError("State called")):
             self.assertEqual(self.invoke(payload), "")
 
-    def test_postcompact_emits_silent_continuation_contract(self):
+    def test_postcompact_stays_silent_after_canary_verification(self):
         payload = self.payload("PostCompact", trigger="auto")
         output = io.StringIO()
         with mock.patch.object(self.hook, "_command", return_value=subprocess.CompletedProcess([], 0, "{}\n", "")), \
                 mock.patch.object(self.hook.sys, "stdout", output):
             self.assertEqual(self.hook._postcompact(payload, self.project), 0)
-        context = json.loads(output.getvalue())["hookSpecificOutput"]["additionalContext"]
-        self.assertIn("next_action", context)
-        self.assertIn("do not repeat", context.lower())
-        self.assertIn("continuity_context_lookup", context)
-        self.assertIn("write_stdin", context)
-        self.assertNotIn("compaction", context.lower())
+        self.assertEqual(output.getvalue(), "")
 
     def test_broad_code_read_gets_one_bounded_lookup_hint(self):
         payload = self.payload(
@@ -184,14 +179,19 @@ class AdvisoryHookTests(unittest.TestCase):
         output, _ = invoke({**base, "hook_event_name": "PreCompact", "trigger": "auto"})
         self.assertEqual(output, "")
         output, _ = invoke({**base, "hook_event_name": "PostCompact", "trigger": "auto"})
-        self.assertIn("next_action", output)
+        self.assertEqual(output, "")
+        output, _ = invoke({**base, "hook_event_name": "SessionStart", "source": "compact"})
         self.assertIn("continuity_context_lookup", output)
+        self.assertNotIn("work-active", output)
         def state_hashes():
             return {p.relative_to(project).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
                     for p in (project / ".continuity").rglob("*") if p.is_file()}
         before = state_hashes()
         with ThreadPoolExecutor(max_workers=4) as pool:
-            concurrent = list(pool.map(lambda i: invoke({**base, "tool_use_id": f"race-{i}"}, True), range(16)))
+            race_base = {**base, "hook_event_name": "PreToolUse",
+                         "turn_id": "turn-race",
+                         "tool_input": {"command": "find . -type f -print"}}
+            concurrent = list(pool.map(lambda i: invoke({**race_base, "tool_use_id": f"race-{i}"}, True), range(16)))
         contexts = [json.loads(output)["hookSpecificOutput"]["additionalContext"]
                     for output, _ in concurrent if output]
         self.assertEqual(len(contexts), 1)
@@ -199,7 +199,8 @@ class AdvisoryHookTests(unittest.TestCase):
         timings = []
         for i in range(40):
             for event in ("PreToolUse", "PostToolUse"):
-                output, elapsed = invoke({**base, "hook_event_name": event, "tool_use_id": f"normal-{i}",
+                normal_base = {**base, "tool_input": {"command": "python -m unittest tests.test_stage"}}
+                output, elapsed = invoke({**normal_base, "hook_event_name": event, "tool_use_id": f"normal-{i}",
                                           "tool_response": {"exit_code": 0, "output": "private-result"}}, True)
                 self.assertEqual(output, "")
                 timings.append(elapsed)

@@ -13,19 +13,19 @@ Continuity Plane 是面向长期 AI 辅助软件工作的 provider-neutral 控�
 先安装一份 CLI：
 
 ```bash
-python -m pip install continuity-plane==0.1.0a12
+python -m pip install continuity-plane==0.1.0a13
 ```
 
-当前公开版本为 alpha12，包含 PR3/PR4 恢复与插件接入修复。
+当前公开版本为 alpha13，包含零阻断 adoption hook、真实运行时 doctor、明确执行意图与 opencodex 安全安装保护。
 
 ### Codex 插件（可选）
 
 核心包不依赖插件。默认 `continuity-plane` plugin 是轻量 core，只提供有界恢复和
 checkpoint lifecycle，不注册 State MCP 工具，也不阻断普通开发命令。
-开发中的操作前后 advisory hook 与一次性恢复补偿尚未发布，详见[下一版本](CHANGELOG.md#下一版本未发布)。
+操作前后 advisory hook 与一次性恢复补偿已随 alpha13 发布，完整变更见 [alpha.13](CHANGELOG.md#010-alpha13)。
 
 ```bash
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.12
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.13
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -61,9 +61,10 @@ codex plugin add continuity-plane-state@continuity-plane
 continuity doctor --root . --codex-home ~/.codex
 ```
 
-`codex_plugin.status=active` 表示配置、MCP policy、hook trust 和真实 SessionStart
-观测均已通过。普通问题直接使用 lifecycle 提供的有界恢复信息，不调用 State 工具；只有
-显式诊断 State 时才 inspect，写入 State 前才 resume。权威状态仍由本地 CLI/State MCP 管理。
+`codex_plugin.status` 与 `codex_plugin.runtime.status` 均为 `active` 时，配置、MCP policy、
+6/6 hook、脚本入口、版本和 SessionStart 观测全部通过；`state_health` 与 `packet_health`
+分别显示租约预警和恢复包体积。普通开发使用非阻断 `auto`；`strict` 仅用于 CI 或显式
+强制场景。
 
 ### 单项目
 
@@ -191,7 +192,7 @@ continuity state show --root .
 ## 文档
 
 - [完整使用教程](USAGE.md)
-- [alpha.12 完整变更与升级说明](CHANGELOG.md#010-alpha12)
+- [alpha.13 完整变更与升级说明](CHANGELOG.md#010-alpha13)
 - [架构说明](docs/architecture.md)
 - [配置说明](docs/configuration.md)
 - [Python API](docs/api.md)
@@ -205,7 +206,7 @@ continuity state show --root .
 
 ## Release 与许可证
 
-当前 alpha 已发布到 [PyPI](https://pypi.org/project/continuity-plane/0.1.0a12/) 和
+当前 alpha 已发布到 [PyPI](https://pypi.org/project/continuity-plane/0.1.0a13/) 和
 [GitHub Releases](https://github.com/skyhua0224/continuity-plane/releases)。GitHub
 Release 同时提供核心 wheel、source archive、Codex plugin marketplace 和 SHA256SUMS；
 详见 [发布说明](CHANGELOG.md)。

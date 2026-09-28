@@ -2,7 +2,7 @@
 
 [中文](CHANGELOG.md)
 
-## Next Release (Unreleased)
+## 0.1.0-alpha.13
 
 - The development installer limits edits to Continuity integration fields and uses read-only
   fingerprints to protect provider credentials, auth files, models, routing, and independent profiles.
@@ -47,6 +47,22 @@
   size. A stale cache can no longer be reported as ready. The interaction cursor preserves explicit
   continue/execute/finish requests as continuations while only information requests answer in place;
   PostCompact only verifies the canary, leaving one recovery injection at compact SessionStart.
+- Migration note: a `remain-read-only` state written by an old version requires one controlled reclaim
+  event before it recovers; the new version no longer produces that default wait state. Projects with
+  no legacy State need no extra migration command.
+
+### Installation
+
+
+~~~bash
+python -m pip install --upgrade continuity-plane==0.1.0a13
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.13
+codex plugin add continuity-plane@continuity-plane
+codex plugin add continuity-plane-search@continuity-plane
+codex plugin add continuity-plane-state@continuity-plane
+~~~
+
+Start a new Session after installation so the new manifest, MCP tool table, and hook hashes load.
 
 ## 0.1.0-alpha.12
 

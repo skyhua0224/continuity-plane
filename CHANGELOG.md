@@ -2,7 +2,7 @@
 
 [English](CHANGELOG.en.md)
 
-## 下一版本（未发布）
+## 0.1.0-alpha.13
 
 - 开发安装器仅修改 Continuity 集成字段，使用只读指纹校验保护 provider 凭据、认证文件、
   模型、路由与独立 profile；拒绝在公共片段中夹带认证信息，不在竞态后整份回滚配置。
@@ -34,6 +34,21 @@
   包版本、active claim 80% 租约预警和 resume packet 体积；陈旧 cache 不再被误报为 ready。
   Interaction Cursor 将明确“继续/执行/完成”的用户输入保持为 continuation，信息型问题才
   进入 answer-only；PostCompact 只做 canary，恢复上下文仍由 compact SessionStart 注入一次。
+- 迁移提示：旧版本写入的 `remain-read-only` 状态需要一次受控 reclaim 事件才会恢复；新版本
+  不再产生该默认停等状态。没有旧 State 的项目不需要额外迁移命令。
+
+### 安装
+
+
+~~~bash
+python -m pip install --upgrade continuity-plane==0.1.0a13
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.13
+codex plugin add continuity-plane@continuity-plane
+codex plugin add continuity-plane-search@continuity-plane
+codex plugin add continuity-plane-state@continuity-plane
+~~~
+
+安装插件后新建 Session，使新的 manifest、MCP 工具表和 hook hash 被加载。
 
 ## 0.1.0-alpha.12
 

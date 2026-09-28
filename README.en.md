@@ -14,20 +14,20 @@ after compaction, task switches, crashes, and handoffs is deterministic.
 Install one CLI first:
 
 ```bash
-python -m pip install continuity-plane==0.1.0a12
+python -m pip install continuity-plane==0.1.0a13
 ```
 
-The current public version is alpha12, including the PR3/PR4 recovery and plugin integration fixes.
+The current public version is alpha13, including non-blocking adoption hooks, real-runtime doctor checks, explicit execution intent, and OpenCodex-safe installation.
 
 ### Codex plugin (optional)
 
 The core package does not depend on a plugin. The default `continuity-plane` plugin is a
 lightweight core for bounded recovery and checkpoint lifecycle, with no State MCP tools or ordinary
-command gates. Advisory tool hooks and one-shot recovery compensation are in development, not in
-alpha12; see the [unreleased changes](CHANGELOG.en.md#next-release-unreleased).
+command gates. Advisory tool hooks and one-shot recovery compensation ship in alpha13; see the
+[alpha.13 changes](CHANGELOG.en.md#010-alpha13).
 
 ```bash
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.12
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.13
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -63,10 +63,10 @@ Start or resume a Session after installation, then verify real adoption:
 continuity doctor --root . --codex-home ~/.codex
 ```
 
-`codex_plugin.status=active` means configuration, MCP policy, hook trust, and a real SessionStart
-observation all passed. Ordinary questions use the bounded lifecycle recovery context and do not call
-State tools. Inspect only for explicit State diagnosis; resume only before a State write. Authoritative
-state remains managed by the local CLI/State MCP.
+Both `codex_plugin.status` and `codex_plugin.runtime.status` must be `active`: configuration, MCP
+policy, all six hooks, script entrypoints, version, and SessionStart observation passed.
+`state_health` and `packet_health` expose lease warnings and recovery-packet size. Daily development
+uses non-blocking `auto`; `strict` is only for CI or explicit mandatory-blocking workflows.
 
 ### One Project
 
@@ -202,7 +202,7 @@ are optional enhancements.
 ## Documentation
 
 - [Usage guide](USAGE.en.md)
-- [Complete alpha.12 changes and upgrade notes](CHANGELOG.en.md#010-alpha12)
+- [Complete alpha.13 changes and upgrade notes](CHANGELOG.en.md#010-alpha13)
 - [Architecture](docs/architecture.en.md)
 - [Configuration](docs/configuration.en.md)
 - [Python API](docs/api.en.md)
@@ -215,7 +215,7 @@ are optional enhancements.
 
 ## Release And License
 
-The current alpha is available from [PyPI](https://pypi.org/project/continuity-plane/0.1.0a12/)
+The current alpha is available from [PyPI](https://pypi.org/project/continuity-plane/0.1.0a13/)
 and [GitHub Releases](https://github.com/skyhua0224/continuity-plane/releases).
 The GitHub release also provides the core wheel, source archive, Codex plugin marketplace, and SHA256SUMS; see the
 [changelog](CHANGELOG.en.md).

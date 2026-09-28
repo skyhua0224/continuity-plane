@@ -133,7 +133,12 @@ def main():
                 source = temp / "public/plugins/continuity-plane"
                 target = root / "plugins/continuity-plane"
                 def prepare_candidate():
-                    for relative in ("scripts/continuity-hook.py", "scripts/continuity-advisory-hook.py", "hooks/hooks.json"):
+                    for relative in (
+                        ".codex-plugin/plugin.json",
+                        "scripts/continuity-hook.py",
+                        "scripts/continuity-advisory-hook.py",
+                        "hooks/hooks.json",
+                    ):
                         destination = target / relative
                         destination.parent.mkdir(parents=True, exist_ok=True)
                         shutil.copy2(source / relative, destination)

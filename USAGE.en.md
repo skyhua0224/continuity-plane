@@ -11,10 +11,10 @@ AMD64.
 ### Install From PyPI
 
 ```bash
-python -m pip install continuity-plane==0.1.0a12
+python -m pip install continuity-plane==0.1.0a13
 ```
 
-The current public version is alpha12 and includes the latest recovery and hook fixes.
+The current public version is alpha13 and includes non-blocking adoption hooks, real-runtime doctor checks, explicit execution intent, and OpenCodex-safe installation.
 
 For a source checkout:
 
@@ -29,7 +29,7 @@ Download a wheel or source archive from
 [Continuity Plane Releases](https://github.com/skyhua0224/continuity-plane/releases):
 
 ```bash
-python -m pip install /path/to/continuity_plane-0.1.0a12-py3-none-any.whl
+python -m pip install /path/to/continuity_plane-0.1.0a13-py3-none-any.whl
 ```
 
 ### Install Once For Many Projects
@@ -40,7 +40,7 @@ projects:
 ```bash
 python3 -m venv ~/.local/share/continuity-plane/venv
 ~/.local/share/continuity-plane/venv/bin/python \
-  -m pip install continuity-plane==0.1.0a12
+  -m pip install continuity-plane==0.1.0a13
 ```
 
 Run the installed CLI with an explicit project root whenever the command is not
@@ -58,7 +58,7 @@ For a project that pins its own control-plane version:
 ```bash
 cd /path/to/project
 python3 -m venv .venv
-.venv/bin/python -m pip install continuity-plane==0.1.0a12
+.venv/bin/python -m pip install continuity-plane==0.1.0a13
 .venv/bin/continuity init --root . --project-id my-project
 ```
 
@@ -225,7 +225,7 @@ single-user installation. Install the optional extra in the environment that
 will run the adapter:
 
 ```bash
-python -m pip install 'continuity-plane[postgres]==0.1.0a11'
+python -m pip install 'continuity-plane[postgres]==0.1.0a13'
 ```
 
 The alpha CLI still defaults to SQLite. PostgreSQL is selected by an explicit
@@ -318,15 +318,15 @@ the advanced State plugin only for explicit State operations.
 Install the core package, then add this GitHub repository as a marketplace:
 
 ```bash
-python -m pip install continuity-plane==0.1.0a12
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.12
+python -m pip install continuity-plane==0.1.0a13
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.13
 codex plugin add continuity-plane@continuity-plane
 ```
 
 Start a new Session after installation. The core plugin loads one bounded packet
 at SessionStart and runs checkpoint lifecycle hooks around compaction. Questions
-do not advance the saved Work or emit recovery narration. Alpha12 registers only lifecycle hooks.
-The advisory tool hooks described below are unreleased development changes.
+do not advance the saved Work or emit recovery narration. Alpha13 advisory hooks provide only
+one-shot guidance and sanitized observation; they do not block ordinary development commands.
 
 Codex tracks hook trust separately from plugin installation. Review the current definitions in
 `/hooks`; changed definitions require renewed trust after an upgrade. Untrusted hooks are skipped by
@@ -409,7 +409,7 @@ depending on a system Python alias. In `auto` mode, `SessionStart(source=compact
 current bounded packet and directs the model to continue silently from `next_action`. Hook or
 State-sync failures are observed and degraded; they do not stop ordinary editing, builds, or tests.
 
-In the unreleased build, independent advisory hooks observe local tool boundaries without State calls
+In alpha13, independent advisory hooks observe local tool boundaries without State calls
 or command gates, including under a leftover `strict` setting. Ordinary successes use `1/16` sampling;
 failures, recognized effects, and Continuity MCP calls retain observations. Missing compaction entry
 gets one retrieval hint (at most `1 KiB`) on the next tool, or one resume attempt on the next user
@@ -606,7 +606,7 @@ storage.
 
 The current version is available from PyPI and GitHub Releases:
 
-<https://pypi.org/project/continuity-plane/0.1.0a11/>  
+<https://pypi.org/project/continuity-plane/0.1.0a13/>  
 <https://github.com/skyhua0224/continuity-plane/releases>
 
 The current public release used a controlled PyPI token. A GitHub Actions OIDC

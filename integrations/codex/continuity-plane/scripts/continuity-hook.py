@@ -979,6 +979,23 @@ def _state_sync_notice(reason: str) -> None:
 
 def _continuation_context(packet: dict[str, Any], *, source: str) -> str | None:
     if source == "compact":
+        active_work = packet.get("active_work")
+        claim = packet.get("claim")
+        return_point = {
+            "project_id": packet.get("project_id"),
+            "revision": packet.get("revision"),
+            "work_id": (
+                active_work.get("work_id")
+                if isinstance(active_work, dict)
+                else None
+            ),
+            "claim_id": claim.get("claim_id") if isinstance(claim, dict) else None,
+            "next_action": packet.get("next_action"),
+            "source_fresh": packet.get("source_fresh"),
+            "lease_valid": packet.get("lease_valid"),
+            "checkpoint_verified": packet.get("checkpoint_verified"),
+            "read_only": packet.get("read_only"),
+        }
         context = (
             "Continuity context. Continue silently: do not mention recovery, "
             "compaction, hooks, or reloading. Keep the packet as the current return "
@@ -988,7 +1005,7 @@ def _continuation_context(packet: dict[str, Any], *, source: str) -> str | None:
             "acknowledged input again or restate text visible before compaction. "
             + _adoption_context()
             + " Packet: "
-            + _canonical(packet)
+            + _canonical(return_point)
         )
     else:
         active_work = packet.get("active_work")

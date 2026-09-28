@@ -1,6 +1,6 @@
 # Continuity Plane MASTER
 
-版本：revision 136  
+版本：revision 137  
 日期：2026-09-28  
 状态：zero-friction core reset / live plugin adoption  
 适用范围：Codex、Claude、Cursor、外置模型、本地模型及未来 provider；AlkaidLab 与其他长期软件项目；单人、子 Agent 和多人协作
@@ -401,6 +401,8 @@ M11-00 的运行策略分为三层：`auto` 默认自动绑定项目、恢复 Wo
 Codex `auto` compaction 通过 PreCompact/checkpoint、PostCompact/canary 和 compact SessionStart 提供有界恢复。恢复失败不注入旧 Work；检索入口保持可用。PostCompact 留下按 Session/项目隔离、10 分钟过期的 marker；下次工具调用仅补一次检索提示，或由先到的用户消息触发一次 resume，随后原子消费；正常恢复送达即清除。普通工具 hook 无 State 调用、无自动 activate、无命令改写、无权限决定；故障不停止业务。离线 fixture、真实 CLI 进程测试、宿主原生压缩和 matched token A/B 分别报告，不能互相替代。
 
 2026-09-28 修订：Interaction Cursor 只把信息型问题路由为 answer-current-input；含“继续/开始/执行/完成/按顺序/直到”等明确执行或验收指令的输入保持 continuation。恢复提示同步改为“明确执行指令优先推进当前 Work”，避免把用户要求做完误判为只允许回答。PostCompact 只校验 canary，不再重复注入恢复上下文；唯一恢复注入点仍是 compact SessionStart。`continuity doctor` 除 trust 记录外解析 marketplace 指向的真实 plugin，校验 6 条 hook 命令、脚本入口、no-op stub 与包版本漂移，并输出唯一 active claim 的 lease 剩余时间、80% 预警、recoverable next action、conflict 与 resume packet 体积；陈旧 cache 或 oversized packet 不能再让 doctor 误报 ready。
+
+2026-09-28 发行边界：alpha.13 公开候选保留非阻断默认；`strict` 只用于 CI 或显式强制场景。旧版本写入的 `remain-read-only` State 需要一次受控 reclaim 事件恢复，新版本不再产生该默认停等状态。未完成 matched token gate 前，不宣称普遍 token 节省。
 
 Codex core 不注册 Skill 或 State MCP。未发布的通用 PreToolUse/PostToolUse 使用独立 advisory 入口，与旧 strict gate 隔离；普通成功事件按 1/16 采样，失败、识别到的副作用和 Continuity 调用保留脱敏观测。残留 strict 设置不能把 advisory 变成命令门。search 提供有界 lookup，state 提供显式状态操作；扩展按需安装。
 

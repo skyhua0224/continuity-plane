@@ -10,10 +10,10 @@ Windows AMD64 完成安装、verify 和卸载。
 ### 从 PyPI 安装
 
 ```bash
-python -m pip install continuity-plane==0.1.0a12
+python -m pip install continuity-plane==0.1.0a13
 ```
 
-当前公开版本为 alpha12，包含最新恢复和 hook 修复。
+当前公开版本为 alpha13，包含零阻断 adoption hook、真实运行时 doctor、明确执行意图与 opencodex 安全安装保护。
 
 从源码 checkout 开发时：
 
@@ -28,7 +28,7 @@ python -m venv .venv
 下载 wheel 或 source archive：
 
 ```bash
-python -m pip install /path/to/continuity_plane-0.1.0a12-py3-none-any.whl
+python -m pip install /path/to/continuity_plane-0.1.0a13-py3-none-any.whl
 ```
 
 ### 全局安装，管理多个项目
@@ -38,7 +38,7 @@ python -m pip install /path/to/continuity_plane-0.1.0a12-py3-none-any.whl
 ```bash
 python3 -m venv ~/.local/share/continuity-plane/venv
 ~/.local/share/continuity-plane/venv/bin/python \
-  -m pip install continuity-plane==0.1.0a12
+  -m pip install continuity-plane==0.1.0a13
 
 ~/.local/share/continuity-plane/venv/bin/continuity \
   init --root /path/to/project --project-id my-project
@@ -49,7 +49,7 @@ python3 -m venv ~/.local/share/continuity-plane/venv
 ```bash
 cd /path/to/project
 python3 -m venv .venv
-.venv/bin/python -m pip install continuity-plane==0.1.0a12
+.venv/bin/python -m pip install continuity-plane==0.1.0a13
 .venv/bin/continuity init --root . --project-id my-project
 ```
 
@@ -193,7 +193,7 @@ continuity work activate \
 个人想进行 SQL 检查、备份或让多个本地 worker 共用状态时，可以选择 PostgreSQL：
 
 ```bash
-python -m pip install 'continuity-plane[postgres]==0.1.0a11'
+python -m pip install 'continuity-plane[postgres]==0.1.0a13'
 ```
 
 当前 alpha CLI 仍默认 SQLite。PostgreSQL 通过显式 Python adapter 使用：
@@ -275,14 +275,14 @@ MCP 写工具，也不阻断普通开发。需要显式 State 操作时再安装
 先安装核心包，再把本项目 GitHub 仓库作为 marketplace：
 
 ```bash
-python -m pip install continuity-plane==0.1.0a12
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.12
+python -m pip install continuity-plane==0.1.0a13
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.13
 codex plugin add continuity-plane@continuity-plane
 ```
 
 安装后新建 Session。core plugin 在 `SessionStart` 加载有界 packet，并在
 `PreCompact`/`PostCompact` 执行 checkpoint 生命周期。普通问题不会推进保存的 Work，
-也不会输出恢复旁白。alpha12 只注册生命周期 hook；下文的 advisory 工具 hook 属于未发布改动。
+也不会输出恢复旁白。alpha13 的 advisory 工具 hook 只提供一次性提示和脱敏观测，不拦截普通开发命令。
 
 Codex 将 hook 信任与插件安装分开。通过 `/hooks` 审核并信任当前定义；升级后定义变化需要
 重新确认。未受信任的 hook 会被宿主跳过，不能报告为已采用，也不应触发反复重装或改写
@@ -357,7 +357,7 @@ MCP 不可见或连接失败属于检索不可用；空结果是查询成功但�
 静默从 `next_action` 继续；hook 或 State 同步失败只记录观测，不停止普通代码编辑、构建
 和测试。
 
-未发布开发版的独立 advisory hook 不调用 State、不拒绝命令，即使环境残留 `strict` 也如此。
+alpha13 的独立 advisory hook 不调用 State、不拒绝命令，即使环境残留 `strict` 也如此。
 普通成功操作按 `1/16` 采样；失败、识别到的副作用和 Continuity MCP 调用保留观测。
 压缩恢复漏送时，下次工具调用最多补一次 `1 KiB` 检索提示；若先收到用户消息，则尝试一次
 当前 resume。标记按项目/Session 隔离，10 分钟过期，原子消费；正常恢复送达就清除。
@@ -516,7 +516,7 @@ template 和 content-addressed artifact。所有 claim 关闭后，才能归档�
 
 当前版本同时发布到 PyPI 和 GitHub Release：
 
-<https://pypi.org/project/continuity-plane/0.1.0a11/>  
+<https://pypi.org/project/continuity-plane/0.1.0a13/>  
 <https://github.com/skyhua0224/continuity-plane/releases>
 
 当前公开版本使用受控 PyPI token 发布。GitHub Actions OIDC workflow 和 `pypi`
