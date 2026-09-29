@@ -461,6 +461,7 @@ class InventoryTests(unittest.TestCase):
                 packet["execution_contract"]["authority"],
                 "collaboration-hint-only",
             )
+            self.assertNotIn("updated_at", packet["task"])
             self.assertLess(len(completed.stdout.encode("utf-8")), 16_384)
 
 
