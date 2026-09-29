@@ -68,6 +68,14 @@ policy, all six hooks, script entrypoints, version, and SessionStart observation
 `state_health` and `packet_health` expose lease warnings and recovery-packet size. Daily development
 uses non-blocking `auto`; `strict` is only for CI or explicit mandatory-blocking workflows.
 
+## Generic collaboration and vocabulary memory
+
+The alpha14 development branch adds a lightweight collaboration ledger, global/project
+vocabulary memory, a skills audit, and a worktree inventory. They are collaboration hints
+only, grant no completion or external-effect authority, and local development continues
+when metadata is missing. See
+[`generic-collaboration-memory`](docs/architecture/generic-collaboration-memory.md).
+
 ### One Project
 
 Use this when one repository should own its state and pinned control-plane version.

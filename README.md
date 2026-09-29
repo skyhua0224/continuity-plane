@@ -66,6 +66,7 @@ continuity doctor --root . --codex-home ~/.codex
 分别显示租约预警和恢复包体积。普通开发使用非阻断 `auto`；`strict` 仅用于 CI 或显式
 强制场景。
 
+
 ### 单项目
 
 适合希望每个仓库独立保存状态和版本的个人项目。

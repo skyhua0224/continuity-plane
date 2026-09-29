@@ -32,6 +32,21 @@ from .checkpoint import (
     publish_checkpoint,
     restore_checkpoint,
 )
+from .collaboration_registry import (
+    add_task,
+    claim_task,
+    default_data_root,
+    list_projects,
+    list_tasks,
+    next_task,
+    register_project,
+    resolve_project,
+    update_task,
+)
+from .collaboration_packet import (
+    compose_collaboration_packet,
+    compose_safe_collaboration_packet,
+)
 from .local_state_bundle import (
     LocalStateBundleError,
     export_local_state,
@@ -48,7 +63,10 @@ from .recovery_envelope import (
 from .route_apply import apply_route
 from .status_projection import render_status_projection
 from .sticky_router import canonical_route_decision_bytes, route_task_input
+from .skills_inventory import audit_skills
 from .sqlite_state_store import SQLiteStateStore
+from .vocabulary_memory import add_entity, list_entities, resolve as resolve_vocabulary
+from .workspace_inventory import inventory_worktrees
 from .workspace_binding import (
     WorkspaceBindingError,
     register_control_root,
@@ -4391,6 +4409,159 @@ def _observe_report(args: argparse.Namespace) -> int:
     return 0
 
 
+def _collaboration_register(args: argparse.Namespace) -> int:
+    document = register_project(
+        args.data_root,
+        project_id=args.project_id,
+        control_root=args.control_root,
+        repository_roots=args.repository_root or [],
+    )
+    print(json.dumps(document, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def _collaboration_list(args: argparse.Namespace) -> int:
+    print(json.dumps(list_projects(args.data_root), ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def _collaboration_resolve(args: argparse.Namespace) -> int:
+    document = resolve_project(args.root, args.data_root)
+    print(json.dumps(document, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def _collaboration_packet(args: argparse.Namespace) -> int:
+    composer = (
+        compose_collaboration_packet
+        if args.strict
+        else compose_safe_collaboration_packet
+    )
+    packet = composer(
+        args.data_root,
+        project_id=args.project_id,
+        query=args.query,
+        assignee=args.assignee,
+        max_entities=args.max_entities,
+    )
+    print(json.dumps(packet, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def _collaboration_task_add(args: argparse.Namespace) -> int:
+    task = add_task(
+        args.data_root,
+        project_id=args.project_id,
+        task_id=args.task_id,
+        lane_id=args.lane_id,
+        mode=args.mode,
+        priority=args.priority,
+        title=args.title,
+        objective=args.objective,
+        next_action=args.next_action,
+        exit_criteria=args.exit_criterion,
+        worktree=args.worktree,
+        allowed_files=args.allowed_file or [],
+        preauthorized_effects=args.preauthorized_effect or [],
+        queued_effects=args.queued_effect or [],
+        assignee=args.assignee,
+    )
+    print(json.dumps(task, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def _collaboration_task_update(args: argparse.Namespace) -> int:
+    task = update_task(
+        args.data_root,
+        project_id=args.project_id,
+        task_id=args.task_id,
+        status=args.status,
+        next_action=args.next_action,
+        blocked_reason=args.blocked_reason,
+        result=args.result,
+    )
+    print(json.dumps(task, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def _collaboration_task_next(args: argparse.Namespace) -> int:
+    task = next_task(args.data_root, project_id=args.project_id, assignee=args.assignee)
+    print(json.dumps(task, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def _collaboration_task_claim(args: argparse.Namespace) -> int:
+    task = claim_task(
+        args.data_root,
+        project_id=args.project_id,
+        task_id=args.task_id,
+        assignee=args.assignee,
+        worktree=args.worktree,
+    )
+    print(json.dumps(task, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def _collaboration_task_list(args: argparse.Namespace) -> int:
+    print(
+        json.dumps(
+            list_tasks(args.data_root, project_id=args.project_id),
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+    )
+    return 0
+
+
+def _memory_add(args: argparse.Namespace) -> int:
+    entity = add_entity(
+        args.data_root or default_data_root(),
+        entity_id=args.entity_id,
+        aliases=args.alias,
+        statement=args.statement,
+        scope=args.scope,
+        source=args.source,
+        project_id=args.project_id,
+        confidence=args.confidence,
+    )
+    print(json.dumps(entity, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def _memory_list(args: argparse.Namespace) -> int:
+    data_root = args.data_root or default_data_root()
+    entities = list_entities(data_root, project_id=args.project_id)
+    print(json.dumps(entities, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def _memory_resolve(args: argparse.Namespace) -> int:
+    data_root = args.data_root or default_data_root()
+    entities = resolve_vocabulary(
+        data_root,
+        args.query,
+        project_id=args.project_id,
+    )
+    print(json.dumps(entities, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def _worktree_inventory(args: argparse.Namespace) -> int:
+    report = inventory_worktrees(args.root, stale_days=args.stale_days)
+    print(json.dumps(report, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def _skills_audit(args: argparse.Namespace) -> int:
+    roots = args.skill_root or [
+        Path.home() / ".codex" / "skills",
+        Path.home() / ".agents" / "skills",
+    ]
+    report = audit_skills(roots, description_budget=args.description_budget)
+    print(json.dumps(report, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="continuity")
     parser.add_argument("--version", action="version", version=VERSION)
@@ -4626,6 +4797,159 @@ def build_parser() -> argparse.ArgumentParser:
     observe_report.add_argument("--data-root", default=None)
     observe_report.add_argument("--session-limit", type=int, default=20)
     observe_report.set_defaults(handler=_observe_report)
+    collaboration = commands.add_parser(
+        "collaboration",
+        help="manage generic project and task collaboration metadata",
+    )
+    collaboration_commands = collaboration.add_subparsers(
+        dest="collaboration_command", required=True
+    )
+    collaboration_register = collaboration_commands.add_parser(
+        "register", help="register a project and its repository roots"
+    )
+    collaboration_register.add_argument("--data-root", default=None)
+    collaboration_register.add_argument("--project-id", required=True)
+    collaboration_register.add_argument("--control-root", required=True)
+    collaboration_register.add_argument("--repository-root", action="append")
+    collaboration_register.set_defaults(handler=_collaboration_register)
+    collaboration_list = collaboration_commands.add_parser(
+        "list", help="list registered collaboration projects"
+    )
+    collaboration_list.add_argument("--data-root", default=None)
+    collaboration_list.set_defaults(handler=_collaboration_list)
+    collaboration_resolve = collaboration_commands.add_parser(
+        "resolve", help="resolve a registered control or repository root"
+    )
+    collaboration_resolve.add_argument("--root", default=".")
+    collaboration_resolve.add_argument("--data-root", default=None)
+    collaboration_resolve.set_defaults(handler=_collaboration_resolve)
+    collaboration_packet = collaboration_commands.add_parser(
+        "packet", help="read one bounded task and vocabulary packet"
+    )
+    collaboration_packet.add_argument("--data-root", default=None)
+    collaboration_packet.add_argument("--project-id", required=True)
+    collaboration_packet.add_argument("--query", default="")
+    collaboration_packet.add_argument("--assignee", default=None)
+    collaboration_packet.add_argument("--max-entities", type=int, default=3)
+    collaboration_packet.add_argument("--strict", action="store_true")
+    collaboration_packet.set_defaults(handler=_collaboration_packet)
+    collaboration_task = collaboration_commands.add_parser(
+        "task", help="manage bounded task cards"
+    )
+    collaboration_task_commands = collaboration_task.add_subparsers(
+        dest="collaboration_task_command", required=True
+    )
+    collaboration_task_add = collaboration_task_commands.add_parser(
+        "add", help="add a task card without granting execution authority"
+    )
+    collaboration_task_add.add_argument("--data-root", default=None)
+    collaboration_task_add.add_argument("--project-id", required=True)
+    collaboration_task_add.add_argument("--task-id", required=True)
+    collaboration_task_add.add_argument("--lane-id", required=True)
+    collaboration_task_add.add_argument(
+        "--mode",
+        choices=("scout", "patch", "integration", "cleanup", "infra", "decision"),
+        required=True,
+    )
+    collaboration_task_add.add_argument("--priority", choices=("p0", "p1", "p2"), required=True)
+    collaboration_task_add.add_argument("--title", required=True)
+    collaboration_task_add.add_argument("--objective", required=True)
+    collaboration_task_add.add_argument("--next-action", required=True)
+    collaboration_task_add.add_argument("--exit-criterion", action="append", required=True)
+    collaboration_task_add.add_argument("--worktree", default=None)
+    collaboration_task_add.add_argument("--allowed-file", action="append")
+    collaboration_task_add.add_argument("--preauthorized-effect", action="append")
+    collaboration_task_add.add_argument("--queued-effect", action="append")
+    collaboration_task_add.add_argument("--assignee", default=None)
+    collaboration_task_add.add_argument(
+        "--report-policy",
+        choices=("silent_until_stage_complete", "on_blocker", "on_decision", "verbose"),
+        default="silent_until_stage_complete",
+    )
+    collaboration_task_add.set_defaults(handler=_collaboration_task_add)
+    collaboration_task_update = collaboration_task_commands.add_parser(
+        "update", help="update task progress; acceptance remains a review action"
+    )
+    collaboration_task_update.add_argument("--data-root", default=None)
+    collaboration_task_update.add_argument("--project-id", required=True)
+    collaboration_task_update.add_argument("--task-id", required=True)
+    collaboration_task_update.add_argument(
+        "--status",
+        choices=(
+            "queued",
+            "active",
+            "blocked",
+            "ready-for-review",
+            "rejected",
+            "superseded",
+        ),
+        required=True,
+    )
+    collaboration_task_update.add_argument("--next-action", default=None)
+    collaboration_task_update.add_argument("--blocked-reason", default=None)
+    collaboration_task_update.add_argument("--result", default=None)
+    collaboration_task_update.set_defaults(handler=_collaboration_task_update)
+    collaboration_task_next = collaboration_task_commands.add_parser(
+        "next", help="read one active or queued task card"
+    )
+    collaboration_task_next.add_argument("--data-root", default=None)
+    collaboration_task_next.add_argument("--project-id", required=True)
+    collaboration_task_next.add_argument("--assignee", default=None)
+    collaboration_task_next.set_defaults(handler=_collaboration_task_next)
+    collaboration_task_claim = collaboration_task_commands.add_parser(
+        "claim", help="claim one queued card"
+    )
+    collaboration_task_claim.add_argument("--data-root", default=None)
+    collaboration_task_claim.add_argument("--project-id", required=True)
+    collaboration_task_claim.add_argument("--task-id", required=True)
+    collaboration_task_claim.add_argument("--assignee", required=True)
+    collaboration_task_claim.add_argument("--worktree", default=None)
+    collaboration_task_claim.set_defaults(handler=_collaboration_task_claim)
+    collaboration_task_list = collaboration_task_commands.add_parser(
+        "list", help="list task cards"
+    )
+    collaboration_task_list.add_argument("--data-root", default=None)
+    collaboration_task_list.add_argument("--project-id", required=True)
+    collaboration_task_list.set_defaults(handler=_collaboration_task_list)
+    memory = commands.add_parser(
+        "memory", help="manage scoped vocabulary memory"
+    )
+    memory_commands = memory.add_subparsers(dest="memory_command", required=True)
+    memory_add = memory_commands.add_parser("add", help="add a scoped alias")
+    memory_add.add_argument("--data-root", default=None)
+    memory_add.add_argument("--entity-id", required=True)
+    memory_add.add_argument("--alias", action="append", required=True)
+    memory_add.add_argument("--statement", required=True)
+    memory_add.add_argument("--scope", choices=("global", "project"), required=True)
+    memory_add.add_argument("--project-id")
+    memory_add.add_argument(
+        "--confidence", choices=("candidate", "confirmed"), default="candidate"
+    )
+    memory_add.add_argument("--source", required=True)
+    memory_add.set_defaults(handler=_memory_add)
+    memory_list = memory_commands.add_parser("list", help="list active aliases")
+    memory_list.add_argument("--data-root", default=None)
+    memory_list.add_argument("--project-id")
+    memory_list.set_defaults(handler=_memory_list)
+    memory_resolve = memory_commands.add_parser(
+        "resolve", help="resolve aliases in a short prompt"
+    )
+    memory_resolve.add_argument("--data-root", default=None)
+    memory_resolve.add_argument("--query", required=True)
+    memory_resolve.add_argument("--project-id")
+    memory_resolve.set_defaults(handler=_memory_resolve)
+    worktree_inventory = commands.add_parser(
+        "worktree-inventory", help="classify Git worktrees without cleanup"
+    )
+    worktree_inventory.add_argument("--root", default=".")
+    worktree_inventory.add_argument("--stale-days", type=int, default=14)
+    worktree_inventory.set_defaults(handler=_worktree_inventory)
+    skills_audit = commands.add_parser(
+        "skills-audit", help="audit local skills without editing configuration"
+    )
+    skills_audit.add_argument("--skill-root", action="append")
+    skills_audit.add_argument("--description-budget", type=int, default=8000)
+    skills_audit.set_defaults(handler=_skills_audit)
     return parser
 
 

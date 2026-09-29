@@ -1033,6 +1033,76 @@ def _continuation_context(packet: dict[str, Any], *, source: str) -> str | None:
     return context
 
 
+def _collaboration_once(payload: dict[str, Any], packet: dict[str, Any]) -> bool:
+    data = _plugin_data_root()
+    session_id = payload.get("session_id")
+    if data is None or not isinstance(session_id, str) or not session_id:
+        return False
+    identity = _canonical(packet)
+    directory = data / "collaboration-injections"
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+        marker = directory / f"{_hash(session_id + ':' + identity)}.marker"
+        descriptor = os.open(marker, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        os.close(descriptor)
+        return True
+    except FileExistsError:
+        return False
+    except OSError:
+        return False
+
+
+def _collaboration_context(payload: dict[str, Any]) -> str | None:
+    cwd = payload.get("cwd")
+    if not isinstance(cwd, str):
+        return None
+    try:
+        from context_control_plane.collaboration_packet import (
+            compose_safe_collaboration_packet,
+        )
+        from context_control_plane.collaboration_registry import resolve_project
+
+        project = resolve_project(cwd)
+        if project is None:
+            return None
+        prompt = payload.get("prompt")
+        query = prompt if isinstance(prompt, str) else ""
+        packet = compose_safe_collaboration_packet(
+            None,
+            project_id=project["project_id"],
+            query=query[:4096],
+            assignee=str(payload.get("session_id") or ""),
+        )
+    except Exception:
+        return None
+    task = packet.get("task")
+    vocabulary = packet.get("vocabulary")
+    if not task and not vocabulary:
+        return None
+    if not _collaboration_once(payload, packet):
+        return None
+    lines = [
+        "Continuity collaboration hint. Metadata only; ordinary local work never depends on it.",
+    ]
+    if isinstance(task, dict):
+        lines.extend(
+            [
+                f"Task: {task.get('task_id', 'unknown')}",
+                f"Objective: {task.get('objective', '')}",
+                f"Next action: {task.get('next_action', '')}",
+                f"Report policy: {task.get('report_policy', 'on_blocker')}",
+                "Local completion status: ready-for-review; acceptance remains a separate review.",
+            ]
+        )
+    for entity in vocabulary if isinstance(vocabulary, list) else []:
+        if isinstance(entity, dict):
+            lines.append(
+                f"Vocabulary {entity.get('entity_id', 'unknown')}: {entity.get('statement', '')}"
+            )
+    context = "\n".join(lines)
+    return context if len(context.encode("utf-8")) <= 5000 else None
+
+
 def _adoption_context() -> str:
     return (
         "For unfamiliar code, prefer available MCP continuity_context_lookup before broad reads; "
@@ -1199,6 +1269,18 @@ def _session_start_fallback(
 
 def _prompt_recovery(payload: dict[str, Any], root: Path) -> int:
     if _take_continuation_pending(payload, root) is None:
+        context = _collaboration_context(payload)
+        if context is not None:
+            print(
+                _canonical(
+                    {
+                        "hookSpecificOutput": {
+                            "hookEventName": "UserPromptSubmit",
+                            "additionalContext": context,
+                        }
+                    }
+                )
+            )
         return 0
     # New user input wins; never reuse the pre-compaction interaction cursor.
     # Keep the compact source so the one-shot fallback receives the full bounded
@@ -2420,6 +2502,9 @@ def _session_start(payload: dict[str, Any], root: Path) -> int:
         )
         _start_recovery_window(payload, root, budget_bytes=budget)
     context = _continuation_context(packet, source=str(payload.get("source", "startup")))
+    collaboration = _collaboration_context(payload)
+    if collaboration is not None:
+        context = context + "\n\n" + collaboration if context else collaboration
     if context is None:
         if _effect_policy() == "auto":
             return _session_start_fallback(payload, root, failed_gate="context_budget")
@@ -2497,8 +2582,21 @@ def main() -> int:
             session_id = payload.get("session_id")
             if data is None or not isinstance(session_id, str) or not session_id:
                 return 0
+            (data / "continuation-pending").mkdir(parents=True, exist_ok=True)
             pattern = f"{_hash(session_id)}-*.json"
             if next((data / "continuation-pending").glob(pattern), None) is None:
+                context = _collaboration_context(payload)
+                if context is not None:
+                    print(
+                        _canonical(
+                            {
+                                "hookSpecificOutput": {
+                                    "hookEventName": "UserPromptSubmit",
+                                    "additionalContext": context,
+                                }
+                            }
+                        )
+                    )
                 return 0
         except OSError:
             return 0
