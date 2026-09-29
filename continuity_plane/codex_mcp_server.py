@@ -19,6 +19,8 @@ from .light_observability import (
     resolve_policy,
 )
 from .workspace_binding import WorkspaceBindingError, resolve_control_root
+from .collaboration_packet import compose_safe_collaboration_packet
+from .collaboration_registry import resolve_project
 
 
 def _cli_command(*arguments: str) -> list[str]:
@@ -434,7 +436,7 @@ def main() -> int:
                         "protocolVersion", "2024-11-05"
                     ),
                     "capabilities": {"tools": {}},
-                    "serverInfo": {"name": "continuity", "version": "0.1.0-alpha.13"},
+                    "serverInfo": {"name": "continuity", "version": "0.1.0-alpha.14"},
                 },
             )
         elif method == "notifications/initialized":
@@ -453,6 +455,21 @@ def main() -> int:
                                 "additionalProperties": False,
                                 "required": ["root"],
                                 "properties": {"root": {"type": "string", "minLength": 1}},
+                            },
+                        },
+                        {
+                            "name": "continuity_collaboration_packet",
+                            "description": "读取当前项目的一张有界任务与词汇提示卡；只读、非阻塞，不授予任何 State 或外部效果权限 / Read one bounded task and vocabulary hint packet; read-only and non-blocking.",
+                            "annotations": _READ_ONLY_ANNOTATIONS,
+                            "inputSchema": {
+                                "type": "object",
+                                "additionalProperties": False,
+                                "required": ["root"],
+                                "properties": {
+                                    "root": {"type": "string", "minLength": 1},
+                                    "query": {"type": "string", "maxLength": 4096},
+                                    "assignee": {"type": "string", "maxLength": 256},
+                                },
                             },
                         },
                         {
@@ -671,6 +688,7 @@ def main() -> int:
             tool_name = params.get("name")
             if tool_name not in {
                 "continuity_inspect",
+                "continuity_collaboration_packet",
                 "continuity_resume",
                 "continuity_autorun",
                 "continuity_checkpoint",
@@ -690,11 +708,19 @@ def main() -> int:
                 _error(request_id, -32602, "root is required")
                 continue
             requested_root = _requested_root(root, active_root)
+            if requested_root is None and tool_name == "continuity_collaboration_packet":
+                candidate = Path(root).expanduser().resolve()
+                if resolve_project(candidate) is not None:
+                    requested_root = candidate
             if requested_root is None:
                 _error(request_id, -32000, "root does not match this MCP session project")
                 continue
             root_key = str(requested_root)
-            if tool_name not in {"continuity_inspect", "continuity_resume"} and root_key not in session_roots:
+            if tool_name not in {
+                "continuity_inspect",
+                "continuity_collaboration_packet",
+                "continuity_resume",
+            } and root_key not in session_roots:
                 _error(
                     request_id,
                     -32001,
@@ -716,9 +742,43 @@ def main() -> int:
                 continue
             binding = (
                 None
-                if tool_name in {"continuity_inspect", "continuity_resume"}
+                if tool_name in {
+                    "continuity_inspect",
+                    "continuity_collaboration_packet",
+                    "continuity_resume",
+                }
                 else session_bindings.get(root_key)
             )
+            if tool_name == "continuity_collaboration_packet":
+                project = resolve_project(requested_root)
+                if project is None:
+                    _error(request_id, -32000, "project is not registered")
+                    continue
+                packet = compose_safe_collaboration_packet(
+                    None,
+                    project_id=project["project_id"],
+                    query=str(arguments.get("query") or "")[:4096],
+                    assignee=(
+                        str(arguments["assignee"])
+                        if arguments.get("assignee") is not None
+                        else None
+                    ),
+                )
+                _reply(
+                    request_id,
+                    {
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": json.dumps(
+                                    packet, ensure_ascii=False, sort_keys=True
+                                ),
+                            }
+                        ],
+                        "structuredContent": packet,
+                    },
+                )
+                continue
             checkpoint_create = (
                 tool_name == "continuity_checkpoint"
                 and arguments.get("action") == "create"

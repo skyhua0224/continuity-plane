@@ -174,6 +174,10 @@ def resolve(
     project_id: str | None = None,
 ) -> list[dict[str, Any]]:
     """Resolve aliases in a short prompt using exact, case-insensitive tokens."""
+    if not isinstance(query, str) or len(query.encode("utf-8")) > 16384:
+        raise VocabularyMemoryError("query is invalid")
+    if not query.strip():
+        return []
     text = _text(query, "query", 16384).casefold()
     tokens = set(re.findall(r"[\w][\w_.-]{0,127}", text, re.UNICODE))
     matches: list[dict[str, Any]] = []
