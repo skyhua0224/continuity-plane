@@ -29,6 +29,7 @@ _TASK_STATUS = {
     "rejected",
     "superseded",
 }
+_EFFECT_STATUS = {"queued", "approved", "rejected", "executed"}
 _REPORT_POLICY = {
     "silent_until_stage_complete",
     "on_blocker",
@@ -288,6 +289,7 @@ def _empty_ledger() -> dict[str, Any]:
     return {
         "schema_version": DISPATCH_LEDGER_SCHEMA,
         "tasks": [],
+        "effect_requests": [],
         "updated_at": _now(),
     }
 
@@ -299,6 +301,12 @@ def _load_ledger(data_root: Path, project_id: str) -> dict[str, Any]:
         or document.get("schema_version") != DISPATCH_LEDGER_SCHEMA
     ):
         raise CollaborationRegistryError("dispatch ledger schema is unsupported")
+    # Sidecar metadata is forward-compatible: older alpha14 ledgers did not
+    # contain report_policy or effect_requests.
+    document.setdefault("effect_requests", [])
+    for item in document.get("tasks", []):
+        if isinstance(item, dict):
+            item.setdefault("report_policy", "silent_until_stage_complete")
     tasks = [_validate_task(item) for item in document.get("tasks", [])]
     ids = [item["task_id"] for item in tasks]
     if len(ids) != len(set(ids)):
@@ -310,6 +318,47 @@ def _load_ledger(data_root: Path, project_id: str) -> dict[str, Any]:
     ]
     if len(active_assignees) != len(set(active_assignees)):
         raise CollaborationRegistryError("an assignee may hold only one active task")
+    effects = document.get("effect_requests", [])
+    if not isinstance(effects, list):
+        raise CollaborationRegistryError("effect_requests must be a list")
+    effect_ids = []
+    for effect in effects:
+        if (
+            not isinstance(effect, dict)
+            or set(effect)
+            != {
+                "schema_version",
+                "effect_id",
+                "task_id",
+                "requested_by",
+                "effect",
+                "target",
+                "reason",
+                "evidence_refs",
+                "status",
+                "created_at",
+                "updated_at",
+            }
+        ):
+            raise CollaborationRegistryError("effect request fields are invalid")
+        if effect["schema_version"] != "context.effect-request/v1alpha1":
+            raise CollaborationRegistryError("effect request schema is unsupported")
+        if _ID_RE.fullmatch(effect["effect_id"]) is None:
+            raise CollaborationRegistryError("effect_id is invalid")
+        _text(effect["task_id"], "effect.task_id")
+        if _ASSIGNEE_RE.fullmatch(effect["requested_by"]) is None:
+            raise CollaborationRegistryError("effect.requested_by is invalid")
+        _text(effect["effect"], "effect.effect", 256)
+        _text(effect["target"], "effect.target", 2048)
+        _text(effect["reason"], "effect.reason")
+        _string_list(effect["evidence_refs"], "effect.evidence_refs")
+        if effect["status"] not in _EFFECT_STATUS:
+            raise CollaborationRegistryError("effect.status is invalid")
+        _text(effect["created_at"], "effect.created_at", 64)
+        _text(effect["updated_at"], "effect.updated_at", 64)
+        effect_ids.append(effect["effect_id"])
+    if len(effect_ids) != len(set(effect_ids)):
+        raise CollaborationRegistryError("effect_id must be unique")
     return document
 
 
@@ -467,6 +516,84 @@ def list_tasks(
 ) -> list[dict[str, Any]]:
     root = Path(data_root) if data_root is not None else default_data_root()
     return _load_ledger(root, project_id)["tasks"]
+
+
+def request_effect(
+    data_root: Path | str | None,
+    *,
+    project_id: str,
+    effect_id: str,
+    task_id: str,
+    requested_by: str,
+    effect: str,
+    target: str,
+    reason: str,
+    evidence_refs: list[str] | None = None,
+) -> dict[str, Any]:
+    """Queue an external effect for review without executing it."""
+    root = Path(data_root) if data_root is not None else default_data_root()
+    if _ID_RE.fullmatch(effect_id) is None:
+        raise CollaborationRegistryError("effect_id is invalid")
+    if _ASSIGNEE_RE.fullmatch(requested_by) is None:
+        raise CollaborationRegistryError("requested_by is invalid")
+    document = {
+        "schema_version": "context.effect-request/v1alpha1",
+        "effect_id": effect_id,
+        "task_id": _text(task_id, "task_id"),
+        "requested_by": requested_by,
+        "effect": _text(effect, "effect", 256),
+        "target": _text(target, "target", 2048),
+        "reason": _text(reason, "reason"),
+        "evidence_refs": _string_list(evidence_refs or [], "evidence_refs"),
+        "status": "queued",
+        "created_at": _now(),
+        "updated_at": _now(),
+    }
+    path = _ledger_path(root, project_id)
+    with _locked(path):
+        ledger = _load_ledger(root, project_id)
+        if any(item["effect_id"] == effect_id for item in ledger["effect_requests"]):
+            raise CollaborationRegistryError("effect_id already exists")
+        ledger["effect_requests"].append(document)
+        ledger["updated_at"] = _now()
+        _atomic_write(path, ledger)
+    return document
+
+
+def list_effects(
+    data_root: Path | str | None,
+    *,
+    project_id: str,
+) -> list[dict[str, Any]]:
+    root = Path(data_root) if data_root is not None else default_data_root()
+    return _load_ledger(root, project_id)["effect_requests"]
+
+
+def update_effect(
+    data_root: Path | str | None,
+    *,
+    project_id: str,
+    effect_id: str,
+    status: str,
+) -> dict[str, Any]:
+    """Update a request receipt; execution remains outside this metadata ledger."""
+    if status not in _EFFECT_STATUS:
+        raise CollaborationRegistryError("effect status is invalid")
+    root = Path(data_root) if data_root is not None else default_data_root()
+    path = _ledger_path(root, project_id)
+    with _locked(path):
+        ledger = _load_ledger(root, project_id)
+        effect = next(
+            (item for item in ledger["effect_requests"] if item["effect_id"] == effect_id),
+            None,
+        )
+        if effect is None:
+            raise CollaborationRegistryError("effect_id does not exist")
+        effect["status"] = status
+        effect["updated_at"] = _now()
+        ledger["updated_at"] = _now()
+        _atomic_write(path, ledger)
+        return effect
 
 
 def next_task(

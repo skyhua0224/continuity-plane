@@ -14,7 +14,7 @@ after compaction, task switches, crashes, and handoffs is deterministic.
 Install one CLI first:
 
 ```bash
-python -m pip install continuity-plane==0.1.0a13
+python -m pip install continuity-plane==0.1.0a14
 ```
 
 The current public version is alpha13, including non-blocking adoption hooks, real-runtime doctor checks, explicit execution intent, and OpenCodex-safe installation.
@@ -27,7 +27,7 @@ command gates. Advisory tool hooks and one-shot recovery compensation ship in al
 [alpha.13 changes](CHANGELOG.en.md#010-alpha13).
 
 ```bash
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.13
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.14
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -223,7 +223,7 @@ are optional enhancements.
 
 ## Release And License
 
-The current alpha is available from [PyPI](https://pypi.org/project/continuity-plane/0.1.0a13/)
+The current alpha is available from [PyPI](https://pypi.org/project/continuity-plane/0.1.0a14/)
 and [GitHub Releases](https://github.com/skyhua0224/continuity-plane/releases).
 The GitHub release also provides the core wheel, source archive, Codex plugin marketplace, and SHA256SUMS; see the
 [changelog](CHANGELOG.en.md).

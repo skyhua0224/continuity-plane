@@ -2,6 +2,19 @@
 
 [English](CHANGELOG.en.md)
 
+## 0.1.0-alpha.14
+
+- 新增 provider-neutral 协作账本：项目注册、任务卡、临时 assignee、ready-for-review 和只读
+  effect request 队列。协作元数据不授予完成、push、merge 或部署权限，损坏时普通本地工作继续。
+- 新增 global/project 词汇记忆与有界 collaboration packet。项目别名覆盖全局别名，明文
+  secret 被拒绝，Codex UserPromptSubmit 只对命中的任务或词汇做一次小量注入。
+- 新增 skills-audit 与 worktree-inventory report-only CLI，识别描述预算、重复/坏 metadata、
+  dirty worktree 与可清理候选，不会自动修改宿主配置或删除 Git 对象。
+- doctor 增加 collaboration ledger 健康状态；State、packet、协作元数据分别报告，协作降级
+  不会把项目置为只读。
+- MCP 增加只读 continuity_collaboration_packet，供 Codex 及其他客户端读取统一的
+  任务和词汇提示卡。
+
 ## 0.1.0-alpha.13
 
 - 开发安装器仅修改 Continuity 集成字段，使用只读指纹校验保护 provider 凭据、认证文件、

@@ -19,6 +19,11 @@ from context_control_plane.collaboration_registry import (
     resolve_project,
     update_task,
 )
+from context_control_plane.collaboration_registry import (
+    list_effects,
+    request_effect,
+    update_effect,
+)
 from context_control_plane.collaboration_packet import compose_collaboration_packet
 from context_control_plane.collaboration_packet import compose_safe_collaboration_packet
 from context_control_plane.skills_inventory import audit_skills
@@ -97,6 +102,45 @@ class GenericCollaborationTests(unittest.TestCase):
             )
             self.assertTrue(packet["continue"])
             self.assertEqual(packet["metadata_status"], "degraded")
+
+    def test_effects_are_queued_and_never_executed_by_the_ledger(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            data = Path(directory)
+            register_project(
+                data, project_id="sample", control_root=directory, repository_roots=[]
+            )
+            add_task(
+                data,
+                project_id="sample",
+                task_id="patch",
+                lane_id="release",
+                mode="patch",
+                priority="p0",
+                title="Patch",
+                objective="Prepare patch",
+                next_action="Run tests",
+                exit_criteria=["Tests pass"],
+                assignee="session-a",
+            )
+            queued = request_effect(
+                data,
+                project_id="sample",
+                effect_id="push-1",
+                task_id="patch",
+                requested_by="session-a",
+                effect="source-control.push",
+                target="refs/heads/feature",
+                reason="Tests passed",
+            )
+            self.assertEqual(queued["status"], "queued")
+            self.assertEqual(list_effects(data, project_id="sample")[0]["effect_id"], "push-1")
+            receipt = update_effect(
+                data,
+                project_id="sample",
+                effect_id="push-1",
+                status="approved",
+            )
+            self.assertEqual(receipt["status"], "approved")
 
     def test_assignee_has_one_active_card_and_priority_orders_queue(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

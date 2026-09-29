@@ -36,12 +36,15 @@ from .collaboration_registry import (
     add_task,
     claim_task,
     default_data_root,
+    list_effects,
     list_projects,
+    request_effect,
     list_tasks,
     next_task,
     register_project,
     resolve_project,
     update_task,
+    update_effect,
 )
 from .collaboration_packet import (
     compose_collaboration_packet,
@@ -93,7 +96,7 @@ from .state_mcp import (
     StateMCPService,
 )
 
-VERSION = "0.1.0a13"
+VERSION = "0.1.0a14"
 _PROJECT_FIELDS = {
     "schema_version",
     "project_id",
@@ -731,12 +734,38 @@ def _continuity_packet_health(root: Path) -> dict[str, Any]:
     }
 
 
+def _collaboration_health(project_id: str) -> dict[str, Any]:
+    try:
+        data_root = default_data_root()
+        tasks = list_tasks(data_root, project_id=project_id)
+        effects = list_effects(data_root, project_id=project_id)
+        projects = list_projects(data_root)
+        return {
+            "status": "ready",
+            "data_root": str(data_root),
+            "registered_projects": len(projects),
+            "task_count": len(tasks),
+            "active_task_count": sum(item["status"] == "active" for item in tasks),
+            "effect_request_count": len(effects),
+            "queued_effect_count": sum(
+                item["status"] == "queued" for item in effects
+            ),
+        }
+    except Exception as exc:
+        return {
+            "status": "degraded",
+            "reason": str(exc),
+            "ordinary_project_work_allowed": True,
+        }
+
+
 def _doctor(args: argparse.Namespace) -> int:
     root = Path(args.root).resolve()
     project = _load_project(root)
     store = _open_state_store(root, project)
     state_health = _continuity_state_health(store, project["project_id"])
     packet_health = _continuity_packet_health(root)
+    collaboration_health = _collaboration_health(project["project_id"])
     sqlite_version = sqlite3.sqlite_version
     response = {
         "status": "ready",
@@ -752,12 +781,14 @@ def _doctor(args: argparse.Namespace) -> int:
         )
     response["state_health"] = state_health
     response["packet_health"] = packet_health
+    response["collaboration_health"] = collaboration_health
     integration_status = response.get("codex_plugin", {}).get("status")
     if (
         state_health["status"] == "conflict"
         or state_health["status"] == "lease-warning"
         or packet_health["status"] in ("invalid", "oversized")
         or integration_status not in (None, "active")
+        or collaboration_health["status"] == "degraded"
     ):
         response["status"] = "degraded"
     elif state_health["status"] == "recoverable":
@@ -4513,6 +4544,44 @@ def _collaboration_task_list(args: argparse.Namespace) -> int:
     return 0
 
 
+def _collaboration_effect_request(args: argparse.Namespace) -> int:
+    effect = request_effect(
+        args.data_root,
+        project_id=args.project_id,
+        effect_id=args.effect_id,
+        task_id=args.task_id,
+        requested_by=args.requested_by,
+        effect=args.effect,
+        target=args.target,
+        reason=args.reason,
+        evidence_refs=args.evidence_ref or [],
+    )
+    print(json.dumps(effect, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def _collaboration_effect_list(args: argparse.Namespace) -> int:
+    print(
+        json.dumps(
+            list_effects(args.data_root, project_id=args.project_id),
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+    )
+    return 0
+
+
+def _collaboration_effect_update(args: argparse.Namespace) -> int:
+    effect = update_effect(
+        args.data_root,
+        project_id=args.project_id,
+        effect_id=args.effect_id,
+        status=args.status,
+    )
+    print(json.dumps(effect, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
 def _memory_add(args: argparse.Namespace) -> int:
     entity = add_entity(
         args.data_root or default_data_root(),
@@ -4911,6 +4980,41 @@ def build_parser() -> argparse.ArgumentParser:
     collaboration_task_list.add_argument("--data-root", default=None)
     collaboration_task_list.add_argument("--project-id", required=True)
     collaboration_task_list.set_defaults(handler=_collaboration_task_list)
+    collaboration_effect = collaboration_commands.add_parser(
+        "effect", help="queue and inspect external effect requests"
+    )
+    collaboration_effect_commands = collaboration_effect.add_subparsers(
+        dest="collaboration_effect_command", required=True
+    )
+    collaboration_effect_request = collaboration_effect_commands.add_parser(
+        "request", help="queue an effect without executing it"
+    )
+    collaboration_effect_request.add_argument("--data-root", default=None)
+    collaboration_effect_request.add_argument("--project-id", required=True)
+    collaboration_effect_request.add_argument("--effect-id", required=True)
+    collaboration_effect_request.add_argument("--task-id", required=True)
+    collaboration_effect_request.add_argument("--requested-by", required=True)
+    collaboration_effect_request.add_argument("--effect", required=True)
+    collaboration_effect_request.add_argument("--target", required=True)
+    collaboration_effect_request.add_argument("--reason", required=True)
+    collaboration_effect_request.add_argument("--evidence-ref", action="append")
+    collaboration_effect_request.set_defaults(handler=_collaboration_effect_request)
+    collaboration_effect_list = collaboration_effect_commands.add_parser(
+        "list", help="list effect requests"
+    )
+    collaboration_effect_list.add_argument("--data-root", default=None)
+    collaboration_effect_list.add_argument("--project-id", required=True)
+    collaboration_effect_list.set_defaults(handler=_collaboration_effect_list)
+    collaboration_effect_update = collaboration_effect_commands.add_parser(
+        "update", help="record an effect request receipt"
+    )
+    collaboration_effect_update.add_argument("--data-root", default=None)
+    collaboration_effect_update.add_argument("--project-id", required=True)
+    collaboration_effect_update.add_argument("--effect-id", required=True)
+    collaboration_effect_update.add_argument(
+        "--status", choices=("queued", "approved", "rejected", "executed"), required=True
+    )
+    collaboration_effect_update.set_defaults(handler=_collaboration_effect_update)
     memory = commands.add_parser(
         "memory", help="manage scoped vocabulary memory"
     )

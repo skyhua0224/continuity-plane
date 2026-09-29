@@ -2,6 +2,22 @@
 
 [中文](CHANGELOG.md)
 
+## 0.1.0-alpha.14
+
+- Added a provider-neutral collaboration ledger with project registration, task cards, temporary
+  assignees, ready-for-review, and a read-only effect request queue. Collaboration metadata grants
+  no completion, push, merge, or deployment authority; local work continues when it is damaged.
+- Added global/project vocabulary memory and bounded collaboration packets. Project aliases override
+  global aliases, plaintext secrets are rejected, and the Codex UserPromptSubmit hook injects a small
+  packet only once when a task or vocabulary entry matches.
+- Added report-only skills-audit and worktree-inventory commands for metadata budgets, duplicate
+  or malformed skills, dirty worktrees, and cleanup candidates. They never edit host configuration or
+  delete Git objects.
+- Doctor now reports collaboration ledger health separately from State and packet health. Collaboration
+  degradation never turns a project read-only.
+- Added the read-only continuity_collaboration_packet MCP tool for Codex and other clients
+  to consume the same bounded task and vocabulary packet.
+
 ## 0.1.0-alpha.13
 
 - The development installer limits edits to Continuity integration fields and uses read-only

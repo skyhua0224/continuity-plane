@@ -41,7 +41,9 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
         config = json.loads((self.plugin / ".mcp.json").read_text(encoding="utf-8"))
         server = config["mcpServers"]["continuity"]
         self.assertEqual(server, {"command": "continuity-mcp", "args": []})
-        command = [server["command"], *server["args"]]
+        # Validate the source candidate with the interpreter running this test.
+        # A stale user-level console script must not mask the candidate package.
+        command = [sys.executable, "-m", "context_control_plane.codex_mcp_server"]
         with tempfile.TemporaryDirectory() as directory:
             environment = os.environ.copy()
             # Resolve the console script from the interpreter running this test;
@@ -70,7 +72,7 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
         response = json.loads(completed.stdout)
         self.assertEqual(response["id"], 1)
         self.assertEqual(response["result"]["serverInfo"]["name"], "continuity")
-        self.assertEqual(response["result"]["serverInfo"]["version"], "0.1.0-alpha.13")
+        self.assertEqual(response["result"]["serverInfo"]["version"], "0.1.0-alpha.14")
 
     def test_packaged_and_plugin_mcp_servers_have_the_same_contract(self) -> None:
         packaged = "context_control_plane.codex_mcp_server"
@@ -451,8 +453,13 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
             tools["continuity_claim_recover"]["description"],
         )
         self.assertFalse(
-            any(item["annotations"]["readOnlyHint"] for name, item in tools.items() if name != "continuity_inspect")
+            any(
+                item["annotations"]["readOnlyHint"]
+                for name, item in tools.items()
+                if name not in {"continuity_inspect", "continuity_collaboration_packet"}
+            )
         )
+        self.assertTrue(tools["continuity_collaboration_packet"]["annotations"]["readOnlyHint"])
         self.assertNotIn("error", responses[1])
         inspect_result = json.loads(
             responses[1]["result"]["content"][0]["text"]
