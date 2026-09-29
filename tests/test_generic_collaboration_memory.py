@@ -399,6 +399,70 @@ class InventoryTests(unittest.TestCase):
             )
             self.assertEqual(second.stdout, "")
 
+    def test_mcp_collaboration_packet_is_read_only_and_bounded(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "repo"
+            data = Path(directory) / "data"
+            root.mkdir()
+            register_project(data, project_id="sample", control_root=root)
+            add_task(
+                data,
+                project_id="sample",
+                task_id="mcp-task",
+                lane_id="release",
+                mode="scout",
+                priority="p0",
+                title="MCP task",
+                objective="Find one fact",
+                next_action="Inspect one file",
+                exit_criteria=["Fact recorded"],
+                assignee="mcp-session",
+            )
+            requests = [
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "initialize",
+                    "params": {"protocolVersion": "2024-11-05"},
+                },
+                {
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "method": "tools/call",
+                    "params": {
+                        "name": "continuity_collaboration_packet",
+                        "arguments": {"root": str(root), "assignee": "mcp-session"},
+                    },
+                },
+            ]
+            environment = {
+                **os.environ,
+                "CONTINUITY_DATA_ROOT": str(data),
+                "PYTHONPATH": str(Path(__file__).resolve().parents[1]),
+            }
+            completed = subprocess.run(
+                [sys.executable, "-m", "context_control_plane.codex_mcp_server"],
+                input="".join(json.dumps(item) + chr(10) for item in requests),
+                capture_output=True,
+                text=True,
+                cwd=Path(__file__).resolve().parents[1],
+                env=environment,
+                timeout=10,
+                check=True,
+            )
+            packet = json.loads(completed.stdout.splitlines()[-1])["result"][
+                "structuredContent"
+            ]
+            self.assertEqual(
+                packet["schema_version"], "context.collaboration-packet/v1alpha1"
+            )
+            self.assertEqual(packet["task"]["task_id"], "mcp-task")
+            self.assertEqual(
+                packet["execution_contract"]["authority"],
+                "collaboration-hint-only",
+            )
+            self.assertLess(len(completed.stdout.encode("utf-8")), 16_384)
+
 
 if __name__ == "__main__":
     unittest.main()
