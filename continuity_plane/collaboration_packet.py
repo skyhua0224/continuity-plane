@@ -37,10 +37,29 @@ def compose_collaboration_packet(
         raise CollaborationPacketError("max_entities must be between 1 and 10")
     task = next_task(root, project_id=project_id, assignee=assignee)
     entities = resolve_vocabulary(root, query, project_id=project_id)[:max_entities]
+    task_projection = None
+    if task is not None:
+        task_projection = {
+            "task_id": task["task_id"],
+            "lane_id": task["lane_id"],
+            "mode": task["mode"],
+            "priority": task["priority"],
+            "status": task["status"],
+            "title": task["title"],
+            "objective": task["objective"],
+            "next_action": task["next_action"],
+            "assignee": task["assignee"],
+            "worktree": task["worktree"],
+            "allowed_files": task["allowed_files"],
+            "preauthorized_effects": task["preauthorized_effects"],
+            "queued_effects": task["queued_effects"],
+            "exit_criteria": task["exit_criteria"],
+            "report_policy": task["report_policy"],
+        }
     packet = {
         "schema_version": PACKET_SCHEMA,
         "project_id": project_id,
-        "task": task,
+        "task": task_projection,
         "vocabulary": entities,
         "execution_contract": {
             "authority": "collaboration-hint-only",
