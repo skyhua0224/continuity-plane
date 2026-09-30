@@ -18,7 +18,7 @@ python -m pip install --upgrade continuity-plane
 
 ### 近期更新
 
-- 默认非阻断 hook、压缩恢复和 doctor，不妨碍普通开发。
+- 默认非阻断 hook、压缩恢复和 doctor，不阻碍开发。
 - 协作账本、词汇记忆、恢复包、技能/worktree 审计和结构化激活诊断已加入。
 - 有界代码索引可跨 Session/AI 复用，只重解析变更文件。
 
