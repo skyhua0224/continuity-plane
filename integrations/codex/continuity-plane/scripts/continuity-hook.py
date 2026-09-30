@@ -1094,6 +1094,10 @@ def _collaboration_context(payload: dict[str, Any]) -> str | None:
                 "Local completion status: ready-for-review; acceptance remains a separate review.",
             ]
         )
+        if task.get("status") == "queued":
+            lines.append(
+                "Queued task only: do not activate it while another authoritative Work is active."
+            )
     for entity in vocabulary if isinstance(vocabulary, list) else []:
         if isinstance(entity, dict):
             lines.append(
