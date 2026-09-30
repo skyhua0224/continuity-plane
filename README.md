@@ -13,19 +13,19 @@ Continuity Plane 是面向长期 AI 辅助软件工作的 provider-neutral 控�
 先安装一份 CLI：
 
 ```bash
-python -m pip install continuity-plane==0.1.0a14
+python -m pip install continuity-plane==0.1.0a15
 ```
 
-当前公开版本为 alpha13，包含零阻断 adoption hook、真实运行时 doctor、明确执行意图与 opencodex 安全安装保护。
+当前公开版本为 alpha15，含非阻断 hook、运行时 doctor、明确执行意图及旧 Session 兼容提示。
 
 ### Codex 插件（可选）
 
 核心包不依赖插件。默认 `continuity-plane` plugin 是轻量 core，只提供有界恢复和
 checkpoint lifecycle，不注册 State MCP 工具，也不阻断普通开发命令。
-操作前后 advisory hook 与一次性恢复补偿已随 alpha13 发布，完整变更见 [alpha.13](CHANGELOG.md#010-alpha13)。
+操作前后 advisory hook 与一次性恢复补偿已随 alpha13 发布；alpha15 增加旧 Session 兼容提示和结构化 Work 激活诊断，完整变更见 [alpha.15](CHANGELOG.md#010-alpha15)。
 
 ```bash
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.14
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.15
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -193,7 +193,7 @@ continuity state show --root .
 ## 文档
 
 - [完整使用教程](USAGE.md)
-- [alpha.13 完整变更与升级说明](CHANGELOG.md#010-alpha13)
+- [alpha.15 完整变更与升级说明](CHANGELOG.md#010-alpha15)
 - [架构说明](docs/architecture.md)
 - [配置说明](docs/configuration.md)
 - [Python API](docs/api.md)
@@ -207,7 +207,7 @@ continuity state show --root .
 
 ## Release 与许可证
 
-当前 alpha 已发布到 [PyPI](https://pypi.org/project/continuity-plane/0.1.0a14/) 和
+当前 alpha 已发布到 [PyPI](https://pypi.org/project/continuity-plane/0.1.0a15/) 和
 [GitHub Releases](https://github.com/skyhua0224/continuity-plane/releases)。GitHub
 Release 同时提供核心 wheel、source archive、Codex plugin marketplace 和 SHA256SUMS；
 详见 [发布说明](CHANGELOG.md)。

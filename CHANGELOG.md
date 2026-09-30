@@ -2,6 +2,13 @@
 
 [English](CHANGELOG.en.md)
 
+## 0.1.0-alpha.15
+
+- 修复 continuity_work_activate 参数错误只返回笼统信息的问题，现在报告缺失字段、未知字段、
+  standard/delivery 冲突和 expected_head 格式错误。
+- queued task packet 明确标记不得覆盖 authoritative Work；旧 Session 即使看不到新 MCP 也会
+  收到一次兼容任务提示。
+
 ## 0.1.0-alpha.14
 
 - 新增 provider-neutral 协作账本：项目注册、任务卡、临时 assignee、ready-for-review 和只读

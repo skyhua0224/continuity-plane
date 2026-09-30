@@ -14,20 +14,21 @@ after compaction, task switches, crashes, and handoffs is deterministic.
 Install one CLI first:
 
 ```bash
-python -m pip install continuity-plane==0.1.0a14
+python -m pip install continuity-plane==0.1.0a15
 ```
 
-The current public version is alpha13, including non-blocking adoption hooks, real-runtime doctor checks, explicit execution intent, and OpenCodex-safe installation.
+The current public version is alpha15, with non-blocking hooks, runtime doctor checks, and older-Session compatibility hints.
 
 ### Codex plugin (optional)
 
 The core package does not depend on a plugin. The default `continuity-plane` plugin is a
 lightweight core for bounded recovery and checkpoint lifecycle, with no State MCP tools or ordinary
-command gates. Advisory tool hooks and one-shot recovery compensation ship in alpha13; see the
-[alpha.13 changes](CHANGELOG.en.md#010-alpha13).
+command gates. Advisory hooks and one-shot recovery compensation ship in alpha13; alpha15 adds
+older-Session hints and structured Work activation diagnostics. See the
+[alpha.15 changes](CHANGELOG.en.md#010-alpha15).
 
 ```bash
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.14
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.15
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -210,7 +211,7 @@ are optional enhancements.
 ## Documentation
 
 - [Usage guide](USAGE.en.md)
-- [Complete alpha.13 changes and upgrade notes](CHANGELOG.en.md#010-alpha13)
+- [Complete alpha.15 changes and upgrade notes](CHANGELOG.en.md#010-alpha15)
 - [Architecture](docs/architecture.en.md)
 - [Configuration](docs/configuration.en.md)
 - [Python API](docs/api.en.md)
@@ -223,7 +224,7 @@ are optional enhancements.
 
 ## Release And License
 
-The current alpha is available from [PyPI](https://pypi.org/project/continuity-plane/0.1.0a14/)
+The current alpha is available from [PyPI](https://pypi.org/project/continuity-plane/0.1.0a15/)
 and [GitHub Releases](https://github.com/skyhua0224/continuity-plane/releases).
 The GitHub release also provides the core wheel, source archive, Codex plugin marketplace, and SHA256SUMS; see the
 [changelog](CHANGELOG.en.md).

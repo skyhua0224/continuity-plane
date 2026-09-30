@@ -2,6 +2,13 @@
 
 [中文](CHANGELOG.md)
 
+## 0.1.0-alpha.15
+
+- Improved continuity_work_activate validation errors with missing fields, unknown fields,
+  standard/delivery conflicts, and expected-head format diagnostics.
+- Queued task packets now explicitly say they cannot replace authoritative Work; older Sessions
+  receive one compatibility hint even when the new MCP tool is not visible.
+
 ## 0.1.0-alpha.14
 
 - Added a provider-neutral collaboration ledger with project registration, task cards, temporary
