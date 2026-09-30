@@ -66,6 +66,13 @@ def compose_collaboration_packet(
             "local_work_continues_when_metadata_is_missing": True,
             "local_completion_status": "ready-for-review",
             "report_policy": task["report_policy"] if task else "on_blocker",
+            "activation_allowed": bool(task and task["status"] == "active"),
+            "activation_note": (
+                "queued task is a projection only; do not activate while another "
+                "authoritative Work is active"
+                if task and task["status"] == "queued"
+                else None
+            ),
         },
     }
     size = len(json.dumps(packet, ensure_ascii=False, sort_keys=True).encode("utf-8"))

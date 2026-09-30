@@ -981,8 +981,93 @@ def main() -> int:
                     expected_ref,
                     allow_effects,
                 )
+                activation_diagnostics = []
+                unknown_fields = sorted(set(arguments) - allowed_fields)
+                if unknown_fields:
+                    activation_diagnostics.append(
+                        {"field": "arguments", "reason": "unknown_fields", "value": unknown_fields}
+                    )
+                missing_base = [
+                    field for field, value in zip(required, values) if not isinstance(value, str) or not value
+                ]
+                if missing_base:
+                    activation_diagnostics.extend(
+                        {"field": field, "reason": "required_non_empty"}
+                        for field in missing_base
+                    )
+                if not isinstance(scope, list) or not scope:
+                    activation_diagnostics.append(
+                        {"field": "scope", "reason": "non_empty_array"}
+                    )
+                elif len(scope) > 128 or any(not isinstance(value, str) or not value for value in scope):
+                    activation_diagnostics.append(
+                        {"field": "scope", "reason": "array_of_non_empty_strings_max_128"}
+                    )
+                if execution_class not in {"standard", "delivery"}:
+                    activation_diagnostics.append(
+                        {"field": "execution_class", "reason": "standard_or_delivery"}
+                    )
+                elif execution_class == "standard":
+                    present = [
+                        field for field, value in zip(
+                            (
+                                "source_ref",
+                                "predecessor_work_id",
+                                "implementation_evidence_ids",
+                                "workspace_id",
+                                "workspace_root",
+                                "expected_head",
+                                "expected_ref",
+                                "allow_effects",
+                            ),
+                            delivery_values,
+                        )
+                        if value is not None
+                    ]
+                    if present:
+                        activation_diagnostics.append(
+                            {"field": "execution_class", "reason": "standard_forbids_delivery_fields", "present": present}
+                        )
+                else:
+                    for field, value in (
+                        ("source_ref", source_ref),
+                        ("predecessor_work_id", predecessor_work_id),
+                        ("workspace_root", workspace_root),
+                        ("expected_head", expected_head),
+                        ("allow_effects", allow_effects),
+                    ):
+                        if value is None or value == "" or value == []:
+                            activation_diagnostics.append(
+                                {"field": field, "reason": "required_for_delivery"}
+                            )
+                    if isinstance(expected_head, str) and (
+                        len(expected_head) != 40
+                        or any(character not in "0123456789abcdef" for character in expected_head)
+                    ):
+                        activation_diagnostics.append(
+                            {"field": "expected_head", "reason": "40_lowercase_hex_characters"}
+                        )
+                    if evidence_ids is not None and (
+                        not isinstance(evidence_ids, list)
+                        or not evidence_ids
+                        or len(evidence_ids) > 32
+                        or any(not isinstance(value, str) or not value for value in evidence_ids)
+                    ):
+                        activation_diagnostics.append(
+                            {"field": "implementation_evidence_ids", "reason": "non_empty_array_max_32"}
+                        )
+                    if allow_effects is not None and (
+                        not isinstance(allow_effects, list)
+                        or not allow_effects
+                        or len(allow_effects) > 16
+                        or any(not isinstance(value, str) or not value for value in allow_effects)
+                    ):
+                        activation_diagnostics.append(
+                            {"field": "allow_effects", "reason": "non_empty_array_max_16"}
+                        )
                 if (
-                    set(arguments) - allowed_fields
+                    activation_diagnostics
+                    or set(arguments) - allowed_fields
                     or
                     any(not isinstance(value, str) or not value for value in values)
                     or not isinstance(scope, list)
@@ -1040,7 +1125,16 @@ def main() -> int:
                         )
                     )
                 ):
-                    _error(request_id, -32602, "activation arguments are invalid")
+                    _error(
+                        request_id,
+                        -32602,
+                        "activation arguments are invalid: "
+                        + json.dumps(
+                            {"invalid_fields": activation_diagnostics},
+                            ensure_ascii=False,
+                            sort_keys=True,
+                        ),
+                    )
                     continue
                 if _write_activation_binding_error(
                     request_id,
