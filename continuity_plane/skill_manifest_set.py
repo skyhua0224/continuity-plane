@@ -6,6 +6,7 @@ import copy
 import json
 import re
 from datetime import datetime
+from importlib import resources
 from pathlib import Path
 from typing import Any
 
@@ -13,7 +14,6 @@ from continuity_plane.schema_governance import (
     SchemaGovernanceError,
     SemanticVersion,
 )
-
 
 SCHEMA_VERSION = "context.skill-manifest-set/v1alpha1"
 SPDX_LICENSE_LIST_VERSION = "3.28.0"
@@ -76,9 +76,7 @@ _APPLICABILITY_REF_RE = {
     "project": re.compile(
         r"^project://[a-z0-9][a-z0-9._-]*(?:/[a-z0-9][a-z0-9._-]*)*$"
     ),
-    "repo": re.compile(
-        r"^repo://[a-z0-9][a-z0-9._-]*(?:/[a-z0-9][a-z0-9._-]*)*$"
-    ),
+    "repo": re.compile(r"^repo://[a-z0-9][a-z0-9._-]*(?:/[a-z0-9][a-z0-9._-]*)*$"),
     "path": re.compile(
         r"^path://[A-Za-z0-9][A-Za-z0-9._-]*"
         r"(?:/[A-Za-z0-9][A-Za-z0-9._-]*)*$"
@@ -91,13 +89,22 @@ _RFC3339_RE = re.compile(
     r"(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$"
 )
 
-_SPDX_SNAPSHOT_PATH = (
-    Path(__file__).resolve().parents[1]
-    / "schemas"
-    / "m4-01"
-    / "spdx-license-ids-3.28.0.json"
-)
-_SPDX_SNAPSHOT = json.loads(_SPDX_SNAPSHOT_PATH.read_text(encoding="utf-8"))
+_SPDX_RESOURCE = "schemas/m4-01/spdx-license-ids-3.28.0.json"
+try:
+    _SPDX_TEXT = (
+        resources.files("continuity_plane")
+        .joinpath(_SPDX_RESOURCE)
+        .read_text(encoding="utf-8")
+    )
+except (FileNotFoundError, ModuleNotFoundError):
+    _SPDX_SNAPSHOT_PATH = (
+        Path(__file__).resolve().parents[1]
+        / "schemas"
+        / "m4-01"
+        / "spdx-license-ids-3.28.0.json"
+    )
+    _SPDX_TEXT = _SPDX_SNAPSHOT_PATH.read_text(encoding="utf-8")
+_SPDX_SNAPSHOT = json.loads(_SPDX_TEXT)
 if _SPDX_SNAPSHOT.get("license_list_version") != SPDX_LICENSE_LIST_VERSION:
     raise RuntimeError("SPDX license snapshot version mismatch")
 _SPDX_LICENSE_IDS = frozenset(_SPDX_SNAPSHOT.get("license_ids", ()))
@@ -195,8 +202,7 @@ def _validate_version_range(value: Any, field: str) -> dict[str, Any]:
         if order > 0:
             raise SkillManifestSetError(f"{field} is reversed")
         if order == 0 and not (
-            version_range["minimum_inclusive"]
-            and version_range["maximum_inclusive"]
+            version_range["minimum_inclusive"] and version_range["maximum_inclusive"]
         ):
             raise SkillManifestSetError(f"{field} is empty")
     return version_range
@@ -223,7 +229,7 @@ def _timestamp(value: Any, field: str) -> datetime:
     if not isinstance(value, str) or not _RFC3339_RE.fullmatch(value):
         raise SkillManifestSetError(f"{field} must be RFC3339")
     try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(value)
     except ValueError as exc:
         raise SkillManifestSetError(f"{field} must be RFC3339") from exc
     if parsed.tzinfo is None:
@@ -275,9 +281,13 @@ def _validate_applicability(value: Any, field: str) -> list[dict[str, str]]:
         kind = _string(item["kind"], f"{field}.kind")
         ref = _string(item["ref"], f"{field}.ref")
         if kind == "task":
-            valid = ref.startswith("task://") and ref.removeprefix("task://") in _TASK_KINDS
+            valid = (
+                ref.startswith("task://") and ref.removeprefix("task://") in _TASK_KINDS
+            )
         elif kind == "role":
-            valid = ref.startswith("role://") and ref.removeprefix("role://") in _ROLE_IDS
+            valid = (
+                ref.startswith("role://") and ref.removeprefix("role://") in _ROLE_IDS
+            )
         else:
             pattern = _APPLICABILITY_REF_RE.get(kind)
             valid = pattern is not None and pattern.fullmatch(ref) is not None
@@ -375,8 +385,7 @@ def _validate_manifest_shape(manifest: Any) -> dict[str, Any]:
             "manifest.provenance_refs must be a non-empty unique string list"
         )
     validated_provenance = [
-        _provenance_ref(item, "manifest.provenance_refs")
-        for item in provenance_refs
+        _provenance_ref(item, "manifest.provenance_refs") for item in provenance_refs
     ]
     if len(validated_provenance) != len(set(validated_provenance)):
         raise SkillManifestSetError("manifest.provenance_refs must be unique")
@@ -417,7 +426,10 @@ def validate_skill_manifest_set(
 
     dependency_graph: dict[str, set[str]] = {skill_id: set() for skill_id in by_id}
     for skill_id, manifest in by_id.items():
-        if manifest["status"] in _SELECTED_STATUSES and manifest["expires_at"] is not None:
+        if (
+            manifest["status"] in _SELECTED_STATUSES
+            and manifest["expires_at"] is not None
+        ):
             if observed is None:
                 raise SkillManifestSetError(
                     f"observed_at is required for expiring selected manifest: {skill_id}"

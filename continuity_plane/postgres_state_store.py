@@ -6,32 +6,53 @@ import copy
 import hashlib
 import json
 from contextlib import contextmanager
+from importlib import resources
 from pathlib import Path
 from typing import Any
 
-import psycopg
-from psycopg.errors import UniqueViolation
-from psycopg.rows import dict_row
-from psycopg.types.json import Jsonb
+try:
+    import psycopg
+    from psycopg.errors import UniqueViolation
+    from psycopg.rows import dict_row
+    from psycopg.types.json import Jsonb
+except ModuleNotFoundError:
+    psycopg = None
 
+    class UniqueViolation(Exception):
+        """Placeholder used only when the optional PostgreSQL extra is absent."""
+
+    dict_row = None
+    Jsonb = None
+
+from .state_events import StateEventError, replay_state_events, validate_state_event
 from .state_store import (
-    StateStoreCapabilityManifest,
     StateStoreBusy,
+    StateStoreCapabilityManifest,
     StateStoreConflict,
     StateStoreError,
     StateStoreIntegrityError,
     StateStoreNotFound,
 )
-from .state_events import StateEventError, replay_state_events, validate_state_event
 from .typed_state import TypedStateError, canonical_state_bytes, validate_typed_state
 
+_MIGRATION_RESOURCE = "database/migrations/001_postgres_state.up.sql"
 
-_MIGRATION_PATH = (
-    Path(__file__).parents[1]
-    / "database"
-    / "migrations"
-    / "001_m2_03_postgres_state.up.sql"
-)
+
+def _migration_sql() -> str:
+    try:
+        return (
+            resources.files("continuity_plane")
+            .joinpath(_MIGRATION_RESOURCE)
+            .read_text(encoding="utf-8")
+        )
+    except (FileNotFoundError, ModuleNotFoundError):
+        migration_path = (
+            Path(__file__).parents[1]
+            / "database"
+            / "migrations"
+            / "001_m2_03_postgres_state.up.sql"
+        )
+        return migration_path.read_text(encoding="utf-8")
 
 
 class PostgresStateStoreError(StateStoreError):
@@ -103,6 +124,10 @@ class PostgresStateStore:
     def __init__(self, dsn: str):
         if not isinstance(dsn, str) or not dsn.strip():
             raise ValueError("dsn must be a non-empty string")
+        if psycopg is None:
+            raise ModuleNotFoundError(
+                "PostgreSQL support requires continuity[postgres]"
+            )
         self._dsn = dsn
 
     @contextmanager
@@ -114,7 +139,7 @@ class PostgresStateStore:
             raise PostgresStateBusy("PostgreSQL state store is unavailable") from exc
 
     def initialize(self) -> None:
-        migration = _MIGRATION_PATH.read_text(encoding="utf-8")
+        migration = _migration_sql()
         with self._connect() as connection:
             connection.execute(migration, prepare=False)
 
@@ -239,7 +264,9 @@ class PostgresStateStore:
                     f"expected event sequence {expected_sequence}, got {event['sequence_no']}"
                 )
             if event["previous_event_sha256"] != previous_event_sha256:
-                raise PostgresStateConflict("event hash chain does not match current head")
+                raise PostgresStateConflict(
+                    "event hash chain does not match current head"
+                )
 
             duplicate = connection.execute(
                 """
@@ -252,30 +279,31 @@ class PostgresStateStore:
             if duplicate is not None:
                 raise PostgresStateConflict("event identity already exists")
 
-            known_event_ids: set[str] = set()
-            supersedes_event_id = event["supersedes_event_id"]
-            if supersedes_event_id is not None:
-                supersedes = connection.execute(
+            prior_events = None
+            if event["supersedes_event_id"] is not None:
+                prior_rows = connection.execute(
                     """
-                    SELECT event_id
+                    SELECT envelope
                     FROM context_control.state_events
-                    WHERE project_id = %s AND event_id = %s
+                    WHERE project_id = %s
+                    ORDER BY sequence_no
                     """,
-                    (project_id, supersedes_event_id),
-                ).fetchone()
-                if supersedes is not None:
-                    known_event_ids.add(supersedes["event_id"])
+                    (project_id,),
+                ).fetchall()
+                prior_events = [copy.deepcopy(item["envelope"]) for item in prior_rows]
             try:
                 restored = replay_state_events(
                     current_snapshot,
                     [event],
                     starting_sequence_no=expected_sequence,
                     previous_event_sha256=previous_event_sha256,
-                    known_event_ids=known_event_ids,
+                    prior_events=prior_events,
                 )
             except (StateEventError, TypedStateError) as exc:
                 raise PostgresStateIntegrityError("state Event replay failed") from exc
-            if canonical_state_bytes(restored) != canonical_state_bytes(expected_snapshot):
+            if canonical_state_bytes(restored) != canonical_state_bytes(
+                expected_snapshot
+            ):
                 raise PostgresStateIntegrityError(
                     "event replay does not produce expected snapshot"
                 )

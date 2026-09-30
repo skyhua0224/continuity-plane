@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://continuity.invalid/schemas/m8-10/collaboration-notification.schema.json",
+  "title": "M8-10 signed collaboration notification",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "event_id", "request_id", "tenant_id", "project_id", "state_revision", "sequence_no", "previous_event_sha256", "event_kind", "actor_ref", "work_id", "summary", "target_refs", "evidence_refs", "requires_approval", "causation_ref", "correlation_ref", "observed_at", "context_injection_authority", "operation_authority", "state_write_authority", "provider_authority", "external_effect_authority", "event_sha256", "signature"],
+  "properties": {
+    "schema_version": {"const": "context.collaboration-notification/v1alpha1"},
+    "event_id": {"$ref": "#/$defs/id"},
+    "request_id": {"$ref": "#/$defs/id"},
+    "tenant_id": {"$ref": "#/$defs/id"},
+    "project_id": {"$ref": "#/$defs/id"},
+    "state_revision": {"type": "integer", "minimum": 0},
+    "sequence_no": {"type": "integer", "minimum": 1},
+    "previous_event_sha256": {"$ref": "#/$defs/sha256"},
+    "event_kind": {"$ref": "#/$defs/eventKind"},
+    "actor_ref": {"$ref": "#/$defs/id"},
+    "work_id": {"$ref": "#/$defs/id"},
+    "summary": {"type": "string", "minLength": 1, "maxLength": 4096, "pattern": "^[^\\r\\n\\u0000]+$"},
+    "target_refs": {"$ref": "#/$defs/nonEmptyIds"},
+    "evidence_refs": {"$ref": "#/$defs/nonEmptyIds"},
+    "requires_approval": {"type": "boolean"},
+    "causation_ref": {"$ref": "#/$defs/id"},
+    "correlation_ref": {"$ref": "#/$defs/id"},
+    "observed_at": {"$ref": "#/$defs/timestamp"},
+    "context_injection_authority": {"const": false},
+    "operation_authority": {"const": false},
+    "state_write_authority": {"const": false},
+    "provider_authority": {"const": 0},
+    "external_effect_authority": {"const": 0},
+    "event_sha256": {"$ref": "#/$defs/sha256"},
+    "signature": {"$ref": "#/$defs/signature"}
+  },
+  "allOf": [
+    {"if": {"properties": {"event_kind": {"enum": ["approval_requested", "deploy_intent"]}}}, "then": {"properties": {"requires_approval": {"const": true}}}, "else": {"properties": {"requires_approval": {"const": false}}}}
+  ],
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "format": "date-time", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$"},
+    "eventKind": {"enum": ["approval_requested", "conflict_detected", "deploy_intent", "review_requested", "work_claimed"]},
+    "nonEmptyIds": {"type": "array", "minItems": 1, "maxItems": 256, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+    "signature": {"type": "object", "additionalProperties": false, "required": ["algorithm", "key_id", "value"], "properties": {"algorithm": {"const": "hmac-sha256"}, "key_id": {"$ref": "#/$defs/id"}, "value": {"$ref": "#/$defs/sha256"}}}
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://continuity.invalid/schemas/m7-03/verification-profile.schema.json",
+  "title": "Continuity Plane Verification Profile",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "profile_id", "project_id", "profile_version", "revision", "valid_from", "valid_until", "gates", "state_write_authority", "completion_authority", "profile_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.verification-profile/v1alpha1"},
+    "profile_id": {"$ref": "#/$defs/id"},
+    "project_id": {"$ref": "#/$defs/id"},
+    "profile_version": {"type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"},
+    "revision": {"type": "integer", "minimum": 0},
+    "valid_from": {"type": "string", "format": "date-time"},
+    "valid_until": {"type": ["string", "null"], "format": "date-time"},
+    "gates": {"type": "array", "minItems": 1, "maxItems": 256, "items": {"$ref": "#/$defs/gate"}},
+    "state_write_authority": {"const": false},
+    "completion_authority": {"const": false},
+    "profile_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "idList": {"type": "array", "maxItems": 256, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+    "threshold": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["metric", "operator", "value", "unit"],
+      "properties": {
+        "metric": {"$ref": "#/$defs/id"},
+        "operator": {"enum": ["gte", "lte", "eq"]},
+        "value": {"type": "integer", "minimum": 0},
+        "unit": {"enum": ["basis-points", "milliseconds", "bytes-per-second", "count"]}
+      }
+    },
+    "gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["gate_id", "gate_kind", "mode", "condition_ref", "capability_refs", "depends_on_gate_ids", "evidence_requirements", "thresholds"],
+      "properties": {
+        "gate_id": {"$ref": "#/$defs/id"},
+        "gate_kind": {"enum": ["static", "tdd", "build", "contract", "golden", "mutation", "loopback", "weak-network", "live", "performance", "fault-recovery"]},
+        "mode": {"enum": ["required", "conditional", "optional"]},
+        "condition_ref": {"type": ["string", "null"], "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"},
+        "capability_refs": {"allOf": [{"$ref": "#/$defs/idList"}, {"minItems": 1}]},
+        "depends_on_gate_ids": {"$ref": "#/$defs/idList"},
+        "evidence_requirements": {"allOf": [{"$ref": "#/$defs/idList"}, {"minItems": 1}]},
+        "thresholds": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/threshold"}}
+      },
+      "allOf": [
+        {"if": {"properties": {"mode": {"const": "conditional"}}}, "then": {"properties": {"condition_ref": {"type": "string"}}}},
+        {"if": {"properties": {"mode": {"enum": ["required", "optional"]}}}, "then": {"properties": {"condition_ref": {"type": "null"}}}}
+      ]
+    }
+  }
+}
