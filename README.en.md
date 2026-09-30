@@ -14,21 +14,29 @@ after compaction, task switches, crashes, and handoffs is deterministic.
 Install one CLI first:
 
 ```bash
-python -m pip install continuity-plane==0.1.0a15
+python -m pip install --upgrade continuity-plane
 ```
 
-The current public version is alpha15, with non-blocking hooks, runtime doctor checks, and older-Session compatibility hints.
+### Recent updates
+
+- Lifecycle hooks, compaction recovery, and doctor checks are non-blocking by default, so ordinary
+  development continues when Continuity metadata is unavailable.
+- Added a collaboration ledger, global/project vocabulary memory, bounded recovery packets, skills
+  audits, and worktree inventory. These provide hints only; they grant no completion, push, merge,
+  or deployment authority.
+- Work activation errors now return structured diagnostics, and older Sessions receive one
+  compatibility hint when the newer MCP tool is not visible.
+- Bounded code indexing is reusable across Sessions and AI clients and reparses only changed files.
 
 ### Codex plugin (optional)
 
 The core package does not depend on a plugin. The default `continuity-plane` plugin is a
 lightweight core for bounded recovery and checkpoint lifecycle, with no State MCP tools or ordinary
-command gates. Advisory hooks and one-shot recovery compensation ship in alpha13; alpha15 adds
-older-Session hints and structured Work activation diagnostics. See the
-[alpha.15 changes](CHANGELOG.en.md#010-alpha15).
+command gates. Advisory hooks and one-shot recovery compensation do not block ordinary development;
+see the [changelog](CHANGELOG.en.md) for the full history.
 
 ```bash
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.15
+codex plugin marketplace add skyhua0224/continuity-plane
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -71,10 +79,9 @@ uses non-blocking `auto`; `strict` is only for CI or explicit mandatory-blocking
 
 ## Generic collaboration and vocabulary memory
 
-The alpha14 development branch adds a lightweight collaboration ledger, global/project
-vocabulary memory, a skills audit, and a worktree inventory. They are collaboration hints
-only, grant no completion or external-effect authority, and local development continues
-when metadata is missing. See
+Recent releases add a lightweight collaboration ledger, global/project vocabulary memory, a skills
+audit, and a worktree inventory. They are collaboration hints only, grant no completion or
+external-effect authority, and local development continues when metadata is missing. See
 [`generic-collaboration-memory`](docs/architecture/generic-collaboration-memory.md).
 
 ### One Project
@@ -211,7 +218,7 @@ are optional enhancements.
 ## Documentation
 
 - [Usage guide](USAGE.en.md)
-- [Complete alpha.15 changes and upgrade notes](CHANGELOG.en.md#010-alpha15)
+- [Complete changes and upgrade notes](CHANGELOG.en.md)
 - [Architecture](docs/architecture.en.md)
 - [Configuration](docs/configuration.en.md)
 - [Python API](docs/api.en.md)
@@ -224,7 +231,7 @@ are optional enhancements.
 
 ## Release And License
 
-The current alpha is available from [PyPI](https://pypi.org/project/continuity-plane/0.1.0a15/)
+The project is available from [PyPI](https://pypi.org/project/continuity-plane/)
 and [GitHub Releases](https://github.com/skyhua0224/continuity-plane/releases).
 The GitHub release also provides the core wheel, source archive, Codex plugin marketplace, and SHA256SUMS; see the
 [changelog](CHANGELOG.en.md).
