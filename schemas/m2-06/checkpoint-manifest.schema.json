@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://continuity.dev/schemas/m2-06/checkpoint-manifest.schema.json",
+  "title": "Continuity Plane Checkpoint Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "snapshot_ref",
+    "project_id",
+    "revision",
+    "governance_ref",
+    "canonical_plan_sha256",
+    "registry_digest",
+    "event_head",
+    "active_work_ids",
+    "primary_work_id",
+    "terminal_work_ids",
+    "accepted_decision_ids",
+    "terminal_decision_ids",
+    "active_constraint_ids",
+    "open_blocker_ids",
+    "active_claim_ids",
+    "in_flight_effect_ids",
+    "terminal_effect_ids",
+    "effect_high_watermark",
+    "captured_state_updated_at",
+    "critical_projection_sha256"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "context.checkpoint-manifest/v1alpha1"
+    },
+    "snapshot_ref": {
+      "$ref": "#/$defs/artifactRef"
+    },
+    "project_id": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "revision": {
+      "$ref": "#/$defs/nonNegativeInteger"
+    },
+    "governance_ref": {
+      "$ref": "#/$defs/nonEmptyString"
+    },
+    "canonical_plan_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "registry_digest": {
+      "$ref": "#/$defs/sha256"
+    },
+    "event_head": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/eventHead"}
+      ]
+    },
+    "active_work_ids": {
+      "$ref": "#/$defs/idList"
+    },
+    "primary_work_id": {
+      "type": ["string", "null"],
+      "minLength": 1
+    },
+    "terminal_work_ids": {
+      "$ref": "#/$defs/idList"
+    },
+    "accepted_decision_ids": {
+      "$ref": "#/$defs/idList"
+    },
+    "terminal_decision_ids": {
+      "$ref": "#/$defs/idList"
+    },
+    "active_constraint_ids": {
+      "$ref": "#/$defs/idList"
+    },
+    "open_blocker_ids": {
+      "$ref": "#/$defs/idList"
+    },
+    "active_claim_ids": {
+      "$ref": "#/$defs/idList"
+    },
+    "in_flight_effect_ids": {
+      "$ref": "#/$defs/idList"
+    },
+    "terminal_effect_ids": {
+      "$ref": "#/$defs/idList"
+    },
+    "effect_high_watermark": {
+      "$ref": "#/$defs/nonNegativeInteger"
+    },
+    "captured_state_updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "critical_projection_sha256": {
+      "$ref": "#/$defs/sha256"
+    }
+  },
+  "$defs": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "nonNegativeInteger": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "idList": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/nonEmptyString"
+      }
+    },
+    "eventHead": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sequence_no", "event_sha256"],
+      "properties": {
+        "sequence_no": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "event_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "artifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "digest_algorithm",
+        "digest",
+        "size_bytes",
+        "artifact_uri"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": "context.artifact-ref/v1alpha1"
+        },
+        "digest_algorithm": {
+          "const": "sha-256"
+        },
+        "digest": {
+          "$ref": "#/$defs/sha256"
+        },
+        "size_bytes": {
+          "$ref": "#/$defs/nonNegativeInteger"
+        },
+        "artifact_uri": {
+          "type": "string",
+          "pattern": "^artifact://sha256/[0-9a-f]{64}$"
+        }
+      }
+    }
+  }
+}

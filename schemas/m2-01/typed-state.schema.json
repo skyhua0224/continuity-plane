@@ -1,0 +1,341 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://continuity.dev/schema/context.typed-state/v1alpha1",
+  "title": "Continuity Plane typed state snapshot",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project",
+    "works",
+    "claims",
+    "ideas",
+    "decisions",
+    "constraints",
+    "evidence",
+    "blockers",
+    "effects"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.typed-state/v1alpha1"},
+    "project": {"$ref": "#/$defs/project"},
+    "works": {"type": "array", "items": {"$ref": "#/$defs/work"}},
+    "claims": {"type": "array", "items": {"$ref": "#/$defs/claim"}},
+    "ideas": {"type": "array", "items": {"$ref": "#/$defs/idea"}},
+    "decisions": {"type": "array", "items": {"$ref": "#/$defs/decision"}},
+    "constraints": {"type": "array", "items": {"$ref": "#/$defs/constraint"}},
+    "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}},
+    "blockers": {"type": "array", "items": {"$ref": "#/$defs/blocker"}},
+    "effects": {"type": "array", "items": {"$ref": "#/$defs/effect"}}
+  },
+  "$defs": {
+    "nonEmptyString": {"type": "string", "minLength": 1},
+    "nullableString": {"type": ["string", "null"], "minLength": 1},
+    "nonNegativeInteger": {"type": "integer", "minimum": 0},
+    "timestamp": {"type": "string", "format": "date-time", "minLength": 1},
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "stringList": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/nonEmptyString"},
+      "uniqueItems": true
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope_kind", "scope_ref"],
+      "properties": {
+        "scope_kind": {
+          "enum": ["repo", "directory", "file", "symbol", "capability", "effect"]
+        },
+        "scope_ref": {"$ref": "#/$defs/nonEmptyString"}
+      }
+    },
+    "scopeList": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/scope"}
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_id",
+        "revision",
+        "governance_ref",
+        "active_work_ids",
+        "primary_work_id",
+        "current_decision_ids",
+        "active_constraint_ids",
+        "open_blocker_ids",
+        "effect_high_watermark",
+        "updated_at"
+      ],
+      "properties": {
+        "project_id": {"$ref": "#/$defs/nonEmptyString"},
+        "revision": {"$ref": "#/$defs/nonNegativeInteger"},
+        "governance_ref": {"$ref": "#/$defs/nonEmptyString"},
+        "active_work_ids": {"$ref": "#/$defs/stringList"},
+        "primary_work_id": {"$ref": "#/$defs/nullableString"},
+        "current_decision_ids": {"$ref": "#/$defs/stringList"},
+        "active_constraint_ids": {"$ref": "#/$defs/stringList"},
+        "open_blocker_ids": {"$ref": "#/$defs/stringList"},
+        "effect_high_watermark": {"$ref": "#/$defs/nonNegativeInteger"},
+        "updated_at": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "work": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "work_id",
+        "kind",
+        "title",
+        "status",
+        "parent_work_id",
+        "dependency_ids",
+        "owner_refs",
+        "scope_refs",
+        "overlap_candidate_ids",
+        "dedupe_status",
+        "supersedes_work_id",
+        "evidence_ids",
+        "blocker_ids",
+        "revision"
+      ],
+      "properties": {
+        "work_id": {"$ref": "#/$defs/nonEmptyString"},
+        "kind": {"enum": ["campaign", "goal", "work", "experiment"]},
+        "title": {"$ref": "#/$defs/nonEmptyString"},
+        "status": {
+          "enum": [
+            "proposed",
+            "blocked",
+            "ready",
+            "active",
+            "verifying",
+            "completed",
+            "rejected",
+            "reverted",
+            "superseded"
+          ]
+        },
+        "parent_work_id": {"$ref": "#/$defs/nullableString"},
+        "dependency_ids": {"$ref": "#/$defs/stringList"},
+        "owner_refs": {"$ref": "#/$defs/stringList"},
+        "scope_refs": {"$ref": "#/$defs/scopeList"},
+        "overlap_candidate_ids": {"$ref": "#/$defs/stringList"},
+        "dedupe_status": {"enum": ["clear", "candidate", "blocked", "coordinated"]},
+        "supersedes_work_id": {"$ref": "#/$defs/nullableString"},
+        "evidence_ids": {"$ref": "#/$defs/stringList"},
+        "blocker_ids": {"$ref": "#/$defs/stringList"},
+        "revision": {"$ref": "#/$defs/nonNegativeInteger"}
+      }
+    },
+    "claim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claim_id",
+        "work_id",
+        "actor_ref",
+        "status",
+        "expected_project_revision",
+        "claimed_at",
+        "lease_expires_at",
+        "released_at",
+        "scope_owners"
+      ],
+      "properties": {
+        "claim_id": {"$ref": "#/$defs/nonEmptyString"},
+        "work_id": {"$ref": "#/$defs/nonEmptyString"},
+        "actor_ref": {"$ref": "#/$defs/nonEmptyString"},
+        "status": {"enum": ["active", "released", "expired", "revoked"]},
+        "expected_project_revision": {"$ref": "#/$defs/nonNegativeInteger"},
+        "claimed_at": {"$ref": "#/$defs/timestamp"},
+        "lease_expires_at": {"$ref": "#/$defs/timestamp"},
+        "released_at": {"$ref": "#/$defs/nullableString"},
+        "scope_owners": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/scope"}
+        }
+      }
+    },
+    "idea": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "idea_id",
+        "parent_work_id",
+        "source_ref",
+        "summary",
+        "status",
+        "return_work_id",
+        "expiry",
+        "attempt_budget",
+        "promotion_target",
+        "evidence_ids"
+      ],
+      "properties": {
+        "idea_id": {"$ref": "#/$defs/nonEmptyString"},
+        "parent_work_id": {"$ref": "#/$defs/nonEmptyString"},
+        "source_ref": {"$ref": "#/$defs/nonEmptyString"},
+        "summary": {"$ref": "#/$defs/nonEmptyString"},
+        "status": {
+          "enum": ["candidate", "parked", "proposed", "approved", "rejected", "superseded"]
+        },
+        "return_work_id": {"$ref": "#/$defs/nonEmptyString"},
+        "expiry": {"$ref": "#/$defs/nullableString"},
+        "attempt_budget": {"$ref": "#/$defs/nullableNonNegativeInteger"},
+        "promotion_target": {"$ref": "#/$defs/nullableString"},
+        "evidence_ids": {"$ref": "#/$defs/stringList"}
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "decision_id",
+        "work_id",
+        "status",
+        "statement",
+        "decided_at",
+        "supersedes_decision_id",
+        "evidence_ids"
+      ],
+      "properties": {
+        "decision_id": {"$ref": "#/$defs/nonEmptyString"},
+        "work_id": {"$ref": "#/$defs/nonEmptyString"},
+        "status": {
+          "enum": ["proposed", "accepted", "rejected", "reverted", "superseded"]
+        },
+        "statement": {"$ref": "#/$defs/nonEmptyString"},
+        "decided_at": {"$ref": "#/$defs/timestamp"},
+        "supersedes_decision_id": {"$ref": "#/$defs/nullableString"},
+        "evidence_ids": {"$ref": "#/$defs/stringList"}
+      }
+    },
+    "constraint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "constraint_id",
+        "status",
+        "statement",
+        "scope_work_ids",
+        "expires_at",
+        "supersedes_constraint_id",
+        "evidence_ids"
+      ],
+      "properties": {
+        "constraint_id": {"$ref": "#/$defs/nonEmptyString"},
+        "status": {
+          "enum": ["active", "satisfied", "expired", "rejected", "superseded"]
+        },
+        "statement": {"$ref": "#/$defs/nonEmptyString"},
+        "scope_work_ids": {"$ref": "#/$defs/stringList"},
+        "expires_at": {"$ref": "#/$defs/nullableString"},
+        "supersedes_constraint_id": {"$ref": "#/$defs/nullableString"},
+        "evidence_ids": {"$ref": "#/$defs/stringList"}
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id",
+        "kind",
+        "artifact_ref",
+        "content_sha256",
+        "validity",
+        "observed_at",
+        "verified_at"
+      ],
+      "properties": {
+        "evidence_id": {"$ref": "#/$defs/nonEmptyString"},
+        "kind": {
+          "enum": [
+            "source-code",
+            "standard",
+            "os-official",
+            "software-official",
+            "test",
+            "artifact",
+            "user-decision"
+          ]
+        },
+        "artifact_ref": {"$ref": "#/$defs/nonEmptyString"},
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "validity": {"enum": ["candidate", "verified", "stale", "rejected"]},
+        "observed_at": {"$ref": "#/$defs/timestamp"},
+        "verified_at": {"$ref": "#/$defs/nullableString"}
+      }
+    },
+    "blocker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "blocker_id",
+        "status",
+        "reason",
+        "blocked_work_ids",
+        "evidence_ids",
+        "opened_at",
+        "resolved_at",
+        "supersedes_blocker_id"
+      ],
+      "properties": {
+        "blocker_id": {"$ref": "#/$defs/nonEmptyString"},
+        "status": {"enum": ["open", "resolved", "superseded"]},
+        "reason": {"$ref": "#/$defs/nonEmptyString"},
+        "blocked_work_ids": {"$ref": "#/$defs/stringList"},
+        "evidence_ids": {"$ref": "#/$defs/stringList"},
+        "opened_at": {"$ref": "#/$defs/timestamp"},
+        "resolved_at": {"$ref": "#/$defs/nullableString"},
+        "supersedes_blocker_id": {"$ref": "#/$defs/nullableString"}
+      }
+    },
+    "effect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "effect_id",
+        "effect_key",
+        "work_id",
+        "claim_id",
+        "status",
+        "operation",
+        "scope_ref",
+        "expected_project_revision",
+        "sequence_no",
+        "evidence_ids",
+        "result_ref",
+        "requested_at",
+        "completed_at"
+      ],
+      "properties": {
+        "effect_id": {"$ref": "#/$defs/nonEmptyString"},
+        "effect_key": {"$ref": "#/$defs/nonEmptyString"},
+        "work_id": {"$ref": "#/$defs/nonEmptyString"},
+        "claim_id": {"$ref": "#/$defs/nullableString"},
+        "status": {
+          "enum": ["planned", "authorized", "started", "succeeded", "failed", "compensated"]
+        },
+        "operation": {"$ref": "#/$defs/nonEmptyString"},
+        "scope_ref": {"$ref": "#/$defs/scope"},
+        "expected_project_revision": {"$ref": "#/$defs/nonNegativeInteger"},
+        "sequence_no": {"type": "integer", "minimum": 1},
+        "evidence_ids": {"$ref": "#/$defs/stringList"},
+        "result_ref": {"$ref": "#/$defs/nullableString"},
+        "requested_at": {"$ref": "#/$defs/timestamp"},
+        "completed_at": {"$ref": "#/$defs/nullableString"}
+      }
+    },
+    "nullableNonNegativeInteger": {
+      "type": ["integer", "null"],
+      "minimum": 0
+    }
+  }
+}
