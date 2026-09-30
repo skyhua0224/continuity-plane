@@ -436,7 +436,7 @@ def main() -> int:
                         "protocolVersion", "2024-11-05"
                     ),
                     "capabilities": {"tools": {}},
-                    "serverInfo": {"name": "continuity", "version": "0.1.0-alpha.14"},
+                    "serverInfo": {"name": "continuity", "version": "0.1.0-alpha.15"},
                 },
             )
         elif method == "notifications/initialized":
