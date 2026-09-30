@@ -20,9 +20,8 @@ python -m pip install --upgrade continuity-plane
 ### Recent updates
 
 - Hooks, compaction recovery, and doctor checks are non-blocking by default.
-- Added collaboration memory, bounded recovery packets, skills/worktree audits, and structured
-  activation diagnostics; these provide hints, not external-effect authority.
-- Bounded code indexing is reusable across Sessions and AI clients and reparses only changed files.
+- Collaboration memory, recovery packets, audits, and activation diagnostics provide hints only.
+- The bounded code index is reusable across Sessions and AI clients and reparses changed files.
 
 ### Codex plugin (optional)
 
