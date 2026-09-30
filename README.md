@@ -18,12 +18,9 @@ python -m pip install --upgrade continuity-plane
 
 ### 近期更新
 
-- 生命周期 hook、压缩恢复和 doctor 默认采用非阻断模式；普通开发不会因 Continuity 元数据
-  缺失而停工。
-- 新增项目协作账本、全局/项目词汇记忆、有界恢复包、技能审计和 worktree 盘点；这些信息
-  只提供提示，不授予完成、推送、合并或部署权限。
-- Work 激活错误现在返回结构化诊断，旧 Session 在看不到新 MCP 工具时也能收到一次兼容提示。
-- 有界代码索引支持跨 Session 和其他 AI 客户端复用，只重解析发生变化的文件。
+- 默认非阻断 hook、压缩恢复和 doctor，不妨碍普通开发。
+- 协作账本、词汇记忆、恢复包、技能/worktree 审计和结构化激活诊断已加入。
+- 有界代码索引可跨 Session/AI 复用，只重解析变更文件。
 
 ### Codex 插件（可选）
 

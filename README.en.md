@@ -19,13 +19,9 @@ python -m pip install --upgrade continuity-plane
 
 ### Recent updates
 
-- Lifecycle hooks, compaction recovery, and doctor checks are non-blocking by default, so ordinary
-  development continues when Continuity metadata is unavailable.
-- Added a collaboration ledger, global/project vocabulary memory, bounded recovery packets, skills
-  audits, and worktree inventory. These provide hints only; they grant no completion, push, merge,
-  or deployment authority.
-- Work activation errors now return structured diagnostics, and older Sessions receive one
-  compatibility hint when the newer MCP tool is not visible.
+- Hooks, compaction recovery, and doctor checks are non-blocking by default.
+- Added collaboration memory, bounded recovery packets, skills/worktree audits, and structured
+  activation diagnostics; these provide hints, not external-effect authority.
 - Bounded code indexing is reusable across Sessions and AI clients and reparses only changed files.
 
 ### Codex plugin (optional)
