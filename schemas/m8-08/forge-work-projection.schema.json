@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m8-08/forge-work-projection.schema.json",
+  "title": "M8-08 forge work projection",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "provider", "instance_id", "repository_ref", "source_revision", "observed_at", "works", "refs", "authority", "projection_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.forge-work-projection/v1alpha1"},
+    "provider": {"enum": ["github", "gitea", "gitlab"]},
+    "instance_id": {"$ref": "#/$defs/instanceId"},
+    "repository_ref": {"type": "string", "pattern": "^forge://(github|gitea|gitlab)/[A-Za-z0-9][A-Za-z0-9._-]{0,127}/[^/]+/[^/]+$", "maxLength": 1024},
+    "source_revision": {"$ref": "#/$defs/nonEmptyString"},
+    "observed_at": {"$ref": "#/$defs/timestamp"},
+    "works": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": {"$ref": "#/$defs/work"}
+    },
+    "refs": {
+      "type": "object",
+      "maxProperties": 10000,
+      "propertyNames": {"type": "string", "minLength": 1, "maxLength": 1024},
+      "additionalProperties": {"$ref": "#/$defs/gitOid"}
+    },
+    "authority": {"$ref": "#/$defs/authority"},
+    "projection_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "nonEmptyString": {"type": "string", "minLength": 1, "maxLength": 4096},
+    "timestamp": {"type": "string", "format": "date-time", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "instanceId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"},
+    "gitOid": {"type": "string", "pattern": "^[0-9a-f]{40}(?:[0-9a-f]{24})?$"},
+    "actorRef": {"type": "string", "pattern": "^actor://(github|gitea|gitlab)/[A-Za-z0-9][A-Za-z0-9._-]{0,127}/[^/]+$", "maxLength": 1024},
+    "candidateClaim": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["visibility", "actor_refs", "claim_uniqueness"],
+      "properties": {
+        "visibility": {"const": "published"},
+        "actor_refs": {"type": "array", "uniqueItems": true, "maxItems": 256, "items": {"$ref": "#/$defs/actorRef"}},
+        "claim_uniqueness": {"const": "not-guaranteed"}
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "ref"],
+      "properties": {
+        "kind": {"enum": ["review", "ci"]},
+        "ref": {"type": "string", "pattern": "^(review|ci)://.+$", "maxLength": 4096}
+      }
+    },
+    "work": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["work_id", "source_kind", "source_ref", "source_revision", "title", "readiness", "branch_ref", "candidate_claim", "reviewer_refs", "evidence"],
+      "properties": {
+        "work_id": {"type": "string", "pattern": "^forge-work:.+$", "maxLength": 1024},
+        "source_kind": {"const": "issue-backed"},
+        "source_ref": {"type": "string", "pattern": "^forge://.+/issues/[1-9][0-9]*$", "maxLength": 1024},
+        "source_revision": {"$ref": "#/$defs/nonEmptyString"},
+        "title": {"$ref": "#/$defs/nonEmptyString"},
+        "readiness": {"enum": ["ready", "verifying", "completion-candidate"]},
+        "branch_ref": {"type": ["string", "null"], "pattern": "^refs/heads/.+$", "maxLength": 1024},
+        "candidate_claim": {"$ref": "#/$defs/candidateClaim"},
+        "reviewer_refs": {"type": "array", "uniqueItems": true, "maxItems": 256, "items": {"$ref": "#/$defs/actorRef"}},
+        "evidence": {"type": "array", "maxItems": 10000, "items": {"$ref": "#/$defs/evidence"}}
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state_write_authority", "claim_authority", "effect_authority", "provider_invocations", "external_services"],
+      "properties": {
+        "state_write_authority": {"const": false},
+        "claim_authority": {"const": false},
+        "effect_authority": {"const": false},
+        "provider_invocations": {"const": 0},
+        "external_services": {"const": 0}
+      }
+    }
+  }
+}

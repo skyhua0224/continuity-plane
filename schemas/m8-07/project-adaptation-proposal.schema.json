@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schema/context.project-adaptation-proposal/v1alpha1",
+  "title": "ProjectAdaptation proposal",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "adaptation_id", "profile_id", "version", "proposal_revision", "content_sha256", "scope", "inputs", "applicability", "changes", "metrics_before", "metrics_after", "safety_veto_results", "replay_receipts", "expiry", "rollback_to", "status", "approval_round", "approval_ref", "approved_at", "activation_revision"],
+  "properties": {
+    "schema_version": {"const": "context.project-adaptation-proposal/v1alpha1"},
+    "adaptation_id": {"$ref": "#/$defs/id"},
+    "profile_id": {"$ref": "#/$defs/id"},
+    "version": {"$ref": "#/$defs/semver"},
+    "proposal_revision": {"type": "integer", "minimum": 1},
+    "content_sha256": {"$ref": "#/$defs/sha256"},
+    "scope": {"enum": ["project", "user", "provider-adapter"]},
+    "inputs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+    "applicability": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "object", "additionalProperties": false, "required": ["kind", "ref"], "properties": {"kind": {"enum": ["project", "user", "repo", "path", "operation", "provider"]}, "ref": {"$ref": "#/$defs/id"}}}},
+    "changes": {"type": "object", "additionalProperties": false, "required": ["retrieval_order", "common_path_refs", "common_command_refs", "verification_hint_refs", "skill_applicability", "presentation_preferences"], "properties": {"retrieval_order": {"$ref": "#/$defs/strings"}, "common_path_refs": {"$ref": "#/$defs/strings"}, "common_command_refs": {"$ref": "#/$defs/strings"}, "verification_hint_refs": {"$ref": "#/$defs/strings"}, "skill_applicability": {"$ref": "#/$defs/strings"}, "presentation_preferences": {"type": "object", "additionalProperties": false, "properties": {"language": {"type": "string"}, "progress_reporting": {"type": "string"}, "response_density": {"type": "string"}, "response_format": {"type": "string"}, "verbosity": {"type": "string"}}}}},
+    "metrics_before": {"$ref": "#/$defs/metrics"},
+    "metrics_after": {"$ref": "#/$defs/metrics"},
+    "safety_veto_results": {"$ref": "#/$defs/vetoes"},
+    "replay_receipts": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^artifact://sha256/[0-9a-f]{64}$"}},
+    "expiry": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/timestamp"}]},
+    "rollback_to": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/semver"}]},
+    "status": {"enum": ["candidate", "shadow", "approved", "active", "quarantined", "rejected", "superseded"]},
+    "approval_round": {"type": "integer", "minimum": 0},
+    "approval_ref": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/id"}]},
+    "approved_at": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/timestamp"}]},
+    "activation_revision": {"oneOf": [{"type": "null"}, {"type": "integer", "minimum": 1}]}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "semver": {"type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$"},
+    "timestamp": {"type": "string", "format": "date-time", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$"},
+    "strings": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+    "metrics": {"type": "object", "additionalProperties": false, "required": ["bytes_read", "bytes_emitted", "repeated_read_bytes", "verification_failures"], "properties": {"bytes_read": {"type": "integer", "minimum": 0}, "bytes_emitted": {"type": "integer", "minimum": 0}, "repeated_read_bytes": {"type": "integer", "minimum": 0}, "verification_failures": {"type": "integer", "minimum": 0}}},
+    "vetoes": {"type": "object", "additionalProperties": false, "required": ["E1", "E2", "E4", "E6", "E8", "E9"], "properties": {"E1": {"type": "boolean"}, "E2": {"type": "boolean"}, "E4": {"type": "boolean"}, "E6": {"type": "boolean"}, "E8": {"type": "boolean"}, "E9": {"type": "boolean"}}}
+  }
+}

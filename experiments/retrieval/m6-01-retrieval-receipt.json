@@ -1,0 +1,68 @@
+{
+  "cache_status": "miss",
+  "evidence": [
+    {
+      "evidence_id": "evidence/m6-01/benchmark-call",
+      "range": {
+        "length_bytes": 22,
+        "offset_bytes": 7416
+      },
+      "retrieved_at": "2026-08-15T07:15:00Z",
+      "revision": "worktree:m6-measured-retrieval",
+      "sha256": "2970905fc4bf6e61b2c3bee416f5efdabb94f19fbecd0563c2052e840e8ec3f1",
+      "source_kind": "current_code",
+      "source_ref": "repo://context-control-plane/context_control_plane/retrieval_benchmark.py#bytes=7416:22",
+      "valid_at": "2026-08-15T07:15:00Z"
+    },
+    {
+      "evidence_id": "evidence/m6-01/router-definition",
+      "range": {
+        "length_bytes": 19,
+        "offset_bytes": 6598
+      },
+      "retrieved_at": "2026-08-15T07:15:00Z",
+      "revision": "worktree:m6-measured-retrieval",
+      "sha256": "ea4aab19cbd360710802367dd9088f3c59c9e1d1b91967daa5a6e9894cfe6b9a",
+      "source_kind": "current_code",
+      "source_ref": "repo://context-control-plane/context_control_plane/retrieval_routing.py#bytes=6598:19",
+      "valid_at": "2026-08-15T07:15:00Z"
+    }
+  ],
+  "evidence_count": 2,
+  "executed_at": "2026-08-15T07:15:01Z",
+  "max_index_age_seconds": 3600,
+  "memory_authority": false,
+  "plan_id": "plan/question/m6-01/acceptance",
+  "plan_sha256": "59dbac86fde09e9ede9ce706be0aab547eeee4108c1fbb2b18fac394e018879b",
+  "prior_receipt_ref": null,
+  "query_sha256": "daff7d65dfe2055f2ab646dfbb1920871e0046440164b411c5ae42aa5051e830",
+  "receipt_id": "receipt/question/m6-01/acceptance",
+  "receipt_sha256": "c49ac0a260dff91fc5b95e0d9442a75e5689989998fd81e1f6e6a8213ca5cfc4",
+  "schema_version": "context.retrieval-receipt/v1alpha1",
+  "state_write_authority": false,
+  "step_results": [
+    {
+      "index_age_seconds": 0,
+      "index_revision": null,
+      "index_sha256": null,
+      "queries": 1,
+      "returned_bytes": 22,
+      "scanned_bytes": 25658,
+      "tool": "rg"
+    },
+    {
+      "index_age_seconds": 0,
+      "index_revision": "worktree:m6-codegraph-probe",
+      "index_sha256": "864615ef1c339be58b808f319af1f91cd98c9305f4f615eee506ad38a717af11",
+      "queries": 1,
+      "returned_bytes": 210,
+      "scanned_bytes": 58197,
+      "tool": "lsp"
+    }
+  ],
+  "totals": {
+    "queries": 2,
+    "returned_bytes": 232,
+    "scanned_bytes": 83855
+  }
+}

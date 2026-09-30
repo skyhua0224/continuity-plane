@@ -1,0 +1,128 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m9-02/project-graph-projection-benchmark.schema.json",
+  "title": "M9-02 Project Graph projection benchmark receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "benchmark_id", "generated_at", "parameters", "thresholds", "results", "latency_ms", "gate", "provenance", "receipt_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.project-graph-projection-benchmark/v1alpha1"},
+    "benchmark_id": {"const": "m9-02-project-graph-projection"},
+    "generated_at": {"$ref": "#/$defs/timestamp"},
+    "parameters": {"$ref": "#/$defs/parameters"},
+    "thresholds": {"$ref": "#/$defs/thresholds"},
+    "results": {"$ref": "#/$defs/results"},
+    "latency_ms": {"$ref": "#/$defs/latency"},
+    "gate": {"$ref": "#/$defs/gate"},
+    "provenance": {"$ref": "#/$defs/provenance"},
+    "receipt_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$"
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "count": {"type": "integer", "minimum": 0, "maximum": 1000},
+    "rate": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["iterations", "large_graph_work_count", "max_nested_items", "max_scope_comparisons", "stress_scope_count"],
+      "properties": {
+        "iterations": {"type": "integer", "minimum": 1, "maximum": 1000},
+        "large_graph_work_count": {"const": 128},
+        "max_nested_items": {"const": 50000},
+        "max_scope_comparisons": {"const": 50000},
+        "stress_scope_count": {"const": 223}
+      }
+    },
+    "thresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["same_revision_rate_min", "active_work_complete_rate_min", "cycle_visibility_rate_min", "orphan_visibility_rate_min", "expired_branch_visibility_rate_min", "lease_expiry_visibility_rate_min", "work_scope_overlap_visibility_rate_min", "bounded_overlap_complete_rate_min", "claim_conflict_rejection_required", "large_graph_complete_rate_min", "tamper_rejection_rate_min", "authority_violations_max", "provider_invocations_max", "external_services_max", "projection_latency_p95_ms_max"],
+      "properties": {
+        "same_revision_rate_min": {"const": 1.0},
+        "active_work_complete_rate_min": {"const": 1.0},
+        "cycle_visibility_rate_min": {"const": 1.0},
+        "orphan_visibility_rate_min": {"const": 1.0},
+        "expired_branch_visibility_rate_min": {"const": 1.0},
+        "lease_expiry_visibility_rate_min": {"const": 1.0},
+        "work_scope_overlap_visibility_rate_min": {"const": 1.0},
+        "bounded_overlap_complete_rate_min": {"const": 1.0},
+        "claim_conflict_rejection_required": {"const": true},
+        "large_graph_complete_rate_min": {"const": 1.0},
+        "tamper_rejection_rate_min": {"const": 1.0},
+        "authority_violations_max": {"const": 0},
+        "provider_invocations_max": {"const": 0},
+        "external_services_max": {"const": 0},
+        "projection_latency_p95_ms_max": {"const": 50.0}
+      }
+    },
+    "results": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["same_revision_matches", "same_revision_rate", "active_work_complete_matches", "active_work_complete_rate", "cycle_visibility_matches", "cycle_visibility_rate", "orphan_visibility_matches", "orphan_visibility_rate", "expired_branch_visibility_matches", "expired_branch_visibility_rate", "lease_expiry_visibility_matches", "lease_expiry_visibility_rate", "work_scope_overlap_visibility_matches", "work_scope_overlap_visibility_rate", "bounded_overlap_complete_matches", "bounded_overlap_complete_rate", "claim_conflict_rejected", "large_graph_complete_matches", "large_graph_complete_rate", "tamper_rejections", "tamper_rejection_rate", "authority_violations", "provider_invocations", "external_services"],
+      "properties": {
+        "same_revision_matches": {"$ref": "#/$defs/count"},
+        "same_revision_rate": {"$ref": "#/$defs/rate"},
+        "active_work_complete_matches": {"$ref": "#/$defs/count"},
+        "active_work_complete_rate": {"$ref": "#/$defs/rate"},
+        "cycle_visibility_matches": {"$ref": "#/$defs/count"},
+        "cycle_visibility_rate": {"$ref": "#/$defs/rate"},
+        "orphan_visibility_matches": {"$ref": "#/$defs/count"},
+        "orphan_visibility_rate": {"$ref": "#/$defs/rate"},
+        "expired_branch_visibility_matches": {"$ref": "#/$defs/count"},
+        "expired_branch_visibility_rate": {"$ref": "#/$defs/rate"},
+        "lease_expiry_visibility_matches": {"$ref": "#/$defs/count"},
+        "lease_expiry_visibility_rate": {"$ref": "#/$defs/rate"},
+        "work_scope_overlap_visibility_matches": {"$ref": "#/$defs/count"},
+        "work_scope_overlap_visibility_rate": {"$ref": "#/$defs/rate"},
+        "bounded_overlap_complete_matches": {"$ref": "#/$defs/count"},
+        "bounded_overlap_complete_rate": {"$ref": "#/$defs/rate"},
+        "claim_conflict_rejected": {"const": true},
+        "large_graph_complete_matches": {"$ref": "#/$defs/count"},
+        "large_graph_complete_rate": {"$ref": "#/$defs/rate"},
+        "tamper_rejections": {"$ref": "#/$defs/count"},
+        "tamper_rejection_rate": {"$ref": "#/$defs/rate"},
+        "authority_violations": {"$ref": "#/$defs/count"},
+        "provider_invocations": {"$ref": "#/$defs/count"},
+        "external_services": {"$ref": "#/$defs/count"}
+      }
+    },
+    "latency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min", "p50", "p95", "max"],
+      "properties": {
+        "min": {"type": "number", "minimum": 0},
+        "p50": {"type": "number", "minimum": 0},
+        "p95": {"type": "number", "minimum": 0},
+        "max": {"type": "number", "minimum": 0}
+      }
+    },
+    "gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "failed_gates"],
+      "properties": {
+        "status": {"const": "passed"},
+        "failed_gates": {"type": "array", "maxItems": 0}
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implementation_sha256", "benchmark_sha256", "external_state_provider_sha256", "typed_state_sha256", "fixture_sha256", "idea_fixture_builder_sha256"],
+      "properties": {
+        "implementation_sha256": {"$ref": "#/$defs/sha256"},
+        "benchmark_sha256": {"$ref": "#/$defs/sha256"},
+        "external_state_provider_sha256": {"$ref": "#/$defs/sha256"},
+        "typed_state_sha256": {"$ref": "#/$defs/sha256"},
+        "fixture_sha256": {"$ref": "#/$defs/sha256"},
+        "idea_fixture_builder_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

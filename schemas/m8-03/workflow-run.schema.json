@@ -1,0 +1,350 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schemas/m8-03/workflow-run.schema.json",
+  "title": "Context Control Plane Workflow Run",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "workflow_id",
+    "chain_id",
+    "run_id",
+    "generation",
+    "previous_run_id",
+    "previous_run_event_sha256",
+    "project_id",
+    "root_work_id",
+    "request_id",
+    "workflow_type",
+    "definition_version",
+    "implementation_sha256",
+    "authority",
+    "checkpoint_ref",
+    "checkpoint_sha256",
+    "continuation_sha256",
+    "active_patch_ids",
+    "pending_inputs",
+    "input_ack_count",
+    "input_ack_sha256",
+    "effects",
+    "effect_settlement_count",
+    "effect_settlement_sha256",
+    "history",
+    "phase",
+    "created_at",
+    "updated_at",
+    "state_write_authority",
+    "effect_dispatch_authority",
+    "provider_native_authority",
+    "run_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.workflow-run/v1alpha1"},
+    "workflow_id": {"$ref": "#/$defs/id"},
+    "chain_id": {"$ref": "#/$defs/id"},
+    "run_id": {"$ref": "#/$defs/id"},
+    "generation": {"$ref": "#/$defs/positiveInteger"},
+    "previous_run_id": {
+      "oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]
+    },
+    "previous_run_event_sha256": {
+      "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+    },
+    "project_id": {"$ref": "#/$defs/id"},
+    "root_work_id": {"$ref": "#/$defs/id"},
+    "request_id": {"$ref": "#/$defs/id"},
+    "workflow_type": {"$ref": "#/$defs/id"},
+    "definition_version": {"$ref": "#/$defs/positiveInteger"},
+    "implementation_sha256": {"$ref": "#/$defs/sha256"},
+    "authority": {"$ref": "#/$defs/authority"},
+    "checkpoint_ref": {"$ref": "#/$defs/id"},
+    "checkpoint_sha256": {"$ref": "#/$defs/sha256"},
+    "continuation_sha256": {"$ref": "#/$defs/sha256"},
+    "active_patch_ids": {"$ref": "#/$defs/idSet"},
+    "pending_inputs": {"$ref": "#/$defs/inputSet"},
+    "input_ack_count": {"type": "integer", "minimum": 0},
+    "input_ack_sha256": {"$ref": "#/$defs/sha256"},
+    "effects": {"$ref": "#/$defs/effectSet"},
+    "effect_settlement_count": {"type": "integer", "minimum": 0},
+    "effect_settlement_sha256": {"$ref": "#/$defs/sha256"},
+    "history": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/historyEvent"}
+    },
+    "phase": {"enum": ["running", "continued-as-new"]},
+    "created_at": {"$ref": "#/$defs/timestamp"},
+    "updated_at": {"$ref": "#/$defs/timestamp"},
+    "state_write_authority": {"const": false},
+    "effect_dispatch_authority": {"const": false},
+    "provider_native_authority": {"const": false},
+    "run_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "maxLength": 64,
+      "pattern": "(?:Z|[+-][0-9]{2}:[0-9]{2})$"
+    },
+    "positiveInteger": {"type": "integer", "minimum": 1},
+    "idSet": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/id"}
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["project_revision", "event_head"],
+      "properties": {
+        "project_revision": {"type": "integer", "minimum": 0},
+        "event_head": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sequence_no", "event_sha256"],
+          "properties": {
+            "sequence_no": {"type": "integer", "minimum": 0},
+            "event_sha256": {"$ref": "#/$defs/sha256"}
+          }
+        }
+      }
+    },
+    "input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input_id", "input_sha256", "status", "last_event_sha256"],
+      "properties": {
+        "input_id": {"$ref": "#/$defs/id"},
+        "input_sha256": {"$ref": "#/$defs/sha256"},
+        "status": {"const": "received"},
+        "last_event_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "inputSet": {
+      "type": "array",
+      "maxItems": 128,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/input"}
+    },
+    "effect": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "effect_id",
+        "effect_key",
+        "request_sha256",
+        "status",
+        "last_event_sha256"
+      ],
+      "properties": {
+        "effect_id": {"$ref": "#/$defs/id"},
+        "effect_key": {"$ref": "#/$defs/id"},
+        "request_sha256": {"$ref": "#/$defs/sha256"},
+        "status": {"enum": ["started", "outcome-unknown"]},
+        "last_event_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "effectSet": {
+      "type": "array",
+      "maxItems": 128,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/effect"}
+    },
+    "startedPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "definition_version",
+        "implementation_sha256",
+        "checkpoint_ref",
+        "checkpoint_sha256",
+        "continuation_sha256",
+        "active_patch_ids",
+        "pending_inputs",
+        "input_ack_count",
+        "input_ack_sha256",
+        "effects",
+        "effect_settlement_count",
+        "effect_settlement_sha256",
+        "previous_run_event_sha256"
+      ],
+      "properties": {
+        "definition_version": {"$ref": "#/$defs/positiveInteger"},
+        "implementation_sha256": {"$ref": "#/$defs/sha256"},
+        "checkpoint_ref": {"$ref": "#/$defs/id"},
+        "checkpoint_sha256": {"$ref": "#/$defs/sha256"},
+        "continuation_sha256": {"$ref": "#/$defs/sha256"},
+        "active_patch_ids": {"$ref": "#/$defs/idSet"},
+        "pending_inputs": {"$ref": "#/$defs/inputSet"},
+        "input_ack_count": {"type": "integer", "minimum": 0},
+        "input_ack_sha256": {"$ref": "#/$defs/sha256"},
+        "effects": {"$ref": "#/$defs/effectSet"},
+        "effect_settlement_count": {"type": "integer", "minimum": 0},
+        "effect_settlement_sha256": {"$ref": "#/$defs/sha256"},
+        "previous_run_event_sha256": {
+          "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        }
+      }
+    },
+    "patchMarkerPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["patch_id", "semantic_sha256", "activated"],
+      "properties": {
+        "patch_id": {"$ref": "#/$defs/id"},
+        "semantic_sha256": {"$ref": "#/$defs/sha256"},
+        "activated": {"const": true}
+      }
+    },
+    "inputStatusPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["input_id", "input_sha256", "status"],
+      "properties": {
+        "input_id": {"$ref": "#/$defs/id"},
+        "input_sha256": {"$ref": "#/$defs/sha256"},
+        "status": {"enum": ["received", "acknowledged"]}
+      }
+    },
+    "effectStatusPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["effect_id", "effect_key", "request_sha256", "status"],
+      "properties": {
+        "effect_id": {"$ref": "#/$defs/id"},
+        "effect_key": {"$ref": "#/$defs/id"},
+        "request_sha256": {"$ref": "#/$defs/sha256"},
+        "status": {"enum": ["started", "outcome-unknown", "settled"]}
+      }
+    },
+    "stepCommittedPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["step_id", "input_sha256", "result_sha256", "active_patch_ids"],
+      "properties": {
+        "step_id": {"$ref": "#/$defs/id"},
+        "input_sha256": {"$ref": "#/$defs/sha256"},
+        "result_sha256": {"$ref": "#/$defs/sha256"},
+        "active_patch_ids": {"$ref": "#/$defs/idSet"}
+      }
+    },
+    "continuedAsNewPayload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "next_run_id",
+        "next_generation",
+        "authority",
+        "checkpoint_ref",
+        "checkpoint_sha256",
+        "continuation_sha256",
+        "active_patch_ids",
+        "pending_inputs",
+        "input_ack_count",
+        "input_ack_sha256",
+        "effects",
+        "effect_settlement_count",
+        "effect_settlement_sha256"
+      ],
+      "properties": {
+        "next_run_id": {"$ref": "#/$defs/id"},
+        "next_generation": {"$ref": "#/$defs/positiveInteger"},
+        "authority": {"$ref": "#/$defs/authority"},
+        "checkpoint_ref": {"$ref": "#/$defs/id"},
+        "checkpoint_sha256": {"$ref": "#/$defs/sha256"},
+        "continuation_sha256": {"$ref": "#/$defs/sha256"},
+        "active_patch_ids": {"$ref": "#/$defs/idSet"},
+        "pending_inputs": {"$ref": "#/$defs/inputSet"},
+        "input_ack_count": {"type": "integer", "minimum": 0},
+        "input_ack_sha256": {"$ref": "#/$defs/sha256"},
+        "effects": {"$ref": "#/$defs/effectSet"},
+        "effect_settlement_count": {"type": "integer", "minimum": 0},
+        "effect_settlement_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "historyEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "event_id",
+        "sequence_no",
+        "event_type",
+        "workflow_id",
+        "chain_id",
+        "run_id",
+        "generation",
+        "occurred_at",
+        "payload",
+        "previous_event_sha256",
+        "event_sha256"
+      ],
+      "properties": {
+        "schema_version": {"const": "context.workflow-history-event/v1alpha1"},
+        "event_id": {"$ref": "#/$defs/id"},
+        "sequence_no": {"$ref": "#/$defs/positiveInteger"},
+        "event_type": {
+          "enum": [
+            "started",
+            "patch-marker",
+            "input-status",
+            "effect-status",
+            "step-committed",
+            "continued-as-new"
+          ]
+        },
+        "workflow_id": {"$ref": "#/$defs/id"},
+        "chain_id": {"$ref": "#/$defs/id"},
+        "run_id": {"$ref": "#/$defs/id"},
+        "generation": {"$ref": "#/$defs/positiveInteger"},
+        "occurred_at": {"$ref": "#/$defs/timestamp"},
+        "payload": {
+          "oneOf": [
+            {"$ref": "#/$defs/startedPayload"},
+            {"$ref": "#/$defs/patchMarkerPayload"},
+            {"$ref": "#/$defs/inputStatusPayload"},
+            {"$ref": "#/$defs/effectStatusPayload"},
+            {"$ref": "#/$defs/stepCommittedPayload"},
+            {"$ref": "#/$defs/continuedAsNewPayload"}
+          ]
+        },
+        "previous_event_sha256": {
+          "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        },
+        "event_sha256": {"$ref": "#/$defs/sha256"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"event_type": {"const": "started"}}},
+          "then": {"properties": {"payload": {"$ref": "#/$defs/startedPayload"}}}
+        },
+        {
+          "if": {"properties": {"event_type": {"const": "patch-marker"}}},
+          "then": {"properties": {"payload": {"$ref": "#/$defs/patchMarkerPayload"}}}
+        },
+        {
+          "if": {"properties": {"event_type": {"const": "input-status"}}},
+          "then": {"properties": {"payload": {"$ref": "#/$defs/inputStatusPayload"}}}
+        },
+        {
+          "if": {"properties": {"event_type": {"const": "effect-status"}}},
+          "then": {"properties": {"payload": {"$ref": "#/$defs/effectStatusPayload"}}}
+        },
+        {
+          "if": {"properties": {"event_type": {"const": "step-committed"}}},
+          "then": {"properties": {"payload": {"$ref": "#/$defs/stepCommittedPayload"}}}
+        },
+        {
+          "if": {"properties": {"event_type": {"const": "continued-as-new"}}},
+          "then": {"properties": {"payload": {"$ref": "#/$defs/continuedAsNewPayload"}}}
+        }
+      ]
+    }
+  }
+}

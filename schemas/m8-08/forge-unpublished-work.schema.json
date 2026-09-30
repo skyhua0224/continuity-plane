@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m8-08/forge-unpublished-work.schema.json",
+  "title": "M8-08 unpublished forge work",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "work_id", "actor_ref", "local_ref", "observed_at", "visibility", "claim_uniqueness", "required_resolution", "authority"],
+  "properties": {
+    "schema_version": {"const": "context.forge-unpublished-work/v1alpha1"},
+    "work_id": {"type": "string", "minLength": 1, "maxLength": 1024},
+    "actor_ref": {"type": "string", "pattern": "^actor://.+$", "maxLength": 1024},
+    "local_ref": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9+.-]*://.+$", "maxLength": 4096},
+    "observed_at": {"type": "string", "format": "date-time", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$"},
+    "visibility": {"const": "local-only"},
+    "claim_uniqueness": {"const": "not-guaranteed"},
+    "required_resolution": {"const": "publish-or-state-mcp"},
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state_write_authority", "claim_authority", "effect_authority"],
+      "properties": {
+        "state_write_authority": {"const": false},
+        "claim_authority": {"const": false},
+        "effect_authority": {"const": false}
+      }
+    }
+  }
+}

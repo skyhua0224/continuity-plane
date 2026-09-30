@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m7-05/affected-test-selection-golden.schema.json",
+  "title": "Context Control Plane Affected-Test Golden Matrix",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "golden_id", "scenarios", "performance_scenario_id", "real_commands", "state_write_authority", "completion_authority", "golden_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.affected-test-selection-golden/v1alpha1"},
+    "golden_id": {"$ref": "#/$defs/id"},
+    "scenarios": {"type": "array", "minItems": 8, "maxItems": 8, "items": {"$ref": "#/$defs/scenario"}},
+    "performance_scenario_id": {"$ref": "#/$defs/id"},
+    "real_commands": {"type": "array", "minItems": 1, "maxItems": 256, "items": {"$ref": "#/$defs/command"}},
+    "state_write_authority": {"const": false},
+    "completion_authority": {"const": false},
+    "golden_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "stringList": {"type": "array", "maxItems": 4096, "uniqueItems": true, "items": {"type": "string", "minLength": 1, "maxLength": 4096}},
+    "scenario": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scenario_id", "graph_key", "changed_paths", "graph_provenance_available", "expected_selection_mode", "expected_test_ids", "expected_fallback_reasons"],
+      "properties": {
+        "scenario_id": {"$ref": "#/$defs/id"},
+        "graph_key": {"enum": ["current", "dynamic", "incomplete", "stale"]},
+        "changed_paths": {"allOf": [{"$ref": "#/$defs/stringList"}, {"minItems": 1}]},
+        "graph_provenance_available": {"type": "boolean"},
+        "expected_selection_mode": {"enum": ["selected", "full-validation"]},
+        "expected_test_ids": {"allOf": [{"$ref": "#/$defs/stringList"}, {"minItems": 1}]},
+        "expected_fallback_reasons": {"$ref": "#/$defs/stringList"}
+      }
+    },
+    "command": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["test_id", "argv", "cwd", "command_kind"],
+      "properties": {
+        "test_id": {"$ref": "#/$defs/id"},
+        "argv": {"type": "array", "minItems": 1, "maxItems": 64, "items": {"type": "string", "minLength": 1, "maxLength": 4096}},
+        "cwd": {"const": "repository-root"},
+        "command_kind": {"enum": ["unittest", "build", "static"]}
+      }
+    }
+  }
+}

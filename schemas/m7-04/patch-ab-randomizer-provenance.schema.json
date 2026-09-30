@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m7-04/patch-ab-randomizer-provenance.schema.json",
+  "title": "Patch A/B Randomizer Provenance",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "provenance_id", "randomizer_id", "entropy_ref",
+    "entropy_sha256", "frozen_experiment_sha256", "source_kind",
+    "provenance_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.patch-ab-randomizer-provenance/v1alpha1"},
+    "provenance_id": {"$ref": "#/$defs/id"},
+    "randomizer_id": {"$ref": "#/$defs/id"},
+    "entropy_ref": {"$ref": "#/$defs/artifact"},
+    "entropy_sha256": {"$ref": "#/$defs/sha256"},
+    "frozen_experiment_sha256": {"$ref": "#/$defs/sha256"},
+    "source_kind": {"enum": ["synthetic-fixture", "attested-entropy"]},
+    "provenance_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "artifact": {"type": "string", "pattern": "^artifact://sha256/[0-9a-f]{64}$"}
+  }
+}

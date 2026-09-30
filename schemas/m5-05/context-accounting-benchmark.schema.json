@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schemas/m5-05/context-accounting-benchmark.schema.json",
+  "title": "Context Control Plane Context Accounting Benchmark Receipt",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "samples", "successful_samples", "replay_mismatch", "same_corpus_budget_failures", "route_configuration_failures", "accounting_failures", "provider_measured_routes", "provider_unavailable_routes", "false_provider_improvement_claims", "locally_measured_metrics_per_route", "p50_ms", "p95_ms", "max_ms", "external_services", "fixture_sha256", "implementation_sha256"],
+  "properties": {"schema_version": {"const": "context.context-accounting-benchmark/v1alpha1"}, "generated_at": {"type": "string", "format": "date-time"}, "samples": {"type": "integer", "minimum": 1}, "successful_samples": {"type": "integer", "minimum": 0}, "replay_mismatch": {"type": "integer", "minimum": 0}, "same_corpus_budget_failures": {"type": "integer", "minimum": 0}, "route_configuration_failures": {"type": "integer", "minimum": 0}, "accounting_failures": {"type": "integer", "minimum": 0}, "provider_measured_routes": {"type": "integer", "minimum": 0}, "provider_unavailable_routes": {"type": "integer", "minimum": 0}, "false_provider_improvement_claims": {"type": "integer", "minimum": 0}, "locally_measured_metrics_per_route": {"type": "integer", "minimum": 0}, "p50_ms": {"type": "number", "minimum": 0}, "p95_ms": {"type": "number", "minimum": 0}, "max_ms": {"type": "number", "minimum": 0}, "external_services": {"const": 0}, "fixture_sha256": {"$ref": "#/$defs/sha256"}, "implementation_sha256": {"$ref": "#/$defs/sha256"}},
+  "$defs": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}

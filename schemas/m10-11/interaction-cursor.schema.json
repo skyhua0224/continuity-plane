@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://continuity-plane.invalid/schemas/m10-11/interaction-cursor.schema.json",
+  "title": "Sanitized provider interaction cursor",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "current_input_ref", "current_input_sha256", "current_turn_sha256", "confirmed_input_refs", "visible_output_high_watermark_sha256", "visible_output_phase", "response_mode", "no_restate", "raw_transcript_admission", "state_write_authority", "completion_authority", "cursor_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.interaction-cursor/v1alpha1"},
+    "current_input_ref": {"$ref": "#/$defs/id"},
+    "current_input_sha256": {"$ref": "#/$defs/sha256"},
+    "current_turn_sha256": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/sha256"}]},
+    "confirmed_input_refs": {"type": "array", "uniqueItems": true, "maxItems": 128, "items": {"$ref": "#/$defs/id"}},
+    "visible_output_high_watermark_sha256": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/sha256"}]},
+    "visible_output_phase": {"enum": [null, "commentary", "final_answer", "other"]},
+    "response_mode": {"enum": ["answer-current-input", "continue-without-restatement", "continue-silently"]},
+    "no_restate": {"type": "boolean"},
+    "raw_transcript_admission": {"const": false},
+    "state_write_authority": {"const": false},
+    "completion_authority": {"const": false},
+    "cursor_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,511}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

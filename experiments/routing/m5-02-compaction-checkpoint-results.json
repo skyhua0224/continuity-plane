@@ -1,0 +1,31 @@
+{
+  "schema_version": "context.compaction-checkpoint-benchmark/v1alpha1",
+  "generated_at": "2026-08-14T20:30:00Z",
+  "samples": 1000,
+  "successful_samples": 1000,
+  "delta_replay_mismatch": 0,
+  "hook_replay_mismatch": 0,
+  "watermark_mismatch": 0,
+  "authority_violations": 0,
+  "min_delta_bytes": 1093,
+  "max_delta_bytes": 1093,
+  "p50_delta_bytes": 1093,
+  "p95_delta_bytes": 1093,
+  "p50_ms": 0.639104,
+  "p95_ms": 0.666804,
+  "max_ms": 1.111154,
+  "precompact_p95_limit_ms": 500.0,
+  "precompact_p95_gate_passed": true,
+  "external_services": 0,
+  "provenance": {
+    "implementation_sha256": "dd9fce5a5ccb59f347ec9df0bd0f755191a1ddc1073adb61befecfa4dba7bffa",
+    "benchmark_sha256": "6b1ccbcd7a00788ee8f295d310645b8a280386f3114ecbe403f169376efc9ee0",
+    "runner_sha256": "489b1d7c79f19da3d19b6c024346092b16229bb200fbe2fd888fa2e560661874",
+    "delta_schema_sha256": "9e11c75a95ea36c78b861e9ad189a51dfef153146130d2fddaa9a0d13eede605",
+    "hook_schema_sha256": "2bd39d333650f02194a0a1f13abb0fcccfe9c74705809359be0edfa7c890a76f",
+    "test_sha256": "f3a980ac337d248b75d1db2f8afdc5e62ae9ed89040d4b796388679f0b4603e1",
+    "fixture_sha256": "6ea23a853642f6dd1037c2352ead4d7d47807c0c4db0cd43beade208c7b99372",
+    "delta_registry_entry_sha256": "dae066cd79ea6f5e4c93af7887891e5097c831af8b6a824c3f8d0afc06bcecc3",
+    "hook_registry_entry_sha256": "5e25a563600b727262a174ea8a3b4a6dab695aa77e92b29e42155afe5a9af7b9"
+  }
+}

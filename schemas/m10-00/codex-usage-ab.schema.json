@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m10-00/codex-usage-ab.schema.json",
+  "title": "M10-00 real Codex usage A/B receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "benchmark_id", "generated_at", "configuration", "samples", "summary", "boundary", "provider_invocations", "external_side_effects", "state_write_authority", "completion_authority", "receipt_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.codex-usage-ab/v1alpha1"},
+    "benchmark_id": {"const": "m10-00-codex-usage-ab"},
+    "generated_at": {"$ref": "#/$defs/timestamp"},
+    "configuration": {"$ref": "#/$defs/configuration"},
+    "samples": {"type": "array", "minItems": 1, "maxItems": 30, "items": {"$ref": "#/$defs/sample"}},
+    "summary": {"$ref": "#/$defs/summary"},
+    "boundary": {"$ref": "#/$defs/boundary"},
+    "provider_invocations": {"type": "integer", "minimum": 1},
+    "external_side_effects": {"const": 0},
+    "state_write_authority": {"const": false},
+    "completion_authority": {"const": false},
+    "receipt_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,511}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "format": "date-time", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$"},
+    "configuration": {
+      "type": "object", "additionalProperties": false,
+      "required": ["model", "context_window_tokens", "auto_compact_token_limit", "max_input_chars", "sandbox", "tools_allowed"],
+      "properties": {"model": {"const": "gpt-5.6-sol"}, "context_window_tokens": {"const": 1000000}, "auto_compact_token_limit": {"const": 900000}, "max_input_chars": {"const": 1048576}, "sandbox": {"const": "read-only"}, "tools_allowed": {"const": false}}
+    },
+    "usage": {
+      "type": "object", "additionalProperties": false,
+      "required": ["input_tokens", "cached_input_tokens", "cache_write_input_tokens", "output_tokens", "reasoning_output_tokens"],
+      "properties": {"input_tokens": {"type": "integer", "minimum": 1}, "cached_input_tokens": {"type": "integer", "minimum": 0}, "cache_write_input_tokens": {"type": "integer", "minimum": 0}, "output_tokens": {"type": "integer", "minimum": 0}, "reasoning_output_tokens": {"type": "integer", "minimum": 0}}
+    },
+    "sample": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sample_id", "case", "prompt_chars", "usage", "quality", "warning_count", "wall_time_ms"],
+      "properties": {"sample_id": {"$ref": "#/$defs/id"}, "case": {"enum": ["baseline", "packet", "large-history"]}, "prompt_chars": {"type": "integer", "minimum": 1, "maximum": 1048576}, "usage": {"$ref": "#/$defs/usage"}, "quality": {"type": "object", "additionalProperties": false, "required": ["correct", "verdict", "next_action"], "properties": {"correct": {"const": true}, "verdict": {"const": "ok"}, "next_action": {"const": "M10-00"}}}, "warning_count": {"type": "integer", "minimum": 0}, "wall_time_ms": {"type": "number", "minimum": 0}}
+    },
+    "caseSummary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["count", "input_tokens_mean", "input_tokens_min", "input_tokens_max", "cached_input_tokens_mean", "output_tokens_mean", "quality_rate"],
+      "properties": {"count": {"type": "integer", "minimum": 1}, "input_tokens_mean": {"type": "number", "minimum": 1}, "input_tokens_min": {"type": "integer", "minimum": 1}, "input_tokens_max": {"type": "integer", "minimum": 1}, "cached_input_tokens_mean": {"type": "number", "minimum": 0}, "output_tokens_mean": {"type": "number", "minimum": 0}, "quality_rate": {"const": 1.0}, "input_reduction_percent": {"type": "number", "minimum": 0, "maximum": 100}}
+    },
+    "summary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["baseline", "packet", "large-history"],
+      "properties": {"baseline": {"$ref": "#/$defs/caseSummary"}, "packet": {"$ref": "#/$defs/caseSummary"}, "large-history": {"$ref": "#/$defs/caseSummary"}}
+    },
+    "boundary": {
+      "type": "object", "additionalProperties": false,
+      "required": ["oversize_input_chars", "oversize_rejected_before_provider", "largest_accepted_prompt_chars"],
+      "properties": {"oversize_input_chars": {"const": 1083237}, "oversize_rejected_before_provider": {"const": true}, "largest_accepted_prompt_chars": {"type": "integer", "minimum": 1, "maximum": 1048576}}
+    }
+  }
+}

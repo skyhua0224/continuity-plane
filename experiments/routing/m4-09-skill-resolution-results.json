@@ -1,0 +1,21 @@
+{
+  "schema_version": "context.skill-resolution-benchmark/v1alpha1",
+  "generated_at": "2026-08-14T18:30:00Z",
+  "samples": 1000,
+  "negative_samples": 125,
+  "successful_samples": 1000,
+  "negative_quarantine": 125,
+  "replay_mismatch": 0,
+  "role_leakage": 0,
+  "provider_leakage": 0,
+  "state_write_authority_true": 0,
+  "available_manifest_count": 6000,
+  "selected_count": 4000,
+  "selection_reduction_percent": 33.3333,
+  "p50_ms": 1.085698,
+  "p95_ms": 1.109641,
+  "max_ms": 2.143002,
+  "external_services": 0,
+  "implementation_sha256": "69c51f7b46c0346072ae27d7e2334fde0837c3ec03766b98702b7109c0bed243",
+  "fixture_sha256": "cba7e1d7e9ffa3c3df1edf6acfa72e7537dc6b0fa37b85b119abf863372fb2df"
+}

@@ -1,0 +1,87 @@
+{
+  "benchmark_id": "m10-00-codex-multiturn-compaction",
+  "compaction_event_count": 1,
+  "completion_authority": false,
+  "configuration": {
+    "auto_compact_token_limit": 700000,
+    "context_window_tokens": 1000000,
+    "large_turns": 2,
+    "model": "gpt-5.6-sol"
+  },
+  "external_side_effects": 0,
+  "generated_at": "2026-08-18T01:15:00+08:00",
+  "provider_invocations": 3,
+  "quality_rate": 1.0,
+  "receipt_sha256": "813fa1ad7fd8cb68bc2ab35bcfde7e78fc44fdac8108171da684a05fac4aa3b1",
+  "schema_version": "context.codex-multiturn-compaction/v1alpha1",
+  "state_write_authority": false,
+  "thread_id_sha256": "d9fa2efc66e27c838e0c3f3a42761e17fa61e78dd23f6375cc321ad49d4493b5",
+  "turns": [
+    {
+      "compaction_events": [],
+      "prompt_chars": 988200,
+      "quality": {
+        "correct": true,
+        "next_action": "M10-00",
+        "verdict": "ok"
+      },
+      "thread_id": "01a01026-30d6-76e3-9d30-04723b2c40fd",
+      "turn": 1,
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 12032,
+        "input_tokens": 408223,
+        "output_tokens": 18,
+        "reasoning_output_tokens": 0
+      },
+      "wall_time_ms": 11058.612,
+      "warning_count": 0
+    },
+    {
+      "compaction_events": [],
+      "prompt_chars": 988200,
+      "quality": {
+        "correct": true,
+        "next_action": "M10-00",
+        "verdict": "ok"
+      },
+      "thread_id": "01a01026-30d6-76e3-9d30-04723b2c40fd",
+      "turn": 2,
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 419328,
+        "input_tokens": 1196521,
+        "output_tokens": 36,
+        "reasoning_output_tokens": 0
+      },
+      "wall_time_ms": 17359.689,
+      "warning_count": 0
+    },
+    {
+      "compaction_events": [
+        {
+          "event_sha256": "8b1d98b74ce7206c9a0f926fe809b8b2b6241b2e1738fbf663cc9f8765a18720",
+          "event_type": "item.completed",
+          "item_type": "error"
+        }
+      ],
+      "prompt_chars": 217,
+      "quality": {
+        "correct": true,
+        "next_action": "M10-00",
+        "verdict": "ok"
+      },
+      "thread_id": "01a01026-30d6-76e3-9d30-04723b2c40fd",
+      "turn": 3,
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 438272,
+        "input_tokens": 2039321,
+        "output_tokens": 258,
+        "reasoning_output_tokens": 89
+      },
+      "wall_time_ms": 26672.974,
+      "warning_count": 1
+    }
+  ]
+}

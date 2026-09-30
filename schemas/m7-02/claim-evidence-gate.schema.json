@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m7-02/claim-evidence-gate.schema.json",
+  "title": "Claim Evidence Gate Verdict",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "gate_id", "claim_id", "claim_kind", "claim_sha256",
+    "decision", "reason", "required_authority_groups", "matched_authority_kinds",
+    "evidence_ids", "evaluated_at", "state_write_authority", "completion_authority",
+    "verdict_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.claim-evidence-gate/v1alpha1"},
+    "gate_id": {"$ref": "#/$defs/id"},
+    "claim_id": {"$ref": "#/$defs/id"},
+    "claim_kind": {"enum": ["completion", "path", "verification", "decision", "constraint"]},
+    "claim_sha256": {"$ref": "#/$defs/sha256"},
+    "decision": {"enum": ["allow", "deny"]},
+    "reason": {"enum": ["evidence_satisfied", "missing_evidence", "required_authority_missing", "non_bearing_evidence", "evidence_binding_mismatch", "path_evidence_mismatch", "claim_invalid"]},
+    "required_authority_groups": {
+      "type": "array", "minItems": 1, "maxItems": 4,
+      "items": {
+        "type": "array", "minItems": 1, "uniqueItems": true,
+        "items": {"$ref": "#/$defs/authority"}
+      }
+    },
+    "matched_authority_kinds": {
+      "type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/authority"}
+    },
+    "evidence_ids": {"type": "array", "maxItems": 256, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+    "evaluated_at": {"$ref": "#/$defs/timestamp"},
+    "state_write_authority": {"const": false},
+    "completion_authority": {"const": false},
+    "verdict_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"decision": {"const": "allow"}}, "required": ["decision"]},
+      "then": {"properties": {"reason": {"const": "evidence_satisfied"}}}
+    },
+    {
+      "if": {"properties": {"reason": {"const": "missing_evidence"}}, "required": ["reason"]},
+      "then": {"properties": {"decision": {"const": "deny"}, "evidence_ids": {"maxItems": 0}}}
+    }
+  ],
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "format": "date-time"},
+    "authority": {"enum": ["current_code", "current_state", "industry_standard", "os_official", "software_official"]}
+  }
+}

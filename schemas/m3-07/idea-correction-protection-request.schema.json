@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schema/context.idea-correction-protection-request/v1alpha1",
+  "title": "Context Control Plane Idea correction protection request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "request_id", "project_id", "expected_revision",
+    "idea_id", "protection_id", "affected_work_ids", "affected_scope_refs",
+    "reason", "evidence_ids", "causation_ref", "correlation_ref"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.idea-correction-protection-request/v1alpha1"},
+    "request_id": {"$ref": "#/$defs/boundedId"},
+    "project_id": {"$ref": "#/$defs/boundedId"},
+    "expected_revision": {"type": "integer", "minimum": 0},
+    "idea_id": {"$ref": "#/$defs/boundedId"},
+    "protection_id": {"$ref": "#/$defs/boundedId"},
+    "affected_work_ids": {"$ref": "#/$defs/nonEmptyStringList"},
+    "affected_scope_refs": {"$ref": "#/$defs/nonEmptyStringList"},
+    "reason": {"type": "string", "minLength": 1, "maxLength": 2000, "pattern": ".*\\S.*"},
+    "evidence_ids": {"$ref": "#/$defs/stringList"},
+    "causation_ref": {"$ref": "#/$defs/nullableRef"},
+    "correlation_ref": {"$ref": "#/$defs/nullableRef"}
+  },
+  "$defs": {
+    "boundedId": {"type": "string", "minLength": 1, "maxLength": 200, "pattern": ".*\\S.*"},
+    "nullableRef": {"type": ["string", "null"], "minLength": 1, "maxLength": 500},
+    "stringList": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "nonEmptyStringList": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+  }
+}

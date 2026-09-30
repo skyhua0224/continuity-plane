@@ -1,0 +1,33 @@
+{
+  "baseline": {
+    "input_tokens_median": 149853.0,
+    "output_tokens_median": 2396.0,
+    "status_read_calls": 0,
+    "tool_output_bytes_median": 243923.0
+  },
+  "candidate": {
+    "input_tokens_median": 131663.0,
+    "output_tokens_median": 1705.0,
+    "status_read_calls": 0,
+    "tool_output_bytes_median": 142783.0
+  },
+  "completion_authority": false,
+  "gate_failures": [
+    "input-token-reduction"
+  ],
+  "improvements": {
+    "input_median_percent": 12.138562,
+    "output_median_percent": 28.839733,
+    "tool_output_median_percent": 41.463905
+  },
+  "observations_sha256": "bac9bda7c7a3ee2fc32c3528990be91f489b6783eaa5f62c415403e72edbe1b8",
+  "observed_at": "2026-08-30T19:23:54+08:00",
+  "raw_transcript_admission": false,
+  "receipt_sha256": "fa5cf9d07f672f17ca02ab833b23137751a9b06defb6f7045640536946dbe62e",
+  "report_id": "platform-ultralight-ab",
+  "sample_count_per_arm": 3,
+  "schema_version": "context.codex-exec-comparison/v1alpha1",
+  "state_write_authority": false,
+  "verdict": "failed",
+  "veto_failures": []
+}

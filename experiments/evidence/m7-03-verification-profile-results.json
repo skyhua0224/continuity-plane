@@ -1,0 +1,30 @@
+{
+  "schema_version": "context.verification-profile-benchmark/v1alpha1",
+  "iterations": 1000,
+  "fixture_profile_ids": [
+    "verification/alkaidlab/default",
+    "verification/portable-python-library/default"
+  ],
+  "fixture_profile_sha256s": {
+    "verification/alkaidlab/default": "1dfd5a7b32a40b391cf4be6fc62a82ca1bf1eeab7ade2027829bd69d85e3fd29",
+    "verification/portable-python-library/default": "bf28a83333742572a9e88b23897bd109fee55e0ceb231833e1c0a93547e72d19"
+  },
+  "scenario_counts": {
+    "conditional-not-met": 250,
+    "optional-failed": 250,
+    "required-capability-unavailable": 250,
+    "required-passed": 250
+  },
+  "overall_counts": {
+    "blocked": 250,
+    "satisfied": 750
+  },
+  "optional_failed_gate_count": 250,
+  "false_allow_count": 0,
+  "false_deny_count": 0,
+  "replay_mismatch_count": 0,
+  "external_service_calls": 0,
+  "state_write_authority_count": 0,
+  "completion_authority_count": 0,
+  "benchmark_sha256": "8c0fa005f87e3a3f5ddd5253528e2d0fb6ecb43de5424be6ba16f9f4e119bf69"
+}

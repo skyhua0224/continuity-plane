@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m9-05/governance-authorization-audit-event.schema.json",
+  "title": "M9-05 request-bound authorization audit event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "event_type", "event_id", "sequence_no", "policy_id", "policy_revision", "policy_sha256", "authorization_ref", "subject_ref", "subject_tenant_id", "tenant_id", "project_id", "action", "decision", "reason_code", "observed_at", "request_id", "request_sha256", "previous_event_sha256", "event_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.authorization-audit-event/v2alpha1"},
+    "event_type": {"const": "authorization_decision"},
+    "event_id": {"$ref": "#/$defs/id"},
+    "sequence_no": {"type": "integer", "minimum": 1},
+    "policy_id": {"$ref": "#/$defs/id"},
+    "policy_revision": {"type": "integer", "minimum": 1},
+    "policy_sha256": {"$ref": "#/$defs/sha256"},
+    "authorization_ref": {"$ref": "#/$defs/id"},
+    "subject_ref": {"$ref": "#/$defs/id"},
+    "subject_tenant_id": {"oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]},
+    "tenant_id": {"$ref": "#/$defs/id"},
+    "project_id": {"$ref": "#/$defs/id"},
+    "action": {"$ref": "#/$defs/id"},
+    "decision": {"enum": ["allow", "deny"]},
+    "reason_code": {"$ref": "#/$defs/id"},
+    "observed_at": {"type": "string", "format": "date-time"},
+    "request_id": {"$ref": "#/$defs/id"},
+    "request_sha256": {"$ref": "#/$defs/sha256"},
+    "previous_event_sha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+    "event_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"decision": {"const": "allow"}}, "required": ["decision"]},
+      "then": {"properties": {"reason_code": {"const": "grant_matched"}}}
+    }
+  ],
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

@@ -289,7 +289,11 @@ def _validate_document_lifecycle_preflight(
 
 def _validate_document_lifecycle_content(root: Path, manifest: dict[str, Any]) -> None:
     """Validate the verified in-memory manifest without repeating Git history I/O."""
-    _validate_document_control_manifest_content(root, manifest)
+    _validate_document_control_manifest_content(
+        root,
+        manifest,
+        verify_discovery=False,
+    )
 
 
 def benchmark_document_lifecycle(

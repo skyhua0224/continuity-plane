@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m7-04/patch-ab-result.schema.json",
+  "title": "Patch A/B Evaluation Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "result_id", "experiment_id", "experiment_sha256",
+    "blind_set_sha256", "verifier_packet_sha256", "decision", "reasons",
+    "candidate_results", "quality_deltas", "quality_not_degraded",
+    "rework_reduced", "trust_status", "unresolved_trust_reasons",
+    "external_calls", "state_write_authority", "completion_authority",
+    "result_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.patch-ab-result/v1alpha2"},
+    "result_id": {"$ref": "#/$defs/id"},
+    "experiment_id": {"$ref": "#/$defs/id"},
+    "experiment_sha256": {"$ref": "#/$defs/sha256"},
+    "blind_set_sha256": {"$ref": "#/$defs/sha256"},
+    "verifier_packet_sha256": {"$ref": "#/$defs/sha256"},
+    "decision": {"enum": ["admit", "reject", "provisional"]},
+    "reasons": {
+      "type": "array", "minItems": 1, "maxItems": 9, "uniqueItems": true,
+      "items": {"enum": ["quality_not_degraded", "rework_reduced", "build_gate_failed", "test_gate_failed", "mutation_score_regressed", "verifier_score_regressed", "rework_not_reduced", "trust_unresolved"]}
+    },
+    "candidate_results": {"type": "array", "minItems": 2, "maxItems": 2, "items": {"$ref": "#/$defs/candidateResult"}},
+    "quality_deltas": {
+      "type": "object", "additionalProperties": false,
+      "required": ["mutation_score_basis_points", "rework_count", "verifier_score_delta_numerator_basis_points", "verifier_score_delta_denominator"],
+      "properties": {
+        "mutation_score_basis_points": {"type": "integer", "minimum": -10000, "maximum": 10000},
+        "rework_count": {"type": "integer"},
+        "verifier_score_delta_numerator_basis_points": {"type": "integer", "minimum": -5120000, "maximum": 5120000},
+        "verifier_score_delta_denominator": {"type": "integer", "minimum": 1, "maximum": 512}
+      }
+    },
+    "quality_not_degraded": {"type": "boolean"},
+    "rework_reduced": {"type": "boolean"},
+    "trust_status": {"enum": ["trusted", "unresolved"]},
+    "unresolved_trust_reasons": {
+      "type": "array", "maxItems": 3, "uniqueItems": true,
+      "items": {"enum": ["artifact_unresolved", "principal_unresolved", "quality_unresolved"]}
+    },
+    "external_calls": {"const": 0},
+    "state_write_authority": {"const": false},
+    "completion_authority": {"const": false},
+    "result_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"decision": {"const": "admit"}}, "required": ["decision"]},
+      "then": {"properties": {"reasons": {"const": ["quality_not_degraded", "rework_reduced"]}, "quality_not_degraded": {"const": true}, "rework_reduced": {"const": true}, "trust_status": {"const": "trusted"}, "unresolved_trust_reasons": {"maxItems": 0}}}
+    },
+    {
+      "if": {"properties": {"decision": {"const": "provisional"}}, "required": ["decision"]},
+      "then": {"properties": {"reasons": {"const": ["trust_unresolved"]}, "trust_status": {"const": "unresolved"}, "unresolved_trust_reasons": {"minItems": 1}}}
+    }
+  ],
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "artifact": {"type": "string", "pattern": "^artifact://sha256/[0-9a-f]{64}$"},
+    "candidateResult": {
+      "type": "object", "additionalProperties": false,
+      "required": ["candidate_id", "variant", "blind_id", "build_passed", "test_passed", "mutation_score_basis_points", "rework_count", "verifier_score_total_basis_points", "verifier_score_observation_count", "verifier_count", "evidence_refs"],
+      "properties": {
+        "candidate_id": {"$ref": "#/$defs/id"},
+        "variant": {"enum": ["control", "treatment"]},
+        "blind_id": {"$ref": "#/$defs/id"},
+        "build_passed": {"type": "boolean"},
+        "test_passed": {"type": "boolean"},
+        "mutation_score_basis_points": {"type": "integer", "minimum": 0, "maximum": 10000},
+        "rework_count": {"type": "integer", "minimum": 0},
+        "verifier_score_total_basis_points": {"type": "integer", "minimum": 0, "maximum": 5120000},
+        "verifier_score_observation_count": {"type": "integer", "minimum": 1, "maximum": 512},
+        "verifier_count": {"type": "integer", "minimum": 2, "maximum": 16},
+        "evidence_refs": {"type": "array", "minItems": 1, "maxItems": 128, "uniqueItems": true, "items": {"$ref": "#/$defs/artifact"}}
+      }
+    }
+  }
+}

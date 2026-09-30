@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m7-02/claim-evidence-benchmark.schema.json",
+  "title": "Claim Evidence Gate Benchmark Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "benchmark_id", "samples", "successful_samples", "allowed_count",
+    "denied_count", "false_allow_count", "false_deny_count", "outcomes_sha256",
+    "state_write_authority", "completion_authority", "receipt_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.claim-evidence-benchmark/v1alpha1"},
+    "benchmark_id": {"$ref": "#/$defs/id"},
+    "samples": {"type": "integer", "minimum": 1, "maximum": 100000},
+    "successful_samples": {"type": "integer", "minimum": 0},
+    "allowed_count": {"type": "integer", "minimum": 0},
+    "denied_count": {"type": "integer", "minimum": 0},
+    "false_allow_count": {"type": "integer", "minimum": 0},
+    "false_deny_count": {"type": "integer", "minimum": 0},
+    "outcomes_sha256": {"$ref": "#/$defs/sha256"},
+    "state_write_authority": {"const": false},
+    "completion_authority": {"const": false},
+    "receipt_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

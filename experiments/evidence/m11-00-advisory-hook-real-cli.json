@@ -1,0 +1,22 @@
+{
+  "concurrent_calls": 16,
+  "guidance_bytes": 454,
+  "guidance_deliveries": 1,
+  "hook_process_p95_ms": 37.246,
+  "measurement_source": "local-cli-process-fixture",
+  "native_compaction": false,
+  "observed_at": "2026-09-05T11:51:37.423145+00:00",
+  "ordinary_calls": 80,
+  "ordinary_context_bytes": 0,
+  "probe": "real-cli-hook-sequence",
+  "project_state_changed": false,
+  "provenance": {
+    "context_control_plane/codex_hook_launcher.py": "bb11e38199713c4a0061e1b024d189f38fe9d382e07f33b8c47c60fa0e448c73",
+    "integrations/codex/continuity-plane/hooks/hooks.json": "940dd1c9e11d56ba9060beb38ec66109c7cb7673ae02aa55c0ad55c8881d9389",
+    "integrations/codex/continuity-plane/scripts/continuity-advisory-hook.py": "674eaf2f3e0d23f7a51ca8eee17cd22bd29176b3202b176fe645555e8457f018",
+    "integrations/codex/continuity-plane/scripts/continuity-hook.py": "f8ff73962da43bdde60c63a2c22b777a61f71c1e6be9ba00adf7e0dcd16dcaea",
+    "tests/test_codex_advisory_hooks.py": "11d2bf3f5b8a2859de16ad4a6342f71aafba82b590f6634de1b5a5557e3a659d",
+    "tools/run_codex_advisory_probe.py": "e3619399decdce44c057676283dadb0bea197ae7c1c55f552a3a44f39ab8d9e2"
+  },
+  "provider_token_usage_available": false
+}

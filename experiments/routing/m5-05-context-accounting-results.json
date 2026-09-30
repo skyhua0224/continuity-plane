@@ -1,0 +1,20 @@
+{
+  "schema_version": "context.context-accounting-benchmark/v1alpha1",
+  "generated_at": "2026-08-15T02:30:00Z",
+  "samples": 1000,
+  "successful_samples": 1000,
+  "replay_mismatch": 0,
+  "same_corpus_budget_failures": 0,
+  "route_configuration_failures": 0,
+  "accounting_failures": 0,
+  "provider_measured_routes": 0,
+  "provider_unavailable_routes": 2,
+  "false_provider_improvement_claims": 0,
+  "locally_measured_metrics_per_route": 5,
+  "p50_ms": 0.144731,
+  "p95_ms": 0.295058,
+  "max_ms": 0.327845,
+  "external_services": 0,
+  "fixture_sha256": "7e17e4ff9d766185e2382a05115c917d4c4e22e9694a5193f229b08216ad3e23",
+  "implementation_sha256": "9fc3197274cb0d94350af2de063d6409baa4fdc08763c932bb0955360487da43"
+}

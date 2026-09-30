@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m9-05/human-governance-request.schema.json",
+  "title": "M9-05 controlled human governance request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "request_id", "project_id", "expected_revision", "action", "payload"],
+  "properties": {
+    "schema_version": {"const": "context.human-governance-request/v1alpha1"},
+    "request_id": {"$ref": "#/$defs/id"},
+    "project_id": {"$ref": "#/$defs/id"},
+    "expected_revision": {"$ref": "#/$defs/revision"},
+    "action": {
+      "enum": [
+        "context.experiment.promotion.propose",
+        "context.experiment.promotion.approve",
+        "context.idea.correction.protect",
+        "context.idea.correction.release"
+      ]
+    },
+    "payload": {
+      "oneOf": [
+        {"$ref": "#/$defs/promotionProposal"},
+        {"$ref": "#/$defs/promotionApproval"},
+        {"$ref": "#/$defs/correctionProtection"},
+        {"$ref": "#/$defs/correctionRelease"}
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"action": {"const": "context.experiment.promotion.propose"}}, "required": ["action"]},
+      "then": {"properties": {"payload": {"$ref": "#/$defs/promotionProposal"}}}
+    },
+    {
+      "if": {"properties": {"action": {"const": "context.experiment.promotion.approve"}}, "required": ["action"]},
+      "then": {"properties": {"payload": {"$ref": "#/$defs/promotionApproval"}}}
+    },
+    {
+      "if": {"properties": {"action": {"const": "context.idea.correction.protect"}}, "required": ["action"]},
+      "then": {"properties": {"payload": {"$ref": "#/$defs/correctionProtection"}}}
+    },
+    {
+      "if": {"properties": {"action": {"const": "context.idea.correction.release"}}, "required": ["action"]},
+      "then": {"properties": {"payload": {"$ref": "#/$defs/correctionRelease"}}}
+    }
+  ],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"
+    },
+    "revision": {"type": "integer", "minimum": 0},
+    "ref": {
+      "oneOf": [
+        {"type": "string", "minLength": 1, "maxLength": 500},
+        {"type": "null"}
+      ]
+    },
+    "textRef": {"type": "string", "minLength": 1, "maxLength": 500},
+    "textRefList": {
+      "type": "array",
+      "maxItems": 256,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/textRef"}
+    },
+    "commonPromotion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["work_id", "expected_work_revision", "expected_target_work_revision", "proposal_id", "causation_ref", "correlation_ref"],
+      "properties": {
+        "work_id": {"$ref": "#/$defs/id"},
+        "expected_work_revision": {"$ref": "#/$defs/revision"},
+        "expected_target_work_revision": {"$ref": "#/$defs/revision"},
+        "proposal_id": {"$ref": "#/$defs/id"},
+        "causation_ref": {"$ref": "#/$defs/ref"},
+        "correlation_ref": {"$ref": "#/$defs/ref"}
+      }
+    },
+    "promotionProposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["work_id", "expected_work_revision", "expected_target_work_revision", "attempt_id", "proposal_id", "criterion_evidence", "causation_ref", "correlation_ref"],
+      "properties": {
+        "work_id": {"$ref": "#/$defs/id"},
+        "expected_work_revision": {"$ref": "#/$defs/revision"},
+        "expected_target_work_revision": {"$ref": "#/$defs/revision"},
+        "attempt_id": {"$ref": "#/$defs/id"},
+        "proposal_id": {"$ref": "#/$defs/id"},
+        "criterion_evidence": {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 16,
+          "propertyNames": {"type": "string", "minLength": 1, "maxLength": 500},
+          "additionalProperties": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 64,
+            "uniqueItems": true,
+            "items": {"$ref": "#/$defs/textRef"}
+          }
+        },
+        "causation_ref": {"$ref": "#/$defs/ref"},
+        "correlation_ref": {"$ref": "#/$defs/ref"}
+      }
+    },
+    "promotionApproval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["work_id", "expected_work_revision", "expected_target_work_revision", "proposal_id", "approval_id", "causation_ref", "correlation_ref"],
+      "properties": {
+        "work_id": {"$ref": "#/$defs/id"},
+        "expected_work_revision": {"$ref": "#/$defs/revision"},
+        "expected_target_work_revision": {"$ref": "#/$defs/revision"},
+        "proposal_id": {"$ref": "#/$defs/id"},
+        "approval_id": {"$ref": "#/$defs/id"},
+        "causation_ref": {"$ref": "#/$defs/ref"},
+        "correlation_ref": {"$ref": "#/$defs/ref"}
+      }
+    },
+    "correctionProtection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["idea_id", "protection_id", "affected_work_ids", "affected_scope_refs", "reason", "evidence_ids", "causation_ref", "correlation_ref"],
+      "properties": {
+        "idea_id": {"$ref": "#/$defs/id"},
+        "protection_id": {"$ref": "#/$defs/id"},
+        "affected_work_ids": {"allOf": [{"$ref": "#/$defs/textRefList"}, {"minItems": 1}]},
+        "affected_scope_refs": {"allOf": [{"$ref": "#/$defs/textRefList"}, {"minItems": 1}]},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 2000},
+        "evidence_ids": {"$ref": "#/$defs/textRefList"},
+        "causation_ref": {"$ref": "#/$defs/ref"},
+        "correlation_ref": {"$ref": "#/$defs/ref"}
+      }
+    },
+    "correctionRelease": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["idea_id", "protection_id", "release_reason", "release_evidence_ids", "causation_ref", "correlation_ref"],
+      "properties": {
+        "idea_id": {"$ref": "#/$defs/id"},
+        "protection_id": {"$ref": "#/$defs/id"},
+        "release_reason": {"type": "string", "minLength": 1, "maxLength": 2000},
+        "release_evidence_ids": {"allOf": [{"$ref": "#/$defs/textRefList"}, {"minItems": 1}]},
+        "causation_ref": {"$ref": "#/$defs/ref"},
+        "correlation_ref": {"$ref": "#/$defs/ref"}
+      }
+    }
+  }
+}

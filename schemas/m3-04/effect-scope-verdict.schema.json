@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.local/schemas/m3-04/effect-scope-verdict.schema.json",
+  "title": "Context Effect Scope Verdict",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "decision", "read_only", "reason"],
+  "properties": {
+    "schema_version": {"const": "context.effect-scope-verdict/v1alpha1"},
+    "decision": {"enum": ["allow", "deny"]},
+    "read_only": {"type": "boolean"},
+    "reason": {
+      "enum": [
+        "authorized",
+        "stale_revision",
+        "inactive_work",
+        "work_not_ready",
+        "actor_not_owner",
+        "claim_mismatch",
+        "claim_revision_mismatch",
+        "actor_mismatch",
+        "claim_expired",
+        "scope_outside_work",
+        "scope_not_owned",
+        "scope_conflict",
+        "effect_scope_conflict",
+        "operation_invalid",
+        "scope_invalid",
+        "operation_scope_mismatch",
+        "effect_not_found",
+        "effect_not_pending",
+        "effect_provenance_mismatch",
+        "completion_actor_mismatch"
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"decision": {"const": "allow"}},
+        "required": ["decision"]
+      },
+      "then": {
+        "properties": {
+          "read_only": {"const": false},
+          "reason": {"const": "authorized"}
+        }
+      },
+      "else": {
+        "properties": {
+          "read_only": {"const": true},
+          "reason": {"not": {"const": "authorized"}}
+        }
+      }
+    }
+  ]
+}

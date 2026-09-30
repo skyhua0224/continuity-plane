@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m9-05/human-governance-response.schema.json",
+  "title": "M9-05 controlled human governance response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "request_id", "project_id", "action", "ok", "result", "error", "authority", "receipt_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.human-governance-response/v1alpha1"},
+    "request_id": {"$ref": "#/$defs/nullableId"},
+    "project_id": {"$ref": "#/$defs/nullableId"},
+    "action": {"$ref": "#/$defs/nullableAction"},
+    "ok": {"type": "boolean"},
+    "result": {"oneOf": [{"$ref": "#/$defs/result"}, {"type": "null"}]},
+    "error": {"oneOf": [{"$ref": "#/$defs/error"}, {"type": "null"}]},
+    "authority": {"$ref": "#/$defs/authority"},
+    "receipt_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"ok": {"const": true}}, "required": ["ok"]},
+      "then": {"properties": {"request_id": {"$ref": "#/$defs/id"}, "project_id": {"$ref": "#/$defs/id"}, "action": {"$ref": "#/$defs/action"}, "result": {"$ref": "#/$defs/result"}, "error": {"type": "null"}}},
+      "else": {"properties": {"result": {"type": "null"}, "error": {"$ref": "#/$defs/error"}}}
+    },
+    {
+      "if": {"properties": {"action": {"const": "context.experiment.promotion.propose"}}, "required": ["action"]},
+      "then": {"properties": {"result": {"if": {"type": "object"}, "then": {"properties": {"state_mcp_tool": {"const": "context.experiment.promotion.propose"}, "record_kind": {"const": "promotion-proposal"}}}}}}
+    },
+    {
+      "if": {"properties": {"action": {"const": "context.experiment.promotion.approve"}}, "required": ["action"]},
+      "then": {"properties": {"result": {"if": {"type": "object"}, "then": {"properties": {"state_mcp_tool": {"const": "context.experiment.promotion.approve"}, "record_kind": {"const": "promotion-approval"}}}}}}
+    },
+    {
+      "if": {"properties": {"action": {"const": "context.idea.correction.protect"}}, "required": ["action"]},
+      "then": {"properties": {"result": {"if": {"type": "object"}, "then": {"properties": {"state_mcp_tool": {"const": "context.idea.correction.protect"}, "record_kind": {"const": "correction-protection"}}}}}}
+    },
+    {
+      "if": {"properties": {"action": {"const": "context.idea.correction.release"}}, "required": ["action"]},
+      "then": {"properties": {"result": {"if": {"type": "object"}, "then": {"properties": {"state_mcp_tool": {"const": "context.idea.correction.release"}, "record_kind": {"const": "correction-release"}}}}}}
+    }
+  ],
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 200, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"},
+    "eventId": {"type": "string", "minLength": 1, "maxLength": 1024, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"},
+    "principal": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "action": {
+      "enum": [
+        "context.experiment.promotion.propose",
+        "context.experiment.promotion.approve",
+        "context.idea.correction.protect",
+        "context.idea.correction.release"
+      ]
+    },
+    "nullableId": {"oneOf": [{"$ref": "#/$defs/id"}, {"type": "null"}]},
+    "nullableAction": {"oneOf": [{"$ref": "#/$defs/action"}, {"type": "null"}]},
+    "result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state_revision", "state_mcp_tool", "record_kind", "record_id", "event_id", "event_sha256", "actor_ref", "state_event_binding_sha256", "authorization_audit"],
+      "properties": {
+        "state_revision": {"type": "integer", "minimum": 0},
+        "state_mcp_tool": {"$ref": "#/$defs/action"},
+        "record_kind": {"enum": ["promotion-proposal", "promotion-approval", "correction-protection", "correction-release"]},
+        "record_id": {"$ref": "#/$defs/id"},
+        "event_id": {"$ref": "#/$defs/eventId"},
+        "event_sha256": {"$ref": "#/$defs/sha256"},
+        "actor_ref": {"$ref": "#/$defs/principal"},
+        "state_event_binding_sha256": {"$ref": "#/$defs/sha256"},
+        "authorization_audit": {"$ref": "#/$defs/authorizationAudit"}
+      }
+    },
+    "authorizationAudit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_schema_version", "policy_sha256", "event_id", "event_sha256", "request_sha256"],
+      "properties": {
+        "event_schema_version": {"const": "context.authorization-audit-event/v2alpha1"},
+        "policy_sha256": {"$ref": "#/$defs/sha256"},
+        "event_id": {"$ref": "#/$defs/eventId"},
+        "event_sha256": {"$ref": "#/$defs/sha256"},
+        "request_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "error": {
+      "oneOf": [
+        {"$ref": "#/$defs/invalidRequestError"},
+        {"$ref": "#/$defs/permissionDeniedError"},
+        {"$ref": "#/$defs/conflictError"},
+        {"$ref": "#/$defs/integrityError"},
+        {"$ref": "#/$defs/unavailableError"}
+      ]
+    },
+    "invalidRequestError": {"type": "object", "additionalProperties": false, "required": ["code", "message"], "properties": {"code": {"const": "invalid_request"}, "message": {"const": "request failed validation"}}},
+    "permissionDeniedError": {"type": "object", "additionalProperties": false, "required": ["code", "message"], "properties": {"code": {"const": "permission_denied"}, "message": {"const": "request is not authorized"}}},
+    "conflictError": {"type": "object", "additionalProperties": false, "required": ["code", "message"], "properties": {"code": {"const": "conflict"}, "message": {"const": "request conflicts with current state"}}},
+    "integrityError": {"type": "object", "additionalProperties": false, "required": ["code", "message"], "properties": {"code": {"const": "integrity"}, "message": {"const": "request failed State validation"}}},
+    "unavailableError": {"type": "object", "additionalProperties": false, "required": ["code", "message"], "properties": {"code": {"const": "unavailable"}, "message": {"const": "governance service unavailable"}}},
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state_write_authority", "completion_authority", "approval_authority", "provider_native_authority", "external_effect_authority"],
+      "properties": {
+        "state_write_authority": {"const": false},
+        "completion_authority": {"const": false},
+        "approval_authority": {"const": false},
+        "provider_native_authority": {"const": false},
+        "external_effect_authority": {"const": false}
+      }
+    }
+  }
+}

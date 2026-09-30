@@ -1,8 +1,8 @@
 schema_version: context.skill-compatibility-probe/v1alpha1
 observed_at: '2026-08-11T16:30:00+08:00'
 provenance:
-  implementation_sha256: 9921449c3d6fd93135ead8c96d0de1b21495a548b6c8e633266f318feb345a3f
-  probe_sha256: f6c2013da5518f7f81b0bc24b2b78ac1a37e53718abeb1652a05463592c8a0ee
+  implementation_sha256: 070484443be9f29b061af6c6eb6635ae5e26de91305f693579462ba8f35477c5
+  probe_sha256: f4fb812deb676054d587328113e8179dda624f8bf0945b5d650e82273b62a13a
   runner_sha256: 559f3026d87fa352955eff9173e9e0e3efebffd9190d275be293a1c7f30259a5
   probe_schema_sha256: 4c5088c90d1520aa8553f126c21e602d0e528479ccb2e65742cd9a43970fadb3
   lock_schema_sha256: 31f27020405cf88956c84e6ea3927057b4040db516b6858cbcfdcab36153d841
@@ -10,10 +10,10 @@ provenance:
   migration_schema_sha256: 889ff8ce064e36d15538d6f072c263681d74b9f3be218600803cfad930f66b39
   manifest_fixture_sha256: 1bc8cc830b4fabd29f5de79a4d52f7eaca8ca249134fa20bb4c833f6f25701c4
   compiled_packet_implementation_sha256: 3d6403cb538c230ba4d3920185e11490d7c0b6d0c5914be06542248e006ce3ae
-  manifest_validator_implementation_sha256: 0cb6828c23d2d6a220cad0ca72daba2b3ae3ea93312fb7e6bfffc448c096fdbf
+  manifest_validator_implementation_sha256: d1dfae9f97d3f951624060a9e22fd1ec3a8295d206d4fd6bb71e87f66fc5ea46
   provider_adapter_implementation_sha256: 6f21c4edcc06ed2d0ce36ea4002bcaffae6950c19da6c7dd2643bc7340400690
   compatibility_test_sha256: 025ac65af2ccd04331e714c7c875bea69100882e39d1e06ac1329d042677f005
-  probe_test_sha256: ef8ceef3ed78dc1e7003ba8490bbfb577361dfbd972a624c7c84e1dff6e38a9a
+  probe_test_sha256: c1b4b5ad23c0885f668c9f7f46de52e7ec69d50dc2a54d659c0f94179c3f28e6
   lock_registry_entry_sha256: c797abe40652a66d488c7b313eeb22bf41f7730de2d21b3165b3919ac6f98e4b
   decision_registry_entry_sha256: fc610e99b021b6f350d6153ea624501824f29388ccb757fab59676e0c55481ea
   migration_registry_entry_sha256: c16823dcdff6783e31b60e8a6ab7ea6b8bba8d433aa5364d5414947c6822d6f7
@@ -52,49 +52,49 @@ measurement:
   rollback_mismatches: 0
   wrong_binding_migrations_allowed: 0
   latency_samples_ms:
-  - 0.4954
-  - 0.4562
-  - 0.4655
-  - 0.5379
-  - 0.5477
-  - 0.5312
-  - 0.4907
-  - 0.4485
-  - 0.6939
-  - 0.7008
-  - 0.836
-  - 0.7087
-  - 0.685
-  - 0.7153
-  - 0.6739
-  - 0.6791
-  - 0.6669
-  - 0.6779
-  - 0.6771
-  - 0.8281
-  - 0.6869
-  - 0.6585
-  - 0.7405
-  - 0.6696
-  - 0.6805
-  - 0.6943
-  - 0.7049
-  - 0.7026
-  - 0.8409
-  - 0.722
-  - 0.6787
-  - 0.7171
-  - 0.832
-  - 0.7037
-  - 0.6759
-  - 0.6911
-  - 0.6932
-  - 0.6907
-  - 0.6869
-  - 0.6724
-  assessment_p50_ms: 0.685
-  assessment_p95_ms: 0.832
-  assessment_max_ms: 0.8409
+  - 2.5101
+  - 2.0189
+  - 1.8385
+  - 2.3525
+  - 3.1689
+  - 1.5801
+  - 1.2687
+  - 0.9712
+  - 2.2462
+  - 0.689
+  - 1.7909
+  - 1.5314
+  - 1.0237
+  - 0.798
+  - 0.6948
+  - 0.6899
+  - 0.7061
+  - 0.7114
+  - 0.7245
+  - 0.8747
+  - 0.6809
+  - 0.6763
+  - 0.6895
+  - 0.7244
+  - 0.74
+  - 0.7187
+  - 0.7636
+  - 0.7166
+  - 0.8609
+  - 0.8043
+  - 0.6898
+  - 0.7027
+  - 0.6897
+  - 0.6854
+  - 0.6916
+  - 0.6863
+  - 0.6725
+  - 0.8266
+  - 0.6891
+  - 0.6841
+  assessment_p50_ms: 0.7244
+  assessment_p95_ms: 2.3525
+  assessment_max_ms: 3.1689
   assessment_p95_limit_ms: 10.0
   results:
   - scenario_id: m4-06-01

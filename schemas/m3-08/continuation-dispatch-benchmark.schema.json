@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schema/context.continuation-dispatch-benchmark/v1alpha1",
+  "title": "Context Control Plane continuation dispatch benchmark receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "observed_at", "provenance", "environment", "measurement", "acceptance"],
+  "properties": {
+    "schema_version": {"const": "context.continuation-dispatch-benchmark/v1alpha1"},
+    "observed_at": {"type": "string", "format": "date-time", "minLength": 1},
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implementation_sha256", "benchmark_runner_sha256", "sticky_router_sha256", "typed_state_sha256", "governance_profile_sha256", "request_schema_sha256", "blocking_schema_sha256", "decision_schema_sha256", "benchmark_schema_sha256", "registry_sha256"],
+      "properties": {
+        "implementation_sha256": {"$ref": "#/$defs/sha256"},
+        "benchmark_runner_sha256": {"$ref": "#/$defs/sha256"},
+        "sticky_router_sha256": {"$ref": "#/$defs/sha256"},
+        "typed_state_sha256": {"$ref": "#/$defs/sha256"},
+        "governance_profile_sha256": {"$ref": "#/$defs/sha256"},
+        "request_schema_sha256": {"$ref": "#/$defs/sha256"},
+        "blocking_schema_sha256": {"$ref": "#/$defs/sha256"},
+        "decision_schema_sha256": {"$ref": "#/$defs/sha256"},
+        "benchmark_schema_sha256": {"$ref": "#/$defs/sha256"},
+        "registry_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "environment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["python_implementation", "python_version", "platform", "machine", "external_services"],
+      "properties": {
+        "python_implementation": {"type": "string", "minLength": 1},
+        "python_version": {"type": "string", "minLength": 1},
+        "platform": {"type": "string", "minLength": 1},
+        "machine": {"type": "string", "minLength": 1},
+        "external_services": {"const": 0}
+      }
+    },
+    "measurement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["samples", "successful_samples", "negative_fixture_samples", "negative_fixture_rejections", "ready_required_missed_count", "premature_stop_count", "untyped_ask_count", "incomplete_escalation_count", "active_leaf_change_count", "nondeterministic_replay_count", "request_mutation_count", "state_mutation_count", "profile_mutation_count", "p50_decision_latency_ms", "p95_decision_latency_ms", "max_decision_latency_ms"],
+      "properties": {
+        "samples": {"type": "integer", "minimum": 1},
+        "successful_samples": {"type": "integer", "minimum": 1},
+        "negative_fixture_samples": {"type": "integer", "minimum": 1},
+        "negative_fixture_rejections": {"type": "integer", "minimum": 1},
+        "ready_required_missed_count": {"const": 0},
+        "premature_stop_count": {"const": 0},
+        "untyped_ask_count": {"const": 0},
+        "incomplete_escalation_count": {"const": 0},
+        "active_leaf_change_count": {"const": 0},
+        "nondeterministic_replay_count": {"const": 0},
+        "request_mutation_count": {"const": 0},
+        "state_mutation_count": {"const": 0},
+        "profile_mutation_count": {"const": 0},
+        "p50_decision_latency_ms": {"type": "number", "minimum": 0},
+        "p95_decision_latency_ms": {"type": "number", "minimum": 0},
+        "max_decision_latency_ms": {"type": "number", "minimum": 0}
+      }
+    },
+    "acceptance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["all_samples_succeeded", "ready_required_never_missed", "no_premature_stop", "no_untyped_ask", "escalation_fields_complete", "active_leaf_preserved", "replay_deterministic", "inputs_immutable", "negative_fixtures_rejected", "zero_external_services"],
+      "properties": {
+        "all_samples_succeeded": {"const": true},
+        "ready_required_never_missed": {"const": true},
+        "no_premature_stop": {"const": true},
+        "no_untyped_ask": {"const": true},
+        "escalation_fields_complete": {"const": true},
+        "active_leaf_preserved": {"const": true},
+        "replay_deterministic": {"const": true},
+        "inputs_immutable": {"const": true},
+        "negative_fixtures_rejected": {"const": true},
+        "zero_external_services": {"const": true}
+      }
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

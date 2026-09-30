@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schemas/m5-04/bounded-artifact-expansion-benchmark.schema.json",
+  "title": "Context Control Plane Bounded Artifact Expansion Benchmark Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "samples", "successful_samples", "replay_mismatch", "budget_fault_samples", "budget_rejections", "digest_fault_samples", "digest_rejections", "returned_byte_budget", "returned_bytes_min", "returned_bytes_max", "scanned_bytes_min", "scanned_bytes_max", "prompt_bytes_min", "prompt_bytes_max", "prompt_reduction_millionths", "p50_ms", "p95_ms", "max_ms", "external_services", "implementation_sha256", "benchmark_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.bounded-artifact-expansion-benchmark/v1alpha1"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "samples": {"type": "integer", "minimum": 1}, "successful_samples": {"type": "integer", "minimum": 0},
+    "replay_mismatch": {"type": "integer", "minimum": 0}, "budget_fault_samples": {"type": "integer", "minimum": 0},
+    "budget_rejections": {"type": "integer", "minimum": 0}, "digest_fault_samples": {"type": "integer", "minimum": 0},
+    "digest_rejections": {"type": "integer", "minimum": 0}, "returned_byte_budget": {"type": "integer", "minimum": 1},
+    "returned_bytes_min": {"type": "integer", "minimum": 0}, "returned_bytes_max": {"type": "integer", "minimum": 0},
+    "scanned_bytes_min": {"type": "integer", "minimum": 0}, "scanned_bytes_max": {"type": "integer", "minimum": 0},
+    "prompt_bytes_min": {"type": "integer", "minimum": 0}, "prompt_bytes_max": {"type": "integer", "minimum": 0},
+    "prompt_reduction_millionths": {"type": "integer", "minimum": 0, "maximum": 1000000},
+    "p50_ms": {"type": "number", "minimum": 0}, "p95_ms": {"type": "number", "minimum": 0}, "max_ms": {"type": "number", "minimum": 0},
+    "external_services": {"const": 0},
+    "implementation_sha256": {"$ref": "#/$defs/sha256"}, "benchmark_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}

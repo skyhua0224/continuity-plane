@@ -1,0 +1,125 @@
+{
+  "schema_version": "context.m11-live-baseline/v1alpha1",
+  "receipt_revision": 2,
+  "supersedes_receipt_sha256": "8e169c70bf474df9571360b9f2a644dad584f1310c59a372ba0d6d501a8df6f6",
+  "benchmark_id": "m11-00-live-baseline",
+  "observed_at": "2026-08-30",
+  "purpose": "Pre-reset baseline for three real long-running Codex project profiles",
+  "adapter": "context_control_plane.codex_rollout_adapter.inspect_codex_rollout",
+  "privacy": {
+    "raw_transcript_admitted": false,
+    "session_ids_retained": false,
+    "paths_retained": false,
+    "project_names_retained": false,
+    "raw_tool_input_admitted": false,
+    "raw_tool_output_admitted": false
+  },
+  "measurement_boundary": {
+    "source": "streamed rollout metadata and token_count events",
+    "window_matching": "provisional; candidate windows must match model, context window and task class",
+    "plugin_posture": "historical windows may include strict integration behavior",
+    "interpretation": "descriptive baseline only; no causal benefit claim",
+    "counter_reset_policy": "segments containing cumulative counter resets are rejected"
+  },
+  "profiles": [
+    {
+      "profile": "projectcompute-session",
+      "session_sha256": "sha256:837dc8a56dfc8fcfa475e5978f4aefe8d3f1561bf620592715b015c305a938b5",
+      "source_sha256": "bb167300e78bf0ce5107704e6fa61bf2a100642ce64031e8c775a4deeaa4ce68",
+      "baseline_segments": [
+        {
+          "segment_id": "projectcompute-baseline-01",
+          "provider_usage": {"input_tokens": 27310246, "cached_input_tokens": 26881536, "output_tokens": 33788, "reasoning_output_tokens": 19075},
+          "request_usage": {"sample_count": 123, "input_tokens": 27340911, "cached_input_tokens": 26881536, "output_tokens": 34053, "reasoning_output_tokens": 19178, "last_input_tokens": 380886, "peak_input_tokens": 380886},
+          "context_window_tokens": 828400,
+          "compaction_count": 0,
+          "user_message_count": 2,
+          "assistant_message_count": 11,
+          "local_tool_call_count": 122,
+          "local_tool_output_bytes": 1103814,
+          "skill_read_calls": 4,
+          "governed_document_read_calls": 8,
+          "exact_duplicate_assistant_messages": 0
+        }
+      ]
+    },
+    {
+      "profile": "platform-session",
+      "session_sha256": "sha256:88d26f14a10272203ac0ccdb7fe7656a5f63fa3817c4893d19334a8b34a00968",
+      "source_sha256": "222a5fb527044e06dbaa7ad046a7156fb7137f892aa04f9a5d13bda732ba1013",
+      "baseline_segments": [
+        {
+          "segment_id": "platform-baseline-01",
+          "provider_usage": {"input_tokens": 883152, "cached_input_tokens": 806656, "output_tokens": 7847, "reasoning_output_tokens": 5072},
+          "request_usage": {"sample_count": 14, "input_tokens": 913011, "cached_input_tokens": 806656, "output_tokens": 8145, "reasoning_output_tokens": 5262, "last_input_tokens": 98447, "peak_input_tokens": 98447},
+          "context_window_tokens": 828400,
+          "compaction_count": 0,
+          "user_message_count": 2,
+          "assistant_message_count": 3,
+          "local_tool_call_count": 13,
+          "local_tool_output_bytes": 245888,
+          "skill_read_calls": 1,
+          "governed_document_read_calls": 1,
+          "exact_duplicate_assistant_messages": 0
+        },
+        {
+          "segment_id": "platform-baseline-02",
+          "provider_usage": {"input_tokens": 40126113, "cached_input_tokens": 39712768, "output_tokens": 74714, "reasoning_output_tokens": 41390},
+          "request_usage": {"sample_count": 130, "input_tokens": 40382993, "cached_input_tokens": 39952896, "output_tokens": 76575, "reasoning_output_tokens": 42207, "last_input_tokens": 436190, "peak_input_tokens": 436190},
+          "context_window_tokens": 828400,
+          "compaction_count": 0,
+          "user_message_count": 1,
+          "assistant_message_count": 17,
+          "local_tool_call_count": 127,
+          "local_tool_output_bytes": 1028727,
+          "skill_read_calls": 1,
+          "governed_document_read_calls": 2,
+          "exact_duplicate_assistant_messages": 0
+        },
+        {
+          "segment_id": "platform-baseline-03",
+          "provider_usage": {"input_tokens": 3130649, "cached_input_tokens": 3110144, "output_tokens": 5856, "reasoning_output_tokens": 4692},
+          "request_usage": {"sample_count": 7, "input_tokens": 3130649, "cached_input_tokens": 3110144, "output_tokens": 5856, "reasoning_output_tokens": 4692, "last_input_tokens": 452410, "peak_input_tokens": 452410},
+          "context_window_tokens": 828400,
+          "compaction_count": 0,
+          "user_message_count": 1,
+          "assistant_message_count": 3,
+          "local_tool_call_count": 6,
+          "local_tool_output_bytes": 43000,
+          "skill_read_calls": 1,
+          "governed_document_read_calls": 1,
+          "exact_duplicate_assistant_messages": 0
+        }
+      ]
+    },
+    {
+      "profile": "foundation-identity-session",
+      "session_sha256": "sha256:7ad78377f7d1d4c33441a2c3da4db433f0d5a8101d661518e6a1b694411d2aa0",
+      "source_sha256": "2ad79cb15fce71d2e398610f0ef7bb3c78f58f70df48e5ba2245d96795d794e9",
+      "baseline_segments": [
+        {
+          "segment_id": "foundation-baseline-01",
+          "provider_usage": {"input_tokens": 2001534, "cached_input_tokens": 1880832, "output_tokens": 5961, "reasoning_output_tokens": 3482},
+          "request_usage": {"sample_count": 26, "input_tokens": 2033602, "cached_input_tokens": 1880832, "output_tokens": 6326, "reasoning_output_tokens": 3633, "last_input_tokens": 135937, "peak_input_tokens": 135937},
+          "context_window_tokens": 828400,
+          "compaction_count": 0,
+          "user_message_count": 3,
+          "assistant_message_count": 4,
+          "local_tool_call_count": 25,
+          "local_tool_output_bytes": 376661,
+          "skill_read_calls": 1,
+          "governed_document_read_calls": 3,
+          "exact_duplicate_assistant_messages": 0
+        }
+      ]
+    }
+  ],
+  "baseline_progress": {
+    "projectcompute": "1/3",
+    "platform": "3/3",
+    "foundation": "1/3"
+  },
+  "status": "partial-baseline-recorded",
+  "completion_authority": false,
+  "state_write_authority": false
+}

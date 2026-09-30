@@ -1,0 +1,33 @@
+{
+  "name": "continuity-plane-search",
+  "version": "0.1.0-alpha.15",
+  "description": "Optional bounded current-worktree search guidance for large repositories",
+  "author": {
+    "name": "SkyHua"
+  },
+  "homepage": "https://github.com/skyhua0224/continuity-plane",
+  "repository": "https://github.com/skyhua0224/continuity-plane",
+  "license": "Apache-2.0",
+  "keywords": [
+    "context",
+    "search",
+    "retrieval",
+    "large-repository"
+  ],
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Continuity Plane Search",
+    "shortDescription": "\u53ef\u9009\u6709\u754c\u4ee3\u7801\u68c0\u7d22 / Optional bounded code search.",
+    "longDescription": "\u5728\u5927\u578b\u4ed3\u5e93\u5b9a\u4f4d\u964c\u751f\u7b26\u53f7\u65f6\u4f18\u5148\u8c03\u7528 continuity_context_lookup\uff0c\u518d\u6309\u9700\u4f7f\u7528\u5b9a\u989d current-worktree \u68c0\u7d22\u3002 Prefer the lookup tool before broad repository reads.",
+    "developerName": "SkyHua",
+    "category": "Productivity",
+    "capabilities": [
+      "Read"
+    ],
+    "websiteURL": "https://github.com/skyhua0224/continuity-plane",
+    "defaultPrompt": [
+      "\u5b9a\u4f4d\u964c\u751f\u4ee3\u7801\u65f6\u4f18\u5148\u8c03\u7528 continuity_context_lookup\u3002",
+      "Use continuity_context_lookup before broad repository reads."
+    ]
+  }
+}

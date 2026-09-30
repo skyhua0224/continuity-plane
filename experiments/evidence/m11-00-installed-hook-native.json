@@ -1,0 +1,198 @@
+{
+  "business_state_writes": 0,
+  "config_unchanged": true,
+  "context_window": 1000000,
+  "discovery_diagnostics": {
+    "errors": 0,
+    "layer_count": 2,
+    "layers": [
+      {
+        "disabled": false,
+        "type": "user"
+      },
+      {
+        "disabled": false,
+        "type": "system"
+      }
+    ],
+    "warnings": 0
+  },
+  "effective_model": "gpt-5.6-sol",
+  "ephemeral": true,
+  "failed_gate": "native_adoption_or_memory",
+  "hook_context_bytes": 2874,
+  "hook_counts": {
+    "postCompact:completed": 1,
+    "postToolUse:completed": 6,
+    "preCompact:completed": 1,
+    "preToolUse:completed": 7,
+    "sessionStart:completed": 2,
+    "userPromptSubmit:completed": 2
+  },
+  "host_observations": {
+    "hook_context_bytes": 2874,
+    "hook_counts": {
+      "postCompact:completed": 1,
+      "postToolUse:completed": 6,
+      "preCompact:completed": 1,
+      "preToolUse:completed": 7,
+      "sessionStart:completed": 2,
+      "userPromptSubmit:completed": 2
+    },
+    "lookup_calls": 1,
+    "native_compaction_observed": true,
+    "tool_calls": 7,
+    "usage": {
+      "last": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 34560,
+        "inputTokens": 36103,
+        "outputTokens": 618,
+        "reasoningOutputTokens": 444,
+        "totalTokens": 36721
+      },
+      "modelContextWindow": 828400,
+      "total": {
+        "cacheWriteInputTokens": 0,
+        "cachedInputTokens": 230912,
+        "inputTokens": 362571,
+        "outputTokens": 2534,
+        "reasoningOutputTokens": 1241,
+        "totalTokens": 365105
+      }
+    }
+  },
+  "installed_plugin_acceptance": true,
+  "lookup_calls": 1,
+  "measurement_source": "codex-app-server-native",
+  "model": "gpt-5.6-sol",
+  "native_compaction_observed": true,
+  "observed_at": "2026-09-05T14:06:45.443472+00:00",
+  "phases": [
+    {
+      "hook_context_bytes": 430,
+      "hook_counts": {
+        "postToolUse:completed": 2,
+        "preToolUse:completed": 3,
+        "sessionStart:completed": 1,
+        "userPromptSubmit:completed": 1
+      },
+      "lookup_calls": 1,
+      "marker_retained": true,
+      "native_compaction_observed": false,
+      "tool_calls": 3,
+      "turn_status": "completed",
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 38656,
+          "inputTokens": 40583,
+          "outputTokens": 282,
+          "reasoningOutputTokens": 214,
+          "totalTokens": 40865
+        },
+        "modelContextWindow": 828400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 113408,
+          "inputTokens": 187173,
+          "outputTokens": 944,
+          "reasoningOutputTokens": 453,
+          "totalTokens": 188117
+        }
+      }
+    },
+    {
+      "hook_context_bytes": 2444,
+      "hook_counts": {
+        "postToolUse:completed": 4,
+        "preToolUse:completed": 4,
+        "sessionStart:completed": 1,
+        "userPromptSubmit:completed": 1
+      },
+      "lookup_calls": 0,
+      "marker_retained": true,
+      "native_compaction_observed": false,
+      "tool_calls": 4,
+      "turn_status": "completed",
+      "usage": {
+        "last": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 34560,
+          "inputTokens": 36103,
+          "outputTokens": 618,
+          "reasoningOutputTokens": 444,
+          "totalTokens": 36721
+        },
+        "modelContextWindow": 828400,
+        "total": {
+          "cacheWriteInputTokens": 0,
+          "cachedInputTokens": 230912,
+          "inputTokens": 362571,
+          "outputTokens": 2534,
+          "reasoningOutputTokens": 1241,
+          "totalTokens": 365105
+        }
+      }
+    }
+  ],
+  "preflight_hooks": [
+    {
+      "enabled": true,
+      "eventName": "preToolUse",
+      "source": "plugin",
+      "trustStatus": "trusted"
+    },
+    {
+      "enabled": true,
+      "eventName": "postToolUse",
+      "source": "plugin",
+      "trustStatus": "trusted"
+    },
+    {
+      "enabled": true,
+      "eventName": "preCompact",
+      "source": "plugin",
+      "trustStatus": "trusted"
+    },
+    {
+      "enabled": true,
+      "eventName": "postCompact",
+      "source": "plugin",
+      "trustStatus": "trusted"
+    },
+    {
+      "enabled": true,
+      "eventName": "sessionStart",
+      "source": "plugin",
+      "trustStatus": "trusted"
+    },
+    {
+      "enabled": true,
+      "eventName": "userPromptSubmit",
+      "source": "plugin",
+      "trustStatus": "trusted"
+    }
+  ],
+  "status": "failed",
+  "tool_calls": 7,
+  "usage": {
+    "last": {
+      "cacheWriteInputTokens": 0,
+      "cachedInputTokens": 34560,
+      "inputTokens": 36103,
+      "outputTokens": 618,
+      "reasoningOutputTokens": 444,
+      "totalTokens": 36721
+    },
+    "modelContextWindow": 828400,
+    "total": {
+      "cacheWriteInputTokens": 0,
+      "cachedInputTokens": 230912,
+      "inputTokens": 362571,
+      "outputTokens": 2534,
+      "reasoningOutputTokens": 1241,
+      "totalTokens": 365105
+    }
+  }
+}

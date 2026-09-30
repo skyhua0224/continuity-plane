@@ -1,0 +1,285 @@
+{
+  "benchmark_id": "m10-00-codex-harness-ablation",
+  "completion_authority": false,
+  "configuration": {
+    "auto_compact_token_limit": 900000,
+    "context_window_tokens": 1000000,
+    "model": "gpt-5.6-sol",
+    "sandbox": "read-only",
+    "tools_allowed": false
+  },
+  "external_side_effects": 0,
+  "generated_at": "2026-08-18T01:00:00+08:00",
+  "provider_invocations": 12,
+  "receipt_sha256": "49dca3507d644389a9162fd4cfb90d78ee3aec22a3d118d46702df4e5cd081a6",
+  "samples": [
+    {
+      "case": "bare",
+      "prompt_chars": 156,
+      "quality": {
+        "correct": true,
+        "next_action": "M10-00",
+        "verdict": "ok"
+      },
+      "sample_id": "bare-0",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 3840,
+        "input_tokens": 19608,
+        "output_tokens": 32,
+        "reasoning_output_tokens": 12
+      },
+      "wall_time_ms": 3880.604,
+      "warning_count": 1
+    },
+    {
+      "case": "bare",
+      "prompt_chars": 156,
+      "quality": {
+        "correct": true,
+        "next_action": "M10-00",
+        "verdict": "ok"
+      },
+      "sample_id": "bare-1",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 3840,
+        "input_tokens": 19608,
+        "output_tokens": 41,
+        "reasoning_output_tokens": 21
+      },
+      "wall_time_ms": 4008.485,
+      "warning_count": 1
+    },
+    {
+      "case": "bare",
+      "prompt_chars": 156,
+      "quality": {
+        "correct": true,
+        "next_action": "M10-00",
+        "verdict": "ok"
+      },
+      "sample_id": "bare-2",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 3840,
+        "input_tokens": 19608,
+        "output_tokens": 34,
+        "reasoning_output_tokens": 14
+      },
+      "wall_time_ms": 3701.976,
+      "warning_count": 1
+    },
+    {
+      "case": "state-packet",
+      "prompt_chars": 324,
+      "quality": {
+        "correct": true,
+        "next_action": "M10-00",
+        "verdict": "ok"
+      },
+      "sample_id": "state-packet-0",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 3840,
+        "input_tokens": 19649,
+        "output_tokens": 48,
+        "reasoning_output_tokens": 28
+      },
+      "wall_time_ms": 5530.547,
+      "warning_count": 1
+    },
+    {
+      "case": "state-packet",
+      "prompt_chars": 324,
+      "quality": {
+        "correct": true,
+        "next_action": "M10-00",
+        "verdict": "ok"
+      },
+      "sample_id": "state-packet-1",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 3840,
+        "input_tokens": 19649,
+        "output_tokens": 37,
+        "reasoning_output_tokens": 17
+      },
+      "wall_time_ms": 5260.651,
+      "warning_count": 1
+    },
+    {
+      "case": "state-packet",
+      "prompt_chars": 324,
+      "quality": {
+        "correct": true,
+        "next_action": "M10-00",
+        "verdict": "ok"
+      },
+      "sample_id": "state-packet-2",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 19200,
+        "input_tokens": 19649,
+        "output_tokens": 41,
+        "reasoning_output_tokens": 21
+      },
+      "wall_time_ms": 4517.472,
+      "warning_count": 1
+    },
+    {
+      "case": "full-packet",
+      "prompt_chars": 691,
+      "quality": {
+        "correct": true,
+        "next_action": "M10-00",
+        "verdict": "ok"
+      },
+      "sample_id": "full-packet-0",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 19200,
+        "input_tokens": 19748,
+        "output_tokens": 35,
+        "reasoning_output_tokens": 15
+      },
+      "wall_time_ms": 4091.496,
+      "warning_count": 1
+    },
+    {
+      "case": "full-packet",
+      "prompt_chars": 691,
+      "quality": {
+        "correct": true,
+        "next_action": "M10-00",
+        "verdict": "ok"
+      },
+      "sample_id": "full-packet-1",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 3840,
+        "input_tokens": 19748,
+        "output_tokens": 40,
+        "reasoning_output_tokens": 20
+      },
+      "wall_time_ms": 5625.963,
+      "warning_count": 1
+    },
+    {
+      "case": "full-packet",
+      "prompt_chars": 691,
+      "quality": {
+        "correct": true,
+        "next_action": "M10-00",
+        "verdict": "ok"
+      },
+      "sample_id": "full-packet-2",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 19200,
+        "input_tokens": 19748,
+        "output_tokens": 37,
+        "reasoning_output_tokens": 17
+      },
+      "wall_time_ms": 4071.319,
+      "warning_count": 1
+    },
+    {
+      "case": "history",
+      "prompt_chars": 67542,
+      "quality": {
+        "correct": true,
+        "next_action": "M10-00",
+        "verdict": "ok"
+      },
+      "sample_id": "history-0",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 3840,
+        "input_tokens": 32854,
+        "output_tokens": 51,
+        "reasoning_output_tokens": 31
+      },
+      "wall_time_ms": 5751.817,
+      "warning_count": 1
+    },
+    {
+      "case": "history",
+      "prompt_chars": 67542,
+      "quality": {
+        "correct": true,
+        "next_action": "M10-00",
+        "verdict": "ok"
+      },
+      "sample_id": "history-1",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 3840,
+        "input_tokens": 32854,
+        "output_tokens": 18,
+        "reasoning_output_tokens": 0
+      },
+      "wall_time_ms": 5028.38,
+      "warning_count": 1
+    },
+    {
+      "case": "history",
+      "prompt_chars": 67542,
+      "quality": {
+        "correct": true,
+        "next_action": "M10-00",
+        "verdict": "ok"
+      },
+      "sample_id": "history-2",
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 3840,
+        "input_tokens": 32854,
+        "output_tokens": 48,
+        "reasoning_output_tokens": 28
+      },
+      "wall_time_ms": 4294.864,
+      "warning_count": 1
+    }
+  ],
+  "schema_version": "context.codex-harness-ablation/v1alpha1",
+  "state_write_authority": false,
+  "summary": {
+    "bare": {
+      "count": 3,
+      "input_tokens_max": 19608,
+      "input_tokens_mean": 19608.0,
+      "input_tokens_min": 19608,
+      "quality_rate": 1.0,
+      "warning_count_total": 3
+    },
+    "full-packet": {
+      "count": 3,
+      "input_tokens_max": 19748,
+      "input_tokens_mean": 19748.0,
+      "input_tokens_min": 19748,
+      "quality_rate": 1.0,
+      "reduction_vs_bare_percent": -0.714,
+      "reduction_vs_history_percent": 39.8916,
+      "warning_count_total": 3
+    },
+    "history": {
+      "count": 3,
+      "input_tokens_max": 32854,
+      "input_tokens_mean": 32854.0,
+      "input_tokens_min": 32854,
+      "quality_rate": 1.0,
+      "warning_count_total": 3
+    },
+    "state-packet": {
+      "count": 3,
+      "input_tokens_max": 19649,
+      "input_tokens_mean": 19649.0,
+      "input_tokens_min": 19649,
+      "quality_rate": 1.0,
+      "reduction_vs_bare_percent": -0.2091,
+      "reduction_vs_history_percent": 40.193,
+      "warning_count_total": 3
+    }
+  }
+}

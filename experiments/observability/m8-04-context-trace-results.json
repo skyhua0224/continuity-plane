@@ -1,0 +1,31 @@
+{
+  "authority_violations": 0,
+  "binding_failures": 0,
+  "external_services": 0,
+  "false_otel_success": 0,
+  "fixture_sha256": "ba7a2436e6f1c69fe1dd8224c5e5029ae2c730436ac507df6e8d6a3d908887d8",
+  "generated_at": "2026-08-15T04:00:00Z",
+  "hash_chain_failures": 0,
+  "implementation_sha256": "6a34e33c5cc2aba15c49c209ca125b4f5095bddbcba8e92159f4598601344eb3",
+  "max_ms": 1.711361,
+  "otel_unavailable_samples": 1000,
+  "p50_ms": 0.826903,
+  "p95_ms": 1.643596,
+  "replay_mismatch": 0,
+  "required_event_coverage_millionths": 1000000,
+  "required_event_names": [
+    "context.compaction.precompact",
+    "context.compaction.postcompact",
+    "context.routing.input",
+    "context.skill.selection",
+    "context.plan.revision",
+    "context.multi_agent.dispatch",
+    "context.multi_agent.handoff",
+    "context.delivery.accepted"
+  ],
+  "samples": 1000,
+  "schema_version": "context.context-trace-benchmark/v1alpha1",
+  "source_evidence_failures": 0,
+  "successful_samples": 1000,
+  "total_events": 8000
+}

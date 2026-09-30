@@ -1,0 +1,37 @@
+{
+  "arm": "baseline",
+  "compaction": {
+    "compact_start_events": 0,
+    "complete_chains": 0,
+    "failed_events": 0,
+    "postcompact_events": 0,
+    "precompact_events": 0
+  },
+  "completion_authority": false,
+  "context_efficiency": {
+    "assistant_messages": 5,
+    "assistant_messages_sha256": "e9e56439a1bdf40c27b2c7f4c9806736d529cd1279928560a410269f29e4f945",
+    "error_item_count": 0,
+    "hook_trust_warning_count": 0,
+    "master_read_calls": 0,
+    "recovery_narration_count": 0,
+    "skill_read_calls": 0,
+    "status_read_calls": 0,
+    "tool_calls": 19,
+    "tool_output_bytes": 368712
+  },
+  "observed_at": "2026-08-30T19:00:45+08:00",
+  "provider_usage": {
+    "cache_write_input_tokens": 0,
+    "cached_input_tokens": 104704,
+    "input_tokens": 152593,
+    "output_tokens": 2747,
+    "reasoning_output_tokens": 281
+  },
+  "raw_transcript_admission": false,
+  "receipt_sha256": "d82c574a7d3f392c6c1294095a4eb5f0c3902397e19ebcf7cbc0c703c9e493c0",
+  "schema_version": "context.codex-exec-observation/v1alpha1",
+  "segment_id": "platform-baseline-01",
+  "source_sha256": "ac2e5538ae807f9d943f1a439f34f306abc6b8aa2be3dbf4f12f2790fadb484e",
+  "state_write_authority": false
+}

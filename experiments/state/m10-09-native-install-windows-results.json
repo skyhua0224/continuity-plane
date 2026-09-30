@@ -1,0 +1,63 @@
+{
+  "consistency": {
+    "artifact_leaks": 0,
+    "external_service_invocations": 0,
+    "rollback_hash_matches_export": true,
+    "state_write_authority": false
+  },
+  "generated_at": "2026-08-18T15:18:14.136661+00:00",
+  "package": {
+    "artifact_sha256": "4bff1d3881a0a845b4c7475622faeaefc224cc4380463093628952943b60bc0f",
+    "name": "continuity-plane",
+    "version": "0.1.0a1"
+  },
+  "platform": {
+    "machine": "AMD64",
+    "python": "3.12.10",
+    "release": "11",
+    "system": "Windows"
+  },
+  "profile": {
+    "admin_required": false,
+    "container_required": false,
+    "external_services_required": 0,
+    "requested_profile": "local-embedded",
+    "state_adapter": "sqlite"
+  },
+  "project_id": "native-probe",
+  "receipt_sha256": "f549e4e0dfb99f0fb7887120fe73467671de8bb8ca8183662166737e0aa117f6",
+  "schema_version": "context.native-install-matrix/v1alpha1",
+  "steps": {
+    "export": {
+      "duration_ms": 125.0,
+      "output_sha256": "591c07a19ab2b6b8e9a23e6c6987ea80038e838dc5991c0d361e55039232bdfb",
+      "status": "passed"
+    },
+    "import": {
+      "duration_ms": 109.0,
+      "output_sha256": "591c07a19ab2b6b8e9a23e6c6987ea80038e838dc5991c0d361e55039232bdfb",
+      "status": "passed"
+    },
+    "install": {
+      "duration_ms": 4031.0,
+      "output_sha256": "1935fe631413a85b06e116db7094942b645141989b3d61b003e913414f7db76f",
+      "status": "passed"
+    },
+    "rollback": {
+      "duration_ms": 110.0,
+      "output_sha256": "591c07a19ab2b6b8e9a23e6c6987ea80038e838dc5991c0d361e55039232bdfb",
+      "status": "passed"
+    },
+    "uninstall": {
+      "duration_ms": 62.0,
+      "output_sha256": "dac59dd2af2ad14f9cb5ad77ef4561b2fc96a78573df3b4d1620871019a7d3ef",
+      "status": "passed"
+    },
+    "verify": {
+      "duration_ms": 203.0,
+      "output_sha256": "be9ad29642dfce60ca159a195c744a1c2aaa8402d38793f038dc757345901e9c",
+      "status": "passed"
+    }
+  },
+  "verdict": "passed"
+}

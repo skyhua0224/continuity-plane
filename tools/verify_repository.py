@@ -18,12 +18,12 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 if str(REPOSITORY_ROOT) not in sys.path:
     sys.path.insert(0, str(REPOSITORY_ROOT))
 
-from context_control_plane.document_lifecycle import (
+from context_control_plane.document_lifecycle import (  # noqa: E402
     DocumentLifecycleError,
     build_document_control_manifest,
     validate_document_control_manifest,
 )
-from context_control_plane.document_lifecycle_benchmark import (
+from context_control_plane.document_lifecycle_benchmark import (  # noqa: E402
     DocumentLifecycleBenchmarkError,
     load_document_lifecycle_benchmark_baseline,
     load_document_lifecycle_benchmark_config,
@@ -41,6 +41,20 @@ PROHIBITED_DOCUMENTATION_PATTERNS = (
     re.compile(r"不是[^\n]{0,80}而是"),
     re.compile(r"第一刀|更聪明|我们在哪|偷偷"),
 )
+IGNORED_REPOSITORY_PARTS = {
+    ".git",
+    ".venv",
+    ".ruff_cache",
+    "__pycache__",
+    "build",
+    "dist",
+}
+
+
+def _is_ignored_path(relative_path: Path) -> bool:
+    return bool(IGNORED_REPOSITORY_PARTS.intersection(relative_path.parts)) or any(
+        part.endswith(".egg-info") for part in relative_path.parts
+    )
 
 
 def _document_revision(path: Path) -> int:
@@ -236,7 +250,7 @@ def verify_repository(root: Path) -> list[str]:
 
     for path in root.rglob("*"):
         relative_path = path.relative_to(root)
-        if ".git" in relative_path.parts:
+        if _is_ignored_path(relative_path):
             continue
         if "raw-conversations" in relative_path.parts or path.name.endswith(
             RAW_TRANSCRIPT_SUFFIXES
@@ -254,7 +268,7 @@ def verify_repository(root: Path) -> list[str]:
             return [(f"invalid structured data: {relative_path.as_posix()}: {error}")]
 
     for document_path in root.rglob("*.md"):
-        if ".git" in document_path.relative_to(root).parts:
+        if _is_ignored_path(document_path.relative_to(root)):
             continue
         document_text = document_path.read_text(encoding="utf-8")
         for match in MARKDOWN_LINK_PATTERN.finditer(document_text):

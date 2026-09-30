@@ -1,0 +1,21 @@
+schema_version: context.experiment-lifecycle-benchmark-fixture/v1alpha1
+project_id: project-m305-benchmark
+observed_at: '2026-08-14T08:35:00+08:00'
+experiment:
+  work_id: experiment-throughput
+  title: Throughput experiment
+  expires_at: '2026-08-14T09:00:00+08:00'
+  attempt_budget: 2
+  exit_criteria:
+    - throughput target
+    - recovery target
+  return_point_work_id: mainline-target
+  promotion_target_work_id: mainline-target
+evidence:
+  - evidence_id: evidence-throughput
+    content_sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  - evidence_id: evidence-recovery
+    content_sha256: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+benchmark:
+  samples: 40
+  external_services: 0

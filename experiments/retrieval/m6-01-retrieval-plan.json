@@ -1,0 +1,42 @@
+{
+  "budgets": {
+    "max_queries": 2,
+    "max_returned_bytes": 8192,
+    "max_scanned_bytes": 262144
+  },
+  "degraded_reasons": [],
+  "freshness": {
+    "max_index_age_seconds": 3600,
+    "require_content_hash": true
+  },
+  "memory_authority": false,
+  "plan_id": "plan/question/m6-01/acceptance",
+  "plan_sha256": "59dbac86fde09e9ede9ce706be0aab547eeee4108c1fbb2b18fac394e018879b",
+  "planner_version": "context.retrieval-router/v1alpha1",
+  "query_sha256": "daff7d65dfe2055f2ab646dfbb1920871e0046440164b411c5ae42aa5051e830",
+  "question_id": "question/m6-01/acceptance",
+  "question_kind": "symbol_definition",
+  "repositories": [
+    "context-control-plane"
+  ],
+  "schema_version": "context.retrieval-plan/v1alpha1",
+  "state_write_authority": false,
+  "steps": [
+    {
+      "max_queries": 1,
+      "max_returned_bytes": 4096,
+      "max_scanned_bytes": 131072,
+      "purpose": "exact current-code evidence",
+      "requires_index": false,
+      "tool": "rg"
+    },
+    {
+      "max_queries": 1,
+      "max_returned_bytes": 4096,
+      "max_scanned_bytes": 131072,
+      "purpose": "current symbol definition and reference verification",
+      "requires_index": true,
+      "tool": "lsp"
+    }
+  ]
+}

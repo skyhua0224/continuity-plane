@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m5-07/dogfood-coverage.schema.json",
+  "title": "Context Control Plane dogfood coverage receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "observation_count", "expectations", "denominators", "covered", "coverage_millionths", "overall_coverage_millionths", "veto_failures", "status", "state_write_authority", "provider_native_authority", "coverage_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.dogfood-coverage/v1alpha1"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "observation_count": {"type": "integer", "minimum": 0},
+    "expectations": {"type": "object", "additionalProperties": false, "required": ["eligible_ingress_ids", "visible_compaction_ids", "skill_selection_ids", "target_revisions", "agent_dispatch_ids", "delivery_ids"], "properties": {
+      "eligible_ingress_ids": {"$ref": "#/$defs/idList"},
+      "visible_compaction_ids": {"$ref": "#/$defs/idList"},
+      "skill_selection_ids": {"$ref": "#/$defs/idList"},
+      "target_revisions": {"type": "array", "uniqueItems": true, "items": {"type": "integer", "minimum": 0}},
+      "agent_dispatch_ids": {"$ref": "#/$defs/idList"},
+      "delivery_ids": {"$ref": "#/$defs/idList"}
+    }},
+    "denominators": {"$ref": "#/$defs/coverageMap"},
+    "covered": {"$ref": "#/$defs/coverageMap"},
+    "coverage_millionths": {"$ref": "#/$defs/coverageMap"},
+    "overall_coverage_millionths": {"type": "integer", "minimum": 0, "maximum": 1000000},
+    "veto_failures": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "status": {"enum": ["pass", "regressed"]},
+    "state_write_authority": {"const": false},
+    "provider_native_authority": {"const": false},
+    "coverage_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"},
+    "idList": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+    "coverageMap": {"type": "object", "additionalProperties": false, "required": ["eligible_ingress", "visible_compaction", "skill_selection", "plan_revision", "agent_dispatch", "agent_handoff", "delivery"], "properties": {
+      "eligible_ingress": {"type": "integer", "minimum": 0},
+      "visible_compaction": {"type": "integer", "minimum": 0},
+      "skill_selection": {"type": "integer", "minimum": 0},
+      "plan_revision": {"type": "integer", "minimum": 0},
+      "agent_dispatch": {"type": "integer", "minimum": 0},
+      "agent_handoff": {"type": "integer", "minimum": 0},
+      "delivery": {"type": "integer", "minimum": 0}
+    }},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

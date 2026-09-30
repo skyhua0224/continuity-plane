@@ -1,0 +1,201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://continuity-plane.invalid/schemas/m10-11/live-continuity-segment.schema.json",
+  "title": "Sanitized live continuity observation segment",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "segment_id", "arm", "match", "trace", "provider_usage", "token_attribution", "accepted_work", "compactions", "responses", "duration_ms", "state_write_authority", "completion_authority", "segment_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.live-continuity-segment/v1alpha1"},
+    "segment_id": {"$ref": "#/$defs/id"},
+    "arm": {"enum": ["baseline", "candidate"]},
+    "match": {"$ref": "#/$defs/match"},
+    "trace": {"$ref": "#/$defs/trace"},
+    "provider_usage": {"$ref": "#/$defs/usage"},
+    "token_attribution": {"$ref": "#/$defs/attribution"},
+    "accepted_work": {"type": "array", "maxItems": 256, "items": {"$ref": "#/$defs/work"}},
+    "compactions": {"type": "array", "maxItems": 64, "items": {"$ref": "#/$defs/compaction"}},
+    "responses": {"type": "array", "maxItems": 1024, "items": {"$ref": "#/$defs/response"}},
+    "duration_ms": {"type": "number", "exclusiveMinimum": 0},
+    "state_write_authority": {"const": false},
+    "completion_authority": {"const": false},
+    "segment_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,511}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "format": "date-time"},
+    "idList": {"type": "array", "uniqueItems": true, "maxItems": 1024, "items": {"$ref": "#/$defs/id"}},
+    "match": {
+      "type": "object", "additionalProperties": false,
+      "required": ["provider_contract_id", "model_id", "model_revision", "reasoning_effort", "context_window_tokens", "auto_compact_token_limit", "cache_policy", "tool_policy_sha256", "sandbox_policy_sha256", "adapter_sha256", "task_class", "project_profile_sha256", "project_class", "repository_topology", "collaboration_mode", "repository_revision", "state_schema_version", "starting_state_sha256", "verification_profile_sha256"],
+      "properties": {
+        "provider_contract_id": {"$ref": "#/$defs/id"},
+        "model_id": {"$ref": "#/$defs/id"},
+        "model_revision": {"$ref": "#/$defs/id"},
+        "reasoning_effort": {"$ref": "#/$defs/id"},
+        "context_window_tokens": {"type": "integer", "minimum": 1},
+        "auto_compact_token_limit": {"type": "integer", "minimum": 1},
+        "cache_policy": {"$ref": "#/$defs/id"},
+        "tool_policy_sha256": {"$ref": "#/$defs/sha256"},
+        "sandbox_policy_sha256": {"$ref": "#/$defs/sha256"},
+        "adapter_sha256": {"$ref": "#/$defs/sha256"},
+        "task_class": {"$ref": "#/$defs/id"},
+        "project_profile_sha256": {"$ref": "#/$defs/sha256"},
+        "project_class": {"$ref": "#/$defs/id"},
+        "repository_topology": {"$ref": "#/$defs/id"},
+        "collaboration_mode": {"$ref": "#/$defs/id"},
+        "repository_revision": {"$ref": "#/$defs/id"},
+        "state_schema_version": {"$ref": "#/$defs/id"},
+        "starting_state_sha256": {"$ref": "#/$defs/sha256"},
+        "verification_profile_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "trace": {
+      "type": "object", "additionalProperties": false,
+      "required": ["source_kind", "source_ref", "source_sha256", "adapter_id", "adapter_sha256", "observed_at"],
+      "properties": {
+        "source_kind": {"enum": ["provider-export", "host-hook"]},
+        "source_ref": {"$ref": "#/$defs/id"},
+        "source_sha256": {"$ref": "#/$defs/sha256"},
+        "adapter_id": {"$ref": "#/$defs/id"},
+        "adapter_sha256": {"$ref": "#/$defs/sha256"},
+        "observed_at": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "usage": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["status", "input_tokens", "cached_input_tokens", "cache_write_input_tokens", "output_tokens", "reasoning_output_tokens", "evidence_ref"],
+          "properties": {
+            "status": {"const": "measured"},
+            "input_tokens": {"type": "integer", "minimum": 1},
+            "cached_input_tokens": {"type": "integer", "minimum": 0},
+            "cache_write_input_tokens": {"type": "integer", "minimum": 0},
+            "output_tokens": {"type": "integer", "minimum": 0},
+            "reasoning_output_tokens": {"type": ["integer", "null"], "minimum": 0},
+            "evidence_ref": {"$ref": "#/$defs/id"}
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["status", "input_tokens", "cached_input_tokens", "cache_write_input_tokens", "output_tokens", "reasoning_output_tokens", "evidence_ref"],
+          "properties": {
+            "status": {"const": "unavailable"},
+            "input_tokens": {"type": "null"},
+            "cached_input_tokens": {"type": "null"},
+            "cache_write_input_tokens": {"type": "null"},
+            "output_tokens": {"type": "null"},
+            "reasoning_output_tokens": {"type": "null"},
+            "evidence_ref": {"type": "null"}
+          }
+        }
+      ]
+    },
+    "attribution": {
+      "oneOf": [
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["status", "tokenizer_id", "authoritative_current_tokens", "task_relevant_tokens", "skill_tokens", "repeated_history_tokens", "recovery_tokens", "other_tokens", "evidence_ref"],
+          "properties": {
+            "status": {"const": "measured"},
+            "tokenizer_id": {"$ref": "#/$defs/id"},
+            "authoritative_current_tokens": {"type": "integer", "minimum": 0},
+            "task_relevant_tokens": {"type": "integer", "minimum": 0},
+            "skill_tokens": {"type": "integer", "minimum": 0},
+            "repeated_history_tokens": {"type": "integer", "minimum": 0},
+            "recovery_tokens": {"type": "integer", "minimum": 0},
+            "other_tokens": {"type": "integer", "minimum": 0},
+            "evidence_ref": {"$ref": "#/$defs/id"}
+          }
+        },
+        {
+          "type": "object", "additionalProperties": false,
+          "required": ["status", "tokenizer_id", "authoritative_current_tokens", "task_relevant_tokens", "skill_tokens", "repeated_history_tokens", "recovery_tokens", "other_tokens", "evidence_ref"],
+          "properties": {
+            "status": {"const": "unavailable"},
+            "tokenizer_id": {"type": "null"},
+            "authoritative_current_tokens": {"type": "null"},
+            "task_relevant_tokens": {"type": "null"},
+            "skill_tokens": {"type": "null"},
+            "repeated_history_tokens": {"type": "null"},
+            "recovery_tokens": {"type": "null"},
+            "other_tokens": {"type": "null"},
+            "evidence_ref": {"type": "null"}
+          }
+        }
+      ]
+    },
+    "work": {
+      "type": "object", "additionalProperties": false,
+      "required": ["work_ref", "completion_receipt_ref", "completion_receipt_sha256", "accepted_at"],
+      "properties": {
+        "work_ref": {"$ref": "#/$defs/id"},
+        "completion_receipt_ref": {"$ref": "#/$defs/id"},
+        "completion_receipt_sha256": {"$ref": "#/$defs/sha256"},
+        "accepted_at": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "authorityPre": {
+      "type": "object", "additionalProperties": false,
+      "required": ["project_revision", "active_work_ref", "claim_ref", "expected_first_action_sha256", "acknowledged_input_ids"],
+      "properties": {
+        "project_revision": {"type": "integer", "minimum": 1},
+        "active_work_ref": {"$ref": "#/$defs/id"},
+        "claim_ref": {"$ref": "#/$defs/id"},
+        "expected_first_action_sha256": {"$ref": "#/$defs/sha256"},
+        "acknowledged_input_ids": {"$ref": "#/$defs/idList"}
+      }
+    },
+    "authorityPost": {
+      "type": "object", "additionalProperties": false,
+      "required": ["project_revision", "active_work_ref", "claim_ref", "actual_first_action_sha256", "responded_input_ids"],
+      "properties": {
+        "project_revision": {"type": "integer", "minimum": 1},
+        "active_work_ref": {"$ref": "#/$defs/id"},
+        "claim_ref": {"$ref": "#/$defs/id"},
+        "actual_first_action_sha256": {"$ref": "#/$defs/sha256"},
+        "responded_input_ids": {"$ref": "#/$defs/idList"}
+      }
+    },
+    "read": {
+      "type": "object", "additionalProperties": false,
+      "required": ["source_kind", "source_ref", "content_sha256", "bytes_read"],
+      "properties": {
+        "source_kind": {"enum": ["bootstrap", "execution-packet", "skill", "document", "code", "evidence", "memory", "other"]},
+        "source_ref": {"$ref": "#/$defs/id"},
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "bytes_read": {"type": "integer", "minimum": 1}
+      }
+    },
+    "compaction": {
+      "type": "object", "additionalProperties": false,
+      "required": ["compaction_id", "occurred_at", "pre", "post", "recovery_reads"],
+      "properties": {
+        "compaction_id": {"$ref": "#/$defs/id"},
+        "occurred_at": {"$ref": "#/$defs/timestamp"},
+        "pre": {"$ref": "#/$defs/authorityPre"},
+        "post": {"$ref": "#/$defs/authorityPost"},
+        "recovery_reads": {"type": "array", "maxItems": 128, "items": {"$ref": "#/$defs/read"}}
+      }
+    },
+    "response": {
+      "type": "object", "additionalProperties": false,
+      "required": ["response_id", "input_id", "input_kind", "input_sha256", "response_sha256", "direct_answer", "table_present", "table_requested", "recovery_narration", "assessment_kind", "assessment_ref"],
+      "properties": {
+        "response_id": {"$ref": "#/$defs/id"},
+        "input_id": {"$ref": "#/$defs/id"},
+        "input_kind": {"$ref": "#/$defs/id"},
+        "input_sha256": {"$ref": "#/$defs/sha256"},
+        "response_sha256": {"$ref": "#/$defs/sha256"},
+        "direct_answer": {"type": "boolean"},
+        "table_present": {"type": "boolean"},
+        "table_requested": {"type": "boolean"},
+        "recovery_narration": {"type": "boolean"},
+        "assessment_kind": {"enum": ["deterministic-contract", "human", "independent-model"]},
+        "assessment_ref": {"$ref": "#/$defs/id"}
+      }
+    }
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "allow_external_effects": false,
+  "authorized_scopes": [
+    "read"
+  ],
+  "decided_at": "2026-08-15T07:15:00Z",
+  "decision_id": "decision/mcp-admission/m6-06/read",
+  "decision_sha256": "3224cb8c18c8eaaf97e73edf44fcf14c517c717291658f57fec87ca0056207d6",
+  "operation_id": "operation/m6-06/research",
+  "project_id": "context-control-plane",
+  "registry_anchor_sha256": null,
+  "registry_kind": "fixture",
+  "registry_revision": "1111111111111111111111111111111111111111",
+  "registry_sha256": "eb1f9139a92e3956a8d577f53536e48456a59a915c29e975ff4d5ef5262058d9",
+  "registry_snapshot_id": "mcp-registry/fixture/2026-08-15",
+  "request_id": "mcp-admission/m6-06/read",
+  "request_sha256": "ece523ca635a930074ccb3fddb6b6733be47473171b390a4f2c60d65296020a7",
+  "schema_version": "context.mcp-admission-decision/v1alpha1",
+  "servers": [
+    {
+      "active_tools": [
+        {
+          "invocation_route": "mcp://fixture/reference-server/reference.search",
+          "name": "reference.search",
+          "scope": "read"
+        }
+      ],
+      "denied_tools": [
+        {
+          "name": "state.commit",
+          "reason": "scope_not_granted",
+          "scope": "state_write"
+        },
+        {
+          "name": "issue.create",
+          "reason": "scope_not_granted",
+          "scope": "external_effect"
+        }
+      ],
+      "reasons": [],
+      "server_id": "fixture/reference-server",
+      "status": "admitted"
+    }
+  ],
+  "state_mcp_route_anchor_sha256": null,
+  "state_write_authority": false,
+  "tool_invocation_performed": false
+}

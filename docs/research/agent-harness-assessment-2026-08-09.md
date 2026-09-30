@@ -1,17 +1,17 @@
 # Agent Harness Assessment
 
-版本：3  
-日期：2026-08-11  
+版本：4  
+日期：2026-08-14  
 状态：research / adoption candidates  
-范围：OpenAI Codex、Anthropic Claude Code/Agent SDK、长任务、Skill、工具、checkpoint、协作、验证与可观察性
+范围：OpenAI Codex、Anthropic Claude Code/Agent SDK、DeepSeek Harness、Pi、Cordis、长任务、Skill、工具、checkpoint、协作、验证与可观察性
 
 ```yaml
 document_id: context.agent-harness-assessment
-document_revision: 3
+document_revision: 4
 change_type: evidence
-authority_ref: current-source-and-software-official-snapshots-2026-08-11
-supersedes: context.agent-harness-assessment@2
-affected_tasks: [M0-08, M1-05, M2-01, M4-05, M8-06]
+authority_ref: current-source-research-and-software-official-snapshots-2026-08-14
+supersedes: context.agent-harness-assessment@3
+affected_tasks: [M0-08, M1-05, M2-01, M4-05, M4-07, M5-02, M5-03, M5-05, M5-08, M8-01, M8-06]
 next_review: null
 ```
 
@@ -20,6 +20,8 @@ next_review: null
 Agent harness 是包围模型的运行、状态、工具、反馈和治理系统。它至少包含任务入口、上下文组装、Skill/工具选择、权限与隔离、checkpoint/replay、副作用处理、验证反馈、多 Agent 编排、可观察性和人类治理。模型与 provider host 属于可替换执行组件；Harness Run 必须绑定同一份 revisioned Typed State、Execution Packet、evidence 和 effect ledger。
 
 OpenAI 与 Anthropic 的公开实践共同支持以下方向：长任务应拆成有完成门的增量叶；仓库需要短入口和渐进披露；应用、日志、指标和测试必须对 Agent 可读；压缩摘要和自由 progress file 无法独立承担权威恢复；宿主 checkpoint、session resume、goal、Skill matching 和多 Agent 功能需要经过 provider adapter 接入控制面。
+
+DeepSeek Harness、Pi 和 Cordis 补充了三类可执行细节。DeepSeek 提供动态 plugin/Skill、session event、compaction、sandbox/approval 和 SQLite 的集成候选；Pi 现行 Coding Agent 提供 cut point、split-turn、hook 和 cache 成本基线；Pi durable AgentHarness 规范提供 operation program counter、effect sandwich 和 crash/race oracle；Cordis 提供动态依赖与组件生命周期模型。上述来源不改变项目级 authority：State MCP 继续独占 revision/CAS、claim/lease、evidence 和 external effect 提交权限。
 
 ## 研究来源与快照
 
@@ -46,6 +48,10 @@ OpenAI 与 Anthropic 的公开实践共同支持以下方向：长任务应拆�
 | [Agent SDK tool search](https://code.claude.com/docs/en/agent-sdk/tool-search.md) | 大工具集按需发现、上下文与准确率边界 | M4/M6 resolver 对照；工具授权独立校验 |
 | [Agent SDK observability](https://code.claude.com/docs/en/agent-sdk/observability.md) | model/tool/hook OTel、token/cost 与 trace propagation | 映射到 `context.*` trace；beta 字段需 provider version 约束 |
 | [Agent SDK permissions](https://code.claude.com/docs/en/agent-sdk/permissions.md) | allow/deny、mode 与 hook 权限判定 | Provider permission adapter；不能放宽 State MCP authorization |
+| [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) | commit `47f943859bef60e4160492346772ded9b24f765a`、tree `f904efab9ef435201d6ba4da88a34d6366568272`、`0.1.0-rc.5`、MIT；developer preview；该 commit 的 sandbox checks 通过且 `e2e` check 失败 | M4/M5 implementation candidate 与 M8 runnable fixture；采用前固定版本并通过本项目 replay、authorization 和 failure gates |
+| [How Compaction Works in Pi](https://earendil.com/posts/compaction-in-pi/) | 2026-08-14 direct snapshot；SHA-256 `af529b36af20560837631b3c4c3681ee5d409d849474a380860690b08d448bc4`；文章源码 commit `47610217098d9ba8f22d223fa7c1413f9f5fd759` | M5 cut point、split-turn、hook、usage/cache baseline；plain-text summary 只作 host provenance |
+| [Pi source](https://github.com/earendil-works/pi) | current commit `9d2ec7ffabe927bfad2214c1cee25b6632a78dcf`、tree `9108e8903e1ba009dac694ff8ad6289b8673b1eb`、MIT；文章 commit 到当前 main 的选定 compaction 源码与测试无差异 | 现行 compaction 可作 runnable baseline；durable AgentHarness 作为规范/test oracle，公开核心操作仍抛 `HarnessNotImplemented` |
+| [Cordis paper](https://github.com/cordiverse/paper/blob/main/paper.pdf) | commit `948a07b369c62adb3b12e102458be5c18dfb69b9`、tree `9843926bd597bf184536fe9b2961bcc77f245bb6`；2026-08-13 draft、88 页；PDF SHA-256 `4d48478dc0b6222d9f74d7db10ee776449b1209eb112632336544d32a49db97f`；repository 无 license 文件 | M4 dynamic composition 与 lifecycle research；license 未决时只保留 citation 和最小释义，不复制论文或实现 |
 
 ## Harness 能力模型
 
@@ -108,6 +114,16 @@ Claude agent teams 的共享 task list 支持 pending/in-progress/completed、�
 
 Subagent 适合把检索、日志和复核隔离在独立 context，并通过 tool allowlist、permission mode 和可选 worktree 约束动作。Advisor 适合高风险决策点复核，但每次调用重新读取完整 conversation，调用时机由模型决定。两者均不得直接提交决定、完成状态或 promotion。
 
+## DeepSeek、Pi 与 Cordis 映射
+
+DeepSeek Harness 的 `everything is a plugin` 架构通过 Cordis plugin tree 组合模型 adapter、工具、session log、agent loop、sandbox、approval、persistence 和 telemetry。Durable `SessionEvent` 与 live `agent/*`/capability events 分离，profile/bundle/patch 提供分层组合，Skill catalog 支持热刷新。该结构适合 M4-07 的动态候选 catalog、M5 compaction adapter 和 M8 runnable failure fixture。其 session log 是 model-visible context 的重建来源，在本项目中映射为 provider provenance；Task、Decision、Effect 和 completion 仍提交到 State MCP。
+
+Pi 现行 Coding Agent 在 turn 结束后检查自动压缩，也能在 overflow 时 mid-turn 压缩。它按 token budget 选择 cut point，保留近期消息，以独立模型调用生成结构化 summary，并通过 compaction extension 暴露替换点。压缩改变 prompt prefix，首次 post-compact request 会失去大部分既有 KV cache 命中。M5-02/M5-03 采用其 hook、cut point 和 split-turn fixture，M5-05 对照 token、cache invalidation 和阈值；summary 不承担 decision、constraint、work 或 effect watermark 的权威恢复。
+
+Pi 的 durable AgentHarness 文档定义 total `op.state/{operationId}` program counter、intent/effect/settlement 两侧提交、预留 entry/usage/result IDs、工具 `safe|never` replay、terminal register cleanup 和分层 crash/race matrix。这些合同适合作为 M5-08 与 M8-01/M8-06 的 protocol/test oracle。当前 `packages/agent/src/harness/agent-harness.ts` 只完成类型、配置和 session scaffold，`prompt`、`compact`、`resume`、hook/event 注册等核心公开操作仍返回 `HarnessNotImplemented`；计划不能把规范状态标记为可运行依赖。
+
+Cordis 论文将 temporal composability 建模为 context transformation 与 runtime-tracked inverse，将 spatial composability 建模为 reactive coeffect，并组合为动态 component lifecycle。M4 使用这些概念描述依赖满足、注册、卸载和热替换。论文的正确性前提要求 effect 可表示为 context transformation 且 inverse 由实现提供；数据库写入、网络请求、部署和其他外部 effect 继续使用授权、幂等键、effect ledger 与显式 compensating action。Cordis repository 缺少 license 文件，代码和论文全文均不进入项目分发物。
+
 ## 当前项目角色实证
 
 AlkaidLab Platform 当前 `HEAD` 为 `d50bfe6f22efcad528134baa8b8d612ea07ec147`；`docs/authority/network/weak-network-injection.md` blob 为 `b7d0b7ceaafb67b1e30c690458d5258d61b74347`。该文件第 3 行记录 `netem-thinker` 为 read-only、无写权限，由主控落盘。此证据证明项目内已经使用 Thinker 只产出候选、主控承担写入与验证的角色分权。
@@ -128,7 +144,12 @@ AlkaidLab Platform 当前 `HEAD` 为 `d50bfe6f22efcad528134baa8b8d612ea07ec147`�
 | adopt | 独立 reviewer、隔离 workspace、结构化输出、OTel trace、持续 doc/quality freshness | 可形成机械证据和恢复数据 |
 | adapt | progress file、Git log、provider goal、session resume、host checkpoint | 转换为 Typed State/Event/Checkpoint 后使用 |
 | adapt | host implicit Skill/tool search 和 subagent workflow | 由 applicability、authorization、claim、hash 和 CAS 包裹 |
+| adapt | DeepSeek plugin/Skill/session/compaction/sandbox capability | 固定 preview revision 后进入 shadow adapter；provider session event 无 State authority |
+| adapt | Pi compaction hook、cut point、split-turn 与 cache accounting | 作为 M5 runnable baseline；结构化 summary 不能独立通过 canary |
+| adapt | Pi durable `op.state`、effect sandwich、reserved ID、replay 和 cleanup contract | 作为 M8 protocol/test oracle；实现完成度由当前源码与 fixture 重新判定 |
+| adapt | Cordis reactive dependency 与 reversible registration | 仅用于受 runtime 管理的 component context；license 未决时 reference-only |
 | quarantine | mutable URL runtime loading、auto memory 当前事实、未经审查的 marketplace Skill/MCP | provenance、漂移和权限风险未通过 |
+| quarantine | Cordis disposer/inverse 直接声明外部 effect 已撤销 | inverse 前提不覆盖未纳入 context transformation 的外部系统 |
 | reject | compaction summary 作为唯一 handoff、多个 Agent 共享写目录、无 effect key 的 retry | 无法满足 E1/E8/E9 veto 门 |
 | reject | 仅凭 PR/分支/progress text 判断 owner、active task 和完成状态 | 无共享 revision、lease 和 evidence gate |
 
@@ -169,10 +190,10 @@ Run 只能读取与 active claim 匹配的 packet，并在 expected revision 下
 |---|---|
 | M0-07/M0-08 | schema/version governance、reference lifecycle 和候选 catalog |
 | M2 | Task/Idea/Event/Effect/Checkpoint/Harness Run typed schema 与 State MCP |
-| M3/M5 | sticky routing、Idea return、Execution Packet 和 compaction canary |
-| M4/M6 | Skill/MCP/tool resolver、provider adapter 和 bounded discovery |
+| M3/M5 | sticky routing、Idea return、Execution Packet、Pi/DeepSeek compaction adapter、Continuation Cursor 和 canary |
+| M4/M6 | Skill/MCP/tool resolver、DeepSeek/Cordis dynamic composition candidate、provider adapter 和 bounded discovery |
 | M7 | assertion validity、Verification Profile、同预算 A/B 与 freshness watcher |
-| M8 | DBOS/Temporal、claim/lease、provider-neutral Harness Run 和 OTel |
+| M8 | DBOS/Temporal、claim/lease、DeepSeek runnable fixture、Pi durable protocol oracle、provider-neutral Harness Run 和 OTel |
 | M9 | Project Graph、Evidence Matrix、Context/Reference/Harness Health 与治理入口 |
 | M10 | AlkaidLab 与第二项目的 Codex/Claude shadow pilot |
 
@@ -180,9 +201,9 @@ Harness 评估使用 E0-E9 veto 门。新增对照至少覆盖：no-harness/free
 
 ## 当前采用边界与下一验证
 
-M0-07 schema governance、M1-04 replay corpus、M1-05 E0-E9 contract coverage、M2 State MCP/StateStore 和 M4-05 本地双 provider delivery-plan replay 已提供版本化证据。真实 provider 进程、token/cache、规则遵循、压缩恢复以及 M8 workflow 故障注入仍未实现。
+M0-07 schema governance、M1-04 replay corpus、M1-05 E0-E9 contract coverage、M2 State MCP/StateStore 和 M4-05 本地双 provider delivery-plan replay 已提供版本化证据。DeepSeek、Pi 和 Cordis 当前只进入 reference catalog 与主计划完成门；真实 provider 进程、token/cache、规则遵循、压缩恢复以及 M8 workflow 故障注入仍未实现。
 
-1. M3/M5 建立 sticky routing、Execution Packet、PreCompact/PostCompact canary 和 context return。
-2. M4-06/M4-09 建立进行中 rule-set 兼容锁、变更 replay 与 role/operation-aware Skill resolver。
-3. M7/M8 运行真实 provider tokenizer/live A/B、accepted delivery speed、SIGKILL/503、session-store 丢 batch、checkpoint 损坏和并发写故障注入。
+1. M4-07/M4-09 建立五类 Skill catalog，并以 DeepSeek/Cordis candidate 验证动态依赖、license、provenance、quarantine 和 resolver。
+2. M3/M5 建立 sticky routing、Execution Packet、PreCompact/PostCompact canary 和 context return，并运行 Pi/DeepSeek shadow compaction 对照。
+3. M7/M8 运行真实 provider tokenizer/live A/B、accepted delivery speed、Pi effect-sandwich crash matrix、DeepSeek checkpoint、SIGKILL/503、checkpoint 损坏和并发写故障注入。
 4. M8/M9 验证项目级 `active_work[]`、Work Ledger、provider task mapping、冲突恢复和同 revision 人类视图。

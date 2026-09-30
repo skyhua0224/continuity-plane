@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m10-09/native-install-matrix.schema.json",
+  "title": "Native install matrix receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_id",
+    "generated_at",
+    "platform",
+    "package",
+    "profile",
+    "steps",
+    "verdict",
+    "consistency",
+    "receipt_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.native-install-matrix/v1alpha1"},
+    "project_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "platform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["system", "release", "machine", "python"],
+      "properties": {
+        "system": {"enum": ["Linux", "Darwin", "Windows"]},
+        "release": {"type": "string", "minLength": 1},
+        "machine": {"type": "string", "minLength": 1},
+        "python": {"type": "string", "minLength": 1}
+      }
+    },
+    "package": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "artifact_sha256"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "version": {"type": "string", "minLength": 1},
+        "artifact_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requested_profile",
+        "state_adapter",
+        "external_services_required",
+        "admin_required",
+        "container_required"
+      ],
+      "properties": {
+        "requested_profile": {"const": "local-embedded"},
+        "state_adapter": {"const": "sqlite"},
+        "external_services_required": {"const": 0},
+        "admin_required": {"const": false},
+        "container_required": {"const": false}
+      }
+    },
+    "steps": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["install", "verify", "export", "import", "rollback", "uninstall"],
+      "properties": {
+        "install": {"$ref": "#/$defs/step"},
+        "verify": {"$ref": "#/$defs/step"},
+        "export": {"$ref": "#/$defs/step"},
+        "import": {"$ref": "#/$defs/step"},
+        "rollback": {"$ref": "#/$defs/step"},
+        "uninstall": {"$ref": "#/$defs/step"}
+      }
+    },
+    "verdict": {"enum": ["passed", "blocked", "failed", "unavailable"]},
+    "consistency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state_write_authority",
+        "external_service_invocations",
+        "rollback_hash_matches_export",
+        "artifact_leaks"
+      ],
+      "properties": {
+        "state_write_authority": {"const": false},
+        "external_service_invocations": {"const": 0},
+        "rollback_hash_matches_export": {"type": "boolean"},
+        "artifact_leaks": {"const": 0}
+      }
+    },
+    "receipt_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "duration_ms", "output_sha256"],
+      "properties": {
+        "status": {"enum": ["passed", "blocked", "failed", "unavailable"]},
+        "duration_ms": {"type": "number", "minimum": 0},
+        "output_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

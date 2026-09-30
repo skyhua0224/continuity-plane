@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m6-01/retrieval-plan.schema.json",
+  "title": "Context Retrieval Plan",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "planner_version", "plan_id", "question_id", "question_kind", "query_sha256", "repositories", "steps", "budgets", "freshness", "degraded_reasons", "state_write_authority", "memory_authority", "plan_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.retrieval-plan/v1alpha1"},
+    "planner_version": {"const": "context.retrieval-router/v1alpha1"},
+    "plan_id": {"$ref": "#/$defs/id"},
+    "question_id": {"$ref": "#/$defs/id"},
+    "question_kind": {"enum": ["exact_text", "large_corpus_text", "symbol_definition", "cross_repository_impact", "official_reference"]},
+    "query_sha256": {"$ref": "#/$defs/sha256"},
+    "repositories": {"type": "array", "minItems": 1, "maxItems": 32, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+    "steps": {"type": "array", "minItems": 1, "maxItems": 5, "items": {"$ref": "#/$defs/step"}},
+    "budgets": {"$ref": "#/$defs/budgets"},
+    "freshness": {
+      "type": "object", "additionalProperties": false,
+      "required": ["max_index_age_seconds", "require_content_hash"],
+      "properties": {"max_index_age_seconds": {"type": "integer", "minimum": 1}, "require_content_hash": {"type": "boolean"}}
+    },
+    "degraded_reasons": {"type": "array", "maxItems": 5, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+    "state_write_authority": {"const": false},
+    "memory_authority": {"const": false},
+    "plan_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"question_kind": {"const": "exact_text"}}, "required": ["question_kind"]},
+      "then": {"properties": {"steps": {"$ref": "#/$defs/routeRg"}, "degraded_reasons": {"maxItems": 0}}}
+    },
+    {
+      "if": {"properties": {"question_kind": {"const": "large_corpus_text"}}, "required": ["question_kind"]},
+      "then": {
+        "oneOf": [
+          {"properties": {"steps": {"$ref": "#/$defs/routeRgZoekt"}, "degraded_reasons": {"maxItems": 0}}},
+          {"properties": {"steps": {"$ref": "#/$defs/routeRg"}, "degraded_reasons": {"const": ["zoekt_unavailable"]}}}
+        ]
+      }
+    },
+    {
+      "if": {"properties": {"question_kind": {"const": "symbol_definition"}}, "required": ["question_kind"]},
+      "then": {"properties": {"steps": {"$ref": "#/$defs/routeRgLsp"}, "degraded_reasons": {"maxItems": 0}}}
+    },
+    {
+      "if": {"properties": {"question_kind": {"const": "cross_repository_impact"}}, "required": ["question_kind"]},
+      "then": {"properties": {"steps": {"$ref": "#/$defs/routeRgLspScip"}, "degraded_reasons": {"maxItems": 0}}}
+    },
+    {
+      "if": {"properties": {"question_kind": {"const": "official_reference"}}, "required": ["question_kind"]},
+      "then": {"properties": {"steps": {"$ref": "#/$defs/routeRtfm"}, "degraded_reasons": {"maxItems": 0}}}
+    }
+  ],
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "budgets": {
+      "type": "object", "additionalProperties": false,
+      "required": ["max_queries", "max_scanned_bytes", "max_returned_bytes"],
+      "properties": {"max_queries": {"type": "integer", "minimum": 1}, "max_scanned_bytes": {"type": "integer", "minimum": 1}, "max_returned_bytes": {"type": "integer", "minimum": 1}}
+    },
+    "step": {
+      "type": "object", "additionalProperties": false,
+      "required": ["tool", "purpose", "max_queries", "max_scanned_bytes", "max_returned_bytes", "requires_index"],
+      "properties": {
+        "tool": {"enum": ["rg", "zoekt", "lsp", "scip", "rtfm"]},
+        "purpose": {"type": "string", "minLength": 1, "maxLength": 1024},
+        "max_queries": {"type": "integer", "minimum": 1},
+        "max_scanned_bytes": {"type": "integer", "minimum": 1},
+        "max_returned_bytes": {"type": "integer", "minimum": 1},
+        "requires_index": {"type": "boolean"}
+      },
+      "allOf": [
+        {"if": {"properties": {"tool": {"const": "rg"}}, "required": ["tool"]}, "then": {"properties": {"purpose": {"const": "exact current-code evidence"}, "requires_index": {"const": false}}}},
+        {"if": {"properties": {"tool": {"const": "zoekt"}}, "required": ["tool"]}, "then": {"properties": {"purpose": {"const": "large-corpus candidate narrowing"}, "requires_index": {"const": true}}}},
+        {"if": {"properties": {"tool": {"const": "lsp"}}, "required": ["tool"]}, "then": {"properties": {"purpose": {"const": "current symbol definition and reference verification"}, "requires_index": {"const": true}}}},
+        {"if": {"properties": {"tool": {"const": "scip"}}, "required": ["tool"]}, "then": {"properties": {"purpose": {"const": "cross-language and cross-repository relationship verification"}, "requires_index": {"const": true}}}},
+        {"if": {"properties": {"tool": {"const": "rtfm"}}, "required": ["tool"]}, "then": {"properties": {"purpose": {"const": "versioned official reference evidence"}, "requires_index": {"const": true}}}}
+      ]
+    },
+    "routeRg": {"type": "array", "minItems": 1, "maxItems": 1, "prefixItems": [{"properties": {"tool": {"const": "rg"}}}]},
+    "routeRgZoekt": {"type": "array", "minItems": 2, "maxItems": 2, "prefixItems": [{"properties": {"tool": {"const": "rg"}}}, {"properties": {"tool": {"const": "zoekt"}}}]},
+    "routeRgLsp": {"type": "array", "minItems": 2, "maxItems": 2, "prefixItems": [{"properties": {"tool": {"const": "rg"}}}, {"properties": {"tool": {"const": "lsp"}}}]},
+    "routeRgLspScip": {"type": "array", "minItems": 3, "maxItems": 3, "prefixItems": [{"properties": {"tool": {"const": "rg"}}}, {"properties": {"tool": {"const": "lsp"}}}, {"properties": {"tool": {"const": "scip"}}}]},
+    "routeRtfm": {"type": "array", "minItems": 1, "maxItems": 1, "prefixItems": [{"properties": {"tool": {"const": "rtfm"}}}]}
+  }
+}

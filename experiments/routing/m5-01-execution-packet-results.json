@@ -1,0 +1,21 @@
+{
+  "schema_version": "context.execution-packet-benchmark/v1alpha1",
+  "generated_at": "2026-08-14T18:00:00Z",
+  "samples": 1000,
+  "successful_samples": 1000,
+  "replay_mismatch": 0,
+  "canary_failures": 0,
+  "state_write_authority_true": 0,
+  "min_packet_bytes": 4436,
+  "max_packet_bytes": 4436,
+  "p50_packet_bytes": 4436,
+  "p95_packet_bytes": 4436,
+  "p50_ms": 0.509149,
+  "p95_ms": 0.517655,
+  "max_ms": 0.651848,
+  "capacity_in_bound": 1,
+  "external_services": 0,
+  "implementation_sha256": "1a5a6c9c137730e1af28bc16be01b59ef11de1437bc003d17255a41d82a772fc",
+  "fixture_sha256": "29164261d9e822d55b2813c73df024e21d334aaf5d655654219dedf13690fb11",
+  "compiled_skill_packet_sha256": "1c21f59feb7a14e5687cef6aaa3f691f85a5943b139264d952a6ec7ef9d5e33c"
+}

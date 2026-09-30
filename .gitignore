@@ -19,8 +19,10 @@ raw-conversations/
 # Local build and tool output.
 .venv/
 .cache/
+.ruff_cache/
 build/
 dist/
+*.egg-info/
 coverage/
 __pycache__/
 *.pyc

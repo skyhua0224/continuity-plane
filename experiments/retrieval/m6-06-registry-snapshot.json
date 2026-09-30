@@ -1,0 +1,39 @@
+{
+  "registry_kind": "fixture",
+  "registry_revision": "1111111111111111111111111111111111111111",
+  "registry_sha256": "eb1f9139a92e3956a8d577f53536e48456a59a915c29e975ff4d5ef5262058d9",
+  "registry_url": "https://example.invalid/context-mcp-fixture",
+  "retrieved_at": "2026-08-15T07:15:00Z",
+  "schema_version": "context.mcp-registry-snapshot/v1alpha1",
+  "servers": [
+    {
+      "auth_kind": "token",
+      "license_ref": "Apache-2.0",
+      "license_verified": true,
+      "publisher": "fixture-publisher",
+      "publisher_verified": true,
+      "server_id": "fixture/reference-server",
+      "source_revision": "2222222222222222222222222222222222222222",
+      "source_sha256": "748a750c9e6c945e4ce8441dfcbed4e401cc0482df8f534feb272e54825c07e3",
+      "source_url": "https://example.invalid/reference-server",
+      "tools": [
+        {
+          "name": "reference.search",
+          "requires_state_mcp": false,
+          "scope": "read"
+        },
+        {
+          "name": "state.commit",
+          "requires_state_mcp": true,
+          "scope": "state_write"
+        },
+        {
+          "name": "issue.create",
+          "requires_state_mcp": true,
+          "scope": "external_effect"
+        }
+      ]
+    }
+  ],
+  "snapshot_id": "mcp-registry/fixture/2026-08-15"
+}

@@ -26,12 +26,25 @@ class M201TypedStateTests(unittest.TestCase):
             (self.root / "schemas" / "registry.yaml").read_text(encoding="utf-8")
         )
         entry = next(
-            item for item in registry["schemas"] if item["schema_id"] == "context.typed-state"
+            item
+            for item in registry["schemas"]
+            if item["schema_id"] == "context.typed-state"
         )
-        schema = json.loads((self.root / entry["artifact_path"]).read_text(encoding="utf-8"))
+        schema = json.loads(
+            (self.root / entry["artifact_path"]).read_text(encoding="utf-8")
+        )
 
-        self.assertEqual(entry["current_wire_version"], "context.typed-state/v1alpha1")
-        self.assertEqual(schema["properties"]["schema_version"]["const"], entry["current_wire_version"])
+        self.assertEqual(entry["current_wire_version"], "context.typed-state/v6alpha1")
+        self.assertIn("context.typed-state/v1alpha1", entry["supported_wire_versions"])
+        self.assertIn("context.typed-state/v2alpha1", entry["supported_wire_versions"])
+        self.assertIn("context.typed-state/v3alpha1", entry["supported_wire_versions"])
+        self.assertIn("context.typed-state/v4alpha1", entry["supported_wire_versions"])
+        self.assertIn("context.typed-state/v5alpha1", entry["supported_wire_versions"])
+        self.assertIn("context.typed-state/v6alpha1", entry["supported_wire_versions"])
+        self.assertEqual(
+            schema["properties"]["schema_version"]["const"],
+            entry["current_wire_version"],
+        )
         self.assertFalse(schema["additionalProperties"])
         for object_name in (
             "project",
@@ -72,6 +85,15 @@ class M201TypedStateTests(unittest.TestCase):
                 self.assertEqual(restored, document)
                 self.assertEqual(canonical_state_bytes(restored), encoded)
 
+    def test_published_v1_effect_rejects_an_unversioned_digest_field(self):
+        document = copy.deepcopy(self.cases["solo-active-work"])
+        document["effects"][0]["request_sha256"] = "a" * 64
+
+        with self.assertRaisesRegex(
+            TypedStateError, "effect fields do not match the contract"
+        ):
+            validate_typed_state(document)
+
     def test_active_work_projection_must_match_work_status(self):
         broken = copy.deepcopy(self.cases["solo-active-work"])
         broken["project"]["active_work_ids"] = []
@@ -89,7 +111,9 @@ class M201TypedStateTests(unittest.TestCase):
     def test_supersedes_graph_must_be_acyclic(self):
         broken = copy.deepcopy(self.cases["superseded-decision-and-constraint"])
         old = next(
-            item for item in broken["decisions"] if item["decision_id"] == "decision-old"
+            item
+            for item in broken["decisions"]
+            if item["decision_id"] == "decision-old"
         )
         old["supersedes_decision_id"] = "decision-current"
 
@@ -98,7 +122,9 @@ class M201TypedStateTests(unittest.TestCase):
 
     def test_uncoordinated_overlap_cannot_become_active(self):
         broken = copy.deepcopy(self.cases["completed-work-overlap-blocked"])
-        repeated = next(item for item in broken["works"] if item["work_id"] == "work-repeat")
+        repeated = next(
+            item for item in broken["works"] if item["work_id"] == "work-repeat"
+        )
         repeated["status"] = "active"
         broken["project"]["active_work_ids"] = ["work-repeat"]
         broken["project"]["primary_work_id"] = "work-repeat"
@@ -134,6 +160,13 @@ class M201TypedStateTests(unittest.TestCase):
         with self.assertRaisesRegex(TypedStateError, "active claim lease has expired"):
             validate_typed_state(broken)
 
+    def test_runtime_rejects_non_rfc3339_timestamp_separator(self):
+        broken = copy.deepcopy(self.cases["solo-active-work"])
+        broken["project"]["updated_at"] = "2026-08-09 09:15:00+08:00"
+
+        with self.assertRaisesRegex(TypedStateError, "RFC3339"):
+            validate_typed_state(broken)
+
     def test_authorized_effect_requires_a_current_active_claim(self):
         broken = copy.deepcopy(self.cases["solo-active-work"])
         broken["claims"][0]["expected_project_revision"] -= 1
@@ -150,11 +183,17 @@ class M201TypedStateTests(unittest.TestCase):
 
     def test_completed_work_requires_verified_evidence(self):
         broken = copy.deepcopy(self.cases["completed-work-overlap-blocked"])
-        evidence = next(item for item in broken["evidence"] if item["evidence_id"] == "evidence-done")
+        evidence = next(
+            item
+            for item in broken["evidence"]
+            if item["evidence_id"] == "evidence-done"
+        )
         evidence["validity"] = "candidate"
         evidence["verified_at"] = None
 
-        with self.assertRaisesRegex(TypedStateError, "completed work requires verified evidence"):
+        with self.assertRaisesRegex(
+            TypedStateError, "completed work requires verified evidence"
+        ):
             validate_typed_state(broken)
 
 

@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m6-06/mcp-admission-decision.schema.json",
+  "title": "MCP Admission Decision",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "decision_id", "request_id", "project_id", "operation_id", "request_sha256", "state_mcp_route_anchor_sha256", "registry_snapshot_id", "registry_kind", "registry_revision", "registry_sha256", "registry_anchor_sha256", "decided_at", "authorized_scopes", "allow_external_effects", "servers", "tool_invocation_performed", "state_write_authority", "decision_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.mcp-admission-decision/v1alpha1"}, "decision_id": {"$ref": "#/$defs/id"}, "request_id": {"$ref": "#/$defs/id"}, "project_id": {"$ref": "#/$defs/id"}, "operation_id": {"$ref": "#/$defs/id"}, "request_sha256": {"$ref": "#/$defs/sha256"}, "state_mcp_route_anchor_sha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]}, "registry_snapshot_id": {"$ref": "#/$defs/id"},
+    "registry_kind": {"enum": ["fixture", "official"]}, "registry_revision": {"type": "string", "pattern": "^[0-9a-f]{40}$"}, "registry_sha256": {"$ref": "#/$defs/sha256"}, "registry_anchor_sha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]}, "decided_at": {"type": "string", "format": "date-time"},
+    "authorized_scopes": {"type": "array", "maxItems": 4, "uniqueItems": true, "items": {"$ref": "#/$defs/scope"}}, "allow_external_effects": {"type": "boolean"},
+    "servers": {"type": "array", "minItems": 1, "maxItems": 256, "items": {"$ref": "#/$defs/serverDecision"}}, "tool_invocation_performed": {"const": false}, "state_write_authority": {"const": false}, "decision_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"allow_external_effects": {"const": false}}, "required": ["allow_external_effects"]},
+      "then": {"properties": {"servers": {"items": {"properties": {"active_tools": {"not": {"contains": {"type": "object", "properties": {"scope": {"const": "external_effect"}}, "required": ["scope"]}}}}}}}}
+    },
+    {
+      "if": {"properties": {"registry_kind": {"const": "official"}}, "required": ["registry_kind"]},
+      "then": {"properties": {"registry_anchor_sha256": {"$ref": "#/$defs/sha256"}}}
+    },
+    {
+      "if": {"properties": {"servers": {"contains": {"type": "object", "properties": {"active_tools": {"contains": {"type": "object", "properties": {"scope": {"enum": ["state_write", "external_effect"]}}, "required": ["scope"]}}}, "required": ["active_tools"]}}}, "required": ["servers"]},
+      "then": {"properties": {"state_mcp_route_anchor_sha256": {"$ref": "#/$defs/sha256"}}}
+    }
+  ],
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"}, "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}, "scope": {"enum": ["read", "evidence_write", "state_write", "external_effect"]},
+    "activeTool": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "scope", "invocation_route"],
+      "properties": {"name": {"$ref": "#/$defs/id"}, "scope": {"$ref": "#/$defs/scope"}, "invocation_route": {"type": "string", "minLength": 1, "maxLength": 2048}},
+      "allOf": [
+        {"if": {"properties": {"scope": {"enum": ["read", "evidence_write"]}}, "required": ["scope"]}, "then": {"properties": {"invocation_route": {"pattern": "^mcp://"}}}},
+        {"if": {"properties": {"scope": {"enum": ["state_write", "external_effect"]}}, "required": ["scope"]}, "then": {"properties": {"invocation_route": {"pattern": "^state-mcp://"}}}}
+      ]
+    },
+    "deniedTool": {"type": "object", "additionalProperties": false, "required": ["name", "scope", "reason"], "properties": {"name": {"$ref": "#/$defs/id"}, "scope": {"$ref": "#/$defs/scope"}, "reason": {"$ref": "#/$defs/id"}}},
+    "serverDecision": {
+      "type": "object", "additionalProperties": false,
+      "required": ["server_id", "status", "reasons", "active_tools", "denied_tools"],
+      "properties": {"server_id": {"$ref": "#/$defs/id"}, "status": {"enum": ["admitted", "quarantined"]}, "reasons": {"type": "array", "maxItems": 8, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}}, "active_tools": {"type": "array", "maxItems": 4096, "items": {"$ref": "#/$defs/activeTool"}}, "denied_tools": {"type": "array", "maxItems": 4096, "items": {"$ref": "#/$defs/deniedTool"}}},
+      "allOf": [
+        {"if": {"properties": {"status": {"const": "admitted"}}, "required": ["status"]}, "then": {"properties": {"reasons": {"maxItems": 0}}}},
+        {"if": {"properties": {"status": {"const": "quarantined"}}, "required": ["status"]}, "then": {"properties": {"reasons": {"minItems": 1}, "active_tools": {"maxItems": 0}}}}
+      ]
+    }
+  }
+}

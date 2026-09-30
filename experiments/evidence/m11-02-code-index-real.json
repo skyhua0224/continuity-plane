@@ -1,0 +1,38 @@
+{
+  "schema_version": "context.code-index-real-probe/v1alpha1",
+  "observed_at": "2026-09-04T04:34:38Z",
+  "state_write_authority": false,
+  "memory_authority": false,
+  "repositories": [
+    {
+      "label": "repository-a",
+      "tracked_files": 2885,
+      "indexed_files": 2786,
+      "first_run": {"cache_status": "miss", "rehashed_files": 2885, "reused_files": 0},
+      "second_run": {"cache_status": "hit", "rehashed_files": 0, "reused_files": 2885},
+      "lookup": {"query_class": "symbol-or-path", "match_count": 7, "matched_before_limit": 1169, "returned_bytes": 1996}
+    },
+    {
+      "label": "repository-b",
+      "tracked_files": 8601,
+      "indexed_files": 8234,
+      "first_run": {"cache_status": "miss", "rehashed_files": 8601, "reused_files": 0},
+      "second_run": {"cache_status": "hit", "rehashed_files": 0, "reused_files": 8601},
+      "lookup": {"query_class": "symbol-or-path", "match_count": 6, "matched_before_limit": 39, "returned_bytes": 1946}
+    }
+  ],
+  "acceptance": {
+    "cache_isolation_per_repository": true,
+    "second_run_rehashes_zero": true,
+    "lookup_is_bounded": true,
+    "source_bodies_returned": false,
+    "project_files_written": false,
+    "command_gate_added": false,
+    "passed": true
+  },
+  "limitations": [
+    "symbol extraction is syntax-light and language-neutral",
+    "index is a candidate-location layer, not a semantic dependency graph",
+    "repository labels and paths are intentionally omitted"
+  ]
+}

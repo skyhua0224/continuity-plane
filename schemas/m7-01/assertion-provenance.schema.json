@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m7-01/assertion-provenance.schema.json",
+  "title": "Assertion Provenance",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "assertion_id", "assertion_text", "assertion_sha256", "bearing", "evidence", "provenance_coverage", "asserted_at", "valid_until", "state_write_authority", "record_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.assertion-provenance/v1alpha1"}, "assertion_id": {"$ref": "#/$defs/id"}, "assertion_text": {"type": "string", "minLength": 1, "maxLength": 16384}, "assertion_sha256": {"$ref": "#/$defs/sha256"},
+    "bearing": {"type": "boolean"}, "evidence": {"type": "array", "maxItems": 256, "items": {"$ref": "#/$defs/evidence"}}, "provenance_coverage": {"type": "number", "enum": [0, 1]},
+    "asserted_at": {"type": "string", "format": "date-time"}, "valid_until": {"type": "string", "format": "date-time"}, "state_write_authority": {"const": false}, "record_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"bearing": {"const": true}}, "required": ["bearing"]},
+      "then": {
+        "properties": {
+          "evidence": {
+            "minItems": 1,
+            "items": {
+              "allOf": [
+                {"$ref": "#/$defs/evidence"},
+                {"properties": {"authority_kind": {"enum": ["current_code", "current_state", "industry_standard", "os_official", "software_official"]}}}
+              ]
+            }
+          },
+          "provenance_coverage": {"const": 1}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"evidence": {"minItems": 1}}, "required": ["evidence"]},
+      "then": {"properties": {"provenance_coverage": {"const": 1}}},
+      "else": {"properties": {"provenance_coverage": {"const": 0}}}
+    }
+  ],
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"}, "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "evidence": {"type": "object", "additionalProperties": false, "required": ["evidence_id", "authority_kind", "source_ref", "revision", "sha256", "valid_at", "retrieval_receipt_ref"], "properties": {"evidence_id": {"$ref": "#/$defs/id"}, "authority_kind": {"enum": ["current_code", "current_state", "industry_standard", "os_official", "software_official", "memory_candidate", "historical_report"]}, "source_ref": {"type": "string", "minLength": 1, "maxLength": 2048}, "revision": {"type": "string", "minLength": 1, "maxLength": 512}, "sha256": {"$ref": "#/$defs/sha256"}, "valid_at": {"type": "string", "format": "date-time"}, "retrieval_receipt_ref": {"type": "string", "pattern": "^artifact://sha256/[0-9a-f]{64}$"}}}
+  }
+}

@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schema/context.task-route-apply-request/v1alpha1",
+  "title": "Context Control Plane atomic route apply request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "request_id", "project_id", "proposal_sha256", "operation",
+    "expected_project_revision", "expected_active_work_id", "expected_active_work_revision",
+    "target_work_id", "target_work_revision", "authorization_ref", "checkpoint_ref",
+    "checkpoint_binding", "child_work", "correction_changes", "supersedes_event_id",
+    "causation_ref", "correlation_ref"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.task-route-apply-request/v1alpha1"},
+    "request_id": {"$ref": "#/$defs/nonEmptyString"},
+    "project_id": {"$ref": "#/$defs/nonEmptyString"},
+    "proposal_sha256": {"$ref": "#/$defs/sha256"},
+    "operation": {"enum": ["continue", "child", "interrupt", "switch", "correction"]},
+    "expected_project_revision": {"$ref": "#/$defs/nonNegativeInteger"},
+    "expected_active_work_id": {"$ref": "#/$defs/nonEmptyString"},
+    "expected_active_work_revision": {"$ref": "#/$defs/nonNegativeInteger"},
+    "target_work_id": {"$ref": "#/$defs/nullableString"},
+    "target_work_revision": {"type": ["integer", "null"], "minimum": 0},
+    "authorization_ref": {"$ref": "#/$defs/nullableString"},
+    "checkpoint_ref": {"anyOf": [{"$ref": "#/$defs/artifactRef"}, {"type": "null"}]},
+    "checkpoint_binding": {"anyOf": [{"$ref": "#/$defs/checkpointBinding"}, {"type": "null"}]},
+    "child_work": {"anyOf": [{"$ref": "https://context-control-plane.dev/schema/context.typed-state/v2alpha1#/$defs/work"}, {"type": "null"}]},
+    "correction_changes": {"anyOf": [{"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/change"}}, {"type": "null"}]},
+    "supersedes_event_id": {"$ref": "#/$defs/nullableString"},
+    "causation_ref": {"$ref": "#/$defs/nonEmptyString"},
+    "correlation_ref": {"$ref": "#/$defs/nonEmptyString"}
+  },
+  "$defs": {
+    "nonEmptyString": {"type": "string", "minLength": 1, "pattern": ".*\\S.*"},
+    "nullableString": {"type": ["string", "null"], "minLength": 1, "pattern": ".*\\S.*"},
+    "nonNegativeInteger": {"type": "integer", "minimum": 0},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "artifactRef": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "digest_algorithm", "digest", "size_bytes", "artifact_uri"],
+      "properties": {
+        "schema_version": {"const": "context.artifact-ref/v1alpha1"},
+        "digest_algorithm": {"const": "sha-256"},
+        "digest": {"$ref": "#/$defs/sha256"},
+        "size_bytes": {"$ref": "#/$defs/nonNegativeInteger"},
+        "artifact_uri": {"type": "string", "pattern": "^artifact://sha256/[0-9a-f]{64}$"}
+      }
+    },
+    "checkpointBinding": {
+      "type": "object", "additionalProperties": false,
+      "required": ["checkpoint_revision", "checkpoint_event_head", "return_work_id", "return_work_revision"],
+      "properties": {
+        "checkpoint_revision": {"$ref": "#/$defs/nonNegativeInteger"},
+        "checkpoint_event_head": {
+          "anyOf": [
+            {"type": "null"},
+            {"type": "object", "additionalProperties": false, "required": ["sequence_no", "event_sha256"], "properties": {"sequence_no": {"type": "integer", "minimum": 1}, "event_sha256": {"$ref": "#/$defs/sha256"}}}
+          ]
+        },
+        "return_work_id": {"$ref": "#/$defs/nonEmptyString"},
+        "return_work_revision": {"$ref": "#/$defs/nonNegativeInteger"}
+      }
+    },
+    "change": {
+      "type": "object", "additionalProperties": false,
+      "required": ["collection", "object_id", "value"],
+      "properties": {
+        "collection": {"enum": ["works", "ideas", "decisions", "constraints", "evidence", "blockers", "effects", "claims"]},
+        "object_id": {"$ref": "#/$defs/nonEmptyString"},
+        "value": {"type": "object"}
+      }
+    }
+  }
+}

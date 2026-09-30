@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schemas/m8-01/durable-operation-benchmark.schema.json",
+  "title": "Context Control Plane Durable Operation Benchmark Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "benchmark_id", "generated_at", "samples", "crash_points",
+    "provider_oracle_fixture_sha256", "scenario_count", "terminal_recoveries",
+    "authority_backend", "checkpoint_backend",
+    "provider_invocations", "deduplicated_provider_invocations",
+    "effect_adapter_invocations", "deduplicated_effect_invocations", "applied_effects",
+    "duplicate_semantic_effects", "authority_intent_commits", "authority_state_commits",
+    "restore_latency_ms", "state_write_authority", "provider_native_authority", "receipt_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.durable-operation-benchmark/v1alpha1"},
+    "benchmark_id": {"type": "string", "pattern": "^benchmark-m8-01-[0-9a-f]{24}$"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "samples": {"type": "integer", "minimum": 1, "maximum": 1000},
+    "crash_points": {
+      "type": "array", "minItems": 1, "maxItems": 9, "uniqueItems": true,
+      "items": {"enum": [
+        "after-prepared", "after-intent-commit", "after-intent-record",
+        "after-effect-start", "after-external-effect", "after-effect-settlement",
+        "after-state-commit", "after-response-record", "after-terminal"
+      ]}
+    },
+    "provider_oracle_fixture_sha256": {"$ref": "#/$defs/sha256"},
+    "scenario_count": {"$ref": "#/$defs/nonNegativeInteger"},
+    "terminal_recoveries": {"$ref": "#/$defs/nonNegativeInteger"},
+    "authority_backend": {"const": "state-mcp-sqlite"},
+    "checkpoint_backend": {"const": "content-addressed-local"},
+    "provider_invocations": {"$ref": "#/$defs/nonNegativeInteger"},
+    "deduplicated_provider_invocations": {"$ref": "#/$defs/nonNegativeInteger"},
+    "effect_adapter_invocations": {"$ref": "#/$defs/nonNegativeInteger"},
+    "deduplicated_effect_invocations": {"$ref": "#/$defs/nonNegativeInteger"},
+    "applied_effects": {"$ref": "#/$defs/nonNegativeInteger"},
+    "duplicate_semantic_effects": {"const": 0},
+    "authority_intent_commits": {"$ref": "#/$defs/nonNegativeInteger"},
+    "authority_state_commits": {"$ref": "#/$defs/nonNegativeInteger"},
+    "restore_latency_ms": {
+      "type": "object", "additionalProperties": false,
+      "required": ["p50", "p95", "max"],
+      "properties": {
+        "p50": {"type": "number", "exclusiveMinimum": 0},
+        "p95": {"type": "number", "exclusiveMinimum": 0},
+        "max": {"type": "number", "exclusiveMinimum": 0}
+      }
+    },
+    "state_write_authority": {"const": false},
+    "provider_native_authority": {"const": false},
+    "receipt_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nonNegativeInteger": {"type": "integer", "minimum": 0}
+  }
+}

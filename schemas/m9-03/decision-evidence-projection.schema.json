@@ -1,0 +1,313 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m9-03/decision-evidence-projection.schema.json",
+  "title": "Context Decision Timeline and Evidence Matrix Projection",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_id",
+    "state_revision",
+    "state_schema_version",
+    "state_sha256",
+    "source_projection_sha256",
+    "governance_ref",
+    "observed_at",
+    "provenance_bundle_sha256",
+    "capabilities",
+    "decision_timeline",
+    "constraint_matrix",
+    "evidence_matrix",
+    "health",
+    "authority",
+    "projection_sha256",
+    "signature"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.decision-evidence-projection/v1alpha1"},
+    "project_id": {"$ref": "#/$defs/identifier"},
+    "state_revision": {"$ref": "#/$defs/nonNegativeInteger"},
+    "state_schema_version": {
+      "enum": [
+        "context.typed-state/v1alpha1",
+        "context.typed-state/v2alpha1",
+        "context.typed-state/v3alpha1",
+        "context.typed-state/v4alpha1",
+        "context.typed-state/v5alpha1",
+        "context.typed-state/v6alpha1"
+      ]
+    },
+    "state_sha256": {"$ref": "#/$defs/sha256"},
+    "source_projection_sha256": {"$ref": "#/$defs/sha256"},
+    "governance_ref": {"$ref": "#/$defs/nonEmptyString"},
+    "observed_at": {"$ref": "#/$defs/timestamp"},
+    "provenance_bundle_sha256": {"$ref": "#/$defs/nullableSha256"},
+    "capabilities": {"$ref": "#/$defs/capabilities"},
+    "decision_timeline": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": {"$ref": "#/$defs/decision"}
+    },
+    "constraint_matrix": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": {"$ref": "#/$defs/constraint"}
+    },
+    "evidence_matrix": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": {"$ref": "#/$defs/evidence"}
+    },
+    "health": {"$ref": "#/$defs/health"},
+    "authority": {"$ref": "#/$defs/authority"},
+    "projection_sha256": {"$ref": "#/$defs/sha256"},
+    "signature": {"$ref": "#/$defs/signature"}
+  },
+  "$defs": {
+    "nonEmptyString": {"type": "string", "minLength": 1, "maxLength": 4096},
+    "identifier": {"type": "string", "minLength": 1, "maxLength": 1024},
+    "nullableIdentifier": {
+      "oneOf": [{"$ref": "#/$defs/identifier"}, {"type": "null"}]
+    },
+    "nonNegativeInteger": {"type": "integer", "minimum": 0},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nullableSha256": {
+      "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$"
+    },
+    "nullableTimestamp": {
+      "oneOf": [{"$ref": "#/$defs/timestamp"}, {"type": "null"}]
+    },
+    "identifierList": {
+      "type": "array",
+      "maxItems": 50000,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/identifier"}
+    },
+    "supportStatus": {
+      "enum": ["validated", "metadata-only", "missing", "candidate", "degraded"]
+    },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "typed_evidence",
+        "assertion_provenance",
+        "claim_evidence",
+        "provenance_mode"
+      ],
+      "properties": {
+        "typed_evidence": {"const": true},
+        "assertion_provenance": {"type": "boolean"},
+        "claim_evidence": {"type": "boolean"},
+        "provenance_mode": {"enum": ["metadata-only", "validated"]}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"provenance_mode": {"const": "metadata-only"}}, "required": ["provenance_mode"]},
+          "then": {"properties": {"assertion_provenance": {"const": false}, "claim_evidence": {"const": false}}}
+        },
+        {
+          "if": {"properties": {"provenance_mode": {"const": "validated"}}, "required": ["provenance_mode"]},
+          "then": {"properties": {"assertion_provenance": {"const": true}, "claim_evidence": {"const": true}}}
+        }
+      ]
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "decision_id",
+        "work_id",
+        "status",
+        "statement",
+        "decided_at",
+        "supersedes_decision_id",
+        "superseded_by_decision_ids",
+        "evidence_ids",
+        "is_current",
+        "support_status"
+      ],
+      "properties": {
+        "decision_id": {"$ref": "#/$defs/identifier"},
+        "work_id": {"$ref": "#/$defs/identifier"},
+        "status": {"enum": ["proposed", "accepted", "rejected", "reverted", "superseded"]},
+        "statement": {"$ref": "#/$defs/nonEmptyString"},
+        "decided_at": {"$ref": "#/$defs/timestamp"},
+        "supersedes_decision_id": {"$ref": "#/$defs/nullableIdentifier"},
+        "superseded_by_decision_ids": {"$ref": "#/$defs/identifierList"},
+        "evidence_ids": {"$ref": "#/$defs/identifierList"},
+        "is_current": {"type": "boolean"},
+        "support_status": {"$ref": "#/$defs/supportStatus"}
+      }
+    },
+    "constraint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "constraint_id",
+        "status",
+        "statement",
+        "scope_work_ids",
+        "expires_at",
+        "supersedes_constraint_id",
+        "superseded_by_constraint_ids",
+        "evidence_ids",
+        "is_current",
+        "expired_at_observation",
+        "support_status"
+      ],
+      "properties": {
+        "constraint_id": {"$ref": "#/$defs/identifier"},
+        "status": {"enum": ["active", "satisfied", "expired", "rejected", "superseded"]},
+        "statement": {"$ref": "#/$defs/nonEmptyString"},
+        "scope_work_ids": {"$ref": "#/$defs/identifierList"},
+        "expires_at": {"$ref": "#/$defs/nullableTimestamp"},
+        "supersedes_constraint_id": {"$ref": "#/$defs/nullableIdentifier"},
+        "superseded_by_constraint_ids": {"$ref": "#/$defs/identifierList"},
+        "evidence_ids": {"$ref": "#/$defs/identifierList"},
+        "is_current": {"type": "boolean"},
+        "expired_at_observation": {"type": "boolean"},
+        "support_status": {"$ref": "#/$defs/supportStatus"}
+      }
+    },
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["object_kind", "object_id", "reference_path", "object_status", "reference_state"],
+      "properties": {
+        "object_kind": {
+          "enum": [
+            "work",
+            "idea",
+            "decision",
+            "constraint",
+            "blocker",
+            "effect",
+            "idea-relationship",
+            "idea-review",
+            "correction-protection",
+            "experiment-promotion"
+          ]
+        },
+        "object_id": {"$ref": "#/$defs/identifier"},
+        "reference_path": {"$ref": "#/$defs/nonEmptyString"},
+        "object_status": {"$ref": "#/$defs/nonEmptyString"},
+        "reference_state": {"enum": ["current", "candidate", "historical", "superseded"]}
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "assertion_id",
+        "assertion_record_sha256",
+        "claim_id",
+        "claim_sha256",
+        "claim_decision",
+        "verdict_sha256",
+        "retrieval_receipt_ref"
+      ],
+      "properties": {
+        "assertion_id": {"$ref": "#/$defs/identifier"},
+        "assertion_record_sha256": {"$ref": "#/$defs/sha256"},
+        "claim_id": {"$ref": "#/$defs/identifier"},
+        "claim_sha256": {"$ref": "#/$defs/sha256"},
+        "claim_decision": {"const": "allow"},
+        "verdict_sha256": {"$ref": "#/$defs/sha256"},
+        "retrieval_receipt_ref": {
+          "type": "string",
+          "pattern": "^artifact://sha256/[0-9a-f]{64}$"
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id",
+        "kind",
+        "artifact_ref",
+        "content_sha256",
+        "validity",
+        "observed_at",
+        "verified_at",
+        "display_status",
+        "referencing_objects",
+        "provenance"
+      ],
+      "properties": {
+        "evidence_id": {"$ref": "#/$defs/identifier"},
+        "kind": {"enum": ["source-code", "standard", "os-official", "software-official", "test", "artifact", "user-decision"]},
+        "artifact_ref": {"$ref": "#/$defs/nonEmptyString"},
+        "content_sha256": {"$ref": "#/$defs/sha256"},
+        "validity": {"enum": ["candidate", "verified", "stale", "rejected"]},
+        "observed_at": {"$ref": "#/$defs/timestamp"},
+        "verified_at": {"$ref": "#/$defs/nullableTimestamp"},
+        "display_status": {"enum": ["current", "candidate", "superseded", "stale", "rejected", "unreferenced"]},
+        "referencing_objects": {
+          "type": "array",
+          "maxItems": 50000,
+          "items": {"$ref": "#/$defs/reference"}
+        },
+        "provenance": {
+          "type": "array",
+          "maxItems": 50000,
+          "items": {"$ref": "#/$defs/provenance"}
+        }
+      }
+    },
+    "health": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "current_decision_ids",
+        "superseded_decision_ids",
+        "expired_active_constraint_ids",
+        "missing_support_object_ids",
+        "candidate_evidence_ids",
+        "stale_evidence_ids",
+        "rejected_evidence_ids",
+        "unreferenced_evidence_ids",
+        "m7_unbound_evidence_ids"
+      ],
+      "properties": {
+        "current_decision_ids": {"$ref": "#/$defs/identifierList"},
+        "superseded_decision_ids": {"$ref": "#/$defs/identifierList"},
+        "expired_active_constraint_ids": {"$ref": "#/$defs/identifierList"},
+        "missing_support_object_ids": {"$ref": "#/$defs/identifierList"},
+        "candidate_evidence_ids": {"$ref": "#/$defs/identifierList"},
+        "stale_evidence_ids": {"$ref": "#/$defs/identifierList"},
+        "rejected_evidence_ids": {"$ref": "#/$defs/identifierList"},
+        "unreferenced_evidence_ids": {"$ref": "#/$defs/identifierList"},
+        "m7_unbound_evidence_ids": {"$ref": "#/$defs/identifierList"}
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state_write_authority", "completion_authority", "approval_authority", "provider_authority", "external_effect_authority"],
+      "properties": {
+        "state_write_authority": {"const": false},
+        "completion_authority": {"const": false},
+        "approval_authority": {"const": false},
+        "provider_authority": {"const": 0},
+        "external_effect_authority": {"const": 0}
+      }
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "key_id", "value"],
+      "properties": {
+        "algorithm": {"const": "hmac-sha256"},
+        "key_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"},
+        "value": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

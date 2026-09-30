@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schemas/m8-04/context-trace-benchmark.schema.json",
+  "title": "Context Control Plane Trace Benchmark Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "generated_at",
+    "samples",
+    "successful_samples",
+    "total_events",
+    "required_event_names",
+    "required_event_coverage_millionths",
+    "replay_mismatch",
+    "hash_chain_failures",
+    "binding_failures",
+    "source_evidence_failures",
+    "authority_violations",
+    "otel_unavailable_samples",
+    "false_otel_success",
+    "p50_ms",
+    "p95_ms",
+    "max_ms",
+    "external_services",
+    "fixture_sha256",
+    "implementation_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.context-trace-benchmark/v1alpha1"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "samples": {"type": "integer", "minimum": 1},
+    "successful_samples": {"type": "integer", "minimum": 0},
+    "total_events": {"type": "integer", "minimum": 0},
+    "required_event_names": {
+      "type": "array",
+      "minItems": 8,
+      "maxItems": 8,
+      "prefixItems": [
+        {"const": "context.compaction.precompact"},
+        {"const": "context.compaction.postcompact"},
+        {"const": "context.routing.input"},
+        {"const": "context.skill.selection"},
+        {"const": "context.plan.revision"},
+        {"const": "context.multi_agent.dispatch"},
+        {"const": "context.multi_agent.handoff"},
+        {"const": "context.delivery.accepted"}
+      ],
+      "items": false
+    },
+    "required_event_coverage_millionths": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1000000
+    },
+    "replay_mismatch": {"type": "integer", "minimum": 0},
+    "hash_chain_failures": {"type": "integer", "minimum": 0},
+    "binding_failures": {"type": "integer", "minimum": 0},
+    "source_evidence_failures": {"type": "integer", "minimum": 0},
+    "authority_violations": {"type": "integer", "minimum": 0},
+    "otel_unavailable_samples": {"type": "integer", "minimum": 0},
+    "false_otel_success": {"type": "integer", "minimum": 0},
+    "p50_ms": {"type": "number", "minimum": 0},
+    "p95_ms": {"type": "number", "minimum": 0},
+    "max_ms": {"type": "number", "minimum": 0},
+    "external_services": {"const": 0},
+    "fixture_sha256": {"$ref": "#/$defs/sha256"},
+    "implementation_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}

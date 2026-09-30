@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m7-04/patch-ab-verifier-score.schema.json",
+  "title": "Patch A/B Independent Verifier Score",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "score_id", "experiment_id", "experiment_sha256",
+    "verifier_packet_sha256", "verifier_id", "verifier_role", "assignment_token",
+    "rubric_scores", "evidence_refs", "state_write_authority",
+    "completion_authority", "score_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.patch-ab-verifier-score/v1alpha2"},
+    "score_id": {"$ref": "#/$defs/id"},
+    "experiment_id": {"$ref": "#/$defs/id"},
+    "experiment_sha256": {"$ref": "#/$defs/sha256"},
+    "verifier_packet_sha256": {"$ref": "#/$defs/sha256"},
+    "verifier_id": {"$ref": "#/$defs/id"},
+    "verifier_role": {"const": "independent"},
+    "assignment_token": {"$ref": "#/$defs/id"},
+    "rubric_scores": {
+      "type": "array", "minItems": 1, "maxItems": 32,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["rubric_id", "score_basis_points"],
+        "properties": {
+          "rubric_id": {"$ref": "#/$defs/id"},
+          "score_basis_points": {"type": "integer", "minimum": 0, "maximum": 10000}
+        }
+      }
+    },
+    "evidence_refs": {"type": "array", "minItems": 1, "maxItems": 128, "uniqueItems": true, "items": {"$ref": "#/$defs/artifact"}},
+    "state_write_authority": {"const": false},
+    "completion_authority": {"const": false},
+    "score_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "artifact": {"type": "string", "pattern": "^artifact://sha256/[0-9a-f]{64}$"}
+  }
+}

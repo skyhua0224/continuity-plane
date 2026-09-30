@@ -1,0 +1,72 @@
+{
+  "automatable_closure_rate": 1.0,
+  "campaign_id": "campaign-m10-00",
+  "campaign_receipt_sha256": "a5439b9a316f63411fa69748bd1b7ac39ec20e2d7a23bfe83bdcd61d2196ede1",
+  "campaign_replay_match": true,
+  "completed_work_ids": [
+    "M10-00-evidence-matrix",
+    "M10-00-fault-drill",
+    "M10-00-release-verification"
+  ],
+  "completion_authority": false,
+  "e0_e9": [
+    {
+      "evidence_summary": "real provider usage A/B measured",
+      "experiment_id": "E0",
+      "passed": true
+    },
+    {
+      "evidence_summary": "post-compaction task recovery remained correct",
+      "experiment_id": "E1",
+      "passed": true
+    },
+    {
+      "evidence_summary": "Idea and interrupt active-leaf preservation passed",
+      "experiment_id": "E2",
+      "passed": true
+    },
+    {
+      "evidence_summary": "selected Skill source bytes reduced by at least 60% without quality loss",
+      "experiment_id": "E3",
+      "passed": true
+    },
+    {
+      "evidence_summary": "Skill drift quarantine contracts remain passing",
+      "experiment_id": "E4",
+      "passed": true
+    },
+    {
+      "evidence_summary": "real code-task bounded retrieval reduced provider input",
+      "experiment_id": "E5",
+      "passed": true
+    },
+    {
+      "evidence_summary": "stale-history fixture produced no revival",
+      "experiment_id": "E6",
+      "passed": true
+    },
+    {
+      "evidence_summary": "full repository suite passed",
+      "experiment_id": "E7",
+      "passed": true
+    },
+    {
+      "evidence_summary": "local State MCP CAS campaign closed without silent write",
+      "experiment_id": "E8",
+      "passed": true
+    },
+    {
+      "evidence_summary": "700K pre-sampling compaction completed and recovered",
+      "experiment_id": "E9",
+      "passed": true
+    }
+  ],
+  "failed_experiments": [],
+  "plan_sha256": "d4f856b0287d9cf170653ba7bf6b911e1c711c127d17cd6c6dd3d6d5440da087",
+  "receipt_sha256": "e1da02b93a9dd469d9f7fb37be8d316eae14b4c48202426e477303b1a48a945f",
+  "required_leaf_completed": 3,
+  "required_leaf_count": 3,
+  "schema_version": "context.self-dogfood-campaign-verdict/v1alpha1",
+  "state_write_authority": false,
+  "status": "passed"
+}

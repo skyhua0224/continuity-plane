@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schema/context.idea-capture-request/v1alpha1",
+  "title": "Context Control Plane candidate Idea capture request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "request_id", "project_id", "expected_revision", "idea_id", "parent_work_id", "return_work_id", "source_ref", "summary", "action", "switch_target_work_id", "expiry", "causation_ref", "correlation_ref"],
+  "properties": {
+    "schema_version": {"const": "context.idea-capture-request/v1alpha1"},
+    "request_id": {"$ref": "#/$defs/boundedId"},
+    "project_id": {"$ref": "#/$defs/boundedId"},
+    "expected_revision": {"type": "integer", "minimum": 0},
+    "idea_id": {"$ref": "#/$defs/boundedId"},
+    "parent_work_id": {"$ref": "#/$defs/boundedId"},
+    "return_work_id": {"$ref": "#/$defs/boundedId"},
+    "source_ref": {"type": "string", "pattern": "^rng_[a-z2-7]{26}$"},
+    "summary": {"type": "string", "minLength": 1, "maxLength": 2000, "pattern": ".*\\S.*"},
+    "action": {"enum": ["capture-and-continue", "park", "propose-switch"]},
+    "switch_target_work_id": {"$ref": "#/$defs/nullableBoundedId"},
+    "expiry": {"$ref": "#/$defs/nullableTimestamp"},
+    "causation_ref": {"$ref": "#/$defs/nullableRef"},
+    "correlation_ref": {"$ref": "#/$defs/nullableRef"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"action": {"const": "propose-switch"}}},
+      "then": {"properties": {"switch_target_work_id": {"$ref": "#/$defs/boundedId"}}}
+    },
+    {
+      "if": {"properties": {"action": {"enum": ["capture-and-continue", "park"]}}},
+      "then": {"properties": {"switch_target_work_id": {"type": "null"}}}
+    }
+  ],
+  "$defs": {
+    "boundedId": {"type": "string", "minLength": 1, "maxLength": 200, "pattern": ".*\\S.*"},
+    "nullableBoundedId": {"type": ["string", "null"], "minLength": 1, "maxLength": 200, "pattern": ".*\\S.*"},
+    "nullableTimestamp": {"type": ["string", "null"], "format": "date-time", "minLength": 1},
+    "nullableRef": {"type": ["string", "null"], "minLength": 1, "maxLength": 500, "pattern": ".*\\S.*"}
+  }
+}

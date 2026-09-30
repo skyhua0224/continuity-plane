@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m8-09/unattended-campaign-cursor.schema.json",
+  "title": "M8-09 unattended campaign cursor",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "campaign_run_id", "project_id", "profile_id", "governance_revision", "start_project_revision", "current_project_revision", "cursor_revision", "phase", "next_action", "selection", "completed_steps", "terminal_receipt", "state_write_authority", "completion_authority", "provider_authority", "external_effect_authority", "cursor_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.unattended-campaign-cursor/v1alpha1"},
+    "campaign_run_id": {"$ref": "#/$defs/id"},
+    "project_id": {"$ref": "#/$defs/id"},
+    "profile_id": {"$ref": "#/$defs/id"},
+    "governance_revision": {"type": "integer", "minimum": 1},
+    "start_project_revision": {"type": "integer", "minimum": 0},
+    "current_project_revision": {"type": "integer", "minimum": 0},
+    "cursor_revision": {"type": "integer", "minimum": 0},
+    "phase": {"enum": ["selecting", "prepared", "claimed", "composed", "executed", "verified", "verification_failed", "completed", "blocked", "closed"]},
+    "next_action": {"enum": ["select", "claim", "compose", "execute", "verify", "complete", "block_and_release", "record_step", "terminal"]},
+    "selection": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/selection"}]},
+    "completed_steps": {"type": "array", "maxItems": 10000, "items": {"$ref": "unattended-dispatch-step.schema.json"}},
+    "terminal_receipt": {"oneOf": [{"type": "null"}, {"$ref": "unattended-campaign-receipt.schema.json"}]},
+    "state_write_authority": {"const": false},
+    "completion_authority": {"const": false},
+    "provider_authority": {"const": 0},
+    "external_effect_authority": {"const": 0},
+    "cursor_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "allOf": [
+    {"if": {"properties": {"phase": {"const": "selecting"}}}, "then": {"properties": {"selection": {"const": null}, "terminal_receipt": {"const": null}}}},
+    {"if": {"properties": {"phase": {"const": "closed"}}}, "then": {"properties": {"next_action": {"const": "terminal"}, "terminal_receipt": {"$ref": "unattended-campaign-receipt.schema.json"}}}},
+    {"if": {"properties": {"phase": {"not": {"const": "closed"}}}}, "then": {"properties": {"terminal_receipt": {"const": null}}}}
+  ],
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "scopeOwner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope_kind", "scope_ref"],
+      "properties": {
+        "scope_kind": {"type": "string", "minLength": 1, "maxLength": 128},
+        "scope_ref": {"type": "string", "minLength": 1, "maxLength": 4096}
+      }
+    },
+    "requestIds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["claim", "packet", "execute", "verify", "complete", "block"],
+      "properties": {
+        "claim": {"$ref": "#/$defs/id"},
+        "packet": {"$ref": "#/$defs/id"},
+        "execute": {"$ref": "#/$defs/id"},
+        "verify": {"$ref": "#/$defs/id"},
+        "complete": {"$ref": "#/$defs/id"},
+        "block": {"$ref": "#/$defs/id"}
+      }
+    },
+    "selection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["selection_id", "attempt_id", "attempt_no", "attempt_budget", "project_revision_before", "work_id", "work_revision", "scope_owners", "obligation_id", "obligation_revision", "verification_profile_ref", "condition_decision", "claim_id", "request_ids", "claim", "packet", "execution", "verification", "completion", "block"],
+      "properties": {
+        "selection_id": {"$ref": "#/$defs/id"},
+        "attempt_id": {"$ref": "#/$defs/id"},
+        "attempt_no": {"type": "integer", "minimum": 1},
+        "attempt_budget": {"type": "integer", "minimum": 1},
+        "project_revision_before": {"type": "integer", "minimum": 0},
+        "work_id": {"$ref": "#/$defs/id"},
+        "work_revision": {"type": "integer", "minimum": 1},
+        "scope_owners": {"type": "array", "minItems": 1, "maxItems": 10000, "uniqueItems": true, "items": {"$ref": "#/$defs/scopeOwner"}},
+        "obligation_id": {"$ref": "#/$defs/id"},
+        "obligation_revision": {"type": "integer", "minimum": 1},
+        "verification_profile_ref": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "condition_decision": {"oneOf": [{"type": "null"}, {"$ref": "condition-decision.schema.json"}]},
+        "claim_id": {"$ref": "#/$defs/id"},
+        "request_ids": {"$ref": "#/$defs/requestIds"},
+        "claim": {"oneOf": [{"type": "null"}, {"type": "object", "minProperties": 1}]},
+        "packet": {"oneOf": [{"type": "null"}, {"type": "object", "minProperties": 1}]},
+        "execution": {"oneOf": [{"type": "null"}, {"type": "object", "minProperties": 1}]},
+        "verification": {"oneOf": [{"type": "null"}, {"type": "object", "minProperties": 1}]},
+        "completion": {"oneOf": [{"type": "null"}, {"type": "object", "minProperties": 1}]},
+        "block": {"oneOf": [{"type": "null"}, {"type": "object", "minProperties": 1}]}
+      }
+    }
+  }
+}

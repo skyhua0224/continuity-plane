@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m4-09/skill-resolution-benchmark.schema.json",
+  "title": "Context Control Plane Skill Resolution Benchmark",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "samples", "negative_samples", "successful_samples", "negative_quarantine", "replay_mismatch", "role_leakage", "provider_leakage", "state_write_authority_true", "available_manifest_count", "selected_count", "selection_reduction_percent", "p50_ms", "p95_ms", "max_ms", "external_services", "implementation_sha256", "fixture_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.skill-resolution-benchmark/v1alpha1"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "samples": {"type": "integer", "minimum": 1000},
+    "negative_samples": {"type": "integer", "minimum": 125},
+    "successful_samples": {"type": "integer", "minimum": 0},
+    "negative_quarantine": {"type": "integer", "minimum": 0},
+    "replay_mismatch": {"const": 0},
+    "role_leakage": {"const": 0},
+    "provider_leakage": {"const": 0},
+    "state_write_authority_true": {"const": 0},
+    "available_manifest_count": {"type": "integer", "minimum": 0},
+    "selected_count": {"type": "integer", "minimum": 0},
+    "selection_reduction_percent": {"type": "number", "minimum": 30},
+    "p50_ms": {"type": "number", "minimum": 0},
+    "p95_ms": {"type": "number", "minimum": 0, "exclusiveMaximum": 100},
+    "max_ms": {"type": "number", "minimum": 0},
+    "external_services": {"const": 0},
+    "implementation_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "fixture_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

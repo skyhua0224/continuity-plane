@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schemas/m8-03/workflow-runtime-selection.schema.json",
+  "title": "Context Control Plane Workflow Runtime Selection",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "selected_backend_id",
+    "selection_reason",
+    "execution_scope",
+    "distributed_execution",
+    "backend_binding_committed",
+    "state_write_authority",
+    "claim_authority",
+    "effect_authority"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.workflow-runtime-selection/v1alpha1"},
+    "selected_backend_id": {"enum": ["local-reference", "temporal"]},
+    "selection_reason": {
+      "enum": [
+        "default-local",
+        "fallback-before-binding",
+        "temporal-available-before-binding"
+      ]
+    },
+    "execution_scope": {"enum": ["authority-instance", "distributed"]},
+    "distributed_execution": {"type": "boolean"},
+    "backend_binding_committed": {"const": false},
+    "state_write_authority": {"const": false},
+    "claim_authority": {"const": false},
+    "effect_authority": {"const": false}
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "selection_reason": {
+            "enum": ["default-local", "fallback-before-binding"]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "selected_backend_id": {"const": "local-reference"},
+          "execution_scope": {"const": "authority-instance"},
+          "distributed_execution": {"const": false}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "selection_reason": {"const": "temporal-available-before-binding"}
+        }
+      },
+      "then": {
+        "properties": {
+          "selected_backend_id": {"const": "temporal"},
+          "execution_scope": {"const": "distributed"},
+          "distributed_execution": {"const": true}
+        }
+      }
+    }
+  ]
+}

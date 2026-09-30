@@ -1,0 +1,209 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m9-07/relationship-impact-benchmark.schema.json",
+  "title": "M9-07 Relationship and Impact benchmark receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "benchmark_id",
+    "generated_at",
+    "parameters",
+    "results",
+    "rates",
+    "latency_ms",
+    "scale_latency_ms",
+    "provenance",
+    "authority",
+    "failed_gates",
+    "verdict",
+    "receipt_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.relationship-impact-benchmark/v1alpha1"},
+    "benchmark_id": {"const": "m9-07-relationship-impact"},
+    "generated_at": {"$ref": "#/$defs/timestamp"},
+    "parameters": {"$ref": "#/$defs/parameters"},
+    "results": {"$ref": "#/$defs/results"},
+    "rates": {"$ref": "#/$defs/rates"},
+    "latency_ms": {"$ref": "#/$defs/latency"},
+    "scale_latency_ms": {"$ref": "#/$defs/scaleLatency"},
+    "provenance": {"$ref": "#/$defs/provenance"},
+    "authority": {"$ref": "#/$defs/authority"},
+    "failed_gates": {
+      "type": "array",
+      "maxItems": 12,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "same_revision_matches",
+          "complete_projection_matches",
+          "focus_direction_matches",
+          "code_clock_separation_matches",
+          "tamper_rejections",
+          "filter_rejections",
+          "scale_complete_matches",
+          "authority_violations",
+          "provider_invocations",
+          "external_services",
+          "projection_latency_p95_ms",
+          "scale_latency_p95_ms"
+        ]
+      }
+    },
+    "verdict": {"const": "passed"},
+    "receipt_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$"
+    },
+    "count": {"type": "integer", "minimum": 0},
+    "rate": {"type": "number", "minimum": 0, "maximum": 1},
+    "latencyValue": {"type": "number", "minimum": 0},
+    "thresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "same_revision_rate_min",
+        "complete_projection_rate_min",
+        "focus_direction_rate_min",
+        "code_clock_separation_rate_min",
+        "tamper_rejection_rate_min",
+        "filter_rejection_rate_min",
+        "scale_complete_rate_min",
+        "authority_violations_max",
+        "provider_invocations_max",
+        "external_services_max",
+        "projection_latency_p95_ms_max",
+        "scale_latency_p95_ms_max"
+      ],
+      "properties": {
+        "same_revision_rate_min": {"const": 1.0},
+        "complete_projection_rate_min": {"const": 1.0},
+        "focus_direction_rate_min": {"const": 1.0},
+        "code_clock_separation_rate_min": {"const": 1.0},
+        "tamper_rejection_rate_min": {"const": 1.0},
+        "filter_rejection_rate_min": {"const": 1.0},
+        "scale_complete_rate_min": {"const": 1.0},
+        "authority_violations_max": {"const": 0},
+        "provider_invocations_max": {"const": 0},
+        "external_services_max": {"const": 0},
+        "projection_latency_p95_ms_max": {"const": 50.0},
+        "scale_latency_p95_ms_max": {"const": 250.0}
+      }
+    },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["iterations", "scale_iterations", "scale_work_nodes", "thresholds"],
+      "properties": {
+        "iterations": {"type": "integer", "minimum": 1, "maximum": 10000},
+        "scale_iterations": {"type": "integer", "minimum": 1, "maximum": 100},
+        "scale_work_nodes": {"const": 2000},
+        "thresholds": {"$ref": "#/$defs/thresholds"}
+      }
+    },
+    "results": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "same_revision_matches",
+        "complete_projection_matches",
+        "focus_direction_matches",
+        "code_clock_separation_matches",
+        "tamper_rejections",
+        "filter_rejections",
+        "scale_complete_matches",
+        "authority_violations",
+        "provider_invocations",
+        "external_services"
+      ],
+      "properties": {
+        "same_revision_matches": {"$ref": "#/$defs/count"},
+        "complete_projection_matches": {"$ref": "#/$defs/count"},
+        "focus_direction_matches": {"$ref": "#/$defs/count"},
+        "code_clock_separation_matches": {"$ref": "#/$defs/count"},
+        "tamper_rejections": {"$ref": "#/$defs/count"},
+        "filter_rejections": {"$ref": "#/$defs/count"},
+        "scale_complete_matches": {"$ref": "#/$defs/count"},
+        "authority_violations": {"$ref": "#/$defs/count"},
+        "provider_invocations": {"$ref": "#/$defs/count"},
+        "external_services": {"$ref": "#/$defs/count"}
+      }
+    },
+    "rates": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "same_revision_rate",
+        "complete_projection_rate",
+        "focus_direction_rate",
+        "code_clock_separation_rate",
+        "tamper_rejection_rate",
+        "filter_rejection_rate",
+        "scale_complete_rate"
+      ],
+      "properties": {
+        "same_revision_rate": {"$ref": "#/$defs/rate"},
+        "complete_projection_rate": {"$ref": "#/$defs/rate"},
+        "focus_direction_rate": {"$ref": "#/$defs/rate"},
+        "code_clock_separation_rate": {"$ref": "#/$defs/rate"},
+        "tamper_rejection_rate": {"$ref": "#/$defs/rate"},
+        "filter_rejection_rate": {"$ref": "#/$defs/rate"},
+        "scale_complete_rate": {"$ref": "#/$defs/rate"}
+      }
+    },
+    "latency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["samples", "p50", "p95", "max"],
+      "properties": {
+        "samples": {"type": "array", "minItems": 1, "maxItems": 10000, "items": {"$ref": "#/$defs/latencyValue"}},
+        "p50": {"$ref": "#/$defs/latencyValue"},
+        "p95": {"$ref": "#/$defs/latencyValue"},
+        "max": {"$ref": "#/$defs/latencyValue"}
+      }
+    },
+    "scaleLatency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["samples", "p50", "p95", "max"],
+      "properties": {
+        "samples": {"type": "array", "minItems": 1, "maxItems": 100, "items": {"$ref": "#/$defs/latencyValue"}},
+        "p50": {"$ref": "#/$defs/latencyValue"},
+        "p95": {"$ref": "#/$defs/latencyValue"},
+        "max": {"$ref": "#/$defs/latencyValue"}
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implementation_sha256", "benchmark_implementation_sha256", "project_graph_implementation_sha256", "view_request_schema_sha256", "projection_schema_sha256", "codegraph_receipt_sha256"],
+      "properties": {
+        "implementation_sha256": {"$ref": "#/$defs/sha256"},
+        "benchmark_implementation_sha256": {"$ref": "#/$defs/sha256"},
+        "project_graph_implementation_sha256": {"$ref": "#/$defs/sha256"},
+        "view_request_schema_sha256": {"$ref": "#/$defs/sha256"},
+        "projection_schema_sha256": {"$ref": "#/$defs/sha256"},
+        "codegraph_receipt_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state_write_authority", "controlled_action_authority", "approval_authority", "completion_authority", "provider_authority", "external_effect_authority"],
+      "properties": {
+        "state_write_authority": {"const": false},
+        "controlled_action_authority": {"const": false},
+        "approval_authority": {"const": false},
+        "completion_authority": {"const": false},
+        "provider_authority": {"const": 0},
+        "external_effect_authority": {"const": 0}
+      }
+    }
+  }
+}

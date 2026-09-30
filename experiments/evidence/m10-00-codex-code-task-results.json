@@ -1,0 +1,284 @@
+{
+  "benchmark_id": "m10-00-codex-code-task-ablation",
+  "completion_authority": false,
+  "external_side_effects": 0,
+  "generated_at": "2026-08-18T01:40:00+08:00",
+  "model": "gpt-5.6-sol",
+  "provider_invocations": 9,
+  "receipt_sha256": "527db1d929af621a7a73804312beffd31125e138d4900580bdd6f9dd2ee07426",
+  "samples": [
+    {
+      "case": "bare",
+      "quality": {
+        "correct": true
+      },
+      "sample_id": "bare-0",
+      "tool_call_count": 18,
+      "tool_types": [
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution"
+      ],
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 79872,
+        "input_tokens": 134366,
+        "output_tokens": 868,
+        "reasoning_output_tokens": 166
+      },
+      "wall_time_ms": 25681.891,
+      "warning_count": 1
+    },
+    {
+      "case": "bare",
+      "quality": {
+        "correct": true
+      },
+      "sample_id": "bare-1",
+      "tool_call_count": 10,
+      "tool_types": [
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution"
+      ],
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 54528,
+        "input_tokens": 93986,
+        "output_tokens": 785,
+        "reasoning_output_tokens": 318
+      },
+      "wall_time_ms": 21362.493,
+      "warning_count": 1
+    },
+    {
+      "case": "bare",
+      "quality": {
+        "correct": true
+      },
+      "sample_id": "bare-2",
+      "tool_call_count": 10,
+      "tool_types": [
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution"
+      ],
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 158208,
+        "input_tokens": 212611,
+        "output_tokens": 874,
+        "reasoning_output_tokens": 253
+      },
+      "wall_time_ms": 29577.345,
+      "warning_count": 1
+    },
+    {
+      "case": "state-packet",
+      "quality": {
+        "correct": true
+      },
+      "sample_id": "state-packet-0",
+      "tool_call_count": 6,
+      "tool_types": [
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution"
+      ],
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 44288,
+        "input_tokens": 74813,
+        "output_tokens": 598,
+        "reasoning_output_tokens": 310
+      },
+      "wall_time_ms": 25792.397,
+      "warning_count": 1
+    },
+    {
+      "case": "state-packet",
+      "quality": {
+        "correct": true
+      },
+      "sample_id": "state-packet-1",
+      "tool_call_count": 8,
+      "tool_types": [
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution"
+      ],
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 44288,
+        "input_tokens": 72152,
+        "output_tokens": 552,
+        "reasoning_output_tokens": 212
+      },
+      "wall_time_ms": 19571.455,
+      "warning_count": 1
+    },
+    {
+      "case": "state-packet",
+      "quality": {
+        "correct": true
+      },
+      "sample_id": "state-packet-2",
+      "tool_call_count": 6,
+      "tool_types": [
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution"
+      ],
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 81920,
+        "input_tokens": 92479,
+        "output_tokens": 644,
+        "reasoning_output_tokens": 319
+      },
+      "wall_time_ms": 24408.937,
+      "warning_count": 1
+    },
+    {
+      "case": "retrieval-packet",
+      "quality": {
+        "correct": true
+      },
+      "sample_id": "retrieval-packet-0",
+      "tool_call_count": 6,
+      "tool_types": [
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution"
+      ],
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 26880,
+        "input_tokens": 64033,
+        "output_tokens": 532,
+        "reasoning_output_tokens": 270
+      },
+      "wall_time_ms": 17968.496,
+      "warning_count": 1
+    },
+    {
+      "case": "retrieval-packet",
+      "quality": {
+        "correct": true
+      },
+      "sample_id": "retrieval-packet-1",
+      "tool_call_count": 6,
+      "tool_types": [
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution"
+      ],
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 66560,
+        "input_tokens": 89293,
+        "output_tokens": 554,
+        "reasoning_output_tokens": 267
+      },
+      "wall_time_ms": 20059.786,
+      "warning_count": 1
+    },
+    {
+      "case": "retrieval-packet",
+      "quality": {
+        "correct": true
+      },
+      "sample_id": "retrieval-packet-2",
+      "tool_call_count": 4,
+      "tool_types": [
+        "command_execution",
+        "command_execution",
+        "command_execution",
+        "command_execution"
+      ],
+      "usage": {
+        "cache_write_input_tokens": 0,
+        "cached_input_tokens": 45312,
+        "input_tokens": 67088,
+        "output_tokens": 538,
+        "reasoning_output_tokens": 317
+      },
+      "wall_time_ms": 17589.434,
+      "warning_count": 1
+    }
+  ],
+  "schema_version": "context.codex-code-task-ablation/v1alpha1",
+  "state_write_authority": false,
+  "summary": {
+    "bare": {
+      "count": 3,
+      "input_tokens_mean": 146987.66666666666,
+      "quality_rate": 1.0,
+      "tool_calls_mean": 12.666666666666666,
+      "wall_time_ms_mean": 25540.57633333333,
+      "warning_count_total": 3
+    },
+    "retrieval-packet": {
+      "count": 3,
+      "input_tokens_mean": 73471.33333333333,
+      "quality_rate": 1.0,
+      "tool_calls_mean": 5.333333333333333,
+      "wall_time_ms_mean": 18539.238666666668,
+      "warning_count_total": 3
+    },
+    "state-packet": {
+      "count": 3,
+      "input_tokens_mean": 79814.66666666667,
+      "quality_rate": 1.0,
+      "tool_calls_mean": 6.666666666666667,
+      "wall_time_ms_mean": 23257.596333333335,
+      "warning_count_total": 3
+    }
+  }
+}

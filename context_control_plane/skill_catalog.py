@@ -138,9 +138,15 @@ def _validate_entry(entry: Any, *, observed_at: str | None) -> dict[str, Any]:
         raise SkillCatalogError("entry.status and manifest.status are inconsistent")
     if entry["license_ref"] != manifest.get("license_ref"):
         raise SkillCatalogError("entry.license_ref must match manifest.license_ref")
+    isolated_manifest = copy.deepcopy(manifest)
+    isolated_manifest["dependencies"] = []
+    isolated_manifest["conflicts"] = []
     try:
         skill_manifest_set.validate_skill_manifest_set(
-            {"schema_version": skill_manifest_set.SCHEMA_VERSION, "manifests": [manifest]},
+            {
+                "schema_version": skill_manifest_set.SCHEMA_VERSION,
+                "manifests": [isolated_manifest],
+            },
             observed_at=observed_at,
         )
     except skill_manifest_set.SkillManifestSetError as exc:
@@ -220,6 +226,20 @@ def validate_skill_catalog(
             raise SkillCatalogError(f"duplicate catalog_entry_id: {entry_id}")
         seen.add(entry_id)
 
+    dependency_set = {
+        "schema_version": skill_manifest_set.SCHEMA_VERSION,
+        "manifests": [copy.deepcopy(entry["manifest"]) for entry in entries],
+    }
+    for manifest in dependency_set["manifests"]:
+        manifest["conflicts"] = []
+    try:
+        skill_manifest_set.validate_skill_manifest_set(
+            dependency_set,
+            observed_at=observed_at,
+        )
+    except skill_manifest_set.SkillManifestSetError as exc:
+        raise SkillCatalogError(str(exc)) from exc
+
 
 def canonical_skill_catalog_bytes(
     document: dict[str, Any],
@@ -232,16 +252,33 @@ def canonical_skill_catalog_bytes(
     canonical["entries"] = sorted(
         canonical["entries"], key=lambda item: item["catalog_entry_id"]
     )
+    manifests = [copy.deepcopy(entry["manifest"]) for entry in canonical["entries"]]
+    conflicts_by_skill = {
+        manifest["skill_id"]: copy.deepcopy(manifest["conflicts"])
+        for manifest in manifests
+    }
+    for manifest in manifests:
+        manifest["conflicts"] = []
+    canonical_manifest_set = json.loads(
+        skill_manifest_set.canonical_skill_manifest_set_bytes(
+            {
+                "schema_version": skill_manifest_set.SCHEMA_VERSION,
+                "manifests": manifests,
+            },
+            observed_at=observed_at,
+        )
+    )
+    canonical_manifests = {
+        manifest["skill_id"]: manifest
+        for manifest in canonical_manifest_set["manifests"]
+    }
+    for skill_id, manifest in canonical_manifests.items():
+        manifest["conflicts"] = sorted(
+            conflicts_by_skill[skill_id],
+            key=lambda item: item["skill_id"],
+        )
     for entry in canonical["entries"]:
-        manifest_set = {
-            "schema_version": skill_manifest_set.SCHEMA_VERSION,
-            "manifests": [entry["manifest"]],
-        }
-        entry["manifest"] = json.loads(
-            skill_manifest_set.canonical_skill_manifest_set_bytes(
-                manifest_set, observed_at=observed_at
-            )
-        )["manifests"][0]
+        entry["manifest"] = canonical_manifests[entry["manifest"]["skill_id"]]
         for field in ("provenance_refs", "capabilities", "approval_refs", "verification_refs"):
             entry[field] = sorted(entry[field])
     return json.dumps(

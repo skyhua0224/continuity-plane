@@ -1,0 +1,19 @@
+{
+  "candidates": [],
+  "max_candidates": 2,
+  "max_returned_bytes": 512,
+  "observed_at": "2026-08-15T07:15:00Z",
+  "provider_authority": false,
+  "provider_error_code": "503",
+  "provider_id": "unavailable/v1",
+  "query_sha256": "b15acb4cf2deac495a76064b5b2a25fa1905fc3ae27e3dc22d7f0a3fa00e6375",
+  "receipt_id": "receipt/recall/m6-03/503",
+  "receipt_sha256": "8a8b5ba7dc1343485d991ca0e5559eacf6397025d1aa5cfa4f387b79111ddb27",
+  "request_id": "recall/m6-03/503",
+  "request_sha256": "6dc5d2c4c4e006440f1c354432da2280e36ef35c81019f462109289bcc5bb548",
+  "returned_bytes": 0,
+  "schema_version": "context.recall-receipt/v1alpha1",
+  "state_write_authority": false,
+  "status": "degraded",
+  "task_id": "M6-03"
+}

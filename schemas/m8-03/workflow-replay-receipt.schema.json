@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schemas/m8-03/workflow-replay-receipt.schema.json",
+  "title": "Context Control Plane Workflow Replay Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "workflow_id",
+    "chain_id",
+    "definition_manifest_sha256",
+    "run_count",
+    "generation_count",
+    "history_event_count",
+    "command_count",
+    "command_mismatches",
+    "run_sha256s",
+    "final_history_event_sha256",
+    "chain_sha256",
+    "external_calls",
+    "state_writes",
+    "effect_calls",
+    "state_write_authority",
+    "effect_dispatch_authority",
+    "provider_native_authority",
+    "receipt_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.workflow-replay-receipt/v1alpha1"},
+    "workflow_id": {"$ref": "#/$defs/id"},
+    "chain_id": {"$ref": "#/$defs/id"},
+    "definition_manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "run_count": {"type": "integer", "minimum": 1},
+    "generation_count": {"type": "integer", "minimum": 1},
+    "history_event_count": {"type": "integer", "minimum": 1},
+    "command_count": {"type": "integer", "minimum": 0},
+    "command_mismatches": {"const": 0},
+    "run_sha256s": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/sha256"}
+    },
+    "final_history_event_sha256": {"$ref": "#/$defs/sha256"},
+    "chain_sha256": {"$ref": "#/$defs/sha256"},
+    "external_calls": {"const": 0},
+    "state_writes": {"const": 0},
+    "effect_calls": {"const": 0},
+    "state_write_authority": {"const": false},
+    "effect_dispatch_authority": {"const": false},
+    "provider_native_authority": {"const": false},
+    "receipt_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

@@ -1,0 +1,111 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m9-01/external-state-projection-benchmark.schema.json",
+  "title": "M9-01 external State projection benchmark receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "benchmark_id", "generated_at", "parameters", "thresholds", "results", "latency_ms", "gate", "provenance", "receipt_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.external-state-projection-benchmark/v1alpha1"},
+    "benchmark_id": {"const": "m9-01-external-state-projection"},
+    "generated_at": {"$ref": "#/$defs/timestamp"},
+    "parameters": {"$ref": "#/$defs/parameters"},
+    "thresholds": {"$ref": "#/$defs/thresholds"},
+    "results": {"$ref": "#/$defs/results"},
+    "latency_ms": {"$ref": "#/$defs/latency"},
+    "gate": {"$ref": "#/$defs/gate"},
+    "provenance": {"$ref": "#/$defs/provenance"},
+    "receipt_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$"
+    },
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["iterations"],
+      "properties": {"iterations": {"type": "integer", "minimum": 1, "maximum": 1000}}
+    },
+    "thresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["same_revision_rate_min", "state_digest_rate_min", "signed_projection_rate_min", "stale_view_rejection_rate_min", "unauthorized_rejection_rate_min", "torn_source_rejection_rate_min", "unauthorized_state_reads_max", "authority_violations_max", "provider_invocations_max", "external_services_max", "projection_latency_p95_ms_max"],
+      "properties": {
+        "same_revision_rate_min": {"const": 1.0},
+        "state_digest_rate_min": {"const": 1.0},
+        "signed_projection_rate_min": {"const": 1.0},
+        "stale_view_rejection_rate_min": {"const": 1.0},
+        "unauthorized_rejection_rate_min": {"const": 1.0},
+        "torn_source_rejection_rate_min": {"const": 1.0},
+        "unauthorized_state_reads_max": {"const": 0},
+        "authority_violations_max": {"const": 0},
+        "provider_invocations_max": {"const": 0},
+        "external_services_max": {"const": 0},
+        "projection_latency_p95_ms_max": {"const": 50.0}
+      }
+    },
+    "results": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["same_revision_matches", "same_revision_rate", "state_digest_matches", "state_digest_rate", "signed_projection_matches", "signed_projection_rate", "stale_view_rejections", "stale_view_rejection_rate", "unauthorized_rejections", "unauthorized_rejection_rate", "torn_source_rejections", "torn_source_rejection_rate", "unauthorized_state_reads", "authority_violations", "provider_invocations", "external_services"],
+      "properties": {
+        "same_revision_matches": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "same_revision_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "state_digest_matches": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "state_digest_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "signed_projection_matches": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "signed_projection_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "stale_view_rejections": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "stale_view_rejection_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "unauthorized_rejections": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "unauthorized_rejection_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "torn_source_rejections": {"type": "integer", "minimum": 0, "maximum": 1000},
+        "torn_source_rejection_rate": {"type": "number", "minimum": 0, "maximum": 1},
+        "unauthorized_state_reads": {"type": "integer", "minimum": 0},
+        "authority_violations": {"type": "integer", "minimum": 0},
+        "provider_invocations": {"type": "integer", "minimum": 0},
+        "external_services": {"type": "integer", "minimum": 0}
+      }
+    },
+    "latency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min", "p50", "p95", "max"],
+      "properties": {
+        "min": {"type": "number", "minimum": 0},
+        "p50": {"type": "number", "minimum": 0},
+        "p95": {"type": "number", "minimum": 0},
+        "max": {"type": "number", "minimum": 0}
+      }
+    },
+    "gate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "failed_gates"],
+      "properties": {
+        "status": {"enum": ["failed", "passed"]},
+        "failed_gates": {
+          "type": "array",
+          "maxItems": 11,
+          "uniqueItems": true,
+          "items": {"enum": ["same-revision", "state-digest", "signed-projection", "stale-view", "unauthorized", "torn-source", "unauthorized-read", "authority", "provider", "external", "latency"]}
+        }
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implementation_sha256", "benchmark_sha256", "state_mcp_sha256", "fixture_sha256"],
+      "properties": {
+        "implementation_sha256": {"$ref": "#/$defs/sha256"},
+        "benchmark_sha256": {"$ref": "#/$defs/sha256"},
+        "state_mcp_sha256": {"$ref": "#/$defs/sha256"},
+        "fixture_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

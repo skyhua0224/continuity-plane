@@ -1,0 +1,255 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m9-07/relationship-impact-projection.schema.json",
+  "title": "M9-07 deterministic Relationship and Impact projection",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_id",
+    "state_revision",
+    "state_sha256",
+    "project_graph_projection_sha256",
+    "observed_at",
+    "code_sources",
+    "view_request",
+    "view_request_sha256",
+    "nodes",
+    "edges",
+    "clusters",
+    "impact",
+    "completeness",
+    "layout",
+    "navigation",
+    "authority",
+    "projection_sha256",
+    "signature"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.relationship-impact-projection/v1alpha1"},
+    "project_id": {"$ref": "#/$defs/identifier"},
+    "state_revision": {"type": "integer", "minimum": 0},
+    "state_sha256": {"$ref": "#/$defs/sha256"},
+    "project_graph_projection_sha256": {"$ref": "#/$defs/sha256"},
+    "observed_at": {"$ref": "#/$defs/timestamp"},
+    "code_sources": {
+      "type": "array",
+      "maxItems": 64,
+      "items": {"$ref": "#/$defs/codeSource"}
+    },
+    "view_request": {"$ref": "#/$defs/viewRequest"},
+    "view_request_sha256": {"$ref": "#/$defs/sha256"},
+    "nodes": {
+      "type": "array",
+      "maxItems": 2000,
+      "items": {"oneOf": [{"$ref": "#/$defs/workNode"}, {"$ref": "#/$defs/symbolNode"}]}
+    },
+    "edges": {
+      "type": "array",
+      "maxItems": 5000,
+      "items": {"$ref": "#/$defs/edge"}
+    },
+    "clusters": {
+      "type": "array",
+      "maxItems": 2000,
+      "items": {"$ref": "#/$defs/cluster"}
+    },
+    "impact": {"$ref": "#/$defs/impact"},
+    "completeness": {"$ref": "#/$defs/completeness"},
+    "layout": {"$ref": "#/$defs/layout"},
+    "navigation": {"$ref": "#/$defs/navigation"},
+    "authority": {"$ref": "#/$defs/authority"},
+    "projection_sha256": {"$ref": "#/$defs/sha256"},
+    "signature": {"$ref": "#/$defs/signature"}
+  },
+  "$defs": {
+    "identifier": {"type": "string", "minLength": 1, "maxLength": 2048},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:\\.[0-9]+)?(?:Z|[+-][0-9]{2}:[0-9]{2})$"
+    },
+    "identifierList": {
+      "type": "array",
+      "maxItems": 10000,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/identifier"}
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope_kind", "scope_ref"],
+      "properties": {
+        "scope_kind": {"enum": ["repo", "directory", "file", "symbol", "capability", "effect"]},
+        "scope_ref": {"$ref": "#/$defs/identifier"}
+      }
+    },
+    "viewRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version", "project_id", "expected_state_revision",
+        "focus_node_ids", "direction", "max_depth", "relation_kinds",
+        "node_kinds", "include_terminal_work", "max_nodes", "max_edges"
+      ],
+      "properties": {
+        "schema_version": {"const": "context.relationship-impact-view-request/v1alpha1"},
+        "project_id": {"$ref": "#/$defs/identifier"},
+        "expected_state_revision": {"type": "integer", "minimum": 0},
+        "focus_node_ids": {"type": "array", "maxItems": 64, "uniqueItems": true, "items": {"$ref": "#/$defs/identifier"}},
+        "direction": {"enum": ["incoming", "outgoing", "both"]},
+        "max_depth": {"type": "integer", "minimum": 0, "maximum": 8},
+        "relation_kinds": {"type": "array", "minItems": 1, "maxItems": 6, "uniqueItems": true, "items": {"enum": ["parent", "dependency", "supersedes", "return-point", "promotion-target", "references"]}},
+        "node_kinds": {"type": "array", "minItems": 1, "maxItems": 2, "uniqueItems": true, "items": {"enum": ["symbol", "work"]}},
+        "include_terminal_work": {"type": "boolean"},
+        "max_nodes": {"type": "integer", "minimum": 1, "maximum": 2000},
+        "max_edges": {"type": "integer", "minimum": 1, "maximum": 5000}
+      }
+    },
+    "codeSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["receipt_id", "receipt_sha256", "verified_at", "repositories", "index_revisions", "clue_count", "state_revision_binding", "authority_class"],
+      "properties": {
+        "receipt_id": {"$ref": "#/$defs/identifier"},
+        "receipt_sha256": {"$ref": "#/$defs/sha256"},
+        "verified_at": {"$ref": "#/$defs/timestamp"},
+        "repositories": {"$ref": "#/$defs/identifierList"},
+        "index_revisions": {"$ref": "#/$defs/identifierList"},
+        "clue_count": {"type": "integer", "minimum": 1, "maximum": 256},
+        "state_revision_binding": {"type": "null"},
+        "authority_class": {"const": "verified-non-authoritative-clue"}
+      }
+    },
+    "workNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["node_id", "node_kind", "work_id", "work_kind", "title", "status", "scope_refs", "owner_refs", "blocker_ids", "is_primary", "source_kind"],
+      "properties": {
+        "node_id": {"$ref": "#/$defs/identifier"},
+        "node_kind": {"const": "work"},
+        "work_id": {"$ref": "#/$defs/identifier"},
+        "work_kind": {"enum": ["campaign", "goal", "work", "experiment"]},
+        "title": {"$ref": "#/$defs/identifier"},
+        "status": {"enum": ["proposed", "blocked", "ready", "active", "verifying", "completed", "rejected", "reverted", "superseded"]},
+        "scope_refs": {"type": "array", "maxItems": 10000, "items": {"$ref": "#/$defs/scope"}},
+        "owner_refs": {"$ref": "#/$defs/identifierList"},
+        "blocker_ids": {"$ref": "#/$defs/identifierList"},
+        "is_primary": {"type": "boolean"},
+        "source_kind": {"const": "authoritative-state"}
+      }
+    },
+    "symbolNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["node_id", "node_kind", "repository", "qualified_symbol", "source_kind"],
+      "properties": {
+        "node_id": {"$ref": "#/$defs/identifier"},
+        "node_kind": {"const": "symbol"},
+        "repository": {"$ref": "#/$defs/identifier"},
+        "qualified_symbol": {"$ref": "#/$defs/identifier"},
+        "source_kind": {"const": "verified-code-clue"}
+      }
+    },
+    "edge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["edge_id", "source_node_id", "target_node_id", "relation", "evidence_kind", "authority_class", "source_ref"],
+      "properties": {
+        "edge_id": {"$ref": "#/$defs/identifier"},
+        "source_node_id": {"$ref": "#/$defs/identifier"},
+        "target_node_id": {"$ref": "#/$defs/identifier"},
+        "relation": {"enum": ["parent", "dependency", "supersedes", "return-point", "promotion-target", "references"]},
+        "evidence_kind": {"enum": ["typed-state", "rg+lsp"]},
+        "authority_class": {"enum": ["authoritative-state-relationship", "verified-non-authoritative-clue"]},
+        "source_ref": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "cluster": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cluster_id", "member_node_ids", "node_count"],
+      "properties": {
+        "cluster_id": {"$ref": "#/$defs/identifier"},
+        "member_node_ids": {"type": "array", "maxItems": 2000, "uniqueItems": true, "items": {"$ref": "#/$defs/identifier"}},
+        "node_count": {"type": "integer", "minimum": 1, "maximum": 2000}
+      }
+    },
+    "impact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["focus_work_ids", "direct_dependency_work_ids", "dependency_work_ids", "direct_dependent_work_ids", "dependent_work_ids"],
+      "properties": {
+        "focus_work_ids": {"$ref": "#/$defs/identifierList"},
+        "direct_dependency_work_ids": {"$ref": "#/$defs/identifierList"},
+        "dependency_work_ids": {"$ref": "#/$defs/identifierList"},
+        "direct_dependent_work_ids": {"$ref": "#/$defs/identifierList"},
+        "dependent_work_ids": {"$ref": "#/$defs/identifierList"}
+      }
+    },
+    "completeness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_node_count", "eligible_node_count", "returned_node_count", "excluded_node_count", "outside_focus_node_count", "source_edge_count", "eligible_edge_count", "returned_edge_count", "excluded_edge_count", "outside_focus_edge_count", "truncated", "impact_complete"],
+      "properties": {
+        "source_node_count": {"type": "integer", "minimum": 0},
+        "eligible_node_count": {"type": "integer", "minimum": 0},
+        "returned_node_count": {"type": "integer", "minimum": 0, "maximum": 2000},
+        "excluded_node_count": {"type": "integer", "minimum": 0},
+        "outside_focus_node_count": {"type": "integer", "minimum": 0},
+        "source_edge_count": {"type": "integer", "minimum": 0},
+        "eligible_edge_count": {"type": "integer", "minimum": 0},
+        "returned_edge_count": {"type": "integer", "minimum": 0, "maximum": 5000},
+        "excluded_edge_count": {"type": "integer", "minimum": 0},
+        "outside_focus_edge_count": {"type": "integer", "minimum": 0},
+        "truncated": {"const": false},
+        "impact_complete": {"const": true}
+      }
+    },
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "seed_sha256", "coordinates_authority", "interaction_state_persisted"],
+      "properties": {
+        "algorithm": {"const": "force-directed"},
+        "seed_sha256": {"$ref": "#/$defs/sha256"},
+        "coordinates_authority": {"const": false},
+        "interaction_state_persisted": {"const": false}
+      }
+    },
+    "navigation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allowed_route_kinds", "governance_submission_route", "direct_state_tool_access"],
+      "properties": {
+        "allowed_route_kinds": {"type": "array", "const": ["work-detail", "project-graph"]},
+        "governance_submission_route": {"const": "context.human-governance/v1alpha1"},
+        "direct_state_tool_access": {"const": false}
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state_write_authority", "controlled_action_authority", "approval_authority", "completion_authority", "provider_authority", "external_effect_authority"],
+      "properties": {
+        "state_write_authority": {"const": false},
+        "controlled_action_authority": {"const": false},
+        "approval_authority": {"const": false},
+        "completion_authority": {"const": false},
+        "provider_authority": {"const": 0},
+        "external_effect_authority": {"const": 0}
+      }
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "key_id", "value"],
+      "properties": {
+        "algorithm": {"const": "hmac-sha256"},
+        "key_id": {"$ref": "#/$defs/identifier"},
+        "value": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

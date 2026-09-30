@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.continuity-plane.dev/context.local-state-bundle/v1alpha1",
+  "title": "Continuity Plane Local State Bundle Manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "project_id",
+    "runtime_profile",
+    "source_revision",
+    "source_event_head",
+    "generated_at",
+    "files",
+    "total_size_bytes",
+    "manifest_sha256"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "context.local-state-bundle/v1alpha1"
+    },
+    "project_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$"
+    },
+    "runtime_profile": {
+      "const": "local-embedded"
+    },
+    "source_revision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "source_event_head": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/event_head"
+        }
+      ]
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "files": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 4096,
+      "items": {
+        "$ref": "#/$defs/file"
+      }
+    },
+    "total_size_bytes": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 536870912
+    },
+    "manifest_sha256": {
+      "$ref": "#/$defs/sha256"
+    }
+  },
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "event_head": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sequence_no",
+        "event_sha256"
+      ],
+      "properties": {
+        "sequence_no": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "event_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "role",
+        "size_bytes",
+        "content_sha256"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024,
+          "pattern": "^(?!/)(?!.*\\\\)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+        },
+        "role": {
+          "enum": [
+            "profile",
+            "state",
+            "governance",
+            "routing",
+            "source-binding",
+            "checkpoint",
+            "artifact"
+          ]
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 67108864
+        },
+        "content_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    }
+  }
+}

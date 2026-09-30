@@ -1,0 +1,394 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m9-04/context-health-projection.schema.json",
+  "title": "Context Health, Reference Health, Harness Health and Replay Projection",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "provider_id",
+    "project_id",
+    "state_revision",
+    "state_schema_version",
+    "state_sha256",
+    "source_projection_sha256",
+    "governance_ref",
+    "decision_evidence_projection_sha256",
+    "provenance_bundle_sha256",
+    "observed_at",
+    "source_bindings",
+    "context_health",
+    "reference_health",
+    "harness_health",
+    "replay_health",
+    "drilldowns",
+    "overall_status",
+    "authority",
+    "projection_sha256",
+    "signature"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.context-health-projection/v1alpha1"},
+    "provider_id": {"$ref": "#/$defs/identifier"},
+    "project_id": {"$ref": "#/$defs/identifier"},
+    "state_revision": {"$ref": "#/$defs/nonNegativeInteger"},
+    "state_schema_version": {
+      "enum": [
+        "context.typed-state/v1alpha1",
+        "context.typed-state/v2alpha1",
+        "context.typed-state/v3alpha1",
+        "context.typed-state/v4alpha1",
+        "context.typed-state/v5alpha1",
+        "context.typed-state/v6alpha1"
+      ]
+    },
+    "state_sha256": {"$ref": "#/$defs/sha256"},
+    "source_projection_sha256": {"$ref": "#/$defs/sha256"},
+    "governance_ref": {"$ref": "#/$defs/nonEmptyString"},
+    "decision_evidence_projection_sha256": {"$ref": "#/$defs/sha256"},
+    "provenance_bundle_sha256": {"$ref": "#/$defs/sha256"},
+    "observed_at": {"$ref": "#/$defs/timestamp"},
+    "source_bindings": {"$ref": "#/$defs/sourceBindings"},
+    "context_health": {"$ref": "#/$defs/contextHealth"},
+    "reference_health": {"$ref": "#/$defs/referenceHealth"},
+    "harness_health": {"$ref": "#/$defs/harnessHealth"},
+    "replay_health": {"$ref": "#/$defs/replayHealth"},
+    "drilldowns": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {"$ref": "#/$defs/drilldown"}
+    },
+    "overall_status": {"$ref": "#/$defs/healthStatus"},
+    "authority": {"$ref": "#/$defs/authority"},
+    "projection_sha256": {"$ref": "#/$defs/sha256"},
+    "signature": {"$ref": "#/$defs/signature"}
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"
+    },
+    "nonEmptyString": {"type": "string", "minLength": 1, "maxLength": 4096},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nullableSha256": {
+      "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+    },
+    "nonNegativeInteger": {"type": "integer", "minimum": 0},
+    "nullableNonNegativeInteger": {
+      "oneOf": [{"$ref": "#/$defs/nonNegativeInteger"}, {"type": "null"}]
+    },
+    "nonNegativeNumber": {"type": "number", "minimum": 0},
+    "nullableNonNegativeNumber": {
+      "oneOf": [{"$ref": "#/$defs/nonNegativeNumber"}, {"type": "null"}]
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$"
+    },
+    "identifierList": {
+      "type": "array",
+      "maxItems": 50000,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/identifier"}
+    },
+    "sha256List": {
+      "type": "array",
+      "maxItems": 10000,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/sha256"}
+    },
+    "artifactRef": {
+      "type": "string",
+      "pattern": "^artifact://sha256/[0-9a-f]{64}$"
+    },
+    "artifactRefList": {
+      "type": "array",
+      "maxItems": 256,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/artifactRef"}
+    },
+    "healthStatus": {"enum": ["passed", "degraded", "failed", "unavailable"]},
+    "measurementStatus": {"enum": ["measured", "unavailable"]},
+    "sourceBindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "trace_event_count",
+        "trace_head_sha256",
+        "trace_source_sha256",
+        "compaction_source_sha256",
+        "accounting_source_sha256",
+        "reference_source_sha256",
+        "reference_validity_watermark",
+        "harness_source_sha256",
+        "harness_event_head_sha256",
+        "recovery_source_sha256",
+        "checkpoint_sha256s"
+      ],
+      "properties": {
+        "trace_event_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "trace_head_sha256": {"$ref": "#/$defs/nullableSha256"},
+        "trace_source_sha256": {"$ref": "#/$defs/sha256"},
+        "compaction_source_sha256": {"$ref": "#/$defs/sha256"},
+        "accounting_source_sha256": {"$ref": "#/$defs/sha256"},
+        "reference_source_sha256": {"$ref": "#/$defs/sha256"},
+        "reference_validity_watermark": {"$ref": "#/$defs/nonNegativeInteger"},
+        "harness_source_sha256": {"$ref": "#/$defs/sha256"},
+        "harness_event_head_sha256": {"$ref": "#/$defs/nullableSha256"},
+        "recovery_source_sha256": {"$ref": "#/$defs/sha256"},
+        "checkpoint_sha256s": {"$ref": "#/$defs/sha256List"}
+      }
+    },
+    "eventSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["event_id", "event_name", "sequence", "state_revision", "active_work_id", "run_id", "observed_at", "revision_status", "work_binding", "evidence_ref_count", "event_sha256"],
+      "properties": {
+        "event_id": {"$ref": "#/$defs/identifier"},
+        "event_name": {"type": "string", "maxLength": 135, "pattern": "^context\\.[a-z][a-z0-9_.-]{0,126}$"},
+        "sequence": {"type": "integer", "minimum": 1},
+        "state_revision": {"$ref": "#/$defs/nonNegativeInteger"},
+        "active_work_id": {"$ref": "#/$defs/identifier"},
+        "run_id": {"$ref": "#/$defs/identifier"},
+        "observed_at": {"$ref": "#/$defs/timestamp"},
+        "revision_status": {"enum": ["current", "stale"]},
+        "work_binding": {"enum": ["current", "historical", "missing"]},
+        "evidence_ref_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "event_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "compactionSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["canary_id", "provider_id", "active_work_id", "task_revision", "checkpoint_sha256", "delta_sha256", "canary_sha256", "precompact_event_id", "postcompact_event_id", "restore_latency_ms", "status"],
+      "properties": {
+        "canary_id": {"$ref": "#/$defs/identifier"},
+        "provider_id": {"$ref": "#/$defs/identifier"},
+        "active_work_id": {"$ref": "#/$defs/identifier"},
+        "task_revision": {"$ref": "#/$defs/nonNegativeInteger"},
+        "checkpoint_sha256": {"$ref": "#/$defs/sha256"},
+        "delta_sha256": {"$ref": "#/$defs/sha256"},
+        "canary_sha256": {"$ref": "#/$defs/sha256"},
+        "precompact_event_id": {"$ref": "#/$defs/identifier"},
+        "postcompact_event_id": {"$ref": "#/$defs/identifier"},
+        "restore_latency_ms": {"$ref": "#/$defs/nonNegativeNumber"},
+        "status": {"const": "passed"}
+      }
+    },
+    "accountingSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["accounting_id", "corpus_id", "budget_tokens", "provider_comparison_status", "route_count", "measured_metric_count", "unavailable_metric_count", "trace_event_id", "receipt_ref", "accounting_sha256"],
+      "properties": {
+        "accounting_id": {"$ref": "#/$defs/identifier"},
+        "corpus_id": {"$ref": "#/$defs/identifier"},
+        "budget_tokens": {"type": "integer", "minimum": 1},
+        "provider_comparison_status": {"enum": ["measured", "unavailable"]},
+        "route_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "measured_metric_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "unavailable_metric_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "trace_event_id": {"$ref": "#/$defs/identifier"},
+        "receipt_ref": {"$ref": "#/$defs/artifactRef"},
+        "accounting_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "slo": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["slo_id", "status", "observed", "threshold", "unit"],
+      "properties": {
+        "slo_id": {"$ref": "#/$defs/identifier"},
+        "status": {"enum": ["passed", "failed", "unavailable"]},
+        "observed": {"oneOf": [{"type": "number", "minimum": 0}, {"type": "null"}]},
+        "threshold": {"oneOf": [{"type": "number", "minimum": 0}, {"type": "null"}]},
+        "unit": {"enum": ["millionths", "count", "milliseconds", "routes", "tokens"]}
+      }
+    },
+    "contextHealth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "event_count", "event_summaries", "required_event_coverage_millionths", "revision_mismatch_count", "active_work_mismatch_count", "duplicate_delivery_count", "compaction_pair_count", "compaction_summaries", "unbound_compaction_event_ids", "restore_p50_ms", "restore_p95_ms", "accounting_record_count", "accounting_summaries", "provider_token_status", "context_window_status", "retrieval_status", "provider_routes_measured", "provider_routes_unavailable", "input_tokens", "output_tokens", "cache_read_tokens", "cache_write_tokens", "retrieval_read_bytes", "retrieval_output_bytes", "slo_results"],
+      "properties": {
+        "status": {"$ref": "#/$defs/healthStatus"},
+        "event_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "event_summaries": {"type": "array", "maxItems": 10000, "items": {"$ref": "#/$defs/eventSummary"}},
+        "required_event_coverage_millionths": {"type": "integer", "minimum": 0, "maximum": 1000000},
+        "revision_mismatch_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "active_work_mismatch_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "duplicate_delivery_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "compaction_pair_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "compaction_summaries": {"type": "array", "maxItems": 10000, "items": {"$ref": "#/$defs/compactionSummary"}},
+        "unbound_compaction_event_ids": {"$ref": "#/$defs/identifierList"},
+        "restore_p50_ms": {"$ref": "#/$defs/nullableNonNegativeNumber"},
+        "restore_p95_ms": {"$ref": "#/$defs/nullableNonNegativeNumber"},
+        "accounting_record_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "accounting_summaries": {"type": "array", "maxItems": 10000, "items": {"$ref": "#/$defs/accountingSummary"}},
+        "provider_token_status": {"$ref": "#/$defs/measurementStatus"},
+        "context_window_status": {"const": "unavailable"},
+        "retrieval_status": {"$ref": "#/$defs/measurementStatus"},
+        "provider_routes_measured": {"$ref": "#/$defs/nonNegativeInteger"},
+        "provider_routes_unavailable": {"$ref": "#/$defs/nonNegativeInteger"},
+        "input_tokens": {"$ref": "#/$defs/nullableNonNegativeInteger"},
+        "output_tokens": {"$ref": "#/$defs/nullableNonNegativeInteger"},
+        "cache_read_tokens": {"$ref": "#/$defs/nullableNonNegativeInteger"},
+        "cache_write_tokens": {"$ref": "#/$defs/nullableNonNegativeInteger"},
+        "retrieval_read_bytes": {"$ref": "#/$defs/nullableNonNegativeInteger"},
+        "retrieval_output_bytes": {"$ref": "#/$defs/nullableNonNegativeInteger"},
+        "slo_results": {"type": "array", "maxItems": 32, "items": {"$ref": "#/$defs/slo"}}
+      }
+    },
+    "referenceRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["watch_id", "source_id", "source_identity_sha256", "authority_kind", "watch_revision", "watch_outcome", "freshness_status", "assertion_status", "affected_assertion_ids", "stale_assertion_ids", "quarantined_assertion_ids", "completion_eligible_assertion_ids", "current_evidence_ref", "observation_sha256", "decision_sha256", "evaluated_at"],
+      "properties": {
+        "watch_id": {"$ref": "#/$defs/identifier"},
+        "source_id": {"$ref": "#/$defs/identifier"},
+        "source_identity_sha256": {"$ref": "#/$defs/sha256"},
+        "authority_kind": {"enum": ["current_code", "current_state", "industry_standard", "os_official", "software_official"]},
+        "watch_revision": {"$ref": "#/$defs/nonNegativeInteger"},
+        "watch_outcome": {"enum": ["unchanged", "changed", "unavailable", "expired"]},
+        "freshness_status": {"enum": ["current", "expired"]},
+        "assertion_status": {"enum": ["current", "stale", "quarantined"]},
+        "affected_assertion_ids": {"$ref": "#/$defs/identifierList"},
+        "stale_assertion_ids": {"$ref": "#/$defs/identifierList"},
+        "quarantined_assertion_ids": {"$ref": "#/$defs/identifierList"},
+        "completion_eligible_assertion_ids": {"$ref": "#/$defs/identifierList"},
+        "current_evidence_ref": {"$ref": "#/$defs/artifactRef"},
+        "observation_sha256": {"$ref": "#/$defs/sha256"},
+        "decision_sha256": {"$ref": "#/$defs/sha256"},
+        "evaluated_at": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "referenceHealth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "record_count", "records", "current_assertion_ids", "stale_assertion_ids", "quarantined_assertion_ids", "validated_assertion_count"],
+      "properties": {
+        "status": {"$ref": "#/$defs/healthStatus"},
+        "record_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "records": {"type": "array", "maxItems": 10000, "items": {"$ref": "#/$defs/referenceRecord"}},
+        "current_assertion_ids": {"$ref": "#/$defs/identifierList"},
+        "stale_assertion_ids": {"$ref": "#/$defs/identifierList"},
+        "quarantined_assertion_ids": {"$ref": "#/$defs/identifierList"},
+        "validated_assertion_count": {"$ref": "#/$defs/nonNegativeInteger"}
+      }
+    },
+    "harnessRun": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["run_id", "task_id", "task_revision", "claim_id", "claim_lease_epoch", "provider", "status", "parent_run_id", "checkpoint_id", "execution_packet_sha256", "skill_set_digest", "updated_at", "run_sha256"],
+      "properties": {
+        "run_id": {"$ref": "#/$defs/identifier"},
+        "task_id": {"$ref": "#/$defs/identifier"},
+        "task_revision": {"$ref": "#/$defs/nonNegativeInteger"},
+        "claim_id": {"$ref": "#/$defs/identifier"},
+        "claim_lease_epoch": {"$ref": "#/$defs/nonNegativeInteger"},
+        "provider": {"enum": ["codex", "claude", "deepseek", "pi", "other"]},
+        "status": {"enum": ["proposed", "running", "waiting", "verifying", "completed", "failed", "quarantined"]},
+        "parent_run_id": {"oneOf": [{"$ref": "#/$defs/identifier"}, {"type": "null"}]},
+        "checkpoint_id": {"$ref": "#/$defs/sha256"},
+        "execution_packet_sha256": {"$ref": "#/$defs/sha256"},
+        "skill_set_digest": {"$ref": "#/$defs/sha256"},
+        "updated_at": {"$ref": "#/$defs/timestamp"},
+        "run_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "harnessHealth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "run_count", "runs", "failed_run_count", "quarantined_run_count", "terminal_run_count", "event_count", "fan_out_count", "fan_in_count", "handoff_event_count", "effect_event_count", "effect_health_status"],
+      "properties": {
+        "status": {"$ref": "#/$defs/healthStatus"},
+        "run_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "runs": {"type": "array", "maxItems": 10000, "items": {"$ref": "#/$defs/harnessRun"}},
+        "failed_run_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "quarantined_run_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "terminal_run_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "event_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "fan_out_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "fan_in_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "handoff_event_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "effect_event_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "effect_health_status": {"const": "unavailable-v1-revision-semantics"}
+      }
+    },
+    "recovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["recovery_id", "operation_id", "task_id", "task_revision", "checkpoint_sha256", "durable_state_sha256", "phase", "status", "failure_kind", "first_action_match", "acknowledged_input_replays", "reserved_effect_count", "effect_high_watermark", "bytes_read", "receipt_sha256", "observed_at"],
+      "properties": {
+        "recovery_id": {"$ref": "#/$defs/identifier"},
+        "operation_id": {"$ref": "#/$defs/identifier"},
+        "task_id": {"$ref": "#/$defs/identifier"},
+        "task_revision": {"$ref": "#/$defs/nonNegativeInteger"},
+        "checkpoint_sha256": {"$ref": "#/$defs/sha256"},
+        "durable_state_sha256": {"$ref": "#/$defs/sha256"},
+        "phase": {"enum": ["prepared", "intent-committed", "effect-in-flight", "effect-settled", "response-committed", "terminal"]},
+        "status": {"enum": ["passed", "failed"]},
+        "failure_kind": {"enum": ["none", "first-action-mismatch", "read-budget", "input-replay", "effect-replay", "state-binding", "recovery-contract"]},
+        "first_action_match": {"type": ["boolean", "null"]},
+        "acknowledged_input_replays": {"$ref": "#/$defs/nullableNonNegativeInteger"},
+        "reserved_effect_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "effect_high_watermark": {"$ref": "#/$defs/nonNegativeInteger"},
+        "bytes_read": {"$ref": "#/$defs/nullableNonNegativeInteger"},
+        "receipt_sha256": {"$ref": "#/$defs/nullableSha256"},
+        "observed_at": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "replayHealth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "recovery_count", "recoveries", "passed_recovery_count", "failed_recovery_count", "first_action_mismatch_count", "acknowledged_input_replay_count"],
+      "properties": {
+        "status": {"$ref": "#/$defs/healthStatus"},
+        "recovery_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "recoveries": {"type": "array", "maxItems": 10000, "items": {"$ref": "#/$defs/recovery"}},
+        "passed_recovery_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "failed_recovery_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "first_action_mismatch_count": {"$ref": "#/$defs/nonNegativeInteger"},
+        "acknowledged_input_replay_count": {"$ref": "#/$defs/nonNegativeInteger"}
+      }
+    },
+    "drilldown": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["drilldown_id", "kind", "object_id", "status", "source_ref", "source_sha256", "artifact_refs", "related_ids"],
+      "properties": {
+        "drilldown_id": {"$ref": "#/$defs/identifier"},
+        "kind": {"enum": ["context-event", "reference-watch", "harness-run", "recovery"]},
+        "object_id": {"$ref": "#/$defs/identifier"},
+        "status": {"$ref": "#/$defs/nonEmptyString"},
+        "source_ref": {"type": "string", "maxLength": 1024, "pattern": "^context-health://[A-Za-z0-9._:/-]+$"},
+        "source_sha256": {"$ref": "#/$defs/sha256"},
+        "artifact_refs": {"$ref": "#/$defs/artifactRefList"},
+        "related_ids": {"$ref": "#/$defs/identifierList"}
+      }
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state_write_authority", "completion_authority", "approval_authority", "provider_authority", "external_effect_authority"],
+      "properties": {
+        "state_write_authority": {"const": false},
+        "completion_authority": {"const": false},
+        "approval_authority": {"const": false},
+        "provider_authority": {"const": 0},
+        "external_effect_authority": {"const": 0}
+      }
+    },
+    "signature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["algorithm", "key_id", "value"],
+      "properties": {
+        "algorithm": {"const": "hmac-sha256"},
+        "key_id": {"$ref": "#/$defs/identifier"},
+        "value": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

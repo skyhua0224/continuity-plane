@@ -23,14 +23,20 @@ _IMPLEMENTATION_RELATIVE_PATH = Path("context_control_plane/skill_compatibility.
 _RUNNER_RELATIVE_PATH = Path("tools/run_skill_compatibility_probe.py")
 _SCHEMA_RELATIVE_PATH = Path("schemas/m4-06/skill-compatibility-probe.schema.json")
 _LOCK_SCHEMA_RELATIVE_PATH = Path("schemas/m4-06/skill-compatibility-lock.schema.json")
-_DECISION_SCHEMA_RELATIVE_PATH = Path("schemas/m4-06/skill-compatibility-decision.schema.json")
-_MIGRATION_SCHEMA_RELATIVE_PATH = Path("schemas/m4-06/skill-compatibility-migration.schema.json")
+_DECISION_SCHEMA_RELATIVE_PATH = Path(
+    "schemas/m4-06/skill-compatibility-decision.schema.json"
+)
+_MIGRATION_SCHEMA_RELATIVE_PATH = Path(
+    "schemas/m4-06/skill-compatibility-migration.schema.json"
+)
 _MANIFEST_FIXTURE_RELATIVE_PATH = Path(
     "experiments/skills/m4-01-skill-manifest-set-v1alpha1.json"
 )
 _COMPILER_RELATIVE_PATH = Path("context_control_plane/compiled_skill_packet.py")
 _MANIFEST_VALIDATOR_RELATIVE_PATH = Path("context_control_plane/skill_manifest_set.py")
-_PROVIDER_ADAPTER_RELATIVE_PATH = Path("context_control_plane/provider_skill_adapter.py")
+_PROVIDER_ADAPTER_RELATIVE_PATH = Path(
+    "context_control_plane/provider_skill_adapter.py"
+)
 _COMPATIBILITY_TEST_RELATIVE_PATH = Path("tests/test_m4_06_skill_compatibility.py")
 _PROBE_TEST_RELATIVE_PATH = Path("tests/test_m4_06_skill_compatibility_probe.py")
 _REGISTRY_SCHEMA_IDS = (
@@ -62,6 +68,11 @@ class _RecordingAdapter:
         self.adapter_surface_contract = (
             "context.adapter-surface/codex-app-server-skill-input/v1alpha1"
         )
+        self.compatibility_binding = {
+            "provider_contract_ref": "provider://codex/v1",
+            "provider_id": self.provider_id,
+            "adapter_surface_contract": self.adapter_surface_contract,
+        }
 
     def compose(self, *_args: Any, **_kwargs: Any) -> dict[str, bool]:
         self.calls += 1
@@ -96,8 +107,9 @@ def _percentile(values: list[float], percentile: float) -> float:
 
 def build_probe_case(root: Path) -> dict[str, Any]:
     fixture = json.loads(
-        (root / "experiments/skills/m4-01-skill-manifest-set-v1alpha1.json")
-        .read_text(encoding="utf-8")
+        (root / "experiments/skills/m4-01-skill-manifest-set-v1alpha1.json").read_text(
+            encoding="utf-8"
+        )
     )
     template = fixture["manifests"][0]
     manifests = []
@@ -185,9 +197,7 @@ def _scenario(
         change_kind = "provider-contract"
         provider_refs = ["provider://claude/v1", f"provider://codex/v{index - 30}"]
         for manifest in manifest_set["manifests"][:2]:
-            manifest["compatibility"]["provider_contract_refs"] = list(
-                provider_refs
-            )
+            manifest["compatibility"]["provider_contract_refs"] = list(provider_refs)
         packet = compiled_skill_packet.compile_skill_packet(
             manifest_set,
             selected_skill_ids=["core.bootstrap", "project.active"],
@@ -211,7 +221,9 @@ def _probe_evidence_verifier(
 
 def _scenario_result(
     case: dict[str, Any], index: int, *, measure_latency: bool
-) -> tuple[dict[str, Any], float | None, tuple[str, dict[str, Any], dict[str, Any], list[str]]]:
+) -> tuple[
+    dict[str, Any], float | None, tuple[str, dict[str, Any], dict[str, Any], list[str]]
+]:
     change_kind, manifest_set, packet, provider_refs = _scenario(case, index)
     started = time.perf_counter_ns() if measure_latency else None
     decision = skill_compatibility.assess_skill_compatibility(
@@ -343,7 +355,9 @@ def _migration_result(
 
 
 def _registry_entries(root: Path) -> dict[str, dict[str, Any]]:
-    registry = yaml.safe_load((root / "schemas/registry.yaml").read_text(encoding="utf-8"))
+    registry = yaml.safe_load(
+        (root / "schemas/registry.yaml").read_text(encoding="utf-8")
+    )
     entries = {
         item["schema_id"]: item
         for item in registry["schemas"]
@@ -365,7 +379,9 @@ def _provenance(root: Path) -> dict[str, str]:
         "decision_schema_sha256": _sha256(root / _DECISION_SCHEMA_RELATIVE_PATH),
         "migration_schema_sha256": _sha256(root / _MIGRATION_SCHEMA_RELATIVE_PATH),
         "manifest_fixture_sha256": _sha256(root / _MANIFEST_FIXTURE_RELATIVE_PATH),
-        "compiled_packet_implementation_sha256": _sha256(root / _COMPILER_RELATIVE_PATH),
+        "compiled_packet_implementation_sha256": _sha256(
+            root / _COMPILER_RELATIVE_PATH
+        ),
         "manifest_validator_implementation_sha256": _sha256(
             root / _MANIFEST_VALIDATOR_RELATIVE_PATH
         ),
@@ -399,9 +415,7 @@ def run_skill_compatibility_probe(
     if samples != 40:
         raise ValueError("M4-06 acceptance requires exactly 40 samples")
     case = build_probe_case(root)
-    results, latencies, exemplar_by_kind = _matrix_results(
-        case, measure_latency=True
-    )
+    results, latencies, exemplar_by_kind = _matrix_results(case, measure_latency=True)
 
     migration_results = [
         _migration_result(
@@ -414,10 +428,15 @@ def run_skill_compatibility_probe(
         for change_kind, values in sorted(exemplar_by_kind.items())
     ]
     compatible_samples = sum(item["classification"] == "compatible" for item in results)
-    breaking_samples = sum(item["classification"] == "migration_required" for item in results)
+    breaking_samples = sum(
+        item["classification"] == "migration_required" for item in results
+    )
     unauthorized_deliveries = sum(
         item["classification"] == "migration_required"
-        and (item["delivery_allowed_without_migration"] or item["provider_compose_calls"] > 0)
+        and (
+            item["delivery_allowed_without_migration"]
+            or item["provider_compose_calls"] > 0
+        )
         for item in results
     )
     measurement = {
@@ -425,8 +444,15 @@ def run_skill_compatibility_probe(
         "compatible_samples": compatible_samples,
         "breaking_samples": breaking_samples,
         "classification_counts": {
-            classification: sum(item["classification"] == classification for item in results)
-            for classification in ("unchanged", "compatible", "migration_required", "rejected")
+            classification: sum(
+                item["classification"] == classification for item in results
+            )
+            for classification in (
+                "unchanged",
+                "compatible",
+                "migration_required",
+                "rejected",
+            )
         },
         "unauthorized_deliveries": unauthorized_deliveries,
         "blocked_provider_compose_calls": sum(
@@ -464,13 +490,19 @@ def run_skill_compatibility_probe(
     }
     acceptance = {
         "forty_sample_gate_passed": samples == 40,
-        "classification_gate_passed": compatible_samples == 8 and breaking_samples == 32,
+        "classification_gate_passed": compatible_samples == 8
+        and breaking_samples == 32,
         "unauthorized_delivery_gate_passed": unauthorized_deliveries == 0,
         "pre_provider_gate_passed": measurement["blocked_provider_compose_calls"] == 0,
-        "migration_evidence_gate_passed": measurement["evidence_missing_migrations_allowed"] == 0 and measurement["valid_migrations_allowed"] == 4,
+        "migration_evidence_gate_passed": measurement[
+            "evidence_missing_migrations_allowed"
+        ]
+        == 0
+        and measurement["valid_migrations_allowed"] == 4,
         "migration_replay_gate_passed": measurement["migration_replay_mismatches"] == 0,
         "rollback_gate_passed": measurement["rollback_mismatches"] == 0,
-        "task_binding_gate_passed": measurement["wrong_binding_migrations_allowed"] == 0,
+        "task_binding_gate_passed": measurement["wrong_binding_migrations_allowed"]
+        == 0,
         "assessment_p95_gate_passed": measurement["assessment_p95_ms"] < 10.0,
         "zero_external_services_gate_passed": True,
     }
@@ -489,8 +521,11 @@ def run_skill_compatibility_probe(
             "fixture": "m4-06-active-task-skill-change-matrix",
             "samples": samples,
             "change_kinds": [
-                "unselected-metadata", "selected-version", "selected-content",
-                "selected-rules", "provider-contract",
+                "unselected-metadata",
+                "selected-version",
+                "selected-content",
+                "selected-rules",
+                "provider-contract",
             ],
             "samples_per_change_kind": 8,
         },
@@ -519,8 +554,16 @@ def validate_skill_compatibility_probe_receipt(
     receipt: dict[str, Any], *, root: Path
 ) -> None:
     expected_fields = {
-        "schema_version", "observed_at", "provenance", "environment", "workload",
-        "measurement", "acceptance", "authority_boundary", "limitations", "generation",
+        "schema_version",
+        "observed_at",
+        "provenance",
+        "environment",
+        "workload",
+        "measurement",
+        "acceptance",
+        "authority_boundary",
+        "limitations",
+        "generation",
     }
     if not isinstance(receipt, dict) or set(receipt) != expected_fields:
         raise ValueError("probe receipt fields are invalid")
@@ -578,8 +621,11 @@ def validate_skill_compatibility_probe_receipt(
         "fixture": "m4-06-active-task-skill-change-matrix",
         "samples": 40,
         "change_kinds": [
-            "unselected-metadata", "selected-version", "selected-content",
-            "selected-rules", "provider-contract",
+            "unselected-metadata",
+            "selected-version",
+            "selected-content",
+            "selected-rules",
+            "provider-contract",
         ],
         "samples_per_change_kind": 8,
     }:
@@ -675,9 +721,7 @@ def validate_skill_compatibility_probe_receipt(
     if len(migrations) != 4 or len({item["change_kind"] for item in migrations}) != 4:
         raise ValueError("probe migration results are invalid")
     case = build_probe_case(root)
-    expected_results, _, exemplar_by_kind = _matrix_results(
-        case, measure_latency=False
-    )
+    expected_results, _, exemplar_by_kind = _matrix_results(case, measure_latency=False)
     expected_migrations = [
         _migration_result(
             case,
@@ -693,8 +737,15 @@ def validate_skill_compatibility_probe_receipt(
     if migrations != expected_migrations:
         raise ValueError("probe migration replay is invalid")
     counts = {
-        classification: sum(item["classification"] == classification for item in results)
-        for classification in ("unchanged", "compatible", "migration_required", "rejected")
+        classification: sum(
+            item["classification"] == classification for item in results
+        )
+        for classification in (
+            "unchanged",
+            "compatible",
+            "migration_required",
+            "rejected",
+        )
     }
     derived = {
         "samples": len(results),
@@ -703,16 +754,35 @@ def validate_skill_compatibility_probe_receipt(
         "classification_counts": counts,
         "unauthorized_deliveries": sum(
             item["classification"] == "migration_required"
-            and (item["delivery_allowed_without_migration"] or item["provider_compose_calls"] > 0)
+            and (
+                item["delivery_allowed_without_migration"]
+                or item["provider_compose_calls"] > 0
+            )
             for item in results
         ),
-        "blocked_provider_compose_calls": sum(item["provider_compose_calls"] for item in results if item["classification"] == "migration_required"),
-        "compatible_provider_compose_calls": sum(item["provider_compose_calls"] for item in results if item["classification"] == "compatible"),
-        "evidence_missing_migrations_allowed": sum(item["missing_evidence_allowed"] for item in migrations),
-        "valid_migrations_allowed": sum(item["migration_allowed"] for item in migrations),
-        "migration_replay_mismatches": sum(not item["replay_match"] for item in migrations),
+        "blocked_provider_compose_calls": sum(
+            item["provider_compose_calls"]
+            for item in results
+            if item["classification"] == "migration_required"
+        ),
+        "compatible_provider_compose_calls": sum(
+            item["provider_compose_calls"]
+            for item in results
+            if item["classification"] == "compatible"
+        ),
+        "evidence_missing_migrations_allowed": sum(
+            item["missing_evidence_allowed"] for item in migrations
+        ),
+        "valid_migrations_allowed": sum(
+            item["migration_allowed"] for item in migrations
+        ),
+        "migration_replay_mismatches": sum(
+            not item["replay_match"] for item in migrations
+        ),
         "rollback_mismatches": sum(not item["rollback_match"] for item in migrations),
-        "wrong_binding_migrations_allowed": sum(item["wrong_binding_allowed"] for item in migrations),
+        "wrong_binding_migrations_allowed": sum(
+            item["wrong_binding_allowed"] for item in migrations
+        ),
     }
     for field, expected in derived.items():
         if measurement.get(field) != expected:
@@ -730,21 +800,31 @@ def validate_skill_compatibility_probe_receipt(
         )
     ):
         raise ValueError("probe latency summary is invalid")
-    if measurement["assessment_p50_ms"] != _percentile(latencies, 0.50) or measurement["assessment_p95_ms"] != _percentile(latencies, 0.95) or measurement["assessment_max_ms"] != round(max(latencies), 4):
+    if (
+        measurement["assessment_p50_ms"] != _percentile(latencies, 0.50)
+        or measurement["assessment_p95_ms"] != _percentile(latencies, 0.95)
+        or measurement["assessment_max_ms"] != round(max(latencies), 4)
+    ):
         raise ValueError("probe latency summary is invalid")
     if measurement["assessment_p95_limit_ms"] != 10.0:
         raise ValueError("probe latency limit is invalid")
     expected_acceptance = {
         "forty_sample_gate_passed": derived["samples"] == 40,
-        "classification_gate_passed": derived["compatible_samples"] == 8 and derived["breaking_samples"] == 32,
+        "classification_gate_passed": derived["compatible_samples"] == 8
+        and derived["breaking_samples"] == 32,
         "unauthorized_delivery_gate_passed": derived["unauthorized_deliveries"] == 0,
         "pre_provider_gate_passed": derived["blocked_provider_compose_calls"] == 0,
-        "migration_evidence_gate_passed": derived["evidence_missing_migrations_allowed"] == 0 and derived["valid_migrations_allowed"] == 4,
+        "migration_evidence_gate_passed": derived["evidence_missing_migrations_allowed"]
+        == 0
+        and derived["valid_migrations_allowed"] == 4,
         "migration_replay_gate_passed": derived["migration_replay_mismatches"] == 0,
         "rollback_gate_passed": derived["rollback_mismatches"] == 0,
         "task_binding_gate_passed": derived["wrong_binding_migrations_allowed"] == 0,
         "assessment_p95_gate_passed": measurement["assessment_p95_ms"] < 10.0,
-        "zero_external_services_gate_passed": receipt["environment"]["external_services"] == 0,
+        "zero_external_services_gate_passed": receipt["environment"][
+            "external_services"
+        ]
+        == 0,
     }
     acceptance = receipt["acceptance"]
     if (

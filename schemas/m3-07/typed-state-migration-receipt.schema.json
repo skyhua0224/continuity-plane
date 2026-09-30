@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schema/context.typed-state-migration-receipt/v1alpha1",
+  "title": "Context Control Plane typed state migration receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "migration_id",
+    "project_id",
+    "from_schema_version",
+    "to_schema_version",
+    "source_revision",
+    "source_event_head_sha256",
+    "source_snapshot_sha256",
+    "target_snapshot_sha256",
+    "algorithm_id",
+    "algorithm_sha256",
+    "registry_digest",
+    "authorization_ref",
+    "status",
+    "migrated_at"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.typed-state-migration-receipt/v1alpha1"},
+    "migration_id": {"$ref": "#/$defs/nonEmptyString"},
+    "project_id": {"$ref": "#/$defs/nonEmptyString"},
+    "from_schema_version": {"const": "context.typed-state/v3alpha1"},
+    "to_schema_version": {"const": "context.typed-state/v4alpha1"},
+    "source_revision": {"type": "integer", "minimum": 0},
+    "source_event_head_sha256": {"$ref": "#/$defs/nullableSha256"},
+    "source_snapshot_sha256": {"$ref": "#/$defs/sha256"},
+    "target_snapshot_sha256": {"$ref": "#/$defs/sha256"},
+    "algorithm_id": {"const": "context.idea-review.v3-to-v4/v1"},
+    "algorithm_sha256": {"$ref": "#/$defs/sha256"},
+    "registry_digest": {"$ref": "#/$defs/sha256"},
+    "authorization_ref": {"$ref": "#/$defs/nonEmptyString"},
+    "status": {"const": "committed"},
+    "migrated_at": {"type": "string", "format": "date-time"}
+  },
+  "$defs": {
+    "nonEmptyString": {"type": "string", "minLength": 1, "pattern": ".*\\S.*"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nullableSha256": {
+      "anyOf": [
+        {"$ref": "#/$defs/sha256"},
+        {"type": "null"}
+      ]
+    }
+  }
+}

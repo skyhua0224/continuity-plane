@@ -1,0 +1,39 @@
+{
+  "schema_version": "context.postcompact-canary-benchmark/v1alpha1",
+  "generated_at": "2026-08-15T00:30:00Z",
+  "samples": 1000,
+  "successful_samples": 1000,
+  "replay_mismatch": 0,
+  "critical_field_mismatch": 0,
+  "authority_violations": 0,
+  "fault_samples": 8000,
+  "fault_rejections": 8000,
+  "faults": {
+    "active_work": 0,
+    "constraint": 0,
+    "decision": 0,
+    "deepseek_checkpoint": 0,
+    "delta_binding": 0,
+    "effect_watermark": 0,
+    "pi_cut_point": 0,
+    "pi_split_turn": 0
+  },
+  "decision_recovery_millionths": 1000000,
+  "constraint_recovery_millionths": 1000000,
+  "work_recovery_millionths": 1000000,
+  "p50_ms": 1.06194,
+  "p95_ms": 1.125964,
+  "max_ms": 1.980451,
+  "external_services": 0,
+  "provenance": {
+    "implementation_sha256": "3556ac267a15d9355ee6ad62a3922b1d7f9fc3aa2e4e1d8d3dfc3bea72c50fe4",
+    "benchmark_sha256": "7145d4e33c834868ab3ac6146408b183c6b193e4de2463404914f9e4495d3ada",
+    "runner_sha256": "076cfda1d785f1e91ab0e482851aadd98fe7ef0b5f21a16446640f17fe3b83bd",
+    "canary_schema_sha256": "891df799886cfcffd65c2ed2dd60620ae1b6786daef3b0e79affd1bea4549483",
+    "benchmark_schema_sha256": "b2f95afb8136e1ba12b3f988629ba0f774a93f5bf8e0b33f4a295280761bb927",
+    "test_sha256": "a02f5e143471990618ab940a7554f398994159655fe4e6800bb298b2f5f5b3f2",
+    "benchmark_test_sha256": "0fe8b3ba888ce9c6f36a6705be22f24b3065eade45c49c812fcb1fe57d20ccfa",
+    "canary_registry_entry_sha256": "f07141deb0b2b31e98caadb7f2e1f0bbeb06584a317881d971f8333af1ae36df",
+    "benchmark_registry_entry_sha256": "cef0945e2c18eb297c78c45c9c10938666231249dd5034e00b223f6b93f6a849"
+  }
+}

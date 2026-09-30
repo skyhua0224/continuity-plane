@@ -1,0 +1,33 @@
+{
+  "baseline": {
+    "input_tokens_median": 177088.0,
+    "output_tokens_median": 2459.0,
+    "status_read_calls": 0,
+    "tool_output_bytes_median": 234320.0
+  },
+  "candidate": {
+    "input_tokens_median": 172915.0,
+    "output_tokens_median": 2122.0,
+    "status_read_calls": 0,
+    "tool_output_bytes_median": 240449.0
+  },
+  "completion_authority": false,
+  "gate_failures": [
+    "input-token-reduction"
+  ],
+  "improvements": {
+    "input_median_percent": 2.356456,
+    "output_median_percent": 13.704758,
+    "tool_output_median_percent": -2.615654
+  },
+  "observations_sha256": "4ff63e4497c4a390e0621ad71650e3a9afa89450dfe96d63c477431adf55c013",
+  "observed_at": "2026-08-30T19:43:48+08:00",
+  "raw_transcript_admission": false,
+  "receipt_sha256": "ab229c249dbe15b8d8a89de32571c06a0761d7ca15bddf1018c5283423431a7a",
+  "report_id": "projectcompute-ultralight-ab",
+  "sample_count_per_arm": 3,
+  "schema_version": "context.codex-exec-comparison/v1alpha1",
+  "state_write_authority": false,
+  "verdict": "failed",
+  "veto_failures": []
+}

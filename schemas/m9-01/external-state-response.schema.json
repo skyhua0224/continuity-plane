@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m9-01/external-state-response.schema.json",
+  "title": "M9-01 external State projection response",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "request_id", "tool", "ok", "result", "error"],
+  "properties": {
+    "schema_version": {"const": "context.external-state-response/v1alpha1"},
+    "request_id": {
+      "oneOf": [
+        {"type": "string", "minLength": 1, "maxLength": 200},
+        {"type": "null"}
+      ]
+    },
+    "tool": {"const": "context.external-state.read"},
+    "ok": {"type": "boolean"},
+    "result": {
+      "oneOf": [
+        {"$ref": "external-state-projection.schema.json"},
+        {"type": "null"}
+      ]
+    },
+    "error": {
+      "oneOf": [
+        {"$ref": "#/$defs/error"},
+        {"type": "null"}
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"ok": {"const": true}}, "required": ["ok"]},
+      "then": {
+        "properties": {
+          "result": {"$ref": "external-state-projection.schema.json"},
+          "error": {"type": "null"}
+        }
+      },
+      "else": {
+        "properties": {
+          "result": {"type": "null"},
+          "error": {"$ref": "#/$defs/error"}
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "error": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message"],
+      "properties": {
+        "code": {
+          "enum": ["invalid_request", "not_found", "permission_denied", "source_integrity_error", "source_unavailable", "stale_view", "unsupported"]
+        },
+        "message": {"type": "string", "minLength": 1, "maxLength": 4096}
+      }
+    }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "name": "continuity-plane-state",
+  "version": "0.1.0-alpha.15",
+  "description": "Optional advanced State MCP tools for Continuity Plane",
+  "author": {
+    "name": "SkyHua"
+  },
+  "homepage": "https://github.com/skyhua0224/continuity-plane",
+  "repository": "https://github.com/skyhua0224/continuity-plane",
+  "license": "Apache-2.0",
+  "keywords": [
+    "context",
+    "state",
+    "mcp",
+    "checkpoint",
+    "collaboration"
+  ],
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Continuity Plane State",
+    "shortDescription": "\u53ef\u9009 State MCP \u5de5\u5177 / Optional advanced State MCP tools.",
+    "longDescription": "\u4e3a\u663e\u5f0f\u9700\u8981 State \u64cd\u4f5c\u7684\u9879\u76ee\u63d0\u4f9b resume\u3001checkpoint\u3001claim \u548c\u539f\u5b50 Work transition \u5de5\u5177\u3002 Adds resume, checkpoint, claim, and atomic Work transition tools for projects that explicitly need them.",
+    "developerName": "SkyHua",
+    "category": "Productivity",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "websiteURL": "https://github.com/skyhua0224/continuity-plane",
+    "defaultPrompt": [
+      "\u68c0\u67e5\u5f53\u524d\u9879\u76ee\u7684 State MCP \u72b6\u6001\u3002",
+      "Inspect this project's State MCP status."
+    ]
+  }
+}

@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schemas/m8-03/workflow-rollover-receipt.schema.json",
+  "title": "Context Control Plane Workflow Rollover Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "workflow_id",
+    "chain_id",
+    "from_run_id",
+    "to_run_id",
+    "from_generation",
+    "to_generation",
+    "continued_from_event_sha256",
+    "checkpoint_sha256",
+    "continuation_sha256",
+    "authority",
+    "carried_patch_ids",
+    "input_ack_count",
+    "input_ack_sha256",
+    "effect_settlement_count",
+    "effect_settlement_sha256",
+    "safe_point",
+    "lost_inputs",
+    "duplicate_effects",
+    "state_write_authority",
+    "effect_dispatch_authority",
+    "provider_native_authority",
+    "rolled_over_at",
+    "receipt_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.workflow-rollover-receipt/v1alpha1"},
+    "workflow_id": {"$ref": "#/$defs/id"},
+    "chain_id": {"$ref": "#/$defs/id"},
+    "from_run_id": {"$ref": "#/$defs/id"},
+    "to_run_id": {"$ref": "#/$defs/id"},
+    "from_generation": {"type": "integer", "minimum": 1},
+    "to_generation": {"type": "integer", "minimum": 2},
+    "continued_from_event_sha256": {"$ref": "#/$defs/sha256"},
+    "checkpoint_sha256": {"$ref": "#/$defs/sha256"},
+    "continuation_sha256": {"$ref": "#/$defs/sha256"},
+    "authority": {"$ref": "#/$defs/authority"},
+    "carried_patch_ids": {"$ref": "#/$defs/idSet"},
+    "input_ack_count": {"type": "integer", "minimum": 0},
+    "input_ack_sha256": {"$ref": "#/$defs/sha256"},
+    "effect_settlement_count": {"type": "integer", "minimum": 0},
+    "effect_settlement_sha256": {"$ref": "#/$defs/sha256"},
+    "safe_point": {"const": true},
+    "lost_inputs": {"const": 0},
+    "duplicate_effects": {"const": 0},
+    "state_write_authority": {"const": false},
+    "effect_dispatch_authority": {"const": false},
+    "provider_native_authority": {"const": false},
+    "rolled_over_at": {
+      "type": "string",
+      "format": "date-time",
+      "maxLength": 64,
+      "pattern": "(?:Z|[+-][0-9]{2}:[0-9]{2})$"
+    },
+    "receipt_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "idSet": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/id"}
+    },
+    "authority": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["project_revision", "event_head"],
+      "properties": {
+        "project_revision": {"type": "integer", "minimum": 0},
+        "event_head": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sequence_no", "event_sha256"],
+          "properties": {
+            "sequence_no": {"type": "integer", "minimum": 0},
+            "event_sha256": {"$ref": "#/$defs/sha256"}
+          }
+        }
+      }
+    }
+  }
+}

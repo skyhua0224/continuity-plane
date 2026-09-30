@@ -1,0 +1,188 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schemas/m8-03/workflow-orchestration-benchmark.schema.json",
+  "title": "Context Control Plane Workflow Orchestration Benchmark",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "benchmark_id",
+    "generated_at",
+    "samples",
+    "generations_per_chain",
+    "successful_chains",
+    "run_count",
+    "rollover_count",
+    "history_event_count",
+    "command_count",
+    "fault_families",
+    "fault_attempts",
+    "fault_rejections",
+    "metrics",
+    "latency_ms",
+    "provider_invocations",
+    "external_services",
+    "shared_authority_claim",
+    "temporal_sdk_reference",
+    "provenance",
+    "thresholds",
+    "verdict",
+    "receipt_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.workflow-orchestration-benchmark/v1alpha1"},
+    "benchmark_id": {"$ref": "#/$defs/id"},
+    "generated_at": {"$ref": "#/$defs/timestamp"},
+    "samples": {"type": "integer", "minimum": 1, "maximum": 10000},
+    "generations_per_chain": {"const": 3},
+    "successful_chains": {"type": "integer", "minimum": 1},
+    "run_count": {"type": "integer", "minimum": 3},
+    "rollover_count": {"type": "integer", "minimum": 2},
+    "history_event_count": {"type": "integer", "minimum": 1},
+    "command_count": {"type": "integer", "minimum": 1},
+    "fault_families": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "prefixItems": [
+        {"const": "event-hash-tamper"},
+        {"const": "chain-link-tamper"},
+        {"const": "unsupported-history-version"},
+        {"const": "unknown-patch-marker"},
+        {"const": "unsettled-effect-rollover"},
+        {"const": "unacknowledged-input-rollover"},
+        {"const": "continuation-payload-tamper"}
+      ],
+      "items": false
+    },
+    "fault_attempts": {"type": "integer", "minimum": 7},
+    "fault_rejections": {"type": "integer", "minimum": 7},
+    "metrics": {"$ref": "#/$defs/metrics"},
+    "latency_ms": {"$ref": "#/$defs/latency"},
+    "provider_invocations": {"const": 0},
+    "external_services": {"const": 0},
+    "shared_authority_claim": {"const": false},
+    "temporal_sdk_reference": {"$ref": "#/$defs/temporalReference"},
+    "provenance": {"$ref": "#/$defs/provenance"},
+    "thresholds": {"$ref": "#/$defs/thresholds"},
+    "verdict": {"$ref": "#/$defs/verdict"},
+    "receipt_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "maxLength": 64,
+      "pattern": "(?:Z|[+-][0-9]{2}:[0-9]{2})$"
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "replay_mismatches",
+        "lost_inputs",
+        "duplicate_effects",
+        "authority_violations",
+        "chain_link_failures",
+        "nondeterminism_failures"
+      ],
+      "properties": {
+        "replay_mismatches": {"const": 0},
+        "lost_inputs": {"const": 0},
+        "duplicate_effects": {"const": 0},
+        "authority_violations": {"const": 0},
+        "chain_link_failures": {"const": 0},
+        "nondeterminism_failures": {"const": 0}
+      }
+    },
+    "latency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["p50", "p95", "max"],
+      "properties": {
+        "p50": {"type": "number", "exclusiveMinimum": 0},
+        "p95": {"type": "number", "exclusiveMinimum": 0},
+        "max": {"type": "number", "exclusiveMinimum": 0}
+      }
+    },
+    "temporalReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "release",
+        "source_revision",
+        "source_tree",
+        "source_listing_sha256",
+        "runtime_tested",
+        "worker_replayer"
+      ],
+      "properties": {
+        "release": {"const": "1.31.0"},
+        "source_revision": {"const": "84b519e0ff407b049da88ac7d1711f110494ff4d"},
+        "source_tree": {"const": "6ca7d581e9e0bea3f19a0e1bf5f3a5ef9fec6d21"},
+        "source_listing_sha256": {
+          "const": "44fcd507cce70c1fd4210edcb554c9b0275b849bfe8ac9867aa0af7975f16435"
+        },
+        "runtime_tested": {"const": false},
+        "worker_replayer": {"const": "unavailable"}
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "durable_workflow_sha256",
+        "orchestration_sha256",
+        "temporal_adapter_sha256",
+        "benchmark_sha256",
+        "registry_sha256"
+      ],
+      "properties": {
+        "durable_workflow_sha256": {"$ref": "#/$defs/sha256"},
+        "orchestration_sha256": {"$ref": "#/$defs/sha256"},
+        "temporal_adapter_sha256": {"$ref": "#/$defs/sha256"},
+        "benchmark_sha256": {"$ref": "#/$defs/sha256"},
+        "registry_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "thresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "successful_chain_rate_min",
+        "fault_rejection_rate_min",
+        "zero_loss_required",
+        "latency_p95_ms_max"
+      ],
+      "properties": {
+        "successful_chain_rate_min": {"const": 1.0},
+        "fault_rejection_rate_min": {"const": 1.0},
+        "zero_loss_required": {"const": true},
+        "latency_p95_ms_max": {"const": 50.0}
+      }
+    },
+    "verdict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "decision",
+        "successful_chain_rate",
+        "fault_rejection_rate",
+        "latency_p95_within_threshold",
+        "failed_gates"
+      ],
+      "properties": {
+        "decision": {"const": "pass"},
+        "successful_chain_rate": {"const": 1.0},
+        "fault_rejection_rate": {"const": 1.0},
+        "latency_p95_within_threshold": {"const": true},
+        "failed_gates": {"type": "array", "maxItems": 0}
+      }
+    }
+  }
+}

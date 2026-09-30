@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schema/context.task-route-decision/v1alpha1",
+  "title": "Context Control Plane sticky route decision",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "request_id", "request_sha256", "project_id", "project_revision", "input_ref", "input_sha256", "input_kind", "classifier_provenance_ref", "route", "reason_code", "active_work_id_before", "active_work_id_after", "active_work_revision_before", "active_work_revision_after", "target_work_id", "target_work_revision", "authorization_candidate_ref", "authorization_verified", "checkpoint_required_before_activation", "route_proposal_required", "review_required", "write_protection_required", "evidence_refs", "state_write_authority"],
+  "properties": {
+    "schema_version": {"const": "context.task-route-decision/v1alpha1"},
+    "request_id": {"$ref": "#/$defs/nonEmptyString"},
+    "request_sha256": {"$ref": "#/$defs/sha256"},
+    "project_id": {"$ref": "#/$defs/nonEmptyString"},
+    "project_revision": {"type": "integer", "minimum": 0},
+    "input_ref": {"$ref": "#/$defs/nonEmptyString"},
+    "input_sha256": {"$ref": "#/$defs/sha256"},
+    "input_kind": {"enum": ["continue", "status_query", "discussion_request", "context_addition", "idea", "correction", "child_work", "interrupt", "switch"]},
+    "classifier_provenance_ref": {"$ref": "#/$defs/nonEmptyString"},
+    "route": {"enum": ["continue", "capture-candidate-and-continue", "propose-correction", "propose-child", "propose-switch"]},
+    "reason_code": {"$ref": "#/$defs/nonEmptyString"},
+    "active_work_id_before": {"$ref": "#/$defs/nonEmptyString"},
+    "active_work_id_after": {"$ref": "#/$defs/nonEmptyString"},
+    "active_work_revision_before": {"type": "integer", "minimum": 0},
+    "active_work_revision_after": {"type": "integer", "minimum": 0},
+    "target_work_id": {"$ref": "#/$defs/nullableString"},
+    "target_work_revision": {"type": ["integer", "null"], "minimum": 0},
+    "authorization_candidate_ref": {"$ref": "#/$defs/nullableString"},
+    "authorization_verified": {"const": false},
+    "checkpoint_required_before_activation": {"type": "boolean"},
+    "route_proposal_required": {"type": "boolean"},
+    "review_required": {"type": "boolean"},
+    "write_protection_required": {"type": "boolean"},
+    "evidence_refs": {"type": "array", "items": {"$ref": "#/$defs/nonEmptyString"}, "uniqueItems": true},
+    "state_write_authority": {"const": false}
+  },
+  "allOf": [
+    {
+      "anyOf": [
+        {"properties": {"target_work_id": {"type": "null"}, "target_work_revision": {"type": "null"}}},
+        {"properties": {"target_work_id": {"type": "string"}, "target_work_revision": {"type": "integer"}}}
+      ]
+    },
+    {
+      "if": {"properties": {"route": {"const": "continue"}}},
+      "then": {
+        "properties": {
+          "input_kind": {"enum": ["continue", "status_query", "discussion_request", "context_addition", "interrupt", "switch"]},
+          "checkpoint_required_before_activation": {"const": false},
+          "route_proposal_required": {"const": false},
+          "review_required": {"const": false},
+          "write_protection_required": {"const": false}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"route": {"const": "capture-candidate-and-continue"}}},
+      "then": {
+        "properties": {
+          "input_kind": {"const": "idea"},
+          "target_work_id": {"type": "null"},
+          "target_work_revision": {"type": "null"},
+          "authorization_candidate_ref": {"type": "null"},
+          "checkpoint_required_before_activation": {"const": false},
+          "route_proposal_required": {"const": false},
+          "review_required": {"const": false},
+          "write_protection_required": {"const": false}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"route": {"const": "propose-correction"}}},
+      "then": {
+        "properties": {
+          "input_kind": {"const": "correction"},
+          "target_work_id": {"type": "null"},
+          "target_work_revision": {"type": "null"},
+          "authorization_candidate_ref": {"type": "null"},
+          "checkpoint_required_before_activation": {"const": false},
+          "route_proposal_required": {"const": true},
+          "review_required": {"const": true},
+          "write_protection_required": {"const": true}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"route": {"const": "propose-child"}}},
+      "then": {
+        "properties": {
+          "input_kind": {"const": "child_work"},
+          "target_work_id": {"type": "null"},
+          "target_work_revision": {"type": "null"},
+          "authorization_candidate_ref": {"type": "null"},
+          "checkpoint_required_before_activation": {"const": false},
+          "route_proposal_required": {"const": true},
+          "review_required": {"const": true},
+          "write_protection_required": {"const": false}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"route": {"const": "propose-switch"}}},
+      "then": {
+        "properties": {
+          "input_kind": {"enum": ["interrupt", "switch"]},
+          "target_work_id": {"type": "string"},
+          "target_work_revision": {"type": "integer"},
+          "authorization_candidate_ref": {"type": "string"},
+          "checkpoint_required_before_activation": {"const": true},
+          "route_proposal_required": {"const": true},
+          "review_required": {"const": true},
+          "write_protection_required": {"const": false}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"input_kind": {"not": {"enum": ["interrupt", "switch"]}}}},
+      "then": {
+        "properties": {
+          "target_work_id": {"type": "null"},
+          "target_work_revision": {"type": "null"},
+          "authorization_candidate_ref": {"type": "null"}
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "nonEmptyString": {"type": "string", "minLength": 1, "pattern": ".*\\S.*"},
+    "nullableString": {"type": ["string", "null"], "minLength": 1, "pattern": ".*\\S.*"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

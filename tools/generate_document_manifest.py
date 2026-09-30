@@ -4,8 +4,10 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import hashlib
 import re
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -16,7 +18,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 if str(REPOSITORY_ROOT) not in sys.path:
     sys.path.insert(0, str(REPOSITORY_ROOT))
 
-from context_control_plane.document_lifecycle import (
+from context_control_plane.document_lifecycle import (  # noqa: E402
     _expected_category,
     _managed_markdown_paths,
     build_document_control_manifest,
@@ -147,6 +149,190 @@ def build_initial_config(
     }
 
 
+def _git_output(root: Path, *arguments: str) -> bytes:
+    return subprocess.run(
+        ["git", *arguments],
+        cwd=root,
+        check=True,
+        capture_output=True,
+    ).stdout
+
+
+def _matching_prior_provenance(
+    root: Path,
+    *,
+    head_commit: str,
+    document_id: str,
+    path: str,
+    document_revision: int,
+    content_sha256: str,
+) -> dict[str, str]:
+    """Find a commit where the declared manifest revision matches its document."""
+    commits = _git_output(
+        root,
+        "rev-list",
+        head_commit,
+        "--",
+        "profiles/document-control-manifest.yaml",
+        path,
+    ).decode().splitlines()
+    for commit in commits:
+        try:
+            manifest_bytes = _git_output(
+                root,
+                "show",
+                f"{commit}:profiles/document-control-manifest.yaml",
+            )
+            prior_manifest = yaml.safe_load(manifest_bytes.decode("utf-8"))
+            document_bytes = _git_output(root, "show", f"{commit}:{path}")
+        except (subprocess.CalledProcessError, UnicodeError, ValueError):
+            continue
+        entries = (
+            prior_manifest.get("documents")
+            if isinstance(prior_manifest, dict)
+            else None
+        )
+        entry = next(
+            (
+                item
+                for item in entries or []
+                if isinstance(item, dict)
+                and item.get("document_id") == document_id
+                and item.get("path") == path
+                and item.get("document_revision") == document_revision
+                and item.get("content_sha256") == content_sha256
+            ),
+            None,
+        )
+        if entry is None or hashlib.sha256(document_bytes).hexdigest() != content_sha256:
+            continue
+        return {
+            "git_commit": commit,
+            "manifest_sha256": hashlib.sha256(manifest_bytes).hexdigest(),
+            "content_sha256": content_sha256,
+        }
+    raise ValueError(
+        "no committed document/manifest pair matches prior revision: "
+        f"{document_id}@{document_revision}"
+    )
+
+
+def sync_document_control_config(
+    root: Path,
+    config: dict[str, Any],
+    *,
+    generated_at: str,
+    governance_revision: int,
+) -> dict[str, Any]:
+    """Discover documents and advance changed entries from the committed manifest."""
+    seed = build_initial_config(
+        root,
+        generated_at=generated_at,
+        governance_revision=governance_revision,
+    )
+    if not isinstance(config, dict) or not isinstance(config.get("documents"), list):
+        raise ValueError("document control config is invalid")
+    configured_by_path = {
+        entry["path"]: entry
+        for entry in config["documents"]
+        if isinstance(entry, dict) and isinstance(entry.get("path"), str)
+    }
+    seed_by_path = {entry["path"]: entry for entry in seed["documents"]}
+    removed = set(configured_by_path) - set(seed_by_path)
+    generated_output_paths = {
+        path
+        for path in removed
+        if any(
+            part in {"build", "dist"} or part.endswith(".egg-info")
+            for part in Path(path).parts
+        )
+    }
+    for path in generated_output_paths:
+        configured_by_path.pop(path, None)
+    removed -= generated_output_paths
+    if removed:
+        raise ValueError(
+            "managed documents require an explicit removal record: "
+            + ", ".join(sorted(removed))
+        )
+
+    commit = _git_output(root, "rev-parse", "HEAD").decode().strip()
+    manifest_bytes = _git_output(
+        root, "show", "HEAD:profiles/document-control-manifest.yaml"
+    )
+    prior_manifest = yaml.safe_load(manifest_bytes.decode("utf-8"))
+    prior_by_id = {
+        entry["document_id"]: entry
+        for entry in prior_manifest["documents"]
+        if isinstance(entry, dict) and isinstance(entry.get("document_id"), str)
+    }
+    release_paths = {
+        "README.md",
+        "USAGE.md",
+        "CHANGELOG.md",
+        "CONTRIBUTING.md",
+        "SECURITY.md",
+    }
+
+    documents: list[dict[str, Any]] = []
+    for path, initial in sorted(seed_by_path.items()):
+        entry = copy.deepcopy(configured_by_path.get(path, initial))
+        entry["document_id"] = initial["document_id"]
+        entry["path"] = path
+        entry["category"] = initial["category"]
+        entry["authority"] = initial["authority"]
+        entry.setdefault("evidence_refs", initial["evidence_refs"])
+        content_sha256 = hashlib.sha256((root / path).read_bytes()).hexdigest()
+        change = entry.setdefault("change", initial["change"])
+        change["change_type"] = _change_type(entry["category"])
+        change["authority_ref"] = _authority_ref(
+            entry["category"], governance_revision, content_sha256
+        )
+        affected_tasks = set(change.get("affected_tasks", []))
+        if path in release_paths or path.startswith("public/"):
+            affected_tasks.add("M10-08")
+        change["affected_tasks"] = sorted(affected_tasks or {"M0-10"})
+
+        prior = prior_by_id.get(entry["document_id"])
+        changed = prior is not None and (
+            prior.get("path") != path or prior.get("content_sha256") != content_sha256
+        )
+        if prior is None:
+            entry["document_revision"] = 1
+            change["supersedes"] = None
+            change.pop("supersedes_provenance", None)
+        elif changed:
+            prior_revision = prior["document_revision"]
+            entry["document_revision"] = prior_revision + 1
+            change["supersedes"] = (
+                f"context.document://{entry['document_id']}/revision/{prior_revision}"
+            )
+            change["supersedes_provenance"] = _matching_prior_provenance(
+                root,
+                head_commit=commit,
+                document_id=entry["document_id"],
+                path=path,
+                document_revision=prior_revision,
+                content_sha256=prior["content_sha256"],
+            )
+
+        if entry["category"] in {"report", "projection"}:
+            binding = entry.setdefault(
+                "projection_binding", initial["projection_binding"]
+            )
+            binding["source_state_revision"] = governance_revision
+        else:
+            entry.pop("projection_binding", None)
+        documents.append(entry)
+
+    return {
+        "schema_version": "context.document-control-config/v1alpha1",
+        "generated_at": generated_at,
+        "governance_revision": governance_revision,
+        "documents": documents,
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="generate document lifecycle artifacts"
@@ -159,27 +345,42 @@ def main() -> int:
         "--output", type=Path, default=Path("profiles/document-control-manifest.yaml")
     )
     parser.add_argument("--initialize", action="store_true")
+    parser.add_argument("--sync", action="store_true")
     parser.add_argument("--generated-at", default="2026-08-12T00:00:00Z")
     parser.add_argument("--governance-revision", type=int, default=39)
     args = parser.parse_args()
     root = args.root.resolve()
     config_path = root / args.config
     output_path = root / args.output
+    write_config = False
+    if args.initialize and args.sync:
+        parser.error("--initialize and --sync are mutually exclusive")
     if args.initialize:
         config = build_initial_config(
             root,
             generated_at=args.generated_at,
             governance_revision=args.governance_revision,
         )
+        write_config = True
+    elif args.sync:
+        current = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+        config = sync_document_control_config(
+            root,
+            current,
+            generated_at=args.generated_at,
+            governance_revision=args.governance_revision,
+        )
+        write_config = True
+    else:
+        config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
+    manifest = build_document_control_manifest(root, config)
+    validate_document_control_manifest(root, manifest)
+    if write_config:
         config_path.parent.mkdir(parents=True, exist_ok=True)
         config_path.write_text(
             yaml.safe_dump(config, allow_unicode=True, sort_keys=False),
             encoding="utf-8",
         )
-    else:
-        config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
-    manifest = build_document_control_manifest(root, config)
-    validate_document_control_manifest(root, manifest)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(
         yaml.safe_dump(manifest, allow_unicode=True, sort_keys=False),

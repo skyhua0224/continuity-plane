@@ -1,0 +1,239 @@
+{
+  "authority": {
+    "completion_authority": false,
+    "external_effect_authority": 0,
+    "provider_authority": 0,
+    "state_write_authority": false
+  },
+  "campaign_id": "campaign-m10-00",
+  "capability_profile": "local-embedded",
+  "created_at": "2026-08-18T02:35:00+08:00",
+  "evidence_matrix": [
+    {
+      "admission_status": "candidate",
+      "applicability": "applicable",
+      "evidence_class": "historical-live-manual",
+      "evidence_refs": [
+        {
+          "content_sha256": "637dc3ded3e39d64c4f77bca65b25aa89353a6952fbd8ac781f2c8840a7797d6",
+          "path": "docs/migrations/m5-05-context-accounting-acceptance-2026-08-15.md"
+        }
+      ],
+      "experiment_id": "E0",
+      "limitation": "pilot execution must produce a campaign-bound receipt",
+      "veto": false
+    },
+    {
+      "admission_status": "candidate",
+      "applicability": "applicable",
+      "evidence_class": "offline-admitted-replay",
+      "evidence_refs": [
+        {
+          "content_sha256": "e5aa86f4af2ea4b27436190d75646b05c7507b200c65f8c6ff5ffbc60172a224",
+          "path": "docs/migrations/m5-03-postcompact-canary-acceptance-2026-08-15.md"
+        }
+      ],
+      "experiment_id": "E1",
+      "limitation": "pilot execution must produce a campaign-bound receipt",
+      "veto": true
+    },
+    {
+      "admission_status": "candidate",
+      "applicability": "applicable",
+      "evidence_class": "local-runtime-contract",
+      "evidence_refs": [
+        {
+          "content_sha256": "acee82d8d9ff16b8b5019f446fa330d8bccd61abc6de90f61fd0538bcde9f3a8",
+          "path": "docs/migrations/m3-08-continuation-dispatch-acceptance-2026-08-14.md"
+        }
+      ],
+      "experiment_id": "E2",
+      "limitation": "pilot execution must produce a campaign-bound receipt",
+      "veto": true
+    },
+    {
+      "admission_status": "candidate",
+      "applicability": "applicable",
+      "evidence_class": "synthetic-contract",
+      "evidence_refs": [
+        {
+          "content_sha256": "7b357f4ae1c996ca4e982efbb019a68538e056ec1fb002bf46205dbb7e02d628",
+          "path": "docs/migrations/m4-04-layered-skill-loading-acceptance-2026-08-11.md"
+        }
+      ],
+      "experiment_id": "E3",
+      "limitation": "pilot execution must produce a campaign-bound receipt",
+      "veto": false
+    },
+    {
+      "admission_status": "candidate",
+      "applicability": "applicable",
+      "evidence_class": "local-runtime-contract",
+      "evidence_refs": [
+        {
+          "content_sha256": "39aa7eaf1298a4c96b11f5e6f5ae3ea07d43963924ed5b5d95aabe5312579254",
+          "path": "docs/migrations/m4-03-skill-drift-quarantine-acceptance-2026-08-11.md"
+        }
+      ],
+      "experiment_id": "E4",
+      "limitation": "pilot execution must produce a campaign-bound receipt",
+      "veto": true
+    },
+    {
+      "admission_status": "candidate",
+      "applicability": "applicable",
+      "evidence_class": "local-runtime-contract",
+      "evidence_refs": [
+        {
+          "content_sha256": "0d82146d6dd5c9f6fec67452c8f298fb8bcde2a84acdb09f1973d57cabf0b6a0",
+          "path": "docs/migrations/m6-retrieval-recall-acceptance-2026-08-15.md"
+        }
+      ],
+      "experiment_id": "E5",
+      "limitation": "pilot execution must produce a campaign-bound receipt",
+      "veto": false
+    },
+    {
+      "admission_status": "candidate",
+      "applicability": "applicable",
+      "evidence_class": "local-runtime-contract",
+      "evidence_refs": [
+        {
+          "content_sha256": "efe94fee0c926dcc34a09c10b843198c299a98952a75fe2d2e063d8aabda2fbf",
+          "path": "docs/migrations/m7-02-claim-evidence-gate-acceptance-2026-08-16.md"
+        }
+      ],
+      "experiment_id": "E6",
+      "limitation": "pilot execution must produce a campaign-bound receipt",
+      "veto": true
+    },
+    {
+      "admission_status": "candidate",
+      "applicability": "applicable",
+      "evidence_class": "synthetic-contract",
+      "evidence_refs": [
+        {
+          "content_sha256": "2decd8ae6e369a0e20fe5ef0f2f36cbb52bae43b0a45b3abe6c4bb54e6ed9681",
+          "path": "docs/migrations/m7-05-affected-test-selection-acceptance-2026-08-16.md"
+        }
+      ],
+      "experiment_id": "E7",
+      "limitation": "pilot execution must produce a campaign-bound receipt",
+      "veto": false
+    },
+    {
+      "admission_status": "candidate",
+      "applicability": "conditional",
+      "evidence_class": "local-runtime-contract",
+      "evidence_refs": [
+        {
+          "content_sha256": "8f2080ea399d8ac49b5cfbd45b45ddea3a42940ae58ea5735229145356ead01b",
+          "path": "docs/migrations/m8-02-shared-work-acceptance-2026-08-16.md"
+        }
+      ],
+      "experiment_id": "E8",
+      "limitation": "local profile does not prove shared-strong coordination",
+      "veto": true
+    },
+    {
+      "admission_status": "candidate",
+      "applicability": "applicable",
+      "evidence_class": "local-runtime-fault",
+      "evidence_refs": [
+        {
+          "content_sha256": "37aaff238687881ebbaefd8da01c4dd7be437b5e7d57755b32523beca34b1de8",
+          "path": "docs/migrations/m8-01-durable-operation-acceptance-2026-08-16.md"
+        }
+      ],
+      "experiment_id": "E9",
+      "limitation": "pilot execution must produce a campaign-bound receipt",
+      "veto": true
+    }
+  ],
+  "fault_injections": [
+    {
+      "expected_veto": true,
+      "fault_id": "fault/m10-00/compaction",
+      "fault_kind": "compaction",
+      "required": true
+    },
+    {
+      "expected_veto": false,
+      "fault_id": "fault/m10-00/idea",
+      "fault_kind": "idea",
+      "required": true
+    },
+    {
+      "expected_veto": true,
+      "fault_id": "fault/m10-00/interrupt",
+      "fault_kind": "interrupt",
+      "required": true
+    },
+    {
+      "expected_veto": true,
+      "fault_id": "fault/m10-00/worker-loss",
+      "fault_kind": "worker-loss",
+      "required": true
+    }
+  ],
+  "plan_id": "pilot-plan-m10-00",
+  "plan_sha256": "d4f856b0287d9cf170653ba7bf6b911e1c711c127d17cd6c6dd3d6d5440da087",
+  "project_id": "context-control-plane",
+  "repository_baseline": {
+    "base_commit": "4dc34b5ddd96071f96929ff85be490dceb4a0324",
+    "branch": "feat/m8-01-durable-operation",
+    "dirty": true,
+    "schema_registry_sha256": "edc3a081162c51aa6edb37a34400f99aa2e8735f67cc2c6bec629f582253e331",
+    "worktree_file_count": 869,
+    "worktree_sha256": "4bc2078c5f3d8756e7fd0af4e4f20339a4cabc3b48f9b2200a62eec60b1f065e"
+  },
+  "required_leaves": [
+    {
+      "completion_gate_id": "gate-e0-e9",
+      "dependency_ids": [],
+      "verifier_ref": "verifier-independent",
+      "work_id": "M10-00-evidence-matrix",
+      "worker_ref": "worker-analysis"
+    },
+    {
+      "completion_gate_id": "gate-fault-coverage",
+      "dependency_ids": [
+        "M10-00-evidence-matrix"
+      ],
+      "verifier_ref": "verifier-independent",
+      "work_id": "M10-00-fault-drill",
+      "worker_ref": "worker-execution"
+    },
+    {
+      "completion_gate_id": "gate-repository-verification",
+      "dependency_ids": [
+        "M10-00-fault-drill"
+      ],
+      "verifier_ref": "verifier-independent",
+      "work_id": "M10-00-release-verification",
+      "worker_ref": "worker-analysis"
+    }
+  ],
+  "schema_version": "context.self-dogfood-pilot-plan/v1alpha1",
+  "state_revision": 74,
+  "verifier": {
+    "independent_of_worker_refs": [
+      "worker-analysis",
+      "worker-execution"
+    ],
+    "role": "independent-verifier",
+    "verifier_ref": "verifier-independent"
+  },
+  "workers": [
+    {
+      "provider_contract_version": "provider-neutral/v1",
+      "role": "thinker",
+      "worker_ref": "worker-analysis"
+    },
+    {
+      "provider_contract_version": "provider-neutral/v1",
+      "role": "executor",
+      "worker_ref": "worker-execution"
+    }
+  ]
+}

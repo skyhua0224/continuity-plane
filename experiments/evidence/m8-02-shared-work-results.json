@@ -1,0 +1,101 @@
+{
+  "authority_backend": "in-memory-reference",
+  "benchmark_id": "benchmark-m8-02-211b2f58c6bc3588b8ba64b4",
+  "generated_at": "2026-08-21T15:00:00+08:00",
+  "latency_ms": {
+    "max": 3.16814,
+    "p50": 0.222967,
+    "p95": 0.559859
+  },
+  "metrics": {
+    "duplicate_claims": 0,
+    "duplicate_effects": 0,
+    "event_mismatches": 0,
+    "expected_orphan_reclaims": 1000,
+    "hash_mismatches": 0,
+    "old_worker_admissions": 0,
+    "orphan_reclaims": 1000,
+    "post_revoke_effects": 0,
+    "revision_mismatches": 0,
+    "silent_overwrites": 0
+  },
+  "provider_invocations": 0,
+  "receipt_sha256": "7866429c694fe6fefefc39f384da45f32cd2515a7044e01678057a83b06a0fa7",
+  "sample_count": 10000,
+  "samples_per_scenario": 1000,
+  "scenario_count": 10,
+  "scenarios": [
+    {
+      "attempted": 1000,
+      "passed": 1000,
+      "scenario": "same-work-double-claim"
+    },
+    {
+      "attempted": 1000,
+      "passed": 1000,
+      "scenario": "overlap-scope-double-claim"
+    },
+    {
+      "attempted": 1000,
+      "passed": 1000,
+      "scenario": "non-overlap-cas-loser-retry"
+    },
+    {
+      "attempted": 1000,
+      "passed": 1000,
+      "scenario": "heartbeat-stale-token"
+    },
+    {
+      "attempted": 1000,
+      "passed": 1000,
+      "scenario": "exact-expiry-reclaim"
+    },
+    {
+      "attempted": 1000,
+      "passed": 1000,
+      "scenario": "revoke-before-dispatch"
+    },
+    {
+      "attempted": 1000,
+      "passed": 1000,
+      "scenario": "dispatch-before-revoke"
+    },
+    {
+      "attempted": 1000,
+      "passed": 1000,
+      "scenario": "old-worker-after-reclaim"
+    },
+    {
+      "attempted": 1000,
+      "passed": 1000,
+      "scenario": "duplicate-terminal-active-work"
+    },
+    {
+      "attempted": 1000,
+      "passed": 1000,
+      "scenario": "exact-request-replay-changed-payload"
+    }
+  ],
+  "schema_version": "context.shared-work-benchmark/v1alpha1",
+  "shared_authority_claim": false,
+  "thresholds": {
+    "duplicate_claims_max": 0,
+    "duplicate_effects_max": 0,
+    "event_mismatches_max": 0,
+    "hash_mismatches_max": 0,
+    "latency_p95_ms_max": 50.0,
+    "old_worker_admissions_max": 0,
+    "orphan_reclaim_rate_min": 1.0,
+    "post_revoke_effects_max": 0,
+    "revision_mismatches_max": 0,
+    "scenario_pass_rate_min": 1.0,
+    "silent_overwrites_max": 0
+  },
+  "verdict": {
+    "decision": "pass",
+    "failed_gates": [],
+    "latency_p95_within_threshold": true,
+    "orphan_reclaim_rate": 1.0,
+    "scenario_pass_rate": 1.0
+  }
+}

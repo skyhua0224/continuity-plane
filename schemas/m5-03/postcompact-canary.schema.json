@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schemas/m5-03/postcompact-canary.schema.json",
+  "title": "Context Control Plane PostCompact Canary Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "canary_version", "canary_id", "provider_id", "project_id",
+    "project_revision", "expected_packet_sha256", "restored_packet_sha256", "delta_id",
+    "delta_sha256", "event_head", "active_work_id", "task_revision", "effect_high_watermark",
+    "decision_ids", "constraint_ids", "host_metadata_sha256", "authority_binding_sha256",
+    "checkpoint_sha256", "expected_packet_artifact_sha256", "status", "execution_gate",
+    "state_write_authority", "provider_native_authority", "observed_at", "canary_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.postcompact-canary/v1alpha1"},
+    "canary_version": {"const": "context.postcompact-canary-evaluator/v1alpha1"},
+    "canary_id": {"$ref": "#/$defs/id"},
+    "provider_id": {"enum": ["pi", "deepseek"]},
+    "project_id": {"$ref": "#/$defs/id"},
+    "project_revision": {"$ref": "#/$defs/nonNegativeInteger"},
+    "expected_packet_sha256": {"$ref": "#/$defs/sha256"},
+    "restored_packet_sha256": {"$ref": "#/$defs/sha256"},
+    "delta_id": {"$ref": "#/$defs/id"},
+    "delta_sha256": {"$ref": "#/$defs/sha256"},
+    "event_head": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/eventHead"}]},
+    "active_work_id": {"$ref": "#/$defs/id"},
+    "task_revision": {"$ref": "#/$defs/nonNegativeInteger"},
+    "effect_high_watermark": {"$ref": "#/$defs/nonNegativeInteger"},
+    "decision_ids": {"$ref": "#/$defs/idList"},
+    "constraint_ids": {"$ref": "#/$defs/idList"},
+    "host_metadata_sha256": {"$ref": "#/$defs/sha256"},
+    "authority_binding_sha256": {"$ref": "#/$defs/sha256"},
+    "checkpoint_sha256": {"$ref": "#/$defs/sha256"},
+    "expected_packet_artifact_sha256": {"$ref": "#/$defs/sha256"},
+    "status": {"const": "pass"},
+    "execution_gate": {"const": "allow"},
+    "state_write_authority": {"const": false},
+    "provider_native_authority": {"const": false},
+    "observed_at": {"type": "string", "format": "date-time"},
+    "canary_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]{0,255}$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nonNegativeInteger": {"type": "integer", "minimum": 0},
+    "idList": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/id"}
+    },
+    "eventHead": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sequence_no", "event_sha256"],
+      "properties": {
+        "sequence_no": {"type": "integer", "minimum": 1},
+        "event_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "acceptance": {
+    "all_runs_succeeded": true,
+    "dedupe_deterministic": true,
+    "occurrences_retained": true,
+    "packet_exclusion_complete": true,
+    "protected_writes_denied": true,
+    "terminal_ideas_not_revived": true,
+    "unverified_release_denied": true,
+    "zero_external_services": true
+  },
+  "environment": {
+    "external_services": 0,
+    "machine": "x86_64",
+    "platform": "Linux",
+    "python_implementation": "CPython",
+    "python_version": "3.14.6"
+  },
+  "measurement": {
+    "dedupe_convergence_rate_millionths": 1000000,
+    "events_per_run": 4,
+    "max_total_ms": 22.516613,
+    "occurrence_retention_rate_millionths": 1000000,
+    "p50_total_ms": 14.392753,
+    "p95_total_ms": 17.701304,
+    "packet_exclusion_rate_millionths": 1000000,
+    "samples": 1000,
+    "successful_runs": 1000,
+    "terminal_revival_count": 0,
+    "unauthorized_write_count": 0,
+    "unverified_release_count": 0
+  },
+  "observed_at": "2026-09-04T14:45:00+08:00",
+  "provenance": {
+    "benchmark_schema_sha256": "18e614f9f2093519a422476cf40187ddfbe3327b73418fe251fac17c1cd4d3a3",
+    "benchmark_sha256": "d8e86b4fa98c985af7f4e4f49c2b507f2ff3c4b414ac9200039ebfd7be33950e",
+    "effect_scope_gate_sha256": "c11f6e15511386aeae3ab1618b9725de92e903d30d144673c76df8633a599ac6",
+    "idea_capture_schema_sha256": "aa4533a0458172d520dc3acdae5f0da08f597e54fe6737a72308039a2a12c7b8",
+    "idea_event_schema_sha256": "f47ebc466c27af26e6c44407a105102337b3aa07ccc972178db56c869c0369d0",
+    "idea_review_schema_sha256": "798f863207a84d51c2961f27fe44628a9cbf07d00d3a14bada3c640ed3348788",
+    "implementation_sha256": "868e94f2173a589d6f778f248f71338147e0db359a393ae719acb48aec812817",
+    "protection_schema_sha256": "49a488b75a8566e06e73af78d635f1e07ea8eb708317049ad316de6aad4fbf0b",
+    "registry_sha256": "1358323103af1ba9329381094c66d5e2dda67b9d6d88584532529ec51807e153",
+    "release_schema_sha256": "cd93ca90c8d2030b630a30211b2c394c38f3530e8b9636c6e128c0135de44244",
+    "route_apply_sha256": "673c77d473706bf785febc9e1fac03d95090a707b9ac60f2726945e42190f1ed",
+    "runner_sha256": "15a03ec96d1ffdfe097014d726a62f51c8ea8ab65d48768fbe003853e95205d2",
+    "sqlite_state_store_sha256": "bc80a19b025170dce595489cb06c8f1872f7b1d156447a2615f8b13be5dc2fc7",
+    "state_events_sha256": "b99078df3a3ad1d74a54debf764980372f097db63bc8579c04fa6b6bde889483",
+    "state_mcp_sha256": "bcbcc14cb4d6eacec3e287476f728bc577fdb426ffe39611ca3bdaa97763b12b",
+    "typed_state_schema_sha256": "4b4917ed4c18e6298224cd92accde48e5af7d4c5ab98cd0cf9bf68c85e209f8a",
+    "typed_state_sha256": "9151f130c9cbe426e5c8e55fd1f2c42bad5d5c093254a67cfa5ee7e16b9447c4"
+  },
+  "schema_version": "context.idea-review-benchmark/v1alpha1"
+}

@@ -1,8 +1,8 @@
 # Project Dogfooding Observation Policy
 
-版本：1  
-日期：2026-08-09  
-状态：implemented baseline / automated telemetry planned
+版本：2  
+日期：2026-08-15  
+状态：implemented local-embedded emitter / provider telemetry planned
 
 ## 目标
 
@@ -50,7 +50,21 @@ M2/M8 上线前，脱敏观察保存在 `experiments/dogfood/`，当前 active �
 
 少于三个可比较观测只建立 baseline，状态为 `baseline-insufficient-samples`。缺少 provider token、latency 或 cache trace 时保留 null 和 limitation，禁止以字符估算替代 live 指标。
 
-## 当前基线
+## 自动化基线
+
+`context.dogfood-event/v1alpha1` 通过本地 append-only `context.*` trace
+记录 input routing、visible compaction、Skill selection、plan revision、
+multi-Agent dispatch/handoff 和 accepted delivery。覆盖收据使用显式分母，
+任何遗漏、晚 canary、首动作错配或已确认输入重播均产生 `regressed`。
+
+M5-07 固定 fixture 的 `1000` 次 replay 生成 `8000` 条事件，七类覆盖均为
+`1000000/1000000`，四类否决样本 `4000/4000` 被拒绝，replay mismatch、
+authority violation 和 external service 均为 `0`。该结果只验证本地 emitter、
+trace 和 gate。Provider context-window、token、cache 与不可见 compaction 指标
+保持 `unavailable`。验收证据位于
+[`m5-07-dogfood-emitter-acceptance-2026-08-15.md`](../migrations/m5-07-dogfood-emitter-acceptance-2026-08-15.md)。
+
+## 历史手工基线
 
 结构化样本位于 [`experiments/dogfood/observations-2026-08-09.yaml`](../../experiments/dogfood/observations-2026-08-09.yaml)。当前记录十次 checkpoint/摘要恢复、二十二次 input routing、三十一个 Skill body 装载、十七次用户授权的 MASTER 演进和十五次 repository verification。结构关键字段恢复为 100%，已观测 Continuation Cursor 字段累计恢复 14/16；第 7/8 次 compaction 均出现首个恢复动作不匹配和 1 个已确认事项重播，第 9/10 次分别精确续接 M2-03 CI 与 revision 21 治理红测，因此整体趋势仍为 `regressed`。stale decision、未授权 task switch、未授权 goal change、verification failure 和 scope violation 均为 0；Skill body 累计输入为 366,178 bytes，其中压缩恢复后的重复 body 装载为 200,891 bytes。数据库设计 Skill 的已装载 digest 与当前路径 digest 不一致，当前记录为 quarantined。十次 compaction 均缺少可比较的 provider context/token/latency 数据。第 4 次恢复检测到 `STATUS.md` 落后于已生成 fixture 和 benchmark 的仓库证据，该事件作为 M0-10 freshness validator 的真实反例，不计为恢复字段丢失。
 

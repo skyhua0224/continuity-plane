@@ -1,0 +1,23 @@
+schema_version: context.task-route-benchmark/v1alpha1
+task_id: M3-02
+route_contract: context.task-route-request/v1alpha1
+decision_contract: context.task-route-decision/v1alpha1
+state_write_authority: false
+sample_count: 1000
+cases:
+  continue: 200
+  status_query: 150
+  discussion_request: 150
+  context_addition: 100
+  idea: 150
+  correction: 100
+  child_work: 50
+  interrupt: 50
+  switch: 50
+acceptance:
+  active_leaf_preservation_rate: 1.0
+  unauthorized_switch_rate: 0.0
+  proposal_determinism_rate: 1.0
+  mutation_rate: 0.0
+  p50_route_latency_ms_max: 10.0
+  p95_route_latency_ms_max: 10.0

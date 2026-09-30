@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m5-07/dogfood-emitter-benchmark.schema.json",
+  "title": "Context Control Plane M5-07 benchmark",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "samples", "successful_samples", "emitted_events", "replay_mismatch", "coverage_millionths", "overall_coverage_millionths", "veto_detection_samples", "veto_detections", "veto_detections_by_kind", "authority_violations", "p50_ms", "p95_ms", "max_ms", "external_services", "fixture_sha256", "implementation_sha256", "trace_implementation_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.dogfood-emitter-benchmark/v1alpha1"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "samples": {"type": "integer", "minimum": 1},
+    "successful_samples": {"type": "integer", "minimum": 0},
+    "emitted_events": {"type": "integer", "minimum": 0},
+    "replay_mismatch": {"type": "integer", "minimum": 0},
+    "coverage_millionths": {"$ref": "dogfood-coverage.schema.json#/$defs/coverageMap"},
+    "overall_coverage_millionths": {"type": "integer", "minimum": 0, "maximum": 1000000},
+    "veto_detection_samples": {"type": "integer", "minimum": 0},
+    "veto_detections": {"type": "integer", "minimum": 0},
+    "veto_detections_by_kind": {"type": "object", "additionalProperties": false, "required": ["acknowledged-input-replay", "first-action-mismatch", "late-canary", "missing-handoff"], "properties": {
+      "acknowledged-input-replay": {"type": "integer", "minimum": 0},
+      "first-action-mismatch": {"type": "integer", "minimum": 0},
+      "late-canary": {"type": "integer", "minimum": 0},
+      "missing-handoff": {"type": "integer", "minimum": 0}
+    }},
+    "authority_violations": {"type": "integer", "minimum": 0},
+    "p50_ms": {"type": "number", "minimum": 0},
+    "p95_ms": {"type": "number", "minimum": 0},
+    "max_ms": {"type": "number", "minimum": 0},
+    "external_services": {"const": 0},
+    "fixture_sha256": {"$ref": "dogfood-coverage.schema.json#/$defs/sha256"},
+    "implementation_sha256": {"$ref": "dogfood-coverage.schema.json#/$defs/sha256"},
+    "trace_implementation_sha256": {"$ref": "dogfood-coverage.schema.json#/$defs/sha256"}
+  }
+}

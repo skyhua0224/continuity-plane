@@ -63,19 +63,10 @@ _MIGRATION_FIELDS = {
 
 _ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]*(?:/[a-z0-9][a-z0-9._-]*)*$")
 _OPERATION_RE = re.compile(r"^operation://[a-z0-9][a-z0-9._-]*$")
-_PROVIDER_CONTRACT_RE = re.compile(
-    r"^provider://[a-z0-9][a-z0-9._-]*/v[a-z0-9._-]+$"
+_PROVIDER_CONTRACT_RE = re.compile(r"^provider://[a-z0-9][a-z0-9._-]*/v[a-z0-9._-]+$")
+_ADAPTER_SURFACE_RE = re.compile(
+    r"^context\.adapter-surface/[a-z0-9][a-z0-9._/-]*/v[a-z0-9._-]+$"
 )
-_PROVIDER_CONTRACT_ADAPTER_BINDINGS = {
-    "provider://codex/v1": (
-        "codex",
-        "context.adapter-surface/codex-app-server-skill-input/v1alpha1",
-    ),
-    "provider://claude/v1": (
-        "claude",
-        "context.adapter-surface/claude-agent-sdk-filesystem-skill/v1alpha1",
-    ),
-}
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _ARTIFACT_RE = re.compile(r"^artifact://sha256/[0-9a-f]{64}$")
 _CLASSIFICATIONS = {"unchanged", "compatible", "migration_required", "rejected"}
@@ -244,17 +235,13 @@ def _selected_provider_contract_errors(
     selected_skill_ids: set[str],
     provider_contract_refs: list[str],
 ) -> list[str]:
-    by_id = {
-        manifest["skill_id"]: manifest for manifest in manifest_set["manifests"]
-    }
+    by_id = {manifest["skill_id"]: manifest for manifest in manifest_set["manifests"]}
     invalid: list[str] = []
     for skill_id in sorted(selected_skill_ids):
         manifest = by_id.get(skill_id)
         if manifest is None:
             continue
-        supported_contracts = set(
-            manifest["compatibility"]["provider_contract_refs"]
-        )
+        supported_contracts = set(manifest["compatibility"]["provider_contract_refs"])
         provider_applicability = {
             item["ref"]
             for item in manifest["applicability"]
@@ -300,11 +287,12 @@ def create_skill_compatibility_lock(
     _provider_contract_refs(provider_contract_refs)
     try:
         compiled_skill_packet.verify_compiled_skill_packet(packet, manifest_set)
-    except (compiled_skill_packet.CompiledSkillPacketError, skill_manifest_set.SkillManifestSetError) as exc:
+    except (
+        compiled_skill_packet.CompiledSkillPacketError,
+        skill_manifest_set.SkillManifestSetError,
+    ) as exc:
         raise SkillCompatibilityError(str(exc)) from exc
-    selected_skill_ids = {
-        selection["skill_id"] for selection in packet["selections"]
-    }
+    selected_skill_ids = {selection["skill_id"] for selection in packet["selections"]}
     if _selected_provider_contract_errors(
         manifest_set, selected_skill_ids, provider_contract_refs
     ):
@@ -359,30 +347,38 @@ def validate_skill_compatibility_decision(decision: dict[str, Any]) -> None:
     _sha256(decision["lock_sha256"], "decision.lock_sha256")
     if decision["candidate_lock_sha256"] is not None:
         _sha256(decision["candidate_lock_sha256"], "decision.candidate_lock_sha256")
-    _sha256(decision["candidate_manifest_set_sha256"], "decision.candidate_manifest_set_sha256")
+    _sha256(
+        decision["candidate_manifest_set_sha256"],
+        "decision.candidate_manifest_set_sha256",
+    )
     _sha256(decision["candidate_packet_sha256"], "decision.candidate_packet_sha256")
     _provider_contract_refs(decision["provider_contract_refs"])
     if decision["classification"] not in _CLASSIFICATIONS:
         raise SkillCompatibilityError("decision.classification is invalid")
     reasons = decision["reason_codes"]
-    if not isinstance(reasons, list) or any(
-        not isinstance(reason, str) or not _ID_RE.fullmatch(reason) for reason in reasons
-    ) or len(reasons) != len(set(reasons)):
+    if (
+        not isinstance(reasons, list)
+        or any(
+            not isinstance(reason, str) or not _ID_RE.fullmatch(reason)
+            for reason in reasons
+        )
+        or len(reasons) != len(set(reasons))
+    ):
         raise SkillCompatibilityError("decision.reason_codes are invalid")
     if not isinstance(decision["delivery_allowed_without_migration"], bool):
         raise SkillCompatibilityError("decision delivery gate is invalid")
     expected_allowed = decision["classification"] in {"unchanged", "compatible"}
     if decision["delivery_allowed_without_migration"] != expected_allowed:
-        raise SkillCompatibilityError("decision delivery gate contradicts classification")
+        raise SkillCompatibilityError(
+            "decision delivery gate contradicts classification"
+        )
     if decision["classification"] == "unchanged" and reasons:
         raise SkillCompatibilityError("unchanged decision cannot contain reasons")
-    if decision["classification"] == "compatible" and reasons != [
-        _COMPATIBLE_REASON
-    ]:
+    if decision["classification"] == "compatible" and reasons != [_COMPATIBLE_REASON]:
         raise SkillCompatibilityError("compatible decision reason is invalid")
-    if decision["classification"] == "migration_required" and not set(
-        reasons
-    ).issubset(_MIGRATION_REASON_CODES):
+    if decision["classification"] == "migration_required" and not set(reasons).issubset(
+        _MIGRATION_REASON_CODES
+    ):
         raise SkillCompatibilityError("migration decision reason is invalid")
     if decision["classification"] in {"migration_required", "rejected"} and not reasons:
         raise SkillCompatibilityError("blocked decision requires reasons")
@@ -393,7 +389,9 @@ def canonical_skill_compatibility_decision_bytes(decision: dict[str, Any]) -> by
     canonical = copy.deepcopy(decision)
     canonical["provider_contract_refs"] = sorted(canonical["provider_contract_refs"])
     canonical["reason_codes"] = sorted(canonical["reason_codes"])
-    return json.dumps(canonical, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return json.dumps(
+        canonical, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
 
 
 def assess_skill_compatibility(
@@ -409,7 +407,10 @@ def assess_skill_compatibility(
     try:
         skill_manifest_set.validate_skill_manifest_set(candidate_manifest_set)
         compiled_skill_packet.validate_compiled_skill_packet(candidate_packet)
-    except (skill_manifest_set.SkillManifestSetError, compiled_skill_packet.CompiledSkillPacketError) as exc:
+    except (
+        skill_manifest_set.SkillManifestSetError,
+        compiled_skill_packet.CompiledSkillPacketError,
+    ) as exc:
         raise SkillCompatibilityError(str(exc)) from exc
 
     manifest_digest = _manifest_set_digest(candidate_manifest_set)
@@ -421,7 +422,9 @@ def assess_skill_compatibility(
         )
     except KeyError:
         packet_skills = []
-    locked_skills = sorted(copy.deepcopy(lock["skills"]), key=lambda item: item["skill_id"])
+    locked_skills = sorted(
+        copy.deepcopy(lock["skills"]), key=lambda item: item["skill_id"]
+    )
     for skill in locked_skills:
         skill["rule_ids"] = sorted(skill["rule_ids"])
 
@@ -463,7 +466,9 @@ def assess_skill_compatibility(
         candidate_lock_sha256 = skill_compatibility_lock_digest(candidate_lock)
     except SkillCompatibilityError:
         if packet_digest != lock["packet_sha256"]:
-            raise SkillCompatibilityError("changed candidate packet is not bound to its manifest set")
+            raise SkillCompatibilityError(
+                "changed candidate packet is not bound to its manifest set"
+            )
 
     if reasons & _REJECTING_REASON_CODES:
         classification = "rejected"
@@ -486,7 +491,8 @@ def assess_skill_compatibility(
         "provider_contract_refs": sorted(provider_contract_refs),
         "classification": classification,
         "reason_codes": sorted(reasons),
-        "delivery_allowed_without_migration": classification in {"unchanged", "compatible"},
+        "delivery_allowed_without_migration": classification
+        in {"unchanged", "compatible"},
     }
     return json.loads(canonical_skill_compatibility_decision_bytes(decision))
 
@@ -496,7 +502,11 @@ def validate_skill_compatibility_migration(migration: dict[str, Any]) -> None:
     if migration["schema_version"] != MIGRATION_SCHEMA_VERSION:
         raise SkillCompatibilityError("migration.schema_version is unsupported")
     _identifier(migration["migration_id"], "migration.migration_id")
-    if not isinstance(migration["reason"], str) or not migration["reason"].strip() or len(migration["reason"]) > 1024:
+    if (
+        not isinstance(migration["reason"], str)
+        or not migration["reason"].strip()
+        or len(migration["reason"]) > 1024
+    ):
         raise SkillCompatibilityError("migration.reason is invalid")
     _identifier(migration["task_id"], "migration.task_id")
     _operation(migration["operation_id"], "migration.operation_id")
@@ -506,15 +516,20 @@ def validate_skill_compatibility_migration(migration: dict[str, Any]) -> None:
         _artifact_ref(migration[field], f"migration.{field}")
     validate_skill_compatibility_lock(migration["old_lock"])
     validate_skill_compatibility_lock(migration["new_lock"])
-    if migration["old_lock_sha256"] != skill_compatibility_lock_digest(migration["old_lock"]):
+    if migration["old_lock_sha256"] != skill_compatibility_lock_digest(
+        migration["old_lock"]
+    ):
         raise SkillCompatibilityError("migration old lock digest mismatch")
-    if migration["new_lock_sha256"] != skill_compatibility_lock_digest(migration["new_lock"]):
+    if migration["new_lock_sha256"] != skill_compatibility_lock_digest(
+        migration["new_lock"]
+    ):
         raise SkillCompatibilityError("migration new lock digest mismatch")
     if migration["old_lock_sha256"] == migration["new_lock_sha256"]:
         raise SkillCompatibilityError("migration must change the lock")
     for lock in (migration["old_lock"], migration["new_lock"]):
         if (lock["task_id"], lock["operation_id"]) != (
-            migration["task_id"], migration["operation_id"]
+            migration["task_id"],
+            migration["operation_id"],
         ):
             raise SkillCompatibilityError("migration task binding mismatch")
 
@@ -522,9 +537,15 @@ def validate_skill_compatibility_migration(migration: dict[str, Any]) -> None:
 def canonical_skill_compatibility_migration_bytes(migration: dict[str, Any]) -> bytes:
     validate_skill_compatibility_migration(migration)
     canonical = copy.deepcopy(migration)
-    canonical["old_lock"] = json.loads(canonical_skill_compatibility_lock_bytes(canonical["old_lock"]))
-    canonical["new_lock"] = json.loads(canonical_skill_compatibility_lock_bytes(canonical["new_lock"]))
-    return json.dumps(canonical, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    canonical["old_lock"] = json.loads(
+        canonical_skill_compatibility_lock_bytes(canonical["old_lock"])
+    )
+    canonical["new_lock"] = json.loads(
+        canonical_skill_compatibility_lock_bytes(canonical["new_lock"])
+    )
+    return json.dumps(
+        canonical, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
 
 
 def create_skill_compatibility_migration(
@@ -634,30 +655,36 @@ def compose_provider_skills(
         raise SkillCompatibilityError(
             "compatibility decision does not bind live Skill input"
         ) from exc
-    if (
-        canonical_skill_compatibility_decision_bytes(expected_decision)
-        != canonical_skill_compatibility_decision_bytes(compatibility_decision)
-    ):
+    if canonical_skill_compatibility_decision_bytes(
+        expected_decision
+    ) != canonical_skill_compatibility_decision_bytes(compatibility_decision):
         raise SkillCompatibilityError(
             "compatibility decision does not bind live Skill input"
         )
 
-    provider_id = getattr(adapter, "provider_id", None)
-    adapter_surface_contract = getattr(adapter, "adapter_surface_contract", None)
-    matching_bindings = [
-        (contract_ref, binding)
-        for contract_ref in provider_contract_refs
-        if (binding := _PROVIDER_CONTRACT_ADAPTER_BINDINGS.get(contract_ref))
-        is not None
-        and binding[0] == provider_id
-    ]
-    if len(matching_bindings) != 1:
+    binding = getattr(adapter, "compatibility_binding", None)
+    if not isinstance(binding, dict) or set(binding) != {
+        "provider_contract_ref",
+        "provider_id",
+        "adapter_surface_contract",
+    }:
         raise SkillCompatibilityError(
             "provider adapter identity does not bind compatibility contract"
         )
-    expected_contract_ref, (_, expected_surface) = matching_bindings[0]
+    expected_contract_ref = binding["provider_contract_ref"]
+    expected_provider_id = binding["provider_id"]
+    expected_surface = binding["adapter_surface_contract"]
     if (
-        adapter_surface_contract != expected_surface
+        not isinstance(expected_contract_ref, str)
+        or _PROVIDER_CONTRACT_RE.fullmatch(expected_contract_ref) is None
+        or expected_contract_ref not in provider_contract_refs
+        or not isinstance(expected_provider_id, str)
+        or expected_provider_id
+        != expected_contract_ref.removeprefix("provider://").rsplit("/", 1)[0]
+        or not isinstance(expected_surface, str)
+        or _ADAPTER_SURFACE_RE.fullmatch(expected_surface) is None
+        or getattr(adapter, "provider_id", None) != expected_provider_id
+        or getattr(adapter, "adapter_surface_contract", None) != expected_surface
         or expected_contract_ref not in provider_contract_refs
     ):
         raise SkillCompatibilityError(

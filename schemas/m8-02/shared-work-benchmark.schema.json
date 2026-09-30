@@ -1,0 +1,215 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schemas/m8-02/shared-work-benchmark.schema.json",
+  "title": "Context Control Plane Shared Work Benchmark Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "benchmark_id",
+    "generated_at",
+    "samples_per_scenario",
+    "scenario_count",
+    "sample_count",
+    "scenarios",
+    "metrics",
+    "latency_ms",
+    "thresholds",
+    "verdict",
+    "authority_backend",
+    "shared_authority_claim",
+    "provider_invocations",
+    "receipt_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.shared-work-benchmark/v1alpha1"},
+    "benchmark_id": {"type": "string", "pattern": "^benchmark-m8-02-[0-9a-f]{24}$"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "samples_per_scenario": {"type": "integer", "minimum": 1, "maximum": 1000},
+    "scenario_count": {"const": 10},
+    "sample_count": {"type": "integer", "minimum": 10, "maximum": 10000},
+    "scenarios": {
+      "type": "array",
+      "minItems": 10,
+      "maxItems": 10,
+      "prefixItems": [
+        {"$ref": "#/$defs/sameWorkScenario"},
+        {"$ref": "#/$defs/overlapScopeScenario"},
+        {"$ref": "#/$defs/nonOverlapCasScenario"},
+        {"$ref": "#/$defs/heartbeatScenario"},
+        {"$ref": "#/$defs/exactExpiryScenario"},
+        {"$ref": "#/$defs/revokeBeforeDispatchScenario"},
+        {"$ref": "#/$defs/dispatchBeforeRevokeScenario"},
+        {"$ref": "#/$defs/oldWorkerScenario"},
+        {"$ref": "#/$defs/duplicateWorkScenario"},
+        {"$ref": "#/$defs/requestReplayScenario"}
+      ],
+      "items": false
+    },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "silent_overwrites",
+        "duplicate_claims",
+        "duplicate_effects",
+        "post_revoke_effects",
+        "orphan_reclaims",
+        "expected_orphan_reclaims",
+        "old_worker_admissions",
+        "event_mismatches",
+        "revision_mismatches",
+        "hash_mismatches"
+      ],
+      "properties": {
+        "silent_overwrites": {"const": 0},
+        "duplicate_claims": {"const": 0},
+        "duplicate_effects": {"const": 0},
+        "post_revoke_effects": {"const": 0},
+        "orphan_reclaims": {"$ref": "#/$defs/nonNegativeInteger"},
+        "expected_orphan_reclaims": {"$ref": "#/$defs/nonNegativeInteger"},
+        "old_worker_admissions": {"const": 0},
+        "event_mismatches": {"const": 0},
+        "revision_mismatches": {"const": 0},
+        "hash_mismatches": {"const": 0}
+      }
+    },
+    "latency_ms": {"$ref": "#/$defs/latency"},
+    "thresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "silent_overwrites_max",
+        "duplicate_claims_max",
+        "duplicate_effects_max",
+        "post_revoke_effects_max",
+        "old_worker_admissions_max",
+        "event_mismatches_max",
+        "revision_mismatches_max",
+        "hash_mismatches_max",
+        "scenario_pass_rate_min",
+        "orphan_reclaim_rate_min",
+        "latency_p95_ms_max"
+      ],
+      "properties": {
+        "silent_overwrites_max": {"const": 0},
+        "duplicate_claims_max": {"const": 0},
+        "duplicate_effects_max": {"const": 0},
+        "post_revoke_effects_max": {"const": 0},
+        "old_worker_admissions_max": {"const": 0},
+        "event_mismatches_max": {"const": 0},
+        "revision_mismatches_max": {"const": 0},
+        "hash_mismatches_max": {"const": 0},
+        "scenario_pass_rate_min": {"const": 1.0},
+        "orphan_reclaim_rate_min": {"const": 1.0},
+        "latency_p95_ms_max": {"type": "number", "exclusiveMinimum": 0}
+      }
+    },
+    "verdict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "decision",
+        "scenario_pass_rate",
+        "orphan_reclaim_rate",
+        "latency_p95_within_threshold",
+        "failed_gates"
+      ],
+      "properties": {
+        "decision": {"const": "pass"},
+        "scenario_pass_rate": {"const": 1.0},
+        "orphan_reclaim_rate": {"const": 1.0},
+        "latency_p95_within_threshold": {"const": true},
+        "failed_gates": {"type": "array", "maxItems": 0}
+      }
+    },
+    "authority_backend": {"const": "in-memory-reference"},
+    "shared_authority_claim": {"const": false},
+    "provider_invocations": {"const": 0},
+    "receipt_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "nonNegativeInteger": {"type": "integer", "minimum": 0},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "latency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["p50", "p95", "max"],
+      "properties": {
+        "p50": {"type": "number", "exclusiveMinimum": 0},
+        "p95": {"type": "number", "exclusiveMinimum": 0},
+        "max": {"type": "number", "exclusiveMinimum": 0}
+      }
+    },
+    "scenarioBase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scenario", "attempted", "passed"],
+      "properties": {
+        "scenario": {"type": "string"},
+        "attempted": {"type": "integer", "minimum": 1, "maximum": 1000},
+        "passed": {"type": "integer", "minimum": 1, "maximum": 1000}
+      }
+    },
+    "sameWorkScenario": {
+      "allOf": [
+        {"$ref": "#/$defs/scenarioBase"},
+        {"properties": {"scenario": {"const": "same-work-double-claim"}}}
+      ]
+    },
+    "overlapScopeScenario": {
+      "allOf": [
+        {"$ref": "#/$defs/scenarioBase"},
+        {"properties": {"scenario": {"const": "overlap-scope-double-claim"}}}
+      ]
+    },
+    "nonOverlapCasScenario": {
+      "allOf": [
+        {"$ref": "#/$defs/scenarioBase"},
+        {"properties": {"scenario": {"const": "non-overlap-cas-loser-retry"}}}
+      ]
+    },
+    "heartbeatScenario": {
+      "allOf": [
+        {"$ref": "#/$defs/scenarioBase"},
+        {"properties": {"scenario": {"const": "heartbeat-stale-token"}}}
+      ]
+    },
+    "exactExpiryScenario": {
+      "allOf": [
+        {"$ref": "#/$defs/scenarioBase"},
+        {"properties": {"scenario": {"const": "exact-expiry-reclaim"}}}
+      ]
+    },
+    "revokeBeforeDispatchScenario": {
+      "allOf": [
+        {"$ref": "#/$defs/scenarioBase"},
+        {"properties": {"scenario": {"const": "revoke-before-dispatch"}}}
+      ]
+    },
+    "dispatchBeforeRevokeScenario": {
+      "allOf": [
+        {"$ref": "#/$defs/scenarioBase"},
+        {"properties": {"scenario": {"const": "dispatch-before-revoke"}}}
+      ]
+    },
+    "oldWorkerScenario": {
+      "allOf": [
+        {"$ref": "#/$defs/scenarioBase"},
+        {"properties": {"scenario": {"const": "old-worker-after-reclaim"}}}
+      ]
+    },
+    "duplicateWorkScenario": {
+      "allOf": [
+        {"$ref": "#/$defs/scenarioBase"},
+        {"properties": {"scenario": {"const": "duplicate-terminal-active-work"}}}
+      ]
+    },
+    "requestReplayScenario": {
+      "allOf": [
+        {"$ref": "#/$defs/scenarioBase"},
+        {"properties": {"scenario": {"const": "exact-request-replay-changed-payload"}}}
+      ]
+    }
+  }
+}

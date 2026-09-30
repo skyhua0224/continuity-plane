@@ -1,0 +1,32 @@
+{
+  "actual_admit_count": 167,
+  "actual_reject_count": 833,
+  "admitted_quality_nondegradation_count": 167,
+  "admitted_rework_reduction_count": 167,
+  "benchmark_id": "benchmark/m7-04/decision-branches",
+  "benchmark_sha256": "4aab64e525a1fec589718227bc2993116c82de3a170ecaaf30ea13fd8b506e2c",
+  "completion_authority": false,
+  "control_first_count": 486,
+  "expected_admit_count": 167,
+  "expected_reject_count": 833,
+  "external_calls": 0,
+  "false_admit_count": 0,
+  "false_reject_count": 0,
+  "fixture_sha256": "dc6499575ed05d3a7cc7f8c672a214e5600e4629f44fcd6fd9cb109be07a2192",
+  "implementation_sha256": "3c31b4f8cd97726927ee9cf246957128bb2bc0d47a34dad22a75b8388c910e53",
+  "outcomes_artifact_ref": "artifact://sha256/8e399c97b8887ddd327335faae8a6a8ab3416cce3f6c1a73325e94caf5f0b586",
+  "outcomes_sha256": "8e399c97b8887ddd327335faae8a6a8ab3416cce3f6c1a73325e94caf5f0b586",
+  "samples": 1000,
+  "scenario_counts": {
+    "build": 167,
+    "mutation": 167,
+    "rework": 166,
+    "test": 167,
+    "valid": 167,
+    "verifier": 166
+  },
+  "schema_version": "context.patch-ab-benchmark/v1alpha2",
+  "state_write_authority": false,
+  "successful_samples": 1000,
+  "treatment_first_count": 514
+}

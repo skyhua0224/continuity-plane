@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m6-01/retrieval-receipt.schema.json",
+  "title": "Context Retrieval Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "receipt_id", "plan_id", "plan_sha256", "query_sha256", "executed_at", "cache_status", "prior_receipt_ref", "step_results", "max_index_age_seconds", "evidence", "evidence_count", "totals", "state_write_authority", "memory_authority", "receipt_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.retrieval-receipt/v1alpha1"},
+    "receipt_id": {"$ref": "#/$defs/id"}, "plan_id": {"$ref": "#/$defs/id"},
+    "plan_sha256": {"$ref": "#/$defs/sha256"}, "query_sha256": {"$ref": "#/$defs/sha256"},
+    "executed_at": {"$ref": "#/$defs/timestamp"}, "cache_status": {"enum": ["miss", "hit"]},
+    "prior_receipt_ref": {"oneOf": [{"type": "null"}, {"type": "string", "pattern": "^receipt://sha256/[0-9a-f]{64}$"}]},
+    "step_results": {"type": "array", "maxItems": 5, "items": {"$ref": "#/$defs/result"}},
+    "max_index_age_seconds": {"type": "integer", "minimum": 1},
+    "evidence": {"type": "array", "minItems": 1, "maxItems": 256, "uniqueItems": true, "items": {"$ref": "#/$defs/evidence"}},
+    "evidence_count": {"type": "integer", "minimum": 1, "maximum": 256},
+    "totals": {"$ref": "#/$defs/totals"}, "state_write_authority": {"const": false}, "memory_authority": {"const": false},
+    "receipt_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "id": {"type": "string", "minLength": 1, "maxLength": 256, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "timestamp": {"type": "string", "format": "date-time"},
+    "result": {
+      "type": "object", "additionalProperties": false,
+      "required": ["tool", "queries", "scanned_bytes", "returned_bytes", "index_revision", "index_sha256", "index_age_seconds"],
+      "properties": {
+        "tool": {"enum": ["rg", "zoekt", "lsp", "scip", "rtfm"]}, "queries": {"type": "integer", "minimum": 1},
+        "scanned_bytes": {"type": "integer", "minimum": 0}, "returned_bytes": {"type": "integer", "minimum": 0},
+        "index_revision": {"type": ["string", "null"], "maxLength": 512}, "index_sha256": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/sha256"}]},
+        "index_age_seconds": {"type": "integer", "minimum": 0}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"tool": {"const": "rg"}}, "required": ["tool"]},
+          "then": {
+            "properties": {
+              "index_revision": {"type": "null"},
+              "index_sha256": {"type": "null"},
+              "index_age_seconds": {"const": 0}
+            }
+          },
+          "else": {
+            "properties": {
+              "index_revision": {"type": "string", "minLength": 1, "maxLength": 512},
+              "index_sha256": {"$ref": "#/$defs/sha256"}
+            }
+          }
+        }
+      ]
+    },
+    "evidence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["evidence_id", "source_kind", "source_ref", "revision", "sha256", "range", "retrieved_at", "valid_at"],
+      "properties": {
+        "evidence_id": {"$ref": "#/$defs/id"}, "source_kind": {"enum": ["current_code", "official_reference", "current_index"]},
+        "source_ref": {"type": "string", "minLength": 1, "maxLength": 2048}, "revision": {"type": "string", "minLength": 1, "maxLength": 512},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "range": {"type": "object", "additionalProperties": false, "required": ["offset_bytes", "length_bytes"], "properties": {"offset_bytes": {"type": "integer", "minimum": 0}, "length_bytes": {"type": "integer", "minimum": 1}}},
+        "retrieved_at": {"$ref": "#/$defs/timestamp"}, "valid_at": {"$ref": "#/$defs/timestamp"}
+      }
+    },
+    "totals": {"type": "object", "additionalProperties": false, "required": ["queries", "scanned_bytes", "returned_bytes"], "properties": {"queries": {"type": "integer", "minimum": 0}, "scanned_bytes": {"type": "integer", "minimum": 0}, "returned_bytes": {"type": "integer", "minimum": 0}}}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"cache_status": {"const": "hit"}}, "required": ["cache_status"]},
+      "then": {
+        "properties": {
+          "prior_receipt_ref": {"type": "string", "pattern": "^receipt://sha256/[0-9a-f]{64}$"},
+          "step_results": {"maxItems": 0},
+          "totals": {
+            "properties": {
+              "queries": {"const": 0},
+              "scanned_bytes": {"const": 0},
+              "returned_bytes": {"const": 0}
+            }
+          }
+        }
+      },
+      "else": {"properties": {"prior_receipt_ref": {"type": "null"}}}
+    }
+  ]
+}

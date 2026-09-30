@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.invalid/schemas/m6-01/retrieval-benchmark.schema.json",
+  "title": "Context Retrieval Benchmark",
+  "type": "object", "additionalProperties": false,
+  "required": ["schema_version", "generated_at", "samples", "successful_samples", "route_attempts", "route_accuracy", "precision", "recall", "freshness_pass_rate", "provenance_coverage", "precision_faults_rejected", "recall_faults_rejected", "freshness_faults_rejected", "baseline_duplicate_read_bytes", "bounded_unique_read_bytes", "duplicate_read_reduction_percent", "state_authority_violations", "external_services", "p50_ms", "p95_ms", "max_ms", "fixture_sha256", "implementation_sha256", "benchmark_sha256", "subject_sha256", "sample_outcomes", "outcomes_sha256", "receipt_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.retrieval-benchmark/v1alpha1"}, "generated_at": {"type": "string", "format": "date-time"},
+    "samples": {"type": "integer", "minimum": 1}, "successful_samples": {"type": "integer", "minimum": 0}, "route_attempts": {"type": "integer", "minimum": 1},
+    "route_accuracy": {"type": "number", "minimum": 0, "maximum": 1}, "precision": {"type": "number", "minimum": 0, "maximum": 1}, "recall": {"type": "number", "minimum": 0, "maximum": 1},
+    "freshness_pass_rate": {"type": "number", "minimum": 0, "maximum": 1}, "provenance_coverage": {"type": "number", "minimum": 0, "maximum": 1},
+    "precision_faults_rejected": {"type": "integer", "minimum": 0}, "recall_faults_rejected": {"type": "integer", "minimum": 0}, "freshness_faults_rejected": {"type": "integer", "minimum": 0},
+    "baseline_duplicate_read_bytes": {"type": "integer", "minimum": 1}, "bounded_unique_read_bytes": {"type": "integer", "minimum": 1}, "duplicate_read_reduction_percent": {"type": "number", "minimum": 0, "maximum": 100},
+    "state_authority_violations": {"const": 0}, "external_services": {"const": 0},
+    "p50_ms": {"type": "number", "minimum": 0}, "p95_ms": {"type": "number", "minimum": 0}, "max_ms": {"type": "number", "minimum": 0},
+    "fixture_sha256": {"$ref": "#/$defs/sha256"}, "implementation_sha256": {"$ref": "#/$defs/sha256"},
+    "benchmark_sha256": {"$ref": "#/$defs/sha256"}, "subject_sha256": {"$ref": "#/$defs/sha256"},
+    "sample_outcomes": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/sample_outcome"}},
+    "outcomes_sha256": {"$ref": "#/$defs/sha256"}, "receipt_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "sample_outcome": {
+      "type": "object", "additionalProperties": false,
+      "required": ["sample_index", "route_bundle_sha256", "route_attempts", "correct_routes", "relevant_returned", "total_returned", "expected_relevant", "fresh", "provenance", "evidence_count", "baseline_duplicate_read_bytes", "bounded_unique_read_bytes", "precision_faults_rejected", "recall_faults_rejected", "freshness_faults_rejected", "duration_ms"],
+      "properties": {
+        "sample_index": {"type": "integer", "minimum": 0}, "route_bundle_sha256": {"$ref": "#/$defs/sha256"},
+        "route_attempts": {"type": "integer", "minimum": 1}, "correct_routes": {"type": "integer", "minimum": 0},
+        "relevant_returned": {"type": "integer", "minimum": 0}, "total_returned": {"type": "integer", "minimum": 1}, "expected_relevant": {"type": "integer", "minimum": 1},
+        "fresh": {"type": "integer", "minimum": 0}, "provenance": {"type": "integer", "minimum": 0}, "evidence_count": {"type": "integer", "minimum": 1},
+        "baseline_duplicate_read_bytes": {"type": "integer", "minimum": 1}, "bounded_unique_read_bytes": {"type": "integer", "minimum": 0},
+        "precision_faults_rejected": {"type": "integer", "minimum": 0}, "recall_faults_rejected": {"type": "integer", "minimum": 0}, "freshness_faults_rejected": {"type": "integer", "minimum": 0},
+        "duration_ms": {"type": "number", "minimum": 0}
+      }
+    }
+  }
+}

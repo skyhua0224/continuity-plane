@@ -1,0 +1,60 @@
+{
+  "authority": {
+    "completion_authority": false,
+    "external_effect_authority": 0,
+    "provider_authority": 0,
+    "state_write_authority": false
+  },
+  "campaign_id": "campaign-m10-00",
+  "end_repository": {
+    "base_commit": "4dc34b5ddd96071f96929ff85be490dceb4a0324",
+    "branch": "feat/m8-01-durable-operation",
+    "dirty": true,
+    "schema_registry_sha256": "d5eb5b99daea38e88e760ee175927cc3efd32572f72d2533024817f6066bac53",
+    "worktree_file_count": 870,
+    "worktree_sha256": "37f0ec51e1b8070fd9da430347efc7f7a85dd63cc4da68f090c5e7770c83f78b"
+  },
+  "fault_receipt_sha256": "fc8321fb749571a0734cbe7eb713b251714c3840491408e64bf2973b2e32194d",
+  "full_suite": {
+    "command": [
+      "/home/skyhua/Projects/context-control-plane/.venv/bin/python",
+      "-m",
+      "unittest",
+      "discover",
+      "-s",
+      "tests",
+      "-p",
+      "test_*.py",
+      "-q"
+    ],
+    "command_sha256": "f94f21913a70cf53271b871f9a423fa0a7f67849983fc7fb894e0db977808469",
+    "errors": 0,
+    "failures": 0,
+    "output_sha256": "59edc56739e82f9b755118705ce65587c1eca216f4e958e531e9703ce148898d",
+    "passed": 1932,
+    "skipped": 0,
+    "tests_run": 1932,
+    "wall_time_seconds": 353.121698
+  },
+  "observed_at": "2026-08-23T16:00:00+08:00",
+  "plan_id": "pilot-plan-m10-00",
+  "plan_sha256": "d4f856b0287d9cf170653ba7bf6b911e1c711c127d17cd6c6dd3d6d5440da087",
+  "project_id": "context-control-plane",
+  "receipt_sha256": "2a7cbe608a99e2e43c92bc8a040bbb93e4414772551bfc1fa8d3484b0a70391e",
+  "required_leaf_ids": [
+    "M10-00-evidence-matrix",
+    "M10-00-fault-drill",
+    "M10-00-release-verification"
+  ],
+  "schema_version": "context.self-dogfood-release-verification/v1alpha1",
+  "start_repository": {
+    "base_commit": "4dc34b5ddd96071f96929ff85be490dceb4a0324",
+    "branch": "feat/m8-01-durable-operation",
+    "dirty": true,
+    "schema_registry_sha256": "edc3a081162c51aa6edb37a34400f99aa2e8735f67cc2c6bec629f582253e331",
+    "worktree_file_count": 869,
+    "worktree_sha256": "4bc2078c5f3d8756e7fd0af4e4f20339a4cabc3b48f9b2200a62eec60b1f065e"
+  },
+  "state_revision": 74,
+  "status": "passed"
+}

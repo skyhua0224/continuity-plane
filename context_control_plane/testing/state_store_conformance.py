@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 from typing import Any
 
+from context_control_plane.state_events import build_state_event
 from context_control_plane.state_store import (
     StateStoreConflict,
     StateStoreIntegrityError,
@@ -36,6 +37,52 @@ class AuthoritativeStateStoreConformanceMixin:
         event_type: str = "state-transition",
     ) -> tuple[dict[str, Any], dict[str, Any]]:
         raise NotImplementedError
+
+    def make_correction_candidate(
+        self,
+        current: dict[str, Any],
+        target_event: dict[str, Any],
+        suffix: str,
+        *,
+        sequence_no: int,
+        previous_event_sha256: str,
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
+        target_change = target_event["changes"][0]
+        corrected = copy.deepcopy(target_change["value"])
+        if target_change["collection"] != "ideas":
+            raise AssertionError("conformance correction fixture must target an Idea")
+        corrected["summary"] = f"Corrected conformance candidate {suffix}."
+        expected = copy.deepcopy(current)
+        for index, idea in enumerate(expected["ideas"]):
+            if idea["idea_id"] == target_change["object_id"]:
+                expected["ideas"][index] = corrected
+                break
+        else:
+            raise AssertionError("correction target must exist in current snapshot")
+        expected["project"]["revision"] = current["project"]["revision"] + 1
+        expected["project"]["updated_at"] = "2026-08-10T02:30:00+08:00"
+        event = build_state_event(
+            event_id=f"event-{suffix}",
+            event_type="correction",
+            project_id=current["project"]["project_id"],
+            sequence_no=sequence_no,
+            revision_before=current["project"]["revision"],
+            occurred_at="2026-08-10T02:30:00+08:00",
+            actor_ref="actor-conformance",
+            causation_ref=f"work:{suffix}",
+            correlation_ref="conformance:m2-08",
+            previous_event_sha256=previous_event_sha256,
+            supersedes_event_id=target_event["event_id"],
+            changes=[
+                {
+                    "collection": target_change["collection"],
+                    "object_id": target_change["object_id"],
+                    "value": corrected,
+                }
+            ],
+            project_after=expected["project"],
+        )
+        return event, expected
 
     def test_conformance_create_read_and_defensive_copy(self):
         store = self.make_store()
@@ -340,13 +387,12 @@ class AuthoritativeStateStoreConformanceMixin:
         store = self.make_store()
         initial = self.make_initial_snapshot()
         first, after_first = self.make_candidate(initial, "supersedes-first")
-        second, after_second = self.make_candidate(
+        second, after_second = self.make_correction_candidate(
             after_first,
+            first,
             "supersedes-second",
             sequence_no=2,
             previous_event_sha256=first["event_sha256"],
-            supersedes_event_id=first["event_id"],
-            event_type="correction",
         )
         project_id = initial["project"]["project_id"]
         invoke_state_store(store, "create_project", initial)
@@ -371,6 +417,93 @@ class AuthoritativeStateStoreConformanceMixin:
         self.assertEqual(
             invoke_state_store(store, "read_events", project_id),
             [first, second],
+        )
+
+    def test_conformance_correction_must_overlap_the_target_event(self):
+        store = self.make_store()
+        initial = self.make_initial_snapshot()
+        first, after_first = self.make_candidate(initial, "overlap-first")
+        unrelated, after_unrelated = self.make_candidate(
+            after_first,
+            "overlap-unrelated",
+            sequence_no=2,
+            previous_event_sha256=first["event_sha256"],
+            supersedes_event_id=first["event_id"],
+            event_type="correction",
+        )
+        project_id = initial["project"]["project_id"]
+        invoke_state_store(store, "create_project", initial)
+        invoke_state_store(
+            store,
+            "commit_event",
+            project_id=project_id,
+            expected_revision=initial["project"]["revision"],
+            event=first,
+            expected_snapshot=after_first,
+        )
+
+        with self.assertRaises(StateStoreIntegrityError):
+            invoke_state_store(
+                store,
+                "commit_event",
+                project_id=project_id,
+                expected_revision=after_first["project"]["revision"],
+                event=unrelated,
+                expected_snapshot=after_unrelated,
+            )
+
+        self.assertEqual(invoke_state_store(store, "read_events", project_id), [first])
+
+    def test_conformance_correction_lineage_fork_is_atomic(self):
+        store = self.make_store()
+        initial = self.make_initial_snapshot()
+        first, after_first = self.make_candidate(initial, "fork-first")
+        correction, after_correction = self.make_correction_candidate(
+            after_first,
+            first,
+            "fork-correction",
+            sequence_no=2,
+            previous_event_sha256=first["event_sha256"],
+        )
+        fork, after_fork = self.make_correction_candidate(
+            after_correction,
+            first,
+            "fork-second",
+            sequence_no=3,
+            previous_event_sha256=correction["event_sha256"],
+        )
+        project_id = initial["project"]["project_id"]
+        invoke_state_store(store, "create_project", initial)
+        invoke_state_store(
+            store,
+            "commit_event",
+            project_id=project_id,
+            expected_revision=initial["project"]["revision"],
+            event=first,
+            expected_snapshot=after_first,
+        )
+        invoke_state_store(
+            store,
+            "commit_event",
+            project_id=project_id,
+            expected_revision=after_first["project"]["revision"],
+            event=correction,
+            expected_snapshot=after_correction,
+        )
+
+        with self.assertRaises(StateStoreIntegrityError):
+            invoke_state_store(
+                store,
+                "commit_event",
+                project_id=project_id,
+                expected_revision=after_correction["project"]["revision"],
+                event=fork,
+                expected_snapshot=after_fork,
+            )
+
+        self.assertEqual(
+            invoke_state_store(store, "read_events", project_id),
+            [first, correction],
         )
 
     def test_conformance_unknown_supersedes_event_is_integrity_error_and_atomic(self):

@@ -1,0 +1,18 @@
+{
+  "applied": true,
+  "candidate_version": "0.1.0-alpha.12+codex.20260909122445",
+  "guarded_operations": 2,
+  "observed_at": "2026-09-09T12:24:44.583975+00:00",
+  "ownership_override": true,
+  "plaintext_credentials_emitted": false,
+  "protected_surfaces_unchanged": true,
+  "provider_rows_checked": 70,
+  "stages": [
+    "candidate-prepared",
+    "marketplace-verified",
+    "live-integration-merged",
+    "trust-verified"
+  ],
+  "status": "passed",
+  "trusted_hooks": 6
+}

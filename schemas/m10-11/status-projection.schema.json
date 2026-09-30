@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://continuity-plane.invalid/schemas/m10-11/status-projection.schema.json",
+  "title": "Current-only STATUS projection",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "project_id", "revision", "source_packet_sha256", "status_sha256", "status_en_sha256", "state_write_authority", "completion_authority", "projection_sha256"],
+  "properties": {
+    "schema_version": {"const": "context.status-projection/v1alpha1"},
+    "project_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,127}$"},
+    "revision": {"type": "integer", "minimum": 0},
+    "source_packet_sha256": {"$ref": "#/$defs/sha256"},
+    "status_sha256": {"$ref": "#/$defs/sha256"},
+    "status_en_sha256": {"$ref": "#/$defs/sha256"},
+    "state_write_authority": {"const": false},
+    "completion_authority": {"const": false},
+    "projection_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {"sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}
+}

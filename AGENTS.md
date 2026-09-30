@@ -1,6 +1,6 @@
 # Repository Instructions
 
-- Read `STATUS.md` first. Open only the referenced MASTER section and smallest relevant document; read the full MASTER only for governance changes or audits.
+- When a current, source-fresh, checkpoint-verified Continuity packet is injected, use it as the recovery entry and do not re-read `STATUS.md`, `MASTER.md`, `AGENTS.md`, or Skill files. Without a healthy packet, read `STATUS.md` first. Expand only the referenced MASTER section and smallest relevant document; read the full MASTER only for governance changes or audits.
 - Apply `docs/policies/documentation-style.md` to normative and planning documents.
 - This repository is provider-neutral and has no AlkaidLab Platform runtime dependency.
 - Raw Codex, Claude, Cursor, and other provider transcripts are excluded from Git admission.

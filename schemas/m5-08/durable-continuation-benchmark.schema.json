@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://context-control-plane.dev/schemas/m5-08/durable-continuation-benchmark.schema.json",
+  "title": "Context Control Plane Durable Continuation Benchmark Receipt",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "generated_at", "samples", "successful_samples",
+    "replay_mismatch", "first_action_mismatches", "acknowledged_input_replays",
+    "continuation_field_mismatches", "continuation_fields_total",
+    "continuation_fields_recovered", "fault_samples", "fault_rejections", "faults",
+    "recovery_budget_bytes", "max_recovery_bytes", "authority_violations",
+    "p50_ms", "p95_ms", "max_ms", "external_services", "fixture_sha256",
+    "implementation_sha256", "benchmark_sha256"
+  ],
+  "properties": {
+    "schema_version": {"const": "context.durable-continuation-benchmark/v1alpha1"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "samples": {"$ref": "#/$defs/positiveInteger"},
+    "successful_samples": {"$ref": "#/$defs/nonNegativeInteger"},
+    "replay_mismatch": {"$ref": "#/$defs/nonNegativeInteger"},
+    "first_action_mismatches": {"$ref": "#/$defs/nonNegativeInteger"},
+    "acknowledged_input_replays": {"$ref": "#/$defs/nonNegativeInteger"},
+    "continuation_field_mismatches": {"$ref": "#/$defs/nonNegativeInteger"},
+    "continuation_fields_total": {"$ref": "#/$defs/nonNegativeInteger"},
+    "continuation_fields_recovered": {"$ref": "#/$defs/nonNegativeInteger"},
+    "fault_samples": {"$ref": "#/$defs/nonNegativeInteger"},
+    "fault_rejections": {"$ref": "#/$defs/nonNegativeInteger"},
+    "faults": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "acknowledged_input", "event_head", "first_action", "never_replay",
+        "operation", "phase", "project_revision", "recovery_budget",
+        "task_revision", "unreserved_effect"
+      ],
+      "properties": {
+        "acknowledged_input": {"$ref": "#/$defs/nonNegativeInteger"},
+        "event_head": {"$ref": "#/$defs/nonNegativeInteger"},
+        "first_action": {"$ref": "#/$defs/nonNegativeInteger"},
+        "never_replay": {"$ref": "#/$defs/nonNegativeInteger"},
+        "operation": {"$ref": "#/$defs/nonNegativeInteger"},
+        "phase": {"$ref": "#/$defs/nonNegativeInteger"},
+        "project_revision": {"$ref": "#/$defs/nonNegativeInteger"},
+        "recovery_budget": {"$ref": "#/$defs/nonNegativeInteger"},
+        "task_revision": {"$ref": "#/$defs/nonNegativeInteger"},
+        "unreserved_effect": {"$ref": "#/$defs/nonNegativeInteger"}
+      }
+    },
+    "recovery_budget_bytes": {"type": "integer", "minimum": 1, "maximum": 65536},
+    "max_recovery_bytes": {"$ref": "#/$defs/nonNegativeInteger"},
+    "authority_violations": {"$ref": "#/$defs/nonNegativeInteger"},
+    "p50_ms": {"type": "number", "minimum": 0},
+    "p95_ms": {"type": "number", "minimum": 0},
+    "max_ms": {"type": "number", "minimum": 0},
+    "external_services": {"const": 0},
+    "fixture_sha256": {"$ref": "#/$defs/sha256"},
+    "implementation_sha256": {"$ref": "#/$defs/sha256"},
+    "benchmark_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "nonNegativeInteger": {"type": "integer", "minimum": 0},
+    "positiveInteger": {"type": "integer", "minimum": 1}
+  }
+}
