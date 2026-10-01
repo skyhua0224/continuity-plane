@@ -2,6 +2,12 @@
 
 [English](CHANGELOG.en.md)
 
+## 0.1.0-alpha.16
+
+- 新增受控 Stop hook：明确执行意图、State 新鲜可写、active Work 和可继续 next_action 同时满足时，自动创建一轮 continuation。
+- 旧 State、只读/过期来源、项目根错绑、开放 blocker 或 Stop 重入时自动放行，避免无限循环和错误仓库续跑。
+- 增加 Stop hook 生命周期测试，验证自动续跑、重入保护和 stale/read-only 静默退出。
+
 ## 0.1.0-alpha.15
 
 - 修复 continuity_work_activate 参数错误只返回笼统信息的问题，现在报告缺失字段、未知字段、

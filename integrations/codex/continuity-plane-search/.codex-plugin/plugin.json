@@ -1,6 +1,6 @@
 {
   "name": "continuity-plane-search",
-  "version": "0.1.0-alpha.15",
+  "version": "0.1.0-alpha.16",
   "description": "Optional bounded current-worktree search guidance for large repositories",
   "author": {
     "name": "SkyHua"

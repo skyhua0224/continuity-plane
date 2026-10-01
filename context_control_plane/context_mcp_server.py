@@ -128,7 +128,7 @@ def main() -> int:
                 {
                     "protocolVersion": protocol,
                     "capabilities": {"tools": {}},
-                    "serverInfo": {"name": "continuity-search", "version": "0.1.0-alpha.15"},
+                    "serverInfo": {"name": "continuity-search", "version": "0.1.0-alpha.16"},
                 },
             )
         elif method == "notifications/initialized":

@@ -2,6 +2,14 @@
 
 [中文](CHANGELOG.md)
 
+## 0.1.0-alpha.16
+
+- Added a guarded Stop hook that creates one continuation when explicit execution intent,
+  fresh writable State, an active Work, and a resumable next action are all present.
+- Stale or read-only State, root mismatches, open blockers, and Stop re-entry remain silent to
+  prevent loops and accidental continuation in the wrong repository.
+- Added lifecycle tests for continuation, re-entry protection, and stale/read-only no-op behavior.
+
 ## 0.1.0-alpha.15
 
 - Improved continuity_work_activate validation errors with missing fields, unknown fields,

@@ -72,7 +72,7 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
         response = json.loads(completed.stdout)
         self.assertEqual(response["id"], 1)
         self.assertEqual(response["result"]["serverInfo"]["name"], "continuity")
-        self.assertEqual(response["result"]["serverInfo"]["version"], "0.1.0-alpha.15")
+        self.assertEqual(response["result"]["serverInfo"]["version"], "0.1.0-alpha.16")
 
     def test_packaged_and_plugin_mcp_servers_have_the_same_contract(self) -> None:
         packaged = "context_control_plane.codex_mcp_server"
