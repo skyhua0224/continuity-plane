@@ -234,6 +234,7 @@ printf '%s\\n' '{"status":"ok"}'
                 "PreToolUse",
                 "PostToolUse",
                 "UserPromptSubmit",
+                "Stop",
             },
         )
         self.assertEqual(hooks["PreCompact"][0]["matcher"], "manual|auto")

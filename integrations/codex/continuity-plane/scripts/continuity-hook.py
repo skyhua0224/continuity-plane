@@ -1292,6 +1292,65 @@ def _prompt_recovery(payload: dict[str, Any], root: Path) -> int:
     return _session_start({**payload, "source": "compact"}, root)
 
 
+def _inspect_packet(root: Path) -> dict[str, Any] | None:
+    """Read the current packet without binding or mutating State."""
+    completed = _command(["inspect"], root)
+    if completed.returncode != 0:
+        return None
+    try:
+        document = json.loads(completed.stdout)
+    except (json.JSONDecodeError, TypeError):
+        return None
+    if not isinstance(document, dict):
+        return None
+    candidate = document.get("continuity_state", document)
+    if not isinstance(candidate, dict):
+        return None
+    return _load_resume_packet(_canonical(candidate).encode("utf-8"))
+
+
+def _stop_continuation(payload: dict[str, Any], root: Path) -> int:
+    """Continue one explicit execution turn, with a fail-safe stop boundary.
+
+    Codex's Stop hook creates the next continuation turn when it returns a block
+    decision. It must remain silent for questions, stale/read-only State, missing
+    packets, and a hook invocation that Codex already continued.
+    """
+    if payload.get("stop_hook_active") is True:
+        return 0
+    if _effect_policy() == "observe":
+        return 0
+    transcript = payload.get("transcript_path")
+    cursor = None
+    if isinstance(transcript, str) and transcript:
+        cursor = derive_recent_interaction_cursor(Path(transcript))
+    if cursor is None:
+        cursor = _read_cursor(payload)
+    if not isinstance(cursor, dict) or cursor.get("response_mode") != "continue-silently":
+        return 0
+    packet = _inspect_packet(root)
+    if packet is None or packet.get("active_work") is None:
+        return 0
+    # A stale proposal, read-only State, or explicit lifecycle boundary needs
+    # repair/approval rather than an automatic loop in an arbitrary worktree.
+    if packet.get("source_fresh") is not True or packet.get("read_only") is not False:
+        return 0
+    next_action = packet.get("next_action")
+    if next_action not in {"continue-active-work", "continue", "autorun"}:
+        return 0
+    if packet.get("open_blockers"):
+        return 0
+    print(_canonical({
+        "decision": "block",
+        "reason": (
+            "Continue the active Work from its next_action. Execute the next concrete "
+            "code or test action; do not report an intermediate result. Stop only for "
+            "a real blocker, a required user decision, or the Work's acceptance gate."
+        ),
+    }))
+    return 0
+
+
 def _continuity_tool_observation(payload: dict[str, Any], root: Path) -> int:
     tool_name = payload.get("tool_name")
     response = payload.get("tool_response")
@@ -2677,6 +2736,8 @@ def main() -> int:
             return _session_start(payload, root)
         if event == "UserPromptSubmit":
             return _prompt_recovery(payload, root)
+        if event == "Stop":
+            return _stop_continuation(payload, root)
         if event == "PreToolUse":
             return _pretooluse(payload, root)
         if event == "PostToolUse":

@@ -51,6 +51,7 @@ class M1100CodexPluginProfileTests(unittest.TestCase):
                 "PreToolUse",
                 "PostToolUse",
                 "UserPromptSubmit",
+                "Stop",
             },
         )
 

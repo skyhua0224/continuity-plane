@@ -63,6 +63,55 @@ class CandidateReviewTests(unittest.TestCase):
             self.assertIn("continuity_context_lookup", result.stdout)
             self.assertEqual(len(calls), 1)
 
+    def test_stop_hook_continues_explicit_active_work_once(self):
+        hook = self.fixture._hook_module()
+        payload = {
+            "hook_event_name": "Stop",
+            "cwd": str(self.repo),
+            "session_id": "stop-session",
+            "transcript_path": str(Path(self.repo) / "missing-rollout.jsonl"),
+        }
+        packet = {
+            "project_id": "portable-project",
+            "revision": 9,
+            "active_work": {"work_id": "work-active", "title": "Continue active work"},
+            "claim": {"claim_id": "claim-active"},
+            "source_fresh": True,
+            "read_only": False,
+            "next_action": "continue-active-work",
+            "checkpoint_verified": True,
+            "lease_valid": True,
+        }
+        cursor = {"response_mode": "continue-silently"}
+        output = io.StringIO()
+        with mock.patch.object(hook, "_read_cursor", return_value=cursor), \
+                mock.patch.object(hook, "_inspect_packet", return_value=packet), \
+                mock.patch.object(hook.sys, "stdout", output):
+            self.assertEqual(hook._stop_continuation(payload, self.repo), 0)
+        response = json.loads(output.getvalue())
+        self.assertEqual(response["decision"], "block")
+        self.assertIn("next concrete", response["reason"])
+
+    def test_stop_hook_stays_silent_for_stale_or_reentered_work(self):
+        hook = self.fixture._hook_module()
+        payload = {"hook_event_name": "Stop", "session_id": "stop-session"}
+        packet = {
+            "active_work": {"work_id": "work-active"},
+            "claim": {"claim_id": "claim-active"},
+            "source_fresh": False,
+            "read_only": True,
+            "next_action": "continue-active-work",
+        }
+        with mock.patch.object(hook, "_read_cursor", return_value={"response_mode": "continue-silently"}), \
+                mock.patch.object(hook, "_inspect_packet", return_value=packet), \
+                mock.patch.object(hook.sys, "stdout", io.StringIO()) as output:
+            self.assertEqual(hook._stop_continuation(payload, self.repo), 0)
+            self.assertEqual(output.getvalue(), "")
+        payload["stop_hook_active"] = True
+        with mock.patch.object(hook.sys, "stdout", io.StringIO()) as output:
+            self.assertEqual(hook._stop_continuation(payload, self.repo), 0)
+            self.assertEqual(output.getvalue(), "")
+
     def test_doctor_cannot_count_unrelated_trust_records_as_current_hooks(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

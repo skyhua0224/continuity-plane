@@ -86,6 +86,19 @@
           }
         ]
       }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "continuity-codex-hook \"${PLUGIN_ROOT}/scripts/continuity-hook.py\"",
+            "commandWindows": "continuity-codex-hook \"%PLUGIN_ROOT%\\scripts\\continuity-hook.py\"",
+            "timeout": 10,
+            "statusMessage": "Continuing active Work when safe"
+          }
+        ]
+      }
     ]
   }
 }

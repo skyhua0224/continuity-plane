@@ -1496,6 +1496,7 @@ class HookProbeTests(unittest.TestCase):
                 "PreToolUse",
                 "PostToolUse",
                 "UserPromptSubmit",
+                "Stop",
             },
         )
         commands = [
