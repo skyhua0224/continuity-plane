@@ -1273,14 +1273,20 @@ def _session_start_fallback(
 
 def _prompt_recovery(payload: dict[str, Any], root: Path) -> int:
     if _take_continuation_pending(payload, root) is None:
-        context = _collaboration_context(payload)
-        if context is not None:
+        contexts: list[str] = []
+        execution_context = _execution_intent_context(payload)
+        if execution_context is not None:
+            contexts.append(execution_context)
+        collaboration = _collaboration_context(payload)
+        if collaboration is not None:
+            contexts.append(collaboration)
+        if contexts:
             print(
                 _canonical(
                     {
                         "hookSpecificOutput": {
                             "hookEventName": "UserPromptSubmit",
-                            "additionalContext": context,
+                            "additionalContext": "\n\n".join(contexts),
                         }
                     }
                 )
@@ -1290,6 +1296,20 @@ def _prompt_recovery(payload: dict[str, Any], root: Path) -> int:
     # Keep the compact source so the one-shot fallback receives the full bounded
     # packet, while the hook-event guard still prevents cursor replay.
     return _session_start({**payload, "source": "compact"}, root)
+
+
+def _execution_intent_context(payload: dict[str, Any]) -> str | None:
+    """Keep explicit execute-until-done intent visible for the current turn."""
+    prompt = payload.get("prompt")
+    if not isinstance(prompt, str) or not _explicit_execution_intent(prompt):
+        return None
+    if not _advisory_once(payload, "execution-intent"):
+        return None
+    return (
+        "Execution mode is active for the current Work. Continue with concrete code or "
+        "test actions without interim commentary. Report only completion, a real blocker, "
+        "or a decision that requires the user."
+    )
 
 
 def _inspect_packet(root: Path) -> dict[str, Any] | None:

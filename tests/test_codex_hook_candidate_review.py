@@ -107,6 +107,24 @@ class CandidateReviewTests(unittest.TestCase):
                 mock.patch.object(hook.sys, "stdout", io.StringIO()) as output:
             self.assertEqual(hook._stop_continuation(payload, self.repo), 0)
             self.assertEqual(output.getvalue(), "")
+
+    def test_explicit_execution_prompt_gets_no_interim_report_context(self):
+        hook = self.fixture._hook_module()
+        payload = {
+            "hook_event_name": "UserPromptSubmit",
+            "session_id": "prompt-session",
+            "turn_id": "prompt-turn",
+            "prompt": "继续执行，直到全部闭合后再汇报",
+        }
+        output = io.StringIO()
+        with mock.patch.object(hook, "_take_continuation_pending", return_value=None), \
+                mock.patch.object(hook, "_collaboration_context", return_value=None), \
+                mock.patch.object(hook, "_advisory_once", return_value=True), \
+                mock.patch.object(hook.sys, "stdout", output):
+            self.assertEqual(hook._prompt_recovery(payload, self.repo), 0)
+        context = json.loads(output.getvalue())["hookSpecificOutput"]["additionalContext"]
+        self.assertIn("without interim commentary", context)
+        self.assertIn("real blocker", context)
         payload["stop_hook_active"] = True
         with mock.patch.object(hook.sys, "stdout", io.StringIO()) as output:
             self.assertEqual(hook._stop_continuation(payload, self.repo), 0)
