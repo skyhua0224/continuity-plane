@@ -57,6 +57,13 @@ from .local_state_bundle import (
     rollback_local_state,
 )
 from .light_observability import build_observation_report
+from .intent_todo import (
+    IntentTodoError,
+    block_item as block_todo_item,
+    complete_item as complete_todo_item,
+    compile_queue,
+    load_queue,
+)
 from .recovery_envelope import (
     RecoveryEnvelopeError,
     compose_recovery_envelope,
@@ -96,7 +103,7 @@ from .state_mcp import (
     StateMCPService,
 )
 
-VERSION = "0.1.0a16"
+VERSION = "0.1.0a17"
 _PROJECT_FIELDS = {
     "schema_version",
     "project_id",
@@ -4615,6 +4622,40 @@ def _memory_resolve(args: argparse.Namespace) -> int:
     return 0
 
 
+def _todo_compile(args: argparse.Namespace) -> int:
+    queue = compile_queue(Path(args.root), args.prompt, data_root=args.data_root)
+    print(json.dumps(queue or {"status": "no-multi-item-intent"}, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def _todo_list(args: argparse.Namespace) -> int:
+    queue = load_queue(Path(args.root), data_root=args.data_root)
+    print(json.dumps(queue or {"status": "empty"}, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def _todo_complete(args: argparse.Namespace) -> int:
+    try:
+        queue = complete_todo_item(
+            Path(args.root), args.item_id, result=args.result, data_root=args.data_root
+        )
+    except IntentTodoError as exc:
+        raise ValueError(str(exc)) from exc
+    print(json.dumps(queue, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def _todo_block(args: argparse.Namespace) -> int:
+    try:
+        queue = block_todo_item(
+            Path(args.root), args.item_id, args.reason, data_root=args.data_root
+        )
+    except IntentTodoError as exc:
+        raise ValueError(str(exc)) from exc
+    print(json.dumps(queue, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
 def _worktree_inventory(args: argparse.Namespace) -> int:
     report = inventory_worktrees(args.root, stale_days=args.stale_days)
     print(json.dumps(report, ensure_ascii=False, sort_keys=True))
@@ -5042,6 +5083,29 @@ def build_parser() -> argparse.ArgumentParser:
     memory_resolve.add_argument("--query", required=True)
     memory_resolve.add_argument("--project-id")
     memory_resolve.set_defaults(handler=_memory_resolve)
+    todo = commands.add_parser("todo", help="manage an intent-derived local todo queue")
+    todo_commands = todo.add_subparsers(dest="todo_command", required=True)
+    todo_compile = todo_commands.add_parser("compile", help="compile a multi-item prompt")
+    todo_compile.add_argument("--root", default=".")
+    todo_compile.add_argument("--data-root", default=None)
+    todo_compile.add_argument("--prompt", required=True)
+    todo_compile.set_defaults(handler=_todo_compile)
+    todo_list = todo_commands.add_parser("list", help="show the current intent todo queue")
+    todo_list.add_argument("--root", default=".")
+    todo_list.add_argument("--data-root", default=None)
+    todo_list.set_defaults(handler=_todo_list)
+    todo_complete = todo_commands.add_parser("complete", help="complete the active todo item")
+    todo_complete.add_argument("--root", default=".")
+    todo_complete.add_argument("--data-root", default=None)
+    todo_complete.add_argument("--item-id", required=True)
+    todo_complete.add_argument("--result", default=None)
+    todo_complete.set_defaults(handler=_todo_complete)
+    todo_block = todo_commands.add_parser("block", help="block the active todo item")
+    todo_block.add_argument("--root", default=".")
+    todo_block.add_argument("--data-root", default=None)
+    todo_block.add_argument("--item-id", required=True)
+    todo_block.add_argument("--reason", required=True)
+    todo_block.set_defaults(handler=_todo_block)
     worktree_inventory = commands.add_parser(
         "worktree-inventory", help="classify Git worktrees without cleanup"
     )
