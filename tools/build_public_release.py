@@ -13,7 +13,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-PUBLIC_RELEASE_VERSION = "0.1.0-alpha.16"
+PUBLIC_RELEASE_VERSION = "0.1.0-alpha.17"
 
 _ROOT_FILES = (
     "README.md",
@@ -98,6 +98,7 @@ _PUBLIC_MODULE_ROOTS = {
     "execution_packet",
     "external_state_provider",
     "human_governance",
+    "intent_todo",
     "light_observability",
     "obsidian_vault",
     "postgres_state_store",
@@ -376,10 +377,11 @@ def _write_public_plugin_marketplace(output: Path) -> None:
 
 def _normalize_public_identity(text: str) -> str:
     # Source documentation lives under public/docs; the projected mirror flattens it to docs.
-    text = text.replace('version = "0.1.0a12"', 'version = "0.1.0a16"')
-    text = text.replace('version = "0.1.0a13"', 'version = "0.1.0a16"')
-    text = text.replace('version = "0.1.0a14"', 'version = "0.1.0a16"')
-    text = text.replace('version = "0.1.0a15"', 'version = "0.1.0a16"')
+    text = text.replace('version = "0.1.0a12"', 'version = "0.1.0a17"')
+    text = text.replace('version = "0.1.0a13"', 'version = "0.1.0a17"')
+    text = text.replace('version = "0.1.0a14"', 'version = "0.1.0a17"')
+    text = text.replace('version = "0.1.0a15"', 'version = "0.1.0a17"')
+    text = text.replace('version = "0.1.0a16"', 'version = "0.1.0a17"')
     text = text.replace("public/docs/", "docs/")
     text = text.replace("Context Control Plane", "Continuity Plane")
     text = text.replace(".context-control-plane", ".continuity")

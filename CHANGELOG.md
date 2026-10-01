@@ -2,6 +2,12 @@
 
 [English](CHANGELOG.en.md)
 
+## 0.1.0-alpha.17
+
+- 新增 intent TodoQueue：多事项用户请求自动拆分、持久化、按序推进和完成切换。
+- TodoQueue 使用项目侧车，不写 SQLite，不授予 claim、完成或外部效果权限；只读 State 也不阻断普通代码/测试推进。
+- UserPromptSubmit 注入当前 todo 与精确完成命令，Stop hook 在队列未完成时自动续接。
+
 ## 0.1.0-alpha.16
 
 - 新增受控 Stop hook：明确执行意图、State 新鲜可写、active Work 和可继续 next_action 同时满足时，自动创建一轮 continuation。

@@ -1107,6 +1107,21 @@ def _collaboration_context(payload: dict[str, Any]) -> str | None:
     return context if len(context.encode("utf-8")) <= 5000 else None
 
 
+def _intent_todo_context(payload: dict[str, Any], root: Path) -> str | None:
+    prompt = payload.get("prompt")
+    if not isinstance(prompt, str) or not prompt.strip():
+        return None
+    if not re.search(r"修复|补充|处理|完成|实现|测试|修改|需要|另外|并且|继续|execute|implement|fix", prompt, re.I):
+        return None
+    try:
+        from context_control_plane.intent_todo import active_context, compile_queue
+
+        compile_queue(root, prompt)
+        return active_context(root)
+    except Exception:
+        return None
+
+
 def _adoption_context() -> str:
     return (
         "For unfamiliar code, prefer available MCP continuity_context_lookup before broad reads; "
@@ -1277,6 +1292,9 @@ def _prompt_recovery(payload: dict[str, Any], root: Path) -> int:
         execution_context = _execution_intent_context(payload)
         if execution_context is not None:
             contexts.append(execution_context)
+        todo_context = _intent_todo_context(payload, root)
+        if todo_context is not None:
+            contexts.append(todo_context)
         collaboration = _collaboration_context(payload)
         if collaboration is not None:
             contexts.append(collaboration)
@@ -1340,6 +1358,17 @@ def _stop_continuation(payload: dict[str, Any], root: Path) -> int:
         return 0
     if _effect_policy() == "observe":
         return 0
+    try:
+        from context_control_plane.intent_todo import active_context, load_queue
+
+        queue = load_queue(root)
+        if queue is not None and queue.get("status") == "active":
+            context = active_context(root)
+            if context is not None:
+                print(_canonical({"decision": "block", "reason": context}))
+                return 0
+    except Exception:
+        pass
     transcript = payload.get("transcript_path")
     cursor = None
     if isinstance(transcript, str) and transcript:

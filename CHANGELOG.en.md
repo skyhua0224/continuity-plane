@@ -2,6 +2,13 @@
 
 [中文](CHANGELOG.md)
 
+## 0.1.0-alpha.17
+
+- Added an intent TodoQueue that decomposes multi-item user requests, persists them locally,
+  advances them in order, and switches to the next item after completion.
+- The queue is a project sidecar: it does not write SQLite or grant claim, completion, or external-effect authority; read-only State does not stop ordinary code/tests.
+- UserPromptSubmit injects the current todo and exact completion command; the Stop hook continues while the queue remains active.
+
 ## 0.1.0-alpha.16
 
 - Added a guarded Stop hook that creates one continuation when explicit execution intent,
