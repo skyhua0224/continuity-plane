@@ -130,16 +130,14 @@ class AdvisoryHookTests(unittest.TestCase):
         self.assertIn("bounded", context.lower())
         self.assertIn("narrow", context.lower())
 
-    def test_slow_completed_command_gets_one_progress_hint(self):
+    def test_slow_completed_command_is_silent_by_default(self):
         payload = self.payload(
             "PostToolUse",
             turn_id="turn-progress-1",
             tool_input={"command": "pytest -q tests/test_example.py"},
             tool_response={"exit_code": 0, "wall_time_seconds": 8.0, "output": "passed"},
         )
-        context = json.loads(self.invoke(payload))["hookSpecificOutput"]["additionalContext"]
-        self.assertIn("next planned action", context.lower())
-        self.assertIn("continue", context.lower())
+        self.assertEqual(self.invoke(payload), "")
 
     def test_real_launcher_with_strict_env_and_broken_binding_never_denies(self):
         binding = self.hook._session_binding_path(self.payload())

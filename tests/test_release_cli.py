@@ -21,7 +21,7 @@ from context_control_plane.sqlite_state_store import SQLiteStateStore
 
 class ReleaseCliTests(unittest.TestCase):
     def _write_plugin_runtime(
-        self, codex_home: Path, *, noop: bool = False, version: str = "0.1.0a19"
+        self, codex_home: Path, *, noop: bool = False, version: str = "0.1.0a20"
     ) -> None:
         marketplace = codex_home / "dev-marketplaces/continuity-plane-current"
         agents = marketplace / ".agents/plugins"

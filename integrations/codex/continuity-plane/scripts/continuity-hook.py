@@ -1233,6 +1233,10 @@ def _bounded_code_read_context(payload: dict[str, Any]) -> str | None:
 
 def _progress_context(payload: dict[str, Any]) -> str | None:
     """Nudge the model past a long successful step without creating a gate."""
+    # This hint is opt-in. Emitting it after every successful build/test made
+    # hosts produce interim reports instead of continuing the current queue.
+    if os.environ.get("CONTINUITY_PROGRESS_GUIDANCE", "0") != "1":
+        return None
     tool_name = str(payload.get("tool_name", ""))
     if tool_name not in {"Bash", "exec", "exec_command", "functions.exec"}:
         return None

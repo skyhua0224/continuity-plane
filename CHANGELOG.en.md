@@ -2,6 +2,11 @@
 
 [中文](CHANGELOG.md)
 
+## 0.1.0-alpha.20
+
+- Long-command progress guidance is silent by default, so successful tools do not trigger periodic interim reports.
+- Added concise technical Chinese/STE100-style output rules as a report renderer, not a resident skill or execution gate.
+
 ## 0.1.0-alpha.19
 
 - MASTER plan routing is now bound into TodoQueue; an old Work no longer overrides the current plan order.
