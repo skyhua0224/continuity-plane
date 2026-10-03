@@ -21,6 +21,13 @@ from .light_observability import (
 from .workspace_binding import WorkspaceBindingError, resolve_control_root
 from .collaboration_packet import compose_safe_collaboration_packet
 from .collaboration_registry import resolve_project
+from .intent_todo import (
+    IntentTodoError,
+    block_item,
+    compile_queue,
+    complete_item,
+    load_queue,
+)
 
 
 def _cli_command(*arguments: str) -> list[str]:
@@ -436,7 +443,7 @@ def main() -> int:
                         "protocolVersion", "2024-11-05"
                     ),
                     "capabilities": {"tools": {}},
-                    "serverInfo": {"name": "continuity", "version": "0.1.0-alpha.17"},
+                    "serverInfo": {"name": "continuity", "version": "0.1.0-alpha.18"},
                 },
             )
         elif method == "notifications/initialized":
@@ -481,6 +488,61 @@ def main() -> int:
                                 "additionalProperties": False,
                                 "required": ["root"],
                                 "properties": {"root": {"type": "string", "minLength": 1}},
+                            },
+                        },
+                        {
+                            "name": "continuity_todo_compile",
+                            "description": "将多事项用户意图编译为有序本地 TodoQueue；不写 State、不授予外部效果权限 / Compile a multi-item intent into an ordered local TodoQueue without State or external-effect authority.",
+                            "annotations": _LOCAL_WRITE_ANNOTATIONS,
+                            "inputSchema": {
+                                "type": "object",
+                                "additionalProperties": False,
+                                "required": ["root", "prompt"],
+                                "properties": {
+                                    "root": {"type": "string", "minLength": 1},
+                                    "prompt": {"type": "string", "minLength": 1, "maxLength": 12000},
+                                },
+                            },
+                        },
+                        {
+                            "name": "continuity_todo_list",
+                            "description": "读取当前项目 TodoQueue；只读 State 仍允许使用 / Read the current project TodoQueue; independent of read-only State.",
+                            "annotations": _READ_ONLY_ANNOTATIONS,
+                            "inputSchema": {
+                                "type": "object",
+                                "additionalProperties": False,
+                                "required": ["root"],
+                                "properties": {"root": {"type": "string", "minLength": 1}},
+                            },
+                        },
+                        {
+                            "name": "continuity_todo_complete",
+                            "description": "完成当前 TodoQueue 项并自动激活下一项；只写本地侧车 / Complete the active TodoQueue item and advance locally.",
+                            "annotations": _LOCAL_WRITE_ANNOTATIONS,
+                            "inputSchema": {
+                                "type": "object",
+                                "additionalProperties": False,
+                                "required": ["root", "item_id"],
+                                "properties": {
+                                    "root": {"type": "string", "minLength": 1},
+                                    "item_id": {"type": "string", "minLength": 1},
+                                    "result": {"type": "string", "maxLength": 2048},
+                                },
+                            },
+                        },
+                        {
+                            "name": "continuity_todo_block",
+                            "description": "记录 TodoQueue 当前项的真实 blocker；只写本地侧车 / Record a real TodoQueue blocker locally.",
+                            "annotations": _LOCAL_WRITE_ANNOTATIONS,
+                            "inputSchema": {
+                                "type": "object",
+                                "additionalProperties": False,
+                                "required": ["root", "item_id", "reason"],
+                                "properties": {
+                                    "root": {"type": "string", "minLength": 1},
+                                    "item_id": {"type": "string", "minLength": 1},
+                                    "reason": {"type": "string", "minLength": 1, "maxLength": 2048},
+                                },
                             },
                         },
                         {
@@ -689,6 +751,10 @@ def main() -> int:
             if tool_name not in {
                 "continuity_inspect",
                 "continuity_collaboration_packet",
+                "continuity_todo_compile",
+                "continuity_todo_list",
+                "continuity_todo_complete",
+                "continuity_todo_block",
                 "continuity_resume",
                 "continuity_autorun",
                 "continuity_checkpoint",
@@ -719,6 +785,10 @@ def main() -> int:
             if tool_name not in {
                 "continuity_inspect",
                 "continuity_collaboration_packet",
+                "continuity_todo_compile",
+                "continuity_todo_list",
+                "continuity_todo_complete",
+                "continuity_todo_block",
                 "continuity_resume",
             } and root_key not in session_roots:
                 _error(
@@ -728,6 +798,38 @@ def main() -> int:
                 )
                 continue
             canonical_root = root_key
+            if tool_name in {
+                "continuity_todo_compile",
+                "continuity_todo_list",
+                "continuity_todo_complete",
+                "continuity_todo_block",
+            }:
+                try:
+                    if tool_name == "continuity_todo_compile":
+                        value = compile_queue(requested_root, str(arguments.get("prompt") or ""))
+                        value = value or {"status": "no-multi-item-intent"}
+                    elif tool_name == "continuity_todo_list":
+                        value = load_queue(requested_root) or {"status": "empty"}
+                    elif tool_name == "continuity_todo_complete":
+                        value = complete_item(
+                            requested_root,
+                            str(arguments.get("item_id") or ""),
+                            result=arguments.get("result"),
+                        )
+                    else:
+                        value = block_item(
+                            requested_root,
+                            str(arguments.get("item_id") or ""),
+                            str(arguments.get("reason") or ""),
+                        )
+                except (IntentTodoError, TypeError, ValueError) as exc:
+                    _error(request_id, -32602, str(exc))
+                    continue
+                _reply(request_id, {
+                    "content": [{"type": "text", "text": json.dumps(value, ensure_ascii=False, sort_keys=True)}],
+                    "structuredContent": value,
+                })
+                continue
             try:
                 probe = probes.get(root_key)
                 if probe is None:

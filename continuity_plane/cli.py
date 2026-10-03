@@ -103,7 +103,7 @@ from .state_mcp import (
     StateMCPService,
 )
 
-VERSION = "0.1.0a17"
+VERSION = "0.1.0a18"
 _PROJECT_FIELDS = {
     "schema_version",
     "project_id",
