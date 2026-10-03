@@ -100,13 +100,13 @@ class CandidateReviewTests(unittest.TestCase):
             "claim": {"claim_id": "claim-active"},
             "source_fresh": False,
             "read_only": True,
-            "next_action": "continue-active-work",
+            "next_action": "remain-read-only",
         }
         with mock.patch.object(hook, "_read_cursor", return_value={"response_mode": "continue-silently"}), \
                 mock.patch.object(hook, "_inspect_packet", return_value=packet), \
                 mock.patch.object(hook.sys, "stdout", io.StringIO()) as output:
             self.assertEqual(hook._stop_continuation(payload, self.repo), 0)
-            self.assertEqual(output.getvalue(), "")
+            self.assertIn("ordinary source and test work", output.getvalue())
 
     def test_explicit_execution_prompt_gets_no_interim_report_context(self):
         hook = self.fixture._hook_module()

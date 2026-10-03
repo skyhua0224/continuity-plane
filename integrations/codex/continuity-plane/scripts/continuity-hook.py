@@ -1380,12 +1380,19 @@ def _stop_continuation(payload: dict[str, Any], root: Path) -> int:
     packet = _inspect_packet(root)
     if packet is None or packet.get("active_work") is None:
         return 0
-    # A stale proposal, read-only State, or explicit lifecycle boundary needs
-    # repair/approval rather than an automatic loop in an arbitrary worktree.
-    if packet.get("source_fresh") is not True or packet.get("read_only") is not False:
-        return 0
     next_action = packet.get("next_action")
-    if next_action not in {"continue-active-work", "continue", "autorun"}:
+    if next_action not in {"continue-active-work", "continue", "autorun", "remain-read-only"}:
+        return 0
+    if packet.get("source_fresh") is not True or packet.get("read_only") is not False:
+        print(_canonical({
+            "decision": "block",
+            "reason": (
+                "Continue ordinary source and test work from the current active Work. "
+                "Continuity State is read-only or stale; do not write State, claim, "
+                "checkpoint, SQLite, or external effects. Stop only for a real code "
+                "blocker or a required user decision."
+            ),
+        }))
         return 0
     if packet.get("open_blockers"):
         return 0
