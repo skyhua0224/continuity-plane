@@ -64,6 +64,7 @@ from .intent_todo import (
     compile_queue,
     load_queue,
 )
+from .plan_route import master_route
 from .recovery_envelope import (
     RecoveryEnvelopeError,
     compose_recovery_envelope,
@@ -103,7 +104,7 @@ from .state_mcp import (
     StateMCPService,
 )
 
-VERSION = "0.1.0a18"
+VERSION = "0.1.0a19"
 _PROJECT_FIELDS = {
     "schema_version",
     "project_id",
@@ -4623,7 +4624,8 @@ def _memory_resolve(args: argparse.Namespace) -> int:
 
 
 def _todo_compile(args: argparse.Namespace) -> int:
-    queue = compile_queue(Path(args.root), args.prompt, data_root=args.data_root)
+    queue = compile_queue(Path(args.root), args.prompt, data_root=args.data_root,
+                          master_path=args.master_path, master_section=args.master_section)
     print(json.dumps(queue or {"status": "no-multi-item-intent"}, ensure_ascii=False, sort_keys=True))
     return 0
 
@@ -4631,6 +4633,12 @@ def _todo_compile(args: argparse.Namespace) -> int:
 def _todo_list(args: argparse.Namespace) -> int:
     queue = load_queue(Path(args.root), data_root=args.data_root)
     print(json.dumps(queue or {"status": "empty"}, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def _plan_inspect(args: argparse.Namespace) -> int:
+    print(json.dumps(master_route(args.root, master_path=args.master_path, section=args.section),
+                     ensure_ascii=False, sort_keys=True))
     return 0
 
 
@@ -5089,6 +5097,8 @@ def build_parser() -> argparse.ArgumentParser:
     todo_compile.add_argument("--root", default=".")
     todo_compile.add_argument("--data-root", default=None)
     todo_compile.add_argument("--prompt", required=True)
+    todo_compile.add_argument("--master-path", default=None)
+    todo_compile.add_argument("--master-section", default=None)
     todo_compile.set_defaults(handler=_todo_compile)
     todo_list = todo_commands.add_parser("list", help="show the current intent todo queue")
     todo_list.add_argument("--root", default=".")
@@ -5106,6 +5116,13 @@ def build_parser() -> argparse.ArgumentParser:
     todo_block.add_argument("--item-id", required=True)
     todo_block.add_argument("--reason", required=True)
     todo_block.set_defaults(handler=_todo_block)
+    plan = commands.add_parser("plan", help="read hash-bound MASTER routing without State writes")
+    plan_commands = plan.add_subparsers(dest="plan_command", required=True)
+    plan_inspect = plan_commands.add_parser("inspect", help="read one bounded MASTER section")
+    plan_inspect.add_argument("--root", default=".")
+    plan_inspect.add_argument("--master-path", default=None)
+    plan_inspect.add_argument("--section", default=None)
+    plan_inspect.set_defaults(handler=_plan_inspect)
     worktree_inventory = commands.add_parser(
         "worktree-inventory", help="classify Git worktrees without cleanup"
     )

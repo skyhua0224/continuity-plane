@@ -16,6 +16,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from .plan_route import master_route, route_context
+
 SCHEMA_VERSION = "context.intent-todo/v1alpha1"
 MAX_ITEMS = 12
 MAX_ITEM_BYTES = 512
@@ -106,6 +108,8 @@ def compile_queue(
     prompt: str,
     *,
     data_root: Path | str | None = None,
+    master_path: str | None = None,
+    master_section: str | None = None,
 ) -> dict[str, Any] | None:
     """Create an idempotent queue only for explicit multi-item execution intent."""
     if not isinstance(prompt, str) or not prompt.strip():
@@ -119,7 +123,7 @@ def compile_queue(
     path = queue_path(root, data_root)
     existing = load_queue(root, data_root)
     prompt_hash = _prompt_key(prompt)
-    if existing is not None and existing.get("prompt_sha256") == prompt_hash:
+    if existing is not None and prompt_hash in existing.get("prompt_hashes", [existing.get("prompt_sha256")]):
         return existing
     queue_id = f"todo-{prompt_hash[:24]}"
     items = [
@@ -132,11 +136,27 @@ def compile_queue(
         }
         for index, value in enumerate(values)
     ]
+    if existing is not None and existing.get("status") in {"active", "blocked"}:
+        # A follow-up adds work; it must not erase the active return point.
+        offset = len(existing["items"])
+        if offset + len(items) > MAX_ITEMS:
+            raise IntentTodoError("todo capacity exceeded; reconcile the existing queue explicitly")
+        for item in items:
+            item["order"] += offset
+            item["status"] = "queued"
+        existing["items"].extend(items)
+        existing.setdefault("prompt_hashes", [existing["prompt_sha256"]]).append(prompt_hash)
+        return _save(root, existing, data_root)
+    route = master_route(root, master_path=master_path, section=master_section)
     document = {
         "schema_version": SCHEMA_VERSION,
         "queue_id": queue_id,
         "root": str(Path(root).resolve()),
         "prompt_sha256": prompt_hash,
+        "prompt_hashes": [prompt_hash],
+        "plan_binding": {
+            key: route[key] for key in ("master_path", "section", "master_sha256")
+        },
         "status": "active",
         "items": items,
         "created_at": _now(),
@@ -203,6 +223,16 @@ def active_context(root: Path | str, data_root: Path | str | None = None) -> str
     active = next((item for item in document["items"] if item.get("status") == "active"), None)
     if active is None:
         return None
+    binding = document.get("plan_binding") or {}
+    route = master_route(root, master_path=binding.get("master_path"), section=binding.get("section"))
+    digest = binding.get("master_sha256")
+    if digest and (route.get("status") != "current" or route.get("master_sha256") != digest):
+        return (
+            "TodoQueue plan changed; do not execute old todo titles as current instructions. "
+            "Reconcile remaining items with current user intent and the relevant MASTER section, "
+            "preserving completed evidence and real blockers. Ordinary work remains allowed. "
+            + route_context(route)
+        )
     remaining = sum(item.get("status") in {"active", "queued"} for item in document["items"])
     return (
         f"Intent TodoQueue {document['queue_id']}: item {active['order']}/{len(document['items'])}. "
