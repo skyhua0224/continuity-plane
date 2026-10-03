@@ -2,6 +2,11 @@
 
 [中文](CHANGELOG.md)
 
+## 0.1.0-alpha.18
+
+- Exposed `continuity_todo_compile/list/complete/block` over MCP so an Agent can advance the ordered queue directly.
+- TodoQueue tools write only the project sidecar; they do not write State/SQLite or grant external-effect authority.
+
 ## 0.1.0-alpha.17
 
 - Added an intent TodoQueue that decomposes multi-item user requests, persists them locally,

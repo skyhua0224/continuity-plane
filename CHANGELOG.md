@@ -2,6 +2,11 @@
 
 [English](CHANGELOG.en.md)
 
+## 0.1.0-alpha.18
+
+- MCP 暴露 `continuity_todo_compile/list/complete/block`，TodoQueue 不再只是 CLI，Agent 可直接按序推进。
+- TodoQueue 工具只写项目侧车，不写 State/SQLite，不授予外部效果权限。
+
 ## 0.1.0-alpha.17
 
 - 新增 intent TodoQueue：多事项用户请求自动拆分、持久化、按序推进和完成切换。

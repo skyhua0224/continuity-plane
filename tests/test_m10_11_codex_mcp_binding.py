@@ -72,7 +72,7 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
         response = json.loads(completed.stdout)
         self.assertEqual(response["id"], 1)
         self.assertEqual(response["result"]["serverInfo"]["name"], "continuity")
-        self.assertEqual(response["result"]["serverInfo"]["version"], "0.1.0-alpha.17")
+        self.assertEqual(response["result"]["serverInfo"]["version"], "0.1.0-alpha.18")
 
     def test_packaged_and_plugin_mcp_servers_have_the_same_contract(self) -> None:
         packaged = "context_control_plane.codex_mcp_server"
@@ -456,7 +456,11 @@ class M1011CodexMCPBindingTests(unittest.TestCase):
             any(
                 item["annotations"]["readOnlyHint"]
                 for name, item in tools.items()
-                if name not in {"continuity_inspect", "continuity_collaboration_packet"}
+                if name not in {
+                    "continuity_inspect",
+                    "continuity_collaboration_packet",
+                    "continuity_todo_list",
+                }
             )
         )
         self.assertTrue(tools["continuity_collaboration_packet"]["annotations"]["readOnlyHint"])
