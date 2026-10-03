@@ -2,6 +2,12 @@
 
 [中文](CHANGELOG.md)
 
+## 0.1.0-alpha.19
+
+- MASTER plan routing is now bound into TodoQueue; an old Work no longer overrides the current plan order.
+- A changed plan hash marks the queue for reconciliation while preserving completed evidence and real blockers.
+- Added read-only `continuity plan inspect` for the current MASTER path, hash, and bounded section excerpt.
+
 ## 0.1.0-alpha.18
 
 - Exposed `continuity_todo_compile/list/complete/block` over MCP so an Agent can advance the ordered queue directly.

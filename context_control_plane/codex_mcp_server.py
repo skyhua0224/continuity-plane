@@ -443,7 +443,7 @@ def main() -> int:
                         "protocolVersion", "2024-11-05"
                     ),
                     "capabilities": {"tools": {}},
-                    "serverInfo": {"name": "continuity", "version": "0.1.0-alpha.18"},
+                    "serverInfo": {"name": "continuity", "version": "0.1.0-alpha.19"},
                 },
             )
         elif method == "notifications/initialized":
@@ -501,6 +501,8 @@ def main() -> int:
                                 "properties": {
                                     "root": {"type": "string", "minLength": 1},
                                     "prompt": {"type": "string", "minLength": 1, "maxLength": 12000},
+                                    "master_path": {"type": "string", "minLength": 1},
+                                    "master_section": {"type": "string", "minLength": 1},
                                 },
                             },
                         },
@@ -806,7 +808,9 @@ def main() -> int:
             }:
                 try:
                     if tool_name == "continuity_todo_compile":
-                        value = compile_queue(requested_root, str(arguments.get("prompt") or ""))
+                        value = compile_queue(requested_root, str(arguments.get("prompt") or ""),
+                                              master_path=arguments.get("master_path"),
+                                              master_section=arguments.get("master_section"))
                         value = value or {"status": "no-multi-item-intent"}
                     elif tool_name == "continuity_todo_list":
                         value = load_queue(requested_root) or {"status": "empty"}

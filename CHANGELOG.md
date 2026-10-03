@@ -2,6 +2,12 @@
 
 [English](CHANGELOG.en.md)
 
+## 0.1.0-alpha.19
+
+- MASTER 计划路由成为 TodoQueue 的绑定来源；旧 Work 不再自动覆盖当前 MASTER 顺序。
+- 计划 hash 发生变化时，队列转为需对齐状态，保留已完成 evidence 和真实 blocker。
+- 新增 `continuity plan inspect`，只读返回当前 MASTER 路径、hash 和有界章节摘要。
+
 ## 0.1.0-alpha.18
 
 - MCP 暴露 `continuity_todo_compile/list/complete/block`，TodoQueue 不再只是 CLI，Agent 可直接按序推进。
