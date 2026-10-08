@@ -1,5 +1,5 @@
 {
-  "file_count": 156,
+  "file_count": 162,
   "files": [
     {
       "path": ".agents/plugins/marketplace.json",
@@ -35,11 +35,11 @@
     },
     {
       "path": "CHANGELOG.en.md",
-      "sha256": "f9c1f876db0f6ed3b1536c090451a6be41701fdea0eff0484d998ba400bcd008"
+      "sha256": "128d1819ec6e86d26da2c5af688027cb58d51bdc61411bcac3f5a192fd1301e1"
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "76aee7169f905b6daeec154f2dc29bfbce55aa1955da3b9aefdd1dafc8973526"
+      "sha256": "7f503e0463407c2ddf5db8134bad505090d8bf8ac97f9464c6d8708850bf03ef"
     },
     {
       "path": "CONTRIBUTING.en.md",
@@ -63,11 +63,11 @@
     },
     {
       "path": "README.en.md",
-      "sha256": "9c493bef80fc40d57b8468926ff847d7e6de72a8cbef76ed30394421d262d48c"
+      "sha256": "e31998fa61198e09585ede6757c376140d067238a6b77940fd5d5be1695796f5"
     },
     {
       "path": "README.md",
-      "sha256": "1b7a2e60ba59ac5b2ff1cb3bc9cab74c186e50ecabc607d6c9150d8c2b00e72a"
+      "sha256": "bce7e63ca37190af3db0716073a994084b6bff4bf833e27290a407847d5be613"
     },
     {
       "path": "SECURITY.en.md",
@@ -87,11 +87,11 @@
     },
     {
       "path": "USAGE.en.md",
-      "sha256": "34eefab8a1aa9394f8b51dee6c07de5fb9984604e9be562ef3d339989f7ede1f"
+      "sha256": "56998c68152524c020d846290c964a98a9d29e50c6050550ffa97110e6a2527a"
     },
     {
       "path": "USAGE.md",
-      "sha256": "678629600c679589d485540f4d5da201f2bcccc033571f13481bc7acef6aff8c"
+      "sha256": "76a169beed3b6402fdef37569b6d7c19a1bf054d33fed8b4501f0f060d525f8e"
     },
     {
       "path": "benchmarks/__init__.py",
@@ -99,7 +99,7 @@
     },
     {
       "path": "benchmarks/reference-results.json",
-      "sha256": "0a8c0fbaee760d1f810c61973a77738e4f0ad2cdfeeb7321788b39619c2d9c02"
+      "sha256": "45c74f19592b7f14fa8980db670fcd33f13ad10d8e8441d80e6bcc91463e0287"
     },
     {
       "path": "benchmarks/run_local_state.py",
@@ -139,7 +139,7 @@
     },
     {
       "path": "continuity_plane/cli.py",
-      "sha256": "56cc8e09cf1e90148f451aeff31a8fd1d030204456b8765747fb6635e59a23b2"
+      "sha256": "1fe0efa28d675f56a93f72e854a385ec6daf794785e2bede940c030e5119752c"
     },
     {
       "path": "continuity_plane/code_index.py",
@@ -155,7 +155,11 @@
     },
     {
       "path": "continuity_plane/codex_mcp_server.py",
-      "sha256": "1589d16cd2027eecdb67f494f97a8e413fcde0e0fd2f5b30335112733f1f6ef7"
+      "sha256": "a8a4b3580076ed2268f113b66236cfa885393862e04cfad42bab0c1dc73cb3fd"
+    },
+    {
+      "path": "continuity_plane/collaboration_inbox.py",
+      "sha256": "22cc4e13f71565400fd4fe501b2b7f9c6d68eb8c45ada114ec69c91b4c21ad19"
     },
     {
       "path": "continuity_plane/collaboration_notifications.py",
@@ -163,11 +167,11 @@
     },
     {
       "path": "continuity_plane/collaboration_packet.py",
-      "sha256": "1c771685a06f581dd389a16f087d1d590fc1796c901467d376bed0b9afffb20e"
+      "sha256": "269c44feddde2967ebf1b74f4395e45bba65cd244737a729ffa62da16bdf8935"
     },
     {
       "path": "continuity_plane/collaboration_registry.py",
-      "sha256": "86f7b66cc3daf5fe4308744fa77240d36e2ea6b0da8547bcdb90e55f2a8035a1"
+      "sha256": "0df6c12f39c4dc51e1fe93c8e35d6a6b01ceb322c7c05815611df6f29624fc74"
     },
     {
       "path": "continuity_plane/compiled_skill_packet.py",
@@ -331,7 +335,11 @@
     },
     {
       "path": "continuity_plane/state_mcp.py",
-      "sha256": "bcbcc14cb4d6eacec3e287476f728bc577fdb426ffe39611ca3bdaa97763b12b"
+      "sha256": "b624cfde5535b858795fbf9edfe5ca2c14442ff5e72bbe1398ea7cf350677b2d"
+    },
+    {
+      "path": "continuity_plane/state_onboarding.py",
+      "sha256": "297d9df6c49cad7b381ac2d2bd4306d6d8660efae0b53f0843b4f9773a5bf1a3"
     },
     {
       "path": "continuity_plane/state_store.py",
@@ -379,7 +387,7 @@
     },
     {
       "path": "continuity_plane/vocabulary_memory.py",
-      "sha256": "38d55f0a5ffcc87dc45a396de7c4f44faaa6996bcc0e42247c12ba78fe967696"
+      "sha256": "8b5118e0f5c991b87a73d2c17703d651824a7eab5998b597a65f22f1d25cb55f"
     },
     {
       "path": "continuity_plane/workspace_binding.py",
@@ -430,12 +438,24 @@
       "sha256": "d93241e7e813497a30b990a080a436d9a9502630e6e7be6829dfb71656e0e026"
     },
     {
+      "path": "docs/onboarding.en.md",
+      "sha256": "8df5db88af6258b26f57dfd29eea378fc67f628aab4186a055f5e0b5afe19d2a"
+    },
+    {
+      "path": "docs/onboarding.md",
+      "sha256": "4c1a02b7a47dada1318283eeb1e540a31bf08a4fa419a5d7f23b713137acbcb7"
+    },
+    {
       "path": "docs/project-views.en.md",
       "sha256": "2f7b6ecdc794cd26a7dcecd4f3a6bfe294dfbdd0a74c1049b572167bc9075592"
     },
     {
       "path": "docs/project-views.md",
       "sha256": "99e5a7944813db45d1014d72d2ce7f0aba42d1574c7f3e9bb07850948c17b017"
+    },
+    {
+      "path": "docs/release-alpha21.md",
+      "sha256": "ec414375b2d4f02907768a15ab80738b77c34d239df1411a6b006ac3966650c8"
     },
     {
       "path": "docs/use-cases.en.md",
@@ -459,7 +479,7 @@
     },
     {
       "path": "plugins/continuity-plane/.codex-plugin/plugin.json",
-      "sha256": "1ac544cba797931aff1530e93843990a1488be4d24ea80c11714f33161c26a60"
+      "sha256": "8536cc2d36d083b60289e3eb6b67845aa53ebd4754f270a9cbfb3f401ac6fc43"
     },
     {
       "path": "plugins/continuity-plane/hooks/hooks.json",
@@ -471,11 +491,11 @@
     },
     {
       "path": "plugins/continuity-plane/scripts/continuity-hook.py",
-      "sha256": "eaaddc42e5651991ff189b9bcdce4d11f0172e3455164d058ad3179f1f586d76"
+      "sha256": "c23690ef6bbe3df4ed7a6ef530b8785bc4db1ad611d7f886d42a641548bc6f5e"
     },
     {
       "path": "plugins/continuity-plane-search/.codex-plugin/plugin.json",
-      "sha256": "e54496035adb473bf54aefb8c1454a37af4d1149dbfe067ba5b818cab8e091e4"
+      "sha256": "091f36f93caef2d9644c8ace062c88b76d131a6993963d6c858c78953b89fae2"
     },
     {
       "path": "plugins/continuity-plane-search/.mcp.json",
@@ -483,7 +503,7 @@
     },
     {
       "path": "plugins/continuity-plane-state/.codex-plugin/plugin.json",
-      "sha256": "023f99c3005ca5f28225c0c5a82ea152346f83a59349a4a2a1cf294b1fc9c391"
+      "sha256": "8a9547b580dd2da62ce817d69adf83a44424d2d9f792afe29798c7f5230db739"
     },
     {
       "path": "plugins/continuity-plane-state/.mcp.json",
@@ -495,7 +515,7 @@
     },
     {
       "path": "pyproject.toml",
-      "sha256": "9ed9dcf723169495df41904ce7b947574a4814cd9f3576ad1c98a4cee8e66992"
+      "sha256": "fa6a107e80a52b67b6abbf3d778bc98b347c0ac9fc50b669e1f35a6c4330a3b5"
     },
     {
       "path": "schemas/m10-01/canonical-attach-proposal.schema.json",
@@ -614,6 +634,10 @@
       "sha256": "ae20e7a43f3f40b4f57ae32fce694883a9c2d70cad5b0c21593663a6ed2a63ff"
     },
     {
+      "path": "tests/test_onboarding_feedback.py",
+      "sha256": "d3566710ff571df90f3da98d7f84b253bf35cee63af95b3288d19e5a1704d1d5"
+    },
+    {
       "path": "tests/test_public_benchmark.py",
       "sha256": "eb3265898cb20c0cc41f535b164aed5ee97924b2ab19371f64c8e6788497c5e1"
     },
@@ -627,5 +651,5 @@
     }
   ],
   "schema_version": "context.public-release-manifest/v1",
-  "version": "0.1.0-alpha.20"
+  "version": "0.1.0-alpha.21"
 }

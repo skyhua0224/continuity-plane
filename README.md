@@ -2,9 +2,7 @@
 
 [![Managed with Continuity Plane](docs/assets/managed-with-continuity-plane.svg)](https://github.com/skyhua0224/continuity-plane)
 
-Continuity Plane 是面向长期 AI 辅助软件工作的 provider-neutral 控制面。它把任务、
-决定、约束、证据、checkpoint、上下文组合和协作状态放在聊天窗口之外，支持压缩、
-任务切换、进程崩溃和多人交接后的确定性恢复。
+Continuity Plane 为长期 AI 开发保存任务、记忆、证据和上下文，支持压缩后接续与跨会话协作。
 
 [English README](README.en.md)
 
@@ -18,6 +16,7 @@ python -m pip install --upgrade continuity-plane
 
 ### 近期更新
 
+- 类型化 Work/决定/约束录入、按工作线领取和持久收件箱；参见[接入与交接](docs/onboarding.md)。
 - 默认非阻断 hook、压缩恢复和 doctor，不阻碍开发。
 - 协作账本、词汇记忆、恢复包、技能/worktree 审计和结构化激活诊断已加入。
 - 有界代码索引可跨 Session/AI 复用，只重解析变更文件。

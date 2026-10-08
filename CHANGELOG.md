@@ -2,6 +2,15 @@
 
 [English](CHANGELOG.en.md)
 
+## 0.1.0-alpha.21
+
+- 新增 source-bound `work add`、`decision add`、`constraint add`：默认预览，显式应用通过 State MCP/CAS，更新 checkpoint 和投影；重复添加不重复生成事件。
+- 任务 update 可设置 assignee；同执行者按 lane 计数，支持子身份，并修复原子替换期间的并发文件锁。
+- 修复中英混排、空格、全角字符和大小写的词汇别名匹配，同时避免 Latin ID 的局部误命中。
+- 新增 CLI/MCP 持久收件箱、幂等投递与确认，以及有界 packet/hook 提示。不会强行唤醒或抢占宿主会话。
+- CLI 预期错误返回简明结构化诊断；status 可直接运行。补充运行中 MCP 客户端重连与工具可见性验收说明。
+- 核心包与三个 Codex 插件使用同一发行版本。HTML 原型不包含在本次发行中；未宣称未经测量的 token 节省。
+
 ## 0.1.0-alpha.20
 
 - 默认关闭长命令后的进度提示，避免每分钟生成阶段性汇报；只在显式开启时注入。

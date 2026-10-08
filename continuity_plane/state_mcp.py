@@ -4425,7 +4425,8 @@ class StateMCPService:
             )
             identity_matches = work is not None and (
                 work["title"] == arguments["work_title"]
-                and work["owner_refs"] == [arguments["owner_ref"]]
+                and (work["owner_refs"] == [arguments["owner_ref"]]
+                     or work["status"] == "proposed" and not work["owner_refs"])
                 and work["scope_refs"] == arguments["scope_owners"]
             )
             if (
@@ -4477,8 +4478,13 @@ class StateMCPService:
                 return denied("owner", code="permission_denied")
             if existing_claim is not None:
                 return denied("claim_identity", code="conflict")
-            if work is not None and (not identity_matches or work["status"] != "ready"):
+            if work is not None and (not identity_matches or work["status"] not in {"ready", "proposed"}):
                 return denied("work_identity", code="conflict")
+            if work is not None and work["status"] == "proposed" and any(
+                next((item["status"] for item in snapshot["works"] if item["work_id"] == dependency), None) != "completed"
+                for dependency in work["dependency_ids"]
+            ):
+                return denied("work_dependencies", code="conflict")
             if any(
                 item["status"] in {"authorized", "started"}
                 for item in snapshot["effects"]
@@ -4568,6 +4574,7 @@ class StateMCPService:
                     if item["work_id"] == work["work_id"]
                 )
                 activated_work["status"] = "active"
+                activated_work["owner_refs"] = [arguments["owner_ref"]]
                 activated_work["revision"] += 1
                 activated_work["evidence_ids"] = list(
                     dict.fromkeys(

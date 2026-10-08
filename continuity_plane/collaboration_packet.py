@@ -13,6 +13,7 @@ from .collaboration_registry import (
 )
 from .vocabulary_memory import VocabularyMemoryError
 from .vocabulary_memory import resolve as resolve_vocabulary
+from .collaboration_inbox import list_messages
 
 
 PACKET_SCHEMA = "context.collaboration-packet/v1alpha1"
@@ -75,6 +76,11 @@ def compose_collaboration_packet(
             ),
         },
     }
+    messages = list_messages(root, project_id=project_id, recipient=assignee) if assignee else []
+    if messages:
+        packet["inbox"] = [{**item, "body": item["body"][:512], "authority": "handoff-hint-only"} for item in messages]
+        while packet["inbox"] and len(json.dumps(packet, ensure_ascii=False).encode("utf-8")) > MAX_PACKET_BYTES:
+            packet["inbox"].pop()
     size = len(json.dumps(packet, ensure_ascii=False, sort_keys=True).encode("utf-8"))
     if size > MAX_PACKET_BYTES:
         raise CollaborationPacketError(
@@ -100,7 +106,7 @@ def compose_safe_collaboration_packet(
             assignee=assignee,
             max_entities=max_entities,
         )
-    except (CollaborationRegistryError, VocabularyMemoryError, CollaborationPacketError):
+    except (OSError, CollaborationRegistryError, VocabularyMemoryError, CollaborationPacketError):
         return {
             "schema_version": "context.collaboration-degraded/v1alpha1",
             "project_id": project_id,

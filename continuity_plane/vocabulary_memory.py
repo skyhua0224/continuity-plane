@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import unicodedata
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -45,12 +46,30 @@ def _text(value: Any, field: str, limit: int = 4096) -> str:
     return value
 
 
+def _normalize(text: str) -> str:
+    return " ".join(unicodedata.normalize("NFKC", text).casefold().split())
+
+
+def _alias_matches(alias: str, text: str) -> bool:
+    # Latin identifiers need word boundaries; CJK phrases need no spaces.
+    alias = _normalize(alias)
+    left = r"(?<![A-Za-z0-9_.-])" if alias and alias[0].isascii() and (alias[0].isalnum() or alias[0] in "_.-") else ""
+    right = r"(?![A-Za-z0-9_.-])" if alias and alias[-1].isascii() and (alias[-1].isalnum() or alias[-1] in "_.-") else ""
+    parts = alias.split(" ")
+    pattern = re.escape(parts[0])
+    for previous, following in zip(parts, parts[1:]):
+        cjk = lambda char: "\u3400" <= char <= "\u9fff"
+        separator = r" *" if cjk(previous[-1]) or cjk(following[0]) else r" +"
+        pattern += separator + re.escape(following)
+    return bool(re.search(left + pattern + right, text))
+
+
 def _aliases(value: Any) -> list[str]:
     if not isinstance(value, list) or not value:
         raise VocabularyMemoryError("aliases must be a non-empty list")
     result = []
     for alias in value:
-        text = _text(alias, "alias", 256).casefold()
+        text = _normalize(_text(alias, "alias", 256))
         if text not in result:
             result.append(text)
     return result
@@ -173,27 +192,26 @@ def resolve(
     *,
     project_id: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Resolve aliases in a short prompt using exact, case-insensitive tokens."""
+    """Resolve normalized phrases without partial Latin identifier matches."""
     if not isinstance(query, str) or len(query.encode("utf-8")) > 16384:
         raise VocabularyMemoryError("query is invalid")
     if not query.strip():
         return []
-    text = _text(query, "query", 16384).casefold()
-    tokens = set(re.findall(r"[\w][\w_.-]{0,127}", text, re.UNICODE))
+    text = _normalize(_text(query, "query", 16384))
     matches: list[dict[str, Any]] = []
     project_aliases: set[str] = set()
     for entity in list_entities(data_root, project_id=project_id):
         if entity.get("superseded_by") is not None:
             continue
-        if not set(entity["aliases"]) & tokens:
+        if not any(_alias_matches(alias, text) for alias in entity["aliases"]):
             continue
         if entity["scope"] == "project":
-            project_aliases.update(entity["aliases"])
+            project_aliases.update(_normalize(alias) for alias in entity["aliases"])
         matches.append(entity)
     return [
         entity
         for entity in matches
         if entity["scope"] == "global"
-        and not set(entity["aliases"]) & project_aliases
+        and not {_normalize(alias) for alias in entity["aliases"]} & project_aliases
         or entity["scope"] == "project"
     ]

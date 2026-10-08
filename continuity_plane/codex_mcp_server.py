@@ -20,6 +20,7 @@ from .light_observability import (
 )
 from .workspace_binding import WorkspaceBindingError, resolve_control_root
 from .collaboration_packet import compose_safe_collaboration_packet
+from .collaboration_inbox import send_message, list_messages, acknowledge
 from .collaboration_registry import resolve_project
 from .intent_todo import (
     IntentTodoError,
@@ -465,6 +466,22 @@ def main() -> int:
                             },
                         },
                         {
+                            "name": "continuity_inbox",
+                            "description": "Send, list or acknowledge durable project messages. Local sidecar only; no provider wake or effect authority.",
+                            "annotations": _LOCAL_WRITE_ANNOTATIONS,
+                            "inputSchema": {
+                                "type": "object", "additionalProperties": False,
+                                "required": ["root", "action", "recipient"],
+                                "properties": {
+                                    "root": {"type": "string"},
+                                    "action": {"enum": ["send", "list", "ack"]},
+                                    "recipient": {"type": "string"}, "sender": {"type": "string"},
+                                    "message_id": {"type": "string"}, "body": {"type": "string", "maxLength": 2048},
+                                    "task_id": {"type": "string"},
+                                },
+                            },
+                        },
+                        {
                             "name": "continuity_collaboration_packet",
                             "description": "读取当前项目的一张有界任务与词汇提示卡；只读、非阻塞，不授予任何 State 或外部效果权限 / Read one bounded task and vocabulary hint packet; read-only and non-blocking.",
                             "annotations": _READ_ONLY_ANNOTATIONS,
@@ -753,6 +770,7 @@ def main() -> int:
             if tool_name not in {
                 "continuity_inspect",
                 "continuity_collaboration_packet",
+                "continuity_inbox",
                 "continuity_todo_compile",
                 "continuity_todo_list",
                 "continuity_todo_complete",
@@ -776,7 +794,7 @@ def main() -> int:
                 _error(request_id, -32602, "root is required")
                 continue
             requested_root = _requested_root(root, active_root)
-            if requested_root is None and tool_name == "continuity_collaboration_packet":
+            if requested_root is None and tool_name in {"continuity_collaboration_packet", "continuity_inbox"}:
                 candidate = Path(root).expanduser().resolve()
                 if resolve_project(candidate) is not None:
                     requested_root = candidate
@@ -787,6 +805,7 @@ def main() -> int:
             if tool_name not in {
                 "continuity_inspect",
                 "continuity_collaboration_packet",
+                "continuity_inbox",
                 "continuity_todo_compile",
                 "continuity_todo_list",
                 "continuity_todo_complete",
@@ -855,6 +874,27 @@ def main() -> int:
                 }
                 else session_bindings.get(root_key)
             )
+            if tool_name == "continuity_inbox":
+                project = resolve_project(requested_root)
+                if project is None:
+                    _error(request_id, -32602, "project is not registered")
+                    continue
+                try:
+                    common = {"project_id": project["project_id"], "recipient": arguments["recipient"]}
+                    action = arguments.get("action")
+                    if action == "send":
+                        value = send_message(None, **common, message_id=arguments["message_id"], sender=arguments["sender"], body=arguments["body"], task_id=arguments.get("task_id"))
+                    elif action == "list":
+                        value = list_messages(None, **common)
+                    elif action == "ack":
+                        value = acknowledge(None, **common, message_id=arguments["message_id"])
+                    else:
+                        raise ValueError("action must be send, list or ack")
+                except (ValueError, KeyError, TypeError, OSError) as exc:
+                    _error(request_id, -32602, str(exc))
+                    continue
+                _reply(request_id, {"content": [{"type": "text", "text": json.dumps({"messages": value, "provider_execution": False}, ensure_ascii=False)}]})
+                continue
             if tool_name == "continuity_collaboration_packet":
                 project = resolve_project(requested_root)
                 if project is None:

@@ -50,6 +50,9 @@ from .collaboration_packet import (
     compose_collaboration_packet,
     compose_safe_collaboration_packet,
 )
+from .collaboration_inbox import send_message, list_messages, acknowledge
+from .state_onboarding import record_changes
+from .state_store import StateStoreError
 from .local_state_bundle import (
     LocalStateBundleError,
     export_local_state,
@@ -104,7 +107,7 @@ from .state_mcp import (
     StateMCPService,
 )
 
-VERSION = "0.1.0a20"
+VERSION = "0.1.0a21"
 _PROJECT_FIELDS = {
     "schema_version",
     "project_id",
@@ -4518,6 +4521,7 @@ def _collaboration_task_update(args: argparse.Namespace) -> int:
         next_action=args.next_action,
         blocked_reason=args.blocked_reason,
         result=args.result,
+        assignee=args.assignee,
     )
     print(json.dumps(task, ensure_ascii=False, sort_keys=True))
     return 0
@@ -4680,10 +4684,130 @@ def _skills_audit(args: argparse.Namespace) -> int:
     return 0
 
 
+def _state_add_record(args: argparse.Namespace) -> int:
+    root = Path(args.root).resolve()
+    project = _load_project(root)
+    store = _open_state_store(root, project)
+    snapshot = _read_state_result(store, project["project_id"])["snapshot"]
+    changes = record_changes(root, snapshot, args, datetime.now(UTC).isoformat())
+    if not changes:
+        print(json.dumps({"status": "unchanged", "revision": snapshot["project"]["revision"], "state_changed": False}))
+        return 0
+    original_proposal = _load_current_attach_proposal(root, project["project_id"], verify_sources=False)
+    proposal = original_proposal
+    changed_sources = []
+    if args.refresh_source:
+        proposal, changed_sources = _refreshed_attach_proposal(root, project["project_id"], original_proposal)
+        if changed_sources:
+            active_claims = [item for item in snapshot["claims"] if item["status"] == "active"]
+            if any(item["actor_ref"] != args.actor_ref for item in active_claims):
+                raise ValueError("source refresh requires the active claim owner as --actor-ref")
+            evidence = _build_attach_evidence(proposal)
+            changes.insert(0, {"collection": "evidence", "object_id": evidence["evidence_id"], "value": evidence})
+            for work in snapshot["works"]:
+                if work["work_id"] in snapshot["project"]["active_work_ids"]:
+                    updated_work = copy.deepcopy(work)
+                    updated_work["evidence_ids"] = list(dict.fromkeys([*work["evidence_ids"], evidence["evidence_id"]]))
+                    updated_work["revision"] += 1
+                    changes.insert(1, {"collection": "works", "object_id": work["work_id"], "value": updated_work})
+    from .state_mcp import _derive_project_projection
+    from .sqlite_state_store import _validate_snapshot
+    candidate = copy.deepcopy(snapshot)
+    for change in changes:
+        values = candidate[change["collection"]]
+        key = {"works": "work_id", "evidence": "evidence_id", "decisions": "decision_id", "constraints": "constraint_id"}[change["collection"]]
+        existing = next((item for item in values if item[key] == change["object_id"]), None)
+        if existing is None:
+            values.append(change["value"])
+        else:
+            existing.update(change["value"])
+    for claim in candidate["claims"]:
+        if claim["status"] == "active":
+            claim["expected_project_revision"] = snapshot["project"]["revision"] + 1
+    for effect in candidate["effects"]:
+        if effect["status"] in {"authorized", "started"}:
+            effect["expected_project_revision"] = snapshot["project"]["revision"] + 1
+    _derive_project_projection(candidate, revision=snapshot["project"]["revision"] + 1, updated_at=datetime.now(UTC).isoformat())
+    _validate_snapshot(candidate)
+    if not args.apply:
+        print(json.dumps({"status": "preview", "expected_revision": snapshot["project"]["revision"], "changes": changes, "changed_sources": changed_sources, "state_changed": False}, ensure_ascii=False))
+        return 0
+    if args.expected_revision is None:
+        raise ValueError("--apply requires --expected-revision from the preview receipt")
+    # Resume before explicit State writes. Metadata additions never activate Work.
+    with contextlib.redirect_stdout(io.StringIO()):
+        _resume(argparse.Namespace(root=str(root), interaction_cursor=None, skill_lock=None))
+    validate_attach_proposal(root, proposal, verify_sources=True)
+    response = _state_service(store, authorizer=_LocalWorkflowAuthorizer()).call_tool(
+        COMMIT_TOOL,
+        {"schema_version": "context.state-mcp-request/v1alpha1", "request_id": f"plan-add-{uuid.uuid4().hex}",
+         "project_id": project["project_id"], "expected_revision": args.expected_revision,
+         "causation_ref": changes[-1]["object_id"], "correlation_ref": "planning-record-add",
+         "supersedes_event_id": None, "changes": changes},
+        context=RequestContext(args.actor_ref, "local-workflow-approved"),
+    )
+    if not response["ok"]:
+        raise ValueError(response["error"]["message"])
+    result = response["result"]
+    try:
+        if changed_sources:
+            _write_json_atomic(root / ".continuity/attach-proposal.json", proposal)
+        ref = publish_checkpoint(_read_state_result(store, project["project_id"]), _checkpoint_store(root),
+                                 canonical_plan_sha256=_canonical_master_sha256(proposal))
+        _write_json_atomic(_checkpoint_ref_file(root), ref.to_document())
+        projection = _refresh_projection_after_state_change(root)
+    except (OSError, ValueError, CheckpointError) as exc:
+        print(json.dumps({"status": "committed-repair-required", "state_changed": True,
+                          "revision": result["revision"], "failed_gate": "checkpoint_projection",
+                          "next_action": "continuity checkpoint create --root PROJECT_ROOT", "error": str(exc)}))
+        return 2
+    print(json.dumps({"status": "added", "state_changed": True, "revision": result["revision"],
+                      "event_head": result["event_head"], "checkpoint_ref": ref.to_document(), "changed_sources": changed_sources, **projection}))
+    return 0
+
+
+def _inbox(args: argparse.Namespace) -> int:
+    common = {"project_id": args.project_id, "recipient": args.recipient}
+    if args.inbox_command == "send":
+        value = send_message(args.data_root, **common, message_id=args.message_id, sender=args.sender,
+                             body=args.body, task_id=args.task_id)
+    elif args.inbox_command == "ack":
+        value = acknowledge(args.data_root, **common, message_id=args.message_id)
+    else:
+        value = list_messages(args.data_root, **common, limit=args.limit)
+    print(json.dumps({"status": "ok", "messages": value, "provider_execution": False}, ensure_ascii=False))
+    return 0
+
+
+def _record_parser(parent: Any, kind: str) -> None:
+    add = parent.add_parser("add", help="preview a source-bound typed planning record; --apply commits through State MCP")
+    add.add_argument("--root", default=".")
+    add.add_argument("--source-file", required=True)
+    add.add_argument("--actor-ref", default="local-user")
+    add.add_argument("--expected-revision", type=int)
+    add.add_argument("--apply", action="store_true")
+    add.add_argument("--refresh-source", action="store_true", help="include canonical source rebind in the same State event; requires active owner when claimed")
+    if kind == "work":
+        add.add_argument("--work-id", required=True)
+        add.add_argument("--title", required=True)
+        add.add_argument("--kind", choices=("campaign", "goal", "work", "experiment"), default="work")
+        add.add_argument("--parent-work-id")
+        add.add_argument("--dependency", action="append")
+        add.add_argument("--scope", action="append", help="capability name; does not grant effect authority")
+    else:
+        add.add_argument(f"--{kind}-id", required=True)
+        add.add_argument("--statement", required=True)
+        add.add_argument("--work-id", required=True, **({"action": "append"} if kind == "constraint" else {}))
+        if kind == "decision":
+            add.add_argument("--record-status", choices=("proposed", "accepted"), default="proposed")
+    add.set_defaults(handler=_state_add_record, record_kind=kind)
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="continuity")
     parser.add_argument("--version", action="version", version=VERSION)
     commands = parser.add_subparsers(dest="command", required=True)
+    parser.add_argument("--root", dest="global_root", help="project root (also accepted on project subcommands)")
     init = commands.add_parser("init", help="initialize a local project profile")
     init.add_argument("--root", default=".")
     init.add_argument("--project-id", required=True)
@@ -4702,7 +4826,9 @@ def build_parser() -> argparse.ArgumentParser:
     show.add_argument("--root", default=".")
     show.set_defaults(handler=_state_show)
     status = commands.add_parser("status", help="render current status projections")
-    status_commands = status.add_subparsers(dest="status_command", required=True)
+    status.add_argument("--root", default=".")
+    status.set_defaults(handler=_status_render)
+    status_commands = status.add_subparsers(dest="status_command")
     status_render = status_commands.add_parser("render", help="render current bilingual STATUS")
     status_render.add_argument("--root", default=".")
     status_render.set_defaults(handler=_status_render)
@@ -4812,6 +4938,10 @@ def build_parser() -> argparse.ArgumentParser:
     workspace_register.set_defaults(handler=_workspace_register)
     work = commands.add_parser("work", help="transition claimed Work")
     work_commands = work.add_subparsers(dest="work_command", required=True)
+    _record_parser(work_commands, "work")
+    for record_kind in ("decision", "constraint"):
+        record = commands.add_parser(record_kind, help="record explicit source-bound planning metadata")
+        _record_parser(record.add_subparsers(dest=f"{record_kind}_command", required=True), record_kind)
     work_complete = work_commands.add_parser(
         "complete", help="atomically complete Work and release its claim"
     )
@@ -5006,6 +5136,7 @@ def build_parser() -> argparse.ArgumentParser:
     collaboration_task_update.add_argument("--next-action", default=None)
     collaboration_task_update.add_argument("--blocked-reason", default=None)
     collaboration_task_update.add_argument("--result", default=None)
+    collaboration_task_update.add_argument("--assignee", default=None)
     collaboration_task_update.set_defaults(handler=_collaboration_task_update)
     collaboration_task_next = collaboration_task_commands.add_parser(
         "next", help="read one active or queued task card"
@@ -5135,11 +5266,45 @@ def build_parser() -> argparse.ArgumentParser:
     skills_audit.add_argument("--skill-root", action="append")
     skills_audit.add_argument("--description-budget", type=int, default=8000)
     skills_audit.set_defaults(handler=_skills_audit)
+    inbox = collaboration_commands.add_parser("inbox", help="durable local messages; never start another provider process")
+    inbox_commands = inbox.add_subparsers(dest="inbox_command", required=True)
+    for operation in ("send", "list", "ack"):
+        leaf = inbox_commands.add_parser(operation)
+        leaf.add_argument("--data-root", default=None)
+        leaf.add_argument("--project-id")
+        leaf.add_argument("--root", default=".")
+        leaf.add_argument("--recipient", required=True)
+        if operation != "list":
+            leaf.add_argument("--message-id", required=True)
+        if operation == "send":
+            leaf.add_argument("--sender", required=True)
+            leaf.add_argument("--body", required=True)
+            leaf.add_argument("--task-id")
+        if operation == "list":
+            leaf.add_argument("--limit", type=int, default=3)
+        leaf.set_defaults(handler=_inbox)
+    for group in (collaboration_task_commands, collaboration_effect_commands):
+        for leaf in group.choices.values():
+            leaf.add_argument("--root", default=".")
+            for action in leaf._actions:
+                if action.dest == "project_id":
+                    action.required = False
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.global_root is not None:
+        if not hasattr(args, "root"):
+            raise ValueError("this command has no project root; use its --project-id/--scope options")
+        if args.root != "." and Path(args.root).resolve() != Path(args.global_root).resolve():
+            raise ValueError("global and subcommand --root refer to different projects")
+        args.root = args.global_root
+    if getattr(args, "command", None) == "collaboration" and hasattr(args, "project_id") and args.project_id is None:
+        project = resolve_project(getattr(args, "root", "."), getattr(args, "data_root", None))
+        if project is None:
+            raise ValueError("project is not registered; specify --project-id or register --control-root first")
+        args.project_id = project["project_id"]
     if hasattr(args, "root") and getattr(args, "command", None) != "context":
         try:
             args.root = str(resolve_control_root(args.root))
@@ -5151,5 +5316,14 @@ def main(argv: list[str] | None = None) -> int:
     return result
 
 
+def entrypoint(argv: list[str] | None = None) -> int:
+    """Keep expected user errors concise while preserving main() as a test API."""
+    try:
+        return main(argv)
+    except (ValueError, OSError, StateStoreError, CheckpointError) as exc:
+        print(json.dumps({"status": "error", "failed_gate": "invalid_input_or_local_io", "message": str(exc)}, ensure_ascii=False), file=sys.stderr)
+        return 2
+
+
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(entrypoint())

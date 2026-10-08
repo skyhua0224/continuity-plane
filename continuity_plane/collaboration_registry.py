@@ -87,7 +87,8 @@ def _atomic_write(path: Path, document: dict[str, Any]) -> None:
 @contextmanager
 def _locked(path: Path) -> Iterator[None]:
     path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("a+", encoding="utf-8") as handle:
+    # Lock a stable inode: the document itself is replaced by atomic writes.
+    with path.with_name(path.name + ".lock").open("a+", encoding="utf-8") as handle:
         fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
         try:
             yield
@@ -253,7 +254,7 @@ def _validate_task(task: dict[str, Any]) -> dict[str, Any]:
     if task["assignee"] is not None and _ASSIGNEE_RE.fullmatch(task["assignee"]) is None:
         raise CollaborationRegistryError("assignee is invalid")
     if task["status"] == "active" and task["assignee"] is None:
-        raise CollaborationRegistryError("active task requires assignee")
+        raise CollaborationRegistryError("active task requires assignee; use task update --assignee ACTOR or task claim --assignee ACTOR")
     if task["worktree"] is not None:
         _absolute_path(task["worktree"], "worktree")
     if task["report_policy"] not in _REPORT_POLICY:
@@ -312,12 +313,12 @@ def _load_ledger(data_root: Path, project_id: str) -> dict[str, Any]:
     if len(ids) != len(set(ids)):
         raise CollaborationRegistryError("task_id must be unique")
     active_assignees = [
-        item["assignee"]
+        (item["assignee"], item["lane_id"])
         for item in tasks
         if item["status"] == "active" and item["assignee"] is not None
     ]
     if len(active_assignees) != len(set(active_assignees)):
-        raise CollaborationRegistryError("an assignee may hold only one active task")
+        raise CollaborationRegistryError("an assignee may hold only one active task per lane")
     effects = document.get("effect_requests", [])
     if not isinstance(effects, list):
         raise CollaborationRegistryError("effect_requests must be a list")
@@ -413,9 +414,10 @@ def add_task(
             raise CollaborationRegistryError("task_id already exists")
         if task["status"] == "active" and any(
             item["status"] == "active" and item["assignee"] == task["assignee"]
+            and item["lane_id"] == task["lane_id"]
             for item in ledger["tasks"]
         ):
-            raise CollaborationRegistryError("an assignee may hold only one active task")
+            raise CollaborationRegistryError("an assignee may hold only one active task per lane")
         ledger["tasks"].append(task)
         ledger["updated_at"] = _now()
         _atomic_write(path, ledger)
@@ -431,6 +433,7 @@ def update_task(
     next_action: str | None = None,
     blocked_reason: str | None = None,
     result: str | None = None,
+    assignee: str | None = None,
 ) -> dict[str, Any]:
     """Update a card; local completion is ready-for-review, not acceptance."""
     root = Path(data_root) if data_root is not None else default_data_root()
@@ -448,6 +451,10 @@ def update_task(
             )
         if status not in _TASK_STATUS:
             raise CollaborationRegistryError("task status is invalid")
+        if assignee is not None:
+            if task["assignee"] is not None and task["assignee"] != assignee:
+                raise CollaborationRegistryError("task is already assigned to another session")
+            task["assignee"] = assignee
         task["status"] = status
         if next_action is not None:
             task["next_action"] = _text(next_action, "next_action", 1024)
@@ -461,6 +468,12 @@ def update_task(
             task["assignee"] = None
         task["updated_at"] = _now()
         _validate_task(task)
+        if status == "active" and any(
+            item["status"] == "active" and item["assignee"] == task["assignee"]
+            and item["lane_id"] == task["lane_id"] and item["task_id"] != task_id
+            for item in ledger["tasks"]
+        ):
+            raise CollaborationRegistryError("an assignee may hold only one active task per lane")
         ledger["updated_at"] = _now()
         _atomic_write(path, ledger)
         return task
@@ -494,10 +507,11 @@ def claim_task(
         if any(
             item["status"] == "active"
             and item["assignee"] == assignee
+            and item["lane_id"] == task["lane_id"]
             and item["task_id"] != task_id
             for item in ledger["tasks"]
         ):
-            raise CollaborationRegistryError("an assignee may hold only one active task")
+            raise CollaborationRegistryError("an assignee may hold only one active task per lane")
         task["status"] = "active"
         task["assignee"] = assignee
         if resolved_worktree is not None:

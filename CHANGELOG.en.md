@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.0-alpha.21
+
+- Add source-bound `work add`, `decision add` and `constraint add`: preview by default, explicit State MCP/CAS apply, refreshed checkpoint/projection and idempotent replay.
+- Allow assignee changes through task update; count active cards per lane, support child identities and fix locking across atomic document replacement.
+- Resolve mixed-language, spaced, full-width and case-folded aliases without partial Latin identifier matches.
+- Add durable CLI/MCP inbox delivery/acknowledgement and bounded packet/hook hints, without forced host wake-up or writer takeover.
+- Return concise structured diagnostics for expected CLI errors, support direct status rendering, and document running-client MCP reload/tool-visibility checks.
+- Align the core package and all three Codex plugins. The HTML prototype is excluded. No unmeasured token-saving claims are made.
+
 [中文](CHANGELOG.md)
 
 ## 0.1.0-alpha.20

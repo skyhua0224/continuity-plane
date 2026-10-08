@@ -1,11 +1,12 @@
 # Continuity Plane
 
+Typed Work/decision/constraint additions, per-lane task assignment and a durable inbox are
+available; see [onboarding and handoffs](docs/onboarding.en.md).
+
 [![Managed with Continuity Plane](docs/assets/managed-with-continuity-plane.svg)](https://github.com/skyhua0224/continuity-plane)
 
-Continuity Plane is a provider-neutral control plane for long-running AI-assisted
-software work. It keeps tasks, decisions, constraints, evidence, checkpoints,
-context composition, and collaboration state outside the chat window so recovery
-after compaction, task switches, crashes, and handoffs is deterministic.
+Continuity Plane keeps tasks, memory, evidence and context outside chat for long-running
+AI development, compaction recovery and cross-session collaboration.
 
 [中文 README](README.md)
 
