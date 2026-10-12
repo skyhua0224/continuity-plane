@@ -155,7 +155,7 @@
     },
     {
       "path": "continuity_plane/codex_mcp_server.py",
-      "sha256": "694828769c8bd7c2e2679b0da7997d52c0645c0b16b60588cb5e9b4e084342e5"
+      "sha256": "25a44ee8aba94905915211d5f21fad3a343e84e46b94b3c2535efc05ff9f25a0"
     },
     {
       "path": "continuity_plane/collaboration_context.py",

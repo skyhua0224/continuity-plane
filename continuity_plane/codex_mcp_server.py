@@ -463,7 +463,6 @@ def main() -> int:
         elif method == "notifications/initialized":
             continue
         elif method == "tools/list":
-            version_issue = _runtime_version_issue()
             _reply(
                 request_id,
                 {
