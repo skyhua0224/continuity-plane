@@ -1009,6 +1009,11 @@ def build_observation_report(
         for record in records
         if isinstance((session := record.get("session_sha256")), str) and session
     }
+    try:
+        from .usage_meter import report as retrieval_report
+        retrieval_usage = retrieval_report(project_root)
+    except OSError:
+        retrieval_usage = {"calls": 0, "response_bytes": 0, "estimated_grep_bytes": 0, "estimated_saved_bytes": 0, "cache_hits": 0}
     return {
         "schema_version": "context.light-observation-report/v1alpha1",
         "project_sha256": project_digest,
@@ -1028,6 +1033,7 @@ def build_observation_report(
             type(record.get("input_tokens")) is int for record in records
         ),
         "suggestions": suggestions,
+        "retrieval_usage": retrieval_usage,
     }
 
 

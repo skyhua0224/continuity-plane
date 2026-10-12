@@ -2,6 +2,49 @@
 
 [English](USAGE.en.md)
 
+## 一次性执行方的协作约定
+
+启动任务时先读取当前项目的 packet，再读取自己的收件箱：
+
+```bash
+continuity collaboration packet --project-id PROJECT --assignee EXECUTOR
+continuity collaboration inbox list --project-id PROJECT --recipient EXECUTOR
+```
+
+完成代码后更新任务卡并把结果发回派发者：
+
+```bash
+continuity collaboration task update --project-id PROJECT --task-id TASK \
+  --status ready-for-review --branch BRANCH --commit SHA \
+  --verification "TEST COMMAND: pass"
+continuity collaboration inbox send --project-id PROJECT --message-id HANDOFF-ID \
+  --sender EXECUTOR --recipient DISPATCHER --body "Task ready for review; see commit SHA"
+```
+
+这些命令记录协作事实，不自动完成 State Work、合并或部署。
+
+主控可以用增量变化游标和项目规则减少轮询：
+
+```bash
+continuity collaboration changes --project-id PROJECT --since CURSOR --max-output-bytes 4096
+continuity collaboration rule-list --project-id PROJECT
+continuity collaboration commitment-list --project-id PROJECT
+continuity whoami --root . --assignee EXECUTOR --controller CONTROLLER
+```
+
+一次性执行方可用 `collaboration run --task-id TASK --assignee EXECUTOR -- COMMAND` 记录启动和收尾。
+
+需要心跳、超时和退出分类时使用内置 Supervisor：
+
+```bash
+continuity supervisor run --project-id PROJECT --task-id TASK --assignee EXECUTOR \
+  --timeout-seconds 3600 --idle-timeout-seconds 600 --retry 1 -- COMMAND ARG...
+continuity supervisor daemon --project-id PROJECT
+```
+
+Supervisor 只写 `attempt.started/heartbeat/finished` 协作事件，不完成 Work、不改 SQLite。
+它是本地前台/单次 daemon 入口，Provider 适配器和长期服务编排可以继续扩展。
+
 ## 安装
 
 要求 Python 3.11 或更高版本。当前 alpha 已在 Linux x86_64、macOS arm64 和
@@ -10,10 +53,10 @@ Windows AMD64 完成安装、verify 和卸载。
 ### 从 PyPI 安装
 
 ```bash
-python -m pip install continuity-plane==0.1.0a21
+python -m pip install continuity-plane==0.1.0a22
 ```
 
-当前公开版本为 alpha15，延续零阻断 adoption hook、真实运行时 doctor、明确执行意图与 OpenCodex 安全安装保护，并补充旧 Session 兼容提示和结构化 Work 激活诊断。
+当前公开版本为 alpha22，延续零阻断 adoption hook、真实运行时 doctor、明确执行意图与 OpenCodex 安全安装保护，并补充旧 Session 兼容提示和结构化 Work 激活诊断。
 
 从源码 checkout 开发时：
 
@@ -28,7 +71,7 @@ python -m venv .venv
 下载 wheel 或 source archive：
 
 ```bash
-python -m pip install /path/to/continuity_plane-0.1.0a21-py3-none-any.whl
+python -m pip install /path/to/continuity_plane-0.1.0a22-py3-none-any.whl
 ```
 
 ### 全局安装，管理多个项目
@@ -38,7 +81,7 @@ python -m pip install /path/to/continuity_plane-0.1.0a21-py3-none-any.whl
 ```bash
 python3 -m venv ~/.local/share/continuity-plane/venv
 ~/.local/share/continuity-plane/venv/bin/python \
-  -m pip install continuity-plane==0.1.0a21
+  -m pip install continuity-plane==0.1.0a22
 
 ~/.local/share/continuity-plane/venv/bin/continuity \
   init --root /path/to/project --project-id my-project
@@ -49,7 +92,7 @@ python3 -m venv ~/.local/share/continuity-plane/venv
 ```bash
 cd /path/to/project
 python3 -m venv .venv
-.venv/bin/python -m pip install continuity-plane==0.1.0a21
+.venv/bin/python -m pip install continuity-plane==0.1.0a22
 .venv/bin/continuity init --root . --project-id my-project
 ```
 
@@ -193,7 +236,7 @@ continuity work activate \
 个人想进行 SQL 检查、备份或让多个本地 worker 共用状态时，可以选择 PostgreSQL：
 
 ```bash
-python -m pip install 'continuity-plane[postgres]==0.1.0a21'
+python -m pip install 'continuity-plane[postgres]==0.1.0a22'
 ```
 
 当前 alpha CLI 仍默认 SQLite。PostgreSQL 通过显式 Python adapter 使用：
@@ -275,8 +318,8 @@ MCP 写工具，也不阻断普通开发。需要显式 State 操作时再安装
 先安装核心包，再把本项目 GitHub 仓库作为 marketplace：
 
 ```bash
-python -m pip install continuity-plane==0.1.0a21
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.21
+python -m pip install continuity-plane==0.1.0a22
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.22
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -516,7 +559,7 @@ template 和 content-addressed artifact。所有 claim 关闭后，才能归档�
 
 当前版本同时发布到 PyPI 和 GitHub Release：
 
-<https://pypi.org/project/continuity-plane/0.1.0a21/>  
+<https://pypi.org/project/continuity-plane/0.1.0a22/>  
 <https://github.com/skyhua0224/continuity-plane/releases>
 
 当前公开版本使用受控 PyPI token 发布。GitHub Actions OIDC workflow 和 `pypi`

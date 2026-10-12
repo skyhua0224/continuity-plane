@@ -13,6 +13,7 @@ from .collaboration_registry import (
     _load,
     _locked,
     _now,
+    _record_change,
     default_data_root,
     project_data_dir,
 )
@@ -121,13 +122,14 @@ def send_message(
                 "messages": messages,
             },
         )
+        _record_change(Path(data_root or default_data_root()), project_id, "message.sent", task_id, recipient=recipient, message_id=message_id)
         return item
 
 
 def list_messages(
     data_root: Path | str | None, *, project_id: str, recipient: str, limit: int = 3
 ) -> list[dict[str, Any]]:
-    if not _ASSIGNEE_RE.fullmatch(recipient) or not 1 <= limit <= 100:
+    if not _ASSIGNEE_RE.fullmatch(recipient) or not 1 <= limit <= 1000:
         raise CollaborationRegistryError("recipient or inbox limit is invalid")
     return [
         m
@@ -161,4 +163,5 @@ def acknowledge(
                     "messages": messages,
                 },
             )
+            _record_change(Path(data_root or default_data_root()), project_id, "message.acknowledged", item.get("task_id"), recipient=recipient, message_id=message_id)
         return item

@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import re
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -15,6 +16,7 @@ MAX_QUERY_BYTES = 1024
 MAX_EXCERPT_BYTES = 512
 MAX_RESULTS = 200
 MAX_OUTPUT_BYTES = 64 * 1024
+_STOPWORDS = {"a", "an", "and", "are", "by", "check", "does", "from", "how", "is", "of", "that", "the", "to", "what", "where", "which", "who", "with"}
 _FIELDS = {
     "schema_version",
     "repository_revision",
@@ -96,6 +98,8 @@ def bounded_git_search(
     query: str,
     max_results: int = 40,
     max_output_bytes: int = 8192,
+    path_prefix: str | None = None,
+    extensions: list[str] | None = None,
 ) -> dict[str, Any]:
     """Search tracked current-worktree text and cap the complete JSON receipt."""
     root = Path(root).resolve()
@@ -119,7 +123,18 @@ def bounded_git_search(
     if revision_result.returncode != 0:
         raise ValueError("repository revision is unavailable")
     revision = revision_result.stdout.decode("ascii").strip()
-    search = _git(root, "grep", "-n", "-I", "-F", "-z", "--", query)
+    terms = [term for term in re.findall(r"[A-Za-z0-9_+.-]+", query.casefold()) if term not in _STOPWORDS and len(term) > 2]
+    if not terms:
+        terms = [query.casefold()]
+    normalized_extensions = {item.casefold() if item.startswith(".") else "." + item.casefold() for item in (extensions or [])}
+    # Use the rarest meaningful term as the candidate seed. This keeps a
+    # natural-language question useful without scanning every source body.
+    term_counts: list[tuple[int, str]] = []
+    for term in terms:
+        probe = _git(root, "grep", "-l", "-I", "-i", "-F", "--", term)
+        term_counts.append((len(probe.stdout.splitlines()) if probe.returncode in {0, 1} else 1_000_000, term))
+    seed = min(term_counts)[1]
+    search = _git(root, "grep", "-n", "-I", "-i", "-F", "-z", "--", seed)
     if search.returncode not in {0, 1}:
         raise ValueError("repository search failed")
     candidates: list[dict[str, Any]] = []
@@ -133,6 +148,10 @@ def bounded_git_search(
         except (UnicodeDecodeError, ValueError):
             continue
         relative = Path(relative_text)
+        if path_prefix and not relative.as_posix().startswith(path_prefix.rstrip("/") + "/") and relative.as_posix() != path_prefix.rstrip("/"):
+            continue
+        if normalized_extensions and relative.suffix.casefold() not in normalized_extensions:
+            continue
         path = (root / relative).resolve()
         try:
             path.relative_to(root)
@@ -146,6 +165,17 @@ def bounded_git_search(
         excerpt = _excerpt(line)
         if excerpt is None:
             continue
+        if len(terms) > 1:
+            try:
+                source_text = payload.decode("utf-8").casefold()
+            except UnicodeDecodeError:
+                continue
+            hits = sum(term in source_text for term in terms)
+            required_hits = len(terms) if len(terms) <= 3 else max(2, len(terms) // 3)
+            if hits < required_hits:
+                continue
+        density = sum(source_text.count(term) for term in terms) if len(terms) > 1 else 1
+        build_file = relative.name.casefold() in {"cmakelists.txt", "makefile"} or "generated" in relative.as_posix().casefold()
         candidates.append(
             {
                 "path": relative.as_posix(),
@@ -153,9 +183,10 @@ def bounded_git_search(
                 "excerpt": excerpt,
                 "line_sha256": hashlib.sha256(line).hexdigest(),
                 "file_sha256": hashlib.sha256(payload).hexdigest(),
+                "_sort": (1 if build_file else 0, -density, relative.as_posix(), line_number),
             }
         )
-    candidates.sort(key=lambda item: (item["path"], item["line"]))
+    candidates.sort(key=lambda item: item.pop("_sort"))
     selected = candidates[:max_results]
     receipt = {
         "schema_version": SCHEMA_VERSION,
@@ -179,6 +210,11 @@ def bounded_git_search(
     if _seal(receipt) > max_output_bytes:
         raise ValueError("max_output_bytes cannot contain the receipt metadata")
     validate_bounded_code_search_receipt(receipt, root=root)
+    try:
+        from .usage_meter import record
+        record(root, command="context search", response_bytes=receipt["returned_bytes"], estimated_grep_bytes=sum(len(item["excerpt"].encode()) + len(item["path"]) + 32 for item in candidates))
+    except OSError:
+        pass
     return receipt
 
 

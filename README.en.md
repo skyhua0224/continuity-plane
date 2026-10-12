@@ -3,6 +3,8 @@
 Typed Work/decision/constraint additions, per-lane task assignment and a durable inbox are
 available; see [onboarding and handoffs](docs/onboarding.en.md).
 
+It also includes C/C++/Objective-C indexing, AND queries, task summaries, Todo projection and retrieval metrics.
+
 [![Managed with Continuity Plane](docs/assets/managed-with-continuity-plane.svg)](https://github.com/skyhua0224/continuity-plane)
 
 Continuity Plane keeps tasks, memory, evidence and context outside chat for long-running
@@ -20,9 +22,7 @@ python -m pip install --upgrade continuity-plane
 
 ### Recent updates
 
-- Hooks, compaction recovery, and doctor checks are non-blocking by default.
-- Collaboration memory, recovery packets, audits, and activation diagnostics provide hints only.
-- Bounded code index is reusable across Sessions; it reparses changed files.
+- Hooks, compaction recovery, collaboration metadata and the bounded code index are non-blocking by default.
 
 ### Codex plugin (optional)
 

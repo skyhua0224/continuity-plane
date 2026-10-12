@@ -74,7 +74,34 @@ This release provides durable delivery and retrieval, **not guaranteed wake-up o
 or host-owned session**. It does not launch a second provider process to compete for a writer.
 Cross-device handoffs still require explicit synchronization of collaboration data or files.
 
+Controllers can use `collaboration changes --since CURSOR` for incremental events instead of
+polling each executor. `context lookup` and `context search` support `--format brief` for model
+first reads; JSON remains for scripts. Shared project rules and unresolved commitments use
+`collaboration rule-add/rule-list` and `commitment-add/commitment-list/commitment-close`, and
+are included in bounded packets.
+
 ## Verify MCP activation
+
+## First-run example
+
+Minimal controller/executor flow:
+
+```bash
+continuity init --root . --project-id demo
+continuity collaboration register --project-id demo --control-root . --repository-root .
+continuity whoami --root . --assignee controller --controller controller
+continuity collaboration task add --project-id demo --task-id task-a --lane-id core \
+  --mode patch --priority p1 --title "Implement A" --objective "Complete A" \
+  --next-action "Run tests" --exit-criterion "Tests pass" --assignee worker-a
+continuity collaboration packet --project-id demo --assignee worker-a
+continuity collaboration task update --project-id demo --task-id task-a --status ready-for-review \
+  --branch feat/a --commit abcdef1 --verification "test command: pass"
+```
+
+An executor starts with `whoami`, `packet`, and `inbox list`, then closes with
+`task update --status ready-for-review` and a message to the controller. For state on another
+machine, point `--data-root` at an SSH-mounted or explicitly synchronized directory; Continuity
+does not start SSH implicitly.
 
 Running MCP clients may not hot-load new servers or updated tool catalogs. A successful
 package install does not prove the current session sees its tools. Inspect the tool list;

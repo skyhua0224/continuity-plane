@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.0-alpha.22
+
+- Index C/C++/Objective-C functions, structs, enums, typedefs, macros and configuration keys; multi-term queries use AND semantics.
+- Collaboration task list defaults to summaries with filters and byte budgets; add dispatched/completed/merged lifecycle and branch/commit/verification fields.
+- Stale source or lease recovery is visibly marked `[STALE RECOVERY]` and starts with current-state inspection.
+- Packets combine bounded in-flight cards and TodoQueue; add a fail-open host lifecycle bridge example.
+- Record retrieval response bytes, estimated grep bytes and cache status locally; expose aggregates in observe reports.
+- `continuity status --root ROOT` renders directly. Usage-driven provider handoff remains disabled.
+
 ## 0.1.0-alpha.21
 
 - Add source-bound `work add`, `decision add` and `constraint add`: preview by default, explicit State MCP/CAS apply, refreshed checkpoint/projection and idempotent replay.

@@ -2,6 +2,15 @@
 
 [English](CHANGELOG.en.md)
 
+## 0.1.0-alpha.22
+
+- 面向 C/C++/Objective-C 的函数、结构体、枚举、typedef、宏和配置键索引；多词查询按 AND 语义匹配。
+- 协作卡默认摘要输出，支持筛选和字节预算；增加 dispatched/completed/merged、branch/commit/verification 字段。
+- 恢复包检测到旧来源或租约时显式标记 `[STALE RECOVERY]`，首动作改为核对当前状态。
+- packet 合并有限的在途卡和 TodoQueue；增加 fail-open 宿主生命周期桥接示例。
+- 本地记录检索响应字节、grep 估算字节和缓存状态，并在 observe report 中汇总。
+- `continuity status --root ROOT` 可直接渲染；不启用 usage 自动移交，不修改远端项目。
+
 ## 0.1.0-alpha.21
 
 - 新增 source-bound `work add`、`decision add`、`constraint add`：默认预览，显式应用通过 State MCP/CAS，更新 checkpoint 和投影；重复添加不重复生成事件。

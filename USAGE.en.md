@@ -2,6 +2,50 @@
 
 [中文](USAGE.md)
 
+## One-shot executor handoff
+
+At startup, read the project packet and the executor inbox:
+
+```bash
+continuity collaboration packet --project-id PROJECT --assignee EXECUTOR
+continuity collaboration inbox list --project-id PROJECT --recipient EXECUTOR
+```
+
+After code and verification, update the card and send a handoff:
+
+```bash
+continuity collaboration task update --project-id PROJECT --task-id TASK \
+  --status ready-for-review --branch BRANCH --commit SHA \
+  --verification "TEST COMMAND: pass"
+continuity collaboration inbox send --project-id PROJECT --message-id HANDOFF-ID \
+  --sender EXECUTOR --recipient DISPATCHER --body "Task ready for review; see commit SHA"
+```
+
+These commands record collaboration facts. They do not complete State Work or authorize merge/deploy.
+
+Controllers can use a cursor and shared context instead of polling every executor:
+
+```bash
+continuity collaboration changes --project-id PROJECT --since CURSOR --max-output-bytes 4096
+continuity collaboration rule-list --project-id PROJECT
+continuity collaboration commitment-list --project-id PROJECT
+continuity whoami --root . --assignee EXECUTOR --controller CONTROLLER
+```
+
+A one-shot executor may use `collaboration run --task-id TASK --assignee EXECUTOR -- COMMAND` to record start and finish events.
+
+For heartbeats, timeouts and exit classification, use the built-in Supervisor:
+
+```bash
+continuity supervisor run --project-id PROJECT --task-id TASK --assignee EXECUTOR \
+  --timeout-seconds 3600 --idle-timeout-seconds 600 --retry 1 -- COMMAND ARG...
+continuity supervisor daemon --project-id PROJECT
+```
+
+The Supervisor writes `attempt.started/heartbeat/finished` collaboration events. It does not
+complete Work or edit State SQLite. It currently provides local foreground and one-shot daemon
+entry points; provider adapters and long-running service orchestration can be added separately.
+
 ## Install
 
 Python 3.11 or newer is required. The current alpha has completed installation,
@@ -11,10 +55,10 @@ AMD64.
 ### Install From PyPI
 
 ```bash
-python -m pip install continuity-plane==0.1.0a21
+python -m pip install continuity-plane==0.1.0a22
 ```
 
-The current public version is alpha15 and continues non-blocking adoption hooks, real-runtime doctor checks, explicit execution intent, and OpenCodex-safe installation, with compatibility hints for older Sessions and structured Work activation diagnostics.
+The current public version is alpha22 and continues non-blocking adoption hooks, real-runtime doctor checks, explicit execution intent, and OpenCodex-safe installation, with compatibility hints for older Sessions and structured Work activation diagnostics.
 
 For a source checkout:
 
@@ -29,7 +73,7 @@ Download a wheel or source archive from
 [Continuity Plane Releases](https://github.com/skyhua0224/continuity-plane/releases):
 
 ```bash
-python -m pip install /path/to/continuity_plane-0.1.0a21-py3-none-any.whl
+python -m pip install /path/to/continuity_plane-0.1.0a22-py3-none-any.whl
 ```
 
 ### Install Once For Many Projects
@@ -40,7 +84,7 @@ projects:
 ```bash
 python3 -m venv ~/.local/share/continuity-plane/venv
 ~/.local/share/continuity-plane/venv/bin/python \
-  -m pip install continuity-plane==0.1.0a21
+  -m pip install continuity-plane==0.1.0a22
 ```
 
 Run the installed CLI with an explicit project root whenever the command is not
@@ -58,7 +102,7 @@ For a project that pins its own control-plane version:
 ```bash
 cd /path/to/project
 python3 -m venv .venv
-.venv/bin/python -m pip install continuity-plane==0.1.0a21
+.venv/bin/python -m pip install continuity-plane==0.1.0a22
 .venv/bin/continuity init --root . --project-id my-project
 ```
 
@@ -225,7 +269,7 @@ single-user installation. Install the optional extra in the environment that
 will run the adapter:
 
 ```bash
-python -m pip install 'continuity-plane[postgres]==0.1.0a21'
+python -m pip install 'continuity-plane[postgres]==0.1.0a22'
 ```
 
 The alpha CLI still defaults to SQLite. PostgreSQL is selected by an explicit
@@ -318,8 +362,8 @@ the advanced State plugin only for explicit State operations.
 Install the core package, then add this GitHub repository as a marketplace:
 
 ```bash
-python -m pip install continuity-plane==0.1.0a21
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.21
+python -m pip install continuity-plane==0.1.0a22
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.22
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -606,7 +650,7 @@ storage.
 
 The current version is available from PyPI and GitHub Releases:
 
-<https://pypi.org/project/continuity-plane/0.1.0a21/>  
+<https://pypi.org/project/continuity-plane/0.1.0a22/>  
 <https://github.com/skyhua0224/continuity-plane/releases>
 
 The current public release used a controlled PyPI token. A GitHub Actions OIDC

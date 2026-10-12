@@ -17,9 +17,8 @@ python -m pip install --upgrade continuity-plane
 ### 近期更新
 
 - 类型化 Work/决定/约束录入、按工作线领取和持久收件箱；参见[接入与交接](docs/onboarding.md)。
-- 默认非阻断 hook、压缩恢复和 doctor，不阻碍开发。
-- 协作账本、词汇记忆、恢复包、技能/worktree 审计和结构化激活诊断已加入。
-- 有界代码索引可跨 Session/AI 复用，只重解析变更文件。
+- alpha22 增加 C/C++/Objective-C 词法符号索引、多词查询、协作卡摘要/筛选、Todo 合并提示和实际检索计量。
+- 默认非阻断 hook、压缩恢复、协作账本和有界代码索引均可用。
 
 ### Codex 插件（可选）
 

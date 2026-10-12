@@ -10,6 +10,7 @@ import os
 import subprocess
 import sys
 import time
+from importlib.metadata import PackageNotFoundError, version as package_version
 from pathlib import Path
 
 from .light_observability import (
@@ -21,7 +22,8 @@ from .light_observability import (
 from .workspace_binding import WorkspaceBindingError, resolve_control_root
 from .collaboration_packet import compose_safe_collaboration_packet
 from .collaboration_inbox import send_message, list_messages, acknowledge
-from .collaboration_registry import resolve_project
+from .collaboration_registry import resolve_project, list_changes, list_tasks
+from .collaboration_context import list_rules, list_commitments
 from .intent_todo import (
     IntentTodoError,
     block_item,
@@ -36,6 +38,17 @@ def _cli_command(*arguments: str) -> list[str]:
     if test_executable:
         return [test_executable, *arguments]
     return [sys.executable, "-m", "continuity_plane.cli", *arguments]
+
+
+def _runtime_version_issue() -> str | None:
+    try:
+        installed = package_version("continuity")
+        from .cli import VERSION
+        if installed != VERSION:
+            return f"MCP process is running Continuity {VERSION}, installed package is {installed}; restart this MCP process"
+    except (PackageNotFoundError, ImportError):
+        return None
+    return None
 
 
 def _effect_policy() -> str:
@@ -450,6 +463,7 @@ def main() -> int:
         elif method == "notifications/initialized":
             continue
         elif method == "tools/list":
+            version_issue = _runtime_version_issue()
             _reply(
                 request_id,
                 {
@@ -495,6 +509,12 @@ def main() -> int:
                                     "assignee": {"type": "string", "maxLength": 256},
                                 },
                             },
+                        },
+                        {
+                            "name": "continuity_collaboration",
+                            "description": "Read bounded collaboration packet, changes, rules or commitments from the registered project. No State claim or provider launch.",
+                            "annotations": _READ_ONLY_ANNOTATIONS,
+                            "inputSchema": {"type": "object", "additionalProperties": False, "required": ["root", "action"], "properties": {"root": {"type": "string"}, "action": {"enum": ["packet", "changes", "rules", "commitments", "tasks"]}, "assignee": {"type": "string"}, "since": {"type": "integer"}, "max_results": {"type": "integer"}, "query": {"type": "string"}}},
                         },
                         {
                             "name": "continuity_resume",
@@ -770,6 +790,7 @@ def main() -> int:
             if tool_name not in {
                 "continuity_inspect",
                 "continuity_collaboration_packet",
+                "continuity_collaboration",
                 "continuity_inbox",
                 "continuity_todo_compile",
                 "continuity_todo_list",
@@ -794,7 +815,7 @@ def main() -> int:
                 _error(request_id, -32602, "root is required")
                 continue
             requested_root = _requested_root(root, active_root)
-            if requested_root is None and tool_name in {"continuity_collaboration_packet", "continuity_inbox"}:
+            if requested_root is None and tool_name in {"continuity_collaboration_packet", "continuity_collaboration", "continuity_inbox"}:
                 candidate = Path(root).expanduser().resolve()
                 if resolve_project(candidate) is not None:
                     requested_root = candidate
@@ -805,6 +826,7 @@ def main() -> int:
             if tool_name not in {
                 "continuity_inspect",
                 "continuity_collaboration_packet",
+                "continuity_collaboration",
                 "continuity_inbox",
                 "continuity_todo_compile",
                 "continuity_todo_list",
@@ -874,6 +896,27 @@ def main() -> int:
                 }
                 else session_bindings.get(root_key)
             )
+            if tool_name == "continuity_collaboration":
+                project = resolve_project(requested_root)
+                if project is None:
+                    _error(request_id, -32602, "project is not registered")
+                    continue
+                action = arguments.get("action")
+                if action == "packet":
+                    value = compose_safe_collaboration_packet(None, project_id=project["project_id"], query=str(arguments.get("query") or "")[:4096], assignee=arguments.get("assignee"))
+                elif action == "changes":
+                    value = list_changes(None, project_id=project["project_id"], since=int(arguments.get("since") or 0), max_results=int(arguments.get("max_results") or 50))
+                elif action == "rules":
+                    value = list_rules(None, project_id=project["project_id"])
+                elif action == "commitments":
+                    value = list_commitments(None, project_id=project["project_id"])
+                elif action == "tasks":
+                    value = list_tasks(None, project_id=project["project_id"], query=arguments.get("query"), max_results=int(arguments.get("max_results") or 50))
+                else:
+                    _error(request_id, -32602, "action is unsupported")
+                    continue
+                _reply(request_id, {"content": [{"type": "text", "text": json.dumps(value, ensure_ascii=False, sort_keys=True)}], "structuredContent": value})
+                continue
             if tool_name == "continuity_inbox":
                 project = resolve_project(requested_root)
                 if project is None:

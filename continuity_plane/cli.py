@@ -25,7 +25,7 @@ import yaml
 
 from .artifact_store import ArtifactRef, LocalArtifactStore
 from .bounded_code_search import bounded_git_search
-from .code_index import build_code_index, lookup_code_index
+from .code_index import build_code_index, lookup_code_index, find_dependents
 from .checkpoint import (
     CheckpointError,
     CheckpointStaleError,
@@ -33,6 +33,7 @@ from .checkpoint import (
     restore_checkpoint,
 )
 from .collaboration_registry import (
+    _TASK_STATUS,
     add_task,
     claim_task,
     default_data_root,
@@ -40,6 +41,8 @@ from .collaboration_registry import (
     list_projects,
     request_effect,
     list_tasks,
+    list_changes,
+    project_data_dir,
     next_task,
     register_project,
     resolve_project,
@@ -51,6 +54,7 @@ from .collaboration_packet import (
     compose_safe_collaboration_packet,
 )
 from .collaboration_inbox import send_message, list_messages, acknowledge
+from .collaboration_context import add_rule, list_rules, add_commitment, list_commitments, close_commitment
 from .state_onboarding import record_changes
 from .state_store import StateStoreError
 from .local_state_bundle import (
@@ -66,6 +70,7 @@ from .intent_todo import (
     complete_item as complete_todo_item,
     compile_queue,
     load_queue,
+    link_item,
 )
 from .plan_route import master_route
 from .recovery_envelope import (
@@ -107,7 +112,7 @@ from .state_mcp import (
     StateMCPService,
 )
 
-VERSION = "0.1.0a21"
+VERSION = "0.1.0a22"
 _PROJECT_FIELDS = {
     "schema_version",
     "project_id",
@@ -845,8 +850,14 @@ def _context_search(args: argparse.Namespace) -> int:
         query=args.query,
         max_results=args.max_results,
         max_output_bytes=args.max_output_bytes,
+        path_prefix=args.path_prefix,
+        extensions=args.extension,
     )
-    print(json.dumps(receipt, ensure_ascii=False, sort_keys=True))
+    if args.format == "brief":
+        brief = "\n".join(f"{item['path']}:{item['line']} {item['excerpt']}" for item in receipt["matches"])
+        print(brief.encode()[: args.max_output_bytes].decode("utf-8", "ignore"))
+    else:
+        print(json.dumps(receipt, ensure_ascii=False, sort_keys=True))
     return 0
 
 
@@ -868,7 +879,17 @@ def _context_lookup(args: argparse.Namespace) -> int:
         max_results=args.max_results,
         max_output_bytes=args.max_output_bytes,
     )
-    print(json.dumps(receipt, ensure_ascii=False, sort_keys=True))
+    if args.format == "brief":
+        brief = "\n".join(f"{item['path']}:{item['line']} {item['kind']} {item['name']}" for item in receipt["matches"])
+        print(brief.encode()[: args.max_output_bytes].decode("utf-8", "ignore"))
+    else:
+        print(json.dumps(receipt, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def _context_dependents(args: argparse.Namespace) -> int:
+    value = find_dependents(Path(args.root), query=args.query, max_results=args.max_results)
+    print(json.dumps(value, ensure_ascii=False, sort_keys=True))
     return 0
 
 
@@ -1709,10 +1730,14 @@ def _resume(args: argparse.Namespace) -> int:
         and interaction_cursor["response_mode"] == "answer-current-input"
     ):
         next_action = "answer-current-input"
+    stale_context = not source_fresh or not lease_valid
     if idle and not source_fresh:
         next_action = "rebind-source-and-activate-next-work"
-    elif not source_fresh or not lease_valid:
-        next_action = "remain-read-only"
+    elif stale_context:
+        next_action = "inspect-current-state-before-continue"
+        if work is not None:
+            work = copy.deepcopy(work)
+            work["title"] = f"[STALE RECOVERY] {work['title']}"
     packet = compose_recovery_envelope(
         project_id=project["project_id"],
         revision=snapshot["project"]["revision"],
@@ -4507,6 +4532,11 @@ def _collaboration_task_add(args: argparse.Namespace) -> int:
         preauthorized_effects=args.preauthorized_effect or [],
         queued_effects=args.queued_effect or [],
         assignee=args.assignee,
+        branch=args.branch,
+        commit=args.commit,
+        verification=args.verification,
+        landed_commit=args.landed_commit,
+        released_in=args.released_in,
     )
     print(json.dumps(task, ensure_ascii=False, sort_keys=True))
     return 0
@@ -4522,6 +4552,11 @@ def _collaboration_task_update(args: argparse.Namespace) -> int:
         blocked_reason=args.blocked_reason,
         result=args.result,
         assignee=args.assignee,
+        branch=args.branch,
+        commit=args.commit,
+        verification=args.verification,
+        landed_commit=args.landed_commit,
+        released_in=args.released_in,
     )
     print(json.dumps(task, ensure_ascii=False, sort_keys=True))
     return 0
@@ -4546,13 +4581,141 @@ def _collaboration_task_claim(args: argparse.Namespace) -> int:
 
 
 def _collaboration_task_list(args: argparse.Namespace) -> int:
-    print(
-        json.dumps(
-            list_tasks(args.data_root, project_id=args.project_id),
-            ensure_ascii=False,
-            sort_keys=True,
-        )
-    )
+    if args.status is None and not args.all:
+        tasks = [item for item in list_tasks(args.data_root, project_id=args.project_id)
+                 if item["status"] in {"queued", "active", "dispatched", "blocked"}]
+        if args.assignee:
+            tasks = [item for item in tasks if item["assignee"] == args.assignee]
+        if args.lane_id:
+            tasks = [item for item in tasks if item["lane_id"] == args.lane_id]
+        if args.query:
+            tasks = [item for item in tasks if args.query.casefold() in json.dumps(item, ensure_ascii=False).casefold()]
+        if args.max_results is not None:
+            tasks = tasks[:args.max_results]
+    else:
+        tasks = list_tasks(args.data_root, project_id=args.project_id, status=args.status,
+                           assignee=args.assignee, lane_id=args.lane_id,
+                           updated_after=args.updated_after, query=args.query,
+                           max_results=args.max_results)
+    tasks.sort(key=lambda item: (item["updated_at"], item["task_id"]), reverse=True)
+    if args.summary:
+        value = [{key: task[key] for key in ("task_id", "status", "assignee", "lane_id", "title", "next_action", "updated_at")} for task in tasks]
+    else:
+        value = tasks
+    payload = json.dumps(value, ensure_ascii=False, sort_keys=True)
+    if args.max_output_bytes is not None and len(payload.encode()) > args.max_output_bytes:
+        if not args.summary:
+            value = [{key: task[key] for key in ("task_id", "status", "assignee", "lane_id", "title", "next_action", "updated_at")} for task in tasks]
+            payload = json.dumps(value, ensure_ascii=False, sort_keys=True)
+        if len(payload.encode()) > args.max_output_bytes:
+            value = value[: max(1, len(value) // 2)]
+            payload = json.dumps({"tasks": value, "truncated": True, "returned_bytes": len(payload.encode())}, ensure_ascii=False, sort_keys=True)
+    print(payload)
+    return 0
+
+
+def _collaboration_changes(args: argparse.Namespace) -> int:
+    value = list_changes(args.data_root, project_id=args.project_id, since=args.since, max_results=args.max_results)
+    payload = json.dumps(value, ensure_ascii=False, sort_keys=True)
+    if len(payload.encode()) > args.max_output_bytes:
+        value["changes"] = value["changes"][: max(1, len(value["changes"]) // 2)]
+        value["truncated"] = True
+        payload = json.dumps(value, ensure_ascii=False, sort_keys=True)
+    print(payload)
+    return 0
+
+
+def _whoami(args: argparse.Namespace) -> int:
+    project = resolve_project(args.root, args.data_root)
+    host_session_key = "".join(("CL", "AUDE", "_SESSION_ID"))
+    identity = args.assignee or os.environ.get("CONTINUITY_ASSIGNEE") or os.environ.get("CODEX_SESSION_ID") or os.environ.get(host_session_key)
+    controller = args.controller or os.environ.get("CONTINUITY_CONTROLLER")
+    print(json.dumps({"project_id": project["project_id"] if project else None, "root": str(Path(args.root).resolve()), "assignee": identity, "controller": controller, "hint": "run collaboration packet --assignee ASSIGNEE" if identity else "set CONTINUITY_ASSIGNEE or pass --assignee"}, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def _collaboration_run(args: argparse.Namespace) -> int:
+    if not args.commandline:
+        raise ValueError("run requires a command after --")
+    commandline = list(args.commandline)
+    if commandline and commandline[0] == "--":
+        commandline.pop(0)
+    if not commandline:
+        raise ValueError("run requires a command after --")
+    from .collaboration_registry import _record_change
+    started = datetime.now(UTC).isoformat()
+    _record_change(Path(args.data_root or default_data_root()), args.project_id, "run.started", args.task_id, assignee=args.assignee, command=commandline, started_at=started)
+    status = "failed"
+    return_code = 1
+    try:
+        result = subprocess.run(commandline, check=False)
+        return_code = result.returncode
+        status = "completed" if return_code == 0 else "interrupted" if return_code < 0 else "failed"
+    except (OSError, KeyboardInterrupt):
+        status = "interrupted"
+    _record_change(Path(args.data_root or default_data_root()), args.project_id, "run.finished", args.task_id, assignee=args.assignee, status=status, return_code=return_code, finished_at=datetime.now(UTC).isoformat())
+    print(json.dumps({"status": status, "task_id": args.task_id, "assignee": args.assignee, "return_code": return_code}, ensure_ascii=False, sort_keys=True))
+    return 0 if return_code == 0 else 2
+
+
+def _collaboration_context_command(args: argparse.Namespace) -> int:
+    if args.context_command == "rule-add":
+        value = add_rule(args.data_root, project_id=args.project_id, rule_id=args.rule_id, text=args.text, audience=args.audience)
+    elif args.context_command == "rule-list":
+        value = list_rules(args.data_root, project_id=args.project_id, audience=args.audience)
+    elif args.context_command == "commitment-add":
+        value = add_commitment(args.data_root, project_id=args.project_id, commitment_id=args.commitment_id, text=args.text)
+    elif args.context_command == "commitment-close":
+        value = close_commitment(args.data_root, project_id=args.project_id, commitment_id=args.commitment_id)
+    else:
+        value = list_commitments(args.data_root, project_id=args.project_id)
+    print(json.dumps(value, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def _supervisor_run(args: argparse.Namespace) -> int:
+    from .supervisor import run_attempt
+    command = list(args.commandline)
+    if command and command[0] == "--":
+        command.pop(0)
+    result = run_attempt(args.data_root, project_id=args.project_id, task_id=args.task_id,
+                         assignee=args.assignee, command=command, attempt_id=args.attempt_id,
+                         timeout_seconds=args.timeout_seconds, idle_timeout_seconds=args.idle_timeout_seconds,
+                         heartbeat_seconds=args.heartbeat_seconds, retry=args.retry)
+    print(json.dumps(result, ensure_ascii=False, sort_keys=True))
+    return 0 if result["status"] == "completed" else 2
+
+
+def _supervisor_daemon(args: argparse.Namespace) -> int:
+    from .supervisor import daemon_once
+    print(json.dumps(daemon_once(args.data_root, project_id=args.project_id), ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def _collaboration_drift(args: argparse.Namespace) -> int:
+    tasks = list_tasks(args.data_root, project_id=args.project_id)
+    findings = []
+    now = datetime.now(UTC)
+    for task in tasks:
+        if task["status"] == "queued" and any(token in task["next_action"].casefold() for token in ("dispatched", "已派出", "running")):
+            findings.append({"task_id": task["task_id"], "kind": "status-mismatch", "message": "queued card says it was dispatched"})
+        try:
+            age_hours = (now - datetime.fromisoformat(task["updated_at"].replace("Z", "+00:00"))).total_seconds() / 3600
+        except ValueError:
+            age_hours = 0
+        if task["status"] in {"active", "dispatched"} and age_hours >= args.stale_hours:
+            findings.append({"task_id": task["task_id"], "kind": "stale-dispatch", "message": f"no card update for {age_hours:.1f} hours"})
+    print(json.dumps({"schema_version": "context.collaboration-drift/v1alpha1", "findings": findings, "clean": not findings}, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def _collaboration_doctor(args: argparse.Namespace) -> int:
+    path = project_data_dir(args.data_root or default_data_root(), args.project_id) / "dispatch.json"
+    try:
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        document = {}
+    print(json.dumps({"project_id": args.project_id, "ledger_schema": document.get("schema_version"), "last_writer_version": document.get("writer_version"), "current_cli_version": VERSION, "restart_required": document.get("writer_version") not in {None, VERSION}}, ensure_ascii=False, sort_keys=True))
     return 0
 
 
@@ -4651,6 +4814,15 @@ def _todo_complete(args: argparse.Namespace) -> int:
         queue = complete_todo_item(
             Path(args.root), args.item_id, result=args.result, data_root=args.data_root
         )
+    except IntentTodoError as exc:
+        raise ValueError(str(exc)) from exc
+    print(json.dumps(queue, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def _todo_link(args: argparse.Namespace) -> int:
+    try:
+        queue = link_item(Path(args.root), args.item_id, args.task_id, data_root=args.data_root)
     except IntentTodoError as exc:
         raise ValueError(str(exc)) from exc
     print(json.dumps(queue, ensure_ascii=False, sort_keys=True))
@@ -4843,6 +5015,9 @@ def build_parser() -> argparse.ArgumentParser:
     context_search.add_argument("--query", required=True)
     context_search.add_argument("--max-results", type=int, default=40)
     context_search.add_argument("--max-output-bytes", type=int, default=8192)
+    context_search.add_argument("--path-prefix", default=None)
+    context_search.add_argument("--extension", action="append")
+    context_search.add_argument("--format", choices=("json", "brief"), default="json")
     context_search.set_defaults(handler=_context_search)
     context_index = context_commands.add_parser(
         "index", help="incrementally index tracked code symbols into user-local cache"
@@ -4859,7 +5034,13 @@ def build_parser() -> argparse.ArgumentParser:
     context_lookup.add_argument("--query", required=True)
     context_lookup.add_argument("--max-results", type=int, default=20)
     context_lookup.add_argument("--max-output-bytes", type=int, default=8192)
+    context_lookup.add_argument("--format", choices=("json", "brief"), default="json")
     context_lookup.set_defaults(handler=_context_lookup)
+    context_dependents = context_commands.add_parser("dependents", help="find reverse source/build references")
+    context_dependents.add_argument("--root", default=".")
+    context_dependents.add_argument("--query", required=True)
+    context_dependents.add_argument("--max-results", type=int, default=50)
+    context_dependents.set_defaults(handler=_context_dependents)
     attach = commands.add_parser("attach", help="attach existing governance documents")
     attach_commands = attach.add_subparsers(dest="attach_command", required=True)
     plan = attach_commands.add_parser("plan", help="create a candidate import proposal")
@@ -5109,6 +5290,11 @@ def build_parser() -> argparse.ArgumentParser:
     collaboration_task_add.add_argument("--preauthorized-effect", action="append")
     collaboration_task_add.add_argument("--queued-effect", action="append")
     collaboration_task_add.add_argument("--assignee", default=None)
+    collaboration_task_add.add_argument("--branch", default=None)
+    collaboration_task_add.add_argument("--commit", default=None)
+    collaboration_task_add.add_argument("--verification", default=None)
+    collaboration_task_add.add_argument("--landed-commit", default=None)
+    collaboration_task_add.add_argument("--released-in", default=None)
     collaboration_task_add.add_argument(
         "--report-policy",
         choices=("silent_until_stage_complete", "on_blocker", "on_decision", "verbose"),
@@ -5129,7 +5315,7 @@ def build_parser() -> argparse.ArgumentParser:
             "blocked",
             "ready-for-review",
             "rejected",
-            "superseded",
+            "superseded", "dispatched", "completed", "merged",
         ),
         required=True,
     )
@@ -5137,6 +5323,11 @@ def build_parser() -> argparse.ArgumentParser:
     collaboration_task_update.add_argument("--blocked-reason", default=None)
     collaboration_task_update.add_argument("--result", default=None)
     collaboration_task_update.add_argument("--assignee", default=None)
+    collaboration_task_update.add_argument("--branch", default=None)
+    collaboration_task_update.add_argument("--commit", default=None)
+    collaboration_task_update.add_argument("--verification", default=None)
+    collaboration_task_update.add_argument("--landed-commit", default=None)
+    collaboration_task_update.add_argument("--released-in", default=None)
     collaboration_task_update.set_defaults(handler=_collaboration_task_update)
     collaboration_task_next = collaboration_task_commands.add_parser(
         "next", help="read one active or queued task card"
@@ -5159,7 +5350,65 @@ def build_parser() -> argparse.ArgumentParser:
     )
     collaboration_task_list.add_argument("--data-root", default=None)
     collaboration_task_list.add_argument("--project-id", required=True)
+    collaboration_task_list.add_argument("--status", choices=sorted(_TASK_STATUS))
+    collaboration_task_list.add_argument("--assignee", default=None)
+    collaboration_task_list.add_argument("--lane-id", default=None)
+    collaboration_task_list.add_argument("--updated-after", default=None)
+    collaboration_task_list.add_argument("--query", default=None)
+    collaboration_task_list.add_argument("--summary", action="store_true", default=True)
+    collaboration_task_list.add_argument("--full", dest="summary", action="store_false")
+    collaboration_task_list.add_argument("--max-results", type=int, default=None)
+    collaboration_task_list.add_argument("--max-output-bytes", type=int, default=8192)
+    collaboration_task_list.add_argument("--all", action="store_true")
     collaboration_task_list.set_defaults(handler=_collaboration_task_list)
+    collaboration_changes = collaboration_commands.add_parser("changes", help="read bounded collaboration changes since a cursor")
+    collaboration_changes.add_argument("--data-root", default=None)
+    collaboration_changes.add_argument("--project-id", required=True)
+    collaboration_changes.add_argument("--since", type=int, default=0)
+    collaboration_changes.add_argument("--max-results", type=int, default=50)
+    collaboration_changes.add_argument("--max-output-bytes", type=int, default=4096)
+    collaboration_changes.set_defaults(handler=_collaboration_changes)
+    collaboration_run = collaboration_commands.add_parser("run", help="run one executor command with start/end ledger events")
+    collaboration_run.add_argument("--data-root", default=None)
+    collaboration_run.add_argument("--project-id", required=True)
+    collaboration_run.add_argument("--task-id", required=True)
+    collaboration_run.add_argument("--assignee", required=True)
+    collaboration_run.add_argument("commandline", nargs=argparse.REMAINDER)
+    collaboration_run.set_defaults(handler=_collaboration_run)
+    for name, help_text in (("rule-add", "add a project rule"), ("rule-list", "list project rules"), ("commitment-add", "record an unresolved commitment"), ("commitment-list", "list unresolved commitments"), ("commitment-close", "close a commitment")):
+        leaf = collaboration_commands.add_parser(name, help=help_text)
+        leaf.add_argument("--data-root", default=None)
+        leaf.add_argument("--project-id", required=True)
+        leaf.set_defaults(handler=_collaboration_context_command, context_command=name)
+        if name == "rule-add":
+            leaf.add_argument("--rule-id", required=True); leaf.add_argument("--text", required=True); leaf.add_argument("--audience", default="all")
+        elif name == "rule-list":
+            leaf.add_argument("--audience", default="all")
+        elif name == "commitment-add":
+            leaf.add_argument("--commitment-id", required=True); leaf.add_argument("--text", required=True)
+        elif name in {"commitment-close"}:
+            leaf.add_argument("--commitment-id", required=True)
+    supervisor = commands.add_parser("supervisor", help="run provider-neutral executor supervision")
+    supervisor_commands = supervisor.add_subparsers(dest="supervisor_command", required=True)
+    supervisor_run = supervisor_commands.add_parser("run", help="run one executor command with attempts and heartbeats")
+    supervisor_run.add_argument("--data-root", default=None); supervisor_run.add_argument("--project-id", required=True)
+    supervisor_run.add_argument("--task-id", required=True); supervisor_run.add_argument("--assignee", required=True)
+    supervisor_run.add_argument("--attempt-id", default=None); supervisor_run.add_argument("--timeout-seconds", type=float, default=3600)
+    supervisor_run.add_argument("--idle-timeout-seconds", type=float, default=600); supervisor_run.add_argument("--heartbeat-seconds", type=float, default=10)
+    supervisor_run.add_argument("--retry", type=int, default=0); supervisor_run.add_argument("commandline", nargs=argparse.REMAINDER)
+    supervisor_run.set_defaults(handler=_supervisor_run)
+    supervisor_daemon = supervisor_commands.add_parser("daemon", help="reconcile dead executor processes once")
+    supervisor_daemon.add_argument("--data-root", default=None); supervisor_daemon.add_argument("--project-id", required=True)
+    supervisor_daemon.set_defaults(handler=_supervisor_daemon)
+    collaboration_drift = collaboration_commands.add_parser("drift", help="find stale or contradictory collaboration metadata")
+    collaboration_drift.add_argument("--data-root", default=None)
+    collaboration_drift.add_argument("--project-id", required=True)
+    collaboration_drift.add_argument("--stale-hours", type=float, default=6.0)
+    collaboration_drift.set_defaults(handler=_collaboration_drift)
+    collaboration_doctor = collaboration_commands.add_parser("doctor", help="show ledger writer and CLI versions")
+    collaboration_doctor.add_argument("--data-root", default=None)
+    collaboration_doctor.add_argument("--project-id", required=True)
+    collaboration_doctor.set_defaults(handler=_collaboration_doctor)
     collaboration_effect = collaboration_commands.add_parser(
         "effect", help="queue and inspect external effect requests"
     )
@@ -5241,6 +5490,12 @@ def build_parser() -> argparse.ArgumentParser:
     todo_complete.add_argument("--item-id", required=True)
     todo_complete.add_argument("--result", default=None)
     todo_complete.set_defaults(handler=_todo_complete)
+    todo_link = todo_commands.add_parser("link", help="link a todo item to a collaboration task")
+    todo_link.add_argument("--root", default=".")
+    todo_link.add_argument("--data-root", default=None)
+    todo_link.add_argument("--item-id", required=True)
+    todo_link.add_argument("--task-id", required=True)
+    todo_link.set_defaults(handler=_todo_link)
     todo_block = todo_commands.add_parser("block", help="block the active todo item")
     todo_block.add_argument("--root", default=".")
     todo_block.add_argument("--data-root", default=None)
@@ -5266,6 +5521,12 @@ def build_parser() -> argparse.ArgumentParser:
     skills_audit.add_argument("--skill-root", action="append")
     skills_audit.add_argument("--description-budget", type=int, default=8000)
     skills_audit.set_defaults(handler=_skills_audit)
+    whoami = commands.add_parser("whoami", help="show project, executor and controller identity")
+    whoami.add_argument("--root", default=".")
+    whoami.add_argument("--data-root", default=None)
+    whoami.add_argument("--assignee", default=None)
+    whoami.add_argument("--controller", default=None)
+    whoami.set_defaults(handler=_whoami)
     inbox = collaboration_commands.add_parser("inbox", help="durable local messages; never start another provider process")
     inbox_commands = inbox.add_subparsers(dest="inbox_command", required=True)
     for operation in ("send", "list", "ack"):

@@ -54,7 +54,7 @@ _LOOKUP_FIELDS = {
     "memory_authority",
     "receipt_sha256",
 }
-_ENTRY_FIELDS = {"path", "size_bytes", "mtime_ns", "sha256", "language", "symbols"}
+_ENTRY_FIELDS = {"path", "size_bytes", "mtime_ns", "sha256", "language", "symbols", "terms"}
 _SKIPPED_FIELDS = {"path", "size_bytes", "mtime_ns"}
 _SYMBOL_FIELDS = {"kind", "name", "line"}
 _MATCH_FIELDS = {"path", "line", "kind", "name", "file_sha256"}
@@ -81,6 +81,7 @@ _LANGUAGE_BY_SUFFIX = {
     ".tsx": "typescript",
     ".vue": "vue",
 }
+_KEY_VALUE_SUFFIXES = {".toml", ".yaml", ".yml", ".json", ".cmake"}
 _SYMBOL_PATTERNS = (
     ("class", re.compile(r"^\s*(?:export\s+)?class\s+([A-Za-z_$][\w$]*)")),
     ("function", re.compile(r"^\s*(?:export\s+)?(?:async\s+)?function\s+([A-Za-z_$][\w$]*)")),
@@ -90,6 +91,12 @@ _SYMBOL_PATTERNS = (
     ("trait", re.compile(r"^\s*(?:pub\s+)?trait\s+([A-Za-z_]\w*)")),
     ("interface", re.compile(r"^\s*(?:export\s+)?interface\s+([A-Za-z_$][\w$]*)")),
     ("type", re.compile(r"^\s*(?:export\s+)?type\s+([A-Za-z_$][\w$]*)")),
+    ("c-function", re.compile(r"^\s*(?:(?:static|inline|extern|const|unsigned|signed|long|short|struct\s+\w+|enum\s+\w+|[A-Za-z_]\w*)\s+)*\**([A-Za-z_]\w*)\s*\([^;{}]*\)\s*(?:\{|;|$)")),
+    ("struct", re.compile(r"^\s*(?:typedef\s+)?struct\s+([A-Za-z_]\w*)\b")),
+    ("enum", re.compile(r"^\s*(?:typedef\s+)?enum\s+([A-Za-z_]\w*)\b")),
+    ("union", re.compile(r"^\s*(?:typedef\s+)?union\s+([A-Za-z_]\w*)\b")),
+    ("typedef", re.compile(r"^\s*typedef\s+.*?\b([A-Za-z_]\w*)\s*(?:;|\([^)]*\)\s*;)")),
+    ("macro", re.compile(r"^\s*#\s*define\s+([A-Za-z_]\w*)\b")),
 )
 
 
@@ -167,18 +174,35 @@ def _language(path: Path) -> str | None:
     return _LANGUAGE_BY_SUFFIX.get(path.suffix.lower())
 
 
-def _symbols(payload: bytes) -> list[dict[str, Any]]:
+def _symbols(payload: bytes, language: str | None = None) -> list[dict[str, Any]]:
     try:
         text = payload.decode("utf-8")
     except UnicodeDecodeError:
         return []
     result: list[dict[str, Any]] = []
-    for line_number, line in enumerate(text.splitlines(), 1):
-        for kind, pattern in _SYMBOL_PATTERNS:
-            match = pattern.match(line)
-            if match is not None:
-                result.append({"kind": kind, "name": match.group(1), "line": line_number})
+    lines = text.splitlines()
+    seen: set[tuple[str, str, int]] = set()
+    for line_number, line in enumerate(lines, 1):
+        candidates = [line]
+        if language in {"c", "cpp", "objective-c", "objective-cpp"} or "(" in line:
+            candidates.extend(" ".join(lines[line_number - 1 : line_number + width]) for width in range(1, min(8, len(lines) - line_number + 1)))
+        matched = False
+        for candidate in candidates:
+            for kind, pattern in _SYMBOL_PATTERNS:
+                match = pattern.match(candidate)
+                if match is not None:
+                    key = (kind, match.group(1), line_number)
+                    if key not in seen:
+                        result.append({"kind": kind, "name": match.group(1), "line": line_number})
+                        seen.add(key)
+                    matched = True
+                    break
+            if matched:
                 break
+        if not result or result[-1]["line"] != line_number:
+            key = re.match(r"^\s*([A-Za-z][A-Za-z0-9_.-]*)\s*(?:=|:)", line)
+            if key and line.lstrip().split("=", 1)[0].strip() == key.group(1):
+                result.append({"kind": "config-key", "name": key.group(1), "line": line_number})
     return result
 
 
@@ -237,6 +261,10 @@ def _entry_for(root: Path, relative: Path) -> dict[str, Any] | None:
         return None
     if b"\0" in payload[:8192]:
         return None
+    try:
+        text = payload.decode("utf-8")
+    except UnicodeDecodeError:
+        return None
     language = _language(path)
     return {
         "path": relative.as_posix(),
@@ -244,7 +272,8 @@ def _entry_for(root: Path, relative: Path) -> dict[str, Any] | None:
         "mtime_ns": stat.st_mtime_ns,
         "sha256": hashlib.sha256(payload).hexdigest(),
         "language": language or "text",
-        "symbols": _symbols(payload),
+        "symbols": _symbols(payload, language),
+        "terms": sorted(set(re.findall(r"[A-Za-z_][A-Za-z0-9_-]{2,}", text.casefold())))[:4096],
     }
 
 
@@ -372,6 +401,10 @@ def _query(value: str) -> str:
     return value.casefold()
 
 
+def _query_terms(value: str) -> list[str]:
+    return [term for term in re.findall(r"[\w][\w.-]*", value.casefold(), re.UNICODE) if term]
+
+
 def lookup_code_index(
     root: str | Path,
     *,
@@ -382,6 +415,7 @@ def lookup_code_index(
 ) -> dict[str, Any]:
     """Return bounded symbol/path references without returning source bodies."""
     needle = _query(query)
+    terms = _query_terms(query)
     if type(max_results) is not int or not 1 <= max_results <= MAX_RESULTS:
         raise ValueError("max_results is invalid")
     if type(max_output_bytes) is not int or not 1024 <= max_output_bytes <= MAX_OUTPUT_BYTES:
@@ -397,6 +431,9 @@ def lookup_code_index(
         path_score = 2 if needle in path.casefold() else None
         for symbol in entry["symbols"]:
             name = symbol["name"]
+            haystack = f"{name} {path} {' '.join(entry.get('terms', []))}".casefold()
+            if len(terms) > 1 and not all(term in haystack for term in terms):
+                continue
             score = 0 if name.casefold() == needle else 1 if needle in name.casefold() else path_score
             if score is not None:
                 candidates.append(
@@ -411,6 +448,8 @@ def lookup_code_index(
                         },
                     )
                 )
+        if len(terms) > 1 and all(term in f"{path} {' '.join(entry.get('terms', []))}".casefold() for term in terms):
+            candidates.append((3, {"path": path, "line": 1, "kind": "text", "name": path, "file_sha256": entry["sha256"]}))
         if path_score is not None and not entry["symbols"]:
             candidates.append(
                 (path_score, {"path": path, "line": 1, "kind": "file", "name": path, "file_sha256": entry["sha256"]})
@@ -454,7 +493,32 @@ def lookup_code_index(
     if receipt["returned_bytes"] > max_output_bytes:
         raise ValueError("max_output_bytes cannot contain the lookup receipt")
     validate_code_index_receipt(receipt, root=root)
+    try:
+        from .usage_meter import record
+        record(root, command="context lookup", response_bytes=receipt["returned_bytes"], estimated_grep_bytes=sum(len(item["path"]) + len(item["name"]) + 32 for item in all_matches), cache_status=index["cache_status"])
+    except OSError:
+        pass
     return receipt
+
+
+def find_dependents(root: str | Path, *, query: str, max_results: int = 50) -> dict[str, Any]:
+    """Return bounded reverse references for headers, symbols and build keys."""
+    root = Path(root).resolve()
+    result = _git(root, "grep", "-n", "-I", "-i", "-F", "--", query)
+    paths: dict[str, int] = {}
+    lines: list[dict[str, Any]] = []
+    for raw in result.stdout.splitlines():
+        parts = raw.split(b":", 2)
+        if len(parts) != 3:
+            continue
+        try:
+            path = parts[0].decode(); line = int(parts[1]); text = parts[2].decode("utf-8", "replace")[:240]
+        except (UnicodeDecodeError, ValueError):
+            continue
+        paths[path] = paths.get(path, 0) + 1
+        lines.append({"path": path, "line": line, "excerpt": text})
+    lines.sort(key=lambda item: (item["path"], item["line"]))
+    return {"schema_version": "context.reverse-dependents/v1alpha1", "query": query, "paths": [{"path": path, "matches": count} for path, count in sorted(paths.items(), key=lambda item: (-item[1], item[0]))], "matches": lines[:max_results], "truncated": len(lines) > max_results}
 
 
 def validate_code_index_receipt(value: Any, *, root: str | Path | None = None) -> None:

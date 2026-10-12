@@ -69,7 +69,32 @@ MCP 提供 `continuity_inbox`，action 为 `send`、`list` 或 `ack`。
 本版本提供可靠投递和读取，**不保证唤醒休眠或被宿主占用的会话**，也不启动第二个
 provider 进程抢占已有 writer。远端设备尚需显式同步协作数据或项目 handoff 文件。
 
+主控可以用 `collaboration changes --since CURSOR` 获取增量事件，避免逐个执行方轮询。
+`context lookup` 和 `context search` 支持 `--format brief`；JSON 适合脚本，brief 适合
+模型首读。项目规则和未了结承诺可用 `collaboration rule-add/rule-list` 与
+`commitment-add/commitment-list/commitment-close` 管理，并随 packet 有界下发。
+
 ## MCP 安装后验收
+
+## 首次运行示例
+
+一个主控和两个执行方的最小流程：
+
+```bash
+continuity init --root . --project-id demo
+continuity collaboration register --project-id demo --control-root . --repository-root .
+continuity whoami --root . --assignee controller --controller controller
+continuity collaboration task add --project-id demo --task-id task-a --lane-id core \
+  --mode patch --priority p1 --title "实现 A" --objective "完成 A" \
+  --next-action "运行测试" --exit-criterion "测试通过" --assignee worker-a
+continuity collaboration packet --project-id demo --assignee worker-a
+continuity collaboration task update --project-id demo --task-id task-a --status ready-for-review \
+  --branch feat/a --commit abcdef1 --verification "test command: pass"
+```
+
+新执行方的开场固定为 `whoami`、`packet`、`inbox list`；收尾固定为
+`task update --status ready-for-review` 和发消息给主控。状态在另一台机器时，
+将这些命令的 `--data-root` 指向 SSH 挂载或远程同步目录；Continuity 不会隐式启动 SSH。
 
 已运行的 MCP 客户端可能不会热加载新增 server 或新版工具表。安装包成功不代表当前
 会话已加载：先检查工具列表，必要时按宿主支持的流程重连/重载；没有重载入口时启动

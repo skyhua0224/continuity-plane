@@ -189,6 +189,11 @@ class OnboardingTests(unittest.TestCase):
         )
         self.assertEqual(resolve(self.data, "xa0y", project_id="sample"), [])
 
+    def test_cjk_alias_matches_inside_unspaced_sentence(self):
+        add_entity(self.data, scope="project", project_id="sample", entity_id="three-config", aliases=["三配置"], statement="Three configuration rule", source="user")
+        matches = resolve(self.data, "三配置过了再推 main；PFC 不改", project_id="sample")
+        self.assertEqual([item["entity_id"] for item in matches], ["three-config"])
+
     def test_project_alias_shadows_normalized_global_phrase(self):
         add_entity(
             self.data,

@@ -1,5 +1,5 @@
 {
-  "file_count": 162,
+  "file_count": 166,
   "files": [
     {
       "path": ".agents/plugins/marketplace.json",
@@ -35,11 +35,11 @@
     },
     {
       "path": "CHANGELOG.en.md",
-      "sha256": "128d1819ec6e86d26da2c5af688027cb58d51bdc61411bcac3f5a192fd1301e1"
+      "sha256": "bfd6c3cc5d2d8ff8e03a21fdce1a9db51eefbbd5050e4ffe1ed9a78ef9db6bdd"
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "7f503e0463407c2ddf5db8134bad505090d8bf8ac97f9464c6d8708850bf03ef"
+      "sha256": "0957421b54fadafb0eea9e10543b29c73e03399812546a46322e103a89231e30"
     },
     {
       "path": "CONTRIBUTING.en.md",
@@ -63,11 +63,11 @@
     },
     {
       "path": "README.en.md",
-      "sha256": "e31998fa61198e09585ede6757c376140d067238a6b77940fd5d5be1695796f5"
+      "sha256": "e24a7fd96960b0dc893b564a59951a6757cac466aafc4408b2e3b4059339506c"
     },
     {
       "path": "README.md",
-      "sha256": "bce7e63ca37190af3db0716073a994084b6bff4bf833e27290a407847d5be613"
+      "sha256": "9ae13761f801f73c800fc1c17a7cdc80b226f654897fc477e97dd37b2295a299"
     },
     {
       "path": "SECURITY.en.md",
@@ -87,11 +87,11 @@
     },
     {
       "path": "USAGE.en.md",
-      "sha256": "56998c68152524c020d846290c964a98a9d29e50c6050550ffa97110e6a2527a"
+      "sha256": "d596f231ca7137384840a75413e6ed07092239bc48f5d2cbe9d59f207b5b0026"
     },
     {
       "path": "USAGE.md",
-      "sha256": "76a169beed3b6402fdef37569b6d7c19a1bf054d33fed8b4501f0f060d525f8e"
+      "sha256": "5b4598d9fd660c98e75462b5e9870a99be942dcc43ce54a3d14bf6cbe15963ea"
     },
     {
       "path": "benchmarks/__init__.py",
@@ -99,7 +99,7 @@
     },
     {
       "path": "benchmarks/reference-results.json",
-      "sha256": "45c74f19592b7f14fa8980db670fcd33f13ad10d8e8441d80e6bcc91463e0287"
+      "sha256": "9a47f4e6c6ecf05cb4508578911094d5a767b12fef17407cd06673509cb47e97"
     },
     {
       "path": "benchmarks/run_local_state.py",
@@ -123,7 +123,7 @@
     },
     {
       "path": "continuity_plane/bounded_code_search.py",
-      "sha256": "baa32f445e9a333945ad7eb22df7e16173d5a2296ff4e90c9091aab70effc2ee"
+      "sha256": "c7bc806cca2e9b521f57fb7198bdbd42ff8f2c72f751142e2191a3de82363585"
     },
     {
       "path": "continuity_plane/canonical_attach.py",
@@ -139,11 +139,11 @@
     },
     {
       "path": "continuity_plane/cli.py",
-      "sha256": "1fe0efa28d675f56a93f72e854a385ec6daf794785e2bede940c030e5119752c"
+      "sha256": "acfdd1d8683edf3d5949c6e8320d82447c3248a3b989d81f83b08a8cceed4c52"
     },
     {
       "path": "continuity_plane/code_index.py",
-      "sha256": "8da180d577a7fbdccbea4c4662dc6e9decebaffa295707157cf9b49b784438d3"
+      "sha256": "5c89736cd869f0ba88495d2daa030bd7bc4f49e41b3e2e4c0e4df35580c00fe6"
     },
     {
       "path": "continuity_plane/codegraph_verification.py",
@@ -155,11 +155,15 @@
     },
     {
       "path": "continuity_plane/codex_mcp_server.py",
-      "sha256": "a8a4b3580076ed2268f113b66236cfa885393862e04cfad42bab0c1dc73cb3fd"
+      "sha256": "694828769c8bd7c2e2679b0da7997d52c0645c0b16b60588cb5e9b4e084342e5"
+    },
+    {
+      "path": "continuity_plane/collaboration_context.py",
+      "sha256": "09a07894d4e450500b294d33aa5e3f6f9e69ba51ad878316827c9c6ae3af20bd"
     },
     {
       "path": "continuity_plane/collaboration_inbox.py",
-      "sha256": "22cc4e13f71565400fd4fe501b2b7f9c6d68eb8c45ada114ec69c91b4c21ad19"
+      "sha256": "40f99909bae7e8913642dcaafc470c94f8ffc9ebbce69c3cef796781a4e940eb"
     },
     {
       "path": "continuity_plane/collaboration_notifications.py",
@@ -167,11 +171,11 @@
     },
     {
       "path": "continuity_plane/collaboration_packet.py",
-      "sha256": "269c44feddde2967ebf1b74f4395e45bba65cd244737a729ffa62da16bdf8935"
+      "sha256": "d38d9db88ccf8b655926a7744bb601f7617b98fb0edc3b9f349d2f80ef19e8fe"
     },
     {
       "path": "continuity_plane/collaboration_registry.py",
-      "sha256": "0df6c12f39c4dc51e1fe93c8e35d6a6b01ceb322c7c05815611df6f29624fc74"
+      "sha256": "96456208b551e45c5ed76fa4609ac555c9b4ddd3704ee1e04f32961d96647d32"
     },
     {
       "path": "continuity_plane/compiled_skill_packet.py",
@@ -231,11 +235,11 @@
     },
     {
       "path": "continuity_plane/intent_todo.py",
-      "sha256": "086ec1e3ea28874ad3c10bd029871979e9b668bfa754e1f68d6ea2159a2e2cb3"
+      "sha256": "6c99aeda3f7dac768a27ccd0fa6bbfd09a17af2f6d5f6ed0bd45b274ecccf253"
     },
     {
       "path": "continuity_plane/light_observability.py",
-      "sha256": "b18a96b7bd1081f224d08e31ba285a6ff498607f17fc813c782309882fd229a1"
+      "sha256": "a910131f526f614985b7eb364aa33fe68d7cf3f995069484c196914131e5d542"
     },
     {
       "path": "continuity_plane/local_state_bundle.py",
@@ -354,6 +358,10 @@
       "sha256": "ca9d3f7e83dee037c9a5953db1852a0086da0bf8376c972af2f6c00c1852a4d2"
     },
     {
+      "path": "continuity_plane/supervisor.py",
+      "sha256": "88d9eac49887f5aa2b1d3eef2635affae9cfe5a5f7895de6254fe46ca8a622ef"
+    },
+    {
       "path": "continuity_plane/templates/MASTER.en.md",
       "sha256": "7ecd40b8b0aa03aae51d810936887c44262d0ef7dd52d18236bbc449422689d5"
     },
@@ -380,6 +388,10 @@
     {
       "path": "continuity_plane/typed_state.py",
       "sha256": "9151f130c9cbe426e5c8e55fd1f2c42bad5d5c093254a67cfa5ee7e16b9447c4"
+    },
+    {
+      "path": "continuity_plane/usage_meter.py",
+      "sha256": "73a34935bef6c37e24b9cf0bc19098a195ec5e5394143eb31ef2fe6439e34cbb"
     },
     {
       "path": "continuity_plane/verification_profile.py",
@@ -439,11 +451,11 @@
     },
     {
       "path": "docs/onboarding.en.md",
-      "sha256": "8df5db88af6258b26f57dfd29eea378fc67f628aab4186a055f5e0b5afe19d2a"
+      "sha256": "8ec35c64a1a06dec30b58ad1d04f0a73f426299318a7333b7b61af18df28803f"
     },
     {
       "path": "docs/onboarding.md",
-      "sha256": "4c1a02b7a47dada1318283eeb1e540a31bf08a4fa419a5d7f23b713137acbcb7"
+      "sha256": "e76dfcfb35e5796c819496ce8a4db4128fdf520ed25111f41412be542715636f"
     },
     {
       "path": "docs/project-views.en.md",
@@ -456,6 +468,10 @@
     {
       "path": "docs/release-alpha21.md",
       "sha256": "ec414375b2d4f02907768a15ab80738b77c34d239df1411a6b006ac3966650c8"
+    },
+    {
+      "path": "docs/release-alpha22.md",
+      "sha256": "a8ee918d6ba0b892cef742f484384f0c1a884f770750dbd9fdbc26b7549928f8"
     },
     {
       "path": "docs/use-cases.en.md",
@@ -479,7 +495,7 @@
     },
     {
       "path": "plugins/continuity-plane/.codex-plugin/plugin.json",
-      "sha256": "8536cc2d36d083b60289e3eb6b67845aa53ebd4754f270a9cbfb3f401ac6fc43"
+      "sha256": "9e1d5c00d7d331ce2b95a10af7baa0641b600b3fd9a88fa9ea0fc784b7aad858"
     },
     {
       "path": "plugins/continuity-plane/hooks/hooks.json",
@@ -495,7 +511,7 @@
     },
     {
       "path": "plugins/continuity-plane-search/.codex-plugin/plugin.json",
-      "sha256": "091f36f93caef2d9644c8ace062c88b76d131a6993963d6c858c78953b89fae2"
+      "sha256": "8266caedaee3e12064206615fdeabe0f06b567d81c67ca2d4c542fd28b010f33"
     },
     {
       "path": "plugins/continuity-plane-search/.mcp.json",
@@ -503,7 +519,7 @@
     },
     {
       "path": "plugins/continuity-plane-state/.codex-plugin/plugin.json",
-      "sha256": "8a9547b580dd2da62ce817d69adf83a44424d2d9f792afe29798c7f5230db739"
+      "sha256": "6e934c3a46e4c5e03e70b66dc10d1d20d7c5aab5fa9bf63da36ebeb40fa2a30d"
     },
     {
       "path": "plugins/continuity-plane-state/.mcp.json",
@@ -515,7 +531,7 @@
     },
     {
       "path": "pyproject.toml",
-      "sha256": "fa6a107e80a52b67b6abbf3d778bc98b347c0ac9fc50b669e1f35a6c4330a3b5"
+      "sha256": "cc4da1c58e033576c9baef45c6fc31ac7f4fe93503a6fe2150baaf1045fcab13"
     },
     {
       "path": "schemas/m10-01/canonical-attach-proposal.schema.json",
@@ -635,7 +651,7 @@
     },
     {
       "path": "tests/test_onboarding_feedback.py",
-      "sha256": "d3566710ff571df90f3da98d7f84b253bf35cee63af95b3288d19e5a1704d1d5"
+      "sha256": "00c6f877c48102f665e60ef87a35c4daae917b277ef2476ceca3c1d515bc52d2"
     },
     {
       "path": "tests/test_public_benchmark.py",
@@ -651,5 +667,5 @@
     }
   ],
   "schema_version": "context.public-release-manifest/v1",
-  "version": "0.1.0-alpha.21"
+  "version": "0.1.0-alpha.22"
 }

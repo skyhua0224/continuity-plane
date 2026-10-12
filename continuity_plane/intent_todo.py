@@ -133,6 +133,7 @@ def compile_queue(
             "title": value,
             "status": "active" if index == 0 else "queued",
             "result": None,
+            "task_id": None,
         }
         for index, value in enumerate(values)
     ]
@@ -185,15 +186,26 @@ def complete_item(
     target = next((item for item in document["items"] if item.get("item_id") == item_id), None)
     if target is None:
         raise IntentTodoError("todo item does not exist")
-    if target.get("status") != "active":
-        raise IntentTodoError("only the active todo item can be completed")
+    if target.get("status") not in {"queued", "active", "blocked"}:
+        raise IntentTodoError("todo item is already completed")
     target["status"] = "completed"
     target["result"] = result
     next_item = next((item for item in document["items"] if item.get("status") == "queued"), None)
-    if next_item is None:
+    if next_item is None and not any(item.get("status") == "active" for item in document["items"]):
         document["status"] = "completed"
-    else:
+    elif next_item is not None and not any(item.get("status") == "active" for item in document["items"]):
         next_item["status"] = "active"
+    return _save(root, document, data_root)
+
+
+def link_item(root: Path | str, item_id: str, task_id: str, *, data_root: Path | str | None = None) -> dict[str, Any]:
+    document = load_queue(root, data_root)
+    if document is None:
+        raise IntentTodoError("no active intent todo queue")
+    target = next((item for item in document["items"] if item.get("item_id") == item_id), None)
+    if target is None:
+        raise IntentTodoError("todo item does not exist")
+    target["task_id"] = task_id
     return _save(root, document, data_root)
 
 
