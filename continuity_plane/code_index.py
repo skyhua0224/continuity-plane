@@ -14,6 +14,7 @@ from typing import Any
 
 
 INDEX_SCHEMA_VERSION = "context.code-index/v1alpha1"
+EXTRACTOR_REVISION = 2
 LOOKUP_SCHEMA_VERSION = "context.code-index-lookup/v1alpha1"
 MAX_QUERY_BYTES = 1024
 MAX_FILES = 50_000
@@ -54,7 +55,15 @@ _LOOKUP_FIELDS = {
     "memory_authority",
     "receipt_sha256",
 }
-_ENTRY_FIELDS = {"path", "size_bytes", "mtime_ns", "sha256", "language", "symbols", "terms"}
+_ENTRY_FIELDS = {
+    "path",
+    "size_bytes",
+    "mtime_ns",
+    "sha256",
+    "language",
+    "symbols",
+    "terms",
+}
 _SKIPPED_FIELDS = {"path", "size_bytes", "mtime_ns"}
 _SYMBOL_FIELDS = {"kind", "name", "line"}
 _MATCH_FIELDS = {"path", "line", "kind", "name", "file_sha256"}
@@ -84,14 +93,22 @@ _LANGUAGE_BY_SUFFIX = {
 _KEY_VALUE_SUFFIXES = {".toml", ".yaml", ".yml", ".json", ".cmake"}
 _SYMBOL_PATTERNS = (
     ("class", re.compile(r"^\s*(?:export\s+)?class\s+([A-Za-z_$][\w$]*)")),
-    ("function", re.compile(r"^\s*(?:export\s+)?(?:async\s+)?function\s+([A-Za-z_$][\w$]*)")),
+    (
+        "function",
+        re.compile(r"^\s*(?:export\s+)?(?:async\s+)?function\s+([A-Za-z_$][\w$]*)"),
+    ),
     ("function", re.compile(r"^\s*(?:async\s+)?def\s+([A-Za-z_]\w*)")),
     ("function", re.compile(r"^\s*(?:pub\s+)?(?:async\s+)?fn\s+([A-Za-z_]\w*)")),
     ("struct", re.compile(r"^\s*(?:pub\s+)?struct\s+([A-Za-z_]\w*)")),
     ("trait", re.compile(r"^\s*(?:pub\s+)?trait\s+([A-Za-z_]\w*)")),
     ("interface", re.compile(r"^\s*(?:export\s+)?interface\s+([A-Za-z_$][\w$]*)")),
     ("type", re.compile(r"^\s*(?:export\s+)?type\s+([A-Za-z_$][\w$]*)")),
-    ("c-function", re.compile(r"^\s*(?:(?:static|inline|extern|const|unsigned|signed|long|short|struct\s+\w+|enum\s+\w+|[A-Za-z_]\w*)\s+)*\**([A-Za-z_]\w*)\s*\([^;{}]*\)\s*(?:\{|;|$)")),
+    (
+        "c-function",
+        re.compile(
+            r"^\s*(?:(?:static|inline|extern|const|unsigned|signed|long|short|struct\s+\w+|enum\s+\w+|[A-Za-z_]\w*)\s+)*\**([A-Za-z_]\w*)\s*\([^;{}]*\)\s*(?:\{|;|$)"
+        ),
+    ),
     ("struct", re.compile(r"^\s*(?:typedef\s+)?struct\s+([A-Za-z_]\w*)\b")),
     ("enum", re.compile(r"^\s*(?:typedef\s+)?enum\s+([A-Za-z_]\w*)\b")),
     ("union", re.compile(r"^\s*(?:typedef\s+)?union\s+([A-Za-z_]\w*)\b")),
@@ -167,7 +184,9 @@ def default_code_index_path(root: str | Path) -> Path:
 
 
 def _cache_key(root: Path) -> str:
-    return hashlib.sha256(str(root).encode("utf-8")).hexdigest()[:32]
+    return hashlib.sha256(
+        (str(root) + ":symbols-language-v3").encode("utf-8")
+    ).hexdigest()[:32]
 
 
 def _language(path: Path) -> str | None:
@@ -184,16 +203,54 @@ def _symbols(payload: bytes, language: str | None = None) -> list[dict[str, Any]
     seen: set[tuple[str, str, int]] = set()
     for line_number, line in enumerate(lines, 1):
         candidates = [line]
-        if language in {"c", "cpp", "objective-c", "objective-cpp"} or "(" in line:
-            candidates.extend(" ".join(lines[line_number - 1 : line_number + width]) for width in range(1, min(8, len(lines) - line_number + 1)))
+        if language in {"c", "cpp", "objective-c", "objective-cpp"}:
+            candidates.extend(
+                " ".join(lines[line_number - 1 : line_number + width])
+                for width in range(1, min(8, len(lines) - line_number + 1))
+            )
         matched = False
         for candidate in candidates:
             for kind, pattern in _SYMBOL_PATTERNS:
+                if kind in {
+                    "c-function",
+                    "typedef",
+                    "macro",
+                    "union",
+                    "enum",
+                } and language not in {"c", "cpp", "objective-c", "objective-cpp"}:
+                    continue
                 match = pattern.match(candidate)
                 if match is not None:
+                    if kind == "c-function" and (
+                        candidate[: match.start(1)].strip() in {"", "return"}
+                        or match.group(1) in {"if", "while", "switch", "for"}
+                    ):
+                        continue
+                    if kind == "c-function":
+                        tail = "\n".join(lines[line_number - 1 : line_number + 15])
+                        opening = re.search(
+                            r"\b" + re.escape(match.group(1)) + r"\s*\(", tail
+                        )
+                        if opening:
+                            depth = 1
+                            end = opening.end()
+                            while end < len(tail) and depth:
+                                depth += (tail[end] == "(") - (tail[end] == ")")
+                                end += 1
+                            marker = (
+                                re.search(r"[;{]", tail[end:]) if depth == 0 else None
+                            )
+                            if marker:
+                                kind = (
+                                    "c-function-definition"
+                                    if marker[0] == "{"
+                                    else "c-function-declaration"
+                                )
                     key = (kind, match.group(1), line_number)
                     if key not in seen:
-                        result.append({"kind": kind, "name": match.group(1), "line": line_number})
+                        result.append(
+                            {"kind": kind, "name": match.group(1), "line": line_number}
+                        )
                         seen.add(key)
                     matched = True
                     break
@@ -202,7 +259,9 @@ def _symbols(payload: bytes, language: str | None = None) -> list[dict[str, Any]
         if not result or result[-1]["line"] != line_number:
             key = re.match(r"^\s*([A-Za-z][A-Za-z0-9_.-]*)\s*(?:=|:)", line)
             if key and line.lstrip().split("=", 1)[0].strip() == key.group(1):
-                result.append({"kind": "config-key", "name": key.group(1), "line": line_number})
+                result.append(
+                    {"kind": "config-key", "name": key.group(1), "line": line_number}
+                )
     return result
 
 
@@ -214,6 +273,7 @@ def _read_cache(path: Path, root: Path) -> dict[str, Any] | None:
     if (
         not isinstance(value, dict)
         or value.get("schema_version") != INDEX_SCHEMA_VERSION
+        or value.get("extractor_revision") != EXTRACTOR_REVISION
         or value.get("cache_key") != _cache_key(root)
         or not isinstance(value.get("entries"), list)
         or not isinstance(value.get("skipped"), list)
@@ -221,23 +281,37 @@ def _read_cache(path: Path, root: Path) -> dict[str, Any] | None:
         return None
     entries: dict[str, dict[str, Any]] = {}
     for entry in value["entries"]:
-        if isinstance(entry, dict) and set(entry) == _ENTRY_FIELDS and isinstance(entry.get("path"), str):
+        if (
+            isinstance(entry, dict)
+            and set(entry) == _ENTRY_FIELDS
+            and isinstance(entry.get("path"), str)
+        ):
             entries[entry["path"]] = entry
     value["entries"] = entries
     value["skipped"] = {
         item["path"]: item
         for item in value["skipped"]
-        if isinstance(item, dict) and set(item) == _SKIPPED_FIELDS and isinstance(item.get("path"), str)
+        if isinstance(item, dict)
+        and set(item) == _SKIPPED_FIELDS
+        and isinstance(item.get("path"), str)
     }
     return value
 
 
 def _write_cache(path: Path, document: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    handle, temporary = tempfile.mkstemp(prefix=".code-index-", suffix=".tmp", dir=path.parent)
+    handle, temporary = tempfile.mkstemp(
+        prefix=".code-index-", suffix=".tmp", dir=path.parent
+    )
     try:
         with open(handle, "w", encoding="utf-8") as stream:
-            json.dump(document, stream, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+            json.dump(
+                document,
+                stream,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            )
             stream.write("\n")
             stream.flush()
             os.fsync(stream.fileno())
@@ -273,7 +347,9 @@ def _entry_for(root: Path, relative: Path) -> dict[str, Any] | None:
         "sha256": hashlib.sha256(payload).hexdigest(),
         "language": language or "text",
         "symbols": _symbols(payload, language),
-        "terms": sorted(set(re.findall(r"[A-Za-z_][A-Za-z0-9_-]{2,}", text.casefold())))[:4096],
+        "terms": sorted(
+            set(re.findall(r"[A-Za-z_][A-Za-z0-9_-]{2,}", text.casefold()))
+        )[:4096],
     }
 
 
@@ -300,7 +376,11 @@ def build_code_index(
     root = Path(root).resolve()
     if type(max_files) is not int or not 1 <= max_files <= MAX_FILES:
         raise ValueError("max_files is invalid")
-    cache = Path(cache_path).expanduser().resolve() if cache_path is not None else default_code_index_path(root).resolve()
+    cache = (
+        Path(cache_path).expanduser().resolve()
+        if cache_path is not None
+        else default_code_index_path(root).resolve()
+    )
     if root == cache or root in cache.parents:
         raise ValueError("code index cache must be outside the project root")
     revision = _repository_revision(root)
@@ -354,12 +434,19 @@ def build_code_index(
         if previous is not None
         else 0
     )
-    status = "miss" if previous is None else "hit" if rehashed == 0 and removed == 0 else "partial"
+    status = (
+        "miss"
+        if previous is None
+        else "hit"
+        if rehashed == 0 and removed == 0
+        else "partial"
+    )
     index_revision = _index_revision(revision, entries, skipped)
     _write_cache(
         cache,
         {
             "schema_version": INDEX_SCHEMA_VERSION,
+            "extractor_revision": EXTRACTOR_REVISION,
             "cache_key": _cache_key(root),
             "repository_revision": revision,
             "index_revision": index_revision,
@@ -402,7 +489,11 @@ def _query(value: str) -> str:
 
 
 def _query_terms(value: str) -> list[str]:
-    return [term for term in re.findall(r"[\w][\w.-]*", value.casefold(), re.UNICODE) if term]
+    return [
+        term
+        for term in re.findall(r"[\w][\w.-]*", value.casefold(), re.UNICODE)
+        if term
+    ]
 
 
 def lookup_code_index(
@@ -414,29 +505,62 @@ def lookup_code_index(
     max_output_bytes: int = 8192,
     data_root: str | Path | None = None,
     record_usage: bool = True,
+    path_prefix: str | None = None,
+    extensions: list[str] | None = None,
 ) -> dict[str, Any]:
     """Return bounded symbol/path references without returning source bodies."""
     needle = _query(query)
+    if extensions is not None and (
+        not isinstance(extensions, list)
+        or not all(isinstance(v, str) for v in extensions)
+    ):
+        raise ValueError("extensions must be a string list")
+    if path_prefix is not None and not isinstance(path_prefix, str):
+        raise ValueError("path_prefix must be a string")
+    if path_prefix and (
+        Path(path_prefix).is_absolute() or ".." in Path(path_prefix).parts
+    ):
+        raise ValueError("path_prefix must be a repository-relative path")
+    allowed_extensions = {"." + v.lstrip(".") for v in (extensions or [])}
     terms = _query_terms(query)
     if type(max_results) is not int or not 1 <= max_results <= MAX_RESULTS:
         raise ValueError("max_results is invalid")
-    if type(max_output_bytes) is not int or not 1024 <= max_output_bytes <= MAX_OUTPUT_BYTES:
+    if (
+        type(max_output_bytes) is not int
+        or not 1024 <= max_output_bytes <= MAX_OUTPUT_BYTES
+    ):
         raise ValueError("max_output_bytes is invalid")
     index = build_code_index(root, cache_path=cache_path)
-    cache = Path(cache_path).expanduser().resolve() if cache_path is not None else default_code_index_path(root).resolve()
+    cache = (
+        Path(cache_path).expanduser().resolve()
+        if cache_path is not None
+        else default_code_index_path(root).resolve()
+    )
     document = _read_cache(cache, Path(root).resolve())
     if document is None:
         raise ValueError("code index cache is unavailable")
     candidates: list[tuple[int, dict[str, Any]]] = []
     for entry in document["entries"].values():
         path = entry["path"]
+        if path_prefix and not (
+            path == path_prefix or path.startswith(path_prefix.rstrip("/") + "/")
+        ):
+            continue
+        if allowed_extensions and Path(path).suffix not in allowed_extensions:
+            continue
         path_score = 2 if needle in path.casefold() else None
         for symbol in entry["symbols"]:
             name = symbol["name"]
             haystack = f"{name} {path} {' '.join(entry.get('terms', []))}".casefold()
             if len(terms) > 1 and not all(term in haystack for term in terms):
                 continue
-            score = 0 if name.casefold() == needle else 1 if needle in name.casefold() else path_score
+            score = (
+                -1 if name==query else 0
+                if name.casefold() == needle
+                else 1
+                if needle in name.casefold()
+                else path_score
+            )
             if score is not None:
                 candidates.append(
                     (
@@ -450,13 +574,65 @@ def lookup_code_index(
                         },
                     )
                 )
-        if len(terms) > 1 and all(term in f"{path} {' '.join(entry.get('terms', []))}".casefold() for term in terms):
-            candidates.append((3, {"path": path, "line": 1, "kind": "text", "name": path, "file_sha256": entry["sha256"]}))
+        if len(terms) > 1 and all(
+            term in f"{path} {' '.join(entry.get('terms', []))}".casefold()
+            for term in terms
+        ):
+            candidates.append(
+                (
+                    3,
+                    {
+                        "path": path,
+                        "line": 1,
+                        "kind": "text",
+                        "name": path,
+                        "file_sha256": entry["sha256"],
+                    },
+                )
+            )
         if path_score is not None and not entry["symbols"]:
             candidates.append(
-                (path_score, {"path": path, "line": 1, "kind": "file", "name": path, "file_sha256": entry["sha256"]})
+                (
+                    path_score,
+                    {
+                        "path": path,
+                        "line": 1,
+                        "kind": "file",
+                        "name": path,
+                        "file_sha256": entry["sha256"],
+                    },
+                )
             )
-    candidates.sort(key=lambda item: (item[0], item[1]["path"], item[1]["line"], item[1]["name"]))
+
+    def rank(item):
+        p = item[1]["path"]
+        lowered = p.casefold()
+        penalty = (
+            4 if Path(p).name == "CMakeLists.txt" or Path(p).suffix == ".cmake" else 0
+        )
+        if any(
+            v in lowered for v in ("archive/", "generated/", "third_party/", "vendor/")
+        ):
+            penalty += 6
+        if Path(p).suffix in {".md", ".txt", ".rst"}:
+            penalty += 3
+        definition = (
+            0
+            if item[1]["kind"]
+            in {
+                "function",
+                "c-function-definition",
+                "class",
+                "struct",
+                "enum",
+                "macro",
+                "typedef",
+            }
+            else 1
+        )
+        return (item[0], definition, penalty, p, item[1]["line"], item[1]["name"])
+
+    candidates.sort(key=rank)
     all_matches = [item[1] for item in candidates]
     receipt = {
         "schema_version": LOOKUP_SCHEMA_VERSION,
@@ -497,17 +673,29 @@ def lookup_code_index(
     validate_code_index_receipt(receipt, root=root)
     try:
         from .usage_meter import record
+
         if record_usage:
-            record(root, command="context lookup", response_bytes=receipt["returned_bytes"], estimated_grep_bytes=sum(len(item["path"]) + len(item["name"]) + 32 for item in all_matches), cache_status=index["cache_status"], data_root=data_root)
+            record(
+                root,
+                command="context lookup",
+                response_bytes=receipt["returned_bytes"],
+                estimated_grep_bytes=sum(
+                    len(item["path"].encode()) + len(item["name"].encode()) + 32 for item in receipt['matches']
+                ),
+                cache_status=index["cache_status"],
+                data_root=data_root,
+            )
     except OSError:
         pass
     return receipt
 
 
-def find_dependents(root: str | Path, *, query: str, max_results: int = 50) -> dict[str, Any]:
+def find_dependents(
+    root: str | Path, *, query: str, max_results: int = 50
+) -> dict[str, Any]:
     """Return bounded reverse references for headers, symbols and build keys."""
     root = Path(root).resolve()
-    result = _git(root, "grep", "-n", "-I", "-i", "-F", "--", query)
+    result = _git(root, "grep", "-n", "-I", "-w", "-F", "--", query)
     paths: dict[str, int] = {}
     lines: list[dict[str, Any]] = []
     for raw in result.stdout.splitlines():
@@ -515,34 +703,65 @@ def find_dependents(root: str | Path, *, query: str, max_results: int = 50) -> d
         if len(parts) != 3:
             continue
         try:
-            path = parts[0].decode(); line = int(parts[1]); text = parts[2].decode("utf-8", "replace")[:240]
+            path = parts[0].decode()
+            line = int(parts[1])
+            text = parts[2].decode("utf-8", "replace")[:240]
         except (UnicodeDecodeError, ValueError):
             continue
         paths[path] = paths.get(path, 0) + 1
         lines.append({"path": path, "line": line, "excerpt": text})
     lines.sort(key=lambda item: (item["path"], item["line"]))
-    return {"schema_version": "context.reverse-dependents/v1alpha1", "query": query, "paths": [{"path": path, "matches": count} for path, count in sorted(paths.items(), key=lambda item: (-item[1], item[0]))], "matches": lines[:max_results], "truncated": len(lines) > max_results}
+    return {
+        "schema_version": "context.reverse-dependents/v1alpha1",
+        "query": query,
+        "paths": [
+            {"path": path, "matches": count}
+            for path, count in sorted(
+                paths.items(), key=lambda item: (-item[1], item[0])
+            )
+        ],
+        "matches": lines[:max_results],
+        "truncated": len(lines) > max_results,
+    }
 
 
 def validate_code_index_receipt(value: Any, *, root: str | Path | None = None) -> None:
     if not isinstance(value, dict):
         raise ValueError("code index receipt is invalid")
     schema = value.get("schema_version")
-    fields = _INDEX_FIELDS if schema == INDEX_SCHEMA_VERSION else _LOOKUP_FIELDS if schema == LOOKUP_SCHEMA_VERSION else None
+    fields = (
+        _INDEX_FIELDS
+        if schema == INDEX_SCHEMA_VERSION
+        else _LOOKUP_FIELDS
+        if schema == LOOKUP_SCHEMA_VERSION
+        else None
+    )
     if fields is None or set(value) != fields:
         raise ValueError("code index receipt fields are invalid")
     if value["receipt_sha256"] != _digest(value, "receipt_sha256"):
         raise ValueError("code index receipt digest mismatch")
     for field in ("repository_revision", "index_revision", "receipt_sha256"):
         length = 40 if field == "repository_revision" else 64
-        if not isinstance(value[field], str) or not re.fullmatch(rf"[0-9a-f]{{{length}}}", value[field]):
+        if not isinstance(value[field], str) or not re.fullmatch(
+            rf"[0-9a-f]{{{length}}}", value[field]
+        ):
             raise ValueError(f"{field} is invalid")
-    if value["state_write_authority"] is not False or value["memory_authority"] is not False:
+    if (
+        value["state_write_authority"] is not False
+        or value["memory_authority"] is not False
+    ):
         raise ValueError("code index cannot carry authority")
     if schema == INDEX_SCHEMA_VERSION:
         if value["cache_status"] not in {"miss", "hit", "partial"}:
             raise ValueError("cache_status is invalid")
-        for field in ("tracked_files", "indexed_files", "reused_files", "rehashed_files", "removed_files", "max_files"):
+        for field in (
+            "tracked_files",
+            "indexed_files",
+            "reused_files",
+            "rehashed_files",
+            "removed_files",
+            "max_files",
+        ):
             if type(value[field]) is not int or value[field] < 0:
                 raise ValueError(f"{field} is invalid")
         return
@@ -551,11 +770,16 @@ def validate_code_index_receipt(value: Any, *, root: str | Path | None = None) -
     matches = value["matches"]
     if not isinstance(matches, list) or value["match_count"] != len(matches):
         raise ValueError("lookup matches are invalid")
-    if type(value["matched_before_limit"]) is not int or value["matched_before_limit"] < len(matches):
+    if type(value["matched_before_limit"]) is not int or value[
+        "matched_before_limit"
+    ] < len(matches):
         raise ValueError("matched_before_limit is invalid")
     if value["truncated"] is not (value["matched_before_limit"] > len(matches)):
         raise ValueError("truncated is invalid")
-    if value["returned_bytes"] != len(_canonical(value)) or value["returned_bytes"] > value["max_output_bytes"]:
+    if (
+        value["returned_bytes"] != len(_canonical(value))
+        or value["returned_bytes"] > value["max_output_bytes"]
+    ):
         raise ValueError("lookup output budget is invalid")
     for match in matches:
         if not isinstance(match, dict) or set(match) != _MATCH_FIELDS:
@@ -565,7 +789,9 @@ def validate_code_index_receipt(value: Any, *, root: str | Path | None = None) -
         for field in ("path", "kind", "name"):
             if not isinstance(match[field], str) or not match[field]:
                 raise ValueError(f"lookup match {field} is invalid")
-        if not isinstance(match["file_sha256"], str) or not re.fullmatch(r"[0-9a-f]{64}", match["file_sha256"]):
+        if not isinstance(match["file_sha256"], str) or not re.fullmatch(
+            r"[0-9a-f]{64}", match["file_sha256"]
+        ):
             raise ValueError("lookup match file hash is invalid")
         if root is not None:
             path = (Path(root).resolve() / match["path"]).resolve()

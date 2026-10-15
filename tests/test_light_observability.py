@@ -1626,7 +1626,7 @@ class HookProbeTests(unittest.TestCase):
             stdout = StringIO()
             with (
                 patch.dict(
-                    os.environ, {"CONTINUITY_EFFECT_POLICY": "auto"}, clear=False
+                    os.environ, {"CONTINUITY_EFFECT_POLICY": "auto", "CONTINUITY_DATA_ROOT": str(root.parent / "data")}, clear=False
                 ),
                 patch.object(hook.sys, "stdout", stdout),
                 patch.object(hook, "_command", return_value=failed),
@@ -1635,9 +1635,9 @@ class HookProbeTests(unittest.TestCase):
                 patch.object(hook, "_skill_lock_path", return_value=None),
                 patch.object(hook, "_cursor_path", return_value=None),
             ):
-                self.assertEqual(hook._precompact(payload, root), 0)
-                self.assertEqual(hook._postcompact(payload, root), 0)
-                self.assertEqual(hook._session_start(payload, root), 0)
+                self.assertEqual(hook._precompact({**payload, "hook_event_name": "PreCompact"}, root), 0)
+                self.assertEqual(hook._postcompact({**payload, "hook_event_name": "PostCompact"}, root), 0)
+                self.assertEqual(hook._session_start({**payload, "hook_event_name": "SessionStart", "source": "compact"}, root), 0)
             output = json.loads(stdout.getvalue())
             self.assertTrue(output["continue"])
             self.assertIn("continuity_context_lookup", output["hookSpecificOutput"]["additionalContext"])

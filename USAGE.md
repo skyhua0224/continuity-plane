@@ -42,18 +42,38 @@ continuity supervisor run --project-id PROJECT --task-id TASK --assignee EXECUTO
 continuity supervisor daemon --project-id PROJECT
 ```
 
-Supervisor 只写 `attempt.started/heartbeat/finished` 协作事件，不完成 Work、不改 SQLite。
+Supervisor 保存协作事件，不完成 Work、不改 SQLite。
 它是本地前台/单次 daemon 入口，Provider 适配器和长期服务编排可以继续扩展。
+
+Alpha24 的 worker 闭环增加了启动前卡片校验与结束投影：退出 0 转待评审，
+失败/中断转 blocked；退出 0 不等于验证通过或已合入。较旧运行不能覆盖新运行或人工终态。
+daemon 可重放结束事实修复投影，但不根据其他主机的 PID 表推断进程已经结束。
+结束事实先落盘，卡片投影随后完成并记录 `task.run-projected`；投影 pending 不会伪装成已持久化成功。
+
+```bash
+continuity collaboration wait --project-id PROJECT --since CURSOR \
+  --event attempt.finished --timeout-seconds 300 --max-output-bytes 4096
+```
+
+wait 安静等待匹配事件，超时输出 `timed_out: true` 并以 2 退出。
+使用返回的 next_cursor 接续；它与 high_water_cursor（完整日志水位）不同。
+大事件可按预算省略日志细节，但不跳过后续未返回的事件。
+这提供阻塞读取，不代表能够主动唤醒任意宿主会话。该能力从 Alpha24 提供。
+
+完整派发、规则交付、远端部署与证据边界见 [现场工作流](docs/field-workflows.md)。
+Claude 原生额度自动查询计划已撤销，不作为发行前提，不启用账号轮询服务。
+真实 token/缓存计量与显式额度记录独立保留，不承诺自动查询全账户用量或实际费用。
 
 ## 安装
 
-要求 Python 3.11 或更高版本。当前 alpha 已在 Linux x86_64、macOS arm64 和
-Windows AMD64 完成安装、verify 和卸载。
+要求 Python 3.11 或更高版本。历史 alpha 已在 Linux x86_64、macOS arm64 和
+Windows AMD64 完成安装、verify 和卸载；Alpha24 本轮现场验收为 Linux，
+不将历史跨平台探针视为本版逐平台重验。
 
 ### 从 PyPI 安装
 
 ```bash
-python -m pip install continuity-plane==0.1.0a23
+python -m pip install continuity-plane==0.1.0a24
 ```
 
 发行包包含非阻断生命周期 hook、运行时诊断、明确执行意图与 OpenCodex 安全安装保护；
@@ -69,6 +89,12 @@ command -v continuity-host-hook
 ```
 
 此命令选择最新预发行包；需要固定版本时应使用项目隔离环境的明确版本约束。
+若 pipx/uv 后端拒绝重建既有环境，可直接更新其解释器，不搬运原生账号配置：
+
+```bash
+uv pip install --python /path/to/pipx/venvs/continuity-plane/bin/python \
+  --reinstall-package continuity-plane 'continuity-plane==0.1.0a24'
+```
 
 Claude Code 使用原生插件安装，hook 由插件提供，无需手写覆盖 settings：
 
@@ -94,7 +120,7 @@ python -m venv .venv
 下载 wheel 或 source archive：
 
 ```bash
-python -m pip install /path/to/continuity_plane-0.1.0a23-py3-none-any.whl
+python -m pip install /path/to/continuity_plane-0.1.0a24-py3-none-any.whl
 ```
 
 ### 全局安装，管理多个项目
@@ -104,7 +130,7 @@ python -m pip install /path/to/continuity_plane-0.1.0a23-py3-none-any.whl
 ```bash
 python3 -m venv ~/.local/share/continuity-plane/venv
 ~/.local/share/continuity-plane/venv/bin/python \
-  -m pip install continuity-plane==0.1.0a23
+  -m pip install continuity-plane==0.1.0a24
 
 ~/.local/share/continuity-plane/venv/bin/continuity \
   init --root /path/to/project --project-id my-project
@@ -115,7 +141,7 @@ python3 -m venv ~/.local/share/continuity-plane/venv
 ```bash
 cd /path/to/project
 python3 -m venv .venv
-.venv/bin/python -m pip install continuity-plane==0.1.0a23
+.venv/bin/python -m pip install continuity-plane==0.1.0a24
 .venv/bin/continuity init --root . --project-id my-project
 ```
 
@@ -259,7 +285,7 @@ continuity work activate \
 个人想进行 SQL 检查、备份或让多个本地 worker 共用状态时，可以选择 PostgreSQL：
 
 ```bash
-python -m pip install 'continuity-plane[postgres]==0.1.0a23'
+python -m pip install 'continuity-plane[postgres]==0.1.0a24'
 ```
 
 当前 alpha CLI 仍默认 SQLite。PostgreSQL 通过显式 Python adapter 使用：
@@ -341,8 +367,8 @@ MCP 写工具，也不阻断普通开发。需要显式 State 操作时再安装
 先安装核心包，再把本项目 GitHub 仓库作为 marketplace：
 
 ```bash
-python -m pip install continuity-plane==0.1.0a23
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.23
+python -m pip install continuity-plane==0.1.0a24
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.24
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -533,6 +559,68 @@ bytes 降低超过 96%。
 
 ## 协作
 
+Alpha24 的完整规则交付、派发/续跑、远端 hook 与计量用法见
+[field-workflows](docs/field-workflows.md)。既有 MCP 连接需要重连后才加载新版。
+
+### Todo、任务卡与参数发现
+
+普通计划、资料、卡片和收件箱属于本地协作元数据，无需申请 State claim。
+权威 State 写入的 revision、授权和验证门仍独立生效。
+`continuity help overview` 列出操作，`continuity help task.add` 等主题直接读取
+CLI 参数定义。MCP 提供同一入口：`continuity_help` 和 `continuity_plan`。
+例如 `{"action":"task.list","project_id":"example","parameters":{"status":"active"}}`。
+两端都支持显式 `data_root`；MCP 新入口默认 brief，可选 JSON 与严格字节预算。
+
+```bash
+continuity todo compile --root "$PWD" --session-id session-a --prompt '1. Fix parser
+2. Add regression tests'
+continuity help task.add
+continuity todo link --root "$PWD" --item-id ITEM_ID --task-id EXISTING_CARD
+continuity todo activate --root "$PWD" --item-id ITEM_ID --reason 'User reprioritized this item'
+continuity todo complete --root "$PWD" --item-id ITEM_ID --result 'Focused tests PASS'
+```
+
+Todo 保存有界执行清单，卡片保存协作者、worktree、范围和验证；用 task id 关联，
+避免复制完整计划。超过容量显式报错，不静默丢弃项目。新增任务保留既有完成证据。
+SessionStart/UserPromptSubmit 的计划提示按会话状态去重，最多 1024 bytes；
+仅明确的执行清单可自动登记。普通提问不创建工作；其他会话的队列不被自动追加。
+Skill 按需加载，提示不授予派发、合入或部署权限，也不将普通工作变成只读。
+更新工具 inventory 需要重启旧 MCP 进程；源码更新不表示现有会话已加载新能力。
+
+### 参考资料与实现依据
+
+`reference` 保存标准、官方系统/库文档、参考仓库及采用理由。默认位于 Continuity
+外部数据根的 `references/`，不写入项目 Git。仅保存有界元数据，URL 或外部检出路径；
+不自动下载文档、克隆仓库或执行参考内容中的指令。仅接受公开链接；查询参数限于
+view/version/lang/locale/tab/tabs 等文档定位字段，不保存凭据或令牌。
+
+```bash
+continuity reference preference --scope global --mode primary-first
+continuity reference add --root "$PWD" --reference-id transport-spec --kind standard \
+  --title 'Transport specification' --source https://example.org/spec \
+  --version REVISION --section 'Section 3' --platform Linux --topic transport
+continuity reference list --root "$PWD" --query transport --platform Linux
+continuity reference record --root "$PWD" --reference-id transport-spec --actor session-a \
+  --status read --version REVISION --evidence 'Section 3, inspected original source' \
+  --summary 'Applicable to the supported protocol version'
+continuity reference record --root "$PWD" --reference-id transport-spec --actor session-a \
+  --code-ref src/transport.c --summary 'Adopted bounded parsing; benchmark still pending'
+continuity reference show --root "$PWD" --reference-id transport-spec --format json
+```
+
+示例 URL 为占位符。MCP 使用 `continuity_plan(action="reference.add", parameters=...)`，
+其参数与 CLI 一致。`reference.preference` 支持全局偏好与项目覆盖；项目 `--mode off`
+关闭提示，`inherit` 恢复继承。项目查询包含全局资料；更新时用 `--scope` 消除同名歧义。
+提示只在启用偏好后出现，不要求每次编辑登记。
+
+来源类别、已读状态均为登记者声明；工具不会将登记等同于官方认证、已读或最新。
+已读记录要求版本和证据定位，超过 30 天提示复核，不自动断言资料过时。
+`record --status superseded --superseded-by ...` 保存替代线索；
+`--status unavailable` 保存无法读取的事实。采用记录可关联已存在的 task id。
+“最优”由支持版本、兼容、安全、维护成本和实测共同判断；不预设某个 OS API 必然最优。
+来源无法读取时记录不确定性并继续独立任务，仅真正无法判断正确性/安全性的部分需要决策。
+远端共享需要各端访问同一个数据服务/数据根；本功能不自动同步设备或修改宿主配置。
+
 ### 本地与 Forge-Coordinated
 
 多数团队继续使用现有 Git forge 展示 Work、branch、review 和 CI。控制面增加本地
@@ -582,11 +670,11 @@ template 和 content-addressed artifact。所有 claim 关闭后，才能归档�
 
 当前版本同时发布到 PyPI 和 GitHub Release：
 
-<https://pypi.org/project/continuity-plane/0.1.0a23/>  
+<https://pypi.org/project/continuity-plane/0.1.0a24/>  
 <https://github.com/skyhua0224/continuity-plane/releases>
 
-当前公开版本使用受控 PyPI token 发布。GitHub Actions OIDC workflow 和 `pypi`
-environment 已准备，但 PyPI 项目侧仍需绑定 Trusted Publisher；token 不进入仓库或
+GitHub Release 触发构建和 PyPI OIDC 发布 workflow，使用 `pypi` environment。
+发布权限由 PyPI 项目的 Trusted Publisher 绑定决定；token 不进入仓库或
 GitHub secret。
 
 ## 公开仓库

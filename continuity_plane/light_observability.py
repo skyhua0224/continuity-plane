@@ -220,9 +220,9 @@ def resolve_policy(
             continue
         if not isinstance(override, Mapping):
             raise PolicyConfigError(f"continuity_policy.{section} must be an object")
-        unknown = _mapping_keys(
-            override, f"continuity_policy.{section}"
-        ) - allowed_fields
+        unknown = (
+            _mapping_keys(override, f"continuity_policy.{section}") - allowed_fields
+        )
         if unknown:
             raise PolicyConfigError(
                 f"continuity_policy.{section} contains unsupported fields: "
@@ -238,9 +238,13 @@ def resolve_policy(
     for field in ("on_pre_compact", "on_work_complete", "after_state_writes"):
         _require_bool(policy["checkpoint"][field], f"checkpoint.{field}")
     if not policy["checkpoint"]["on_pre_compact"]:
-        raise PolicyConfigError("checkpoint.on_pre_compact is a required safety boundary")
+        raise PolicyConfigError(
+            "checkpoint.on_pre_compact is a required safety boundary"
+        )
     if not policy["checkpoint"]["on_work_complete"]:
-        raise PolicyConfigError("checkpoint.on_work_complete is a required authority boundary")
+        raise PolicyConfigError(
+            "checkpoint.on_work_complete is a required authority boundary"
+        )
     _bounded_int(
         policy["checkpoint"]["min_interval_seconds"],
         "checkpoint.min_interval_seconds",
@@ -253,7 +257,9 @@ def resolve_policy(
         raise PolicyConfigError("verification.deep_verify is unsupported")
     if policy["observability"]["mode"] not in {"minimal", "diagnostic"}:
         raise PolicyConfigError("observability.mode is unsupported")
-    _require_bool(policy["observability"]["probes_enabled"], "observability.probes_enabled")
+    _require_bool(
+        policy["observability"]["probes_enabled"], "observability.probes_enabled"
+    )
     _bounded_int(
         policy["observability"]["slow_call_threshold_ms"],
         "observability.slow_call_threshold_ms",
@@ -282,7 +288,9 @@ def resolve_policy(
     return policy
 
 
-def load_policy(root: Path, *, environment: Mapping[str, str] | None = None) -> dict[str, Any]:
+def load_policy(
+    root: Path, *, environment: Mapping[str, str] | None = None
+) -> dict[str, Any]:
     """Load the independent policy, with an in-memory legacy project migration."""
 
     control = root / ".continuity"
@@ -291,12 +299,12 @@ def load_policy(root: Path, *, environment: Mapping[str, str] | None = None) -> 
         try:
             document = yaml.safe_load(path.read_text(encoding="utf-8"))
         except (OSError, UnicodeError, yaml.YAMLError) as exc:
-            raise PolicyConfigError("observability policy is unavailable or invalid") from exc
+            raise PolicyConfigError(
+                "observability policy is unavailable or invalid"
+            ) from exc
         if not isinstance(document, Mapping):
             raise PolicyConfigError("observability policy must be an object")
-        return resolve_policy(
-            document, environment=environment, require_schema=True
-        )
+        return resolve_policy(document, environment=environment, require_schema=True)
     project_path = control / "project.yaml"
     try:
         project = yaml.safe_load(project_path.read_text(encoding="utf-8"))
@@ -373,8 +381,7 @@ def _safe_extra(extra: Mapping[str, Any] | None) -> dict[str, Any]:
             and 1 <= len(value) <= 128
         ):
             if key == "tool_name" and not all(
-                character.isascii()
-                and (character.isalnum() or character in "_.:/-")
+                character.isascii() and (character.isalnum() or character in "_.:/-")
                 for character in value
             ):
                 continue
@@ -435,16 +442,18 @@ def _resource_snapshot(
     snapshot: dict[str, int] = {}
     try:
         snapshot["state_store_bytes"] = (
-            project_root / ".continuity/state.sqlite3"
-        ).stat().st_size
+            (project_root / ".continuity/state.sqlite3").stat().st_size
+        )
     except OSError:
         snapshot["state_store_bytes"] = 0
     try:
         snapshot["session_log_bytes"] = (
-            data_root
-            / STATE_OBSERVATION_DIRECTORY
-            / f"{_sha256(session_id)}.jsonl"
-        ).stat().st_size if data_root is not None else 0
+            (data_root / STATE_OBSERVATION_DIRECTORY / f"{_sha256(session_id)}.jsonl")
+            .stat()
+            .st_size
+            if data_root is not None
+            else 0
+        )
     except OSError:
         snapshot["session_log_bytes"] = 0
     try:
@@ -477,9 +486,7 @@ def _resource_snapshot(
             ]
             psapi.GetProcessMemoryInfo.restype = ctypes.c_int
             process = kernel32.GetCurrentProcess()
-            if psapi.GetProcessMemoryInfo(
-                process, ctypes.byref(counters), counters.cb
-            ):
+            if psapi.GetProcessMemoryInfo(process, ctypes.byref(counters), counters.cb):
                 snapshot["rss_bytes"] = int(counters.working_set_size)
         else:
             snapshot.update(_posix_process_memory())
@@ -675,9 +682,7 @@ def _prune_locked_observations(
         stale_orphan = (
             orphan_age_ns is not None and now_ns - modified_ns >= orphan_age_ns
         )
-        if path.name == current_name or not (
-            _closed_observation(path) or stale_orphan
-        ):
+        if path.name == current_name or not (_closed_observation(path) or stale_orphan):
             continue
         try:
             path.unlink()
@@ -817,9 +822,7 @@ class SessionProbe:
         if not self.enabled and not self.degraded and self.persisted_records == 0:
             prune_closed_observations(
                 self.data_root,
-                retention_max_bytes=self.policy["observability"][
-                    "retention_max_bytes"
-                ],
+                retention_max_bytes=self.policy["observability"]["retention_max_bytes"],
                 current_session_id=self.session_id,
             )
             return
@@ -835,7 +838,9 @@ class SessionProbe:
                 "duplicate_resumes": self.duplicate_resumes,
                 "request_bytes_total": self.request_bytes,
                 "response_bytes_total": self.response_bytes,
-                "latency_buckets": ",".join(str(value) for value in self.latency_buckets),
+                "latency_buckets": ",".join(
+                    str(value) for value in self.latency_buckets
+                ),
                 "observation_degraded": self.degraded,
             },
         )
@@ -998,13 +1003,17 @@ def build_observation_report(
     suggestions: list[str] = []
     duplicate_resumes = sum(duplicate_resumes_by_session.values())
     if duplicate_resumes:
-        suggestions.append("check MCP connection lifecycle; duplicate resume calls were observed")
+        suggestions.append(
+            "check MCP connection lifecycle; duplicate resume calls were observed"
+        )
     if event_counts.get("slow_call", 0):
         suggestions.append("inspect slow-call events before lowering probe thresholds")
     if event_counts.get("postcompact", 0) and event_counts.get("autorun", 0) == 0:
         suggestions.append("verify PostCompact autorun and recovery-context admission")
     if failures:
-        suggestions.append("temporarily enable diagnostic or reliability-first for failed boundaries")
+        suggestions.append(
+            "temporarily enable diagnostic or reliability-first for failed boundaries"
+        )
     observed_sessions = {
         session
         for record in records
@@ -1012,9 +1021,21 @@ def build_observation_report(
     }
     try:
         from .usage_meter import report as retrieval_report
+
         retrieval_usage = retrieval_report(project_root, data_root=meter_data_root)
     except OSError:
-        retrieval_usage = {"calls": 0, "response_bytes": 0, "estimated_grep_bytes": 0, "estimated_saved_bytes": 0, "cache_hits": 0}
+        retrieval_usage = {
+            "calls": 0,
+            "response_bytes": 0,
+            "estimated_grep_bytes": 0,
+            "estimated_saved_bytes": 0,
+            "cache_hits": 0,
+        }
+    from .provider_usage import report as provider_report
+
+    provider_usage = provider_report(project_root, data_root=meter_data_root)
+    from .handoff_journal import report as handoff_report
+
     return {
         "schema_version": "context.light-observation-report/v1alpha1",
         "project_sha256": project_digest,
@@ -1022,6 +1043,8 @@ def build_observation_report(
         "session_groups_selected": session_groups_selected,
         "files_scanned": files_scanned,
         "paired_sessions": paired_sessions,
+        "paired_sessions_kind": "legacy State/core observation source pairing, not compaction generation pairs",
+        "compaction_lifecycle": handoff_report(project_root, data_root=meter_data_root),
         "partial_sessions": partial_sessions,
         "records": len(records),
         "corrupt_lines": corrupt_lines,
@@ -1030,11 +1053,11 @@ def build_observation_report(
         "event_counts": dict(sorted(event_counts.items())),
         "duration_ms_max": round(max(durations), 3) if durations else None,
         "duplicate_resumes": duplicate_resumes,
-        "provider_usage_available": any(
-            type(record.get("input_tokens")) is int for record in records
-        ),
+        "provider_usage_available": provider_usage["provider_usage_available"]
+        or any(type(record.get("input_tokens")) is int for record in records),
         "suggestions": suggestions,
         "retrieval_usage": retrieval_usage,
+        "provider_usage": provider_usage,
     }
 
 

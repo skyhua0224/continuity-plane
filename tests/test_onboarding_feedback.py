@@ -79,21 +79,23 @@ class OnboardingTests(unittest.TestCase):
         )
         self.assertEqual(result["assignee"], "agent/child")
 
-    def test_same_actor_different_lanes_allowed_same_lane_rejected(self):
+    def test_same_actor_lane_overlap_warns_without_blocking_metadata(self):
         self.task("one", assignee="agent")
         self.task("two", lane="secondary", assignee="agent")
         self.task("three")
-        with self.assertRaisesRegex(CollaborationRegistryError, "per lane"):
-            update_task(
-                self.data,
-                project_id="sample",
-                task_id="three",
-                status="active",
-                assignee="agent",
-            )
-        self.assertEqual(
-            list_tasks(self.data, project_id="sample")[-1]["status"], "queued"
+        update_task(
+            self.data,
+            project_id="sample",
+            task_id="three",
+            status="active",
+            assignee="agent",
         )
+        self.assertEqual(
+            list_tasks(self.data, project_id="sample")[-1]["status"], "active"
+        )
+        from continuity_plane.delivery_records import detail_view
+
+        self.assertTrue(detail_view(self.data, "sample", "three")["planning_warnings"])
 
     def test_update_cannot_take_over_other_actor(self):
         self.task("one", assignee="owner")
@@ -190,8 +192,18 @@ class OnboardingTests(unittest.TestCase):
         self.assertEqual(resolve(self.data, "xa0y", project_id="sample"), [])
 
     def test_cjk_alias_matches_inside_unspaced_sentence(self):
-        add_entity(self.data, scope="project", project_id="sample", entity_id="three-config", aliases=["三配置"], statement="Three configuration rule", source="user")
-        matches = resolve(self.data, "三配置过了再推 main；PFC 不改", project_id="sample")
+        add_entity(
+            self.data,
+            scope="project",
+            project_id="sample",
+            entity_id="three-config",
+            aliases=["三配置"],
+            statement="Three configuration rule",
+            source="user",
+        )
+        matches = resolve(
+            self.data, "三配置过了再推 main；PFC 不改", project_id="sample"
+        )
         self.assertEqual([item["entity_id"] for item in matches], ["three-config"])
 
     def test_project_alias_shadows_normalized_global_phrase(self):
@@ -595,7 +607,9 @@ class OnboardingTests(unittest.TestCase):
         self.call(["status", "--root", str(self.root)])
         self.call(["--root", str(self.root), "status"])
         with self.assertRaisesRegex(ValueError, "different projects"):
-            self.call(["--root", str(self.root), "state", "show", "--root", str(self.data)])
+            self.call(
+                ["--root", str(self.root), "state", "show", "--root", str(self.data)]
+            )
         self.assertEqual(
             len(
                 SQLiteStateStore(self.root / ".continuity/state.sqlite3").read_events(

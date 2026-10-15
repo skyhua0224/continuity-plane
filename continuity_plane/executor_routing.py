@@ -14,6 +14,14 @@ from .collaboration_registry import (
 )
 
 SCENARIOS = {
+    "boundary-validation": {
+        "purpose": "security",
+        "description": "Validate authentication, authorization and error handling in the authorized repository and its tests.",
+    },
+    "independent-review": {
+        "purpose": "independent-review",
+        "description": "Independent verification of assumptions, correctness and failure cases within the declared scope.",
+    },
     "quick-triage": {
         "urgency": "high",
         "description": "Bounded reproduction, log inspection or a small urgent fix.",
@@ -44,6 +52,19 @@ SCENARIOS = {
 
 
 def _model_alias(value: str) -> str:
+    import re
+
+    normalized = value.casefold()
+    for pattern, canonical in (
+        (r"(?:^|[/_-])(?:gpt-6\.1-)?sol(?:$|[/_-])", "sol"),
+        (r"(?:^|[/_-])(?:gpt-6-)?astra(?:$|[/_-])", "astra"),
+        (r"(?:^|[/_-])sonnet(?:$|[/_-])", "sonnet"),
+        (r"(?:^|[/_-])opus(?:$|[/_-])", "opus"),
+        (r"(?:^|[/_-])glm(?:$|[/_-])", "glm"),
+        (r"(?:^|[/_-])grok(?:$|[/_-])", "grok"),
+    ):
+        if re.search(pattern, normalized):
+            return canonical
     value = value.casefold().strip()
     aliases = {
         "sonnet-high": "sonnet",
@@ -79,17 +100,27 @@ def recommend(
     purpose = purpose if purpose is not None else preset.get("purpose", "general")
     if complexity not in {"normal", "high"} or urgency not in {"normal", "high", "low"}:
         raise ValueError("complexity or urgency is invalid")
-    if purpose not in {"general", "security", "adversarial-review"}:
+    if purpose not in {
+        "general",
+        "security",
+        "adversarial-review",
+        "independent-review",
+    }:
         raise ValueError("purpose is invalid")
     if thinking not in {"high", "max"}:
         raise ValueError("thinking must be high or max")
-    if purpose == "adversarial-review":
+    security_review = purpose == "security" or (
+        purpose in {"adversarial-review", "independent-review"}
+        and (domain or "").casefold()
+        in {"security", "identity", "authorization", "auth"}
+    )
+    if purpose in {"adversarial-review", "independent-review"} and not security_review:
         preferred, fallback, reason = (
             ["astra", "opus"],
             ["sonnet", "sol", "grok", "glm"],
-            "Difficult work or adversarial review; reserve expensive models for this class.",
+            "Difficult design or independent verification; reserve expensive models for this class.",
         )
-    elif purpose == "security":
+    elif security_review:
         preferred, fallback, reason = (
             ["glm", "sonnet", "sol", "grok"],
             [],
@@ -223,7 +254,9 @@ def save_for_task(data_root, project_id: str, task_id: str, preference: dict) ->
             previous.get(k) == preference.get(k)
             for k in ("routing_inputs", "preferred_pool", "domain", "parallel_allowed")
         ):
-            return previous
+            from .runtime_routing import apply
+
+            return apply(data_root, project_id, previous)
         preference = dict(preference)
         pool = preference.get("preferred_pool", preference["candidates"][:1])
         counts = {model: 0 for model in pool}
@@ -241,6 +274,9 @@ def save_for_task(data_root, project_id: str, task_id: str, preference: dict) ->
             "selected": ordered[0] if ordered else None,
             "policy": "least-planned-first; suitability-breaks-ties",
         }
+        from .runtime_routing import apply
+
+        preference = apply(data_root, project_id, preference)
         document[task_id] = preference
         _atomic_write(path, document)
     return preference
@@ -256,7 +292,9 @@ def for_task(data_root, project_id: str, task_id: str | None) -> dict:
     except (OSError, ValueError):
         document = {}
     if task_id in document:
-        return document[task_id]
+        from .runtime_routing import apply
+
+        return apply(data_root, project_id, document[task_id])
     value = recommend()
     if task_id:
         # Unconfigured packet readers also avoid a universal Sonnet-first default.
@@ -272,4 +310,6 @@ def for_task(data_root, project_id: str, task_id: str | None) -> dict:
         value["candidates"] = sorted(rotated, key=lambda model: counts[model]) + [
             model for model in value["candidates"] if model not in pool
         ]
-    return value
+    from .runtime_routing import apply
+
+    return apply(data_root, project_id, value)

@@ -1,7 +1,7 @@
 {
   "name": "continuity-plane-state",
-  "version": "0.1.0-alpha.23",
-  "description": "Optional advanced State MCP tools for Continuity Plane",
+  "version": "0.1.0-alpha.24",
+  "description": "Todo, task cards, reusable references and collaboration MCP, with optional advanced State tools",
   "author": {
     "name": "SkyHua"
   },
@@ -16,10 +16,11 @@
     "collaboration"
   ],
   "mcpServers": "./.mcp.json",
+  "skills": "./skills/",
   "interface": {
     "displayName": "Continuity Plane State",
-    "shortDescription": "可选 State MCP 工具 / Optional advanced State MCP tools.",
-    "longDescription": "为显式需要 State 操作的项目提供 resume、checkpoint、claim 和原子 Work transition 工具。 Adds resume, checkpoint, claim, and atomic Work transition tools for projects that explicitly need them.",
+    "shortDescription": "Todo、任务卡与协作 / Todo, cards and collaboration.",
+    "longDescription": "通过按需help与有界MCP维护计划、卡片和交接；高级State操作按需调用。 Maintain plans, cards and handoffs through on-demand help and bounded MCP tools; advanced State operations remain optional.",
     "developerName": "SkyHua",
     "category": "Productivity",
     "capabilities": [
@@ -28,8 +29,8 @@
     ],
     "websiteURL": "https://github.com/skyhua0224/continuity-plane",
     "defaultPrompt": [
-      "检查当前项目的 State MCP 状态。",
-      "Inspect this project's State MCP status."
+      "将多事项计划记录为 Todo 与关联任务卡，按约定阶段继续执行。",
+      "Track this multi-step request with Todo and linked task cards; continue the agreed stage."
     ]
   }
 }

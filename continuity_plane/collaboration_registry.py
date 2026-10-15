@@ -7,14 +7,18 @@ import json
 import os
 import re
 import tempfile
+import math
+import time
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Iterator
+from .release_version import VERSION
 
 
 PROJECT_REGISTRATION_SCHEMA = "context.project-registration/v1alpha1"
-DISPATCH_LEDGER_SCHEMA = "context.dispatch-ledger/v2alpha1"
+DISPATCH_LEDGER_SCHEMA = "context.dispatch-ledger/v3alpha1"
+PREVIOUS_DISPATCH_LEDGER_SCHEMA = "context.dispatch-ledger/v2alpha1"
 LEGACY_DISPATCH_LEDGER_SCHEMA = "context.dispatch-ledger/v1alpha1"
 TASK_CARD_SCHEMA = "context.task-card/v1alpha1"
 _ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,127}$")
@@ -72,8 +76,23 @@ def _now() -> str:
 
 
 def _atomic_write(path: Path, document: dict[str, Any]) -> None:
-    if isinstance(document, dict) and document.get("schema_version") == DISPATCH_LEDGER_SCHEMA:
-        document["writer_version"] = "0.1.0a23"
+    if (
+        isinstance(document, dict)
+        and document.get("schema_version") == DISPATCH_LEDGER_SCHEMA
+    ):
+        document["writer_version"] = VERSION
+        active = [
+            (r.get("assignee"), r.get("lane_id"))
+            for r in document.get("tasks", [])
+            if r.get("status") == "active"
+        ]
+        if (
+            len(active) != len(set(active))
+            or document.get("minimum_reader_schema") == 3
+        ):
+            document["minimum_reader_schema"] = 3
+        else:
+            document["schema_version"] = PREVIOUS_DISPATCH_LEDGER_SCHEMA
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
     try:
@@ -83,6 +102,9 @@ def _atomic_write(path: Path, document: dict[str, Any]) -> None:
             handle.flush()
             os.fsync(handle.fileno())
         os.replace(temporary, path)
+        from .persistent_storage import sync_directory
+
+        sync_directory(path.parent)
     finally:
         try:
             os.unlink(temporary)
@@ -108,7 +130,9 @@ def _load(path: Path) -> dict[str, Any] | None:
     except FileNotFoundError:
         return None
     except (OSError, json.JSONDecodeError) as exc:
-        raise CollaborationRegistryError(f"collaboration document is unreadable: {exc}") from exc
+        raise CollaborationRegistryError(
+            f"collaboration document is unreadable: {exc}"
+        ) from exc
     if not content.strip():
         return None
     try:
@@ -122,13 +146,14 @@ def _load(path: Path) -> dict[str, Any] | None:
     return document
 
 
-def _text(value: Any, field: str, limit: int = 4096) -> str:
+def _text(value: Any, field: str, limit: int = 4096, *, multiline=False) -> str:
     if (
         not isinstance(value, str)
         or not value.strip()
         or len(value.encode("utf-8")) > limit
-        or "\n" in value
-        or "\r" in value
+        or any(
+            ord(char) < 32 and (not multiline or char not in "\n\r\t") for char in value
+        )
     ):
         raise CollaborationRegistryError(f"{field} is invalid")
     return value
@@ -196,9 +221,10 @@ def list_projects(data_root: Path | str | None = None) -> list[dict[str, Any]]:
         document = _load(path)
         if document is None:
             continue
-        if (
-            document.get("schema_version") != PROJECT_REGISTRATION_SCHEMA
-            or not isinstance(document.get("project_id"), str)
+        if document.get(
+            "schema_version"
+        ) != PROJECT_REGISTRATION_SCHEMA or not isinstance(
+            document.get("project_id"), str
         ):
             raise CollaborationRegistryError(
                 f"unsupported project registration: {path}"
@@ -262,10 +288,15 @@ def _validate_task(task: dict[str, Any]) -> dict[str, Any]:
     _text(task["title"], "title", 512)
     _text(task["objective"], "objective")
     _text(task["next_action"], "next_action", 1024)
-    if task["assignee"] is not None and _ASSIGNEE_RE.fullmatch(task["assignee"]) is None:
+    if (
+        task["assignee"] is not None
+        and _ASSIGNEE_RE.fullmatch(task["assignee"]) is None
+    ):
         raise CollaborationRegistryError("assignee is invalid")
     if task["status"] == "active" and task["assignee"] is None:
-        raise CollaborationRegistryError("active task requires assignee; use task update --assignee ACTOR or task claim --assignee ACTOR")
+        raise CollaborationRegistryError(
+            "active task requires assignee; use task update --assignee ACTOR or task claim --assignee ACTOR"
+        )
     if task["worktree"] is not None:
         _absolute_path(task["worktree"], "worktree")
     if task["report_policy"] not in _REPORT_POLICY:
@@ -291,12 +322,17 @@ def _validate_task(task: dict[str, Any]) -> dict[str, Any]:
     if task["branch"] is not None:
         _text(task["branch"], "branch", 512)
     if task["commit"] is not None:
-        if not isinstance(task["commit"], str) or not re.fullmatch(r"[0-9a-f]{7,64}", task["commit"]):
+        if not isinstance(task["commit"], str) or not re.fullmatch(
+            r"[0-9a-f]{7,64}", task["commit"]
+        ):
             raise CollaborationRegistryError("commit is invalid")
     if task["verification"] is not None:
         _text(task["verification"], "verification", 4096)
     for field in ("landed_commit",):
-        if task[field] is not None and (not isinstance(task[field], str) or not re.fullmatch(r"[0-9a-f]{7,64}", task[field])):
+        if task[field] is not None and (
+            not isinstance(task[field], str)
+            or not re.fullmatch(r"[0-9a-f]{7,64}", task[field])
+        ):
             raise CollaborationRegistryError(f"{field} is invalid")
     if task["released_in"] is not None:
         _text(task["released_in"], "released_in", 256)
@@ -313,36 +349,143 @@ def _changes_path(data_root: Path, project_id: str) -> Path:
     return _project_dir(data_root, project_id) / "changes.jsonl"
 
 
-def _record_change(data_root: Path, project_id: str, event: str, task_id: str | None = None, **fields: Any) -> None:
+def _record_change(
+    data_root: Path,
+    project_id: str,
+    event: str,
+    task_id: str | None = None,
+    **fields: Any,
+) -> None:
     path = _changes_path(data_root, project_id)
     path.parent.mkdir(parents=True, exist_ok=True)
-    try:
-        existing = path.read_text(encoding="utf-8").splitlines()
-    except OSError:
-        existing = []
-    payload = {"cursor": len(existing) + 1, "observed_at": _now(), "event": event, "task_id": task_id, **fields}
-    with path.open("a", encoding="utf-8") as stream:
-        stream.write(json.dumps(payload, ensure_ascii=False, sort_keys=True) + "\n")
+    with _locked(path):
+        try:
+            existing = path.read_text(encoding="utf-8").splitlines()
+        except FileNotFoundError:
+            existing = []
+        rows = []
+        for line in existing:
+            try:
+                row = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(row, dict):
+                rows.append(row)
+        if fields.get("event_id") and any(
+            row.get("event_id") == fields["event_id"] for row in rows
+        ):
+            return
+        cursor = max(
+            [len(existing)]
+            + [row["cursor"] for row in rows if type(row.get("cursor")) is int]
+        )
+        payload = {
+            **fields,
+            "cursor": cursor + 1,
+            "observed_at": _now(),
+            "event": event,
+            "task_id": task_id,
+        }
+        with path.open("a", encoding="utf-8") as stream:
+            stream.write(json.dumps(payload, ensure_ascii=False, sort_keys=True) + "\n")
+            stream.flush()
+            os.fsync(stream.fileno())
 
 
-def list_changes(data_root: Path | str | None, *, project_id: str, since: int = 0, max_results: int = 50) -> dict[str, Any]:
+def list_changes(
+    data_root: Path | str | None,
+    *,
+    project_id: str,
+    since: int = 0,
+    max_results: int = 50,
+) -> dict[str, Any]:
     root = Path(data_root) if data_root is not None else default_data_root()
-    if since < 0 or max_results < 1 or max_results > 500:
+    if (
+        type(since) is not int
+        or type(max_results) is not int
+        or since < 0
+        or max_results < 1
+        or max_results > 500
+    ):
         raise CollaborationRegistryError("since or max_results is invalid")
     path = _changes_path(root, project_id)
     try:
-        rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
-    except (OSError, json.JSONDecodeError):
-        rows = []
-    selected = [row for row in rows if isinstance(row, dict) and int(row.get("cursor", 0)) > since][:max_results]
-    next_cursor = max([int(row.get("cursor", 0)) for row in rows if isinstance(row, dict)] or [since])
-    return {"schema_version": "context.collaboration-changes/v1alpha1", "since": since, "next_cursor": next_cursor, "changes": selected, "truncated": len(selected) < len([row for row in rows if isinstance(row, dict) and int(row.get("cursor", 0)) > since])}
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except FileNotFoundError:
+        lines = []
+    rows = []
+    corrupt = 0
+    for line in lines:
+        try:
+            row = json.loads(line)
+        except json.JSONDecodeError:
+            corrupt += 1
+            continue
+        if not isinstance(row, dict) or type(row.get("cursor")) is not int:
+            corrupt += 1
+            continue
+        rows.append(row)
+    rows.sort(key=lambda row: row["cursor"])
+    pending = [row for row in rows if row["cursor"] > since]
+    selected = pending[:max_results]
+    return {
+        "schema_version": "context.collaboration-changes/v1alpha1",
+        "since": since,
+        "next_cursor": selected[-1]["cursor"] if selected else since,
+        "high_water_cursor": max([row["cursor"] for row in rows] or [0]),
+        "changes": selected,
+        "truncated": len(selected) < len(pending),
+        "corrupt_lines": corrupt,
+    }
+
+
+def wait_for_changes(
+    data_root,
+    *,
+    project_id: str,
+    since: int = 0,
+    event: str | None = None,
+    task_id: str | None = None,
+    assignee: str | None = None,
+    timeout_seconds: float = 300,
+    poll_seconds: float = 0.1,
+) -> dict[str, Any]:
+    """Wait quietly for matching facts; never launch or wake another provider."""
+    if (
+        not math.isfinite(timeout_seconds)
+        or timeout_seconds < 0
+        or not math.isfinite(poll_seconds)
+        or poll_seconds <= 0
+    ):
+        raise CollaborationRegistryError("wait timeout/poll interval is invalid")
+    deadline = time.monotonic() + timeout_seconds
+    cursor = since
+    while True:
+        page = list_changes(
+            data_root, project_id=project_id, since=cursor, max_results=500
+        )
+        selected = [
+            row
+            for row in page["changes"]
+            if (event is None or row.get("event") == event)
+            and (task_id is None or row.get("task_id") == task_id)
+            and (assignee is None or row.get("assignee") == assignee)
+        ]
+        cursor = page["next_cursor"]
+        page.update(since=since, changes=selected, timed_out=False)
+        if selected:
+            return page
+        if time.monotonic() >= deadline:
+            page["timed_out"] = True
+            return page
+        if not page["truncated"]:
+            time.sleep(min(poll_seconds, max(0, deadline - time.monotonic())))
 
 
 def _empty_ledger() -> dict[str, Any]:
     return {
         "schema_version": DISPATCH_LEDGER_SCHEMA,
-        "writer_version": "0.1.0a23",
+        "writer_version": VERSION,
         "tasks": [],
         "effect_requests": [],
         "updated_at": _now(),
@@ -353,11 +496,20 @@ def _load_ledger(data_root: Path, project_id: str) -> dict[str, Any]:
     document = _load(_ledger_path(data_root, project_id)) or _empty_ledger()
     if not isinstance(document, dict):
         raise CollaborationRegistryError("dispatch ledger is invalid")
-    if document.get("schema_version") == LEGACY_DISPATCH_LEDGER_SCHEMA:
+    if document.get("schema_version") == DISPATCH_LEDGER_SCHEMA and document.get(
+        "tasks"
+    ):
+        document.setdefault("minimum_reader_schema", 3)
+    if document.get("schema_version") in {
+        LEGACY_DISPATCH_LEDGER_SCHEMA,
+        PREVIOUS_DISPATCH_LEDGER_SCHEMA,
+    }:
         document["schema_version"] = DISPATCH_LEDGER_SCHEMA
         document.setdefault("writer_version", "legacy")
     elif document.get("schema_version") != DISPATCH_LEDGER_SCHEMA:
-        raise CollaborationRegistryError("ledger was written by a newer Continuity build; upgrade this CLI/MCP before reading it")
+        raise CollaborationRegistryError(
+            "ledger was written by a newer Continuity build; upgrade this CLI/MCP before reading it"
+        )
     # Sidecar metadata is forward-compatible: older alpha14 ledgers did not
     # contain report_policy or effect_requests.
     document.setdefault("effect_requests", [])
@@ -373,35 +525,24 @@ def _load_ledger(data_root: Path, project_id: str) -> dict[str, Any]:
     ids = [item["task_id"] for item in tasks]
     if len(ids) != len(set(ids)):
         raise CollaborationRegistryError("task_id must be unique")
-    active_assignees = [
-        (item["assignee"], item["lane_id"])
-        for item in tasks
-        if item["status"] == "active" and item["assignee"] is not None
-    ]
-    if len(active_assignees) != len(set(active_assignees)):
-        raise CollaborationRegistryError("an assignee may hold only one active task per lane")
     effects = document.get("effect_requests", [])
     if not isinstance(effects, list):
         raise CollaborationRegistryError("effect_requests must be a list")
     effect_ids = []
     for effect in effects:
-        if (
-            not isinstance(effect, dict)
-            or set(effect)
-            != {
-                "schema_version",
-                "effect_id",
-                "task_id",
-                "requested_by",
-                "effect",
-                "target",
-                "reason",
-                "evidence_refs",
-                "status",
-                "created_at",
-                "updated_at",
-            }
-        ):
+        if not isinstance(effect, dict) or set(effect) != {
+            "schema_version",
+            "effect_id",
+            "task_id",
+            "requested_by",
+            "effect",
+            "target",
+            "reason",
+            "evidence_refs",
+            "status",
+            "created_at",
+            "updated_at",
+        }:
             raise CollaborationRegistryError("effect request fields are invalid")
         if effect["schema_version"] != "context.effect-request/v1alpha1":
             raise CollaborationRegistryError("effect request schema is unsupported")
@@ -422,6 +563,26 @@ def _load_ledger(data_root: Path, project_id: str) -> dict[str, Any]:
     if len(effect_ids) != len(set(effect_ids)):
         raise CollaborationRegistryError("effect_id must be unique")
     return document
+
+
+def _note_lane(ledger, task):
+    peers = [
+        r["task_id"]
+        for r in ledger["tasks"]
+        if r["task_id"] != task["task_id"]
+        and r["status"] == "active"
+        and r["assignee"] == task["assignee"]
+        and r["lane_id"] == task["lane_id"]
+    ]
+    existing = ledger.get("task_details", {}).get(task["task_id"], {})
+    if task["status"] == "active" and peers:
+        ledger.setdefault("task_details", {}).setdefault(task["task_id"], {})[
+            "planning_warnings"
+        ] = [
+            f"{len(peers)} other active cards share this assignee/lane; coordinate checkout and build scope before execution"
+        ]
+    elif existing.get("planning_warnings"):
+        existing["planning_warnings"] = []
 
 
 def add_task(
@@ -447,6 +608,7 @@ def add_task(
     verification: str | None = None,
     landed_commit: str | None = None,
     released_in: str | None = None,
+    body: str | None = None,
 ) -> dict[str, Any]:
     """Add a bounded task card without granting execution authority."""
     root = Path(data_root) if data_root is not None else default_data_root()
@@ -483,16 +645,22 @@ def add_task(
         ledger = _load_ledger(root, project_id)
         if any(item["task_id"] == task_id for item in ledger["tasks"]):
             raise CollaborationRegistryError("task_id already exists")
-        if task["status"] == "active" and any(
-            item["status"] == "active" and item["assignee"] == task["assignee"]
-            and item["lane_id"] == task["lane_id"]
-            for item in ledger["tasks"]
-        ):
-            raise CollaborationRegistryError("an assignee may hold only one active task per lane")
+        _note_lane(ledger, task)
         ledger["tasks"].append(task)
+        if body is not None:
+            ledger.setdefault("task_details", {}).setdefault(task_id, {})["body"] = (
+                _text(body, "task body", 32768, multiline=True)
+            )
         ledger["updated_at"] = _now()
         _atomic_write(path, ledger)
-        _record_change(root, project_id, "task.added", task_id, status=task["status"], assignee=task["assignee"])
+        _record_change(
+            root,
+            project_id,
+            "task.added",
+            task_id,
+            status=task["status"],
+            assignee=task["assignee"],
+        )
     return task
 
 
@@ -511,8 +679,17 @@ def update_task(
     verification: str | None = None,
     landed_commit: str | None = None,
     released_in: str | None = None,
+    worktree: Path | str | None = None,
+    allowed_files: list[str] | None = None,
+    report: dict | None = None,
+    verification_data: dict | None = None,
+    body: str | None = None,
+    force: bool = False,
+    force_reason: str | None = None,
 ) -> dict[str, Any]:
     """Update a card; local completion is ready-for-review, not acceptance."""
+    if force and (not isinstance(force_reason, str) or not force_reason.strip()):
+        raise CollaborationRegistryError("--force requires a recorded --force-reason")
     root = Path(data_root) if data_root is not None else default_data_root()
     path = _ledger_path(root, project_id)
     with _locked(path):
@@ -528,43 +705,86 @@ def update_task(
             )
         if status not in _TASK_STATUS:
             raise CollaborationRegistryError("task status is invalid")
-        for field, value in (("branch", branch), ("commit", commit), ("verification", verification)):
+        for field, value in (
+            ("branch", branch),
+            ("commit", commit),
+            ("verification", verification),
+        ):
             if value is not None:
                 task[field] = value
-        for field, value in (("landed_commit", landed_commit), ("released_in", released_in)):
+        for field, value in (
+            ("landed_commit", landed_commit),
+            ("released_in", released_in),
+        ):
             if value is not None:
                 task[field] = value
+        from .delivery_records import verification_record, merge_gate
+
+        details = ledger.setdefault("task_details", {}).setdefault(task_id, {})
+        if verification_data is not None:
+            verified = verification_record(verification_data, task.get("commit"))
+            details["verification_records"] = (
+                details.get("verification_records", []) + [verified]
+            )[-32:]
+        if report is not None:
+            import hashlib
+
+            content = report.get("text", "")
+            if not isinstance(content, str) or not 1 <= len(content.encode()) <= 65536:
+                raise CollaborationRegistryError("report must contain 1–65536 bytes")
+            details["report"] = {
+                "text": content,
+                "bytes": len(content.encode()),
+                "sha256": hashlib.sha256(content.encode()).hexdigest(),
+                "recorded_at": _now(),
+                "commit": task.get("commit"),
+            }
+        if body is not None:
+            details["body"] = _text(body, "task body", 32768, multiline=True)
         if status == "merged":
-            if not task.get("commit") or not task.get("branch") or not task.get("verification"):
-                raise CollaborationRegistryError("merged requires branch, commit and verification")
-            if re.search(r"\b(not (run|tested|built)|skipped|unverified)\b", task["verification"].casefold()):
-                raise CollaborationRegistryError("merged verification declares an unverified item")
+            details["evidence_gaps"] = merge_gate(task, details)
+        if force:
+            details.setdefault("overrides", []).append(
+                {"reason": _text(force_reason, "force_reason", 2048), "at": _now()}
+            )
         if assignee is not None:
-            if task["assignee"] is not None and task["assignee"] != assignee:
-                raise CollaborationRegistryError("task is already assigned to another session")
+            if (
+                task["assignee"] is not None
+                and task["assignee"] != assignee
+                and not force
+            ):
+                raise CollaborationRegistryError(
+                    "task is already assigned to another session"
+                )
             task["assignee"] = assignee
         task["status"] = status
         if next_action is not None:
             task["next_action"] = _text(next_action, "next_action", 1024)
-        task["blocked_reason"] = blocked_reason
-        task["result"] = result
+        if worktree is not None:
+            task["worktree"] = str(Path(worktree).resolve())
+        if allowed_files is not None:
+            task["allowed_files"] = allowed_files
+        if blocked_reason is not None:
+            task["blocked_reason"] = blocked_reason
+        if result is not None:
+            task["result"] = result
         if status != "blocked":
             task["blocked_reason"] = None
-        if status not in {"ready-for-review", "rejected", "superseded"}:
-            task["result"] = None
         if status == "queued":
             task["assignee"] = None
         task["updated_at"] = _now()
         _validate_task(task)
-        if status == "active" and any(
-            item["status"] == "active" and item["assignee"] == task["assignee"]
-            and item["lane_id"] == task["lane_id"] and item["task_id"] != task_id
-            for item in ledger["tasks"]
-        ):
-            raise CollaborationRegistryError("an assignee may hold only one active task per lane")
+        _note_lane(ledger, task)
         ledger["updated_at"] = _now()
         _atomic_write(path, ledger)
-        _record_change(root, project_id, "task.updated", task_id, status=status, assignee=task["assignee"])
+        _record_change(
+            root,
+            project_id,
+            "task.updated",
+            task_id,
+            status=status,
+            assignee=task["assignee"],
+        )
         return task
 
 
@@ -590,26 +810,30 @@ def claim_task(
         if task is None:
             raise CollaborationRegistryError("task_id does not exist")
         if task["status"] not in {"queued", "active"}:
-            raise CollaborationRegistryError("only queued or active tasks can be claimed")
+            raise CollaborationRegistryError(
+                "only queued or active tasks can be claimed"
+            )
         if task["status"] == "active" and task["assignee"] != assignee:
-            raise CollaborationRegistryError("task is already assigned to another session")
-        if any(
-            item["status"] == "active"
-            and item["assignee"] == assignee
-            and item["lane_id"] == task["lane_id"]
-            and item["task_id"] != task_id
-            for item in ledger["tasks"]
-        ):
-            raise CollaborationRegistryError("an assignee may hold only one active task per lane")
+            raise CollaborationRegistryError(
+                "task is already assigned to another session"
+            )
         task["status"] = "active"
         task["assignee"] = assignee
         if resolved_worktree is not None:
             task["worktree"] = resolved_worktree
         task["updated_at"] = _now()
         _validate_task(task)
+        _note_lane(ledger, task)
         ledger["updated_at"] = _now()
         _atomic_write(path, ledger)
-        _record_change(root, project_id, "task.claimed", task_id, status="active", assignee=assignee)
+        _record_change(
+            root,
+            project_id,
+            "task.claimed",
+            task_id,
+            status="active",
+            assignee=assignee,
+        )
         return task
 
 
@@ -636,8 +860,15 @@ def list_tasks(
         tasks = [item for item in tasks if item["updated_at"] >= updated_after]
     if query:
         needle = query.casefold()
-        tasks = [item for item in tasks if needle in json.dumps(item, ensure_ascii=False).casefold()]
-    if any(value is not None for value in (status, assignee, lane_id, updated_after, query, max_results)):
+        tasks = [
+            item
+            for item in tasks
+            if needle in json.dumps(item, ensure_ascii=False).casefold()
+        ]
+    if any(
+        value is not None
+        for value in (status, assignee, lane_id, updated_after, query, max_results)
+    ):
         tasks.sort(key=lambda item: (item["updated_at"], item["task_id"]), reverse=True)
     return tasks[:max_results] if max_results is not None else tasks
 
@@ -708,7 +939,11 @@ def update_effect(
     with _locked(path):
         ledger = _load_ledger(root, project_id)
         effect = next(
-            (item for item in ledger["effect_requests"] if item["effect_id"] == effect_id),
+            (
+                item
+                for item in ledger["effect_requests"]
+                if item["effect_id"] == effect_id
+            ),
             None,
         )
         if effect is None:
@@ -734,7 +969,8 @@ def next_task(
         active = [
             item
             for item in ledger["tasks"]
-            if item["status"] in {"active", "dispatched", "blocked"} and item["assignee"] == assignee
+            if item["status"] in {"active", "dispatched", "blocked"}
+            and item["assignee"] == assignee
         ]
         if active:
             return min(

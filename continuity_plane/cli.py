@@ -54,7 +54,13 @@ from .collaboration_packet import (
     compose_safe_collaboration_packet,
 )
 from .collaboration_inbox import send_message, list_messages, acknowledge
-from .collaboration_context import add_rule, list_rules, add_commitment, list_commitments, close_commitment
+from .collaboration_context import (
+    add_rule,
+    list_rules,
+    add_commitment,
+    list_commitments,
+    close_commitment,
+)
 from .state_onboarding import record_changes
 from .state_store import StateStoreError
 from .local_state_bundle import (
@@ -113,6 +119,7 @@ from .state_mcp import (
 )
 
 from .release_version import VERSION
+
 _PROJECT_FIELDS = {
     "schema_version",
     "project_id",
@@ -256,20 +263,16 @@ class _LocalWorkflowAuthorizer:
     """Allow an explicit local workflow transition through State MCP."""
 
     def authorize(self, context: RequestContext, action: str, project_id: str) -> bool:
-        return (
-            context.authorization_ref == "local-workflow-approved"
-            and action
-            in {
-                "state.read",
-                "state.commit",
-                "state.claim",
-                "state.work.complete",
-                "state.work.activate",
-                "state.work.transition",
-                "state.claim.recovery",
-                "state.route.apply",
-            }
-        )
+        return context.authorization_ref == "local-workflow-approved" and action in {
+            "state.read",
+            "state.commit",
+            "state.claim",
+            "state.work.complete",
+            "state.work.activate",
+            "state.work.transition",
+            "state.claim.recovery",
+            "state.route.apply",
+        }
 
 
 def _state_service(
@@ -338,9 +341,7 @@ def _initialize_new_project(args: argparse.Namespace) -> int:
         work_id="work-initial",
         work_title="Define the first measurable outcome",
         owner_ref="local-user",
-        scope_refs=[
-            {"scope_kind": "capability", "scope_ref": "project-governance"}
-        ],
+        scope_refs=[{"scope_kind": "capability", "scope_ref": "project-governance"}],
         created_at=created_at,
     )
     _write_json_atomic(target / "attach-proposal.json", proposal)
@@ -410,9 +411,7 @@ def _init(args: argparse.Namespace) -> int:
         target.mkdir(parents=True, exist_ok=False)
     except FileExistsError as exc:
         existing = next(iter(target.iterdir()), target) if target.is_dir() else target
-        raise FileExistsError(
-            f"initialization would overwrite: {existing}"
-        ) from exc
+        raise FileExistsError(f"initialization would overwrite: {existing}") from exc
     try:
         return _initialize_new_project(args)
     except BaseException:
@@ -437,7 +436,8 @@ def _latest_codex_session_start(
 ) -> dict[str, Any] | None:
     root_digest = (
         hashlib.sha256(str(project_root.resolve()).encode()).hexdigest()
-        if project_root is not None else None
+        if project_root is not None
+        else None
     )
     candidates = sorted(
         codex_home.glob("plugins/data/continuity-plane*/live-events/*.jsonl"),
@@ -459,7 +459,10 @@ def _latest_codex_session_start(
             if (
                 isinstance(event, dict)
                 and event.get("event_type") == "session-start"
-                and (root_digest is None or event.get("project_root_sha256") == root_digest)
+                and (
+                    root_digest is None
+                    or event.get("project_root_sha256") == root_digest
+                )
             ):
                 return event
     return None
@@ -467,7 +470,7 @@ def _latest_codex_session_start(
 
 def _normalize_public_plugin_version(value: str) -> str:
     base = value.split("+", 1)[0].strip()
-    return re.sub(r"-alpha\.(\d+)$", r"a\1", base)
+    return re.sub(r"-alpha\.(\d+)(\.dev\d+)?$", r"a\1\2", base)
 
 
 def _codex_continuity_hook_runtime(
@@ -482,21 +485,38 @@ def _codex_continuity_hook_runtime(
     source = source if isinstance(source, str) else ""
     marketplace_root = (
         Path(source).expanduser().resolve()
-        if source
+        if source and not source.startswith(("https://", "http://", "git@"))
         else codex_home / "dev-marketplaces/continuity-plane-current"
     )
     manifest_path = marketplace_root / ".agents/plugins/marketplace.json"
     try:
-        marketplace_document = json.loads(manifest_path.read_text(encoding="utf-8"))
-        core = next(
-            item
-            for item in marketplace_document["plugins"]
-            if item.get("name") == "continuity-plane"
-        )
-        relative = core["source"]["path"]
-        if not isinstance(relative, str):
-            raise ValueError("plugin source path is invalid")
-        plugin_root = (marketplace_root / relative).resolve()
+        if source.startswith(("https://", "http://", "git@")):
+            requested = str(marketplace.get("ref", "")).removeprefix("v")
+            cache = codex_home / "plugins/cache/continuity-plane/continuity-plane"
+            matches = []
+            for candidate in cache.glob("*/.codex-plugin/plugin.json"):
+                metadata = json.loads(candidate.read_text())
+                if (
+                    metadata.get("name") == "continuity-plane"
+                    and metadata.get("version") == requested
+                ):
+                    matches.append(candidate.parent.parent)
+            if len(matches) != 1:
+                raise ValueError(
+                    "registered git ref has no unambiguous installed plugin cache"
+                )
+            plugin_root = matches[0]
+        else:
+            marketplace_document = json.loads(manifest_path.read_text(encoding="utf-8"))
+            core = next(
+                item
+                for item in marketplace_document["plugins"]
+                if item.get("name") == "continuity-plane"
+            )
+            relative = core["source"]["path"]
+            if not isinstance(relative, str):
+                raise ValueError("plugin source path is invalid")
+            plugin_root = (marketplace_root / relative).resolve()
         plugin_manifest = json.loads(
             (plugin_root / ".codex-plugin/plugin.json").read_text(encoding="utf-8")
         )
@@ -504,7 +524,15 @@ def _codex_continuity_hook_runtime(
         hooks = json.loads(
             (plugin_root / "hooks/hooks.json").read_text(encoding="utf-8")
         )["hooks"]
-    except (OSError, UnicodeError, json.JSONDecodeError, KeyError, StopIteration, TypeError, ValueError):
+    except (
+        OSError,
+        UnicodeError,
+        json.JSONDecodeError,
+        KeyError,
+        StopIteration,
+        TypeError,
+        ValueError,
+    ):
         return {
             "status": "missing",
             "issue": "plugin_runtime_unresolved",
@@ -548,13 +576,14 @@ def _codex_continuity_hook_runtime(
             except (OSError, UnicodeError):
                 issue = "hook_script_missing"
                 break
-            if len(content.encode("utf-8")) < 256 or "Emergency no-op bridge" in content:
+            if (
+                len(content.encode("utf-8")) < 256
+                or "Emergency no-op bridge" in content
+            ):
                 issue = "noop_hook_runtime"
                 break
             required = (
-                "def advisory_main("
-                if script == "continuity-hook.py"
-                else "def main("
+                "def advisory_main(" if script == "continuity-hook.py" else "def main("
             )
             if required not in content:
                 issue = "hook_entrypoint_missing"
@@ -581,9 +610,7 @@ def _codex_plugin_status(
     codex_home: Path, *, project_root: Path | None = None
 ) -> dict[str, Any]:
     try:
-        config = tomllib.loads(
-            (codex_home / "config.toml").read_text(encoding="utf-8")
-        )
+        config = tomllib.loads((codex_home / "config.toml").read_text(encoding="utf-8"))
     except (OSError, UnicodeError, tomllib.TOMLDecodeError):
         config = {}
     plugins = config.get("plugins")
@@ -608,16 +635,21 @@ def _codex_plugin_status(
     state_id = "continuity-plane-state@continuity-plane"
     search_id = "continuity-plane-search@continuity-plane"
     state_mcp_auto_approved = mcp_auto_approved(state_id, "continuity")
-    search_mcp_auto_approved = mcp_auto_approved(
-        search_id, "continuity-search"
-    )
+    search_mcp_auto_approved = mcp_auto_approved(search_id, "continuity-search")
     hooks = config.get("hooks")
     hooks = hooks if isinstance(hooks, dict) else {}
     hook_state = hooks.get("state")
     hook_state = hook_state if isinstance(hook_state, dict) else {}
     expected_hook_keys = {
         f"continuity-plane@continuity-plane:hooks/hooks.json:{event}:0:0"
-        for event in ("session_start", "pre_compact", "post_compact", "pre_tool_use", "post_tool_use", "user_prompt_submit")
+        for event in (
+            "session_start",
+            "pre_compact",
+            "post_compact",
+            "pre_tool_use",
+            "post_tool_use",
+            "user_prompt_submit",
+        )
     }
     trusted_hooks = sum(
         key in expected_hook_keys
@@ -642,8 +674,11 @@ def _codex_plugin_status(
     )
     ready = configured and trusted_hooks >= 6
     status = (
-        "active" if ready and session_start_observed and context_emitted and recovery_succeeded
-        else "configured" if ready else "misconfigured"
+        "active"
+        if ready and session_start_observed and context_emitted and recovery_succeeded
+        else "configured"
+        if ready
+        else "misconfigured"
     )
     return {
         "status": status,
@@ -700,7 +735,10 @@ def _continuity_state_health(
     expired = remaining.total_seconds() <= 0
     total = expires - claimed
     consumed_percent = (
-        min(100.0, max(0.0, (now - claimed).total_seconds() / total.total_seconds() * 100))
+        min(
+            100.0,
+            max(0.0, (now - claimed).total_seconds() / total.total_seconds() * 100),
+        )
         if total.total_seconds() > 0
         else 100.0
     )
@@ -763,9 +801,7 @@ def _collaboration_health(project_id: str) -> dict[str, Any]:
             "task_count": len(tasks),
             "active_task_count": sum(item["status"] == "active" for item in tasks),
             "effect_request_count": len(effects),
-            "queued_effect_count": sum(
-                item["status"] == "queued" for item in effects
-            ),
+            "queued_effect_count": sum(item["status"] == "queued" for item in effects),
         }
     except Exception as exc:
         return {
@@ -846,21 +882,67 @@ def _state_show(args: argparse.Namespace) -> int:
 
 def _print_retrieval(args: argparse.Namespace, receipt: dict, kind: str) -> None:
     from .usage_meter import record
+
     if args.format == "brief":
-        lines = [f"{item['path']}:{item['line']} {item['excerpt']}" if "excerpt" in item else f"{item['path']}:{item['line']} {item['kind']} {item['name']}" for item in receipt["matches"]]
-        output = "\n".join(lines).encode()[:args.max_output_bytes].decode("utf-8", "ignore")
+        lines = [
+            f"{item['path']}:{item['line']} {item['excerpt']}"
+            if "excerpt" in item
+            else f"{item['path']}:{item['line']} {item['kind']} {item['name']}"
+            for item in receipt["matches"]
+        ]
+        more = bool(receipt.get("truncated"))
+        while len("\n".join(lines).encode()) > args.max_output_bytes - 96 and lines:
+            lines.pop()
+            more = True
+        if more:
+            lines.append(
+                "[more results; narrow the query or increase max_results/max_output_bytes]"
+            )
+        output = "\n".join(lines)
     else:
-        output = json.dumps(receipt, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        output = json.dumps(
+            receipt, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        )
+        if len(output.encode()) > args.max_output_bytes:
+            from .planning_api import render
+
+            output = render(
+                receipt, format="json", max_output_bytes=args.max_output_bytes
+            )
     try:
-        baseline = sum(len(i["path"].encode()) + len(i.get("excerpt", i.get("name", "")).encode()) + 32 for i in receipt["matches"])
-        record(args.root, command=kind + ":" + args.format, response_bytes=len(output.encode()), estimated_grep_bytes=baseline,
-               cache_status=receipt.get("cache_status"), data_root=args.data_root)
+        baseline = sum(
+            len(i["path"].encode())
+            + len(i.get("excerpt", i.get("name", "")).encode())
+            + 32
+            for i in receipt["matches"]
+        )
+        record(
+            args.root,
+            command=kind + ":" + args.format,
+            response_bytes=len(output.encode()),
+            estimated_grep_bytes=baseline,
+            cache_status=receipt.get("cache_status"),
+            data_root=args.data_root,
+        )
     except (OSError, ValueError):
         pass
     sys.stdout.write(output)
 
 
+def _retrieval_defaults(args):
+    from .usage_meter import adaptive_defaults
+
+    count, budget = adaptive_defaults(
+        args.root, data_root=args.data_root, format=args.format
+    )
+    if args.max_results is None:
+        args.max_results = count
+    if args.max_output_bytes is None:
+        args.max_output_bytes = budget
+
+
 def _context_search(args: argparse.Namespace) -> int:
+    _retrieval_defaults(args)
     receipt = bounded_git_search(
         Path(args.root),
         query=args.query,
@@ -868,7 +950,8 @@ def _context_search(args: argparse.Namespace) -> int:
         max_output_bytes=args.max_output_bytes,
         path_prefix=args.path_prefix,
         extensions=args.extension,
-        data_root=args.data_root, record_usage=False,
+        data_root=args.data_root,
+        record_usage=False,
     )
     _print_retrieval(args, receipt, "context search")
     return 0
@@ -885,21 +968,28 @@ def _context_index(args: argparse.Namespace) -> int:
 
 
 def _context_lookup(args: argparse.Namespace) -> int:
+    _retrieval_defaults(args)
     receipt = lookup_code_index(
         Path(args.root),
         query=args.query,
         cache_path=args.cache_path,
         max_results=args.max_results,
         max_output_bytes=args.max_output_bytes,
-        data_root=args.data_root, record_usage=False,
+        data_root=args.data_root,
+        record_usage=False,
+        path_prefix=args.path_prefix,
+        extensions=args.extension,
     )
     _print_retrieval(args, receipt, "context lookup")
     return 0
 
 
 def _context_dependents(args: argparse.Namespace) -> int:
-    value = find_dependents(Path(args.root), query=args.query, max_results=args.max_results)
-    print(json.dumps(value, ensure_ascii=False, sort_keys=True))
+    _retrieval_defaults(args)
+    value = find_dependents(
+        Path(args.root), query=args.query, max_results=args.max_results
+    )
+    _print_retrieval(args, value, "context dependents")
     return 0
 
 
@@ -946,7 +1036,11 @@ def _status_projection_is_current(
         )
     except (OSError, json.JSONDecodeError):
         return False
-    return current == expected and actual_status == status_text and actual_status_en == status_en_text
+    return (
+        current == expected
+        and actual_status == status_text
+        and actual_status_en == status_en_text
+    )
 
 
 def _ensure_status_projection(root: Path, packet: dict[str, Any]) -> dict[str, Any]:
@@ -967,7 +1061,9 @@ def _ensure_status_projection(root: Path, packet: dict[str, Any]) -> dict[str, A
 def _status_render(args: argparse.Namespace) -> int:
     root = Path(args.root).resolve()
     with contextlib.redirect_stdout(io.StringIO()):
-        _resume(argparse.Namespace(root=str(root), interaction_cursor=None, skill_lock=None))
+        _resume(
+            argparse.Namespace(root=str(root), interaction_cursor=None, skill_lock=None)
+        )
     packet = json.loads(
         (root / ".continuity/resume-packet.json").read_text(encoding="utf-8")
     )
@@ -1009,7 +1105,9 @@ def _load_current_attach_proposal(
         proposal = json.loads(path.read_text(encoding="utf-8"))
         validate_attach_proposal(root, proposal, verify_sources=verify_sources)
     except (OSError, json.JSONDecodeError, CanonicalAttachError) as exc:
-        raise ValueError(str(exc) or "attach proposal is unavailable or invalid") from exc
+        raise ValueError(
+            str(exc) or "attach proposal is unavailable or invalid"
+        ) from exc
     if proposal["project_id"] != project_id:
         raise ValueError("proposal project_id does not match project profile")
     return proposal
@@ -1098,12 +1196,15 @@ def _transition_pending_checkpoint_file(root: Path) -> Path:
 
 def _write_json_atomic(path: Path, document: dict[str, Any]) -> None:
     temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
-    payload = json.dumps(
-        document,
-        ensure_ascii=False,
-        indent=2,
-        sort_keys=True,
-    ) + "\n"
+    payload = (
+        json.dumps(
+            document,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n"
+    )
     try:
         with temporary.open("x", encoding="utf-8") as handle:
             handle.write(payload)
@@ -1137,11 +1238,7 @@ def _file_sha256(path: Path) -> str:
 def _delivery_registry_digest(document: dict[str, Any]) -> str:
     return hashlib.sha256(
         json.dumps(
-            {
-                key: value
-                for key, value in document.items()
-                if key != "registry_sha256"
-            },
+            {key: value for key, value in document.items() if key != "registry_sha256"},
             ensure_ascii=False,
             sort_keys=True,
             separators=(",", ":"),
@@ -1185,8 +1282,7 @@ def _validate_delivery_workspace_registry(
     if (
         not isinstance(document, dict)
         or set(document) != fields
-        or document.get("schema_version")
-        != _DELIVERY_WORKSPACE_REGISTRY_SCHEMA_VERSION
+        or document.get("schema_version") != _DELIVERY_WORKSPACE_REGISTRY_SCHEMA_VERSION
         or document.get("project_id") != project["project_id"]
         or document.get("project_profile_sha256") != _file_sha256(_project_file(root))
         or document.get("registry_sha256") != _delivery_registry_digest(document)
@@ -1264,7 +1360,10 @@ def _workspace_register(args: argparse.Namespace) -> int:
             foreign = yaml.safe_load(foreign_profile.read_text(encoding="utf-8"))
         except (OSError, yaml.YAMLError) as exc:
             raise ValueError("transition_gate:workspace_registry") from exc
-        if not isinstance(foreign, dict) or foreign.get("project_id") != project["project_id"]:
+        if (
+            not isinstance(foreign, dict)
+            or foreign.get("project_id") != project["project_id"]
+        ):
             raise ValueError("transition_gate:workspace_foreign_authority")
     path = _delivery_workspace_registry_file(root)
     if path.exists():
@@ -1304,7 +1403,9 @@ def _workspace_register(args: argparse.Namespace) -> int:
     print(
         json.dumps(
             {
-                "status": "already-registered" if existing is not None else "registered",
+                "status": "already-registered"
+                if existing is not None
+                else "registered",
                 "project_id": project["project_id"],
                 "workspace_id": args.workspace_id,
                 "repository_sha256": workspace_repository,
@@ -1387,12 +1488,12 @@ def _attach_refresh(args: argparse.Namespace) -> int:
         old = json.loads(proposal_path.read_text(encoding="utf-8"))
         validate_attach_proposal(root, old, verify_sources=False)
     except (OSError, json.JSONDecodeError, CanonicalAttachError) as exc:
-        raise ValueError(str(exc) or "attach proposal is unavailable or invalid") from exc
+        raise ValueError(
+            str(exc) or "attach proposal is unavailable or invalid"
+        ) from exc
     if old["project_id"] != project["project_id"]:
         raise ValueError("proposal project_id does not match project profile")
-    refreshed, changed = _refreshed_attach_proposal(
-        root, project["project_id"], old
-    )
+    refreshed, changed = _refreshed_attach_proposal(root, project["project_id"], old)
     if not changed:
         print(
             json.dumps(
@@ -1438,7 +1539,10 @@ def _attach_approve(args: argparse.Namespace) -> int:
         raise ValueError(str(exc)) from exc
     if proposal["project_id"] != project["project_id"]:
         raise ValueError("proposal project_id does not match project profile")
-    if _ID_RE.fullmatch(args.actor_ref) is None or _ID_RE.fullmatch(args.claim_id) is None:
+    if (
+        _ID_RE.fullmatch(args.actor_ref) is None
+        or _ID_RE.fullmatch(args.claim_id) is None
+    ):
         raise ValueError("actor-ref and claim-id must be bounded identifiers")
 
     store = _open_state_store(root, project)
@@ -1485,11 +1589,7 @@ def _attach_approve(args: argparse.Namespace) -> int:
             None,
         )
         claim = next(
-            (
-                item
-                for item in current["claims"]
-                if item["claim_id"] == args.claim_id
-            ),
+            (item for item in current["claims"] if item["claim_id"] == args.claim_id),
             None,
         )
         if imported is not None and claim is not None and claim["status"] == "active":
@@ -1501,9 +1601,7 @@ def _attach_approve(args: argparse.Namespace) -> int:
                 or claim["work_id"] != imported["work_id"]
             ):
                 raise ValueError("active attach identity differs from the new proposal")
-            evidence_by_id = {
-                item["evidence_id"]: item for item in current["evidence"]
-            }
+            evidence_by_id = {item["evidence_id"]: item for item in current["evidence"]}
             source_already_bound = any(
                 evidence_by_id[item_id]["content_sha256"] == source_digest
                 for item_id in imported["evidence_ids"]
@@ -1534,7 +1632,11 @@ def _attach_approve(args: argparse.Namespace) -> int:
                 "correlation_ref": f"project:{project['project_id']}",
                 "supersedes_event_id": None,
                 "changes": [
-                    {"collection": "evidence", "object_id": evidence_id, "value": evidence},
+                    {
+                        "collection": "evidence",
+                        "object_id": evidence_id,
+                        "value": evidence,
+                    },
                     {
                         "collection": "works",
                         "object_id": refreshed_work["work_id"],
@@ -1634,6 +1736,26 @@ def _attach_approve(args: argparse.Namespace) -> int:
 
 
 def _resume(args: argparse.Namespace) -> int:
+    if getattr(args, "task_id", None):
+        from .worker_dispatch import dispatch
+
+        result = dispatch(
+            args.root,
+            data_root=args.data_root,
+            project_id=args.project_id,
+            task_id=args.task_id,
+            model=args.model,
+            effort=args.effort,
+            assignee=args.assignee,
+            resume=True,
+            continuation=args.continuation_text
+            or "Continue the assigned task; preserve completed progress.",
+            dry_run=args.dry_run,
+            background=args.background,
+            retry=args.retry,
+        )
+        print(json.dumps(result, ensure_ascii=False))
+        return 2 if result.get("status") in {"failed", "interrupted"} else 0
     root = Path(args.root).resolve()
     persist = getattr(args, "persist", True)
     project = _load_project(root)
@@ -1655,9 +1777,7 @@ def _resume(args: argparse.Namespace) -> int:
     active_ids = snapshot["project"]["active_work_ids"]
     primary_work_id = snapshot["project"]["primary_work_id"]
     idle = not active_ids and primary_work_id is None
-    if not idle and (
-        len(active_ids) != 1 or primary_work_id != active_ids[0]
-    ):
+    if not idle and (len(active_ids) != 1 or primary_work_id != active_ids[0]):
         raise ValueError("resume requires one active Work or a valid idle State")
     if idle:
         if any(item["status"] == "active" for item in snapshot["claims"]):
@@ -1789,7 +1909,8 @@ def _resume(args: argparse.Namespace) -> int:
                 "evidence_ids": copy.deepcopy(item["evidence_ids"]),
             }
             for item in snapshot["decisions"]
-            if item["decision_id"] in current_decision_ids and item["status"] == "accepted"
+            if item["decision_id"] in current_decision_ids
+            and item["status"] == "accepted"
         ],
         current_constraints=[
             {
@@ -1799,7 +1920,8 @@ def _resume(args: argparse.Namespace) -> int:
                 "evidence_ids": copy.deepcopy(item["evidence_ids"]),
             }
             for item in snapshot["constraints"]
-            if item["constraint_id"] in active_constraint_ids and item["status"] == "active"
+            if item["constraint_id"] in active_constraint_ids
+            and item["status"] == "active"
         ],
         open_blockers=[
             {
@@ -1902,7 +2024,11 @@ def _autorun_hash(value: str) -> str:
 def _autorun(args: argparse.Namespace) -> int:
     root = Path(args.root).resolve()
     session_id = args.session_id
-    if not isinstance(session_id, str) or not session_id.strip() or len(session_id) > 256:
+    if (
+        not isinstance(session_id, str)
+        or not session_id.strip()
+        or len(session_id) > 256
+    ):
         raise ValueError("session-id must be a bounded non-empty string")
     if args.actor_ref is not None and _STATE_ID_RE.fullmatch(args.actor_ref) is None:
         raise ValueError("actor-ref must be a bounded identifier")
@@ -1910,7 +2036,10 @@ def _autorun(args: argparse.Namespace) -> int:
         raise ValueError("claim-id must be a bounded identifier")
     if type(args.max_attempts) is not int or not 1 <= args.max_attempts <= 5:
         raise ValueError("max-attempts must be between 1 and 5")
-    if type(args.heartbeat_window_ms) is not int or not 0 <= args.heartbeat_window_ms <= 86_400_000:
+    if (
+        type(args.heartbeat_window_ms) is not int
+        or not 0 <= args.heartbeat_window_ms <= 86_400_000
+    ):
         raise ValueError("heartbeat-window-ms is outside the allowed range")
 
     packet: dict[str, Any] | None = None
@@ -1950,24 +2079,71 @@ def _autorun(args: argparse.Namespace) -> int:
             )
             return 2
         if args.actor_ref is not None and claim.get("actor_ref") != args.actor_ref:
-            print(json.dumps({"status": "paused", "failed_gate": "actor_ref", "state_event_created": False}, sort_keys=True))
+            print(
+                json.dumps(
+                    {
+                        "status": "paused",
+                        "failed_gate": "actor_ref",
+                        "state_event_created": False,
+                    },
+                    sort_keys=True,
+                )
+            )
             return 2
         if args.claim_id is not None and claim.get("claim_id") != args.claim_id:
-            print(json.dumps({"status": "paused", "failed_gate": "claim_id", "state_event_created": False}, sort_keys=True))
+            print(
+                json.dumps(
+                    {
+                        "status": "paused",
+                        "failed_gate": "claim_id",
+                        "state_event_created": False,
+                    },
+                    sort_keys=True,
+                )
+            )
             return 2
-        if not isinstance(checkpoint, dict) or not isinstance(checkpoint.get("digest"), str):
-            print(json.dumps({"status": "paused", "failed_gate": "checkpoint", "state_event_created": False}, sort_keys=True))
+        if not isinstance(checkpoint, dict) or not isinstance(
+            checkpoint.get("digest"), str
+        ):
+            print(
+                json.dumps(
+                    {
+                        "status": "paused",
+                        "failed_gate": "checkpoint",
+                        "state_event_created": False,
+                    },
+                    sort_keys=True,
+                )
+            )
             return 2
         claim_id = claim.get("claim_id")
         actor_ref = claim.get("actor_ref")
         if not isinstance(claim_id, str) or not isinstance(actor_ref, str):
-            print(json.dumps({"status": "paused", "failed_gate": "claim", "state_event_created": False}, sort_keys=True))
+            print(
+                json.dumps(
+                    {
+                        "status": "paused",
+                        "failed_gate": "claim",
+                        "state_event_created": False,
+                    },
+                    sort_keys=True,
+                )
+            )
             return 2
         lease_expires = claim.get("lease_expires_at")
         try:
             lease_at = datetime.fromisoformat(str(lease_expires).replace("Z", "+00:00"))
         except ValueError:
-            print(json.dumps({"status": "paused", "failed_gate": "lease", "state_event_created": False}, sort_keys=True))
+            print(
+                json.dumps(
+                    {
+                        "status": "paused",
+                        "failed_gate": "lease",
+                        "state_event_created": False,
+                    },
+                    sort_keys=True,
+                )
+            )
             return 2
         now = datetime.now(UTC)
         lease_valid = lease_at > now
@@ -1997,7 +2173,9 @@ def _autorun(args: argparse.Namespace) -> int:
                         {
                             "status": "paused",
                             "project_id": packet.get("project_id"),
-                            "failed_gate": "source_fresh" if not source_fresh else "lease_valid",
+                            "failed_gate": "source_fresh"
+                            if not source_fresh
+                            else "lease_valid",
                             "error": str(exc),
                             "state_event_created": False,
                         },
@@ -2063,7 +2241,16 @@ def _autorun(args: argparse.Namespace) -> int:
             )
         )
         return 0
-    print(json.dumps({"status": "paused", "failed_gate": "continuation_retry_exhausted", "state_event_created": False}, sort_keys=True))
+    print(
+        json.dumps(
+            {
+                "status": "paused",
+                "failed_gate": "continuation_retry_exhausted",
+                "state_event_created": False,
+            },
+            sort_keys=True,
+        )
+    )
     return 2
 
 
@@ -2071,9 +2258,7 @@ def _refresh_projection_after_state_change(root: Path) -> dict[str, Any]:
     output = io.StringIO()
     with contextlib.redirect_stdout(output):
         _resume(
-            argparse.Namespace(
-                root=str(root), interaction_cursor=None, skill_lock=None
-            )
+            argparse.Namespace(root=str(root), interaction_cursor=None, skill_lock=None)
         )
     packet = json.loads(output.getvalue())
     projection = _ensure_status_projection(root, packet)
@@ -2255,8 +2440,12 @@ def _verified_workspace(
             raise ValueError("transition_gate:workspace_git")
         return completed.stdout.strip()
 
-    project_common = Path(git(project_root, "rev-parse", "--path-format=absolute", "--git-common-dir"))
-    workspace_common = Path(git(workspace, "rev-parse", "--path-format=absolute", "--git-common-dir"))
+    project_common = Path(
+        git(project_root, "rev-parse", "--path-format=absolute", "--git-common-dir")
+    )
+    workspace_common = Path(
+        git(workspace, "rev-parse", "--path-format=absolute", "--git-common-dir")
+    )
     if project_common.resolve() != workspace_common.resolve():
         raise ValueError("transition_gate:workspace_repository")
     head_commit = git(workspace, "rev-parse", "HEAD")
@@ -2480,9 +2669,7 @@ def _work_complete(args: argparse.Namespace) -> int:
             expected_plan_sha256=_canonical_master_sha256(proposal),
             expected_registry_digest=read_result["registry_digest"],
         )
-        _write_json_atomic(
-            _checkpoint_ref_file(root), final_checkpoint.to_document()
-        )
+        _write_json_atomic(_checkpoint_ref_file(root), final_checkpoint.to_document())
         projection_receipt = _refresh_projection_after_state_change(root)
         print(
             json.dumps(
@@ -2582,9 +2769,7 @@ def _work_complete(args: argparse.Namespace) -> int:
         json.dumps(
             {
                 "status": (
-                    "already-completed"
-                    if result["already_completed"]
-                    else "completed"
+                    "already-completed" if result["already_completed"] else "completed"
                 ),
                 "project_id": project["project_id"],
                 "work_id": args.work_id,
@@ -2736,11 +2921,7 @@ def _work_transition(args: argparse.Namespace) -> int:
         None,
     )
     return_work = next(
-        (
-            item
-            for item in snapshot["works"]
-            if item["work_id"] == args.return_work_id
-        ),
+        (item for item in snapshot["works"] if item["work_id"] == args.return_work_id),
         None,
     )
     try:
@@ -2841,11 +3022,21 @@ def _work_transition(args: argparse.Namespace) -> int:
                 expected_plan_sha256=_canonical_master_sha256(proposal),
                 expected_registry_digest=before["registry_digest"],
             )
-        except (OSError, json.JSONDecodeError, TypeError, ValueError, CheckpointError) as exc:
+        except (
+            OSError,
+            json.JSONDecodeError,
+            TypeError,
+            ValueError,
+            CheckpointError,
+        ) as exc:
             return deny("checkpoint_verified", message=str(exc))
         resume_output = io.StringIO()
         with contextlib.redirect_stdout(resume_output):
-            _resume(argparse.Namespace(root=str(root), interaction_cursor=None, skill_lock=None))
+            _resume(
+                argparse.Namespace(
+                    root=str(root), interaction_cursor=None, skill_lock=None
+                )
+            )
         packet = json.loads(resume_output.getvalue())
         print(
             json.dumps(
@@ -2875,7 +3066,12 @@ def _work_transition(args: argparse.Namespace) -> int:
         )
         return 0
 
-    if child is None or old_claim is None or return_work is None or resolved_blocker is None:
+    if (
+        child is None
+        or old_claim is None
+        or return_work is None
+        or resolved_blocker is None
+    ):
         return deny("declared_transition_objects", code="not_found")
     try:
         current_checkpoint = ArtifactRef.from_document(
@@ -2891,7 +3087,13 @@ def _work_transition(args: argparse.Namespace) -> int:
             expected_plan_sha256=_canonical_master_sha256(proposal),
             expected_registry_digest=before["registry_digest"],
         )
-    except (OSError, json.JSONDecodeError, TypeError, ValueError, CheckpointError) as exc:
+    except (
+        OSError,
+        json.JSONDecodeError,
+        TypeError,
+        ValueError,
+        CheckpointError,
+    ) as exc:
         return deny("checkpoint_verified", message=str(exc))
 
     now = datetime.now(UTC)
@@ -2952,7 +3154,9 @@ def _work_transition(args: argparse.Namespace) -> int:
             expected_project_id=project["project_id"],
             expected_revision=read_result["revision"],
             expected_event_head=read_result["event_head"],
-            expected_governance_ref=read_result["snapshot"]["project"]["governance_ref"],
+            expected_governance_ref=read_result["snapshot"]["project"][
+                "governance_ref"
+            ],
             expected_plan_sha256=_canonical_master_sha256(proposal),
             expected_registry_digest=read_result["registry_digest"],
         )
@@ -3031,7 +3235,9 @@ def _work_transition(args: argparse.Namespace) -> int:
         return deny("checkpoint_postcommit", message=str(exc))
     resume_output = io.StringIO()
     with contextlib.redirect_stdout(resume_output):
-        _resume(argparse.Namespace(root=str(root), interaction_cursor=None, skill_lock=None))
+        _resume(
+            argparse.Namespace(root=str(root), interaction_cursor=None, skill_lock=None)
+        )
     packet = json.loads(resume_output.getvalue())
     print(
         json.dumps(
@@ -3105,9 +3311,7 @@ def _work_suspend_dependency(args: argparse.Namespace) -> int:
         or claim["actor_ref"] != args.actor_ref
     ):
         raise ValueError("suspend-dependency claim does not match the active Work")
-    if any(
-        item["work_id"] == args.dependency_work_id for item in snapshot["works"]
-    ):
+    if any(item["work_id"] == args.dependency_work_id for item in snapshot["works"]):
         raise ValueError("dependency Work identity is already in use")
 
     try:
@@ -3124,8 +3328,16 @@ def _work_suspend_dependency(args: argparse.Namespace) -> int:
             expected_plan_sha256=_canonical_master_sha256(proposal),
             expected_registry_digest=read_result["registry_digest"],
         )
-    except (OSError, json.JSONDecodeError, TypeError, ValueError, CheckpointError) as exc:
-        raise ValueError("current checkpoint cannot authorize dependency suspension") from exc
+    except (
+        OSError,
+        json.JSONDecodeError,
+        TypeError,
+        ValueError,
+        CheckpointError,
+    ) as exc:
+        raise ValueError(
+            "current checkpoint cannot authorize dependency suspension"
+        ) from exc
 
     transition_basis = {
         "project_id": project["project_id"],
@@ -3669,8 +3881,7 @@ def _work_activate(args: argparse.Namespace) -> int:
     if work is None:
         source_evidence_id = f"evidence-attach-{proposal['proposal_sha256'][:16]}"
         if not any(
-            item["evidence_id"] == source_evidence_id
-            and item["validity"] == "verified"
+            item["evidence_id"] == source_evidence_id and item["validity"] == "verified"
             for item in snapshot["evidence"]
         ):
             raise ValueError("current canonical source evidence is not in State")
@@ -3769,7 +3980,9 @@ def _work_activate_atomic(args: argparse.Namespace) -> int:
         args.expected_ref,
         args.allow_effect,
     )
-    if execution_class == "standard" and any(value is not None for value in delivery_values):
+    if execution_class == "standard" and any(
+        value is not None for value in delivery_values
+    ):
         raise ValueError("standard activation cannot carry a delivery binding")
     if execution_class == "delivery":
         if (
@@ -3789,7 +4002,9 @@ def _work_activate_atomic(args: argparse.Namespace) -> int:
         if _STATE_ID_RE.fullmatch(args.predecessor_work_id) is None:
             raise ValueError("delivery predecessor Work identifier is invalid")
         implementation_evidence_ids = sorted(set(args.implementation_evidence_id))
-        if len(implementation_evidence_ids) != len(args.implementation_evidence_id) or any(
+        if len(implementation_evidence_ids) != len(
+            args.implementation_evidence_id
+        ) or any(
             _STATE_ID_RE.fullmatch(item) is None for item in implementation_evidence_ids
         ):
             raise ValueError("delivery implementation evidence IDs are invalid")
@@ -3815,8 +4030,7 @@ def _work_activate_atomic(args: argparse.Namespace) -> int:
                 }
             )
         scope_refs.extend(
-            {"scope_kind": "effect", "scope_ref": item}
-            for item in allowed_effects
+            {"scope_kind": "effect", "scope_ref": item} for item in allowed_effects
         )
     else:
         implementation_evidence_ids = []
@@ -3852,9 +4066,7 @@ def _work_activate_atomic(args: argparse.Namespace) -> int:
         if str(exc) != "current canonical source evidence is not in State":
             raise
         source_evidence = _build_attach_evidence(proposal)
-    expected_source_evidence_id = (
-        f"evidence-attach-{proposal['proposal_sha256'][:16]}"
-    )
+    expected_source_evidence_id = f"evidence-attach-{proposal['proposal_sha256'][:16]}"
     if source_evidence["evidence_id"] != expected_source_evidence_id:
         source_evidence = _build_attach_evidence(proposal)
     source_evidence_id = source_evidence["evidence_id"]
@@ -3883,7 +4095,13 @@ def _work_activate_atomic(args: argparse.Namespace) -> int:
             canonical_plan_sha256=_canonical_master_sha256(proposal),
         )
         _write_json_atomic(_checkpoint_ref_file(root), checkpoint_ref.to_document())
-    except (OSError, json.JSONDecodeError, TypeError, ValueError, CheckpointError) as exc:
+    except (
+        OSError,
+        json.JSONDecodeError,
+        TypeError,
+        ValueError,
+        CheckpointError,
+    ) as exc:
         raise ValueError("idle activation requires a verified checkpoint") from exc
 
     now = datetime.now(UTC)
@@ -3900,9 +4118,7 @@ def _work_activate_atomic(args: argparse.Namespace) -> int:
         )
         if predecessor is None or predecessor["status"] != "completed":
             raise ValueError("delivery predecessor Work must be completed")
-        evidence_by_id = {
-            item["evidence_id"]: item for item in snapshot["evidence"]
-        }
+        evidence_by_id = {item["evidence_id"]: item for item in snapshot["evidence"]}
         if any(
             item not in predecessor["evidence_ids"]
             or item not in evidence_by_id
@@ -3934,9 +4150,7 @@ def _work_activate_atomic(args: argparse.Namespace) -> int:
         ).encode("utf-8")
         delivery_contract_sha256 = hashlib.sha256(contract_bytes).hexdigest()
         contract_ref = _checkpoint_store(root).put_bytes(contract_bytes)
-        delivery_evidence_id = (
-            f"evidence-delivery-{delivery_contract_sha256[:16]}"
-        )
+        delivery_evidence_id = f"evidence-delivery-{delivery_contract_sha256[:16]}"
         delivery_evidence = {
             "evidence_id": delivery_evidence_id,
             "kind": "artifact",
@@ -4038,9 +4252,7 @@ def _work_activate_atomic(args: argparse.Namespace) -> int:
                 expected_plan_sha256=_canonical_master_sha256(proposal),
                 expected_registry_digest=read_result["registry_digest"],
             )
-            _write_json_atomic(
-                _checkpoint_ref_file(root), checkpoint_ref.to_document()
-            )
+            _write_json_atomic(_checkpoint_ref_file(root), checkpoint_ref.to_document())
         elif not (
             delivery_work["status"] in {"ready", "active"}
             and delivery_work["title"] == args.work_title
@@ -4071,8 +4283,7 @@ def _work_activate_atomic(args: argparse.Namespace) -> int:
             and evidence.get("evidence_id")
             == f"evidence-attach-{proposal['proposal_sha256'][:16]}"
             and evidence.get("kind") == "artifact"
-            and evidence.get("artifact_ref")
-            == f"artifact://sha256/{source_digest}"
+            and evidence.get("artifact_ref") == f"artifact://sha256/{source_digest}"
             and evidence.get("content_sha256") == source_digest
             and evidence.get("validity") == "verified"
         )
@@ -4273,7 +4484,13 @@ def _work_recover(args: argparse.Namespace) -> int:
                 expected_plan_sha256=_canonical_master_sha256(original_proposal),
                 expected_registry_digest=read_result["registry_digest"],
             )
-        except (OSError, json.JSONDecodeError, TypeError, ValueError, CheckpointError) as exc:
+        except (
+            OSError,
+            json.JSONDecodeError,
+            TypeError,
+            ValueError,
+            CheckpointError,
+        ) as exc:
             raise ValueError(
                 "source recovery requires the verified pre-change checkpoint"
             ) from exc
@@ -4337,8 +4554,16 @@ def _work_recover(args: argparse.Namespace) -> int:
                 expected_plan_sha256=_canonical_master_sha256(proposal),
                 expected_registry_digest=read_result["registry_digest"],
             )
-        except (OSError, json.JSONDecodeError, TypeError, ValueError, CheckpointError) as exc:
-            raise ValueError("reclaim replay requires the verified current checkpoint") from exc
+        except (
+            OSError,
+            json.JSONDecodeError,
+            TypeError,
+            ValueError,
+            CheckpointError,
+        ) as exc:
+            raise ValueError(
+                "reclaim replay requires the verified current checkpoint"
+            ) from exc
         print(
             json.dumps(
                 {
@@ -4525,6 +4750,8 @@ def _collaboration_packet(args: argparse.Namespace) -> int:
 
 
 def _collaboration_task_add(args: argparse.Namespace) -> int:
+    from .delivery_records import task_body
+
     task = add_task(
         args.data_root,
         project_id=args.project_id,
@@ -4546,12 +4773,16 @@ def _collaboration_task_add(args: argparse.Namespace) -> int:
         verification=args.verification,
         landed_commit=args.landed_commit,
         released_in=args.released_in,
+        body=task_body(args),
+        report_policy=args.report_policy,
     )
     print(json.dumps(task, ensure_ascii=False, sort_keys=True))
     return 0
 
 
 def _collaboration_task_update(args: argparse.Namespace) -> int:
+    from .delivery_records import read_report, task_body
+
     task = update_task(
         args.data_root,
         project_id=args.project_id,
@@ -4566,8 +4797,31 @@ def _collaboration_task_update(args: argparse.Namespace) -> int:
         verification=args.verification,
         landed_commit=args.landed_commit,
         released_in=args.released_in,
+        worktree=args.worktree,
+        allowed_files=args.allowed_file,
+        report=read_report(args.report_file) if args.report_file else None,
+        verification_data=json.loads(args.verification_json)
+        if args.verification_json
+        else None,
+        body=task_body(args),
+        force=args.force,
+        force_reason=args.force_reason,
     )
-    print(json.dumps(task, ensure_ascii=False, sort_keys=True))
+    from .delivery_records import detail_view
+
+    detail = detail_view(args.data_root, args.project_id, args.task_id)
+    gaps = detail.get("evidence_gaps", [])
+    print(
+        json.dumps(
+            {
+                **task,
+                "evidence_gaps": gaps,
+                "planning_warnings": detail.get("planning_warnings", []),
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+    )
     return 0
 
 
@@ -4590,56 +4844,214 @@ def _collaboration_task_claim(args: argparse.Namespace) -> int:
 
 
 def _collaboration_task_list(args: argparse.Namespace) -> int:
+    if args.max_results is not None and args.max_results < 1:
+        raise ValueError("max_results must be positive")
+    from .metadata_pages import tasks_page
+
+    query = {
+        k: getattr(args, k)
+        for k in (
+            "status",
+            "assignee",
+            "lane_id",
+            "updated_after",
+            "query",
+            "all",
+            "summary",
+            "evidence_gaps",
+        )
+    }
+    if args.cursor:
+        from .planning_api import render
+
+        page = tasks_page(
+            args.data_root,
+            args.project_id,
+            [],
+            query=query,
+            budget=args.max_output_bytes,
+            cursor=args.cursor,
+            page_size=args.max_results,
+        )
+        print(render(page, format=args.format, max_output_bytes=args.max_output_bytes))
+        return 0
+    tasks = list_tasks(
+        args.data_root,
+        project_id=args.project_id,
+        status=args.status,
+        assignee=args.assignee,
+        lane_id=args.lane_id,
+        updated_after=args.updated_after,
+        query=args.query,
+    )
     if args.status is None and not args.all:
-        tasks = [item for item in list_tasks(args.data_root, project_id=args.project_id)
-                 if item["status"] in {"queued", "active", "dispatched", "blocked"}]
-        if args.assignee:
-            tasks = [item for item in tasks if item["assignee"] == args.assignee]
-        if args.lane_id:
-            tasks = [item for item in tasks if item["lane_id"] == args.lane_id]
-        if args.query:
-            tasks = [item for item in tasks if args.query.casefold() in json.dumps(item, ensure_ascii=False).casefold()]
-        if args.max_results is not None:
-            tasks = tasks[:args.max_results]
-    else:
-        tasks = list_tasks(args.data_root, project_id=args.project_id, status=args.status,
-                           assignee=args.assignee, lane_id=args.lane_id,
-                           updated_after=args.updated_after, query=args.query,
-                           max_results=args.max_results)
+        tasks = [
+            item
+            for item in tasks
+            if item["status"] in {"queued", "active", "dispatched", "blocked"}
+        ]
     tasks.sort(key=lambda item: (item["updated_at"], item["task_id"]), reverse=True)
     if args.summary:
-        value = [{key: task[key] for key in ("task_id", "status", "assignee", "lane_id", "title", "next_action", "updated_at")} for task in tasks]
+        value = [
+            {
+                key: task[key]
+                for key in (
+                    "task_id",
+                    "status",
+                    "assignee",
+                    "lane_id",
+                    "title",
+                    "next_action",
+                    "updated_at",
+                )
+            }
+            for task in tasks
+        ]
     else:
         value = tasks
-    payload = json.dumps(value, ensure_ascii=False, sort_keys=True)
-    if args.max_output_bytes is not None and len(payload.encode()) > args.max_output_bytes:
-        if not args.summary:
-            value = [{key: task[key] for key in ("task_id", "status", "assignee", "lane_id", "title", "next_action", "updated_at")} for task in tasks]
-            payload = json.dumps(value, ensure_ascii=False, sort_keys=True)
-        if len(payload.encode()) > args.max_output_bytes:
-            value = value[: max(1, len(value) // 2)]
-            payload = json.dumps({"tasks": value, "truncated": True, "returned_bytes": len(payload.encode())}, ensure_ascii=False, sort_keys=True)
-    print(payload)
+    from .collaboration_registry import _load_ledger
+
+    details = _load_ledger(
+        Path(args.data_root or default_data_root()), args.project_id
+    ).get("task_details", {})
+    for row in value:
+        gaps = details.get(row["task_id"], {}).get("evidence_gaps", [])
+        if gaps:
+            row["evidence_gaps"] = gaps
+        warnings = details.get(row["task_id"], {}).get("planning_warnings", [])
+        if warnings:
+            row["planning_warnings"] = warnings
+    if args.evidence_gaps:
+        value = [row for row in value if row.get("evidence_gaps")]
+    from .planning_api import render
+
+    if (args.max_results is not None and len(value) > args.max_results) or len(
+        json.dumps(value, ensure_ascii=False).encode()
+    ) + 1 > args.max_output_bytes:
+        value = tasks_page(
+            args.data_root,
+            args.project_id,
+            value,
+            query=query,
+            budget=args.max_output_bytes,
+            page_size=args.max_results,
+        )
+
+    print(
+        render(
+            value, format=args.format, max_output_bytes=args.max_output_bytes or 8192
+        )
+    )
     return 0
 
 
 def _collaboration_changes(args: argparse.Namespace) -> int:
-    value = list_changes(args.data_root, project_id=args.project_id, since=args.since, max_results=args.max_results)
-    payload = json.dumps(value, ensure_ascii=False, sort_keys=True)
-    if len(payload.encode()) > args.max_output_bytes:
-        value["changes"] = value["changes"][: max(1, len(value["changes"]) // 2)]
-        value["truncated"] = True
-        payload = json.dumps(value, ensure_ascii=False, sort_keys=True)
-    print(payload)
+    value = list_changes(
+        args.data_root,
+        project_id=args.project_id,
+        since=args.since,
+        max_results=args.max_results,
+    )
+    print(_bounded_changes(value, args.max_output_bytes))
     return 0
+
+
+def _bounded_changes(value: dict, budget: int) -> str:
+    if budget < 1024:
+        raise ValueError("--max-output-bytes must be at least 1024")
+    value = copy.deepcopy(value)
+    value["returned_bytes"] = 0
+    while True:
+        payload = json.dumps(value, ensure_ascii=False, sort_keys=True)
+        size = len(payload.encode()) + 1
+        if value["returned_bytes"] != size:
+            value["returned_bytes"] = size
+            continue
+        if size <= budget:
+            return payload
+        value["truncated"] = True
+        if len(value["changes"]) > 1:
+            value["changes"].pop()
+            value["next_cursor"] = value["changes"][-1]["cursor"]
+            continue
+        if not value["changes"]:
+            raise ValueError("event envelope exceeds output budget")
+        row = value["changes"][0]
+        # Preserve the finish fact and cursor when large log tails do not fit.
+        if not row.get("details_omitted"):
+            value["changes"][0] = {
+                k: v
+                for k, v in row.items()
+                if k
+                in {
+                    "cursor",
+                    "event",
+                    "task_id",
+                    "attempt_id",
+                    "status",
+                    "return_code",
+                    "reason",
+                    "assignee",
+                    "card_status",
+                    "card_projection",
+                    "event_id",
+                }
+            }
+            value["changes"][0]["details_omitted"] = True
+        else:
+            for key in ("reason", "assignee", "event_id", "card_projection"):
+                if key in row:
+                    row.pop(key)
+                    break
+            else:
+                raise ValueError(
+                    "event identifiers exceed output budget; increase --max-output-bytes"
+                )
+
+
+def _collaboration_wait(args: argparse.Namespace) -> int:
+    from .collaboration_registry import wait_for_changes
+
+    if args.max_output_bytes < 1024:
+        raise ValueError("--max-output-bytes must be at least 1024")
+    value = wait_for_changes(
+        args.data_root,
+        project_id=args.project_id,
+        since=args.since,
+        event=args.event,
+        task_id=args.task_id,
+        assignee=args.assignee,
+        timeout_seconds=args.timeout_seconds,
+    )
+    print(_bounded_changes(value, args.max_output_bytes))
+    return 2 if value["timed_out"] else 0
 
 
 def _whoami(args: argparse.Namespace) -> int:
     project = resolve_project(args.root, args.data_root)
     host_session_key = "".join(("CL", "AUDE", "_SESSION_ID"))
-    identity = args.assignee or os.environ.get("CONTINUITY_ASSIGNEE") or os.environ.get("CODEX_SESSION_ID") or os.environ.get(host_session_key)
+    identity = (
+        args.assignee
+        or os.environ.get("CONTINUITY_ASSIGNEE")
+        or os.environ.get("CODEX_SESSION_ID")
+        or os.environ.get(host_session_key)
+    )
     controller = args.controller or os.environ.get("CONTINUITY_CONTROLLER")
-    print(json.dumps({"project_id": project["project_id"] if project else None, "root": str(Path(args.root).resolve()), "assignee": identity, "controller": controller, "hint": "run collaboration packet --assignee ASSIGNEE" if identity else "set CONTINUITY_ASSIGNEE or pass --assignee"}, ensure_ascii=False, sort_keys=True))
+    print(
+        json.dumps(
+            {
+                "project_id": project["project_id"] if project else None,
+                "root": str(Path(args.root).resolve()),
+                "assignee": identity,
+                "controller": controller,
+                "hint": "run collaboration packet --assignee ASSIGNEE"
+                if identity
+                else "set CONTINUITY_ASSIGNEE or pass --assignee",
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+    )
     return 0
 
 
@@ -4651,31 +5063,56 @@ def _collaboration_run(args: argparse.Namespace) -> int:
         commandline.pop(0)
     if not commandline:
         raise ValueError("run requires a command after --")
-    from .collaboration_registry import _record_change
-    started = datetime.now(UTC).isoformat()
-    _record_change(Path(args.data_root or default_data_root()), args.project_id, "run.started", args.task_id, assignee=args.assignee, command=commandline, started_at=started)
-    status = "failed"
-    return_code = 1
-    try:
-        result = subprocess.run(commandline, check=False)
-        return_code = result.returncode
-        status = "completed" if return_code == 0 else "interrupted" if return_code < 0 else "failed"
-    except (OSError, KeyboardInterrupt):
-        status = "interrupted"
-    _record_change(Path(args.data_root or default_data_root()), args.project_id, "run.finished", args.task_id, assignee=args.assignee, status=status, return_code=return_code, finished_at=datetime.now(UTC).isoformat())
-    print(json.dumps({"status": status, "task_id": args.task_id, "assignee": args.assignee, "return_code": return_code}, ensure_ascii=False, sort_keys=True))
-    return 0 if return_code == 0 else 2
+    from .supervisor import run_attempt
+
+    result = run_attempt(
+        args.data_root,
+        project_id=args.project_id,
+        task_id=args.task_id,
+        assignee=args.assignee,
+        command=commandline,
+        event_prefix="run",
+        timeout_seconds=args.timeout_seconds,
+        idle_timeout_seconds=args.idle_timeout_seconds,
+        heartbeat_seconds=args.heartbeat_seconds,
+        model=args.model,
+    )
+    print(
+        json.dumps(
+            {**result, "task_id": args.task_id, "assignee": args.assignee},
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+    )
+    return 0 if result["status"] == "completed" else 2
 
 
 def _collaboration_context_command(args: argparse.Namespace) -> int:
     if args.context_command == "rule-add":
-        value = add_rule(args.data_root, project_id=args.project_id, rule_id=args.rule_id, text=args.text, audience=args.audience)
+        value = add_rule(
+            args.data_root,
+            project_id=args.project_id,
+            rule_id=args.rule_id,
+            text=args.text,
+            audience=args.audience,
+            attachment_file=args.attachment_file,
+            scope=args.scope,
+        )
     elif args.context_command == "rule-list":
-        value = list_rules(args.data_root, project_id=args.project_id, audience=args.audience)
+        value = list_rules(
+            args.data_root, project_id=args.project_id, audience=args.audience
+        )
     elif args.context_command == "commitment-add":
-        value = add_commitment(args.data_root, project_id=args.project_id, commitment_id=args.commitment_id, text=args.text)
+        value = add_commitment(
+            args.data_root,
+            project_id=args.project_id,
+            commitment_id=args.commitment_id,
+            text=args.text,
+        )
     elif args.context_command == "commitment-close":
-        value = close_commitment(args.data_root, project_id=args.project_id, commitment_id=args.commitment_id)
+        value = close_commitment(
+            args.data_root, project_id=args.project_id, commitment_id=args.commitment_id
+        )
     else:
         value = list_commitments(args.data_root, project_id=args.project_id)
     print(json.dumps(value, ensure_ascii=False, sort_keys=True))
@@ -4684,31 +5121,68 @@ def _collaboration_context_command(args: argparse.Namespace) -> int:
 
 def _supervisor_run(args: argparse.Namespace) -> int:
     from .supervisor import run_attempt
+
     command = list(args.commandline)
     if command and command[0] == "--":
         command.pop(0)
-    result = run_attempt(args.data_root, project_id=args.project_id, task_id=args.task_id,
-                         assignee=args.assignee, command=command, attempt_id=args.attempt_id,
-                         timeout_seconds=args.timeout_seconds, idle_timeout_seconds=args.idle_timeout_seconds,
-                         heartbeat_seconds=args.heartbeat_seconds, retry=args.retry)
+    result = run_attempt(
+        args.data_root,
+        project_id=args.project_id,
+        task_id=args.task_id,
+        assignee=args.assignee,
+        command=command,
+        attempt_id=args.attempt_id,
+        timeout_seconds=args.timeout_seconds,
+        idle_timeout_seconds=args.idle_timeout_seconds,
+        heartbeat_seconds=args.heartbeat_seconds,
+        retry=args.retry,
+        retry_delay_seconds=args.retry_delay_seconds,
+        max_retry_wait_seconds=args.max_retry_wait_seconds,
+        resume_command=json.loads(args.resume_argv_json)
+        if args.resume_argv_json
+        else None,
+        thread_file=args.thread_file,
+        restart_on_retry=args.restart_on_retry,
+        model=args.model,
+        report_file=args.report_file,
+    )
     print(json.dumps(result, ensure_ascii=False, sort_keys=True))
     return 0 if result["status"] == "completed" else 2
 
 
 def _supervisor_daemon(args: argparse.Namespace) -> int:
     from .supervisor import daemon_once
-    print(json.dumps(daemon_once(args.data_root, project_id=args.project_id), ensure_ascii=False, sort_keys=True))
+
+    print(
+        json.dumps(
+            daemon_once(args.data_root, project_id=args.project_id),
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+    )
     return 0
 
 
 def _executor_recommendation(args: argparse.Namespace) -> int:
     from .executor_routing import recommend, save_for_task
-    value = recommend(complexity=args.complexity, urgency=args.urgency,
-                               blocked_model=args.blocked_model, domain=args.domain,
-                               parallel_safe=args.parallel_safe, purpose=args.purpose,
-                               thinking=args.thinking, scenario=args.scenario,
-                               busy_models=args.busy_model, unavailable_models=args.unavailable_model,
-                               eligible_models=args.eligible_model)
+
+    value = recommend(
+        complexity=args.complexity,
+        urgency=args.urgency,
+        blocked_model=args.blocked_model,
+        domain=args.domain,
+        parallel_safe=args.parallel_safe,
+        purpose=args.purpose,
+        thinking=args.thinking,
+        scenario=args.scenario,
+        busy_models=args.busy_model,
+        unavailable_models=args.unavailable_model,
+        eligible_models=args.eligible_model,
+    )
+    if args.project_id:
+        from .runtime_routing import apply
+
+        value = apply(args.data_root, args.project_id, value)
     if args.save:
         if not args.project_id or not args.task_id:
             raise ValueError("--save requires --project-id and --task-id")
@@ -4719,7 +5193,21 @@ def _executor_recommendation(args: argparse.Namespace) -> int:
 
 def _executor_scenarios(args: argparse.Namespace) -> int:
     from .executor_routing import SCENARIOS
-    print(json.dumps({"scenarios": SCENARIOS, "advisory_only": True}, ensure_ascii=False))
+
+    print(
+        json.dumps(
+            {
+                "scenarios": {
+                    k: v
+                    for k, v in SCENARIOS.items()
+                    if args.include_legacy
+                    or k not in {"security-boundary", "adversarial-review"}
+                },
+                "advisory_only": True,
+            },
+            ensure_ascii=False,
+        )
+    )
     return 0
 
 
@@ -4728,25 +5216,68 @@ def _collaboration_drift(args: argparse.Namespace) -> int:
     findings = []
     now = datetime.now(UTC)
     for task in tasks:
-        if task["status"] == "queued" and any(token in task["next_action"].casefold() for token in ("dispatched", "已派出", "running")):
-            findings.append({"task_id": task["task_id"], "kind": "status-mismatch", "message": "queued card says it was dispatched"})
+        if task["status"] == "queued" and any(
+            token in task["next_action"].casefold()
+            for token in ("dispatched", "已派出", "running")
+        ):
+            findings.append(
+                {
+                    "task_id": task["task_id"],
+                    "kind": "status-mismatch",
+                    "message": "queued card says it was dispatched",
+                }
+            )
         try:
-            age_hours = (now - datetime.fromisoformat(task["updated_at"].replace("Z", "+00:00"))).total_seconds() / 3600
+            age_hours = (
+                now - datetime.fromisoformat(task["updated_at"].replace("Z", "+00:00"))
+            ).total_seconds() / 3600
         except ValueError:
             age_hours = 0
         if task["status"] in {"active", "dispatched"} and age_hours >= args.stale_hours:
-            findings.append({"task_id": task["task_id"], "kind": "stale-dispatch", "message": f"no card update for {age_hours:.1f} hours"})
-    print(json.dumps({"schema_version": "context.collaboration-drift/v1alpha1", "findings": findings, "clean": not findings}, ensure_ascii=False, sort_keys=True))
+            findings.append(
+                {
+                    "task_id": task["task_id"],
+                    "kind": "stale-dispatch",
+                    "message": f"no card update for {age_hours:.1f} hours",
+                }
+            )
+    print(
+        json.dumps(
+            {
+                "schema_version": "context.collaboration-drift/v1alpha1",
+                "findings": findings,
+                "clean": not findings,
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+    )
     return 0
 
 
 def _collaboration_doctor(args: argparse.Namespace) -> int:
-    path = project_data_dir(args.data_root or default_data_root(), args.project_id) / "dispatch.json"
+    path = (
+        project_data_dir(args.data_root or default_data_root(), args.project_id)
+        / "dispatch.json"
+    )
     try:
         document = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         document = {}
-    print(json.dumps({"project_id": args.project_id, "ledger_schema": document.get("schema_version"), "last_writer_version": document.get("writer_version"), "current_cli_version": VERSION, "restart_required": document.get("writer_version") not in {None, VERSION}}, ensure_ascii=False, sort_keys=True))
+    print(
+        json.dumps(
+            {
+                "project_id": args.project_id,
+                "ledger_schema": document.get("schema_version"),
+                "last_writer_version": document.get("writer_version"),
+                "current_cli_version": VERSION,
+                "restart_required": document.get("writer_version")
+                not in {None, VERSION},
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+    )
     return 0
 
 
@@ -4822,21 +5353,46 @@ def _memory_resolve(args: argparse.Namespace) -> int:
 
 
 def _todo_compile(args: argparse.Namespace) -> int:
-    queue = compile_queue(Path(args.root), args.prompt, data_root=args.data_root,
-                          master_path=args.master_path, master_section=args.master_section)
-    print(json.dumps(queue or {"status": "no-multi-item-intent"}, ensure_ascii=False, sort_keys=True))
+    queue = compile_queue(
+        Path(args.root),
+        args.prompt,
+        data_root=args.data_root,
+        master_path=args.master_path,
+        master_section=args.master_section,
+        session_id=args.session_id,
+        assignee=args.assignee,
+    )
+    print(
+        json.dumps(
+            queue or {"status": "no-multi-item-intent"},
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+    )
     return 0
 
 
 def _todo_list(args: argparse.Namespace) -> int:
     queue = load_queue(Path(args.root), data_root=args.data_root)
-    print(json.dumps(queue or {"status": "empty"}, ensure_ascii=False, sort_keys=True))
+    from .planning_api import render
+
+    value = copy.deepcopy(queue or {"status": "empty"})
+    if args.status and value.get("items"):
+        value["items"] = [
+            item for item in value["items"] if item["status"] == args.status
+        ]
+    print(render(value, format=args.format, max_output_bytes=args.max_output_bytes))
     return 0
 
 
 def _plan_inspect(args: argparse.Namespace) -> int:
-    print(json.dumps(master_route(args.root, master_path=args.master_path, section=args.section),
-                     ensure_ascii=False, sort_keys=True))
+    print(
+        json.dumps(
+            master_route(args.root, master_path=args.master_path, section=args.section),
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+    )
     return 0
 
 
@@ -4853,10 +5409,47 @@ def _todo_complete(args: argparse.Namespace) -> int:
 
 def _todo_link(args: argparse.Namespace) -> int:
     try:
-        queue = link_item(Path(args.root), args.item_id, args.task_id, data_root=args.data_root)
+        queue = link_item(
+            Path(args.root), args.item_id, args.task_id, data_root=args.data_root
+        )
     except IntentTodoError as exc:
         raise ValueError(str(exc)) from exc
     print(json.dumps(queue, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def _todo_activate(args: argparse.Namespace) -> int:
+    from .intent_todo import activate_item
+
+    value = activate_item(
+        args.root,
+        args.item_id,
+        reason=args.reason,
+        data_root=args.data_root,
+        session_id=args.session_id,
+    )
+    print(json.dumps(value, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def _todo_from_cards(args):
+    from .card_todo import enable
+    from .planning_api import render
+
+    render({}, format=args.format, max_output_bytes=args.max_output_bytes)
+    print(
+        render(
+            enable(
+                args.root,
+                args.data_root,
+                assignee=args.assignee,
+                lane_id=args.lane_id,
+                linked_only=args.linked_only,
+            ),
+            format=args.format,
+            max_output_bytes=args.max_output_bytes,
+        )
+    )
     return 0
 
 
@@ -4868,6 +5461,44 @@ def _todo_block(args: argparse.Namespace) -> int:
     except IntentTodoError as exc:
         raise ValueError(str(exc)) from exc
     print(json.dumps(queue, ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def _planning_help(args: argparse.Namespace) -> int:
+    from .planning_api import help_for, render
+
+    print(
+        render(
+            help_for(args.topic),
+            format=args.format,
+            max_output_bytes=args.max_output_bytes,
+        )
+    )
+    return 0
+
+
+def _collaboration_task_show(args: argparse.Namespace) -> int:
+    task = next(
+        (
+            t
+            for t in list_tasks(args.data_root, project_id=args.project_id)
+            if t["task_id"] == args.task_id
+        ),
+        None,
+    )
+    if task is None:
+        raise ValueError("task_id does not exist")
+    from .delivery_records import detail_view
+
+    task = {
+        **task,
+        "details": detail_view(
+            args.data_root, args.project_id, args.task_id, args.include_report
+        ),
+    }
+    from .planning_api import render
+
+    print(render(task, format=args.format, max_output_bytes=args.max_output_bytes))
     return 0
 
 
@@ -4894,32 +5525,72 @@ def _state_add_record(args: argparse.Namespace) -> int:
     snapshot = _read_state_result(store, project["project_id"])["snapshot"]
     changes = record_changes(root, snapshot, args, datetime.now(UTC).isoformat())
     if not changes:
-        print(json.dumps({"status": "unchanged", "revision": snapshot["project"]["revision"], "state_changed": False}))
+        print(
+            json.dumps(
+                {
+                    "status": "unchanged",
+                    "revision": snapshot["project"]["revision"],
+                    "state_changed": False,
+                }
+            )
+        )
         return 0
-    original_proposal = _load_current_attach_proposal(root, project["project_id"], verify_sources=False)
+    original_proposal = _load_current_attach_proposal(
+        root, project["project_id"], verify_sources=False
+    )
     proposal = original_proposal
     changed_sources = []
     if args.refresh_source:
-        proposal, changed_sources = _refreshed_attach_proposal(root, project["project_id"], original_proposal)
+        proposal, changed_sources = _refreshed_attach_proposal(
+            root, project["project_id"], original_proposal
+        )
         if changed_sources:
-            active_claims = [item for item in snapshot["claims"] if item["status"] == "active"]
+            active_claims = [
+                item for item in snapshot["claims"] if item["status"] == "active"
+            ]
             if any(item["actor_ref"] != args.actor_ref for item in active_claims):
-                raise ValueError("source refresh requires the active claim owner as --actor-ref")
+                raise ValueError(
+                    "source refresh requires the active claim owner as --actor-ref"
+                )
             evidence = _build_attach_evidence(proposal)
-            changes.insert(0, {"collection": "evidence", "object_id": evidence["evidence_id"], "value": evidence})
+            changes.insert(
+                0,
+                {
+                    "collection": "evidence",
+                    "object_id": evidence["evidence_id"],
+                    "value": evidence,
+                },
+            )
             for work in snapshot["works"]:
                 if work["work_id"] in snapshot["project"]["active_work_ids"]:
                     updated_work = copy.deepcopy(work)
-                    updated_work["evidence_ids"] = list(dict.fromkeys([*work["evidence_ids"], evidence["evidence_id"]]))
+                    updated_work["evidence_ids"] = list(
+                        dict.fromkeys([*work["evidence_ids"], evidence["evidence_id"]])
+                    )
                     updated_work["revision"] += 1
-                    changes.insert(1, {"collection": "works", "object_id": work["work_id"], "value": updated_work})
+                    changes.insert(
+                        1,
+                        {
+                            "collection": "works",
+                            "object_id": work["work_id"],
+                            "value": updated_work,
+                        },
+                    )
     from .state_mcp import _derive_project_projection
     from .sqlite_state_store import _validate_snapshot
+
     candidate = copy.deepcopy(snapshot)
     for change in changes:
         values = candidate[change["collection"]]
-        key = {"works": "work_id", "evidence": "evidence_id", "decisions": "decision_id", "constraints": "constraint_id"}[change["collection"]]
-        existing = next((item for item in values if item[key] == change["object_id"]), None)
+        key = {
+            "works": "work_id",
+            "evidence": "evidence_id",
+            "decisions": "decision_id",
+            "constraints": "constraint_id",
+        }[change["collection"]]
+        existing = next(
+            (item for item in values if item[key] == change["object_id"]), None
+        )
         if existing is None:
             values.append(change["value"])
         else:
@@ -4930,23 +5601,48 @@ def _state_add_record(args: argparse.Namespace) -> int:
     for effect in candidate["effects"]:
         if effect["status"] in {"authorized", "started"}:
             effect["expected_project_revision"] = snapshot["project"]["revision"] + 1
-    _derive_project_projection(candidate, revision=snapshot["project"]["revision"] + 1, updated_at=datetime.now(UTC).isoformat())
+    _derive_project_projection(
+        candidate,
+        revision=snapshot["project"]["revision"] + 1,
+        updated_at=datetime.now(UTC).isoformat(),
+    )
     _validate_snapshot(candidate)
     if not args.apply:
-        print(json.dumps({"status": "preview", "expected_revision": snapshot["project"]["revision"], "changes": changes, "changed_sources": changed_sources, "state_changed": False}, ensure_ascii=False))
+        print(
+            json.dumps(
+                {
+                    "status": "preview",
+                    "expected_revision": snapshot["project"]["revision"],
+                    "changes": changes,
+                    "changed_sources": changed_sources,
+                    "state_changed": False,
+                },
+                ensure_ascii=False,
+            )
+        )
         return 0
     if args.expected_revision is None:
-        raise ValueError("--apply requires --expected-revision from the preview receipt")
+        raise ValueError(
+            "--apply requires --expected-revision from the preview receipt"
+        )
     # Resume before explicit State writes. Metadata additions never activate Work.
     with contextlib.redirect_stdout(io.StringIO()):
-        _resume(argparse.Namespace(root=str(root), interaction_cursor=None, skill_lock=None))
+        _resume(
+            argparse.Namespace(root=str(root), interaction_cursor=None, skill_lock=None)
+        )
     validate_attach_proposal(root, proposal, verify_sources=True)
     response = _state_service(store, authorizer=_LocalWorkflowAuthorizer()).call_tool(
         COMMIT_TOOL,
-        {"schema_version": "context.state-mcp-request/v1alpha1", "request_id": f"plan-add-{uuid.uuid4().hex}",
-         "project_id": project["project_id"], "expected_revision": args.expected_revision,
-         "causation_ref": changes[-1]["object_id"], "correlation_ref": "planning-record-add",
-         "supersedes_event_id": None, "changes": changes},
+        {
+            "schema_version": "context.state-mcp-request/v1alpha1",
+            "request_id": f"plan-add-{uuid.uuid4().hex}",
+            "project_id": project["project_id"],
+            "expected_revision": args.expected_revision,
+            "causation_ref": changes[-1]["object_id"],
+            "correlation_ref": "planning-record-add",
+            "supersedes_event_id": None,
+            "changes": changes,
+        },
         context=RequestContext(args.actor_ref, "local-workflow-approved"),
     )
     if not response["ok"]:
@@ -4955,62 +5651,148 @@ def _state_add_record(args: argparse.Namespace) -> int:
     try:
         if changed_sources:
             _write_json_atomic(root / ".continuity/attach-proposal.json", proposal)
-        ref = publish_checkpoint(_read_state_result(store, project["project_id"]), _checkpoint_store(root),
-                                 canonical_plan_sha256=_canonical_master_sha256(proposal))
+        ref = publish_checkpoint(
+            _read_state_result(store, project["project_id"]),
+            _checkpoint_store(root),
+            canonical_plan_sha256=_canonical_master_sha256(proposal),
+        )
         _write_json_atomic(_checkpoint_ref_file(root), ref.to_document())
         projection = _refresh_projection_after_state_change(root)
     except (OSError, ValueError, CheckpointError) as exc:
-        print(json.dumps({"status": "committed-repair-required", "state_changed": True,
-                          "revision": result["revision"], "failed_gate": "checkpoint_projection",
-                          "next_action": "continuity checkpoint create --root PROJECT_ROOT", "error": str(exc)}))
+        print(
+            json.dumps(
+                {
+                    "status": "committed-repair-required",
+                    "state_changed": True,
+                    "revision": result["revision"],
+                    "failed_gate": "checkpoint_projection",
+                    "next_action": "continuity checkpoint create --root PROJECT_ROOT",
+                    "error": str(exc),
+                }
+            )
+        )
         return 2
-    print(json.dumps({"status": "added", "state_changed": True, "revision": result["revision"],
-                      "event_head": result["event_head"], "checkpoint_ref": ref.to_document(), "changed_sources": changed_sources, **projection}))
+    print(
+        json.dumps(
+            {
+                "status": "added",
+                "state_changed": True,
+                "revision": result["revision"],
+                "event_head": result["event_head"],
+                "checkpoint_ref": ref.to_document(),
+                "changed_sources": changed_sources,
+                **projection,
+            }
+        )
+    )
     return 0
 
 
 def _inbox(args: argparse.Namespace) -> int:
     common = {"project_id": args.project_id, "recipient": args.recipient}
     if args.inbox_command == "send":
-        value = send_message(args.data_root, **common, message_id=args.message_id, sender=args.sender,
-                             body=args.body, task_id=args.task_id)
+        value = send_message(
+            args.data_root,
+            **common,
+            message_id=args.message_id,
+            sender=args.sender,
+            body=args.body,
+            task_id=args.task_id,
+        )
     elif args.inbox_command == "ack":
         value = acknowledge(args.data_root, **common, message_id=args.message_id)
     else:
         value = list_messages(args.data_root, **common, limit=args.limit)
-    print(json.dumps({"status": "ok", "messages": value, "provider_execution": False}, ensure_ascii=False))
+    print(
+        json.dumps(
+            {"status": "ok", "messages": value, "provider_execution": False},
+            ensure_ascii=False,
+        )
+    )
     return 0
 
 
 def _record_parser(parent: Any, kind: str) -> None:
-    add = parent.add_parser("add", help="preview a source-bound typed planning record; --apply commits through State MCP")
+    add = parent.add_parser(
+        "add",
+        help="preview a source-bound typed planning record; --apply commits through State MCP",
+    )
     add.add_argument("--root", default=".")
     add.add_argument("--source-file", required=True)
     add.add_argument("--actor-ref", default="local-user")
     add.add_argument("--expected-revision", type=int)
     add.add_argument("--apply", action="store_true")
-    add.add_argument("--refresh-source", action="store_true", help="include canonical source rebind in the same State event; requires active owner when claimed")
+    add.add_argument(
+        "--refresh-source",
+        action="store_true",
+        help="include canonical source rebind in the same State event; requires active owner when claimed",
+    )
     if kind == "work":
         add.add_argument("--work-id", required=True)
         add.add_argument("--title", required=True)
-        add.add_argument("--kind", choices=("campaign", "goal", "work", "experiment"), default="work")
+        add.add_argument(
+            "--kind", choices=("campaign", "goal", "work", "experiment"), default="work"
+        )
         add.add_argument("--parent-work-id")
         add.add_argument("--dependency", action="append")
-        add.add_argument("--scope", action="append", help="capability name; does not grant effect authority")
+        add.add_argument(
+            "--scope",
+            action="append",
+            help="capability name; does not grant effect authority",
+        )
     else:
         add.add_argument(f"--{kind}-id", required=True)
         add.add_argument("--statement", required=True)
-        add.add_argument("--work-id", required=True, **({"action": "append"} if kind == "constraint" else {}))
+        add.add_argument(
+            "--work-id",
+            required=True,
+            **({"action": "append"} if kind == "constraint" else {}),
+        )
         if kind == "decision":
-            add.add_argument("--record-status", choices=("proposed", "accepted"), default="proposed")
+            add.add_argument(
+                "--record-status", choices=("proposed", "accepted"), default="proposed"
+            )
     add.set_defaults(handler=_state_add_record, record_kind=kind)
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="continuity")
     parser.add_argument("--version", action="version", version=VERSION)
+    parser.add_argument(
+        "--remote", help="SSH alias for an explicit remote collaboration CLI call"
+    )
+    parser.add_argument(
+        "--remote-root", help="Registered absolute root on the state host"
+    )
+    parser.add_argument("--remote-endpoint", default="continuity-remote-cli")
+    parser.add_argument("--remote-timeout", type=float, default=30)
     commands = parser.add_subparsers(dest="command", required=True)
-    parser.add_argument("--root", dest="global_root", help="project root (also accepted on project subcommands)")
+    from .reference_library import register_cli
+
+    register_cli(commands)
+    from .remote_hook import register_cli as register_bridge_cli
+
+    register_bridge_cli(commands)
+    from .rules_delivery import register_cli as register_rules_cli
+
+    register_rules_cli(commands)
+    from .worker_dispatch import register_cli as register_worker_cli
+
+    register_worker_cli(commands)
+    from .subscription_quota import register_cli as register_quota_cli
+
+    register_quota_cli(commands)
+    from .persistent_storage import register_cli as register_storage_cli
+
+    register_storage_cli(commands)
+    from .task_shortcuts import register_cli as register_task_shortcuts
+
+    register_task_shortcuts(commands)
+    parser.add_argument(
+        "--root",
+        dest="global_root",
+        help="project root (also accepted on project subcommands)",
+    )
     init = commands.add_parser("init", help="initialize a local project profile")
     init.add_argument("--root", default=".")
     init.add_argument("--project-id", required=True)
@@ -5032,7 +5814,9 @@ def build_parser() -> argparse.ArgumentParser:
     status.add_argument("--root", default=".")
     status.set_defaults(handler=_status_render)
     status_commands = status.add_subparsers(dest="status_command")
-    status_render = status_commands.add_parser("render", help="render current bilingual STATUS")
+    status_render = status_commands.add_parser(
+        "render", help="render current bilingual STATUS"
+    )
     status_render.add_argument("--root", default=".")
     status_render.set_defaults(handler=_status_render)
     context = commands.add_parser(
@@ -5044,11 +5828,21 @@ def build_parser() -> argparse.ArgumentParser:
     )
     context_search.add_argument("--root", default=".")
     context_search.add_argument("--query", required=True)
-    context_search.add_argument("--max-results", type=int, default=40)
-    context_search.add_argument("--max-output-bytes", type=int, default=8192)
+    context_search.add_argument(
+        "--max-results",
+        type=int,
+        default=None,
+        help="Automatic bounded default; explicit values are preserved",
+    )
+    context_search.add_argument(
+        "--max-output-bytes",
+        type=int,
+        default=None,
+        help="Automatic brief budget; negative local retrieval estimates reduce it",
+    )
     context_search.add_argument("--path-prefix", default=None)
     context_search.add_argument("--extension", action="append")
-    context_search.add_argument("--format", choices=("json", "brief"), default="json")
+    context_search.add_argument("--format", choices=("json", "brief"), default="brief")
     context_search.add_argument("--data-root")
     context_search.set_defaults(handler=_context_search)
     context_index = context_commands.add_parser(
@@ -5057,23 +5851,46 @@ def build_parser() -> argparse.ArgumentParser:
     context_index.add_argument("--root", default=".")
     context_index.add_argument("--cache-path", default=None)
     context_index.add_argument("--max-files", type=int, default=50_000)
+    context_index.add_argument("--data-root")
     context_index.set_defaults(handler=_context_index)
     context_lookup = context_commands.add_parser(
-        "lookup", help="return bounded symbol and path references from the local code index"
+        "lookup",
+        help="return bounded symbol and path references from the local code index",
     )
     context_lookup.add_argument("--root", default=".")
     context_lookup.add_argument("--cache-path", default=None)
     context_lookup.add_argument("--query", required=True)
-    context_lookup.add_argument("--max-results", type=int, default=20)
-    context_lookup.add_argument("--max-output-bytes", type=int, default=8192)
-    context_lookup.add_argument("--format", choices=("json", "brief"), default="json")
+    context_lookup.add_argument(
+        "--max-results",
+        type=int,
+        default=None,
+        help="Automatic bounded default; explicit values are preserved",
+    )
+    context_lookup.add_argument(
+        "--max-output-bytes",
+        type=int,
+        default=None,
+        help="Automatic brief budget; negative local retrieval estimates reduce it",
+    )
+    context_lookup.add_argument("--format", choices=("json", "brief"), default="brief")
     context_lookup.add_argument("--data-root")
+    context_lookup.add_argument("--path-prefix")
+    context_lookup.add_argument("--extension", action="append")
     context_lookup.set_defaults(handler=_context_lookup)
-    context_dependents = context_commands.add_parser("dependents", help="find reverse source/build references")
+    context_dependents = context_commands.add_parser(
+        "dependents", help="find reverse source/build references"
+    )
     context_dependents.add_argument("--root", default=".")
     context_dependents.add_argument("--query", required=True)
-    context_dependents.add_argument("--max-results", type=int, default=50)
+    context_dependents.add_argument("--max-results", type=int, default=None)
+    context_dependents.add_argument(
+        "--format", choices=("brief", "json"), default="brief"
+    )
+    context_dependents.add_argument("--max-output-bytes", type=int, default=None)
+    context_dependents.add_argument("--data-root")
     context_dependents.set_defaults(handler=_context_dependents)
+    for leaf in context_commands.choices.values():
+        leaf.add_argument("--project-id")
     attach = commands.add_parser("attach", help="attach existing governance documents")
     attach_commands = attach.add_subparsers(dest="attach_command", required=True)
     plan = attach_commands.add_parser("plan", help="create a candidate import proposal")
@@ -5091,16 +5908,32 @@ def build_parser() -> argparse.ArgumentParser:
     refresh.add_argument("--root", default=".")
     refresh.add_argument("--proposal", default=".continuity/attach-proposal.json")
     refresh.set_defaults(handler=_attach_refresh)
-    approve = attach_commands.add_parser("approve", help="approve and activate a proposal")
+    approve = attach_commands.add_parser(
+        "approve", help="approve and activate a proposal"
+    )
     approve.add_argument("--root", default=".")
     approve.add_argument("--proposal", default=".continuity/attach-proposal.json")
     approve.add_argument("--actor-ref", required=True)
     approve.add_argument("--claim-id", required=True)
     approve.set_defaults(handler=_attach_approve)
-    resume = commands.add_parser("resume", help="compose the current bounded resume packet")
+    resume = commands.add_parser(
+        "resume", help="compose the current bounded resume packet"
+    )
     resume.add_argument("--root", default=".")
     resume.add_argument("--interaction-cursor", default=None)
     resume.add_argument("--skill-lock", default=None)
+    resume.add_argument(
+        "task_id",
+        nargs="?",
+        help="Optional collaboration task to resume; without it this remains the State recovery command",
+    )
+    resume.add_argument("continuation_text", nargs="?")
+    for flag in ("data-root", "project-id", "model", "assignee"):
+        resume.add_argument("--" + flag)
+    resume.add_argument("--effort", choices=("high", "max"), default="high")
+    resume.add_argument("--retry", type=int, default=0)
+    resume.add_argument("--dry-run", action="store_true")
+    resume.add_argument("--background", action="store_true")
     resume.set_defaults(handler=_resume)
     inspect = commands.add_parser(
         "inspect", help="read the bounded packet without binding or writing projections"
@@ -5154,8 +5987,13 @@ def build_parser() -> argparse.ArgumentParser:
     work_commands = work.add_subparsers(dest="work_command", required=True)
     _record_parser(work_commands, "work")
     for record_kind in ("decision", "constraint"):
-        record = commands.add_parser(record_kind, help="record explicit source-bound planning metadata")
-        _record_parser(record.add_subparsers(dest=f"{record_kind}_command", required=True), record_kind)
+        record = commands.add_parser(
+            record_kind, help="record explicit source-bound planning metadata"
+        )
+        _record_parser(
+            record.add_subparsers(dest=f"{record_kind}_command", required=True),
+            record_kind,
+        )
     work_complete = work_commands.add_parser(
         "complete", help="atomically complete Work and release its claim"
     )
@@ -5249,14 +6087,16 @@ def build_parser() -> argparse.ArgumentParser:
     observe = commands.add_parser(
         "observe", help="inspect lightweight local observations"
     )
-    observe_commands = observe.add_subparsers(
-        dest="observe_command", required=True
-    )
+    observe_commands = observe.add_subparsers(dest="observe_command", required=True)
+    from .provider_usage import register_cli as register_usage_cli
+
+    register_usage_cli(observe_commands)
     observe_report = observe_commands.add_parser(
         "report", help="build a bounded offline tuning report"
     )
     observe_report.add_argument("--root", default=".")
     observe_report.add_argument("--data-root", default=None)
+    observe_report.add_argument("--project-id", default=None)
     observe_report.add_argument("--session-limit", type=int, default=20)
     observe_report.set_defaults(handler=_observe_report)
     collaboration = commands.add_parser(
@@ -5266,6 +6106,32 @@ def build_parser() -> argparse.ArgumentParser:
     collaboration_commands = collaboration.add_subparsers(
         dest="collaboration_command", required=True
     )
+    from .collaboration_workflow import register_cli as register_workflow_cli
+
+    register_workflow_cli(collaboration_commands)
+    from .batch_projection import register_cli as register_batch_projection
+
+    register_batch_projection(collaboration_commands)
+    from .execution_outbox import command as replay_outbox
+
+    outbox_parser = collaboration_commands.add_parser(
+        "outbox-replay", help="Replay local execution facts after registry I/O recovers"
+    )
+    outbox_parser.add_argument("--root", default=".")
+    outbox_parser.add_argument("--project-id")
+    outbox_parser.add_argument("--data-root")
+    outbox_parser.set_defaults(handler=replay_outbox)
+    from .event_repair import command as repair_events
+
+    repair_parser = collaboration_commands.add_parser(
+        "repair-events",
+        help="Inspect legacy duplicate cursors; --apply retains an exact backup and requires consumer cursor reset",
+    )
+    repair_parser.add_argument("--root", default=".")
+    repair_parser.add_argument("--project-id")
+    repair_parser.add_argument("--data-root")
+    repair_parser.add_argument("--apply", action="store_true")
+    repair_parser.set_defaults(handler=repair_events)
     collaboration_register = collaboration_commands.add_parser(
         "register", help="register a project and its repository roots"
     )
@@ -5313,11 +6179,15 @@ def build_parser() -> argparse.ArgumentParser:
         choices=("scout", "patch", "integration", "cleanup", "infra", "decision"),
         required=True,
     )
-    collaboration_task_add.add_argument("--priority", choices=("p0", "p1", "p2"), required=True)
+    collaboration_task_add.add_argument(
+        "--priority", choices=("p0", "p1", "p2"), required=True
+    )
     collaboration_task_add.add_argument("--title", required=True)
     collaboration_task_add.add_argument("--objective", required=True)
     collaboration_task_add.add_argument("--next-action", required=True)
-    collaboration_task_add.add_argument("--exit-criterion", action="append", required=True)
+    collaboration_task_add.add_argument(
+        "--exit-criterion", action="append", required=True
+    )
     collaboration_task_add.add_argument("--worktree", default=None)
     collaboration_task_add.add_argument("--allowed-file", action="append")
     collaboration_task_add.add_argument("--preauthorized-effect", action="append")
@@ -5328,6 +6198,9 @@ def build_parser() -> argparse.ArgumentParser:
     collaboration_task_add.add_argument("--verification", default=None)
     collaboration_task_add.add_argument("--landed-commit", default=None)
     collaboration_task_add.add_argument("--released-in", default=None)
+    collaboration_task_add.add_argument(
+        "--body", help="Bounded instructions used by executor prompt assembly"
+    )
     collaboration_task_add.add_argument(
         "--report-policy",
         choices=("silent_until_stage_complete", "on_blocker", "on_decision", "verbose"),
@@ -5348,7 +6221,10 @@ def build_parser() -> argparse.ArgumentParser:
             "blocked",
             "ready-for-review",
             "rejected",
-            "superseded", "dispatched", "completed", "merged",
+            "superseded",
+            "dispatched",
+            "completed",
+            "merged",
         ),
         required=True,
     )
@@ -5361,7 +6237,36 @@ def build_parser() -> argparse.ArgumentParser:
     collaboration_task_update.add_argument("--verification", default=None)
     collaboration_task_update.add_argument("--landed-commit", default=None)
     collaboration_task_update.add_argument("--released-in", default=None)
+    collaboration_task_update.add_argument(
+        "--worktree",
+        default=None,
+        help="update planned checkout path; does not create a worktree",
+    )
+    collaboration_task_update.add_argument(
+        "--allowed-file", action="append", help="replace planned file scope"
+    )
+    collaboration_task_update.add_argument(
+        "--report-file", help="Attach a UTF-8 report, max 64 KiB, stored outside Git"
+    )
+    collaboration_task_update.add_argument(
+        "--verification-json",
+        help="Commit-bound {commit,actor,checks:[{name,command,result,status,required}],unverified:[]}",
+    )
+    collaboration_task_update.add_argument(
+        "--body", help="Bounded task instructions used by prompt assembly"
+    )
+    collaboration_task_update.add_argument(
+        "--force",
+        action="store_true",
+        help="Override local planning conflicts with an audit reason; grants no external-operation authority",
+    )
+    collaboration_task_update.add_argument(
+        "--force-reason", "--reason", help="Required justification for --force"
+    )
     collaboration_task_update.set_defaults(handler=_collaboration_task_update)
+    for task_parser in (collaboration_task_add, collaboration_task_update):
+        task_parser.add_argument("--body-file")
+        task_parser.add_argument("--expected-body-sha256")
     collaboration_task_next = collaboration_task_commands.add_parser(
         "next", help="read one active or queued task card"
     )
@@ -5369,6 +6274,22 @@ def build_parser() -> argparse.ArgumentParser:
     collaboration_task_next.add_argument("--project-id", required=True)
     collaboration_task_next.add_argument("--assignee", default=None)
     collaboration_task_next.set_defaults(handler=_collaboration_task_next)
+    collaboration_task_show = collaboration_task_commands.add_parser(
+        "show", help="read one collaboration card"
+    )
+    collaboration_task_show.add_argument("--data-root", default=None)
+    collaboration_task_show.add_argument("--project-id", required=True)
+    collaboration_task_show.add_argument("--task-id", required=True)
+    collaboration_task_show.add_argument(
+        "--include-report",
+        action="store_true",
+        help="Expand stored report content within the output budget",
+    )
+    collaboration_task_show.add_argument(
+        "--format", choices=("brief", "json"), default="json"
+    )
+    collaboration_task_show.add_argument("--max-output-bytes", type=int, default=8192)
+    collaboration_task_show.set_defaults(handler=_collaboration_task_show)
     collaboration_task_claim = collaboration_task_commands.add_parser(
         "claim", help="claim one queued card"
     )
@@ -5391,60 +6312,173 @@ def build_parser() -> argparse.ArgumentParser:
     collaboration_task_list.add_argument("--summary", action="store_true", default=True)
     collaboration_task_list.add_argument("--full", dest="summary", action="store_false")
     collaboration_task_list.add_argument("--max-results", type=int, default=None)
+    collaboration_task_list.add_argument(
+        "--cursor",
+        help="Continue the immutable list snapshot with the same filters; snapshots expire after one hour",
+    )
     collaboration_task_list.add_argument("--max-output-bytes", type=int, default=8192)
     collaboration_task_list.add_argument("--all", action="store_true")
+    collaboration_task_list.add_argument(
+        "--format", choices=("brief", "json"), default="json"
+    )
+    collaboration_task_list.add_argument(
+        "--evidence-gaps",
+        action="store_true",
+        help="Only cards with recorded evidence gaps; use --all to include closed cards",
+    )
     collaboration_task_list.set_defaults(handler=_collaboration_task_list)
-    collaboration_changes = collaboration_commands.add_parser("changes", help="read bounded collaboration changes since a cursor")
+    collaboration_changes = collaboration_commands.add_parser(
+        "changes", help="read bounded collaboration changes since a cursor"
+    )
     collaboration_changes.add_argument("--data-root", default=None)
     collaboration_changes.add_argument("--project-id", required=True)
     collaboration_changes.add_argument("--since", type=int, default=0)
     collaboration_changes.add_argument("--max-results", type=int, default=50)
     collaboration_changes.add_argument("--max-output-bytes", type=int, default=4096)
     collaboration_changes.set_defaults(handler=_collaboration_changes)
-    collaboration_run = collaboration_commands.add_parser("run", help="run one executor command with start/end ledger events")
+    collaboration_wait = collaboration_commands.add_parser(
+        "wait", help="wait quietly for matching collaboration events"
+    )
+    collaboration_wait.add_argument("--data-root", default=None)
+    collaboration_wait.add_argument("--project-id")
+    collaboration_wait.add_argument("--root", default=".")
+    collaboration_wait.add_argument("--since", type=int, default=0)
+    collaboration_wait.add_argument("--event", default=None)
+    collaboration_wait.add_argument("--task-id", default=None)
+    collaboration_wait.add_argument("--assignee", default=None)
+    collaboration_wait.add_argument("--timeout-seconds", type=float, default=300)
+    collaboration_wait.add_argument("--max-output-bytes", type=int, default=4096)
+    collaboration_wait.set_defaults(handler=_collaboration_wait)
+    collaboration_run = collaboration_commands.add_parser(
+        "run", help="run one executor command with start/end ledger events"
+    )
     collaboration_run.add_argument("--data-root", default=None)
     collaboration_run.add_argument("--project-id", required=True)
     collaboration_run.add_argument("--task-id", required=True)
     collaboration_run.add_argument("--assignee", required=True)
+    collaboration_run.add_argument("--model")
+    collaboration_run.add_argument("--timeout-seconds", type=float, default=86400)
+    collaboration_run.add_argument("--idle-timeout-seconds", type=float, default=86400)
+    collaboration_run.add_argument("--heartbeat-seconds", type=float, default=10)
     collaboration_run.add_argument("commandline", nargs=argparse.REMAINDER)
     collaboration_run.set_defaults(handler=_collaboration_run)
-    for name, help_text in (("rule-add", "add a project rule"), ("rule-list", "list project rules"), ("commitment-add", "record an unresolved commitment"), ("commitment-list", "list unresolved commitments"), ("commitment-close", "close a commitment")):
+    for name, help_text in (
+        ("rule-add", "add a project rule"),
+        ("rule-list", "list project rules"),
+        ("commitment-add", "record an unresolved commitment"),
+        ("commitment-list", "list unresolved commitments"),
+        ("commitment-close", "close a commitment"),
+    ):
         leaf = collaboration_commands.add_parser(name, help=help_text)
         leaf.add_argument("--data-root", default=None)
         leaf.add_argument("--project-id", required=True)
         leaf.set_defaults(handler=_collaboration_context_command, context_command=name)
         if name == "rule-add":
-            leaf.add_argument("--rule-id", required=True); leaf.add_argument("--text", required=True); leaf.add_argument("--audience", default="all")
+            leaf.add_argument("--rule-id", required=True)
+            leaf.add_argument("--text", required=True)
+            leaf.add_argument("--audience", default="all")
+            leaf.add_argument("--attachment-file")
+            leaf.add_argument(
+                "--scope", choices=("project", "global"), default="project"
+            )
         elif name == "rule-list":
             leaf.add_argument("--audience", default="all")
         elif name == "commitment-add":
-            leaf.add_argument("--commitment-id", required=True); leaf.add_argument("--text", required=True)
+            leaf.add_argument("--commitment-id", required=True)
+            leaf.add_argument("--text", required=True)
         elif name in {"commitment-close"}:
             leaf.add_argument("--commitment-id", required=True)
-    supervisor = commands.add_parser("supervisor", help="run provider-neutral executor supervision")
-    supervisor_commands = supervisor.add_subparsers(dest="supervisor_command", required=True)
-    supervisor_run = supervisor_commands.add_parser("run", help="run one executor command with attempts and heartbeats")
-    supervisor_run.add_argument("--data-root", default=None); supervisor_run.add_argument("--project-id", required=True)
-    supervisor_run.add_argument("--task-id", required=True); supervisor_run.add_argument("--assignee", required=True)
-    supervisor_run.add_argument("--attempt-id", default=None); supervisor_run.add_argument("--timeout-seconds", type=float, default=3600)
-    supervisor_run.add_argument("--idle-timeout-seconds", type=float, default=600); supervisor_run.add_argument("--heartbeat-seconds", type=float, default=10)
-    supervisor_run.add_argument("--retry", type=int, default=0); supervisor_run.add_argument("commandline", nargs=argparse.REMAINDER)
+    supervisor = commands.add_parser(
+        "supervisor", help="run provider-neutral executor supervision"
+    )
+    supervisor_commands = supervisor.add_subparsers(
+        dest="supervisor_command", required=True
+    )
+    supervisor_run = supervisor_commands.add_parser(
+        "run", help="run one executor command with attempts and heartbeats"
+    )
+    supervisor_run.add_argument("--data-root", default=None)
+    supervisor_run.add_argument("--project-id", required=True)
+    supervisor_run.add_argument("--task-id", required=True)
+    supervisor_run.add_argument("--assignee", required=True)
+    supervisor_run.add_argument("--attempt-id", default=None)
+    supervisor_run.add_argument("--timeout-seconds", type=float, default=3600)
+    supervisor_run.add_argument("--idle-timeout-seconds", type=float, default=600)
+    supervisor_run.add_argument("--heartbeat-seconds", type=float, default=10)
+    supervisor_run.add_argument("--retry", type=int, default=0)
+    supervisor_run.add_argument("commandline", nargs=argparse.REMAINDER)
+    supervisor_run.add_argument("--retry-delay-seconds", type=float, default=1)
+    supervisor_run.add_argument("--max-retry-wait-seconds", type=float, default=300)
+    supervisor_run.add_argument(
+        "--resume-argv-json",
+        help='JSON argv with {thread_id}; e.g. ["codex","exec","resume","{thread_id}","Continue the assigned task"]',
+    )
+    supervisor_run.add_argument(
+        "--thread-file",
+        help="File containing the existing session id; never silently restart if missing",
+    )
+    supervisor_run.add_argument(
+        "--restart-on-retry",
+        action="store_true",
+        help="Explicitly permit re-running the original command on transient failure",
+    )
+    supervisor_run.add_argument(
+        "--model",
+        help="Model identity for actual-run accounting, distinct from assignee",
+    )
+    supervisor_run.add_argument(
+        "--report-file",
+        help="Worker writes its final report here; attach only a file written during this attempt",
+    )
     supervisor_run.set_defaults(handler=_supervisor_run)
-    supervisor_daemon = supervisor_commands.add_parser("daemon", help="reconcile dead executor processes once")
-    supervisor_daemon.add_argument("--data-root", default=None); supervisor_daemon.add_argument("--project-id", required=True)
+    supervisor_daemon = supervisor_commands.add_parser(
+        "daemon", help="reconcile dead executor processes once"
+    )
+    supervisor_daemon.add_argument("--data-root", default=None)
+    supervisor_daemon.add_argument("--project-id", required=True)
     supervisor_daemon.set_defaults(handler=_supervisor_daemon)
-    route = collaboration_commands.add_parser("recommend", help="suggest an executor without dispatching it")
+    route = collaboration_commands.add_parser(
+        "recommend", help="suggest an executor without dispatching it"
+    )
     route.add_argument("--complexity", choices=("normal", "high"), default=None)
     route.add_argument("--urgency", choices=("normal", "high", "low"), default=None)
     route.add_argument("--blocked-model")
-    route.add_argument("--purpose", choices=("general", "security", "adversarial-review"), default=None)
+    route.add_argument(
+        "--purpose",
+        choices=("general", "security", "independent-review", "adversarial-review"),
+        default=None,
+    )
     from .executor_routing import SCENARIOS
-    route.add_argument("--scenario", choices=tuple(SCENARIOS), help="advisory preset; explicit options override it")
-    route.add_argument("--busy-model", action="append", default=[], help="deprioritize a congested alias; repeatable")
-    route.add_argument("--unavailable-model", action="append", default=[], help="exclude an unavailable alias; repeatable")
-    route.add_argument("--eligible-model", action="append", default=None, help="restrict to models suitable for this task; repeatable")
-    route.add_argument("--thinking", choices=("high", "max"), default="high",
-                       help="preferred effort for Sol/Sonnet/Grok; GLM stays max, Astra/Opus high; adapter must validate support")
+
+    route.add_argument(
+        "--scenario",
+        choices=tuple(SCENARIOS),
+        help="advisory preset; explicit options override it",
+    )
+    route.add_argument(
+        "--busy-model",
+        action="append",
+        default=[],
+        help="deprioritize a congested alias; repeatable",
+    )
+    route.add_argument(
+        "--unavailable-model",
+        action="append",
+        default=[],
+        help="exclude an unavailable alias; repeatable",
+    )
+    route.add_argument(
+        "--eligible-model",
+        action="append",
+        default=None,
+        help="restrict to models suitable for this task; repeatable",
+    )
+    route.add_argument(
+        "--thinking",
+        choices=("high", "max"),
+        default="high",
+        help="preferred effort for Sol/Sonnet/Grok; GLM stays max, Astra/Opus high; adapter must validate support",
+    )
     route.add_argument("--domain")
     route.add_argument("--parallel-safe", action="store_true")
     route.add_argument("--data-root")
@@ -5452,14 +6486,32 @@ def build_parser() -> argparse.ArgumentParser:
     route.add_argument("--task-id")
     route.add_argument("--save", action="store_true")
     route.set_defaults(handler=_executor_recommendation)
-    scenarios = collaboration_commands.add_parser("scenarios", help="list advisory executor-routing scenarios")
+    scenarios = collaboration_commands.add_parser(
+        "scenarios", help="list advisory executor-routing scenarios"
+    )
     scenarios.set_defaults(handler=_executor_scenarios)
-    collaboration_drift = collaboration_commands.add_parser("drift", help="find stale or contradictory collaboration metadata")
+    scenarios.add_argument(
+        "--include-legacy",
+        action="store_true",
+        help="Include older scenario aliases; new clients should use independent-review and boundary-validation",
+    )
+    scenarios.add_argument(
+        "--project-id",
+        default=None,
+        help="optional context; scenarios do not require project registration",
+    )
+    scenarios.add_argument("--data-root", default=None)
+    scenarios.add_argument("--root", default=".")
+    collaboration_drift = collaboration_commands.add_parser(
+        "drift", help="find stale or contradictory collaboration metadata"
+    )
     collaboration_drift.add_argument("--data-root", default=None)
     collaboration_drift.add_argument("--project-id", required=True)
     collaboration_drift.add_argument("--stale-hours", type=float, default=6.0)
     collaboration_drift.set_defaults(handler=_collaboration_drift)
-    collaboration_doctor = collaboration_commands.add_parser("doctor", help="show ledger writer and CLI versions")
+    collaboration_doctor = collaboration_commands.add_parser(
+        "doctor", help="show ledger writer and CLI versions"
+    )
     collaboration_doctor.add_argument("--data-root", default=None)
     collaboration_doctor.add_argument("--project-id", required=True)
     collaboration_doctor.set_defaults(handler=_collaboration_doctor)
@@ -5495,12 +6547,12 @@ def build_parser() -> argparse.ArgumentParser:
     collaboration_effect_update.add_argument("--project-id", required=True)
     collaboration_effect_update.add_argument("--effect-id", required=True)
     collaboration_effect_update.add_argument(
-        "--status", choices=("queued", "approved", "rejected", "executed"), required=True
+        "--status",
+        choices=("queued", "approved", "rejected", "executed"),
+        required=True,
     )
     collaboration_effect_update.set_defaults(handler=_collaboration_effect_update)
-    memory = commands.add_parser(
-        "memory", help="manage scoped vocabulary memory"
-    )
+    memory = commands.add_parser("memory", help="manage scoped vocabulary memory")
     memory_commands = memory.add_subparsers(dest="memory_command", required=True)
     memory_add = memory_commands.add_parser("add", help="add a scoped alias")
     memory_add.add_argument("--data-root", default=None)
@@ -5527,38 +6579,103 @@ def build_parser() -> argparse.ArgumentParser:
     memory_resolve.set_defaults(handler=_memory_resolve)
     todo = commands.add_parser("todo", help="manage an intent-derived local todo queue")
     todo_commands = todo.add_subparsers(dest="todo_command", required=True)
-    todo_compile = todo_commands.add_parser("compile", help="compile a multi-item prompt")
+    todo_compile = todo_commands.add_parser(
+        "compile", help="compile a multi-item prompt"
+    )
     todo_compile.add_argument("--root", default=".")
     todo_compile.add_argument("--data-root", default=None)
     todo_compile.add_argument("--prompt", required=True)
     todo_compile.add_argument("--master-path", default=None)
     todo_compile.add_argument("--master-section", default=None)
+    todo_compile.add_argument(
+        "--session-id",
+        default=None,
+        help="recovery owner tag, not a work permission or lease",
+    )
+    todo_compile.add_argument(
+        "--assignee", default=None, help="optional controller identity"
+    )
     todo_compile.set_defaults(handler=_todo_compile)
-    todo_list = todo_commands.add_parser("list", help="show the current intent todo queue")
+    todo_list = todo_commands.add_parser(
+        "list", help="show the current intent todo queue"
+    )
     todo_list.add_argument("--root", default=".")
     todo_list.add_argument("--data-root", default=None)
+    todo_list.add_argument(
+        "--status", choices=("queued", "active", "completed", "blocked")
+    )
+    todo_list.add_argument("--format", choices=("brief", "json"), default="json")
+    todo_list.add_argument("--max-output-bytes", type=int, default=8192)
     todo_list.set_defaults(handler=_todo_list)
-    todo_complete = todo_commands.add_parser("complete", help="complete the active todo item")
+    todo_complete = todo_commands.add_parser(
+        "complete", help="complete the active todo item"
+    )
     todo_complete.add_argument("--root", default=".")
     todo_complete.add_argument("--data-root", default=None)
     todo_complete.add_argument("--item-id", required=True)
     todo_complete.add_argument("--result", default=None)
     todo_complete.set_defaults(handler=_todo_complete)
-    todo_link = todo_commands.add_parser("link", help="link a todo item to a collaboration task")
+    todo_link = todo_commands.add_parser(
+        "link", help="link a todo item to a collaboration task"
+    )
     todo_link.add_argument("--root", default=".")
     todo_link.add_argument("--data-root", default=None)
     todo_link.add_argument("--item-id", required=True)
     todo_link.add_argument("--task-id", required=True)
     todo_link.set_defaults(handler=_todo_link)
+    todo_activate = todo_commands.add_parser(
+        "activate", help="select an unfinished item without losing earlier progress"
+    )
+    todo_activate.add_argument("--root", default=".")
+    todo_activate.add_argument("--data-root", default=None)
+    todo_activate.add_argument("--item-id", required=True)
+    todo_activate.add_argument("--reason", required=True)
+    todo_activate.add_argument(
+        "--session-id", default=None, help="tag the current controller for recovery"
+    )
+    todo_activate.set_defaults(handler=_todo_activate)
     todo_block = todo_commands.add_parser("block", help="block the active todo item")
     todo_block.add_argument("--root", default=".")
     todo_block.add_argument("--data-root", default=None)
     todo_block.add_argument("--item-id", required=True)
     todo_block.add_argument("--reason", required=True)
     todo_block.set_defaults(handler=_todo_block)
-    plan = commands.add_parser("plan", help="read hash-bound MASTER routing without State writes")
+    todo_cards = todo_commands.add_parser(
+        "from-cards",
+        help="Use live task-card statuses as Todo; preserve the old queue for provenance",
+    )
+    todo_cards.add_argument("--root", default=".")
+    todo_cards.add_argument("--data-root")
+    todo_cards.add_argument("--assignee")
+    todo_cards.add_argument("--lane-id")
+    todo_cards.add_argument("--format", choices=("brief", "json"), default="brief")
+    todo_cards.add_argument("--max-output-bytes", type=int, default=8192)
+    todo_cards.add_argument(
+        "--linked-only",
+        action="store_true",
+        help="Project only cards already linked to the current Todo",
+    )
+    todo_cards.set_defaults(handler=_todo_from_cards)
+    for leaf in todo_commands.choices.values():
+        leaf.add_argument(
+            "--project-id",
+            default=None,
+            help="registered project; usable instead of --root",
+        )
+    planning_help = commands.add_parser(
+        "help", help="discover planning operations and full CLI/MCP parameter parity"
+    )
+    planning_help.add_argument("topic", nargs="?", default="overview")
+    planning_help.add_argument("--format", choices=("brief", "json"), default="brief")
+    planning_help.add_argument("--max-output-bytes", type=int, default=8192)
+    planning_help.set_defaults(handler=_planning_help)
+    plan = commands.add_parser(
+        "plan", help="read hash-bound MASTER routing without State writes"
+    )
     plan_commands = plan.add_subparsers(dest="plan_command", required=True)
-    plan_inspect = plan_commands.add_parser("inspect", help="read one bounded MASTER section")
+    plan_inspect = plan_commands.add_parser(
+        "inspect", help="read one bounded MASTER section"
+    )
     plan_inspect.add_argument("--root", default=".")
     plan_inspect.add_argument("--master-path", default=None)
     plan_inspect.add_argument("--section", default=None)
@@ -5575,13 +6692,17 @@ def build_parser() -> argparse.ArgumentParser:
     skills_audit.add_argument("--skill-root", action="append")
     skills_audit.add_argument("--description-budget", type=int, default=8000)
     skills_audit.set_defaults(handler=_skills_audit)
-    whoami = commands.add_parser("whoami", help="show project, executor and controller identity")
+    whoami = commands.add_parser(
+        "whoami", help="show project, executor and controller identity"
+    )
     whoami.add_argument("--root", default=".")
     whoami.add_argument("--data-root", default=None)
     whoami.add_argument("--assignee", default=None)
     whoami.add_argument("--controller", default=None)
     whoami.set_defaults(handler=_whoami)
-    inbox = collaboration_commands.add_parser("inbox", help="durable local messages; never start another provider process")
+    inbox = collaboration_commands.add_parser(
+        "inbox", help="durable local messages; never start another provider process"
+    )
     inbox_commands = inbox.add_subparsers(dest="inbox_command", required=True)
     for operation in ("send", "list", "ack"):
         leaf = inbox_commands.add_parser(operation)
@@ -5609,19 +6730,90 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.remote:
+        from .remote_cli import forward
+
+        result = forward(
+            list(sys.argv[1:] if argv is None else argv),
+            host=args.remote,
+            root=args.remote_root,
+            endpoint=args.remote_endpoint,
+            timeout=args.remote_timeout,
+        )
+        sys.stdout.write(result["stdout"])
+        sys.stderr.write(result.get("stderr", ""))
+        return result["return_code"]
     if args.global_root is not None:
         if not hasattr(args, "root"):
-            raise ValueError("this command has no project root; use its --project-id/--scope options")
-        if args.root != "." and Path(args.root).resolve() != Path(args.global_root).resolve():
+            raise ValueError(
+                "this command has no project root; use its --project-id/--scope options"
+            )
+        if (
+            args.root != "."
+            and Path(args.root).resolve() != Path(args.global_root).resolve()
+        ):
             raise ValueError("global and subcommand --root refer to different projects")
         args.root = args.global_root
-    routing_preview = getattr(args, "handler", None) is _executor_recommendation and not args.save
-    if getattr(args, "command", None) == "collaboration" and hasattr(args, "project_id") and args.project_id is None and not routing_preview:
-        project = resolve_project(getattr(args, "root", "."), getattr(args, "data_root", None))
+    if (
+        args.command in {"todo", "observe", "context"}
+        and getattr(args, "project_id", None) is not None
+    ):
+        project = next(
+            (
+                p
+                for p in list_projects(args.data_root)
+                if p["project_id"] == args.project_id
+            ),
+            None,
+        )
         if project is None:
-            raise ValueError("project is not registered; specify --project-id or register --control-root first")
+            raise ValueError("project_id is not registered")
+        if args.root == ".":
+            current = (
+                resolve_project(".", args.data_root)
+                if args.command == "context"
+                else None
+            )
+            args.root = (
+                str(Path.cwd())
+                if current and current["project_id"] == args.project_id
+                else project["control_root"]
+            )
+        else:
+            actual = resolve_project(args.root, args.data_root)
+            if actual is None or actual["project_id"] != args.project_id:
+                raise ValueError("root and project_id refer to different projects")
+    routing_preview = (
+        getattr(args, "handler", None) is _executor_recommendation and not args.save
+    ) or getattr(args, "handler", None) is _executor_scenarios
+    if (
+        getattr(args, "command", None) == "collaboration"
+        and hasattr(args, "project_id")
+        and args.project_id is None
+        and not routing_preview
+    ):
+        project = resolve_project(
+            getattr(args, "root", "."), getattr(args, "data_root", None)
+        )
+        if project is None:
+            raise ValueError(
+                "project is not registered; specify --project-id or register --control-root first"
+            )
         args.project_id = project["project_id"]
-    if hasattr(args, "root") and getattr(args, "command", None) not in {"context", "observe"}:
+    if (
+        hasattr(args, "root")
+        and getattr(args, "command", None)
+        not in {
+            "context",
+            "observe",
+            "reference",
+            "worker",
+            "dispatch",
+            "task",
+            "rules",
+        }
+        and not (args.command == "resume" and getattr(args, "task_id", None))
+    ):
         try:
             args.root = str(resolve_control_root(args.root))
         except WorkspaceBindingError as exc:
@@ -5637,7 +6829,17 @@ def entrypoint(argv: list[str] | None = None) -> int:
     try:
         return main(argv)
     except (ValueError, OSError, StateStoreError, CheckpointError) as exc:
-        print(json.dumps({"status": "error", "failed_gate": "invalid_input_or_local_io", "message": str(exc)}, ensure_ascii=False), file=sys.stderr)
+        print(
+            json.dumps(
+                {
+                    "status": "error",
+                    "failed_gate": "invalid_input_or_local_io",
+                    "message": str(exc),
+                },
+                ensure_ascii=False,
+            ),
+            file=sys.stderr,
+        )
         return 2
 
 

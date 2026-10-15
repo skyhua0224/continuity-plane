@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "continuity-plane"
-version = "0.1.0a23"
+version = "0.1.0a24"
 description = "Durable task state, bounded context, evidence, and collaboration control for long-running AI-assisted work"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -35,6 +35,9 @@ dev = [
 [project.scripts]
 continuity = "continuity_plane.cli:entrypoint"
 continuity-host-hook = "continuity_plane.lifecycle:host_main"
+continuity-remote-hook = "continuity_plane.remote_hook:main"
+continuity-remote-receive = "continuity_plane.remote_hook:receive_main"
+continuity-remote-cli = "continuity_plane.remote_cli:receive_main"
 continuity-mcp = "continuity_plane.codex_mcp_server:main"
 continuity-codex-hook = "continuity_plane.codex_hook_launcher:main"
 continuity-search-mcp = "continuity_plane.context_mcp_server:main"

@@ -12,6 +12,7 @@ try:
 except ImportError:  # pragma: no cover - exercised by the direct plugin launcher
     package_root = Path(__file__).resolve().parents[1]
     sys.path.insert(0, str(package_root))
+    __package__ = "continuity_plane"
     from continuity_plane.code_index import lookup_code_index
     from continuity_plane.release_version import VERSION, runtime_version_issue
 
@@ -26,7 +27,9 @@ _ANNOTATIONS = {
 
 def _reply(request_id: object, result: dict) -> None:
     print(
-        json.dumps({"jsonrpc": "2.0", "id": request_id, "result": result}, ensure_ascii=False),
+        json.dumps(
+            {"jsonrpc": "2.0", "id": request_id, "result": result}, ensure_ascii=False
+        ),
         flush=True,
     )
 
@@ -34,7 +37,11 @@ def _reply(request_id: object, result: dict) -> None:
 def _error(request_id: object, code: int, message: str) -> None:
     print(
         json.dumps(
-            {"jsonrpc": "2.0", "id": request_id, "error": {"code": code, "message": message}},
+            {
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "error": {"code": code, "message": message},
+            },
             ensure_ascii=False,
         ),
         flush=True,
@@ -58,8 +65,16 @@ def _tool() -> dict:
                 "root": {"type": "string", "minLength": 1},
                 "query": {"type": "string", "minLength": 1, "maxLength": 1024},
                 "cache_path": {"type": "string", "minLength": 1},
+                "format": {"enum": ["brief", "json"], "default": "brief"},
+                "data_root": {"type": "string"},
+                "path_prefix": {"type": "string"},
+                "extensions": {"type": "array", "items": {"type": "string"}},
                 "max_results": {"type": "integer", "minimum": 1, "maximum": 200},
-                "max_output_bytes": {"type": "integer", "minimum": 1024, "maximum": 65536},
+                "max_output_bytes": {
+                    "type": "integer",
+                    "minimum": 1024,
+                    "maximum": 65536,
+                },
             },
         },
     }
@@ -74,12 +89,31 @@ def _call_lookup(request_id: object, arguments: object) -> None:
     cache_path = arguments.get("cache_path")
     max_results = arguments.get("max_results", 20)
     max_output_bytes = arguments.get("max_output_bytes", 8192)
+    format = arguments.get("format", "brief")
+    from .usage_meter import adaptive_defaults
+
+    default_count, default_budget = (
+        adaptive_defaults(
+            root_value, data_root=arguments.get("data_root"), format=format
+        )
+        if isinstance(root_value, str)
+        else (20, 8192)
+    )
+    if "max_results" not in arguments:
+        max_results = default_count
+    if "max_output_bytes" not in arguments:
+        max_output_bytes = default_budget
     if (
-        not isinstance(root_value, str)
+        not isinstance(format, str)
+        or format not in {"brief", "json"}
+        or not isinstance(root_value, str)
         or not root_value
         or not isinstance(query, str)
         or not query
-        or (cache_path is not None and (not isinstance(cache_path, str) or not cache_path))
+        or (
+            cache_path is not None
+            and (not isinstance(cache_path, str) or not cache_path)
+        )
         or type(max_results) is not int
         or type(max_output_bytes) is not int
     ):
@@ -93,20 +127,62 @@ def _call_lookup(request_id: object, arguments: object) -> None:
             cache_path=cache_path,
             max_results=max_results,
             max_output_bytes=max_output_bytes,
+            data_root=arguments.get("data_root"),
+            record_usage=format == "json",
+            path_prefix=arguments.get("path_prefix"),
+            extensions=arguments.get("extensions"),
         )
     except (OSError, ValueError) as exc:
         _error(request_id, -32000, str(exc))
         return
+    if format == "brief":
+        text = (
+            "\n".join(
+                f"{m['path']}:{m['line']} {m['kind']} {m['name']}"
+                for m in result["matches"]
+            )
+            or "No matches; use a narrower query or scoped rg."
+        )
+        if result.get("truncated"):
+            text += "\n[more results; narrow query or increase result/budget limit]"
+        text = text.encode()[:max_output_bytes].decode("utf-8", "ignore")
+        try:
+            from .usage_meter import record
+
+            record(
+                root,
+                command="lookup:mcp-brief",
+                response_bytes=len(text.encode()),
+                estimated_grep_bytes=sum(
+                    len(m["path"].encode()) + len(m["name"].encode()) + 32
+                    for m in result["matches"]
+                ),
+                data_root=arguments.get("data_root"),
+                cache_status=result.get("cache_status"),
+            )
+        except (OSError, ValueError):
+            pass
+        _reply(
+            request_id, {"content": [{"type": "text", "text": text}], "isError": False}
+        )
+        return
     _reply(
         request_id,
         {
-            "content": [{"type": "text", "text": json.dumps(result, ensure_ascii=False, sort_keys=True)}],
+            "content": [
+                {
+                    "type": "text",
+                    "text": json.dumps(result, ensure_ascii=False, sort_keys=True),
+                }
+            ],
             "structuredContent": result,
             # Keep guidance outside the hashed, byte-bounded receipt.
-            "_meta": {"continuity": {
-                "lookup_status": "hit" if result["matches"] else "empty",
-                "fallback": "none" if result["matches"] else "narrow-search",
-            }},
+            "_meta": {
+                "continuity": {
+                    "lookup_status": "hit" if result["matches"] else "empty",
+                    "fallback": "none" if result["matches"] else "narrow-search",
+                }
+            },
             "isError": False,
         },
     )
@@ -129,7 +205,11 @@ def main() -> int:
                 continue
         if method == "initialize":
             params = request.get("params")
-            protocol = params.get("protocolVersion", "2025-06-18") if isinstance(params, dict) else "2025-06-18"
+            protocol = (
+                params.get("protocolVersion", "2025-06-18")
+                if isinstance(params, dict)
+                else "2025-06-18"
+            )
             _reply(
                 request_id,
                 {
@@ -144,7 +224,10 @@ def main() -> int:
             _reply(request_id, {"tools": [_tool()]})
         elif method == "tools/call":
             params = request.get("params")
-            if not isinstance(params, dict) or params.get("name") != "continuity_context_lookup":
+            if (
+                not isinstance(params, dict)
+                or params.get("name") != "continuity_context_lookup"
+            ):
                 _error(request_id, -32602, "unknown tool")
                 continue
             _call_lookup(request_id, params.get("arguments", {}))

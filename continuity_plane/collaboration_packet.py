@@ -41,9 +41,13 @@ def compose_collaboration_packet(
     """Return one bounded task card and the vocabulary needed by its prompt."""
     root = data_root or default_data_root()
     if type(max_entities) is not int or not 1 <= max_entities <= 10:
-        raise CollaborationPacketError("max_entities must be between 1 and 10; use the default when unsure")
+        raise CollaborationPacketError(
+            "max_entities must be between 1 and 10; use the default when unsure"
+        )
     if assignee is not None and not str(assignee).strip():
-        raise CollaborationPacketError("assignee is empty; omit it to request a controller overview")
+        raise CollaborationPacketError(
+            "assignee is empty; omit it to request a controller overview"
+        )
     task = next_task(root, project_id=project_id, assignee=assignee)
     entities = resolve_vocabulary(root, query, project_id=project_id)[:max_entities]
     task_projection = None
@@ -74,10 +78,13 @@ def compose_collaboration_packet(
         "project_id": project_id,
         "task": task_projection,
         "vocabulary": entities,
-        "execution_preferences": for_task(root, project_id, (task or {}).get("task_id")),
+        "execution_preferences": for_task(
+            root, project_id, (task or {}).get("task_id")
+        ),
         "identity": {
             "assignee": assignee,
-            "session_id": os.environ.get("CODEX_SESSION_ID") or os.environ.get("".join(("CL", "AUDE", "_SESSION_ID"))),
+            "session_id": os.environ.get("CODEX_SESSION_ID")
+            or os.environ.get("".join(("CL", "AUDE", "_SESSION_ID"))),
             "controller": os.environ.get("CONTINUITY_CONTROLLER"),
         },
         "execution_contract": {
@@ -85,13 +92,11 @@ def compose_collaboration_packet(
             "local_work_continues_when_metadata_is_missing": True,
             "local_completion_status": "ready-for-review",
             "report_policy": task["report_policy"] if task else "on_blocker",
-            "activation_allowed": bool(task and task["status"] == "active"),
-            "activation_note": (
-                "queued task is a projection only; do not activate while another "
-                "authoritative Work is active"
-                if task and task["status"] == "queued"
-                else None
+            "task_pickup_allowed": bool(
+                task and task["status"] in {"queued", "active", "dispatched", "blocked"}
             ),
+            "state_authority_granted": False,
+            "activation_note": "Todo/card coordination is independent of the active State Work; this packet grants no State or external-effect authority.",
         },
     }
     if assignee is not None and task is None:
@@ -101,34 +106,87 @@ def compose_collaboration_packet(
     try:
         all_tasks = list_tasks(root, project_id=project_id)
         packet["in_flight"] = [
-            {key: item[key] for key in ("task_id", "status", "assignee", "lane_id", "title", "next_action", "updated_at")}
+            {
+                key: item[key]
+                for key in (
+                    "task_id",
+                    "status",
+                    "assignee",
+                    "lane_id",
+                    "title",
+                    "next_action",
+                    "updated_at",
+                )
+            }
             for item in all_tasks
             if item["status"] in {"active", "dispatched", "blocked"}
         ]
-        packet["in_flight"].sort(key=lambda item: (item["updated_at"], item["task_id"]), reverse=True)
+        packet["in_flight"].sort(
+            key=lambda item: (item["updated_at"], item["task_id"]), reverse=True
+        )
     except CollaborationRegistryError:
         packet["in_flight"] = []
-    registration = next((item for item in list_projects(root) if item["project_id"] == project_id), None)
-    queue = load_queue(registration["control_root"]) if registration else None
+    registration = next(
+        (item for item in list_projects(root) if item["project_id"] == project_id), None
+    )
+    queue = load_queue(registration["control_root"], root) if registration else None
     if queue:
         packet["todo"] = {
             "source": "intent-todo-sidecar",
             "items": [
-                {"item_id": item.get("item_id"), "status": item.get("status"), "text": item.get("text") or item.get("title"), "result": item.get("result"), "blocked_reason": item.get("blocked_reason"), "task_id": item.get("task_id")}
+                {
+                    "item_id": item.get("item_id"),
+                    "status": item.get("status"),
+                    "text": item.get("text") or item.get("title"),
+                    "result": item.get("result"),
+                    "blocked_reason": item.get("blocked_reason"),
+                    "task_id": item.get("task_id"),
+                }
                 for item in queue.get("items", [])[:12]
             ],
         }
     rules = list_rules(root, project_id=project_id)
     commitments = list_commitments(root, project_id=project_id)
-    packet["rules"] = [{"rule_id": row["rule_id"], "text": row["text"][:240], "audience": row["audience"]} for row in rules[:8]]
+    packet["rules"] = [
+        {
+            "rule_id": row["rule_id"],
+            "text": row["text"][:240],
+            "audience": row["audience"],
+        }
+        for row in rules[:8]
+    ]
     packet["rule_count"] = len(rules)
-    packet["commitments"] = [{"commitment_id": row["commitment_id"], "text": row["text"][:240]} for row in commitments[:8]]
+    from .rules_delivery import bundle
+
+    rule_bundle = bundle(root, project_id=project_id, audience="worker")
+    packet["rules_digest"] = rule_bundle["rules_digest"]
+    packet["rule_count"] = rule_bundle["rule_count"]
+    packet["rules_complete"] = False
+    packet["rules_export_command"] = rule_bundle["export_command"]
+    packet["rules_note"] = (
+        "This packet contains discovery summaries. Export complete applicable rules and fetch referenced policy attachments; rule text is not silently claimed complete."
+    )
+    packet["commitments"] = [
+        {"commitment_id": row["commitment_id"], "text": row["text"][:240]}
+        for row in commitments[:8]
+    ]
     packet["commitment_count"] = len(commitments)
-    messages = list_messages(root, project_id=project_id, recipient=assignee, limit=1000) if assignee else []
+    messages = (
+        list_messages(root, project_id=project_id, recipient=assignee, limit=1000)
+        if assignee
+        else []
+    )
     packet["unread_message_count"] = len(messages)
     if messages:
-        packet["inbox"] = [{**item, "body": item["body"][:512], "authority": "handoff-hint-only"} for item in messages]
-        while packet["inbox"] and len(json.dumps(packet, ensure_ascii=False).encode("utf-8")) > MAX_PACKET_BYTES:
+        packet["inbox"] = [
+            {**item, "body": item["body"][:512], "authority": "handoff-hint-only"}
+            for item in messages
+        ]
+        while (
+            packet["inbox"]
+            and len(json.dumps(packet, ensure_ascii=False).encode("utf-8"))
+            > MAX_PACKET_BYTES
+        ):
             packet["inbox"].pop()
     size = len(json.dumps(packet, ensure_ascii=False, sort_keys=True).encode("utf-8"))
     original_size = size
@@ -143,25 +201,45 @@ def compose_collaboration_packet(
             item["next_action"] = item["next_action"][:160]
         for item in packet.get("todo", {}).get("items", []):
             item["text"] = (item.get("text") or "")[:160]
-        while len(json.dumps(packet, ensure_ascii=False, sort_keys=True).encode("utf-8")) > MAX_PACKET_BYTES and packet.get("in_flight"):
+        while len(
+            json.dumps(packet, ensure_ascii=False, sort_keys=True).encode("utf-8")
+        ) > MAX_PACKET_BYTES and packet.get("in_flight"):
             packet["in_flight"].pop()
-        while len(json.dumps(packet, ensure_ascii=False, sort_keys=True).encode("utf-8")) > MAX_PACKET_BYTES and packet.get("todo", {}).get("items"):
+        while len(
+            json.dumps(packet, ensure_ascii=False, sort_keys=True).encode("utf-8")
+        ) > MAX_PACKET_BYTES and packet.get("todo", {}).get("items"):
             packet["todo"]["items"].pop()
-        while len(json.dumps(packet, ensure_ascii=False, sort_keys=True).encode("utf-8")) > MAX_PACKET_BYTES and packet.get("vocabulary"):
+        while len(
+            json.dumps(packet, ensure_ascii=False, sort_keys=True).encode("utf-8")
+        ) > MAX_PACKET_BYTES and packet.get("vocabulary"):
             packet["vocabulary"].pop()
-        while len(json.dumps(packet, ensure_ascii=False, sort_keys=True).encode("utf-8")) > MAX_PACKET_BYTES and packet.get("inbox"):
+        while len(
+            json.dumps(packet, ensure_ascii=False, sort_keys=True).encode("utf-8")
+        ) > MAX_PACKET_BYTES and packet.get("inbox"):
             packet["inbox"].pop()
-        size = len(json.dumps(packet, ensure_ascii=False, sort_keys=True).encode("utf-8"))
+        size = len(
+            json.dumps(packet, ensure_ascii=False, sort_keys=True).encode("utf-8")
+        )
         if size > MAX_PACKET_BYTES:
             packet["in_flight"] = []
             packet["todo"] = {"source": "intent-todo-sidecar", "items": []}
             packet["vocabulary"] = []
             packet["inbox"] = []
-            size = len(json.dumps(packet, ensure_ascii=False, sort_keys=True).encode("utf-8"))
-        packet["truncation"] = {"original_bytes": original_size, "returned_bytes": size, "budget_bytes": MAX_PACKET_BYTES}
+            size = len(
+                json.dumps(packet, ensure_ascii=False, sort_keys=True).encode("utf-8")
+            )
+        packet["truncation"] = {
+            "original_bytes": original_size,
+            "returned_bytes": size,
+            "budget_bytes": MAX_PACKET_BYTES,
+        }
         while True:
-            packet["truncation"]["returned_bytes"] = len(json.dumps(packet, ensure_ascii=False, sort_keys=True).encode("utf-8"))
-            if packet["truncation"]["returned_bytes"] <= MAX_PACKET_BYTES or not packet.get("in_flight"):
+            packet["truncation"]["returned_bytes"] = len(
+                json.dumps(packet, ensure_ascii=False, sort_keys=True).encode("utf-8")
+            )
+            if packet["truncation"][
+                "returned_bytes"
+            ] <= MAX_PACKET_BYTES or not packet.get("in_flight"):
                 break
             packet["in_flight"].pop()
     return packet
@@ -184,7 +262,12 @@ def compose_safe_collaboration_packet(
             assignee=assignee,
             max_entities=max_entities,
         )
-    except (OSError, CollaborationRegistryError, VocabularyMemoryError, CollaborationPacketError) as exc:
+    except (
+        OSError,
+        CollaborationRegistryError,
+        VocabularyMemoryError,
+        CollaborationPacketError,
+    ) as exc:
         return {
             "schema_version": "context.collaboration-degraded/v1alpha1",
             "project_id": project_id,

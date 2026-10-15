@@ -85,13 +85,31 @@ def report(root: str | Path, *, data_root: Path | str | None = None) -> dict[str
                     continue
     except (OSError, ValueError):
         pass
+    snapshot_path = path.parent / (path.stem + ".bridge.json")
+    try:
+        snapshots = (
+            json.loads(snapshot_path.read_text()) if snapshot_path.exists() else {}
+        )
+        rows.extend(
+            {
+                "command": "hook:ssh-bridge-output",
+                "session_sha256": s["session_sha256"],
+                "response_bytes": 0,
+                "estimated_grep_bytes": 0,
+                "injected_bytes": s["hook_injected_bytes"],
+                "call_count": s["calls"],
+            }
+            for s in snapshots.values()
+        )
+    except (OSError, ValueError, TypeError, KeyError):
+        pass
 
     def totals(items):
         response = sum(int(row.get("response_bytes", 0)) for row in items)
         baseline = sum(int(row.get("estimated_grep_bytes", 0)) for row in items)
         injected = sum(int(row.get("injected_bytes", 0)) for row in items)
         return {
-            "calls": len(items),
+            "calls": sum(r.get("call_count", 1) for r in items),
             "response_bytes": response,
             "estimated_grep_bytes": baseline,
             "hook_injected_bytes": injected,
@@ -111,4 +129,58 @@ def report(root: str | Path, *, data_root: Path | str | None = None) -> dict[str
             for key in sorted({r.get("session_sha256", "legacy") for r in rows})
         },
         "measurement": "bytes; replacement baseline is an estimate, not measured token savings",
+        "cache_hits_kind": "code-index cache; not provider prompt-cache tokens",
+        "scope": "requested checkout root; existing negative estimates are retained",
     }
+
+
+def import_hook_snapshot(root, snapshot, data_root=None):
+    import re
+
+    if (
+        not isinstance(snapshot, dict)
+        or not re.fullmatch(r"[0-9a-f]{64}", snapshot.get("session_sha256", ""))
+        or not re.fullmatch(r"[0-9a-f]{32}", snapshot.get("instance_id", ""))
+    ):
+        raise ValueError("invalid bridge usage identity")
+    if any(
+        type(snapshot.get(k)) is not int or snapshot[k] < 0
+        for k in ("calls", "hook_injected_bytes")
+    ):
+        raise ValueError("invalid bridge usage counters")
+    path = _path(Path(root), data_root)
+    path = path.parent / (path.stem + ".bridge.json")
+    key = snapshot["session_sha256"] + ":" + snapshot["instance_id"]
+    with _locked(path):
+        rows = json.loads(path.read_text()) if path.exists() else {}
+        previous = rows.get(key, {})
+        rows[key] = {
+            **snapshot,
+            "calls": max(snapshot["calls"], previous.get("calls", 0)),
+            "hook_injected_bytes": max(
+                snapshot["hook_injected_bytes"], previous.get("hook_injected_bytes", 0)
+            ),
+        }
+        from .collaboration_registry import _atomic_write
+
+        _atomic_write(path, rows)
+
+
+def adaptive_defaults(root, *, data_root=None, format="brief"):
+    if format == "json" or os.environ.get("CONTINUITY_ADAPTIVE_BUDGET") == "0":
+        return 20, 8192
+    try:
+        usage = report(root, data_root=data_root)
+        rows = [
+            v
+            for k, v in usage["by_command"].items()
+            if k.startswith(("context", "lookup", "search"))
+        ]
+        if (
+            sum(r["calls"] for r in rows) >= 5
+            and sum(r["estimated_saved_bytes"] for r in rows) < 0
+        ):
+            return 8, 2048
+    except (OSError, ValueError, KeyError):
+        pass
+    return 20, 4096

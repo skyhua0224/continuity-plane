@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.0-alpha.24
+
+- Validate cards before spawning; project current-attempt finishes to review/blocked with late-result protection and durable outbox replay. Concurrent event cursors, pagination and quiet waits preserve undelivered events.
+- Add dispatch/resume/report, durable report attachments, bounded same-thread transient recovery, actual-run balancing and cooldowns. Authentication failures, policy refusals and incomplete output do not trigger automatic provider switching.
+- Project Todo from cards; add commit-bound structured verification, single-update merged, integration batches, source-bound decisions and generated status. Metadata does not authorize actual merging, pushing or deployment.
+- Deliver global/project audience-scoped rules with versions, hashed attachments, complete exports, launch snapshots and affected-worker queries. Assemble prompts from cards/rules and keep primary-source references outside Git.
+- Share planning entry points across CLI, MCP, help, Skills and hooks; provide brief retrieval, strict budgets, changed-only deduplicated notices and controller-scene recovery.
+- Support explicit SSH hook/CLI endpoints and fix installed host-hook --config routing. Real owner-host Claude manual /compact passed; automatic-threshold and longitudinal business-session effects remain unverified.
+- Ingest real host token/cache metadata in place; distinguish injection overhead, byte estimates and unknown prices. No universal savings or actual-cost claim.
+- Enforce owning-host/profile routing and inspect persistent work storage without copying credentials, private configuration or native session stores. Public exports refuse nonempty destinations.
+- Withdraw the native Claude automatic quota-query plan by maintainer decision; no quota polling service is enabled. Explicit records and approved handoffs remain. No external account-system integration.
+
 ## 0.1.0-alpha.23
 
 - Share release identity across CLI and both MCP servers; replace stale alpha20 handshakes and detect package upgrades under live processes with an explicit restart hint, without restricting ordinary project work.

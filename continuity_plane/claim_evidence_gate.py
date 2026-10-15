@@ -178,7 +178,8 @@ def _validate_resolved_claim_scopes(claim: dict[str, Any], root: str | Path | No
     resolved_root = Path(root).resolve()
     for scope in path_scopes:
         repository, relative_path = _path_scope_identity(scope)
-        if repository != resolved_root.name:
+        from .repository_identity import matches
+        if not matches(resolved_root, repository):
             raise ClaimEvidenceError("path scope repository mismatch")
         target = (resolved_root / relative_path).resolve()
         if target != resolved_root and resolved_root not in target.parents:

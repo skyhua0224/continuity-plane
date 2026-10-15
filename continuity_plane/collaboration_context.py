@@ -6,10 +6,20 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .collaboration_registry import CollaborationRegistryError, _ID_RE, _atomic_write, _locked, _text, default_data_root, project_data_dir
+from .collaboration_registry import (
+    CollaborationRegistryError,
+    _ID_RE,
+    _atomic_write,
+    _locked,
+    _text,
+    default_data_root,
+    project_data_dir,
+)
 
 
-def _document(data_root: Path | str | None, project_id: str, name: str) -> tuple[Path, list[dict[str, Any]]]:
+def _document(
+    data_root: Path | str | None, project_id: str, name: str
+) -> tuple[Path, list[dict[str, Any]]]:
     directory = project_data_dir(data_root or default_data_root(), project_id)
     path = directory / name
     try:
@@ -21,26 +31,43 @@ def _document(data_root: Path | str | None, project_id: str, name: str) -> tuple
     return path, value
 
 
-def add_rule(data_root: Path | str | None, *, project_id: str, rule_id: str, text: str, audience: str = "all") -> dict[str, Any]:
-    if _ID_RE.fullmatch(rule_id) is None:
-        raise CollaborationRegistryError("rule_id is invalid")
-    _text(text, "rule", 4096)
-    path, rows = _document(data_root, project_id, "rules.json")
-    item = {"rule_id": rule_id, "text": text, "audience": audience, "status": "active"}
-    with _locked(path):
-        if any(row.get("rule_id") == rule_id for row in rows):
-            raise CollaborationRegistryError("rule_id already exists")
-        rows.append(item)
-        _atomic_write(path, rows)
-    return item
+def add_rule(
+    data_root: Path | str | None,
+    *,
+    project_id: str,
+    rule_id: str,
+    text: str,
+    audience: str = "all",
+    attachment_file=None,
+    scope="project",
+) -> dict[str, Any]:
+    from .rules_delivery import put_rule
+
+    return put_rule(
+        data_root,
+        project_id=project_id,
+        rule_id=rule_id,
+        text=text,
+        audience=audience,
+        attachment_file=attachment_file,
+        scope=scope,
+    )
 
 
-def list_rules(data_root: Path | str | None, *, project_id: str, audience: str = "all") -> list[dict[str, Any]]:
+def list_rules(
+    data_root: Path | str | None, *, project_id: str, audience: str = "all"
+) -> list[dict[str, Any]]:
     _, rows = _document(data_root, project_id, "rules.json")
-    return [row for row in rows if row.get("status") == "active" and row.get("audience") in {"all", audience}]
+    return [
+        row
+        for row in rows
+        if row.get("status") == "active" and row.get("audience") in {"all", audience}
+    ]
 
 
-def add_commitment(data_root: Path | str | None, *, project_id: str, commitment_id: str, text: str) -> dict[str, Any]:
+def add_commitment(
+    data_root: Path | str | None, *, project_id: str, commitment_id: str, text: str
+) -> dict[str, Any]:
     if _ID_RE.fullmatch(commitment_id) is None:
         raise CollaborationRegistryError("commitment_id is invalid")
     _text(text, "commitment", 4096)
@@ -54,7 +81,9 @@ def add_commitment(data_root: Path | str | None, *, project_id: str, commitment_
     return item
 
 
-def close_commitment(data_root: Path | str | None, *, project_id: str, commitment_id: str) -> dict[str, Any]:
+def close_commitment(
+    data_root: Path | str | None, *, project_id: str, commitment_id: str
+) -> dict[str, Any]:
     path, rows = _document(data_root, project_id, "commitments.json")
     for row in rows:
         if row.get("commitment_id") == commitment_id:
@@ -65,6 +94,8 @@ def close_commitment(data_root: Path | str | None, *, project_id: str, commitmen
     raise CollaborationRegistryError("commitment_id does not exist")
 
 
-def list_commitments(data_root: Path | str | None, *, project_id: str) -> list[dict[str, Any]]:
+def list_commitments(
+    data_root: Path | str | None, *, project_id: str
+) -> list[dict[str, Any]]:
     _, rows = _document(data_root, project_id, "commitments.json")
     return [row for row in rows if row.get("status") == "open"]

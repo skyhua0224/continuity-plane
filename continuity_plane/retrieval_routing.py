@@ -179,7 +179,9 @@ def _nonnegative_int(value: Any, field: str) -> int:
 
 def _allocate(total: int, parts: int) -> list[int]:
     if total < parts:
-        raise RetrievalBudgetError("budget cannot allocate a positive amount to every step")
+        raise RetrievalBudgetError(
+            "budget cannot allocate a positive amount to every step"
+        )
     base, remainder = divmod(total, parts)
     return [base + (1 if index < remainder else 0) for index in range(parts)]
 
@@ -300,7 +302,11 @@ def validate_retrieval_plan(plan: Any) -> None:
         raise RetrievalContractError("question_kind is invalid")
     _sha256(plan["query_sha256"], "query_sha256")
     repositories = plan["repositories"]
-    if not isinstance(repositories, list) or not repositories or len(set(repositories)) != len(repositories):
+    if (
+        not isinstance(repositories, list)
+        or not repositories
+        or len(set(repositories)) != len(repositories)
+    ):
         raise RetrievalContractError("repositories are invalid")
     for index, repository in enumerate(repositories):
         _safe_id(repository, f"repositories[{index}]")
@@ -336,7 +342,9 @@ def validate_retrieval_plan(plan: Any) -> None:
         tools.append(tool)
         purpose = _bounded_text(step["purpose"], f"steps[{index}].purpose")
         if purpose != _PURPOSES[tool]:
-            raise RetrievalContractError("retrieval step purpose does not match its tool")
+            raise RetrievalContractError(
+                "retrieval step purpose does not match its tool"
+            )
         for field in _BUDGET_FIELDS:
             value = _positive_int(step[field], f"steps[{index}].{field}")
             sums[field] += value
@@ -355,7 +363,10 @@ def validate_retrieval_plan(plan: Any) -> None:
         raise RetrievalContractError("degraded reasons do not match retrieval route")
     if sums != budgets:
         raise RetrievalContractError("step budgets do not equal plan budgets")
-    if plan["state_write_authority"] is not False or plan["memory_authority"] is not False:
+    if (
+        plan["state_write_authority"] is not False
+        or plan["memory_authority"] is not False
+    ):
         raise RetrievalContractError("retrieval plans cannot grant authority")
     _sha256(plan["plan_sha256"], "plan_sha256")
     if plan["plan_sha256"] != _digest(plan, "plan_sha256"):
@@ -366,7 +377,11 @@ def _validate_evidence(item: Any, index: int) -> None:
     if not isinstance(item, dict) or set(item) != _EVIDENCE_FIELDS:
         raise RetrievalContractError(f"evidence {index} fields are invalid")
     _safe_id(item["evidence_id"], f"evidence[{index}].evidence_id")
-    if item["source_kind"] not in {"current_code", "official_reference", "current_index"}:
+    if item["source_kind"] not in {
+        "current_code",
+        "official_reference",
+        "current_index",
+    }:
         raise RetrievalContractError("evidence source_kind is invalid")
     _bounded_text(item["source_ref"], f"evidence[{index}].source_ref", 2048)
     _bounded_text(item["revision"], f"evidence[{index}].revision", 512)
@@ -390,14 +405,18 @@ def _validate_evidence_payload(
 ) -> None:
     digest = hashlib.sha256(payload).hexdigest()
     if item["sha256"] != digest:
-        raise RetrievalContractError(f"{source} evidence does not match current file hash")
+        raise RetrievalContractError(
+            f"{source} evidence does not match current file hash"
+        )
     byte_range = item["range"]
     offset = byte_range["offset_bytes"]
     length = byte_range["length_bytes"]
     if expected_offset is not None and (
         offset != expected_offset or length != expected_length
     ):
-        raise RetrievalContractError(f"{source} evidence range does not match source_ref")
+        raise RetrievalContractError(
+            f"{source} evidence range does not match source_ref"
+        )
     if offset > len(payload) or length > len(payload) - offset:
         raise RetrievalContractError(f"{source} evidence range is outside the payload")
 
@@ -416,7 +435,9 @@ def _validate_current_evidence(
                 "current_code evidence requires a repo byte-range source_ref"
             )
         repository_root = Path(root).resolve()
-        if match.group("repository") != repository_root.name:
+        from .repository_identity import matches
+
+        if not matches(repository_root, match.group("repository")):
             raise RetrievalContractError("current_code evidence repository is invalid")
         relative = Path(match.group("path"))
         if relative.is_absolute() or ".." in relative.parts:
@@ -425,13 +446,17 @@ def _validate_current_evidence(
         try:
             path.relative_to(repository_root)
         except ValueError as exc:
-            raise RetrievalContractError("current_code evidence path escapes root") from exc
+            raise RetrievalContractError(
+                "current_code evidence path escapes root"
+            ) from exc
         if not path.is_file():
             raise RetrievalContractError("current_code evidence file is missing")
         try:
             payload = path.read_bytes()
         except OSError as exc:
-            raise RetrievalContractError("current_code evidence file is unreadable") from exc
+            raise RetrievalContractError(
+                "current_code evidence file is unreadable"
+            ) from exc
         _validate_evidence_payload(
             item,
             payload,
@@ -472,14 +497,18 @@ def _validate_trusted_plan(receipt: dict[str, Any], plan: dict[str, Any]) -> Non
         if [result["tool"] for result in results] != [
             step["tool"] for step in plan["steps"]
         ]:
-            raise RetrievalContractError("receipt route does not match the trusted plan")
+            raise RetrievalContractError(
+                "receipt route does not match the trusted plan"
+            )
         for result, step in zip(results, plan["steps"]):
             if (
                 result["queries"] > step["max_queries"]
                 or result["scanned_bytes"] > step["max_scanned_bytes"]
                 or result["returned_bytes"] > step["max_returned_bytes"]
             ):
-                raise RetrievalContractError("receipt exceeds a trusted plan step budget")
+                raise RetrievalContractError(
+                    "receipt exceeds a trusted plan step budget"
+                )
             has_index = (
                 result["index_revision"] is not None
                 and result["index_sha256"] is not None
@@ -503,10 +532,7 @@ def _validate_cache_lineage(
     trusted_plan: dict[str, Any] | None,
     prior_receipt_resolver: Callable[[str], dict[str, Any] | None] | None,
     root: str | Path | None,
-    artifact_resolver: Callable[
-        [str], bytes | bytearray | memoryview | None
-    ]
-    | None,
+    artifact_resolver: Callable[[str], bytes | bytearray | memoryview | None] | None,
 ) -> None:
     if receipt["cache_status"] != "hit":
         return
@@ -529,7 +555,9 @@ def _validate_cache_lineage(
     )
     expected_ref = f"receipt://sha256/{prior['receipt_sha256']}"
     if prior_ref != expected_ref:
-        raise RetrievalContractError("cache lineage reference does not match prior receipt")
+        raise RetrievalContractError(
+            "cache lineage reference does not match prior receipt"
+        )
     identity_fields = (
         "receipt_id",
         "plan_id",
@@ -540,7 +568,9 @@ def _validate_cache_lineage(
         "evidence_count",
     )
     if any(receipt[field] != prior[field] for field in identity_fields):
-        raise RetrievalContractError("cache lineage identity or evidence does not match")
+        raise RetrievalContractError(
+            "cache lineage identity or evidence does not match"
+        )
     if _timestamp(prior["executed_at"], "prior.executed_at") > _timestamp(
         receipt["executed_at"], "executed_at"
     ):
@@ -586,7 +616,10 @@ def compose_retrieval_receipt(
         raise RetrievalContractError("cache miss cannot carry a prior receipt")
 
     plan_tools = [step["tool"] for step in plan["steps"]]
-    if cache_status == "miss" and [result.get("tool") for result in step_results] != plan_tools:
+    if (
+        cache_status == "miss"
+        and [result.get("tool") for result in step_results] != plan_tools
+    ):
         raise RetrievalContractError("step results do not match the admitted route")
     totals = {"queries": 0, "scanned_bytes": 0, "returned_bytes": 0}
     normalized_results: list[dict[str, Any]] = []
@@ -612,7 +645,13 @@ def compose_retrieval_receipt(
             _sha256(result["index_sha256"], "index_sha256")
             if age > plan["freshness"]["max_index_age_seconds"]:
                 raise RetrievalContractError("retrieval index is stale")
-        elif any(value is not None for value in (result["index_revision"], result["index_sha256"])) or age != 0:
+        elif (
+            any(
+                value is not None
+                for value in (result["index_revision"], result["index_sha256"])
+            )
+            or age != 0
+        ):
             raise RetrievalContractError("non-index step carries index metadata")
         totals["queries"] += queries
         totals["scanned_bytes"] += scanned
@@ -647,9 +686,7 @@ def compose_retrieval_receipt(
     receipt["receipt_sha256"] = _digest(receipt, "receipt_sha256")
     prior_resolver = None
     if prior_receipt is not None:
-        prior_resolver = (
-            lambda ref: prior_receipt if ref == prior_receipt_ref else None
-        )
+        prior_resolver = lambda ref: prior_receipt if ref == prior_receipt_ref else None
     validate_retrieval_receipt(
         receipt,
         trusted_plan=plan,
@@ -663,14 +700,9 @@ def validate_retrieval_receipt(
     *,
     trusted_plan: dict[str, Any] | None = None,
     root: str | Path | None = None,
-    artifact_resolver: Callable[
-        [str], bytes | bytearray | memoryview | None
-    ]
+    artifact_resolver: Callable[[str], bytes | bytearray | memoryview | None]
     | None = None,
-    prior_receipt_resolver: Callable[
-        [str], dict[str, Any] | None
-    ]
-    | None = None,
+    prior_receipt_resolver: Callable[[str], dict[str, Any] | None] | None = None,
 ) -> None:
     """Validate strict receipt accounting and provenance without replaying tools."""
     if not isinstance(receipt, dict) or set(receipt) != _RECEIPT_FIELDS:
@@ -710,7 +742,13 @@ def validate_retrieval_receipt(
             raise RetrievalContractError("step result tools are invalid")
         tools.append(tool)
         for field in _TOTAL_FIELDS:
-            value = result[{"queries": "queries", "scanned_bytes": "scanned_bytes", "returned_bytes": "returned_bytes"}[field]]
+            value = result[
+                {
+                    "queries": "queries",
+                    "scanned_bytes": "scanned_bytes",
+                    "returned_bytes": "returned_bytes",
+                }[field]
+            ]
             if field == "queries":
                 _positive_int(value, field)
             else:
@@ -718,7 +756,11 @@ def validate_retrieval_receipt(
             calculated[field] += value
         age = _nonnegative_int(result["index_age_seconds"], "index_age_seconds")
         if result["index_revision"] is None or result["index_sha256"] is None:
-            if result["index_revision"] is not None or result["index_sha256"] is not None or age != 0:
+            if (
+                result["index_revision"] is not None
+                or result["index_sha256"] is not None
+                or age != 0
+            ):
                 raise RetrievalContractError("partial index metadata is invalid")
         else:
             _bounded_text(result["index_revision"], "index_revision", 512)
@@ -735,9 +777,7 @@ def validate_retrieval_receipt(
             or _timestamp(item["valid_at"], "valid_at") > executed_at
         ):
             raise RetrievalContractError("evidence timestamp is later than executed_at")
-        _validate_current_evidence(
-            item, root=root, artifact_resolver=artifact_resolver
-        )
+        _validate_current_evidence(item, root=root, artifact_resolver=artifact_resolver)
     evidence_ids = [item["evidence_id"] for item in evidence]
     if len(set(evidence_ids)) != len(evidence_ids):
         raise RetrievalContractError("evidence IDs must be unique")
@@ -748,7 +788,10 @@ def validate_retrieval_receipt(
         raise RetrievalContractError("totals are invalid")
     if totals != calculated:
         raise RetrievalContractError("receipt totals are inaccurate")
-    if receipt["state_write_authority"] is not False or receipt["memory_authority"] is not False:
+    if (
+        receipt["state_write_authority"] is not False
+        or receipt["memory_authority"] is not False
+    ):
         raise RetrievalContractError("retrieval receipts cannot grant authority")
     if trusted_plan is not None:
         _validate_trusted_plan(receipt, trusted_plan)

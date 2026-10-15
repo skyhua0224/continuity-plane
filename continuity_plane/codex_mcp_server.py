@@ -31,6 +31,7 @@ from .intent_todo import (
     load_queue,
 )
 from .release_version import VERSION, runtime_version_issue
+from .planning_api import ALIASES as _PLAN_ALIASES, extend_tools, handle_tool
 
 
 def _cli_command(*arguments: str) -> list[str]:
@@ -79,6 +80,7 @@ _LOCAL_WRITE_ANNOTATIONS = {
 }
 _READ_ONLY_SCOPE_NOTE = "; ordinary project work remains allowed"
 _STATE_SYNC_PENDING_ACTIONS = {
+    "inspect-current-state-before-continue",
     "remain-read-only",
     "continue-project-work-state-sync-pending",
 }
@@ -464,7 +466,7 @@ def main() -> int:
             _reply(
                 request_id,
                 {
-                    "tools": [
+                    "tools": extend_tools([
                         {
                             "name": "continuity_inspect",
                             "description": "只读检查当前有界恢复状态，不建立写绑定或刷新投影 / Read bounded continuity state without binding writes or refreshing projections.",
@@ -775,7 +777,7 @@ def main() -> int:
                                 }
                             }
                         }
-                    ]
+                    ])
                 },
             )
         elif method == "tools/call":
@@ -784,6 +786,18 @@ def main() -> int:
                 _error(request_id, -32602, "params must be an object")
                 continue
             tool_name = params.get("name")
+            if isinstance(tool_name,str) and tool_name in {*_PLAN_ALIASES,"continuity_plan","continuity_help"}:
+                arguments=params.get("arguments",{})
+                if not isinstance(arguments,dict):
+                    _error(request_id,-32602,"arguments must be an object")
+                    continue
+                try:
+                    result=handle_tool(tool_name,arguments)
+                except (OSError,ValueError,TypeError,KeyError) as exc:
+                    _error(request_id,-32602,str(exc)[:2048])
+                    continue
+                _reply(request_id,result)
+                continue
             if tool_name not in {
                 "continuity_inspect",
                 "continuity_collaboration_packet",

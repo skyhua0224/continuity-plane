@@ -1,5 +1,10 @@
 {
   "hooks": {
+    "PostToolUse": [{"hooks": [{"type": "command", "command": "continuity-host-hook", "timeout": 10}]}],
+    "Stop": [{"hooks": [{"type": "command", "command": "continuity-host-hook", "timeout": 10}]}],
+    "UserPromptSubmit": [
+      {"hooks": [{"type": "command", "command": "continuity-host-hook", "timeout": 10}]}
+    ],
     "SessionStart": [
       {"matcher": "startup|resume|compact", "hooks": [{"type": "command", "command": "continuity-host-hook", "timeout": 10}]}
     ],

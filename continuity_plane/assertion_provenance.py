@@ -135,7 +135,9 @@ def _resolve_repo_evidence(evidence: dict[str, Any], root: str | Path) -> bytes:
     if match is None:
         raise AssertionProvenanceError("current_code source_ref is invalid")
     resolved_root = Path(root).resolve()
-    if match.group("repository") != resolved_root.name:
+    from .repository_identity import matches
+
+    if not matches(resolved_root, match.group("repository")):
         raise AssertionProvenanceError("current_code source_ref repository mismatch")
     relative = Path(match.group("path"))
     if (
@@ -191,9 +193,7 @@ def _resolve_evidence(
     evidence: dict[str, Any],
     *,
     root: str | Path | None,
-    evidence_resolver: Callable[
-        [str, str], bytes | bytearray | memoryview | None
-    ]
+    evidence_resolver: Callable[[str, str], bytes | bytearray | memoryview | None]
     | None,
 ) -> bytes:
     if evidence["authority_kind"] == "current_state":
@@ -220,9 +220,7 @@ def _validate_resolved_bearing_evidence(
     evidence: dict[str, Any],
     *,
     root: str | Path | None,
-    evidence_resolver: Callable[
-        [str, str], bytes | bytearray | memoryview | None
-    ]
+    evidence_resolver: Callable[[str, str], bytes | bytearray | memoryview | None]
     | None,
     artifact_resolver: Callable[[str], bytes | bytearray | memoryview | None],
 ) -> None:
@@ -233,9 +231,7 @@ def _validate_resolved_bearing_evidence(
         raise AssertionProvenanceError("current evidence digest mismatch")
     receipt_ref = evidence["retrieval_receipt_ref"]
     try:
-        receipt = _resolved_bytes(
-            artifact_resolver(receipt_ref), "retrieval receipt"
-        )
+        receipt = _resolved_bytes(artifact_resolver(receipt_ref), "retrieval receipt")
     except AssertionProvenanceError:
         raise
     except Exception as exc:
@@ -266,7 +262,9 @@ def _validate_evidence(evidence: Any, index: int) -> None:
         evidence["retrieval_receipt_ref"], "retrieval_receipt_ref", 2048
     )
     if _ARTIFACT_REF_RE.fullmatch(receipt_ref) is None:
-        raise AssertionProvenanceError("retrieval_receipt_ref must be content-addressed")
+        raise AssertionProvenanceError(
+            "retrieval_receipt_ref must be content-addressed"
+        )
 
 
 def compose_assertion_provenance(
@@ -314,7 +312,9 @@ def compose_assertion_provenance(
             raise AssertionProvenanceError(
                 "current code or State bearing evidence requires an artifact resolver"
             )
-        if any(_timestamp(item["valid_at"], "valid_at") > asserted for item in evidence):
+        if any(
+            _timestamp(item["valid_at"], "valid_at") > asserted for item in evidence
+        ):
             raise AssertionProvenanceError("bearing evidence postdates the assertion")
     expires = _timestamp(valid_until, "valid_until")
     if expires <= asserted:
@@ -370,8 +370,12 @@ def validate_assertion_provenance(
     for index, item in enumerate(evidence):
         _validate_evidence(item, index)
     if record["bearing"]:
-        if not evidence or any(item["authority_kind"] not in _CURRENT_AUTHORITIES for item in evidence):
-            raise AssertionProvenanceError("bearing assertion contains candidate provenance")
+        if not evidence or any(
+            item["authority_kind"] not in _CURRENT_AUTHORITIES for item in evidence
+        ):
+            raise AssertionProvenanceError(
+                "bearing assertion contains candidate provenance"
+            )
         if any(item["authority_kind"] in _LOCAL_AUTHORITIES for item in evidence) and (
             root is None and evidence_resolver is None
         ):
@@ -393,7 +397,9 @@ def validate_assertion_provenance(
                     artifact_resolver=artifact_resolver,
                 )
         if record["provenance_coverage"] != 1.0:
-            raise AssertionProvenanceError("bearing assertion provenance coverage is incomplete")
+            raise AssertionProvenanceError(
+                "bearing assertion provenance coverage is incomplete"
+            )
     elif record["provenance_coverage"] != (1.0 if evidence else 0.0):
         raise AssertionProvenanceError("provenance_coverage is inaccurate")
     asserted = _timestamp(record["asserted_at"], "asserted_at")

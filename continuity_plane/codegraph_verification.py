@@ -129,9 +129,7 @@ def _python_module_for_path(relative_path: str, field: str) -> str:
     return ".".join(parts)
 
 
-def _validate_symbol_path_binding(
-    symbol: str, relative_path: str, field: str
-) -> None:
+def _validate_symbol_path_binding(symbol: str, relative_path: str, field: str) -> None:
     module = _python_module_for_path(relative_path, field)
     if not symbol.startswith(f"{module}."):
         raise CodeGraphVerificationError(
@@ -241,7 +239,9 @@ def _validate_clue(clue: Any, index: int) -> None:
 
 def _validate_evidence(evidence: Any, index: int) -> None:
     if not isinstance(evidence, dict) or set(evidence) != _EVIDENCE_FIELDS:
-        raise CodeGraphVerificationError(f"verifier evidence {index} fields are invalid")
+        raise CodeGraphVerificationError(
+            f"verifier evidence {index} fields are invalid"
+        )
     _safe(evidence["clue_id"], "evidence.clue_id")
     if evidence["verifier"] not in {"rg", "lsp"}:
         raise CodeGraphVerificationError("verifier must be rg or lsp")
@@ -297,11 +297,15 @@ def _validate_evidence_pairs(
             ):
                 raise CodeGraphVerificationError("qualified symbol mismatch")
             if evidence["revision"] != clue["index_revision"]:
-                raise CodeGraphVerificationError("verifier revision does not match clue index")
+                raise CodeGraphVerificationError(
+                    "verifier revision does not match clue index"
+                )
         if clue["index_sha256"] != codegraph_clue_evidence_sha256(
             [evidence_set["rg"], evidence_set["lsp"]]
         ):
-            raise CodeGraphVerificationError("clue index digest does not match verifier evidence")
+            raise CodeGraphVerificationError(
+                "clue index digest does not match verifier evidence"
+            )
 
 
 def _validate_current_repository_evidence(
@@ -311,15 +315,18 @@ def _validate_current_repository_evidence(
     source_path = (root / output["source_path"]).resolve()
     target_path = (root / output["target_path"]).resolve()
     resolved_root = root.resolve()
-    repository_identity = resolved_root.name
-    if (
-        clue["source_repository"] != repository_identity
-        or clue["target_repository"] != repository_identity
+    from .repository_identity import matches
+
+    if not matches(resolved_root, clue["source_repository"]) or not matches(
+        resolved_root, clue["target_repository"]
     ):
         raise CodeGraphVerificationError(
             "clue repository identity does not match current repository paths"
         )
-    if resolved_root not in source_path.parents or resolved_root not in target_path.parents:
+    if (
+        resolved_root not in source_path.parents
+        or resolved_root not in target_path.parents
+    ):
         raise CodeGraphVerificationError("tool evidence is outside current repository")
     _validate_symbol_path_binding(
         evidence["source_symbol"], output["source_path"], "source symbol"
@@ -334,18 +341,24 @@ def _validate_current_repository_evidence(
         source_lines = source_bytes.decode("utf-8").splitlines()
         target_lines = target_bytes.decode("utf-8").splitlines()
     except (OSError, UnicodeError) as exc:
-        raise CodeGraphVerificationError("tool evidence does not match current repository") from exc
+        raise CodeGraphVerificationError(
+            "tool evidence does not match current repository"
+        ) from exc
     if (
         hashlib.sha256(source_bytes).hexdigest() != evidence["source_sha256"]
         or hashlib.sha256(target_bytes).hexdigest() != evidence["target_sha256"]
     ):
-        raise CodeGraphVerificationError("tool evidence does not match current repository")
+        raise CodeGraphVerificationError(
+            "tool evidence does not match current repository"
+        )
     try:
         source_definition = source_lines[output["source_line"] - 1]
         query_line = source_lines[output["query_line"] - 1]
         target_definition = target_lines[output["target_line"] - 1]
     except IndexError as exc:
-        raise CodeGraphVerificationError("tool evidence does not match current repository") from exc
+        raise CodeGraphVerificationError(
+            "tool evidence does not match current repository"
+        ) from exc
     source_name = evidence["source_symbol"].rsplit(".", 1)[-1]
     target_name = evidence["target_symbol"].rsplit(".", 1)[-1]
     query_column = output["query_column"]
@@ -353,12 +366,18 @@ def _validate_current_repository_evidence(
         f"def {source_name}" not in source_definition
         or query_line[query_column : query_column + len(target_name)] != target_name
     ):
-        raise CodeGraphVerificationError("tool evidence does not match current repository")
+        raise CodeGraphVerificationError(
+            "tool evidence does not match current repository"
+        )
     if evidence["verifier"] == "rg":
         if target_path != source_path or output["target_line"] != output["query_line"]:
-            raise CodeGraphVerificationError("rg evidence does not match current repository")
+            raise CodeGraphVerificationError(
+                "rg evidence does not match current repository"
+            )
     elif f"def {target_name}" not in target_definition:
-        raise CodeGraphVerificationError("lsp evidence does not match current repository")
+        raise CodeGraphVerificationError(
+            "lsp evidence does not match current repository"
+        )
 
 
 def _read_lsp_message(stream: Any) -> dict[str, Any]:
@@ -366,7 +385,9 @@ def _read_lsp_message(stream: Any) -> dict[str, Any]:
     while True:
         line = stream.readline()
         if not line:
-            raise CodeGraphVerificationError("pylsp terminated before returning evidence")
+            raise CodeGraphVerificationError(
+                "pylsp terminated before returning evidence"
+            )
         if line in (b"\r\n", b"\n"):
             break
         key, value = line.decode("ascii").split(":", 1)
@@ -459,7 +480,11 @@ def _lsp_definition(
             if response.get("id") == 2:
                 break
         result = response.get("result")
-        if not isinstance(result, list) or len(result) != 1 or not isinstance(result[0], dict):
+        if (
+            not isinstance(result, list)
+            or len(result) != 1
+            or not isinstance(result[0], dict)
+        ):
             raise CodeGraphVerificationError("pylsp did not resolve one definition")
         return tool_version, result[0]
     finally:
@@ -490,6 +515,10 @@ def probe_codegraph_relation(
     verified_at: str,
 ) -> dict[str, Any]:
     """Run ripgrep and pylsp against current files and seal their exact locations."""
+    if relation != "references":
+        raise CodeGraphVerificationError(
+            "only the references relation can be proved by this probe"
+        )
     root = root.resolve()
     relative_source = _relative_path(source_path, "source_path")
     source_file = (root / relative_source).resolve()
@@ -500,7 +529,11 @@ def probe_codegraph_relation(
     source_lines = source_text.splitlines()
     source_name = source_symbol.rsplit(".", 1)[-1]
     source_line = next(
-        (index for index, text in enumerate(source_lines) if f"def {source_name}" in text),
+        (
+            index
+            for index, text in enumerate(source_lines)
+            if f"def {source_name}" in text
+        ),
         None,
     )
     if source_line is None:
@@ -508,7 +541,9 @@ def probe_codegraph_relation(
     query_line = next(
         (
             index
-            for index, text in enumerate(source_lines[source_line + 1 :], source_line + 1)
+            for index, text in enumerate(
+                source_lines[source_line + 1 :], source_line + 1
+            )
             if symbol_name in text
         ),
         None,
@@ -528,7 +563,9 @@ def probe_codegraph_relation(
         record.get("data", {}).get("line_number") == query_line + 1
         for record in rg_matches
     ):
-        raise CodeGraphVerificationError("rg output does not contain the target reference")
+        raise CodeGraphVerificationError(
+            "rg output does not contain the target reference"
+        )
     rg_version = subprocess.run(
         [rg_executable, "--version"], capture_output=True, text=True, check=True
     ).stdout.splitlines()[0]
@@ -546,7 +583,9 @@ def probe_codegraph_relation(
         target_column = int(target_range["character"])
         relative_target = target_file.relative_to(root).as_posix()
     except (KeyError, TypeError, ValueError) as exc:
-        raise CodeGraphVerificationError("pylsp definition is outside current repository") from exc
+        raise CodeGraphVerificationError(
+            "pylsp definition is outside current repository"
+        ) from exc
     target_bytes = target_file.read_bytes()
     source_sha256 = hashlib.sha256(source_bytes).hexdigest()
     target_sha256 = hashlib.sha256(target_bytes).hexdigest()
@@ -611,9 +650,7 @@ def probe_codegraph_relation(
         "target_symbol": target_symbol,
         "relation": relation,
         "index_revision": index_revision,
-        "index_sha256": codegraph_clue_evidence_sha256(
-            [rg_evidence, lsp_evidence]
-        ),
+        "index_sha256": codegraph_clue_evidence_sha256([rg_evidence, lsp_evidence]),
     }
     receipt = verify_codegraph_clues(
         clues=[clue],
@@ -638,7 +675,10 @@ def verify_codegraph_clues(
     clue_ids = [clue["clue_id"] for clue in clues]
     if len(set(clue_ids)) != len(clue_ids):
         raise CodeGraphVerificationError("clue IDs must be unique")
-    if not isinstance(verifier_evidence, list) or len(verifier_evidence) > len(clues) * 2:
+    if (
+        not isinstance(verifier_evidence, list)
+        or len(verifier_evidence) > len(clues) * 2
+    ):
         raise CodeGraphVerificationError("verifier_evidence is invalid")
     for index, evidence in enumerate(verifier_evidence):
         _validate_evidence(evidence, index)
@@ -675,8 +715,13 @@ def validate_codegraph_receipt(receipt: Any, *, root: Path | None = None) -> Non
         raise CodeGraphVerificationError("verified_clues is inaccurate")
     if receipt["verifier_counts"] != {"rg": len(clues), "lsp": len(clues)}:
         raise CodeGraphVerificationError("verifier_counts are inaccurate")
-    if receipt["codegraph_authority"] is not False or receipt["state_write_authority"] is not False:
-        raise CodeGraphVerificationError("CodeGraph verification cannot grant authority")
+    if (
+        receipt["codegraph_authority"] is not False
+        or receipt["state_write_authority"] is not False
+    ):
+        raise CodeGraphVerificationError(
+            "CodeGraph verification cannot grant authority"
+        )
     for index, clue in enumerate(clues):
         _validate_clue(clue, index)
     for index, item in enumerate(evidence):

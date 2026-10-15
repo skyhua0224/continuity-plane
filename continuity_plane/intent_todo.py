@@ -20,7 +20,7 @@ from .plan_route import master_route, route_context
 from .executor_routing import recommend
 
 SCHEMA_VERSION = "context.intent-todo/v1alpha1"
-MAX_ITEMS = 12
+MAX_ITEMS = 32
 MAX_ITEM_BYTES = 512
 _ITEM_RE = re.compile(r"^\s*(?:[-*•]|\d+[.)])\s+(.+?)\s*$")
 _STATUS = {"queued", "active", "completed", "blocked"}
@@ -75,17 +75,26 @@ def _write(path: Path, document: dict[str, Any]) -> None:
             pass
 
 
-def load_queue(root: Path | str, data_root: Path | str | None = None) -> dict[str, Any] | None:
+def load_queue(
+    root: Path | str, data_root: Path | str | None = None
+) -> dict[str, Any] | None:
     path = queue_path(root, data_root)
     try:
         document = json.loads(path.read_text(encoding="utf-8"))
     except (FileNotFoundError, OSError, json.JSONDecodeError):
         return None
-    if not isinstance(document, dict) or document.get("schema_version") != SCHEMA_VERSION:
+    if (
+        not isinstance(document, dict)
+        or document.get("schema_version") != SCHEMA_VERSION
+    ):
         return None
     items = document.get("items")
     if not isinstance(items, list) or not all(isinstance(item, dict) for item in items):
         return None
+    if document.get("card_projection"):
+        from .card_todo import project
+
+        return project(document, root, data_root)
     return document
 
 
@@ -96,11 +105,11 @@ def _split_items(prompt: str) -> list[str]:
         match = _ITEM_RE.match(line)
         if match:
             marked.append(match.group(1).strip())
-    if len(marked) >= 2:
-        return marked[:MAX_ITEMS]
+    if marked:
+        return marked
     clauses = [part.strip() for part in re.split(r"[。；;]+", prompt) if part.strip()]
     if len(clauses) >= 2:
-        return clauses[:MAX_ITEMS]
+        return clauses
     return [prompt.strip()]
 
 
@@ -111,21 +120,35 @@ def compile_queue(
     data_root: Path | str | None = None,
     master_path: str | None = None,
     master_section: str | None = None,
+    session_id: str | None = None,
+    assignee: str | None = None,
 ) -> dict[str, Any] | None:
     """Create an idempotent queue only for explicit multi-item execution intent."""
     if not isinstance(prompt, str) or not prompt.strip():
         return None
+    for field, value in (("session_id", session_id), ("assignee", assignee)):
+        if value is not None and (
+            not isinstance(value, str) or not value or len(value) > 256
+        ):
+            raise IntentTodoError(f"{field} must be a bounded identifier")
     values = _split_items(prompt)
-    if len(values) < 2:
+    if len(values) < 2 and not _ITEM_RE.match(prompt.strip()):
         return None
-    values = [value for value in values if len(value.encode("utf-8")) <= MAX_ITEM_BYTES]
-    if len(values) < 2:
-        return None
+    if len(values) > MAX_ITEMS:
+        raise IntentTodoError(
+            f"todo capacity exceeded ({MAX_ITEMS}); no items were saved or dropped"
+        )
+    if any(len(value.encode("utf-8")) > MAX_ITEM_BYTES for value in values):
+        raise IntentTodoError(
+            f"todo item exceeds {MAX_ITEM_BYTES} bytes; shorten it; no items were dropped"
+        )
     path = queue_path(root, data_root)
     existing = load_queue(root, data_root)
+    if existing and existing.get("card_projection"):
+        from .card_todo import append_actions
+
+        return append_actions(root, existing, values, data_root)
     prompt_hash = _prompt_key(prompt)
-    if existing is not None and prompt_hash in existing.get("prompt_hashes", [existing.get("prompt_sha256")]):
-        return existing
     queue_id = f"todo-{prompt_hash[:24]}"
     items = [
         {
@@ -138,16 +161,44 @@ def compile_queue(
         }
         for index, value in enumerate(values)
     ]
+    if existing is not None and prompt_hash in existing.get(
+        "prompt_hashes", [existing.get("prompt_sha256")]
+    ):
+        # Older builds saved the full prompt hash after silently clipping its
+        # last items. Repair only missing IDs, preserving progress and evidence.
+        known = {item.get("item_id") for item in existing["items"]}
+        missing = [item for item in items if item["item_id"] not in known]
+        if not missing:
+            return existing
+        if len(existing["items"]) + len(missing) > MAX_ITEMS:
+            raise IntentTodoError(
+                "todo capacity exceeded; existing progress was preserved"
+            )
+        has_active = any(item.get("status") == "active" for item in existing["items"])
+        for item in missing:
+            item["order"] = len(existing["items"]) + 1
+            item["status"] = "queued"
+            if not has_active and existing.get("status") != "blocked":
+                item["status"] = "active"
+                has_active = True
+            existing["items"].append(item)
+        if has_active:
+            existing["status"] = "active"
+        return _save(root, existing, data_root)
     if existing is not None and existing.get("status") in {"active", "blocked"}:
         # A follow-up adds work; it must not erase the active return point.
         offset = len(existing["items"])
         if offset + len(items) > MAX_ITEMS:
-            raise IntentTodoError("todo capacity exceeded; reconcile the existing queue explicitly")
+            raise IntentTodoError(
+                "todo capacity exceeded; reconcile the existing queue explicitly"
+            )
         for item in items:
             item["order"] += offset
             item["status"] = "queued"
         existing["items"].extend(items)
-        existing.setdefault("prompt_hashes", [existing["prompt_sha256"]]).append(prompt_hash)
+        existing.setdefault("prompt_hashes", [existing["prompt_sha256"]]).append(
+            prompt_hash
+        )
         return _save(root, existing, data_root)
     route = master_route(root, master_path=master_path, section=master_section)
     document = {
@@ -160,6 +211,8 @@ def compile_queue(
             key: route[key] for key in ("master_path", "section", "master_sha256")
         },
         "status": "active",
+        "owner_session_id": session_id,
+        "owner_assignee": assignee,
         "execution_preferences": recommend(),
         "items": items,
         "created_at": _now(),
@@ -169,7 +222,9 @@ def compile_queue(
     return document
 
 
-def _save(root: Path | str, document: dict[str, Any], data_root: Path | str | None) -> dict[str, Any]:
+def _save(
+    root: Path | str, document: dict[str, Any], data_root: Path | str | None
+) -> dict[str, Any]:
     document["updated_at"] = _now()
     _write(queue_path(root, data_root), document)
     return document
@@ -185,29 +240,120 @@ def complete_item(
     document = load_queue(root, data_root)
     if document is None:
         raise IntentTodoError("no active intent todo queue")
-    target = next((item for item in document["items"] if item.get("item_id") == item_id), None)
+    target = next(
+        (item for item in document["items"] if item.get("item_id") == item_id), None
+    )
     if target is None:
         raise IntentTodoError("todo item does not exist")
+    if document.get("card_projection") and target.get("status") == "completed":
+        return document
     if target.get("status") not in {"queued", "active", "blocked"}:
         raise IntentTodoError("todo item is already completed")
+    if document.get("card_projection"):
+        from .card_todo import transition
+
+        return transition(
+            document,
+            root,
+            item_id,
+            data_root=data_root,
+            status="ready-for-review",
+            result=result,
+        )
     target["status"] = "completed"
     target["result"] = result
-    next_item = next((item for item in document["items"] if item.get("status") == "queued"), None)
-    if next_item is None and not any(item.get("status") == "active" for item in document["items"]):
-        document["status"] = "completed"
-    elif next_item is not None and not any(item.get("status") == "active" for item in document["items"]):
+    next_item = next(
+        (item for item in document["items"] if item.get("status") == "queued"), None
+    )
+    if next_item is None and not any(
+        item.get("status") == "active" for item in document["items"]
+    ):
+        document["status"] = (
+            "blocked"
+            if any(item.get("status") == "blocked" for item in document["items"])
+            else "completed"
+        )
+    elif next_item is not None and not any(
+        item.get("status") == "active" for item in document["items"]
+    ):
         next_item["status"] = "active"
     return _save(root, document, data_root)
 
 
-def link_item(root: Path | str, item_id: str, task_id: str, *, data_root: Path | str | None = None) -> dict[str, Any]:
+def link_item(
+    root: Path | str, item_id: str, task_id: str, *, data_root: Path | str | None = None
+) -> dict[str, Any]:
     document = load_queue(root, data_root)
     if document is None:
         raise IntentTodoError("no active intent todo queue")
-    target = next((item for item in document["items"] if item.get("item_id") == item_id), None)
+    target = next(
+        (item for item in document["items"] if item.get("item_id") == item_id), None
+    )
     if target is None:
         raise IntentTodoError("todo item does not exist")
+    if document.get("card_projection"):
+        if target.get("task_id") != task_id:
+            raise IntentTodoError(
+                "card-projected items cannot be rebound to another card"
+            )
+        return document
+    from .collaboration_registry import resolve_project, list_tasks
+
+    project = resolve_project(root, data_root)
+    if project is None or not any(
+        row["task_id"] == task_id
+        for row in list_tasks(data_root, project_id=project["project_id"])
+    ):
+        raise IntentTodoError("task_id does not exist in this registered project")
     target["task_id"] = task_id
+    return _save(root, document, data_root)
+
+
+def activate_item(root, item_id: str, *, reason: str, data_root=None, session_id=None):
+    """Reorder current intent explicitly without erasing earlier progress."""
+    if not isinstance(reason, str) or not reason.strip() or len(reason.encode()) > 2048:
+        raise IntentTodoError("activation requires a bounded reason")
+    document = load_queue(root, data_root)
+    if document is None:
+        raise IntentTodoError("no active intent todo queue")
+    target = next(
+        (item for item in document["items"] if item.get("item_id") == item_id), None
+    )
+    if target is None or target.get("status") == "completed":
+        raise IntentTodoError("choose an existing unfinished todo item")
+    if document.get("card_projection"):
+        from .card_todo import transition
+
+        return transition(
+            document,
+            root,
+            item_id,
+            data_root=data_root,
+            status="active",
+            assignee=session_id,
+        )
+    if session_id is not None and (
+        not isinstance(session_id, str) or not session_id or len(session_id) > 256
+    ):
+        raise IntentTodoError("session_id must be a bounded identifier")
+    if target.get("status") == "active":
+        if session_id and document.get("owner_session_id") != session_id:
+            document["owner_session_id"] = session_id
+            return _save(root, document, data_root)
+        return document
+    previous = []
+    for item in document["items"]:
+        if item.get("status") == "active":
+            previous.append(item["item_id"])
+            item["status"] = "queued"
+    document["switch_history"] = (
+        document.get("switch_history", [])
+        + [{"from": previous, "to": item_id, "reason": reason.strip(), "at": _now()}]
+    )[-8:]
+    target["status"] = "active"
+    if session_id:
+        document["owner_session_id"] = session_id
+    document["status"] = "active"
     return _save(root, document, data_root)
 
 
@@ -218,15 +364,34 @@ def block_item(
     *,
     data_root: Path | str | None = None,
 ) -> dict[str, Any]:
+    if not isinstance(reason, str) or not reason.strip() or len(reason.encode()) > 2048:
+        raise IntentTodoError("blocker requires a reason of at most 2048 bytes")
     document = load_queue(root, data_root)
     if document is None:
         raise IntentTodoError("no active intent todo queue")
-    target = next((item for item in document["items"] if item.get("item_id") == item_id), None)
-    if target is None:
-        raise IntentTodoError("todo item does not exist")
+    target = next(
+        (item for item in document["items"] if item.get("item_id") == item_id), None
+    )
+    if target is None or target.get("status") == "completed":
+        raise IntentTodoError("choose an existing unfinished todo item")
+    if document.get("card_projection"):
+        from .card_todo import transition
+
+        return transition(
+            document,
+            root,
+            item_id,
+            data_root=data_root,
+            status="blocked",
+            reason=reason,
+        )
     target["status"] = "blocked"
-    target["result"] = reason[:MAX_ITEM_BYTES]
-    document["status"] = "blocked"
+    target["result"] = reason
+    document["status"] = (
+        "active"
+        if any(item.get("status") == "active" for item in document["items"])
+        else "blocked"
+    )
     return _save(root, document, data_root)
 
 
@@ -234,20 +399,35 @@ def active_context(root: Path | str, data_root: Path | str | None = None) -> str
     document = load_queue(root, data_root)
     if document is None or document.get("status") != "active":
         return None
-    active = next((item for item in document["items"] if item.get("status") == "active"), None)
+    active = next(
+        (item for item in document["items"] if item.get("status") == "active"), None
+    )
     if active is None:
         return None
     binding = document.get("plan_binding") or {}
-    route = master_route(root, master_path=binding.get("master_path"), section=binding.get("section"))
+    route = (
+        {}
+        if document.get("card_projection")
+        else master_route(
+            root, master_path=binding.get("master_path"), section=binding.get("section")
+        )
+    )
     digest = binding.get("master_sha256")
-    if digest and (route.get("status") != "current" or route.get("master_sha256") != digest):
+    if (
+        not document.get("card_projection")
+        and digest
+        and (route.get("status") != "current" or route.get("master_sha256") != digest)
+    ):
         return (
             "TodoQueue plan changed; do not execute old todo titles as current instructions. "
             "Reconcile remaining items with current user intent and the relevant MASTER section, "
             "preserving completed evidence and real blockers. Ordinary work remains allowed. "
             + route_context(route)
         )
-    remaining = sum(item.get("status") in {"active", "queued"} for item in document["items"])
+    remaining = sum(
+        item.get("status") in {"active", "queued", "blocked"}
+        for item in document["items"]
+    )
     return (
         f"Intent TodoQueue {document['queue_id']}: item {active['order']}/{len(document['items'])}. "
         f"Current item: {active['title']}\n"

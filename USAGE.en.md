@@ -42,20 +42,42 @@ continuity supervisor run --project-id PROJECT --task-id TASK --assignee EXECUTO
 continuity supervisor daemon --project-id PROJECT
 ```
 
-The Supervisor writes `attempt.started/heartbeat/finished` collaboration events. It does not
+The Supervisor records collaboration events. It does not
 complete Work or edit State SQLite. It currently provides local foreground and one-shot daemon
 entry points; provider adapters and long-running service orchestration can be added separately.
 
+Alpha24 validates cards before spawning and projects current-run results:
+exit zero becomes ready-for-review; failure/interruption becomes blocked. Exit zero does not
+prove verification or merger. Older runs cannot overwrite newer runs or manual terminal states.
+The daemon can replay finish facts, but does not infer remote death from the local PID table.
+Finish facts precede durable card projection (`task.run-projected`); pending projection is explicit.
+
+```bash
+continuity collaboration wait --project-id PROJECT --since CURSOR \
+  --event attempt.finished --timeout-seconds 300 --max-output-bytes 4096
+```
+
+Wait is quiet until a match; timeout returns `timed_out: true` and exit code 2.
+Continue from next_cursor, not the separate full-log high_water_cursor. Oversized events may
+omit log details without skipping unreturned events. Blocking reads do not imply host wake-up.
+These capabilities are provided from Alpha24.
+
+See [field workflows](docs/field-workflows.md) for dispatch, rule delivery, remote deployment and
+evidence boundaries. Native Claude automatic quota querying is withdrawn, is not a release gate,
+and enables no account polling service. Real token/cache metering and explicit quota records remain
+separate; neither promises whole-account usage queries or actual monetary cost.
+
 ## Install
 
-Python 3.11 or newer is required. The current alpha has completed installation,
-verification, and uninstall probes on Linux x86_64, macOS arm64, and Windows
-AMD64.
+Python 3.11 or newer is required. Earlier alpha releases completed installation,
+verification and uninstall probes on Linux x86_64, macOS arm64 and Windows AMD64.
+Alpha24 field acceptance in this batch is on Linux; the historical probes are not
+per-platform revalidation of this release.
 
 ### Install From PyPI
 
 ```bash
-python -m pip install continuity-plane==0.1.0a23
+python -m pip install continuity-plane==0.1.0a24
 ```
 
 The release includes non-blocking lifecycle hooks, runtime diagnostics, explicit execution intent
@@ -74,6 +96,13 @@ command -v continuity-host-hook
 
 This selects the latest prerelease. Use an explicitly pinned project environment when a fixed
 release is required.
+If a pipx/uv backend refuses to recreate an existing environment, update its interpreter in place
+without moving native account configuration:
+
+```bash
+uv pip install --python /path/to/pipx/venvs/continuity-plane/bin/python \
+  --reinstall-package continuity-plane 'continuity-plane==0.1.0a24'
+```
 
 Use Claude Code's native plugin installer; hooks come from the plugin without replacing settings:
 
@@ -100,7 +129,7 @@ Download a wheel or source archive from
 [Continuity Plane Releases](https://github.com/skyhua0224/continuity-plane/releases):
 
 ```bash
-python -m pip install /path/to/continuity_plane-0.1.0a23-py3-none-any.whl
+python -m pip install /path/to/continuity_plane-0.1.0a24-py3-none-any.whl
 ```
 
 ### Install Once For Many Projects
@@ -111,7 +140,7 @@ projects:
 ```bash
 python3 -m venv ~/.local/share/continuity-plane/venv
 ~/.local/share/continuity-plane/venv/bin/python \
-  -m pip install continuity-plane==0.1.0a23
+  -m pip install continuity-plane==0.1.0a24
 ```
 
 Run the installed CLI with an explicit project root whenever the command is not
@@ -129,7 +158,7 @@ For a project that pins its own control-plane version:
 ```bash
 cd /path/to/project
 python3 -m venv .venv
-.venv/bin/python -m pip install continuity-plane==0.1.0a23
+.venv/bin/python -m pip install continuity-plane==0.1.0a24
 .venv/bin/continuity init --root . --project-id my-project
 ```
 
@@ -296,7 +325,7 @@ single-user installation. Install the optional extra in the environment that
 will run the adapter:
 
 ```bash
-python -m pip install 'continuity-plane[postgres]==0.1.0a23'
+python -m pip install 'continuity-plane[postgres]==0.1.0a24'
 ```
 
 The alpha CLI still defaults to SQLite. PostgreSQL is selected by an explicit
@@ -389,8 +418,8 @@ the advanced State plugin only for explicit State operations.
 Install the core package, then add this GitHub repository as a marketplace:
 
 ```bash
-python -m pip install continuity-plane==0.1.0a23
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.23
+python -m pip install continuity-plane==0.1.0a24
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.24
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -677,12 +706,12 @@ storage.
 
 The current version is available from PyPI and GitHub Releases:
 
-<https://pypi.org/project/continuity-plane/0.1.0a23/>  
+<https://pypi.org/project/continuity-plane/0.1.0a24/>  
 <https://github.com/skyhua0224/continuity-plane/releases>
 
-The current public release used a controlled PyPI token. A GitHub Actions OIDC
-workflow and `pypi` environment are ready, but the PyPI project still needs its
-Trusted Publisher binding. The token is not stored in the repository or a GitHub
+GitHub Releases trigger the build and PyPI OIDC publishing workflow in the `pypi`
+environment. Publication authorization depends on the PyPI project's Trusted
+Publisher binding. Tokens are not stored in the repository or a GitHub
 secret.
 
 ## Verify The Release

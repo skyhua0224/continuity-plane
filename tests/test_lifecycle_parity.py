@@ -17,6 +17,24 @@ from continuity_plane.executor_routing import recommend
 
 
 class LifecycleParityTests(unittest.TestCase):
+    def test_installed_host_entry_routes_config_before_reading_native_stdin(self):
+        from continuity_plane.lifecycle import host_main
+
+        for arguments in (
+            ["--config", "/workspace/bridge.json"],
+            ["--config=/workspace/bridge.json"],
+        ):
+            with (
+                patch("sys.argv", ["continuity-host-hook", *arguments]),
+                patch(
+                    "continuity_plane.remote_hook.main", return_value=0
+                ) as bridge,
+                patch("continuity_plane.lifecycle.json.load") as local_read,
+            ):
+                self.assertEqual(host_main(), 0)
+                bridge.assert_called_once_with(arguments)
+                local_read.assert_not_called()
+
     def test_both_mcp_handshakes_report_the_cli_version(self):
         from continuity_plane.cli import VERSION
 
@@ -61,6 +79,32 @@ class LifecycleParityTests(unittest.TestCase):
             self.assertIn(
                 "ordinary project work remains allowed", reply["error"]["message"]
             )
+
+    def test_same_version_upgrade_detects_changes_in_lazy_planning_modules(self):
+        from continuity_plane import release_version
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            lazy = root / "card_todo.py"
+            lazy.write_text("VALUE = 1\n")
+            with patch.object(
+                release_version, "__file__", str(root / "release_version.py")
+            ):
+                original = release_version._code_fingerprint()
+                with (
+                    patch.object(
+                        release_version, "_STARTED_CODE_FINGERPRINT", original
+                    ),
+                    patch.object(
+                        release_version, "_installed_version", return_value=None
+                    ),
+                ):
+                    self.assertIsNone(release_version.runtime_version_issue())
+                    lazy.write_text("VALUE = 2\n")
+                    self.assertIn(
+                        "restart this MCP process",
+                        release_version.runtime_version_issue(),
+                    )
 
     def test_saved_return_point_restored_once_each_compaction_on_both_hosts(self):
         for host in ("codex", "claude"):
@@ -178,17 +222,22 @@ class LifecycleParityTests(unittest.TestCase):
                     timeout=15,
                 )
                 self.assertEqual(result.returncode, 0, result.stderr)
-                if event == "PostCompact":
+                if event == "SessionStart":
                     output = json.loads(result.stdout)
+                    self.assertEqual(set(output), {"hookSpecificOutput"})
+                    injected = len(
+                        output["hookSpecificOutput"]["additionalContext"].encode()
+                    )
                     self.assertIn(
                         "Continue precise test",
                         output["hookSpecificOutput"]["additionalContext"],
                     )
-                elif event == "SessionStart":
+                elif event == "PostCompact":
                     self.assertEqual(result.stdout, "")
             meter = report(root, data_root=data)
-            self.assertIn("checkpoint:create:ok", meter["by_command"])
-            self.assertIn("checkpoint:verify:ok", meter["by_command"])
+            self.assertEqual(meter["hook_injected_bytes"], injected)
+            self.assertIn("checkpoint:session-handoff:create:ok", meter["by_command"])
+            self.assertIn("checkpoint:session-handoff:verify:ok", meter["by_command"])
 
     def test_executor_preferences_match_requested_modes(self):
         self.assertEqual(recommend()["candidates"][:2], ["sonnet", "sol"])

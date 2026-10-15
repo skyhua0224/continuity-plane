@@ -1,0 +1,795 @@
+"""One parameter contract for local planning CLI, MCP, and on-demand help."""
+
+from __future__ import annotations
+
+import argparse
+import contextlib
+import copy
+import io
+import json
+from pathlib import Path
+
+OPERATIONS = {
+    "storage.inspect": ("storage", "inspect"),
+    **{
+        f"quota.{name}": ("quota", name)
+        for name in ("record", "report", "handoff", "return")
+    },
+    **{
+        f"rules.{name}": ("rules", name)
+        for name in (
+            "export",
+            "attachment",
+            "update",
+            "history",
+            "affected",
+            "snapshot-export",
+            "snapshot-import",
+            "import",
+        )
+    },
+    **{
+        f"reference.{name}": ("reference", name)
+        for name in ("add", "list", "show", "record", "preference")
+    },
+    **{
+        f"todo.{name}": ("todo", name)
+        for name in (
+            "compile",
+            "list",
+            "complete",
+            "block",
+            "link",
+            "activate",
+            "from-cards",
+        )
+    },
+    **{
+        f"task.{name}": ("collaboration", "task", name)
+        for name in ("add", "update", "list", "show", "claim", "next")
+    },
+    **{
+        name: ("collaboration", name)
+        for name in (
+            "packet",
+            "changes",
+            "wait",
+            "recommend",
+            "scenarios",
+            "doctor",
+            "drift",
+            "prompt",
+            "batch-add",
+            "batch-list",
+            "status-render",
+            "decision-add",
+            "decision-list",
+            "outbox-replay",
+            "repair-events",
+        )
+    },
+    **{
+        f"inbox.{name}": ("collaboration", "inbox", name)
+        for name in ("send", "list", "ack")
+    },
+    **{
+        name: ("collaboration", name.replace(".", "-"))
+        for name in (
+            "rule.add",
+            "rule.list",
+            "commitment.add",
+            "commitment.list",
+            "commitment.close",
+        )
+    },
+    "project.register": ("collaboration", "register"),
+    "whoami": ("whoami",),
+    "usage.ingest": ("observe", "ingest-usage"),
+    "usage.report": ("observe", "report"),
+    "worker.prepare": ("worker", "prepare"),
+}
+ALIASES = {
+    f"continuity_todo_{name}": f"todo.{name}"
+    for name in ("compile", "list", "complete", "block", "link", "activate")
+}
+CLI_HELP = {
+    "quota.refresh": ("quota", "refresh"),
+    "quota.tick": ("quota", "tick"),
+    **{
+        f"worker.{n}": ("worker", n)
+        for n in ("dispatch", "resume", "report", "configure")
+    },
+    "supervisor.run": ("supervisor", "run"),
+    "bridge.install": ("bridge", "install"),
+    "task.merged": ("task", "merged"),
+    **{
+        f"context.{n}": ("context", n)
+        for n in ("index", "lookup", "search", "dependents")
+    },
+}
+ALIASES.update(continuity_collaboration=None)
+READ_ACTIONS = {
+    "storage.inspect",
+    "reference.list",
+    "reference.show",
+    "rules.export",
+    "rules.attachment",
+    "rules.history",
+    "rules.affected",
+    "worker.prepare",
+    "prompt",
+    "batch-list",
+    "status-render",
+    "decision-list",
+    "usage.report",
+    "quota.report",
+    "whoami",
+    "task.list",
+    "task.show",
+    "task.next",
+    "todo.list",
+    "packet",
+    "changes",
+    "wait",
+    "scenarios",
+    "doctor",
+    "drift",
+    "rule.list",
+    "commitment.list",
+    "inbox.list",
+}
+PLURALS = {
+    "exit_criteria": "exit_criterion",
+    "allowed_files": "allowed_file",
+    "preauthorized_effects": "preauthorized_effect",
+    "queued_effects": "queued_effect",
+}
+
+
+def _parser(operation):
+    from .cli import build_parser
+
+    if operation not in OPERATIONS and operation not in CLI_HELP:
+        raise ValueError("unsupported planning operation; use continuity help overview")
+    parser = build_parser()
+    for part in (OPERATIONS | CLI_HELP)[operation]:
+        group = next(
+            a for a in parser._actions if isinstance(a, argparse._SubParsersAction)
+        )
+        parser = group.choices[part]
+    return parser
+
+
+def help_for(topic="overview"):
+    if topic in {
+        "overview",
+        "todo",
+        "task",
+        "collaboration",
+        "reference",
+        "rules",
+        "worker",
+        "supervisor",
+        "bridge",
+        "context",
+    }:
+        names = [
+            name
+            for name in (OPERATIONS | CLI_HELP)
+            if topic in {"overview", "collaboration"} or name.startswith(topic + ".")
+        ]
+        return {
+            "topic": topic,
+            "operations": names,
+            "scope": "Local planning metadata only; no State claim, provider launch, merge or deployment.",
+            "next": "Use continuity help OPERATION for its complete CLI/MCP parameters.",
+            "cli_only_operations": list(CLI_HELP),
+        }
+    parser = _parser(topic)
+    parameters = []
+    for action in parser._actions:
+        if action.dest == "help":
+            continue
+        parameters.append(
+            {
+                "name": "full" if "--full" in action.option_strings else action.dest,
+                "flags": action.option_strings,
+                "required": action.required,
+                "repeatable": isinstance(action, argparse._AppendAction),
+                "type": getattr(
+                    action.type,
+                    "__name__",
+                    "boolean"
+                    if isinstance(
+                        action, (argparse._StoreTrueAction, argparse._StoreFalseAction)
+                    )
+                    else "string",
+                ),
+                "choices": list(action.choices) if action.choices is not None else None,
+                "default": action.default,
+                "help": action.help,
+            }
+        )
+    return {
+        "operation": topic,
+        "cli_only": topic in CLI_HELP,
+        "parameters": parameters,
+        "help": parser.format_help(),
+        "mutates_local_metadata": topic not in READ_ACTIONS,
+    }
+
+
+def _brief(value):
+    if isinstance(value, dict):
+        if "prompt" in value and "prompt_sha256" in value:
+            return [
+                f"prompt_sha256={value['prompt_sha256']} rules_digest={value.get('rules_digest')}",
+                value["prompt"],
+            ]
+        if "rules" in value and "rules_digest" in value:
+            return [
+                f"complete={value.get('complete')} rules={value.get('rule_count')} digest={value['rules_digest']}"
+            ] + [_row(r) for r in value["rules"]]
+        if "offset_chars" in value and "sha256" in value:
+            return [
+                f"sha256={value['sha256']} offset={value['offset_chars']} next_offset={value.get('next_offset_chars')} complete={value['complete']}",
+                value["text"],
+            ]
+        if "parameters" in value:
+            return [
+                value["operation"]
+                + (
+                    " (CLI only; not a planning MCP action)"
+                    if value.get("cli_only")
+                    else ""
+                ),
+                value["help"].strip(),
+            ]
+        if "operations" in value:
+            return [
+                value["scope"],
+                *[
+                    name
+                    + (
+                        " (CLI only)"
+                        if name in value.get("cli_only_operations", [])
+                        else ""
+                    )
+                    for name in value["operations"]
+                ],
+                value["next"],
+            ]
+        rows = next(
+            (
+                value[k]
+                for k in ("items", "tasks", "changes", "messages", "matches")
+                if isinstance(value.get(k), list)
+            ),
+            None,
+        )
+        if rows is not None:
+            heading = f"status={value.get('status', 'ok')} count={len(rows)}"
+            if "next_cursor" in value:
+                heading += f" next_cursor={value['next_cursor']} timed_out={value.get('timed_out', False)}"
+            return [heading] + [_row(row) for row in rows]
+        return [_row(value)]
+    if isinstance(value, list):
+        return [f"count={len(value)}"] + [_row(row) for row in value]
+    return [str(value)]
+
+
+def _row(row):
+    if not isinstance(row, dict):
+        return str(row)
+    if "reference_id" in row:
+        fields = [
+            row.get("scope"),
+            row["reference_id"],
+            row.get("review_status"),
+            row.get("title"),
+            row.get("source"),
+            row.get("version"),
+            row.get("section"),
+        ]
+        if row.get("review_due"):
+            fields.append("review-due")
+        return " | ".join(str(v).replace("\n", " ") for v in fields if v)
+    identity = (
+        row.get("rule_id")
+        or row.get("task_id")
+        or row.get("item_id")
+        or row.get("message_id")
+        or row.get("project_id")
+        or ""
+    )
+    status = row.get("status") or row.get("event") or ""
+    title = (
+        row.get("title")
+        or row.get("next_action")
+        or row.get("text")
+        or row.get("reason")
+        or ""
+    )
+    if not identity and not status and not title:
+        return json.dumps(row, ensure_ascii=False, sort_keys=True)
+    line = " | ".join(str(v).replace("\n", " ") for v in (identity, status, title) if v)
+    if row.get("assignee"):
+        line += " | " + str(row["assignee"])
+    if row.get("next_action") and row.get("title"):
+        line += " -> " + str(row["next_action"]).replace("\n", " ")
+    if row.get("attachment"):
+        line += (
+            " | attachment="
+            + row["attachment"]["sha256"]
+            + " "
+            + row["attachment"]["read_command"]
+        )
+    if row.get("evidence_gaps"):
+        line += " | EVIDENCE GAPS: " + ", ".join(row["evidence_gaps"])
+    if row.get("planning_warnings"):
+        line += " | NOTE: " + "; ".join(row["planning_warnings"])
+    return line
+
+
+def render(value, *, format="json", max_output_bytes=8192):
+    if type(max_output_bytes) is not int or not 1024 <= max_output_bytes <= 131072:
+        raise ValueError("max_output_bytes must be between 1024 and 131072")
+    if format not in {"json", "brief"}:
+        raise ValueError("format must be json or brief")
+    budget = max_output_bytes - 1  # reserve the CLI newline
+    if format == "brief":
+        text = "\n".join(_brief(value))
+        if len(text.encode()) > budget:
+            suffix = "\n[output truncated; narrow filters or increase max_output_bytes]"
+            text = (
+                text.encode()[: budget - len(suffix.encode())].decode("utf-8", "ignore")
+                + suffix
+            )
+        return text
+    view = copy.deepcopy(value)
+    while True:
+        text = json.dumps(view, ensure_ascii=False, sort_keys=True)
+        if len(text.encode()) <= budget:
+            return text
+        if isinstance(view, list):
+            view = {"items": view, "total_items": len(view), "truncated": True}
+        elif isinstance(view, dict):
+            key = next(
+                (
+                    k
+                    for k in (
+                        "items",
+                        "tasks",
+                        "changes",
+                        "parameters",
+                        "messages",
+                        "matches",
+                    )
+                    if isinstance(view.get(k), list) and view[k]
+                ),
+                None,
+            )
+            if key:
+                view.setdefault("total_" + key, len(view[key]))
+                view[key].pop()
+                view["truncated"] = True
+                if key == "changes":
+                    view["next_cursor"] = (
+                        view[key][-1]["cursor"] if view[key] else view.get("since", 0)
+                    )
+            else:
+                essential = {
+                    k: v
+                    for k, v in view.items()
+                    if k
+                    in {
+                        "task_id",
+                        "item_id",
+                        "status",
+                        "queue_id",
+                        "project_id",
+                        "next_cursor",
+                        "total_items",
+                        "total_tasks",
+                        "total_changes",
+                        "timed_out",
+                    }
+                }
+                essential.update(
+                    truncated=True,
+                    details_omitted=True,
+                    hint="Increase max_output_bytes for complete fields.",
+                )
+                if essential == view:
+                    raise ValueError("output identifiers exceed budget")
+                view = essential
+        else:
+            view = {"truncated": True, "hint": "Increase max_output_bytes"}
+
+
+def execute(operation, parameters=None, *, root=None, project_id=None, data_root=None):
+    """Invoke an allowlisted metadata command in-process, never a shell/worker."""
+    from .cli import main
+    from .collaboration_registry import list_projects, resolve_project
+
+    if operation not in OPERATIONS:
+        raise ValueError(
+            "This operation is CLI-only; planning MCP never starts providers or installs host configuration"
+        )
+
+    parser = _parser(operation)
+    parameters = {str(k).replace("-", "_"): v for k, v in (parameters or {}).items()}
+    if operation == "status-render" and parameters.get("output"):
+        raise ValueError(
+            "status file output is CLI-only; planning MCP returns the read-only projection"
+        )
+    if operation == "quota.return" and parameters.get("execute"):
+        raise ValueError(
+            "executing a provider handoff is CLI-only; planning MCP can preview it"
+        )
+    if "full" in parameters:
+        full = parameters.pop("full")
+        if type(full) is not bool:
+            raise ValueError("full must be boolean")
+        if "summary" in parameters and parameters["summary"] != (not full):
+            raise ValueError("conflicting full and summary")
+        parameters["summary"] = not full
+    for key in ("root", "project_id", "data_root"):
+        if key in parameters:
+            value = parameters.pop(key)
+            current = {"root": root, "project_id": project_id, "data_root": data_root}[
+                key
+            ]
+            if current is not None and current != value:
+                raise ValueError(f"conflicting {key}")
+            if key == "root":
+                root = value
+            elif key == "project_id":
+                project_id = value
+            else:
+                data_root = value
+    if root is not None and (not isinstance(root, str) or not Path(root).is_absolute()):
+        raise ValueError("root must be an absolute project path")
+    if data_root is not None and (
+        not isinstance(data_root, str) or not Path(data_root).is_absolute()
+    ):
+        raise ValueError("data_root must be an absolute path")
+    registration = resolve_project(root, data_root) if root else None
+    if project_id and registration and registration["project_id"] != project_id:
+        raise ValueError("root and project_id refer to different projects")
+    if project_id and root is None:
+        registration = next(
+            (p for p in list_projects(data_root) if p["project_id"] == project_id), None
+        )
+        root = registration["control_root"] if registration else None
+    project_id = project_id or (registration or {}).get("project_id")
+    if operation != "scenarios" and root is None:
+        raise ValueError("supply root or a registered project_id")
+    if operation == "project.register":
+        existing = next(
+            (p for p in list_projects(data_root) if p["project_id"] == project_id), None
+        )
+        if (
+            existing
+            and Path(existing["control_root"]).resolve() != Path(root).resolve()
+        ):
+            raise ValueError("project_id is already registered at a different root")
+        if (
+            parameters.get("control_root")
+            and Path(parameters["control_root"]).resolve() != Path(root).resolve()
+        ):
+            raise ValueError("root and control_root refer to different projects")
+    if (
+        operation.startswith("todo.") is False
+        and not operation.startswith("reference.")
+        and not operation.startswith("usage.")
+        and not operation.startswith("rules.")
+        and not operation.startswith("worker.")
+        and operation not in {"scenarios", "project.register", "whoami"}
+        and project_id is None
+    ):
+        raise ValueError(
+            "project is not registered; use project.register or supply project_id"
+        )
+    actions = {a.dest: a for a in parser._actions if a.dest != "help"}
+    if "format" in actions:
+        parameters.setdefault("format", "json")
+    for key, value in (
+        ("root", root),
+        ("project_id", project_id),
+        ("data_root", data_root),
+    ):
+        if value is not None and key in actions:
+            if key in parameters and parameters[key] != value:
+                raise ValueError(f"conflicting {key}")
+            parameters[key] = value
+    if operation == "project.register" and "control_root" not in parameters:
+        parameters["control_root"] = root
+    argv = list(OPERATIONS[operation])
+    for key, value in parameters.items():
+        key = PLURALS.get(key.replace("-", "_"), key.replace("-", "_"))
+        if key not in actions:
+            aliases = {
+                flag[2:].replace("-", "_"): a.dest
+                for a in parser._actions
+                for flag in a.option_strings
+                if flag.startswith("--")
+            }
+            key = aliases.get(key, key)
+        if key not in actions:
+            raise ValueError(
+                f"unsupported parameter {key}; use continuity_help({operation})"
+            )
+        if value is None:
+            continue
+        action = actions[key]
+        flag = next((f for f in action.option_strings if f.startswith("--")), None)
+        if flag is None:
+            raise ValueError(f"positional parameter {key} is not supported")
+        if isinstance(action, (argparse._StoreTrueAction, argparse._StoreFalseAction)):
+            if type(value) is not bool:
+                raise ValueError(f"{key} must be boolean")
+            if value == isinstance(action, argparse._StoreTrueAction):
+                argv.append(flag)
+        elif isinstance(action, argparse._AppendAction):
+            if not isinstance(value, list):
+                raise ValueError(f"{key} must be a list")
+            for entry in value:
+                if isinstance(entry, (dict, list)):
+                    raise ValueError(f"{key} entries must be scalar")
+                argv.append(f"{flag}={entry}")
+        else:
+            if isinstance(value, (dict, list)):
+                raise ValueError(f"{key} must be scalar")
+            argv.append(f"{flag}={value}")
+    output, error = io.StringIO(), io.StringIO()
+    with contextlib.redirect_stdout(output), contextlib.redirect_stderr(error):
+        try:
+            code = main(argv)
+        except SystemExit as exc:
+            raise ValueError(
+                error.getvalue().strip() or f"invalid parameters for {operation}"
+            ) from exc
+    text = output.getvalue().strip()
+    if code not in {0, 2}:
+        raise ValueError(f"{operation} failed with code {code}")
+    try:
+        value = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"{operation} did not return JSON") from exc
+    return value
+
+
+def tool_definitions():
+    scope = {
+        "root": {"type": "string", "minLength": 1},
+        "project_id": {"type": "string", "minLength": 1},
+        "data_root": {"type": "string", "minLength": 1},
+        "format": {"enum": ["brief", "json"]},
+        "max_output_bytes": {"type": "integer", "minimum": 1024, "maximum": 131072},
+    }
+    return [
+        {
+            "name": "continuity_help",
+            "description": "Discover exact planning parameters from the CLI contract. Start with overview, then a specific operation. Read-only; no project claim.",
+            "annotations": {
+                "readOnlyHint": True,
+                "destructiveHint": False,
+                "openWorldHint": False,
+            },
+            "inputSchema": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "topic": {"type": "string", "default": "overview"},
+                    "format": scope["format"],
+                    "max_output_bytes": scope["max_output_bytes"],
+                },
+            },
+        },
+        {
+            "name": "continuity_plan",
+            "description": "Manage Todo, task cards, collaboration and reference sources with full CLI parameter parity. Use continuity_help for parameter names. Local metadata only: no State claim, provider launch, merge or deployment. Default brief output.",
+            "annotations": {
+                "readOnlyHint": False,
+                "destructiveHint": False,
+                "openWorldHint": False,
+            },
+            "inputSchema": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["action"],
+                "properties": {
+                    **scope,
+                    "action": {"enum": list(OPERATIONS)},
+                    "parameters": {"type": "object", "default": {}},
+                },
+            },
+        },
+    ]
+
+
+def extend_tools(legacy):
+    for tool in legacy:
+        if tool["name"] in ALIASES:
+            properties = tool["inputSchema"]["properties"]
+            properties.update(
+                data_root={"type": "string"},
+                project_id={"type": "string"},
+                format={"enum": ["json", "brief"]},
+                max_output_bytes={
+                    "type": "integer",
+                    "minimum": 1024,
+                    "maximum": 131072,
+                },
+            )
+            tool["inputSchema"]["required"] = [
+                k for k in tool["inputSchema"].get("required", []) if k != "root"
+            ]
+            tool["description"] += (
+                " Full parameter help: continuity_help; root or project_id."
+            )
+            if tool["name"] == "continuity_todo_compile":
+                properties["prompt"]["maxLength"] = 24000
+            operation = ALIASES[tool["name"]]
+            if operation is not None:
+                for spec in help_for(operation)["parameters"]:
+                    name = spec["name"]
+                    if name in properties:
+                        continue
+                    types = {"int": "integer", "float": "number", "boolean": "boolean"}
+                    schema = {"type": types.get(spec["type"], "string")}
+                    if spec["choices"] is not None:
+                        schema["enum"] = spec["choices"]
+                    if spec["repeatable"]:
+                        schema = {"type": "array", "items": schema}
+                    properties[name] = schema
+            if tool["name"] == "continuity_collaboration":
+                properties.update(
+                    status={"type": "string"},
+                    lane_id={"type": "string"},
+                    updated_after={"type": "string"},
+                    all={"type": "boolean"},
+                    audience={"type": "string"},
+                    max_entities={"type": "integer", "minimum": 1, "maximum": 10},
+                )
+    for name, operation, needed in (
+        ("continuity_todo_link", "todo.link", ["item_id", "task_id"]),
+        ("continuity_todo_activate", "todo.activate", ["item_id", "reason"]),
+    ):
+        legacy.append(
+            {
+                "name": name,
+                "description": f"Local {operation}; no State claim. Use continuity_help for all parameters.",
+                "annotations": {
+                    "readOnlyHint": False,
+                    "destructiveHint": False,
+                    "openWorldHint": False,
+                },
+                "inputSchema": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "required": needed,
+                    "properties": {
+                        "root": {"type": "string"},
+                        "project_id": {"type": "string"},
+                        "data_root": {"type": "string"},
+                        **(
+                            {"session_id": {"type": "string"}}
+                            if operation == "todo.activate"
+                            else {}
+                        ),
+                        **{key: {"type": "string", "minLength": 1} for key in needed},
+                        "format": {"enum": ["brief", "json"]},
+                        "max_output_bytes": {
+                            "type": "integer",
+                            "minimum": 1024,
+                            "maximum": 131072,
+                        },
+                    },
+                },
+            }
+        )
+    return legacy + tool_definitions()
+
+
+def handle_tool(name, arguments):
+    original = dict(arguments)
+    arguments = dict(arguments)
+    format = arguments.pop(
+        "format", "brief" if name in {"continuity_help", "continuity_plan"} else "json"
+    )
+    default_budget = (
+        65536
+        if name == "continuity_plan"
+        and arguments.get("action")
+        in {"rules.export", "rules.history", "rules.attachment"}
+        else 8192
+    )
+    budget = arguments.pop("max_output_bytes", default_budget)
+    render({}, format=format, max_output_bytes=budget)  # validate before any mutation
+    if name == "continuity_help":
+        value = help_for(arguments.pop("topic", "overview"))
+        if arguments:
+            raise ValueError("unsupported help arguments")
+    else:
+        root = arguments.pop("root", None)
+        project_id = arguments.pop("project_id", None)
+        data_root = arguments.pop("data_root", None)
+        if name == "continuity_plan":
+            operation = arguments.pop("action")
+            parameters = arguments.pop("parameters", {})
+            if arguments:
+                raise ValueError("unsupported planning arguments")
+        elif name == "continuity_collaboration":
+            operation = {
+                "packet": "packet",
+                "changes": "changes",
+                "rules": "rule.list",
+                "commitments": "commitment.list",
+                "tasks": "task.list",
+            }.get(arguments.pop("action", None))
+            parameters = arguments
+            arguments = {}
+        else:
+            operation = ALIASES[name]
+            parameters = arguments
+            arguments = {}
+        if not isinstance(parameters, dict):
+            raise ValueError("parameters must be an object")
+        parameters = dict(parameters)
+        requested_format = parameters.pop("format", None)
+        if requested_format is not None:
+            if "format" in original and requested_format != format:
+                raise ValueError("conflicting output format")
+            format = requested_format
+        if "max_output_bytes" in parameters:
+            requested_budget = parameters.pop("max_output_bytes")
+            render({}, max_output_bytes=requested_budget)
+            budget = min(budget, requested_budget)
+        render({}, format=format, max_output_bytes=budget)
+        actions = {a.dest for a in _parser(operation)._actions}
+        if "format" in actions:
+            parameters["format"] = "json"
+        if "max_output_bytes" in actions:
+            parameters["max_output_bytes"] = budget
+        value = execute(
+            operation, parameters, root=root, project_id=project_id, data_root=data_root
+        )
+    text = render(value, format=format, max_output_bytes=budget)
+    result = {
+        "content": [{"type": "text", "text": text}],
+        **(
+            {"structuredContent": value}
+            if format == "json"
+            and len(json.dumps(value, ensure_ascii=False).encode()) < budget - 256
+            else {}
+        ),
+    }
+    try:
+        from .usage_meter import record
+        from .collaboration_registry import list_projects
+
+        project_root = original.get("root")
+        if not project_root and original.get("project_id"):
+            project = next(
+                (
+                    p
+                    for p in list_projects(original.get("data_root"))
+                    if p["project_id"] == original["project_id"]
+                ),
+                None,
+            )
+            project_root = project["control_root"] if project else None
+        if project_root:
+            record(
+                project_root,
+                command="mcp:" + name,
+                response_bytes=len(json.dumps(result, ensure_ascii=False).encode()),
+                estimated_grep_bytes=0,
+                data_root=original.get("data_root"),
+                host="mcp",
+            )
+    except (OSError, ValueError):
+        pass
+    return result

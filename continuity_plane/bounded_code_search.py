@@ -16,7 +16,27 @@ MAX_QUERY_BYTES = 1024
 MAX_EXCERPT_BYTES = 512
 MAX_RESULTS = 200
 MAX_OUTPUT_BYTES = 64 * 1024
-_STOPWORDS = {"a", "an", "and", "are", "by", "check", "does", "from", "how", "is", "of", "that", "the", "to", "what", "where", "which", "who", "with"}
+_STOPWORDS = {
+    "a",
+    "an",
+    "and",
+    "are",
+    "by",
+    "check",
+    "does",
+    "from",
+    "how",
+    "is",
+    "of",
+    "that",
+    "the",
+    "to",
+    "what",
+    "where",
+    "which",
+    "who",
+    "with",
+}
 _FIELDS = {
     "schema_version",
     "repository_revision",
@@ -125,16 +145,30 @@ def bounded_git_search(
     if revision_result.returncode != 0:
         raise ValueError("repository revision is unavailable")
     revision = revision_result.stdout.decode("ascii").strip()
-    terms = [term for term in re.findall(r"[A-Za-z0-9_+.-]+", query.casefold()) if term not in _STOPWORDS and len(term) > 2]
+    terms = [
+        term
+        for term in re.findall(r"[A-Za-z0-9_+.-]+", query.casefold())
+        if term not in _STOPWORDS and len(term) > 2
+    ]
     if not terms:
         terms = [query.casefold()]
-    normalized_extensions = {item.casefold() if item.startswith(".") else "." + item.casefold() for item in (extensions or [])}
+    normalized_extensions = {
+        item.casefold() if item.startswith(".") else "." + item.casefold()
+        for item in (extensions or [])
+    }
     # Use the rarest meaningful term as the candidate seed. This keeps a
     # natural-language question useful without scanning every source body.
     term_counts: list[tuple[int, str]] = []
     for term in terms:
         probe = _git(root, "grep", "-l", "-I", "-i", "-F", "--", term)
-        term_counts.append((len(probe.stdout.splitlines()) if probe.returncode in {0, 1} else 1_000_000, term))
+        term_counts.append(
+            (
+                len(probe.stdout.splitlines())
+                if probe.returncode in {0, 1}
+                else 1_000_000,
+                term,
+            )
+        )
     seed = min(term_counts)[1]
     search = _git(root, "grep", "-n", "-I", "-i", "-F", "-z", "--", seed)
     if search.returncode not in {0, 1}:
@@ -150,9 +184,16 @@ def bounded_git_search(
         except (UnicodeDecodeError, ValueError):
             continue
         relative = Path(relative_text)
-        if path_prefix and not relative.as_posix().startswith(path_prefix.rstrip("/") + "/") and relative.as_posix() != path_prefix.rstrip("/"):
+        if (
+            path_prefix
+            and not relative.as_posix().startswith(path_prefix.rstrip("/") + "/")
+            and relative.as_posix() != path_prefix.rstrip("/")
+        ):
             continue
-        if normalized_extensions and relative.suffix.casefold() not in normalized_extensions:
+        if (
+            normalized_extensions
+            and relative.suffix.casefold() not in normalized_extensions
+        ):
             continue
         path = (root / relative).resolve()
         try:
@@ -176,8 +217,17 @@ def bounded_git_search(
             required_hits = len(terms) if len(terms) <= 3 else max(2, len(terms) // 3)
             if hits < required_hits:
                 continue
-        density = sum(source_text.count(term) for term in terms) if len(terms) > 1 else 1
-        build_file = relative.name.casefold() in {"cmakelists.txt", "makefile"} or "generated" in relative.as_posix().casefold()
+        density = (
+            sum(source_text.count(term) for term in terms) if len(terms) > 1 else 1
+        )
+        build_file = (
+            relative.name.casefold() in {"cmakelists.txt", "makefile"}
+            or "generated" in relative.as_posix().casefold()
+        )
+        line_text = excerpt.casefold()
+        coverage = sum(term in line_text for term in terms)
+        positions = [line_text.find(term) for term in terms if term in line_text]
+        span = max(positions) - min(positions) if positions else 999999
         candidates.append(
             {
                 "path": relative.as_posix(),
@@ -185,7 +235,14 @@ def bounded_git_search(
                 "excerpt": excerpt,
                 "line_sha256": hashlib.sha256(line).hexdigest(),
                 "file_sha256": hashlib.sha256(payload).hexdigest(),
-                "_sort": (1 if build_file else 0, -density, relative.as_posix(), line_number),
+                "_sort": (
+                    1 if build_file else 0,
+                    -coverage,
+                    span,
+                    -density,
+                    relative.as_posix(),
+                    line_number,
+                ),
             }
         )
     candidates.sort(key=lambda item: item.pop("_sort"))
@@ -214,8 +271,18 @@ def bounded_git_search(
     validate_bounded_code_search_receipt(receipt, root=root)
     try:
         from .usage_meter import record
+
         if record_usage:
-            record(root, command="context search", response_bytes=receipt["returned_bytes"], estimated_grep_bytes=sum(len(item["excerpt"].encode()) + len(item["path"]) + 32 for item in candidates), data_root=data_root)
+            record(
+                root,
+                command="context search",
+                response_bytes=receipt["returned_bytes"],
+                estimated_grep_bytes=sum(
+                    len(item["excerpt"].encode()) + len(item["path"]) + 32
+                    for item in candidates
+                ),
+                data_root=data_root,
+            )
     except OSError:
         pass
     return receipt
@@ -246,7 +313,10 @@ def validate_bounded_code_search_receipt(
         raise ValueError("matched_before_limit is inaccurate")
     if value["truncated"] is not (value["matched_before_limit"] > len(matches)):
         raise ValueError("truncated is inaccurate")
-    if value["state_write_authority"] is not False or value["memory_authority"] is not False:
+    if (
+        value["state_write_authority"] is not False
+        or value["memory_authority"] is not False
+    ):
         raise ValueError("search receipt cannot carry authority")
     repository_root = Path(root).resolve() if root is not None else None
     for match in matches:

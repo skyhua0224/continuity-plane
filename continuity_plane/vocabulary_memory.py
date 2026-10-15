@@ -21,7 +21,7 @@ _SCOPE = {"global", "project"}
 _CONFIDENCE = {"candidate", "confirmed"}
 _SECRET_RE = re.compile(
     r"(?:api[_-]?key|token|secret|password|passwd|authorization|bearer"
-    r"|private[_-]?key|access[_-]?key|credential)\s*[:=]",
+    r"|private[_-]?key|access[_-]?key|credential)[\"']?\s*[:=]",
     re.IGNORECASE,
 )
 

@@ -1107,7 +1107,7 @@ def _collaboration_context(payload: dict[str, Any]) -> str | None:
         )
         if task.get("status") == "queued":
             lines.append(
-                "Queued task only: do not activate it while another authoritative Work is active."
+                "Queued planning task: pick it up within the agreed plan. State Work does not block ordinary Todo/card coordination."
             )
     for entity in vocabulary if isinstance(vocabulary, list) else []:
         if isinstance(entity, dict):
@@ -1123,16 +1123,10 @@ def _collaboration_context(payload: dict[str, Any]) -> str | None:
 
 
 def _intent_todo_context(payload: dict[str, Any], root: Path) -> str | None:
-    prompt = payload.get("prompt")
-    if not isinstance(prompt, str) or not prompt.strip():
-        return None
-    if not re.search(r"修复|补充|处理|完成|实现|测试|修改|需要|另外|并且|继续|execute|implement|fix", prompt, re.I):
-        return None
     try:
-        from continuity_plane.intent_todo import active_context, compile_queue
-
-        compile_queue(root, prompt)
-        return active_context(root)
+        from continuity_plane.planning_adoption import context
+        text=context(payload,root=root,host="codex")
+        return text
     except Exception:
         return None
 
@@ -1144,6 +1138,8 @@ def _adoption_context() -> str:
         "lookup, use narrow rg without repeating lookup or narrating routine fallback. "
         "Do not reinstall or change Codex configuration during project work. "
         "Retrieval needs no claim; resume only before explicit State writes."
+        " For explicit multi-step work or handoff, use continuity_help and continuity_plan "
+        "to maintain Todo and linked cards; missing metadata does not block ordinary work."
     )
 
 
@@ -1344,9 +1340,9 @@ def _execution_intent_context(payload: dict[str, Any]) -> str | None:
     if not _advisory_once(payload, "execution-intent"):
         return None
     return (
-        "Execution mode is active for the current Work. Continue with concrete code or "
-        "test actions without interim commentary. Report only completion, a real blocker, "
-        "or a decision that requires the user."
+        "Execution mode is active for the agreed stage. Continue with concrete code or "
+        "test actions. Brief progress notes are nonterminal; end at the requested boundary, "
+        "a real blocker, or a decision that requires the user."
     )
 
 
@@ -1378,25 +1374,34 @@ def _stop_continuation(payload: dict[str, Any], root: Path) -> int:
         return 0
     if _effect_policy() == "observe":
         return 0
+    transcript = payload.get("transcript_path")
+    cursor = None
+    if isinstance(transcript,str) and transcript:
+        cursor=derive_recent_interaction_cursor(Path(transcript))
+    if cursor is None:
+        cursor=_read_cursor(payload)
+    if not isinstance(cursor,dict) or cursor.get("response_mode")!="continue-silently":
+        return 0
     try:
         from continuity_plane.intent_todo import active_context, load_queue
+        from continuity_plane.collaboration_registry import resolve_project,next_task
 
-        queue = load_queue(root)
-        if queue is not None and queue.get("status") == "active":
-            context = active_context(root)
+        registration=resolve_project(root)
+        queue_root=Path(registration["control_root"]) if registration else root
+        queue = load_queue(queue_root)
+        session=payload.get("session_id")
+        actor=os.environ.get("CONTINUITY_ASSIGNEE") or session
+        active=next((i for i in (queue or {}).get("items",[]) if i.get("status")=="active"),None)
+        card=next_task(None,project_id=registration["project_id"],assignee=actor) if registration and actor else None
+        owned=bool(session and queue and (queue.get("owner_session_id")==session or
+                    (active and card and card.get("assignee")==actor and active.get("task_id")==card["task_id"])))
+        if owned and queue.get("status") == "active":
+            context = active_context(queue_root)
             if context is not None:
                 print(_canonical({"decision": "block", "reason": context}))
                 return 0
     except Exception:
         pass
-    transcript = payload.get("transcript_path")
-    cursor = None
-    if isinstance(transcript, str) and transcript:
-        cursor = derive_recent_interaction_cursor(Path(transcript))
-    if cursor is None:
-        cursor = _read_cursor(payload)
-    if not isinstance(cursor, dict) or cursor.get("response_mode") != "continue-silently":
-        return 0
     packet = _inspect_packet(root)
     if packet is None or packet.get("active_work") is None:
         return 0
@@ -1404,24 +1409,15 @@ def _stop_continuation(payload: dict[str, Any], root: Path) -> int:
     if next_action not in {"continue-active-work", "continue", "autorun", "remain-read-only"}:
         return 0
     if packet.get("source_fresh") is not True or packet.get("read_only") is not False:
-        print(_canonical({
-            "decision": "block",
-            "reason": (
-                "Continue ordinary source and test work from the current active Work. "
-                "Continuity State is read-only or stale; do not write State, claim, "
-                "checkpoint, SQLite, or external effects. Stop only for a real code "
-                "blocker or a required user decision."
-            ),
-        }))
         return 0
     if packet.get("open_blockers"):
         return 0
     print(_canonical({
         "decision": "block",
         "reason": (
-            "Continue the active Work from its next_action. Execute the next concrete "
-            "code or test action; do not report an intermediate result. Stop only for "
-            "a real blocker, a required user decision, or the Work's acceptance gate."
+            "Continue the latest authorized user task within the agreed stage. Execute "
+            "the next concrete code or test action. Brief progress notes are nonterminal. "
+            "End at the requested boundary, a real blocker or a required user decision."
         ),
     }))
     return 0
@@ -2432,7 +2428,7 @@ def _precompact(payload: dict[str, Any], root: Path) -> int:
         handle_event({**payload, "cwd": str(root), "hook_event_name": "PreCompact"}, host="codex")
     except (OSError, ValueError, TypeError, KeyError, ImportError):
         pass
-    if _effect_policy() == "observe":
+    if _effect_policy() == "observe" or os.environ.get("CONTINUITY_STATE_CHECKPOINTS") != "1":
         return 0
     _write_cursor(payload)
     _skill_lock_path()
@@ -2444,8 +2440,28 @@ def _precompact(payload: dict[str, Any], root: Path) -> int:
     return 0
 
 
+def _restore_shared_handoff(payload: dict[str, Any], root: Path) -> bool:
+    if os.environ.get("CONTINUITY_STATE_CHECKPOINTS") == "1":
+        return False
+    try:
+        from continuity_plane.lifecycle import handle_event
+        result=handle_event({**payload,"cwd":str(root)},host="codex")
+        if "hookSpecificOutput" in result or result.get("status")=="already-delivered":
+            try:
+                _clear_continuation_pending(payload,root)
+            except OSError:
+                pass
+            if "hookSpecificOutput" in result:
+                print(_canonical(result))
+            return True
+    except (OSError,ValueError,TypeError,KeyError,ImportError):
+        pass
+    return False
+
+
 def _postcompact(payload: dict[str, Any], root: Path) -> int:
-    if _effect_policy() == "observe":
+    if _effect_policy() == "observe" or os.environ.get("CONTINUITY_STATE_CHECKPOINTS") != "1":
+        _restore_shared_handoff(payload,root)
         return 0
     # Adoption guidance is useful even if State verification subsequently fails.
     _write_continuation_pending(payload, root)
@@ -2460,22 +2476,18 @@ def _postcompact(payload: dict[str, Any], root: Path) -> int:
     )
     if not success and _effect_policy() == "strict":
         _stop("Continuity checkpoint verification failed; continuation was stopped.")
+    _restore_shared_handoff(payload,root)
     return 0
 
 
 def _session_start(payload: dict[str, Any], root: Path) -> int:
+    if os.environ.get("CONTINUITY_STATE_CHECKPOINTS") != "1":
+        if _restore_shared_handoff(payload, root):
+            return 0
+        return _session_start_fallback(payload, root, failed_gate="session-handoff-unbound")
     if payload.get("source") == "compact":
-        try:
-            from continuity_plane.lifecycle import handle_event
-            result = handle_event({**payload, "cwd": str(root)}, host="codex")
-            if "hookSpecificOutput" in result:
-                print(_canonical(result))
-                _clear_continuation_pending(payload, root)
-                return 0
-            if result.get("status") == "already-delivered":
-                return 0
-        except (OSError, ValueError, TypeError, KeyError, ImportError):
-            pass
+        if _restore_shared_handoff(payload,root):
+            return 0
     cursor_path = (
         None
         if payload.get("hook_event_name") == "UserPromptSubmit"
@@ -2705,6 +2717,8 @@ def _session_start(payload: dict[str, Any], root: Path) -> int:
 
 
 def main() -> int:
+    if os.environ.get('CONTINUITY_DISABLED')=='1':
+        return 0
     try:
         payload = json.load(sys.stdin)
     except (json.JSONDecodeError, TypeError):
@@ -2861,6 +2875,7 @@ def main() -> int:
 
 def advisory_main() -> int:
     """Observe ordinary local tool boundaries without any State or effect policy."""
+    if os.environ.get('CONTINUITY_DISABLED')=='1': return 0
     try:
         encoded = sys.stdin.read(512 * 1024 + 1)
         if len(encoded) > 512 * 1024:
@@ -2904,6 +2919,9 @@ def advisory_main() -> int:
                 if bounded is not None:
                     contexts.append(bounded)
             if event == "PostToolUse":
+                from continuity_plane.controller_awareness import notice
+                changed=notice(payload,root=root,max_bytes=512)
+                if changed: contexts.append(changed)
                 live = _live_command_poll_context(payload)
                 if live is not None:
                     contexts.append(live)
