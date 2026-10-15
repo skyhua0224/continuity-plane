@@ -8,10 +8,12 @@ from pathlib import Path
 
 try:
     from .code_index import lookup_code_index
+    from .release_version import VERSION, runtime_version_issue
 except ImportError:  # pragma: no cover - exercised by the direct plugin launcher
     package_root = Path(__file__).resolve().parents[1]
     sys.path.insert(0, str(package_root))
     from continuity_plane.code_index import lookup_code_index
+    from continuity_plane.release_version import VERSION, runtime_version_issue
 
 
 _ANNOTATIONS = {
@@ -120,6 +122,11 @@ def main() -> int:
             continue
         request_id = request.get("id")
         method = request.get("method")
+        if request_id is not None:
+            issue = runtime_version_issue()
+            if issue:
+                _error(request_id, -32000, issue)
+                continue
         if method == "initialize":
             params = request.get("params")
             protocol = params.get("protocolVersion", "2025-06-18") if isinstance(params, dict) else "2025-06-18"
@@ -128,7 +135,7 @@ def main() -> int:
                 {
                     "protocolVersion": protocol,
                     "capabilities": {"tools": {}},
-                    "serverInfo": {"name": "continuity-search", "version": "0.1.0-alpha.20"},
+                    "serverInfo": {"name": "continuity-search", "version": VERSION},
                 },
             )
         elif method == "notifications/initialized":

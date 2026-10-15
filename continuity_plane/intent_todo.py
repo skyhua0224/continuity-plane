@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from .plan_route import master_route, route_context
+from .executor_routing import recommend
 
 SCHEMA_VERSION = "context.intent-todo/v1alpha1"
 MAX_ITEMS = 12
@@ -159,6 +160,7 @@ def compile_queue(
             key: route[key] for key in ("master_path", "section", "master_sha256")
         },
         "status": "active",
+        "execution_preferences": recommend(),
         "items": items,
         "created_at": _now(),
         "updated_at": _now(),

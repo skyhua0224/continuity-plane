@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.1.0-alpha.23
+
+- Share release identity across CLI and both MCP servers; replace stale alpha20 handshakes and detect package upgrades under live processes with an explicit restart hint, without restricting ordinary project work.
+
+- Shared bounded session handoffs for Codex and Claude: save before compaction, quietly continue afterward, deduplicate recovery events and isolate sessions.
+- Ship Claude manifest, MCP configuration and lifecycle hooks. `continuity-host-hook` uses the installed core interpreter for checkpoint create/verify.
+- Include hook-injected bytes in signed net estimates by session/command; measure actual CLI brief/JSON output and report without a State profile.
+- Carry executor preferences in task/Todo projections for routine, deep flexible, fast and capacity-blocked tasks. Explicit task preferences survive compaction.
+- Balance suitable routine work across Sonnet/Sol/Grok/GLM least-planned-first and repair historical skew; purpose breaks ties. Reserve the Astra/Opus pool for hard work/adversarial review. Carry effort guidance across hosts; saves are atomic/idempotent and reads do not affect balancing.
+- Add overridable scenario presets, congestion deprioritization and unavailable-model exclusions, with independent-split/handoff guidance and coupled-task safeguards. Suggestions neither dispatch nor block local work.
+- Align the core, three Codex plugins and Claude plugin versions. Hosts remain responsible for enabling plugins and reloading running processes.
+
 ## 0.1.0-alpha.22
 
 - Index C/C++/Objective-C functions, structs, enums, typedefs, macros and configuration keys; multi-term queries use AND semantics.

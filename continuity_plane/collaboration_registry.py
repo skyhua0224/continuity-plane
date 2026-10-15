@@ -72,6 +72,8 @@ def _now() -> str:
 
 
 def _atomic_write(path: Path, document: dict[str, Any]) -> None:
+    if isinstance(document, dict) and document.get("schema_version") == DISPATCH_LEDGER_SCHEMA:
+        document["writer_version"] = "0.1.0a23"
     path.parent.mkdir(parents=True, exist_ok=True)
     descriptor, temporary = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
     try:
@@ -340,7 +342,7 @@ def list_changes(data_root: Path | str | None, *, project_id: str, since: int = 
 def _empty_ledger() -> dict[str, Any]:
     return {
         "schema_version": DISPATCH_LEDGER_SCHEMA,
-        "writer_version": "0.1.0a22",
+        "writer_version": "0.1.0a23",
         "tasks": [],
         "effect_requests": [],
         "updated_at": _now(),
@@ -353,7 +355,7 @@ def _load_ledger(data_root: Path, project_id: str) -> dict[str, Any]:
         raise CollaborationRegistryError("dispatch ledger is invalid")
     if document.get("schema_version") == LEGACY_DISPATCH_LEDGER_SCHEMA:
         document["schema_version"] = DISPATCH_LEDGER_SCHEMA
-        document["writer_version"] = "0.1.0a22"
+        document.setdefault("writer_version", "legacy")
     elif document.get("schema_version") != DISPATCH_LEDGER_SCHEMA:
         raise CollaborationRegistryError("ledger was written by a newer Continuity build; upgrade this CLI/MCP before reading it")
     # Sidecar metadata is forward-compatible: older alpha14 ledgers did not

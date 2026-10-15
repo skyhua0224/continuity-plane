@@ -885,6 +885,16 @@ def _clear_continuation_pending(payload: dict[str, Any], root: Path) -> None:
         path.unlink(missing_ok=True)
 
 
+def _meter_context(payload: dict[str, Any], root: Path, context: str) -> None:
+    try:
+        from continuity_plane.usage_meter import record
+        record(root, command="hook:" + str(payload.get("hook_event_name", "SessionStart")),
+               response_bytes=0, estimated_grep_bytes=0, injected_bytes=len(context.encode("utf-8")),
+               session_id=str(payload.get("session_id", "")), host="codex")
+    except (OSError, ValueError, ImportError):
+        pass
+
+
 def _observe(
     payload: dict[str, Any],
     root: Path,
@@ -1282,6 +1292,7 @@ def _session_start_fallback(
             "additionalContext": context,
         },
     }))
+    _meter_context(payload, root, context)
     try:
         _clear_continuation_pending(payload, root)
         _observe(
@@ -2416,6 +2427,11 @@ def _posttooluse(payload: dict[str, Any], root: Path) -> int:
 
 
 def _precompact(payload: dict[str, Any], root: Path) -> int:
+    try:
+        from continuity_plane.lifecycle import handle_event
+        handle_event({**payload, "cwd": str(root), "hook_event_name": "PreCompact"}, host="codex")
+    except (OSError, ValueError, TypeError, KeyError, ImportError):
+        pass
     if _effect_policy() == "observe":
         return 0
     _write_cursor(payload)
@@ -2448,6 +2464,18 @@ def _postcompact(payload: dict[str, Any], root: Path) -> int:
 
 
 def _session_start(payload: dict[str, Any], root: Path) -> int:
+    if payload.get("source") == "compact":
+        try:
+            from continuity_plane.lifecycle import handle_event
+            result = handle_event({**payload, "cwd": str(root)}, host="codex")
+            if "hookSpecificOutput" in result:
+                print(_canonical(result))
+                _clear_continuation_pending(payload, root)
+                return 0
+            if result.get("status") == "already-delivered":
+                return 0
+        except (OSError, ValueError, TypeError, KeyError, ImportError):
+            pass
     cursor_path = (
         None
         if payload.get("hook_event_name") == "UserPromptSubmit"
@@ -2657,6 +2685,7 @@ def _session_start(payload: dict[str, Any], root: Path) -> int:
         )
     print(_canonical(response))
     try:
+        _meter_context(payload, root, context)
         _clear_continuation_pending(payload, root)
         _observe(
             payload,
@@ -2865,6 +2894,7 @@ def advisory_main() -> int:
                 print(_canonical({"hookSpecificOutput": {
                     "hookEventName": "PreToolUse", "additionalContext": context,
                 }}))
+                _meter_context(payload, root, context)
             _observe_operation_boundary(
                 payload, root, phase="pre" if event == "PreToolUse" else "post"
             )
@@ -2887,6 +2917,7 @@ def advisory_main() -> int:
                         "additionalContext": " ".join(contexts),
                     }
                 }))
+                _meter_context(payload, root, " ".join(contexts))
     except (OSError, RuntimeError, ValueError, TypeError, KeyError):
         pass
     return 0

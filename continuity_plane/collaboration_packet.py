@@ -19,6 +19,7 @@ from .vocabulary_memory import resolve as resolve_vocabulary
 from .intent_todo import load_queue
 from .collaboration_inbox import list_messages
 from .collaboration_context import list_rules, list_commitments
+from .executor_routing import for_task
 
 
 PACKET_SCHEMA = "context.collaboration-packet/v1alpha1"
@@ -73,6 +74,7 @@ def compose_collaboration_packet(
         "project_id": project_id,
         "task": task_projection,
         "vocabulary": entities,
+        "execution_preferences": for_task(root, project_id, (task or {}).get("task_id")),
         "identity": {
             "assignee": assignee,
             "session_id": os.environ.get("CODEX_SESSION_ID") or os.environ.get("".join(("CL", "AUDE", "_SESSION_ID"))),

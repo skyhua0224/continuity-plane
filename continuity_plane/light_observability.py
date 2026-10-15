@@ -889,6 +889,7 @@ def build_observation_report(
 ) -> dict[str, Any]:
     """Build a bounded offline report without reading transcripts or source files."""
 
+    meter_data_root = data_root
     data_root = plugin_data_root() if data_root is None else data_root
     project_digest = _sha256(str(project_root.resolve()))
     records: list[dict[str, Any]] = []
@@ -1011,7 +1012,7 @@ def build_observation_report(
     }
     try:
         from .usage_meter import report as retrieval_report
-        retrieval_usage = retrieval_report(project_root)
+        retrieval_usage = retrieval_report(project_root, data_root=meter_data_root)
     except OSError:
         retrieval_usage = {"calls": 0, "response_bytes": 0, "estimated_grep_bytes": 0, "estimated_saved_bytes": 0, "cache_hits": 0}
     return {

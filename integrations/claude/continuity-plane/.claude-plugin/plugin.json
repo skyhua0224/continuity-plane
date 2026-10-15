@@ -1,0 +1,6 @@
+{
+  "name": "continuity-plane",
+  "version": "0.1.0-alpha.23",
+  "author": {"name": "Continuity Plane contributors"},
+  "description": "Bounded compaction handoff and local byte accounting for Claude Code"
+}

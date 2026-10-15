@@ -10,7 +10,6 @@ import os
 import subprocess
 import sys
 import time
-from importlib.metadata import PackageNotFoundError, version as package_version
 from pathlib import Path
 
 from .light_observability import (
@@ -31,6 +30,7 @@ from .intent_todo import (
     complete_item,
     load_queue,
 )
+from .release_version import VERSION, runtime_version_issue
 
 
 def _cli_command(*arguments: str) -> list[str]:
@@ -41,14 +41,7 @@ def _cli_command(*arguments: str) -> list[str]:
 
 
 def _runtime_version_issue() -> str | None:
-    try:
-        installed = package_version("continuity")
-        from .cli import VERSION
-        if installed != VERSION:
-            return f"MCP process is running Continuity {VERSION}, installed package is {installed}; restart this MCP process"
-    except (PackageNotFoundError, ImportError):
-        return None
-    return None
+    return runtime_version_issue()
 
 
 def _effect_policy() -> str:
@@ -445,6 +438,11 @@ def main() -> int:
             continue
         method = request.get("method")
         request_id = request.get("id")
+        if request_id is not None:
+            issue = _runtime_version_issue()
+            if issue:
+                _error(request_id, -32000, issue)
+                continue
         if method == "initialize":
             initialize_params = request.get("params")
             if not isinstance(initialize_params, dict):
@@ -457,7 +455,7 @@ def main() -> int:
                         "protocolVersion", "2024-11-05"
                     ),
                     "capabilities": {"tools": {}},
-                    "serverInfo": {"name": "continuity", "version": "0.1.0-alpha.20"},
+                    "serverInfo": {"name": "continuity", "version": VERSION},
                 },
             )
         elif method == "notifications/initialized":

@@ -412,6 +412,8 @@ def lookup_code_index(
     cache_path: str | Path | None = None,
     max_results: int = 20,
     max_output_bytes: int = 8192,
+    data_root: str | Path | None = None,
+    record_usage: bool = True,
 ) -> dict[str, Any]:
     """Return bounded symbol/path references without returning source bodies."""
     needle = _query(query)
@@ -495,7 +497,8 @@ def lookup_code_index(
     validate_code_index_receipt(receipt, root=root)
     try:
         from .usage_meter import record
-        record(root, command="context lookup", response_bytes=receipt["returned_bytes"], estimated_grep_bytes=sum(len(item["path"]) + len(item["name"]) + 32 for item in all_matches), cache_status=index["cache_status"])
+        if record_usage:
+            record(root, command="context lookup", response_bytes=receipt["returned_bytes"], estimated_grep_bytes=sum(len(item["path"]) + len(item["name"]) + 32 for item in all_matches), cache_status=index["cache_status"], data_root=data_root)
     except OSError:
         pass
     return receipt

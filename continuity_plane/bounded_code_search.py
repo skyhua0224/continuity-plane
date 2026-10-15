@@ -100,6 +100,8 @@ def bounded_git_search(
     max_output_bytes: int = 8192,
     path_prefix: str | None = None,
     extensions: list[str] | None = None,
+    data_root: str | Path | None = None,
+    record_usage: bool = True,
 ) -> dict[str, Any]:
     """Search tracked current-worktree text and cap the complete JSON receipt."""
     root = Path(root).resolve()
@@ -212,7 +214,8 @@ def bounded_git_search(
     validate_bounded_code_search_receipt(receipt, root=root)
     try:
         from .usage_meter import record
-        record(root, command="context search", response_bytes=receipt["returned_bytes"], estimated_grep_bytes=sum(len(item["excerpt"].encode()) + len(item["path"]) + 32 for item in candidates))
+        if record_usage:
+            record(root, command="context search", response_bytes=receipt["returned_bytes"], estimated_grep_bytes=sum(len(item["excerpt"].encode()) + len(item["path"]) + 32 for item in candidates), data_root=data_root)
     except OSError:
         pass
     return receipt

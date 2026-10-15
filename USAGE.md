@@ -53,10 +53,33 @@ Windows AMD64 完成安装、verify 和卸载。
 ### 从 PyPI 安装
 
 ```bash
-python -m pip install continuity-plane==0.1.0a22
+python -m pip install continuity-plane==0.1.0a23
 ```
 
-当前公开版本为 alpha22，延续零阻断 adoption hook、真实运行时 doctor、明确执行意图与 OpenCodex 安全安装保护，并补充旧 Session 兼容提示和结构化 Work 激活诊断。
+发行包包含非阻断生命周期 hook、运行时诊断、明确执行意图与 OpenCodex 安全安装保护；
+Codex 与 Claude Code 共享压缩交接与本地字节计量。宿主插件必须与核心包使用相同发行版本。
+
+使用 pipx 的现有安装应原地升级，避免以 `install --force` 重建被 uv 管理的环境。
+升级后检查新增的 `continuity-host-hook` 是否在 PATH，并重载仍持有旧代码的 MCP 进程。
+
+```bash
+pipx upgrade continuity-plane --pip-args=--pre
+continuity --version
+command -v continuity-host-hook
+```
+
+此命令选择最新预发行包；需要固定版本时应使用项目隔离环境的明确版本约束。
+
+Claude Code 使用原生插件安装，hook 由插件提供，无需手写覆盖 settings：
+
+```bash
+claude plugin marketplace add skyhua0224/continuity-plane
+claude plugin install continuity-plane@continuity-plane --scope user
+claude plugin list
+```
+
+启用后新开会话或重载插件；已运行会话不会自动获得新 MCP 工具。不要同时登记同一套
+插件 MCP 与重复的手写 MCP。详见 [压缩接续与计量](docs/lifecycle-parity.md)。
 
 从源码 checkout 开发时：
 
@@ -71,7 +94,7 @@ python -m venv .venv
 下载 wheel 或 source archive：
 
 ```bash
-python -m pip install /path/to/continuity_plane-0.1.0a22-py3-none-any.whl
+python -m pip install /path/to/continuity_plane-0.1.0a23-py3-none-any.whl
 ```
 
 ### 全局安装，管理多个项目
@@ -81,7 +104,7 @@ python -m pip install /path/to/continuity_plane-0.1.0a22-py3-none-any.whl
 ```bash
 python3 -m venv ~/.local/share/continuity-plane/venv
 ~/.local/share/continuity-plane/venv/bin/python \
-  -m pip install continuity-plane==0.1.0a22
+  -m pip install continuity-plane==0.1.0a23
 
 ~/.local/share/continuity-plane/venv/bin/continuity \
   init --root /path/to/project --project-id my-project
@@ -92,7 +115,7 @@ python3 -m venv ~/.local/share/continuity-plane/venv
 ```bash
 cd /path/to/project
 python3 -m venv .venv
-.venv/bin/python -m pip install continuity-plane==0.1.0a22
+.venv/bin/python -m pip install continuity-plane==0.1.0a23
 .venv/bin/continuity init --root . --project-id my-project
 ```
 
@@ -236,7 +259,7 @@ continuity work activate \
 个人想进行 SQL 检查、备份或让多个本地 worker 共用状态时，可以选择 PostgreSQL：
 
 ```bash
-python -m pip install 'continuity-plane[postgres]==0.1.0a22'
+python -m pip install 'continuity-plane[postgres]==0.1.0a23'
 ```
 
 当前 alpha CLI 仍默认 SQLite。PostgreSQL 通过显式 Python adapter 使用：
@@ -318,8 +341,8 @@ MCP 写工具，也不阻断普通开发。需要显式 State 操作时再安装
 先安装核心包，再把本项目 GitHub 仓库作为 marketplace：
 
 ```bash
-python -m pip install continuity-plane==0.1.0a22
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.22
+python -m pip install continuity-plane==0.1.0a23
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.23
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -559,7 +582,7 @@ template 和 content-addressed artifact。所有 claim 关闭后，才能归档�
 
 当前版本同时发布到 PyPI 和 GitHub Release：
 
-<https://pypi.org/project/continuity-plane/0.1.0a22/>  
+<https://pypi.org/project/continuity-plane/0.1.0a23/>  
 <https://github.com/skyhua0224/continuity-plane/releases>
 
 当前公开版本使用受控 PyPI token 发布。GitHub Actions OIDC workflow 和 `pypi`

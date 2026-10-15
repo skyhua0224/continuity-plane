@@ -55,10 +55,37 @@ AMD64.
 ### Install From PyPI
 
 ```bash
-python -m pip install continuity-plane==0.1.0a22
+python -m pip install continuity-plane==0.1.0a23
 ```
 
-The current public version is alpha22 and continues non-blocking adoption hooks, real-runtime doctor checks, explicit execution intent, and OpenCodex-safe installation, with compatibility hints for older Sessions and structured Work activation diagnostics.
+The release includes non-blocking lifecycle hooks, runtime diagnostics, explicit execution intent
+and OpenCodex-safe installation. Codex and Claude Code share compaction handoffs and local byte
+accounting. Host plugins must match the core release.
+
+Upgrade existing pipx environments in place rather than rebuilding uv-managed environments with
+`install --force`. Check that the new `continuity-host-hook` entry point is on PATH and reload
+MCP processes that still hold old code.
+
+```bash
+pipx upgrade continuity-plane --pip-args=--pre
+continuity --version
+command -v continuity-host-hook
+```
+
+This selects the latest prerelease. Use an explicitly pinned project environment when a fixed
+release is required.
+
+Use Claude Code's native plugin installer; hooks come from the plugin without replacing settings:
+
+```bash
+claude plugin marketplace add skyhua0224/continuity-plane
+claude plugin install continuity-plane@continuity-plane --scope user
+claude plugin list
+```
+
+Start a new session or reload the plugin afterward: running sessions do not automatically acquire
+new MCP tools. Avoid registering the same services through both a plugin and duplicate handwritten
+MCP entries. See [compaction continuation and accounting](docs/lifecycle-parity.md).
 
 For a source checkout:
 
@@ -73,7 +100,7 @@ Download a wheel or source archive from
 [Continuity Plane Releases](https://github.com/skyhua0224/continuity-plane/releases):
 
 ```bash
-python -m pip install /path/to/continuity_plane-0.1.0a22-py3-none-any.whl
+python -m pip install /path/to/continuity_plane-0.1.0a23-py3-none-any.whl
 ```
 
 ### Install Once For Many Projects
@@ -84,7 +111,7 @@ projects:
 ```bash
 python3 -m venv ~/.local/share/continuity-plane/venv
 ~/.local/share/continuity-plane/venv/bin/python \
-  -m pip install continuity-plane==0.1.0a22
+  -m pip install continuity-plane==0.1.0a23
 ```
 
 Run the installed CLI with an explicit project root whenever the command is not
@@ -102,7 +129,7 @@ For a project that pins its own control-plane version:
 ```bash
 cd /path/to/project
 python3 -m venv .venv
-.venv/bin/python -m pip install continuity-plane==0.1.0a22
+.venv/bin/python -m pip install continuity-plane==0.1.0a23
 .venv/bin/continuity init --root . --project-id my-project
 ```
 
@@ -269,7 +296,7 @@ single-user installation. Install the optional extra in the environment that
 will run the adapter:
 
 ```bash
-python -m pip install 'continuity-plane[postgres]==0.1.0a22'
+python -m pip install 'continuity-plane[postgres]==0.1.0a23'
 ```
 
 The alpha CLI still defaults to SQLite. PostgreSQL is selected by an explicit
@@ -362,8 +389,8 @@ the advanced State plugin only for explicit State operations.
 Install the core package, then add this GitHub repository as a marketplace:
 
 ```bash
-python -m pip install continuity-plane==0.1.0a22
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.22
+python -m pip install continuity-plane==0.1.0a23
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.23
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -650,7 +677,7 @@ storage.
 
 The current version is available from PyPI and GitHub Releases:
 
-<https://pypi.org/project/continuity-plane/0.1.0a22/>  
+<https://pypi.org/project/continuity-plane/0.1.0a23/>  
 <https://github.com/skyhua0224/continuity-plane/releases>
 
 The current public release used a controlled PyPI token. A GitHub Actions OIDC

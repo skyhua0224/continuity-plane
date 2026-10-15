@@ -2,6 +2,18 @@
 
 [English](CHANGELOG.en.md)
 
+## 0.1.0-alpha.23
+
+- CLI 与两个 MCP 共用发行版本；MCP 握手不再错报 alpha20，运行中包被升级后返回明确的进程重载提示，不限制普通项目工作。
+
+- Codex 与 Claude 共享有界 session handoff：压缩前保存，压缩后静默接续，重复恢复事件只注入一次；跨 Session 不复用返回点。
+- Claude 插件具有实际 manifest、MCP 和生命周期 hook；新增 `continuity-host-hook`，使用核心包的解释器执行 checkpoint create/verify。
+- 净计量计入 hook 注入字节，允许负收益，按 Session/命令汇总；CLI brief/JSON 的实际返回字节统一计量，observe 无需 State profile。
+- 任务卡/Todo 下发执行建议；支持日常、复杂且可等待、速度优先和模型不可用时的子任务候选。显式保存到卡片后跨压缩保留。
+- 日常适配任务在 Sonnet/Sol/Grok/GLM 四者间按最少计划次数均分，先修复历史偏差；用途决定平局优先级，Astra/Opus 仅在难题/对抗审查池分摊。携带思考档位，保存幂等、并发原子，读取不影响分摊；与宿主及主控模型无关。
+- 增加可覆盖的场景预设、拥挤降权及不可用候选排除；推荐同时提示独立拆分、移交与保持整体的条件，不自动派发或限制本地工作。
+- 核心、Codex 三个插件与 Claude 插件均为同一版本。本地插件启用与活跃进程重载仍由宿主管理。
+
 ## 0.1.0-alpha.22
 
 - 面向 C/C++/Objective-C 的函数、结构体、枚举、typedef、宏和配置键索引；多词查询按 AND 语义匹配。

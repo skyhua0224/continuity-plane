@@ -17,7 +17,8 @@ python -m pip install --upgrade continuity-plane
 ### 近期更新
 
 - 类型化 Work/决定/约束录入、按工作线领取和持久收件箱；参见[接入与交接](docs/onboarding.md)。
-- alpha22 增加 C/C++/Objective-C 词法符号索引、多词查询、协作卡摘要/筛选、Todo 合并提示和实际检索计量。
+- 压缩返回点在 Codex/Claude 间使用同一合同，计量显示 hook 开销与净字节估算。
+  参见[压缩接续与计量](docs/lifecycle-parity.md)。
 - 默认非阻断 hook、压缩恢复、协作账本和有界代码索引均可用。
 
 ### Codex 插件（可选）

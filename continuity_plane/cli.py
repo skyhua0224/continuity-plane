@@ -112,7 +112,7 @@ from .state_mcp import (
     StateMCPService,
 )
 
-VERSION = "0.1.0a22"
+from .release_version import VERSION
 _PROJECT_FIELDS = {
     "schema_version",
     "project_id",
@@ -844,6 +844,22 @@ def _state_show(args: argparse.Namespace) -> int:
     return 0
 
 
+def _print_retrieval(args: argparse.Namespace, receipt: dict, kind: str) -> None:
+    from .usage_meter import record
+    if args.format == "brief":
+        lines = [f"{item['path']}:{item['line']} {item['excerpt']}" if "excerpt" in item else f"{item['path']}:{item['line']} {item['kind']} {item['name']}" for item in receipt["matches"]]
+        output = "\n".join(lines).encode()[:args.max_output_bytes].decode("utf-8", "ignore")
+    else:
+        output = json.dumps(receipt, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    try:
+        baseline = sum(len(i["path"].encode()) + len(i.get("excerpt", i.get("name", "")).encode()) + 32 for i in receipt["matches"])
+        record(args.root, command=kind + ":" + args.format, response_bytes=len(output.encode()), estimated_grep_bytes=baseline,
+               cache_status=receipt.get("cache_status"), data_root=args.data_root)
+    except (OSError, ValueError):
+        pass
+    sys.stdout.write(output)
+
+
 def _context_search(args: argparse.Namespace) -> int:
     receipt = bounded_git_search(
         Path(args.root),
@@ -852,12 +868,9 @@ def _context_search(args: argparse.Namespace) -> int:
         max_output_bytes=args.max_output_bytes,
         path_prefix=args.path_prefix,
         extensions=args.extension,
+        data_root=args.data_root, record_usage=False,
     )
-    if args.format == "brief":
-        brief = "\n".join(f"{item['path']}:{item['line']} {item['excerpt']}" for item in receipt["matches"])
-        print(brief.encode()[: args.max_output_bytes].decode("utf-8", "ignore"))
-    else:
-        print(json.dumps(receipt, ensure_ascii=False, sort_keys=True))
+    _print_retrieval(args, receipt, "context search")
     return 0
 
 
@@ -878,12 +891,9 @@ def _context_lookup(args: argparse.Namespace) -> int:
         cache_path=args.cache_path,
         max_results=args.max_results,
         max_output_bytes=args.max_output_bytes,
+        data_root=args.data_root, record_usage=False,
     )
-    if args.format == "brief":
-        brief = "\n".join(f"{item['path']}:{item['line']} {item['kind']} {item['name']}" for item in receipt["matches"])
-        print(brief.encode()[: args.max_output_bytes].decode("utf-8", "ignore"))
-    else:
-        print(json.dumps(receipt, ensure_ascii=False, sort_keys=True))
+    _print_retrieval(args, receipt, "context lookup")
     return 0
 
 
@@ -4465,7 +4475,6 @@ def _rollback_state(args: argparse.Namespace) -> int:
 
 def _observe_report(args: argparse.Namespace) -> int:
     root = Path(args.root).resolve()
-    _load_project(root)
     data_root = Path(args.data_root).resolve() if args.data_root else None
     report = build_observation_report(
         root,
@@ -4689,6 +4698,28 @@ def _supervisor_run(args: argparse.Namespace) -> int:
 def _supervisor_daemon(args: argparse.Namespace) -> int:
     from .supervisor import daemon_once
     print(json.dumps(daemon_once(args.data_root, project_id=args.project_id), ensure_ascii=False, sort_keys=True))
+    return 0
+
+
+def _executor_recommendation(args: argparse.Namespace) -> int:
+    from .executor_routing import recommend, save_for_task
+    value = recommend(complexity=args.complexity, urgency=args.urgency,
+                               blocked_model=args.blocked_model, domain=args.domain,
+                               parallel_safe=args.parallel_safe, purpose=args.purpose,
+                               thinking=args.thinking, scenario=args.scenario,
+                               busy_models=args.busy_model, unavailable_models=args.unavailable_model,
+                               eligible_models=args.eligible_model)
+    if args.save:
+        if not args.project_id or not args.task_id:
+            raise ValueError("--save requires --project-id and --task-id")
+        value = save_for_task(args.data_root, args.project_id, args.task_id, value)
+    print(json.dumps(value, ensure_ascii=False))
+    return 0
+
+
+def _executor_scenarios(args: argparse.Namespace) -> int:
+    from .executor_routing import SCENARIOS
+    print(json.dumps({"scenarios": SCENARIOS, "advisory_only": True}, ensure_ascii=False))
     return 0
 
 
@@ -5018,6 +5049,7 @@ def build_parser() -> argparse.ArgumentParser:
     context_search.add_argument("--path-prefix", default=None)
     context_search.add_argument("--extension", action="append")
     context_search.add_argument("--format", choices=("json", "brief"), default="json")
+    context_search.add_argument("--data-root")
     context_search.set_defaults(handler=_context_search)
     context_index = context_commands.add_parser(
         "index", help="incrementally index tracked code symbols into user-local cache"
@@ -5035,6 +5067,7 @@ def build_parser() -> argparse.ArgumentParser:
     context_lookup.add_argument("--max-results", type=int, default=20)
     context_lookup.add_argument("--max-output-bytes", type=int, default=8192)
     context_lookup.add_argument("--format", choices=("json", "brief"), default="json")
+    context_lookup.add_argument("--data-root")
     context_lookup.set_defaults(handler=_context_lookup)
     context_dependents = context_commands.add_parser("dependents", help="find reverse source/build references")
     context_dependents.add_argument("--root", default=".")
@@ -5400,6 +5433,27 @@ def build_parser() -> argparse.ArgumentParser:
     supervisor_daemon = supervisor_commands.add_parser("daemon", help="reconcile dead executor processes once")
     supervisor_daemon.add_argument("--data-root", default=None); supervisor_daemon.add_argument("--project-id", required=True)
     supervisor_daemon.set_defaults(handler=_supervisor_daemon)
+    route = collaboration_commands.add_parser("recommend", help="suggest an executor without dispatching it")
+    route.add_argument("--complexity", choices=("normal", "high"), default=None)
+    route.add_argument("--urgency", choices=("normal", "high", "low"), default=None)
+    route.add_argument("--blocked-model")
+    route.add_argument("--purpose", choices=("general", "security", "adversarial-review"), default=None)
+    from .executor_routing import SCENARIOS
+    route.add_argument("--scenario", choices=tuple(SCENARIOS), help="advisory preset; explicit options override it")
+    route.add_argument("--busy-model", action="append", default=[], help="deprioritize a congested alias; repeatable")
+    route.add_argument("--unavailable-model", action="append", default=[], help="exclude an unavailable alias; repeatable")
+    route.add_argument("--eligible-model", action="append", default=None, help="restrict to models suitable for this task; repeatable")
+    route.add_argument("--thinking", choices=("high", "max"), default="high",
+                       help="preferred effort for Sol/Sonnet/Grok; GLM stays max, Astra/Opus high; adapter must validate support")
+    route.add_argument("--domain")
+    route.add_argument("--parallel-safe", action="store_true")
+    route.add_argument("--data-root")
+    route.add_argument("--project-id")
+    route.add_argument("--task-id")
+    route.add_argument("--save", action="store_true")
+    route.set_defaults(handler=_executor_recommendation)
+    scenarios = collaboration_commands.add_parser("scenarios", help="list advisory executor-routing scenarios")
+    scenarios.set_defaults(handler=_executor_scenarios)
     collaboration_drift = collaboration_commands.add_parser("drift", help="find stale or contradictory collaboration metadata")
     collaboration_drift.add_argument("--data-root", default=None)
     collaboration_drift.add_argument("--project-id", required=True)
@@ -5561,12 +5615,13 @@ def main(argv: list[str] | None = None) -> int:
         if args.root != "." and Path(args.root).resolve() != Path(args.global_root).resolve():
             raise ValueError("global and subcommand --root refer to different projects")
         args.root = args.global_root
-    if getattr(args, "command", None) == "collaboration" and hasattr(args, "project_id") and args.project_id is None:
+    routing_preview = getattr(args, "handler", None) is _executor_recommendation and not args.save
+    if getattr(args, "command", None) == "collaboration" and hasattr(args, "project_id") and args.project_id is None and not routing_preview:
         project = resolve_project(getattr(args, "root", "."), getattr(args, "data_root", None))
         if project is None:
             raise ValueError("project is not registered; specify --project-id or register --control-root first")
         args.project_id = project["project_id"]
-    if hasattr(args, "root") and getattr(args, "command", None) != "context":
+    if hasattr(args, "root") and getattr(args, "command", None) not in {"context", "observe"}:
         try:
             args.root = str(resolve_control_root(args.root))
         except WorkspaceBindingError as exc:
