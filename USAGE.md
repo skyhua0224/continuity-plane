@@ -73,7 +73,7 @@ Windows AMD64 完成安装、verify 和卸载；Alpha24 本轮现场验收为 Li
 ### 从 PyPI 安装
 
 ```bash
-python -m pip install continuity-plane==0.1.0a24
+python -m pip install continuity-plane==0.1.0a25
 ```
 
 发行包包含非阻断生命周期 hook、运行时诊断、明确执行意图与 OpenCodex 安全安装保护；
@@ -93,7 +93,7 @@ command -v continuity-host-hook
 
 ```bash
 uv pip install --python /path/to/pipx/venvs/continuity-plane/bin/python \
-  --reinstall-package continuity-plane 'continuity-plane==0.1.0a24'
+  --reinstall-package continuity-plane 'continuity-plane==0.1.0a25'
 ```
 
 Claude Code 使用原生插件安装，hook 由插件提供，无需手写覆盖 settings：
@@ -120,7 +120,7 @@ python -m venv .venv
 下载 wheel 或 source archive：
 
 ```bash
-python -m pip install /path/to/continuity_plane-0.1.0a24-py3-none-any.whl
+python -m pip install /path/to/continuity_plane-0.1.0a25-py3-none-any.whl
 ```
 
 ### 全局安装，管理多个项目
@@ -130,7 +130,7 @@ python -m pip install /path/to/continuity_plane-0.1.0a24-py3-none-any.whl
 ```bash
 python3 -m venv ~/.local/share/continuity-plane/venv
 ~/.local/share/continuity-plane/venv/bin/python \
-  -m pip install continuity-plane==0.1.0a24
+  -m pip install continuity-plane==0.1.0a25
 
 ~/.local/share/continuity-plane/venv/bin/continuity \
   init --root /path/to/project --project-id my-project
@@ -141,7 +141,7 @@ python3 -m venv ~/.local/share/continuity-plane/venv
 ```bash
 cd /path/to/project
 python3 -m venv .venv
-.venv/bin/python -m pip install continuity-plane==0.1.0a24
+.venv/bin/python -m pip install continuity-plane==0.1.0a25
 .venv/bin/continuity init --root . --project-id my-project
 ```
 
@@ -285,7 +285,7 @@ continuity work activate \
 个人想进行 SQL 检查、备份或让多个本地 worker 共用状态时，可以选择 PostgreSQL：
 
 ```bash
-python -m pip install 'continuity-plane[postgres]==0.1.0a24'
+python -m pip install 'continuity-plane[postgres]==0.1.0a25'
 ```
 
 当前 alpha CLI 仍默认 SQLite。PostgreSQL 通过显式 Python adapter 使用：
@@ -367,8 +367,8 @@ MCP 写工具，也不阻断普通开发。需要显式 State 操作时再安装
 先安装核心包，再把本项目 GitHub 仓库作为 marketplace：
 
 ```bash
-python -m pip install continuity-plane==0.1.0a24
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.24
+python -m pip install continuity-plane==0.1.0a25
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.25
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -670,7 +670,7 @@ template 和 content-addressed artifact。所有 claim 关闭后，才能归档�
 
 当前版本同时发布到 PyPI 和 GitHub Release：
 
-<https://pypi.org/project/continuity-plane/0.1.0a24/>  
+<https://pypi.org/project/continuity-plane/0.1.0a25/>
 <https://github.com/skyhua0224/continuity-plane/releases>
 
 GitHub Release 触发构建和 PyPI OIDC 发布 workflow，使用 `pypi` environment。

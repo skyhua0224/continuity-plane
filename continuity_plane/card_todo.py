@@ -1,6 +1,8 @@
 """Todo as a live card projection, retaining legacy queues for single-agent use."""
 
-from .collaboration_registry import resolve_project, list_tasks, update_task
+from .collaboration_registry import resolve_project, list_tasks, update_task, _TASK_STATUS
+
+OPEN_STATES = ("queued", "active", "dispatched", "blocked", "ready-for-review")
 
 MAP = {
     "queued": "queued",
@@ -25,6 +27,7 @@ def project(document, root, data_root):
         if (ids is None or t["task_id"] in ids)
         and (not config.get("assignee") or t["assignee"] == config["assignee"])
         and (not config.get("lane_id") or t["lane_id"] == config["lane_id"])
+        and (config.get("statuses") is None or t["status"] in config["statuses"])
     ]
     if ids is not None:
         tasks.sort(key=lambda t: ids.index(t["task_id"]))
@@ -56,9 +59,17 @@ def project(document, root, data_root):
     return view
 
 
-def enable(root, data_root=None, *, assignee=None, lane_id=None, linked_only=False):
+def enable(root, data_root=None, *, assignee=None, lane_id=None, linked_only=False, statuses=None, include_closed=False):
     from .intent_todo import load_queue, _write, queue_path, SCHEMA_VERSION, _now
 
+    if statuses is not None and (
+        not isinstance(statuses, (list, tuple)) or not statuses
+        or any(s not in _TASK_STATUS for s in statuses)
+    ):
+        raise ValueError("statuses must be a nonempty list of task states")
+    if include_closed and statuses is not None:
+        raise ValueError("choose --all or --status, not both")
+    selected = None if include_closed else list(dict.fromkeys(statuses or OPEN_STATES))
     registration = resolve_project(root, data_root)
     if registration is None:
         raise ValueError("project must be registered before projecting cards")
@@ -89,6 +100,7 @@ def enable(root, data_root=None, *, assignee=None, lane_id=None, linked_only=Fal
             assignee=assignee,
             lane_id=lane_id,
             task_ids=ids,
+            statuses=selected,
         ),
         "legacy_items": previous.get("legacy_items", previous.get("items", [])),
     }

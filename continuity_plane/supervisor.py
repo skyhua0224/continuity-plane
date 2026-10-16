@@ -451,6 +451,7 @@ def daemon_once(data_root: Path | str | None, *, project_id: str) -> dict[str, A
         cursor = events["next_cursor"]
         if not events["truncated"]:
             break
+    rows = [row for row in rows if not row.get("observed_native")]
     starts = {
         (row.get("task_id"), row.get("attempt_id")): row
         for row in rows

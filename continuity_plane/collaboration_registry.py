@@ -18,6 +18,7 @@ from .release_version import VERSION
 
 PROJECT_REGISTRATION_SCHEMA = "context.project-registration/v1alpha1"
 DISPATCH_LEDGER_SCHEMA = "context.dispatch-ledger/v3alpha1"
+GUARDED_DISPATCH_LEDGER_SCHEMA = "context.dispatch-ledger/v4alpha1"
 PREVIOUS_DISPATCH_LEDGER_SCHEMA = "context.dispatch-ledger/v2alpha1"
 LEGACY_DISPATCH_LEDGER_SCHEMA = "context.dispatch-ledger/v1alpha1"
 TASK_CARD_SCHEMA = "context.task-card/v1alpha1"
@@ -76,6 +77,10 @@ def _now() -> str:
 
 
 def _atomic_write(path: Path, document: dict[str, Any]) -> None:
+    if isinstance(document, dict) and document.get("schema_version") == GUARDED_DISPATCH_LEDGER_SCHEMA:
+        document["writer_version"] = VERSION
+        document["minimum_reader_schema"] = 4
+        document["controller_fencing_required"] = True
     if (
         isinstance(document, dict)
         and document.get("schema_version") == DISPATCH_LEDGER_SCHEMA
@@ -444,13 +449,20 @@ def wait_for_changes(
     *,
     project_id: str,
     since: int = 0,
-    event: str | None = None,
+    event: str | list[str] | None = None,
     task_id: str | None = None,
     assignee: str | None = None,
     timeout_seconds: float = 300,
     poll_seconds: float = 0.1,
 ) -> dict[str, Any]:
     """Wait quietly for matching facts; never launch or wake another provider."""
+    names = [event] if isinstance(event, str) else event
+    if names is not None and (
+        not isinstance(names, (list, tuple)) or not names
+        or any(not isinstance(name, str) or not name.strip() or len(name) > 128 for name in names)
+    ):
+        raise CollaborationRegistryError("event must be a nonempty event name or list of names")
+    events = set(names) if names is not None else None
     if (
         not math.isfinite(timeout_seconds)
         or timeout_seconds < 0
@@ -467,7 +479,7 @@ def wait_for_changes(
         selected = [
             row
             for row in page["changes"]
-            if (event is None or row.get("event") == event)
+            if (events is None or row.get("event") in events)
             and (task_id is None or row.get("task_id") == task_id)
             and (assignee is None or row.get("assignee") == assignee)
         ]
@@ -496,6 +508,9 @@ def _load_ledger(data_root: Path, project_id: str) -> dict[str, Any]:
     document = _load(_ledger_path(data_root, project_id)) or _empty_ledger()
     if not isinstance(document, dict):
         raise CollaborationRegistryError("dispatch ledger is invalid")
+    if document.get("schema_version") == GUARDED_DISPATCH_LEDGER_SCHEMA:
+        document["controller_fencing_required"] = True
+        document.setdefault("minimum_reader_schema", 4)
     if document.get("schema_version") == DISPATCH_LEDGER_SCHEMA and document.get(
         "tasks"
     ):
@@ -506,7 +521,7 @@ def _load_ledger(data_root: Path, project_id: str) -> dict[str, Any]:
     }:
         document["schema_version"] = DISPATCH_LEDGER_SCHEMA
         document.setdefault("writer_version", "legacy")
-    elif document.get("schema_version") != DISPATCH_LEDGER_SCHEMA:
+    elif document.get("schema_version") not in {DISPATCH_LEDGER_SCHEMA, GUARDED_DISPATCH_LEDGER_SCHEMA}:
         raise CollaborationRegistryError(
             "ledger was written by a newer Continuity build; upgrade this CLI/MCP before reading it"
         )
@@ -669,7 +684,7 @@ def update_task(
     *,
     project_id: str,
     task_id: str,
-    status: str,
+    status: str | None = None,
     next_action: str | None = None,
     blocked_reason: str | None = None,
     result: str | None = None,
@@ -699,6 +714,9 @@ def update_task(
         )
         if task is None:
             raise CollaborationRegistryError("task_id does not exist")
+        status_supplied = status is not None
+        if not status_supplied:
+            status = task["status"]
         if status == "accepted":
             raise CollaborationRegistryError(
                 "acceptance requires project review; submit ready-for-review instead"
@@ -768,9 +786,9 @@ def update_task(
             task["blocked_reason"] = blocked_reason
         if result is not None:
             task["result"] = result
-        if status != "blocked":
+        if status_supplied and status != "blocked":
             task["blocked_reason"] = None
-        if status == "queued":
+        if status_supplied and status == "queued":
             task["assignee"] = None
         task["updated_at"] = _now()
         _validate_task(task)

@@ -112,7 +112,7 @@ def _notice(payload, *, root=None, data_root=None, max_bytes=512):
                 parts.append(
                     f"{len(finished)} worker ended ("
                     + "; ".join(
-                        "%s %s" % (r.get("task_id"), r.get("reason") or r.get("status"))
+                        "%s %s" % (r.get("task_id") or r.get("agent_type") or r.get("attempt_id"), r.get("reason") or r.get("status"))
                         for r in finished[:3]
                     )
                     + ")"
@@ -147,7 +147,7 @@ def notice(*args, **kwargs):
         return None
 
 
-def scene(data_root, project_id):
+def scene(data_root, project_id, *, root=None, session_id=None, provider=None, max_bytes=2200, max_workers=8):
     from .collaboration_context import list_commitments
     from .collaboration_registry import project_data_dir
 
@@ -170,14 +170,20 @@ def scene(data_root, project_id):
         if ledger.get("execution_bindings", {}).get(t["task_id"], {}).get("status")
         == "running"
     ]
-    for task in running[:8]:
+    from .project_context import _load as load_context, _path as context_path
+
+    native = [r for r in load_context(context_path(data, project_id)).get("native_attempts", {}).values() if r["status"] == "running"]
+    for task in running[:max_workers]:
         job = jobs.get(task["task_id"], {})
         thread = None
         if job.get("thread_file"):
             try:
+                from .runtime_origin import require_local
+
+                require_local(job.get("execution_origin"), job.get("profile", {}).get("profile_provider", "codex"))
                 with Path(job["thread_file"]).open("rb") as stream:
                     thread = stream.read(256).decode("utf-8").strip()
-            except (OSError, UnicodeError):
+            except (OSError, UnicodeError, ValueError):
                 pass
         workers.append(
             {
@@ -193,9 +199,31 @@ def scene(data_root, project_id):
     decisions = [
         r for r in records.get("decision", {}).values() if r["value"].get("approved")
     ][-3:]
+    from .project_context import integration, binding, lessons
+
+    integration_state = integration(data, project_id, root) if root else {"head": None, "available": False}
+    session_binding = binding(data, project_id, provider, session_id) if session_id and provider else None
+    learned = lessons(data, project_id, max_results=2)
+    cursor, ended = 0, None
+    while True:
+        page = list_changes(data, project_id=project_id, since=cursor, max_results=500)
+        for row in page["changes"]:
+            if row["event"] in {"attempt.finished", "attempt.timeout", "dispatch.policy-stopped"}:
+                ended = row["cursor"]
+        cursor = page["next_cursor"]
+        if not page["truncated"]:
+            break
     result = {
+        "integration": integration_state,
+        "session_binding": {k: session_binding.get(k) for k in ("task_id", "batch_id", "active")} if session_binding else None,
+        "change_cursor": cursor,
+        "last_ended_cursor": ended,
+        "lessons": [{"id": r["lesson_id"], "text": r["text"][:120], "source": r["source"][:100]} for r in learned["items"]],
+        "lessons_total": learned["total_items"],
         "workers": workers,
         "workers_total": len(running),
+        "native_workers": [{"attempt_id": r["attempt_id"], "agent_type": r["agent_type"], "status": "observed-running; no heartbeat"} for r in native[:4]],
+        "native_workers_total": len(native),
         "work_cards_total": len(cards),
         "candidate_work": [
             {
@@ -227,7 +255,7 @@ def scene(data_root, project_id):
             for d in decisions
         ],
     }
-    while len(json.dumps(result, ensure_ascii=False).encode()) > 1400:
+    while len(json.dumps(result, ensure_ascii=False).encode()) > max_bytes:
         key = next(
             (
                 k
@@ -237,6 +265,8 @@ def scene(data_root, project_id):
                     "batches",
                     "approved_decisions",
                     "candidate_work",
+                    "lessons",
+                    "native_workers",
                 )
                 if result[k]
             ),

@@ -180,9 +180,15 @@ def forward(payload, config, *, runner=subprocess.run):
         "next_action",
         "prompt",
         "observation_kind",
+        "agent_id",
+        "agent_type",
     )
     outgoing = {k: payload[k] for k in allowed if k in payload}
     outgoing["cwd"] = remote
+    if payload.get("hook_event_name") in {"SubagentStart", "SubagentStop"}:
+        from .runtime_origin import current
+
+        outgoing["collection_origin"] = current("claude")
     if not config.get("forward_checklists", True):
         outgoing.pop("prompt", None)
     elif (
@@ -207,6 +213,11 @@ def forward(payload, config, *, runner=subprocess.run):
     )
     if os.environ.get("CONTINUITY_TASK_ID"):
         outgoing["task_id"] = os.environ["CONTINUITY_TASK_ID"]
+    fence = os.environ.get("CONTINUITY_CONTROLLER_TOKEN")
+    if fence:
+        if not re.fullmatch(r"[0-9a-f]{32}", fence):
+            raise ValueError("controller fence must be the project lease token, never a provider credential")
+        outgoing["controller_fence"] = fence
     from .provider_usage import capture_hook
 
     usage = capture_hook(payload, "claude", data_root=config.get("local_data_root"))
@@ -416,6 +427,11 @@ def receive_main():
             ):
                 raise ValueError("invalid controller identity")
             os.environ["CONTINUITY_CONTROLLER"] = controller
+        if payload.get("controller_fence"):
+            fence = payload["controller_fence"]
+            if not isinstance(fence, str) or not re.fullmatch(r"[0-9a-f]{32}", fence):
+                raise ValueError("invalid project controller fence")
+            os.environ["CONTINUITY_CONTROLLER_TOKEN"] = fence
         if isinstance(payload.get("task_id"), str):
             os.environ["CONTINUITY_TASK_ID"] = payload["task_id"]
         if payload.get("usage"):
@@ -513,6 +529,8 @@ def install_profile(profile, config_file, executable):
         "UserPromptSubmit": "",
         "PostToolUse": "",
         "Stop": "",
+        "SubagentStart": "",
+        "SubagentStop": "",
     }
     with _locked(settings):
         original = settings.read_bytes() if settings.exists() else b"{}\n"

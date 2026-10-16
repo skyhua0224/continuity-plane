@@ -77,7 +77,7 @@ per-platform revalidation of this release.
 ### Install From PyPI
 
 ```bash
-python -m pip install continuity-plane==0.1.0a24
+python -m pip install continuity-plane==0.1.0a25
 ```
 
 The release includes non-blocking lifecycle hooks, runtime diagnostics, explicit execution intent
@@ -101,7 +101,7 @@ without moving native account configuration:
 
 ```bash
 uv pip install --python /path/to/pipx/venvs/continuity-plane/bin/python \
-  --reinstall-package continuity-plane 'continuity-plane==0.1.0a24'
+  --reinstall-package continuity-plane 'continuity-plane==0.1.0a25'
 ```
 
 Use Claude Code's native plugin installer; hooks come from the plugin without replacing settings:
@@ -129,7 +129,7 @@ Download a wheel or source archive from
 [Continuity Plane Releases](https://github.com/skyhua0224/continuity-plane/releases):
 
 ```bash
-python -m pip install /path/to/continuity_plane-0.1.0a24-py3-none-any.whl
+python -m pip install /path/to/continuity_plane-0.1.0a25-py3-none-any.whl
 ```
 
 ### Install Once For Many Projects
@@ -140,7 +140,7 @@ projects:
 ```bash
 python3 -m venv ~/.local/share/continuity-plane/venv
 ~/.local/share/continuity-plane/venv/bin/python \
-  -m pip install continuity-plane==0.1.0a24
+  -m pip install continuity-plane==0.1.0a25
 ```
 
 Run the installed CLI with an explicit project root whenever the command is not
@@ -158,7 +158,7 @@ For a project that pins its own control-plane version:
 ```bash
 cd /path/to/project
 python3 -m venv .venv
-.venv/bin/python -m pip install continuity-plane==0.1.0a24
+.venv/bin/python -m pip install continuity-plane==0.1.0a25
 .venv/bin/continuity init --root . --project-id my-project
 ```
 
@@ -325,7 +325,7 @@ single-user installation. Install the optional extra in the environment that
 will run the adapter:
 
 ```bash
-python -m pip install 'continuity-plane[postgres]==0.1.0a24'
+python -m pip install 'continuity-plane[postgres]==0.1.0a25'
 ```
 
 The alpha CLI still defaults to SQLite. PostgreSQL is selected by an explicit
@@ -418,8 +418,8 @@ the advanced State plugin only for explicit State operations.
 Install the core package, then add this GitHub repository as a marketplace:
 
 ```bash
-python -m pip install continuity-plane==0.1.0a24
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.24
+python -m pip install continuity-plane==0.1.0a25
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.25
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -706,7 +706,7 @@ storage.
 
 The current version is available from PyPI and GitHub Releases:
 
-<https://pypi.org/project/continuity-plane/0.1.0a24/>  
+<https://pypi.org/project/continuity-plane/0.1.0a25/>
 <https://github.com/skyhua0224/continuity-plane/releases>
 
 GitHub Releases trigger the build and PyPI OIDC publishing workflow in the `pypi`

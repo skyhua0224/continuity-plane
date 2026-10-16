@@ -5,6 +5,8 @@
     "UserPromptSubmit": [{"hooks": [{"type": "command", "command": "continuity-host-hook", "timeout": 10}]}],
     "SessionStart": [{"matcher": "startup|resume|compact", "hooks": [{"type": "command", "command": "continuity-host-hook", "timeout": 10}]}],
     "PreCompact": [{"matcher": "manual|auto", "hooks": [{"type": "command", "command": "continuity-host-hook", "timeout": 10}]}],
-    "PostCompact": [{"matcher": "manual|auto", "hooks": [{"type": "command", "command": "continuity-host-hook", "timeout": 10}]}]
+    "PostCompact": [{"matcher": "manual|auto", "hooks": [{"type": "command", "command": "continuity-host-hook", "timeout": 10}]}],
+    "SubagentStart": [{"hooks": [{"type": "command", "command": "continuity-host-hook", "timeout": 10}]}],
+    "SubagentStop": [{"hooks": [{"type": "command", "command": "continuity-host-hook", "timeout": 10}]}]
   }
 }

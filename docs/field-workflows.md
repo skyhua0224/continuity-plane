@@ -1,7 +1,116 @@
 # Reliable worker and rule workflows
 
-Release scope: Alpha24. Source verification, installed profile verification and live model
-observations are reported separately; the coverage table below identifies their limits.
+## Alpha25: controller workflow additions
+
+The following APIs are included in Alpha25 (`0.1.0a25`), not in Alpha24.
+Upgrade and reconnect an existing MCP before relying on these actions.
+
+Workers accept `--timeout-seconds` and `--idle-timeout-seconds` through dispatch, prepare and both
+resume forms. New jobs default to 86400/5400 seconds per attempt; recorded jobs retain their budgets,
+including the legacy 3600/600 defaults when fields are absent. Explicit limits survive background
+launches, same-thread retries and permitted transient fallback. Explicit provider effort names such
+as medium/xhigh are preserved; GLM max is a default, not an override of an operator choice.
+
+```bash
+continuity dispatch --root /path/to/project --task-id TASK --model sol --effort xhigh \
+  --timeout-seconds 86400 --idle-timeout-seconds 5400 --background
+continuity resume TASK 'Continue verified work' --root /path/to/project --effort medium
+continuity todo from-cards --root /path/to/project --status active --status dispatched
+continuity todo from-cards --root /path/to/project --all
+continuity collaboration wait --root /path/to/project --since CURSOR \
+  --event attempt.finished --event attempt.timeout --event dispatch.policy-stopped
+continuity collaboration task update --root /path/to/project --task-id TASK --body 'Updated instructions'
+```
+
+New Todo projections default to open cards, including ready-for-review; closing a card does not
+delete its evidence. Existing projections retain their previous selection until explicitly changed.
+Batch records accept optional `metrics`, also via `--metrics-json`, for example
+`{"runtime_links_module":{"before":13,"after":6}}`. Baseline stays a commit; declared metrics do not
+prove a test ran or grant permission to merge. Generated status shows these metrics.
+
+Use Continuity rules as the canonical policy source. `rules export --audience worker --format text`
+generates complete selected rule text with a digest and attachment references, or fails explicitly
+when the budget is insufficient. A retained common.txt should be generated from this command,
+never maintained independently. The tool does not modify an operator's existing scripts.
+`rules check-mirror --file /path/to/common.txt --audience worker` compares it with current generated
+text without importing edits, exposing contents or overwriting the mirror. Drift is a reported status,
+not a global work blocker.
+Prompts attach bounded hash-bound code routes from body identifiers and allowed files; absent
+checkouts and registration-root fallback are labeled. Routes are neither full impact analysis nor
+filesystem write enforcement.
+
+```bash
+continuity session bind --root /path/to/project --provider claude --session-id OWN_NATIVE_ID \
+  --task-id TASK --batch-id batch16 --role controller
+continuity lesson add --root /path/to/project --lesson-id load-vs-guard \
+  --text 'Check the failing guard before diagnosing a load limit.' --source 'batch14 review' --tag verification
+continuity handoff write --root /path/to/project --batch-id batch16 \
+  --plan 'Regression fixes first; other branches after the transport gate.' \
+  --pending 'Owner chooses baseline' --next-action 'Run the transport gate'
+continuity handoff show --root /path/to/project
+continuity collaboration context-set --root /path/to/project \
+  --integration-root /path/to/authority-checkout --integration-ref refs/heads/main
+```
+
+Use the owning host's native session id, not an MCP connection id or another profile's private data.
+Bindings are declared project context, not authentication. Unknown first counters become a baseline;
+only subsequent deltas count, by task/batch, without assigning historic usage or inventing prices.
+Multiple collection origins are not combined. Worker sessions should bind with `--role worker` so
+their compaction cannot overwrite the shared controller plan. Planned batches may be bound before
+an integration record exists and are labeled accordingly.
+
+Recovery distinguishes an authoritative integration ref from checkout HEAD, includes current
+workers, recent finish cursor, commitments and the shared plan, and reports missing data rather than
+substituting a stale checkout. Lessons are project-visible reported experience with provenance,
+not automatically enforced policy. A new controller reads the same handoff regardless of model.
+
+```bash
+continuity controller acquire --root /path/to/project --owner CONTROLLER \
+  --ttl-seconds 10800 --client-limit codex=5
+continuity controller status --root /path/to/project --owner OTHER_CONTROLLER
+continuity dispatch --root /path/to/project --task-id TASK --model sol \
+  --controller CONTROLLER --controller-token FENCE --background
+continuity controller run --root /path/to/project --owner CONTROLLER --token FENCE \
+  --operation integration -- YOUR_EXPLICIT_COMMAND ARG...
+continuity controller renew --root /path/to/project --owner CONTROLLER --token FENCE --ttl-seconds 10800
+```
+
+First acquire enables project fencing and guarded ledger v4. Upgrade all participating dispatch
+CLI/MCP builds first: older builds reject this project rather than bypassing the lease. Other
+projects and ordinary code work are unaffected. The returned fence is project coordination metadata,
+not an account credential. `CONTINUITY_CONTROLLER`/`CONTINUITY_CONTROLLER_TOKEN` can supply it to
+hooks; an explicit SSH bridge may forward that fence, never native authentication.
+The holder must renew before expiry. Existing workers are not killed when the holder changes.
+Once fencing is enabled, batch-add, context-set and handoff-write also require the current controller
+and token, supplied explicitly or by the controller environment. The token is not a provider key.
+Dispatch reserves card/capacity atomically. A stale unknown reservation is not silently recycled;
+after checking its attempt, use `controller clear-reservation` with exact task/job ids and a reason.
+The token of a previous holder cannot authorize a new operation. `controller run` serializes
+cooperating commands; it does not intercept arbitrary Git calls or grant external-operation approval.
+Protected operations retain a durable started/finished record containing a command digest, not argv.
+Batch writes revalidate the current lease after waiting on the ledger; replaying an identical
+batch repairs a previously deferred handoff projection. Automatic fallback swaps the exact previous
+reservation atomically. If lease expiry or destination capacity prevents replacement, the original
+finished result remains readable and a `dispatch.fallback-deferred` event explains why no new worker
+started. Renew the controller lease explicitly; workers do not acquire controller authority themselves.
+If the controller disappears before recording completion, a new holder cannot silently replay the
+operation. Inspect it, then acknowledge the exact id with `controller clear-operation --operation-id ID
+--reason TEXT` and the current owner/token. Lease expiry alone does not erase unknown operations.
+Late completion cannot replace a manual acknowledgement of that same operation. PreCompact still
+saves the local session handoff when shared refresh is refused, but returns `saved-with-warning`
+with a deferred-refresh reason; recovery retains that warning instead of claiming shared state is fresh.
+
+Claude's SubagentStart/SubagentStop produce origin-scoped observational attempts in the changes
+stream. Official schemas are tested; live installation is separate. No native transcript paths,
+transcript bodies or final message text are forwarded. A stop is not a known exit code, successful
+test, or handback report. SubagentStart cannot block creation under the native contract, so these
+hooks do not enforce dispatch limits on agents started outside Continuity. Internal unmatched stops
+create no phantom workers. Missing heartbeats do not prove death. These events never block a Stop
+or restart an agent. See the [official hooks reference](https://code.claude.com/docs/en/hooks#subagentstart).
+
+Release scope: Alpha25, with the Alpha24 baseline workflows below. Source verification,
+installed profile verification and live model observations are reported separately; historical
+Alpha24 observations do not prove natural live coverage of Alpha25's new native subagent hooks.
 
 ## Plans and cards
 

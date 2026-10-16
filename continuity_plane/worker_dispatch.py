@@ -8,6 +8,7 @@ import sys
 import tempfile
 import uuid
 import hashlib
+import math
 from pathlib import Path
 from .collaboration_registry import (
     _atomic_write,
@@ -17,6 +18,11 @@ from .collaboration_registry import (
     resolve_project,
     list_tasks,
 )
+
+DEFAULT_TIMEOUT_SECONDS = 24 * 60 * 60
+DEFAULT_IDLE_TIMEOUT_SECONDS = 90 * 60
+LEGACY_TIMEOUT_SECONDS = 3600
+LEGACY_IDLE_TIMEOUT_SECONDS = 600
 
 
 def _write(path, text):
@@ -306,7 +312,7 @@ def dispatch(
     project_id=None,
     task_id,
     model=None,
-    effort="high",
+    effort=None,
     assignee=None,
     dry_run=False,
     background=False,
@@ -318,6 +324,10 @@ def dispatch(
     fallback_models=(),
     handoff=None,
     resume_job=None,
+    timeout_seconds=None,
+    idle_timeout_seconds=None,
+    controller_token=None,
+    _replace_job_id=None,
 ):
     from .collaboration_workflow import prompt
 
@@ -428,12 +438,47 @@ def dispatch(
             previous["execution_origin"],
             profile.get("profile_provider", profile["provider"]),
         )
-    if effort not in {"high", "max"}:
-        raise ValueError("effort must be high or max")
     from .executor_routing import _model_alias
 
-    if _model_alias(model) == "glm":
-        effort = "max"
+    if effort is None:
+        effort = (
+            previous.get("effort", "high")
+            if resume
+            else "max"
+            if _model_alias(model) == "glm"
+            else "high"
+        )
+    if not isinstance(effort, str) or not re.fullmatch(
+        r"[A-Za-z][A-Za-z0-9_-]{0,31}", effort
+    ):
+        raise ValueError(
+            "effort must be a provider effort name (1–32 letters, digits, underscores or hyphens)"
+        )
+    budgets = {}
+    for key, supplied, default, legacy in (
+        (
+            "timeout_seconds",
+            timeout_seconds,
+            DEFAULT_TIMEOUT_SECONDS,
+            LEGACY_TIMEOUT_SECONDS,
+        ),
+        (
+            "idle_timeout_seconds",
+            idle_timeout_seconds,
+            DEFAULT_IDLE_TIMEOUT_SECONDS,
+            LEGACY_IDLE_TIMEOUT_SECONDS,
+        ),
+    ):
+        value = (
+            supplied
+            if supplied is not None
+            else previous.get(key, legacy)
+            if resume
+            else default
+        )
+        if type(value) not in (int, float) or not math.isfinite(value) or value <= 0:
+            raise ValueError("worker timeouts must be finite positive seconds")
+        budgets[key] = value
     actor = assignee or task.get("assignee") or ("worker-" + model)
     controller = (
         controller
@@ -477,6 +522,7 @@ def dispatch(
         "thread_id": thread,
         "model": profile["provider_model"],
         "effort": effort,
+        **budgets,
     }
     context_sha = hashlib.sha256(assembled["prompt"].encode()).hexdigest()
     if handoff and not resume:
@@ -498,6 +544,7 @@ def dispatch(
         model=model,
         assignee=actor,
         effort=effort,
+        **budgets,
         command=argv,
         prompt_sha256=actual_prompt_sha,
         task_context_sha256=context_sha,
@@ -509,6 +556,8 @@ def dispatch(
         rules_digest=assembled["rules_digest"],
         rules_audience=assembled["rules_audience"],
         controller=controller,
+        controller_token=controller_token
+        or os.environ.get("CONTINUITY_CONTROLLER_TOKEN"),
         job_id=job_id,
         worktree=task.get("worktree") or str(root),
         job_dir=str(jobdir),
@@ -540,45 +589,90 @@ def dispatch(
         raise ValueError(
             "closed card requires an explicit successor or metadata update before dispatch"
         )
-    if resume:
-        _write(jobdir / "thread", thread)
-    _write(jobdir / "prompt.txt", values["prompt"])
-    _atomic_write(
-        jobdir / "job.json",
-        {
-            **plan,
-            "data_root": str(data),
-            "project_id": project_id,
-            "profile": profile,
-            "values": values,
-        },
+    from .controller_lease import reserve
+
+    reserve(
+        data,
+        project_id,
+        task_id=task_id,
+        job_id=job_id,
+        owner=controller,
+        token=plan["controller_token"],
+        profile=profile,
+        replace_job_id=_replace_job_id,
     )
-    with _locked(index):
-        current = json.loads(index.read_text()) if index.exists() else {}
-        current[task_id] = plan
-        _atomic_write(index, current)
-    if background:
-        with (jobdir / "supervisor.log").open("ab") as log:
-            process = subprocess.Popen(
-                [sys.executable, "-m", __name__, "--run-job", str(jobdir / "job.json")],
-                stdin=subprocess.DEVNULL,
-                stdout=log,
-                stderr=subprocess.STDOUT,
-                start_new_session=os.name != "nt",
-            )
-        return {
-            k: v
-            for k, v in {
+    try:
+        if resume:
+            _write(jobdir / "thread", thread)
+        _write(jobdir / "prompt.txt", values["prompt"])
+        _atomic_write(
+            jobdir / "job.json",
+            {
                 **plan,
-                "executed": True,
-                "supervisor_pid": process.pid,
-            }.items()
-            if k != "command"
-        }
+                "data_root": str(data),
+                "project_id": project_id,
+                "profile": profile,
+                "values": values,
+            },
+        )
+        with _locked(index):
+            current = json.loads(index.read_text()) if index.exists() else {}
+            current[task_id] = plan
+            _atomic_write(index, current)
+        if background:
+            with (jobdir / "supervisor.log").open("ab") as log:
+                process = subprocess.Popen(
+                    [
+                        sys.executable,
+                        "-m",
+                        __name__,
+                        "--run-job",
+                        str(jobdir / "job.json"),
+                    ],
+                    stdin=subprocess.DEVNULL,
+                    stdout=log,
+                    stderr=subprocess.STDOUT,
+                    start_new_session=os.name != "nt",
+                )
+            return {
+                k: v
+                for k, v in {
+                    **plan,
+                    "executed": True,
+                    "supervisor_pid": process.pid,
+                }.items()
+                if k != "command"
+            }
+    except Exception:
+        from .controller_lease import finish_reservation
+
+        finish_reservation(data, project_id, task_id, job_id)
+        raise
     return run_job(jobdir / "job.json")
 
 
 def run_job(file):
+    from .controller_lease import require, finish_reservation
+
+    job = json.loads(Path(file).read_text())
+    try:
+        require(
+            job["data_root"],
+            job["project_id"],
+            job.get("controller"),
+            job.get("controller_token"),
+        )
+        return _run_job(file)
+    finally:
+        try:
+            finish_reservation(
+                job["data_root"], job["project_id"], job["task_id"], job["job_id"]
+            )
+        except OSError:
+            pass
+
+
+def _run_job(file):
     from .supervisor import run_attempt
 
     job = json.loads(Path(file).read_text())
@@ -615,6 +709,10 @@ def run_job(file):
             thread_file=job["thread_file"],
             resume_command=resume_command,
             retry=job["retry"],
+            timeout_seconds=job.get("timeout_seconds", LEGACY_TIMEOUT_SECONDS),
+            idle_timeout_seconds=job.get(
+                "idle_timeout_seconds", LEGACY_IDLE_TIMEOUT_SECONDS
+            ),
             workdir=job["worktree"],
             on_output=capture,
             rules_digest=job["rules_digest"],
@@ -658,55 +756,98 @@ def run_job(file):
         and result.get("failure_class") != "policy-review"
         and job.get("fallback_models")
     ):
-        from .collaboration_registry import _record_change
-        from .runtime_routing import statistics
-        from .executor_routing import _model_alias
-        from .subscription_quota import automatic_available
+        try:
+            value = _fallback(job, result, value)
+        except Exception as exc:
+            # A lease/capacity/I/O refusal to start the next attempt must not
+            # erase the already finished attempt or silently replay it.
+            value["fallback"] = {"status": "deferred", "reason": str(exc)[:1024]}
+            from .execution_outbox import change
 
-        availability = statistics(job["data_root"], job["project_id"])
-        candidates = [
-            m
-            for m in job["fallback_models"]
-            if not availability.get(_model_alias(m), {}).get("unavailable_until")
-            and automatic_available(job["data_root"], job["project_id"], m)
-        ]
-        if candidates:
-            next_model, *remaining = candidates
-            _record_change(
-                Path(job["data_root"]),
-                job["project_id"],
-                "dispatch.fallback",
-                job["task_id"],
-                from_model=job["model"],
-                to_model=next_model,
-                reason=result.get("failure_class"),
-                previous_job=job["job_id"],
-            )
-            next_result = dispatch(
-                job["control_root"],
-                data_root=job["data_root"],
-                project_id=job["project_id"],
-                task_id=job["task_id"],
-                model=next_model,
-                effort=job["effort"],
-                assignee=job["assignee"],
-                retry=job["retry"],
-                controller=job.get("controller"),
-                audience=job["rules_audience"],
-                fallback_models=remaining,
-                handoff={
-                    "previous_job": job["job_id"],
-                    "reason": result.get("failure_class"),
-                    "report_file": job["report_file"],
-                    "checkout": job["worktree"],
-                },
-            )
-            value = {
-                **next_result,
-                "previous_jobs": [job["job_id"], *next_result.get("previous_jobs", [])],
-            }
+            try:
+                change(
+                    Path(job["data_root"]),
+                    job["project_id"],
+                    "dispatch.fallback-deferred",
+                    job["task_id"],
+                    attempt_id=job["job_id"],
+                    reason=value["fallback"]["reason"],
+                )
+            except (OSError, ValueError, KeyError):
+                value["metadata_warning"] = (
+                    "Finished attempt retained; fallback notification could not be recorded"
+                )
+        try:
             _atomic_write(Path(job["job_dir"]) / "result.json", value)
+        except OSError:
+            value["metadata_warning"] = (
+                "Finished attempt retained in events; fallback result could not be saved locally"
+            )
     return value
+
+
+def _fallback(job, result, value):
+    from .execution_outbox import change
+    from .runtime_routing import statistics
+    from .executor_routing import _model_alias
+    from .subscription_quota import automatic_available
+
+    availability = statistics(job["data_root"], job["project_id"])
+    candidates = [
+        m
+        for m in job["fallback_models"]
+        if not availability.get(_model_alias(m), {}).get("unavailable_until")
+        and automatic_available(job["data_root"], job["project_id"], m)
+    ]
+    if not candidates:
+        return value
+    next_model, *remaining = candidates
+    # Keep the old reservation until reserve() swaps it atomically under the
+    # context lock, after validating the current lease and replacement capacity.
+    next_result = dispatch(
+        job["control_root"],
+        data_root=job["data_root"],
+        project_id=job["project_id"],
+        task_id=job["task_id"],
+        model=next_model,
+        effort=job["effort"],
+        timeout_seconds=job.get("timeout_seconds", LEGACY_TIMEOUT_SECONDS),
+        idle_timeout_seconds=job.get(
+            "idle_timeout_seconds", LEGACY_IDLE_TIMEOUT_SECONDS
+        ),
+        assignee=job["assignee"],
+        retry=job["retry"],
+        controller=job.get("controller"),
+        controller_token=job.get("controller_token"),
+        audience=job["rules_audience"],
+        fallback_models=remaining,
+        _replace_job_id=job["job_id"],
+        handoff={
+            "previous_job": job["job_id"],
+            "reason": result.get("failure_class"),
+            "report_file": job["report_file"],
+            "checkout": job["worktree"],
+        },
+    )
+    try:
+        change(
+            Path(job["data_root"]),
+            job["project_id"],
+            "dispatch.fallback",
+            job["task_id"],
+            from_model=job["model"],
+            to_model=next_model,
+            reason=result.get("failure_class"),
+            previous_job=job["job_id"],
+        )
+    except (OSError, ValueError, KeyError):
+        next_result["metadata_warning"] = (
+            "Fallback result retained; fallback notification could not be recorded"
+        )
+    return {
+        **next_result,
+        "previous_jobs": [job["job_id"], *next_result.get("previous_jobs", [])],
+    }
 
 
 def command(args):
@@ -780,9 +921,12 @@ def command(args):
             continuation=args.continuation,
             retry=args.retry,
             controller=args.controller,
+            controller_token=args.controller_token,
             audience=args.audience,
             fallback_models=args.fallback_model,
             resume_job=args.resume_job,
+            timeout_seconds=args.timeout_seconds,
+            idle_timeout_seconds=args.idle_timeout_seconds,
         )
     print(render(value, format="json", max_output_bytes=65536))
     return 2 if value.get("status") in {"failed", "interrupted"} else 0
@@ -794,7 +938,20 @@ def _run_parser(parser, action):
         parser.add_argument("--" + field)
     parser.add_argument("--root", default=".")
     parser.add_argument("--task-id", required=True)
-    parser.add_argument("--effort", choices=("high", "max"), default="high")
+    parser.add_argument(
+        "--effort",
+        help="Provider effort forwarded unchanged (e.g. medium, high, xhigh, max); default high, GLM max; resume retains recorded effort",
+    )
+    parser.add_argument(
+        "--timeout-seconds",
+        type=float,
+        help="Total seconds per attempt; new workers default 86400 (24 h), resume retains recorded budget",
+    )
+    parser.add_argument(
+        "--idle-timeout-seconds",
+        type=float,
+        help="Seconds without output per attempt; new workers default 5400 (90 min), resume retains recorded budget",
+    )
     parser.add_argument("--retry", type=int, default=0)
     parser.add_argument(
         "--fallback-model",
@@ -809,6 +966,10 @@ def _run_parser(parser, action):
         help="Original recorded job id, including a primary session preserved before failover",
     )
     parser.add_argument("--controller")
+    parser.add_argument(
+        "--controller-token",
+        help="Current project controller fence token; also CONTINUITY_CONTROLLER_TOKEN; never native account credentials",
+    )
     parser.add_argument("--audience", default="worker")
     parser.add_argument(
         "--continuation",

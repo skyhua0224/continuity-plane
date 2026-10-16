@@ -12,10 +12,17 @@ A running Claude Code process may require reconnection/reload or a new session a
 the MCP server or hooks; inspect the actual tool catalog and event receipts.
 
 PreCompact stores a session-specific next action, boundaries, verification and Git return point,
-then attempts checkpoint creation. PostCompact verifies and injects a quiet bounded continuation.
-SessionStart(compact) is also supported when the host uses that event for post-compaction recovery.
+then attempts checkpoint creation. Claude PostCompact verifies; SessionStart(compact) injects
+the quiet bounded continuation, as required by the native hook contract.
 Repeated post-compaction events do not repeat the injected context. Failed State verification does
 not revive an old Work or prevent ordinary authorized work.
+
+The development branch also observes SubagentStart/SubagentStop using the
+[official hook schemas](https://code.claude.com/docs/en/hooks#subagentstart).
+Only identifiers, agent type and origin-labeled observation metadata are recorded. Native transcript
+paths and final message bodies are neither read nor forwarded. A stop is not an exit code, successful
+verification, or a captured handback report. Unmatched internal-agent stops create no worker attempt.
+These are advisory observations; no Stop decision keeps the agent running.
 
 The local `observe report` includes returned bytes, hook-injected bytes and a signed replacement
 estimate by command/session. A negative estimate is visible. It is not a measured token-saving rate.

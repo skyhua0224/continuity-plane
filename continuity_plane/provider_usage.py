@@ -216,6 +216,7 @@ def ingest(
             doc["sources"][source_key] = {"identity": identity, "offset": stream.tell()}
             remaining = max(0, stat.st_size - stream.tell())
         _atomic_write(path, doc)
+    _observe_bindings(root, data_root)
     return {
         "accepted_usage_rows": accepted,
         "read_bytes": processed,
@@ -225,7 +226,7 @@ def ingest(
     }
 
 
-def report(root, data_root=None):
+def report(root, data_root=None, *, include_bindings=True):
     doc = _load(path_for(root, data_root))
     records = list(doc["records"].values())
     snapshots = list(doc.get("snapshots", {}).values())
@@ -315,7 +316,7 @@ def report(root, data_root=None):
         t: total([r for r in records if r.get("task_id") == t]) for t in completed
     }
     observed = {t: counts for t, counts in attributed.items() if counts}
-    return {
+    result = {
         "provider_usage_available": bool(records),
         "by_provider": groups,
         "by_origin": {
@@ -361,6 +362,33 @@ def report(root, data_root=None):
         "window_utilization": doc.get("context_windows") or None,
         "window_utilization_reason": "Only host-reported capacity and last-request input are measured; unavailable providers and useful-work efficiency remain unknown",
     }
+    identities = {(r["provider"], r["session"], json.dumps(r.get("collection_origin"), sort_keys=True)) for r in records}
+    result["session_observations"] = [
+        {"provider": provider, "session": session, "collection_origin": json.loads(origin),
+         "tokens": total([r for r in records if r["provider"] == provider and r["session"] == session and json.dumps(r.get("collection_origin"), sort_keys=True) == origin])}
+        for provider, session, origin in sorted(identities)
+    ]
+    if include_bindings:
+        project = resolve_project(root, data_root)
+        if project:
+            from .project_context import binding_usage
+
+            try:
+                result["session_binding_usage"] = binding_usage(data_root, project["project_id"], result["session_observations"])
+            except (OSError, ValueError, KeyError):
+                result["session_binding_usage"] = {"status": "unavailable", "cost_available": False}
+    return result
+
+
+def _observe_bindings(root, data_root):
+    project = resolve_project(root, data_root)
+    if project:
+        from .project_context import establish_pending
+
+        try:
+            establish_pending(data_root, project["project_id"], report(root, data_root, include_bindings=False)["session_observations"])
+        except (OSError, ValueError, KeyError):
+            pass
 
 
 def export_snapshot(root, provider, session_id, data_root=None):
@@ -478,6 +506,7 @@ def import_snapshot(root, snapshot, data_root=None):
             task_id=None if ambiguous else next(iter(tasks), None),
         )
         _atomic_write(path, doc)
+    _observe_bindings(root, data_root)
 
 
 def capture_hook(payload, provider, *, data_root=None):

@@ -2,6 +2,16 @@
 
 [English](CHANGELOG.en.md)
 
+## 0.1.0-alpha.25
+
+- 派发/续跑预算与适配器 effort 透传；Todo 默认开放卡并可筛选；多事件 wait；原子 body-only 更新；批次 metrics。
+- 完整文本规则导出及镜像漂移检查、有界哈希代码路标、项目 lesson、会话/批次绑定和非追溯 token 差额。
+- 权威集成引用与 checkout HEAD 分离；结构化主控交接在主控压缩前、批次记录后刷新，新会话读取同一份计划。
+- 项目显式启用主控 fence、同卡派发预留、原机/profile/client-family 名额和串行 controller run。启用后使用 guarded ledger v4，旧 dispatcher 明确拒绝；不拦截绕过工具的 Git。
+- Claude 子代理 hook 记录 origin-scoped 观察事件，不复制原生 transcript，不推断退出码/成功。受控 hook 测试不代表自然发生的原生子代理覆盖或长期节省。
+- 首次启用主控 fence 前须升级该项目所有派发 CLI/MCP；安装不自动启用 guarded ledger v4。已有 MCP 会话升级后需重连。
+- 批次在主控及账本锁内重新校验租约，幂等重试补写交接；自动接替原子替换派发预留，租约或名额不足时保留原 attempt 结果。迟到结果不覆盖人工确认；共享交接刷新失败时明确告警，本地压缩保存继续。
+
 ## 0.1.0-alpha.24
 
 - Worker 启动校验卡片；当前 attempt 结束投影到待评审或阻塞，保留迟到结果保护和离线补写。事件并发游标、分页和安静等待不再跳过未交付结果。

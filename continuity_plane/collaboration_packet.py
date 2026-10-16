@@ -171,6 +171,25 @@ def compose_collaboration_packet(
         for row in commitments[:8]
     ]
     packet["commitment_count"] = len(commitments)
+    from .project_context import lessons
+
+    try:
+        learned = lessons(root, project_id, max_results=2)
+    except (OSError, ValueError, KeyError):
+        learned = {"items": [], "total_items": None}
+    packet["lessons"] = [{"lesson_id": r["lesson_id"], "text": r["text"][:120], "source": r["source"][:100]} for r in learned["items"]]
+    packet["lesson_count"] = learned["total_items"]
+    from .controller_lease import view as controller_view
+
+    packet["controller_access"] = controller_view(root, project_id, assignee)
+    from .project_context import handoff_summary
+
+    try:
+        packet["controller_handoff"] = handoff_summary(root, project_id)
+    except (OSError, ValueError, KeyError):
+        packet["controller_handoff"] = {"status": "unavailable"}
+    if learned["items"]:
+        packet["lessons_note"] = "Reported project experience, not policy; use continuity lesson show --lesson-id ID for provenance."
     messages = (
         list_messages(root, project_id=project_id, recipient=assignee, limit=1000)
         if assignee
@@ -192,6 +211,11 @@ def compose_collaboration_packet(
     original_size = size
     if size > MAX_PACKET_BYTES:
         packet["truncated"] = True
+        if packet.get("controller_handoff", {}).get("revision"):
+            packet["controller_handoff"] = {k: v for k, v in packet["controller_handoff"].items() if k in {"revision", "current_batch", "next_action", "details_command", "authority"}}
+        while packet["lessons"] and len(json.dumps(packet, ensure_ascii=False, sort_keys=True).encode()) > MAX_PACKET_BYTES:
+            packet["lessons"].pop()
+            packet["lessons_omitted"] = True
         # Preserve the primary card. Trim verbose fields before dropping the
         # oldest in-flight cards and todo entries.
         if packet.get("task"):

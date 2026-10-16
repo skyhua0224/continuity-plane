@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.0-alpha.25
+
+- Forward dispatch/resume timeouts and provider effort; filter open-card Todo projections; accept OR event waits, atomic body-only updates and batch metrics.
+- Add complete rule text export/mirror drift checks, bounded hash-bound code routes, project lessons, session/batch binding and prospective observed-token deltas.
+- Separate authoritative integration refs from checkout HEAD; refresh structured controller handoffs before controller compaction and after batch records, shared across new sessions.
+- Explicit project controller fencing, atomic dispatch reservations, host/profile/client-family slots and serialized controller run. Guarded ledger v4 blocks older dispatchers; arbitrary Git outside the tool is not intercepted.
+- Observe native Claude subagent lifecycle without copying transcripts or inferring exit codes/success. Controlled hook tests do not prove natural live subagent coverage or longitudinal savings.
+- Upgrade every participating CLI/MCP dispatcher before explicitly enabling controller fencing. Installation does not enable guarded ledger v4 automatically; reconnect existing MCP sessions after upgrade.
+- Revalidate batch writes under the controller/ledger lock order; identical-record retries repair handoff projections. Fallback swaps reservations atomically and preserves finished results when lease/capacity prevents replacement. Late results cannot overwrite manual operation acknowledgements; compaction reports deferred shared-handoff refreshes without blocking local saves.
+
 ## 0.1.0-alpha.24
 
 - Validate cards before spawning; project current-attempt finishes to review/blocked with late-result protection and durable outbox replay. Concurrent event cursors, pagination and quiet waits preserve undelivered events.

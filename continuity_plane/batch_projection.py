@@ -63,6 +63,10 @@ def project(data_root, project_id, batch_id=None):
             )
         for item in value["verification"].get("unverified", []):
             lines.append(f"Unverified: {_cell(item)}")
+        if value.get("metrics"):
+            lines.extend(["", "| Metric | Declared value |", "|---|---|"])
+            for name, metric in sorted(value["metrics"].items()):
+                lines.append(f"| {_cell(name)} | {_cell(json.dumps(metric, ensure_ascii=False, sort_keys=True))} |")
         for decision_id in value.get("exception_decisions", []):
             decision = records.get("decision", {}).get(decision_id, {}).get("value", {})
             lines.append(

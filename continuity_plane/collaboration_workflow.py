@@ -5,6 +5,7 @@ import json
 import re
 import os
 import sys
+from contextlib import nullcontext
 from pathlib import Path
 from .collaboration_registry import (
     _load_ledger,
@@ -118,6 +119,23 @@ def prompt(
     registration = next(
         (p for p in list_projects(data) if p["project_id"] == project_id), None
     )
+    if task.get("worktree") or registration:
+        from .prompt_context import code_context
+
+        target_exists = bool(task.get("worktree") and Path(task["worktree"]).is_dir())
+        code_root = (
+            task["worktree"]
+            if target_exists
+            else (registration or {}).get("control_root", task.get("worktree"))
+        )
+        instructions["code_context"] = code_context(
+            code_root, body, task["allowed_files"]
+        )
+        instructions["code_context"]["source_basis"] = (
+            "task-checkout"
+            if target_exists
+            else "registered-project-root; verify against the worker checkout before editing"
+        )
     if registration:
         from .reference_library import hint
 
@@ -155,20 +173,54 @@ def prompt(
     )
 
 
-def record(data_root, *, project_id, kind, record_id, value):
+def _record_ledger(
+    data_root,
+    *,
+    project_id,
+    kind,
+    record_id,
+    value,
+    controller=None,
+    controller_token=None,
+):
     if kind not in {"decision", "batch"}:
         raise ValueError("invalid workflow record kind")
     _identifier(record_id)
     if not isinstance(value, dict) or len(json.dumps(value).encode()) > 32768:
         raise ValueError("record must be a JSON object within 32768 bytes")
+    if kind == "batch" and "metrics" in value:
+        metrics = value["metrics"]
+        if not isinstance(metrics, dict) or any(
+            not isinstance(key, str) or not key.strip() or len(key) > 128
+            for key in metrics
+        ):
+            raise ValueError(
+                "batch metrics must be an object with nonempty names of at most 128 characters"
+            )
+        try:
+            json.dumps(metrics, allow_nan=False)
+        except (ValueError, TypeError) as exc:
+            raise ValueError("batch metrics must contain finite JSON values") from exc
     data = Path(data_root or default_data_root())
     path = _ledger_path(data, project_id)
     with _locked(path):
         ledger = _load_ledger(data, project_id)
+        if kind == "batch":
+            from .controller_lease import _require
+            from .project_context import _path, _load
+
+            # The caller holds the context lock before the ledger lock. Check
+            # again after waiting: expiry itself can invalidate the holder.
+            _require(
+                _load(_path(data, project_id)),
+                controller,
+                controller_token,
+                required=ledger.get("controller_fencing_required", False),
+            )
         records = ledger.setdefault("workflow_records", {}).setdefault(kind, {})
         if record_id in records:
             if records[record_id]["value"] == value:
-                return records[record_id]
+                return records[record_id], False
             raise ValueError(
                 "record id already exists with different content; create a correction record"
             )
@@ -228,7 +280,57 @@ def record(data_root, *, project_id, kind, record_id, value):
         }
         records[record_id] = row
         _atomic_write(path, ledger)
-    _record_change(data, project_id, kind + ".recorded", None, record_id=record_id)
+    return row, True
+
+
+def record(
+    data_root,
+    *,
+    project_id,
+    kind,
+    record_id,
+    value,
+    controller=None,
+    controller_token=None,
+):
+    from .controller_lease import require
+    from .project_context import _path
+
+    data = Path(data_root or default_data_root())
+    # acquire() uses this same context -> ledger order. A fence cannot rotate
+    # between validation and the authoritative batch write.
+    with _locked(_path(data, project_id)) if kind == "batch" else nullcontext():
+        if kind == "batch":
+            require(data, project_id, controller, controller_token)
+        row, created = _record_ledger(
+            data,
+            project_id=project_id,
+            kind=kind,
+            record_id=record_id,
+            value=value,
+            controller=controller,
+            controller_token=controller_token,
+        )
+    if created:
+        _record_change(data, project_id, kind + ".recorded", None, record_id=record_id)
+    # Retry this projection even for an identical record after a prior I/O or
+    # lease failure. Never acquire the context lock recursively.
+    if kind == "batch":
+        from .project_context import handoff
+        from .collaboration_registry import list_projects
+
+        project = next(
+            (p for p in list_projects(data) if p["project_id"] == project_id), None
+        )
+        if project:
+            handoff(
+                project["control_root"],
+                data,
+                project_id,
+                completed_batch=record_id,
+                controller=controller,
+                controller_token=controller_token,
+            )
     return row
 
 
@@ -255,12 +357,24 @@ def command(args):
                 "assembled prompt exceeds budget; increase --max-output-bytes or shorten task/rules (prompt was not truncated)"
             )
     elif args.workflow_action.endswith("-add"):
+        record_value = json.loads(args.record_json)
+        if args.workflow_action == "batch-add" and args.metrics_json is not None:
+            metrics = json.loads(args.metrics_json)
+            if not isinstance(record_value, dict):
+                raise ValueError("record must be a JSON object")
+            if "metrics" in record_value and record_value["metrics"] != metrics:
+                raise ValueError(
+                    "conflicting metrics in --record-json and --metrics-json"
+                )
+            record_value = {**record_value, "metrics": metrics}
         value = record(
             args.data_root,
             project_id=args.project_id,
             kind=args.workflow_action.split("-")[0],
             record_id=args.record_id,
-            value=json.loads(args.record_json),
+            value=record_value,
+            controller=getattr(args, "controller", None),
+            controller_token=getattr(args, "controller_token", None),
         )
     else:
         kind = args.workflow_action.split("-")[0]
@@ -300,8 +414,15 @@ def register_cli(commands):
             )
         elif name.endswith("-add"):
             parser.add_argument("--record-id", required=True)
+            if name == "batch-add":
+                parser.add_argument("--controller")
+                parser.add_argument("--controller-token")
+                parser.add_argument(
+                    "--metrics-json",
+                    help='Optional metrics object, e.g. {"runtime_links_module":{"before":13,"after":6}}; baseline remains a commit',
+                )
             parser.add_argument(
                 "--record-json",
                 required=True,
-                help="Decision: actor/source/text/approved/commit; batch: task_ids/baseline/result_commit/verification/exception_decisions",
+                help="Decision: actor/source/text/approved/commit; batch: task_ids/baseline/result_commit/verification/exception_decisions/optional metrics",
             )

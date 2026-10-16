@@ -358,6 +358,17 @@ def uuid_hex():
     return uuid.uuid4().hex
 
 
+def export_text(value):
+    lines = ["# Continuity rules (generated; edit rules in Continuity, not this export)",
+             "Rules digest: " + value["rules_digest"], ""]
+    for rule in value["rules"]:
+        lines.extend(["## " + rule["rule_id"], rule["text"]])
+        if rule.get("attachment"):
+            lines.append("Policy attachment: " + json.dumps(rule["attachment"], ensure_ascii=False, sort_keys=True))
+        lines.append("")
+    return "\n".join(lines) + "\n"
+
+
 def command(args):
     from .planning_api import render
     render({},max_output_bytes=args.max_output_bytes)
@@ -374,7 +385,7 @@ def command(args):
         value = snapshot_import(
             args.data_root, project_id, args.file, args.scope, args.force, args.reason
         )
-    elif args.rules_action == "export":
+    elif args.rules_action in {"export", "check-mirror"}:
         value = bundle(
             args.data_root,
             project_id=project_id,
@@ -382,6 +393,24 @@ def command(args):
             lane_id=args.lane_id,
             scope=args.scope,
         )
+        text = export_text(value)
+        if args.rules_action == "check-mirror":
+            expected = hashlib.sha256(text.encode()).hexdigest()
+            mirror = Path(args.file).expanduser().resolve()
+            try:
+                with mirror.open("rb") as stream:
+                    raw = stream.read(1048577)
+            except FileNotFoundError:
+                raw = None
+            actual = hashlib.sha256(raw).hexdigest() if raw is not None and len(raw) <= 1048576 else None
+            value = {"status": "current" if actual == expected else "drift", "rules_digest": value["rules_digest"],
+                     "canonical_sha256": expected, "mirror_sha256": actual, "mirror": str(mirror),
+                     "read_limit_bytes": 1048576, "action": "Regenerate from rules export --format text; do not maintain a second policy source"}
+        elif args.format == "text":
+            if len(text.encode()) > args.max_output_bytes:
+                raise ValueError("complete rules text exceeds budget; increase --max-output-bytes; no policy was truncated")
+            print(text, end="")
+            return 0
     elif args.rules_action == "update":
         value = put_rule(
             args.data_root,
@@ -438,6 +467,7 @@ def register_cli(commands):
     sub = p.add_subparsers(dest="rules_action", required=True)
     for action in (
         "export",
+        "check-mirror",
         "attachment",
         "update",
         "history",
@@ -458,11 +488,15 @@ def register_cli(commands):
             leaf.set_defaults(handler=intake_command)
             leaf.add_argument("--manifest-file", required=True)
             leaf.add_argument("--apply", action="store_true")
-        if action in {"export", "update"}:
+        if action in {"export", "check-mirror", "update"}:
             leaf.add_argument(
-                "--audience", default="worker" if action == "export" else "all"
+                "--audience", default="worker" if action in {"export", "check-mirror"} else "all"
             )
         if action == "export":
+            leaf.add_argument("--lane-id")
+            leaf.add_argument("--format", choices=("json", "text"), default="json", help="Complete JSON or generated worker policy text; never silently truncated")
+        if action == "check-mirror":
+            leaf.add_argument("--file", required=True)
             leaf.add_argument("--lane-id")
         if action in {"update", "history"}:
             leaf.add_argument("--rule-id", required=True)

@@ -67,6 +67,36 @@ def handle_event(
     if not session:
         return {"status": "unbound", "continue": True, "injected_bytes": 0}
     data = Path(data_root) if data_root else default_data_root()
+    if event in {"SessionStart", "PostToolUse"}:
+        registration = resolve_project(root, data)
+        if registration:
+            from .native_subagents import flush
+
+            try:
+                flush(data, registration["project_id"])
+            except (OSError, ValueError):
+                pass
+    if event in {"SubagentStart", "SubagentStop"}:
+        if not host.startswith("claude"):
+            return {
+                "continue": True,
+                "injected_bytes": 0,
+                "status": "unsupported-native-agent-host",
+            }
+        registration = resolve_project(root, data)
+        if registration:
+            from .native_subagents import observe
+
+            return {
+                "continue": True,
+                "injected_bytes": 0,
+                "observation": observe(data, registration["project_id"], payload),
+            }
+        return {
+            "continue": True,
+            "injected_bytes": 0,
+            "status": "unregistered-native-agent",
+        }
     from .provider_usage import capture_hook
 
     capture_hook(
@@ -76,6 +106,19 @@ def handle_event(
     path = data / "handoffs" / (key + ".json")
     if event == "PreCompact":
         registration = resolve_project(root, data)
+        provider = "claude" if host.startswith("claude") else "codex"
+        from .project_context import binding, integration
+
+        try:
+            session_binding = (
+                binding(data, registration["project_id"], provider, session)
+                if registration
+                else None
+            )
+        except (OSError, ValueError, KeyError):
+            session_binding = None
+        if session_binding and not session_binding.get("active"):
+            session_binding = None
         queue_root = Path(registration["control_root"]) if registration else root
         queue = load_queue(queue_root, data) or {}
         item = next(
@@ -99,9 +142,28 @@ def handle_event(
                 )
                 if t["status"] in {"active", "dispatched"}
             ]
-            requested = payload.get("task_id") or os.environ.get("CONTINUITY_TASK_ID")
+            requested = (
+                payload.get("task_id")
+                or os.environ.get("CONTINUITY_TASK_ID")
+                or (session_binding or {}).get("task_id")
+            )
             if requested:
                 card = next((t for t in owned if t["task_id"] == requested), None)
+                if (
+                    card is None
+                    and session_binding
+                    and requested == session_binding.get("task_id")
+                ):
+                    card = next(
+                        (
+                            t
+                            for t in list_tasks(
+                                data, project_id=registration["project_id"]
+                            )
+                            if t["task_id"] == requested
+                        ),
+                        None,
+                    )
             elif len(owned) > 1:
                 card = None
             if (
@@ -126,7 +188,13 @@ def handle_event(
             payload.get("next_action")
             or (card or {}).get("next_action")
             or (item or {}).get("title")
-            or "Continue the host's latest unfinished user instruction."
+            or (
+                "Continue integration batch "
+                + session_binding["batch_id"]
+                + "; inspect its workers, commitments and verification before continuing."
+                if (session_binding or {}).get("batch_id")
+                else "Continue the host's latest unfinished user instruction."
+            )
         )
         if not isinstance(action, str):
             action = "Continue the host's latest unfinished user instruction."
@@ -135,15 +203,23 @@ def handle_event(
             if registration
             else {}
         )
+        authority = (
+            integration(data, registration["project_id"], registration["control_root"])
+            if registration
+            else {"head": None, "available": False}
+        )
         saved = {
             "schema_version": "context.session-handoff/v1alpha1",
             "root": str(root),
             "session": session,
             "generation": uuid.uuid4().hex,
-            "head": _git(root, "rev-parse", "HEAD"),
+            "head": authority["head"],
+            "integration": authority,
+            "checkout_head": _git(root, "rev-parse", "HEAD"),
             "branch": _git(root, "branch", "--show-current"),
             "next_action": _clip(action, 800),
             "task_id": (card or {}).get("task_id"),
+            "batch_id": (session_binding or {}).get("batch_id"),
             "scope_count": len((card or {}).get("allowed_files", [])),
             "verification_count": len((card or {}).get("exit_criteria", [])),
             "contract_preview": True,
@@ -170,9 +246,41 @@ def handle_event(
             from .controller_awareness import scene
 
             try:
-                saved["controller_scene"] = scene(data, registration["project_id"])
+                saved["controller_scene"] = scene(
+                    data,
+                    registration["project_id"],
+                    root=registration["control_root"],
+                    session_id=session,
+                    provider=provider,
+                )
             except (OSError, ValueError, TypeError, KeyError):
                 saved["controller_scene"] = {"status": "unavailable"}
+            from .project_context import handoff, handoff_summary
+
+            try:
+                if (
+                    os.environ.get("CONTINUITY_ROLE") == "controller"
+                    or (session_binding or {}).get("role") == "controller"
+                ):
+                    handoff(
+                        registration["control_root"],
+                        data,
+                        registration["project_id"],
+                        next_action=action,
+                        batch_id=(session_binding or {}).get("batch_id"),
+                    )
+            except (OSError, ValueError, KeyError) as exc:
+                saved["controller_handoff_refresh"] = {
+                    "status": "deferred",
+                    "reason": _clip(str(exc), 512),
+                    "local_handoff_saved": True,
+                }
+            try:
+                saved["controller_handoff"] = handoff_summary(
+                    data, registration["project_id"]
+                )
+            except (OSError, ValueError, KeyError):
+                saved["controller_handoff"] = {"status": "unavailable"}
         saved["digest"] = _digest(saved)
         with _locked(path):
             _atomic_write(path, saved)
@@ -197,10 +305,17 @@ def handle_event(
         except (OSError, ValueError, TypeError, KeyError):
             pass
         return {
-            "status": "saved",
+            "status": "saved-with-warning"
+            if saved.get("controller_handoff_refresh")
+            else "saved",
             "continue": True,
             "handoff_digest": saved["digest"],
             "injected_bytes": 0,
+            **(
+                {"controller_handoff_refresh": saved["controller_handoff_refresh"]}
+                if saved.get("controller_handoff_refresh")
+                else {}
+            ),
         }
     if event not in {"SessionStart", "PostCompact"}:
         return {"status": "ignored", "continue": True, "injected_bytes": 0}
@@ -228,22 +343,39 @@ def handle_event(
         }
     prefix = "Continue the interrupted task from the latest user intent and host summary. Progress notes are nonterminal. Metadata status alone does not make authorized source/test work read-only; respect the actual user scope. Do not repeat answered messages, announce recovery, or reread whole planning documents. For unfamiliar code, use continuity_context_lookup once, then narrow rg on a miss. "
     if valid:
-        head = _git(root, "rev-parse", "HEAD")
+        registration = resolve_project(root, data)
+        from .project_context import integration
+
+        authority = (
+            integration(data, registration["project_id"], registration["control_root"])
+            if registration
+            else {"head": None, "available": False}
+        )
+        head = authority["head"]
         recovered = {
             "next_action": saved["next_action"],
             "constraints": saved["constraints"],
             "verification": saved["verification"],
             "head": head,
+            "integration": authority,
+            "checkout_head": _git(root, "rev-parse", "HEAD"),
             "executor_candidates": saved.get("executor_candidates", []),
             "executor_thinking": saved.get("executor_thinking", {}),
             "executor_adaptation": saved.get("executor_adaptation", {}),
             "handoff_head_changed": head != saved["head"],
             "task_id": saved["task_id"],
+            "batch_id": saved.get("batch_id"),
             "scope_count": saved.get("scope_count"),
             "verification_count": saved.get("verification_count"),
             "contract_preview": saved.get("contract_preview", True),
             "contract_command": saved.get("contract_command"),
             "controller_scene": saved.get("controller_scene", {}),
+            "controller_handoff": saved.get("controller_handoff", {}),
+            **(
+                {"controller_handoff_refresh": saved["controller_handoff_refresh"]}
+                if saved.get("controller_handoff_refresh")
+                else {}
+            ),
         }
         context = prefix + _json(recovered)
         while len(context.encode()) > MAX_CONTEXT_BYTES:
@@ -257,6 +389,8 @@ def handle_event(
                         "commitments",
                         "batches",
                         "approved_decisions",
+                        "lessons",
+                        "native_workers",
                     )
                     if scene.get(k)
                 ),
@@ -268,6 +402,12 @@ def handle_event(
             elif recovered.get("executor_adaptation"):
                 recovered["executor_adaptation"] = {}
                 recovered["details_omitted"] = True
+            elif recovered.get("controller_handoff", {}).get("plan"):
+                recovered["controller_handoff"]["plan"] = ""
+                recovered["controller_handoff"]["details_omitted"] = True
+            elif recovered.get("controller_handoff", {}).get("pending_decisions"):
+                recovered["controller_handoff"]["pending_decisions"].pop()
+                recovered["controller_handoff"]["details_omitted"] = True
             elif recovered.get("constraints"):
                 recovered["constraints"].pop()
                 recovered["details_omitted"] = True
@@ -282,6 +422,31 @@ def handle_event(
             prefix
             + "No verified session handoff exists; do not revive an older saved Work."
         )
+        registration = resolve_project(root, data)
+        if registration:
+            from .project_context import handoff_summary
+            from .controller_awareness import scene
+
+            try:
+                shared = handoff_summary(data, registration["project_id"])
+                if shared.get("revision"):
+                    context += (
+                        " Shared declared controller plan (verify refs/workers; no ownership granted): "
+                        + _json(
+                            {
+                                "controller_handoff": shared,
+                                "controller_scene": scene(
+                                    data,
+                                    registration["project_id"],
+                                    root=registration["control_root"],
+                                    max_bytes=1400,
+                                    max_workers=4,
+                                ),
+                            }
+                        )
+                    )
+            except (OSError, ValueError, KeyError):
+                pass
     context = _clip(context, MAX_CONTEXT_BYTES)
     marker = path.with_suffix(".delivered.json")
     identity = hashlib.sha256(context.encode()).hexdigest()
@@ -424,7 +589,7 @@ def host_main() -> int:
         if create or verify:
             if os.environ.get("CONTINUITY_STATE_CHECKPOINTS") != "1":
                 ok = (
-                    output.get("status") == "saved"
+                    output.get("status") in {"saved", "saved-with-warning"}
                     if create
                     else output.get("status")
                     in {"verified-await-sessionstart", "restored", "already-delivered"}

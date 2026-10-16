@@ -1753,6 +1753,11 @@ def _resume(args: argparse.Namespace) -> int:
             dry_run=args.dry_run,
             background=args.background,
             retry=args.retry,
+            timeout_seconds=getattr(args, "timeout_seconds", None),
+            idle_timeout_seconds=getattr(args, "idle_timeout_seconds", None),
+            controller=getattr(args, "controller", None),
+            controller_token=getattr(args, "controller_token", None),
+            resume_job=getattr(args, "resume_job", None),
         )
         print(json.dumps(result, ensure_ascii=False))
         return 2 if result.get("status") in {"failed", "interrupted"} else 0
@@ -5445,6 +5450,8 @@ def _todo_from_cards(args):
                 assignee=args.assignee,
                 lane_id=args.lane_id,
                 linked_only=args.linked_only,
+                statuses=args.status,
+                include_closed=args.all,
             ),
             format=args.format,
             max_output_bytes=args.max_output_bytes,
@@ -5930,7 +5937,12 @@ def build_parser() -> argparse.ArgumentParser:
     resume.add_argument("continuation_text", nargs="?")
     for flag in ("data-root", "project-id", "model", "assignee"):
         resume.add_argument("--" + flag)
-    resume.add_argument("--effort", choices=("high", "max"), default="high")
+    resume.add_argument("--effort", help="Provider effort forwarded unchanged; omit to retain recorded effort")
+    resume.add_argument("--timeout-seconds", type=float, help="Override recorded total attempt budget")
+    resume.add_argument("--idle-timeout-seconds", type=float, help="Override recorded no-output budget")
+    resume.add_argument("--controller")
+    resume.add_argument("--controller-token")
+    resume.add_argument("--resume-job")
     resume.add_argument("--retry", type=int, default=0)
     resume.add_argument("--dry-run", action="store_true")
     resume.add_argument("--background", action="store_true")
@@ -6109,6 +6121,12 @@ def build_parser() -> argparse.ArgumentParser:
     from .collaboration_workflow import register_cli as register_workflow_cli
 
     register_workflow_cli(collaboration_commands)
+    from .project_context import register_cli as register_context_cli
+
+    register_context_cli(commands, collaboration_commands)
+    from .controller_lease import register_cli as register_controller_cli
+
+    register_controller_cli(commands)
     from .batch_projection import register_cli as register_batch_projection
 
     register_batch_projection(collaboration_commands)
@@ -6226,7 +6244,8 @@ def build_parser() -> argparse.ArgumentParser:
             "completed",
             "merged",
         ),
-        required=True,
+        required=False,
+        help="Omit to preserve the current task status atomically",
     )
     collaboration_task_update.add_argument("--next-action", default=None)
     collaboration_task_update.add_argument("--blocked-reason", default=None)
@@ -6343,7 +6362,7 @@ def build_parser() -> argparse.ArgumentParser:
     collaboration_wait.add_argument("--project-id")
     collaboration_wait.add_argument("--root", default=".")
     collaboration_wait.add_argument("--since", type=int, default=0)
-    collaboration_wait.add_argument("--event", default=None)
+    collaboration_wait.add_argument("--event", action="append", default=None, help="Repeat for OR matching; omit for any event")
     collaboration_wait.add_argument("--task-id", default=None)
     collaboration_wait.add_argument("--assignee", default=None)
     collaboration_wait.add_argument("--timeout-seconds", type=float, default=300)
@@ -6648,6 +6667,9 @@ def build_parser() -> argparse.ArgumentParser:
     todo_cards.add_argument("--data-root")
     todo_cards.add_argument("--assignee")
     todo_cards.add_argument("--lane-id")
+    card_states = todo_cards.add_mutually_exclusive_group()
+    card_states.add_argument("--status", choices=sorted(_TASK_STATUS), action="append", help="Repeat to select task states; default open, including ready-for-review")
+    card_states.add_argument("--all", action="store_true", help="Include closed cards; prior completion evidence remains stored regardless of view")
     todo_cards.add_argument("--format", choices=("brief", "json"), default="brief")
     todo_cards.add_argument("--max-output-bytes", type=int, default=8192)
     todo_cards.add_argument(
@@ -6793,7 +6815,7 @@ def main(argv: list[str] | None = None) -> int:
         and not routing_preview
     ):
         project = resolve_project(
-            getattr(args, "root", "."), getattr(args, "data_root", None)
+            getattr(args, "root", None) or ".", getattr(args, "data_root", None)
         )
         if project is None:
             raise ValueError(
@@ -6811,8 +6833,13 @@ def main(argv: list[str] | None = None) -> int:
             "dispatch",
             "task",
             "rules",
+            "session",
+            "lesson",
+            "handoff",
+            "controller",
         }
         and not (args.command == "resume" and getattr(args, "task_id", None))
+        and not (args.command == "collaboration" and getattr(args, "collaboration_command", None) in {"context-set", "context-show"})
     ):
         try:
             args.root = str(resolve_control_root(args.root))

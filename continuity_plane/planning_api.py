@@ -10,6 +10,11 @@ import json
 from pathlib import Path
 
 OPERATIONS = {
+    **{f"controller.{name}": ("controller", name) for name in ("acquire", "renew", "release", "status")},
+    **{f"session.{name}": ("session", name) for name in ("bind", "show", "unbind")},
+    **{f"lesson.{name}": ("lesson", name) for name in ("add", "list", "show")},
+    **{f"handoff.{name}": ("handoff", name) for name in ("write", "show")},
+    **{f"project.context-{name}": ("collaboration", "context-" + name) for name in ("set", "show")},
     "storage.inspect": ("storage", "inspect"),
     **{
         f"quota.{name}": ("quota", name)
@@ -19,6 +24,7 @@ OPERATIONS = {
         f"rules.{name}": ("rules", name)
         for name in (
             "export",
+            "check-mirror",
             "attachment",
             "update",
             "history",
@@ -93,6 +99,9 @@ ALIASES = {
     for name in ("compile", "list", "complete", "block", "link", "activate")
 }
 CLI_HELP = {
+    "controller.run": ("controller", "run"),
+    "controller.clear-reservation": ("controller", "clear-reservation"),
+    "controller.clear-operation": ("controller", "clear-operation"),
     "quota.refresh": ("quota", "refresh"),
     "quota.tick": ("quota", "tick"),
     **{
@@ -109,10 +118,12 @@ CLI_HELP = {
 }
 ALIASES.update(continuity_collaboration=None)
 READ_ACTIONS = {
+    "controller.status", "session.show", "lesson.list", "lesson.show", "handoff.show", "project.context-show",
     "storage.inspect",
     "reference.list",
     "reference.show",
     "rules.export",
+    "rules.check-mirror",
     "rules.attachment",
     "rules.history",
     "rules.affected",
@@ -419,6 +430,9 @@ def execute(operation, parameters=None, *, root=None, project_id=None, data_root
 
     parser = _parser(operation)
     parameters = {str(k).replace("-", "_"): v for k, v in (parameters or {}).items()}
+    if operation == "wait" and isinstance(parameters.get("event"), str):
+        # Older MCP callers supplied one string before --event was repeatable.
+        parameters["event"] = [parameters["event"]]
     if operation == "status-render" and parameters.get("output"):
         raise ValueError(
             "status file output is CLI-only; planning MCP returns the read-only projection"
