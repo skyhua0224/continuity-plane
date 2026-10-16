@@ -1,15 +1,18 @@
 """Adopter entrypoints, executable CLI contracts and privacy-safe workflow evidence."""
 
 import importlib.util
+import argparse
 import contextlib
 import io
 import json
+import os
 from pathlib import Path
 import re
 import shlex
 import shutil
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from continuity_plane.cli import build_parser
 from continuity_plane.release_version import VERSION
@@ -56,6 +59,216 @@ class AdopterDocumentationTests(unittest.TestCase):
                     (path.parent / target).is_file(), f"{path.name}: {target}"
                 )
 
+    def readme_commands(self, path):
+        for block in re.findall(r"```bash\n(.*?)```", path.read_text(), re.S):
+            for line in block.replace("\\\n", " ").splitlines():
+                args = shlex.split(line, comments=True)
+                if args and args[0] == "continuity":
+                    yield args[1:]
+
+    def test_homepages_explain_core_surfaces_with_real_commands(self):
+        required = {
+            ("todo", "compile"),
+            ("todo", "list"),
+            ("todo", "complete"),
+            ("todo", "from-cards"),
+            ("collaboration", "task", "add"),
+            ("collaboration", "task", "update"),
+            ("collaboration", "packet"),
+            ("collaboration", "inbox", "send"),
+            ("collaboration", "changes"),
+            ("collaboration", "wait"),
+            ("worker", "configure"),
+            ("worker", "resume"),
+            ("dispatch",),
+            ("report",),
+            ("context", "lookup"),
+            ("context", "dependents"),
+            ("collaboration", "rule-add"),
+            ("rules", "export"),
+            ("memory", "add"),
+            ("reference", "add"),
+            ("handoff", "write"),
+            ("collaboration", "commitment-add"),
+            ("observe", "report"),
+        }
+        for name in ("README.md", "README.en.md"):
+            text = (self.root / name).read_text()
+            families = next(
+                a
+                for a in build_parser()._actions
+                if isinstance(a, argparse._SubParsersAction)
+            ).choices
+            for family in families:
+                self.assertRegex(
+                    text.casefold(),
+                    r"(?<![\w-])" + re.escape(family) + r"(?![\w-])",
+                    (name, family),
+                )
+            commands = list(self.readme_commands(self.root / name))
+            for prefix in required:
+                self.assertTrue(
+                    any(tuple(c[: len(prefix)]) == prefix for c in commands),
+                    (name, prefix),
+                )
+            for token in (
+                "continuity_plan",
+                "continuity_help",
+                "continuity_context_lookup",
+                "PreCompact",
+                "PostCompact",
+                "PreToolUse",
+                "UserPromptSubmit",
+                "SubagentStart",
+                "SubagentStop",
+                "CONTINUITY_DISABLED",
+                "controller",
+                "supervisor daemon",
+                "verification-json",
+                "batch-add",
+                "decision-add",
+            ):
+                self.assertIn(token, text, (name, token))
+            for anchor in (
+                "todo",
+                "collaboration",
+                "worker",
+                "mcp",
+                "hooks",
+                "context",
+                "knowledge",
+                "handoff",
+                "verification",
+                "usage",
+                "advanced",
+            ):
+                self.assertIn(f'<a id="{anchor}"></a>', text)
+
+    def test_homepage_mcp_examples_match_actual_tool_contracts(self):
+        from jsonschema import validate
+        from continuity_plane.planning_api import tool_definitions
+        from continuity_plane.context_mcp_server import _tool
+
+        planning = next(t for t in tool_definitions() if t["name"] == "continuity_plan")
+        for name in ("README.md", "README.en.md"):
+            configs, actions, lookups = [], [], []
+            for block in re.findall(
+                r"```json\n(.*?)```", (self.root / name).read_text(), re.S
+            ):
+                value = json.loads(block)
+                if "mcpServers" in value:
+                    configs.append(value)
+                    self.assertEqual(
+                        {k: v["command"] for k, v in value["mcpServers"].items()},
+                        {
+                            "continuity": "continuity-mcp",
+                            "continuity-search": "continuity-search-mcp",
+                        },
+                    )
+                elif "action" in value:
+                    validate(value, planning["inputSchema"])
+                    actions.append(value)
+                elif "query" in value:
+                    validate(value, _tool()["inputSchema"])
+                    lookups.append(value)
+            self.assertTrue(configs and actions and lookups, name)
+
+    def test_homepage_planning_examples_execute_without_state_or_native_clients(self):
+        from continuity_plane.cli import main
+
+        for name in ("README.md", "README.en.md"):
+            with self.subTest(readme=name), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory) / "repository"
+                root.mkdir()
+                report = root / "fixture-report.md"
+                report.write_text(
+                    "Synthetic README verification report. No model requests.\n"
+                )
+                env = {
+                    "PATH": os.environ.get("PATH", ""),
+                    "CONTINUITY_DATA_ROOT": str(Path(directory) / "data"),
+                    "CONTINUITY_ASSIGNEE": "controller",
+                    "CONTINUITY_ROLE": "controller",
+                }
+                item_id = None
+                executed = set()
+
+                def call(args):
+                    output = io.StringIO()
+                    with contextlib.redirect_stdout(output):
+                        code = main(args)
+                    self.assertEqual(code, 0, args)
+                    try:
+                        return json.loads(output.getvalue())
+                    except json.JSONDecodeError:
+                        return output.getvalue()
+
+                with patch.dict(os.environ, env, clear=True), contextlib.chdir(root):
+                    for argv in self.readme_commands(self.root / name):
+                        selected = argv[0] in {
+                            "todo",
+                            "memory",
+                            "reference",
+                            "lesson",
+                            "handoff",
+                        } or (
+                            argv[0] == "collaboration"
+                            and argv[1]
+                            in {
+                                "register",
+                                "task",
+                                "packet",
+                                "inbox",
+                                "changes",
+                                "rule-add",
+                                "commitment-add",
+                                "commitment-list",
+                            }
+                        )
+                        if not selected or "--remote" in argv:
+                            continue
+                        argv = [
+                            item_id
+                            if v == "ITEM_ID"
+                            else str(report)
+                            if v == "/persistent/path/report.md"
+                            else v
+                            for v in argv
+                        ]
+                        result = call(argv)
+                        executed.add(tuple(argv[:2]))
+                        if argv[:2] == ["todo", "compile"]:
+                            item_id = result["items"][0]["item_id"]
+                        if argv[:2] == ["collaboration", "packet"]:
+                            self.assertEqual(result["task"]["task_id"], "parser-fix")
+                    card = call(
+                        [
+                            "collaboration",
+                            "task",
+                            "show",
+                            "--project-id",
+                            "demo",
+                            "--task-id",
+                            "parser-fix",
+                            "--include-report",
+                        ]
+                    )
+                    self.assertEqual(card["status"], "ready-for-review")
+                    self.assertEqual(
+                        card["details"]["report"]["text"], report.read_text()
+                    )
+                    self.assertFalse((root / ".continuity").exists())
+                    self.assertTrue(
+                        {
+                            ("todo", "compile"),
+                            ("todo", "complete"),
+                            ("todo", "from-cards"),
+                            ("collaboration", "inbox"),
+                            ("handoff", "write"),
+                        }
+                        <= executed
+                    )
+
     def test_documented_cli_examples_parse_on_the_current_contract(self):
         parser = build_parser()
         count = 0
@@ -89,9 +302,7 @@ class AdopterDocumentationTests(unittest.TestCase):
             "workflows.en.md",
         ):
             text = (self.docs / name).read_text(encoding="utf-8")
-            self.assertIn(
-                VERSION if name.startswith("deployment") else "report", text
-            )
+            self.assertIn(VERSION if name.startswith("deployment") else "report", text)
 
     def test_three_primary_paths_have_at_most_ten_commands(self):
         for name, headings in (

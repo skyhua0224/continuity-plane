@@ -67,11 +67,11 @@
     },
     {
       "path": "README.en.md",
-      "sha256": "4d5485e3dfc71e5953acfeeea6724a48841893412ddc09c4c7dc6c797080520e"
+      "sha256": "f1acc5fe15c09c396381cdbda5feea911781e516042298ea89f974c78536182a"
     },
     {
       "path": "README.md",
-      "sha256": "a3fefd5af6fd844a7175b99bff4b6e23deecb21da2128fdb5d52df4642c7a6de"
+      "sha256": "c5baff2fd51f6e582436bcf7ffc88ab27faeb67fcc4cdcfba82fa3adb42e31d9"
     },
     {
       "path": "SECURITY.en.md",
@@ -627,7 +627,7 @@
     },
     {
       "path": "docs/lifecycle-parity.md",
-      "sha256": "a5ade3c4991f92ab1097afe804869d85c962abe5323c0337daf445f8f3e9e755"
+      "sha256": "882799324be868e23da50ccd19a35682463dc619f487c82709a4a3062f9b654a"
     },
     {
       "path": "docs/lightweight-observability-design.md",
@@ -927,7 +927,7 @@
     },
     {
       "path": "tests/test_adopter_documentation.py",
-      "sha256": "10f4e8c3308676d4aa34340b965c31c7eda9ba11b02079b73a1ef33e24f9603a"
+      "sha256": "90376f7669ffc6be8ec9b3882fe4c2af197a074c8ec6197c46d9ff9c8d803d99"
     },
     {
       "path": "tests/test_adoption_workflows.py",
