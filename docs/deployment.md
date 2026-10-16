@@ -86,6 +86,21 @@ codex plugin add continuity-plane-state@continuity-plane
 
 固定在旧 tag 的 marketplace 不会因为普通刷新自动换成新 tag；升级时先核对并按宿主支持的方式选择目标 ref。随后需要宿主刷新／新会话。通过 `/hooks` 审核当前 hook 定义，并检查：
 
+若重新 add 提示已登记不同来源，先备份本机 Codex 配置，再只重设这一项市场登记，不卸载插件或删除账号资料：
+
+```bash
+# 仅切换 Continuity 市场的固定版本
+codex plugin marketplace remove continuity-plane
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.26
+codex plugin marketplace upgrade continuity-plane
+```
+
+然后重新执行本节中已选用插件的 add 命令，核对真实安装缓存，不能只看 pip 版本：
+
+```bash
+codex plugin list --marketplace continuity-plane --json
+```
+
 ```bash
 continuity doctor --root . --codex-home /path/to/codex-profile
 ```
@@ -107,6 +122,18 @@ claude plugin list
 本地插件使用安装包的 `continuity-host-hook`，包括 SessionStart、PreCompact、PostCompact、UserPromptSubmit、PostToolUse、Stop、SubagentStart、SubagentStop。新开会话后核对事件记录。
 
 Claude PostCompact 只验证，SessionStart(compact) 才注入上下文。原生子代理 start/stop 只是观察，不能据此推断测试成功、退出码或完整报告。安装检查通过不代表自然发生的子代理生命周期已经实测。
+
+### 多个 Claude profile
+
+每个实际使用的 profile 分别安装和更新；路径只作示例，不能把另一个 profile 的凭据、会话或完整配置复制过来：
+
+```bash
+# 在这个 profile 的所属机器执行；其他 profile 分别重复
+CLAUDE_CONFIG_DIR=/path/to/profile-a claude plugin marketplace update continuity-plane
+CLAUDE_CONFIG_DIR=/path/to/profile-a claude plugin update continuity-plane@continuity-plane --scope user
+```
+
+再用同一 CLAUDE_CONFIG_DIR 调用 claude plugin list，重连／新会话后确认加载。若采用下方 SSH bridge 模式，不要同时启用重复的本地插件 hook：每个 profile 保留自己的 bridge 配置、明确项目映射，分别执行 bridge install。该模式以 hook 的 runtime 路径和新 MCP serverInfo.version 验收，不要求 plugin list 出现重复插件。共享公开程序包不等于共享原生账号或会话状态。
 
 不要同时启用同一套插件 hook 与手写重复 hook。自动 hook 需由宿主实际触发，CLI 可执行不构成采用证据。官方参考：[Claude Code plugins](https://code.claude.com/docs/en/plugins)。
 

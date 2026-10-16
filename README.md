@@ -85,6 +85,7 @@ python3 -m venv .venv
 |---|---|
 | 安装、升级、跨系统、远端 hook、回滚 | [部署与升级](docs/deployment.md) |
 | 个人／主控／团队三条路径 | [使用说明](USAGE.md) · [工作流](docs/workflows.md) |
+| 给 AI 的开工入口与简报 | [四条命令与约定](docs/agent-start.md) |
 | 当前能力、实测方法、未验证项 | [验证矩阵](docs/validation.md) · [历史实验](docs/benchmarks.md) |
 | 协作全参数、State 高级用法 | [命令参考](docs/field-workflows.md) · [State](docs/state-workflows.md) |
 | 变更、兼容与发布约定 | [变更记录](CHANGELOG.md) · [发布规范](docs/releases.md) |

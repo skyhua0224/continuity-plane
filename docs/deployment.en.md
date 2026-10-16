@@ -86,6 +86,21 @@ For an explicit generic stdio connection, use `continuity-mcp`; retrieval uses `
 
 A marketplace pinned to an old tag does not switch tags during an ordinary refresh: inspect/select the target ref through the host's supported flow first. Then refresh or open a new session. Review hook trust through `/hooks`, then inspect:
 
+If add reports a different registered source, back up the owner-host Codex configuration and reset only this marketplace registration. Do not uninstall plugins or delete account data:
+
+```bash
+# Repin only the Continuity marketplace
+codex plugin marketplace remove continuity-plane
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.26
+codex plugin marketplace upgrade continuity-plane
+```
+
+Repeat the add commands above for the plugins you use, then inspect actual cached installation versions, not just pip:
+
+```bash
+codex plugin list --marketplace continuity-plane --json
+```
+
 ```bash
 continuity doctor --root . --codex-home /path/to/codex-profile
 ```
@@ -105,6 +120,18 @@ claude plugin list
 The local plugin uses the installed `continuity-host-hook` for SessionStart, PreCompact, PostCompact, UserPromptSubmit, PostToolUse, Stop, SubagentStart and SubagentStop. Start a new session and inspect event evidence.
 
 Claude PostCompact verifies; SessionStart(compact) injects. Native subagent start/stop are observations, not exit codes, successful tests or complete reports. Configuration checks do not establish naturally occurring live-subagent coverage.
+
+### Multiple Claude profiles
+
+Install/update each actual profile separately on its owner host. Paths below are examples; never copy another profile's credentials, sessions or entire configuration:
+
+```bash
+# Run on this profile's owning host; repeat separately for other profiles
+CLAUDE_CONFIG_DIR=/path/to/profile-a claude plugin marketplace update continuity-plane
+CLAUDE_CONFIG_DIR=/path/to/profile-a claude plugin update continuity-plane@continuity-plane --scope user
+```
+
+Run claude plugin list with the same CLAUDE_CONFIG_DIR, then reconnect/start a new session. For the SSH bridge below, do not also enable duplicate local plugin hooks. Keep an explicit bridge config/project mapping per profile and run bridge install for each. Verify that mode through its hook runtime path and fresh MCP serverInfo.version, rather than requiring a duplicate plugin-list entry. A shared public package is not shared native account/session state.
 
 Do not register duplicate plugin/manual hooks. An executable CLI alone is not proof of adoption. [Official Claude plugin documentation](https://code.claude.com/docs/en/plugins).
 

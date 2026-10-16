@@ -39,6 +39,8 @@ continuity collaboration packet --project-id demo --assignee controller
 
 ## Agent 接入
 
+给人或 AI 的四条开工命令与可粘贴简报见[开工入口](docs/agent-start.md)。
+
 CLI 能用不代表 hook 已启用。按[部署指南](docs/deployment.md)选择 Codex、Claude Code 或通用 MCP，检查实际工具表与 hook 事件。保持 provider 的原有登录／路由，不复制整份配置。
 
 ## 压缩与接续

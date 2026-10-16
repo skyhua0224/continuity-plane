@@ -39,6 +39,8 @@ continuity collaboration packet --project-id demo --assignee controller
 
 ## Connect your agent
 
+See [the starting guide](docs/agent-start.en.md) for four startup commands and a pasteable agent brief.
+
 A working CLI does not prove hooks are enabled. Choose Codex, Claude Code or generic MCP in [deployment](docs/deployment.en.md), then inspect actual tools and event receipts. Keep native authentication and routing intact.
 
 ## Compaction and continuation

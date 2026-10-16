@@ -85,6 +85,7 @@ Historical compaction, retrieval, Skill and coordination comparisons remain in [
 |---|---|
 | Installation, upgrades, OS paths, remote hooks, rollback | [Deployment](docs/deployment.en.md) |
 | Solo, controller and team paths | [Quick start](USAGE.en.md) · [Workflows](docs/workflows.en.md) |
+| Agent startup and task brief | [Four commands and convention](docs/agent-start.en.md) |
 | Current coverage and missing validation | [Validation](docs/validation.en.md) · [Historical experiments](docs/benchmarks.en.md) |
 | Detailed collaboration / advanced State | [Command reference](docs/field-workflows.md) · [State](docs/state-workflows.en.md) |
 | Changes, compatibility and release conventions | [Changelog](CHANGELOG.en.md) · [Release policy](docs/releases.en.md) |

@@ -38,6 +38,8 @@ class AdopterDocumentationTests(unittest.TestCase):
                 "validation.en.md",
                 "releases.md",
                 "releases.en.md",
+                "agent-start.md",
+                "agent-start.en.md",
             )
         ]
 
