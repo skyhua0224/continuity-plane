@@ -1,6 +1,6 @@
 {
   "schema_version": "continuity.adopter-workflow-check/v1",
-  "version": "0.1.0a25",
+  "version": "0.1.0a26",
   "dataset": "synthetic-only",
   "native_provider_requests": 0,
   "cases": {
@@ -25,7 +25,7 @@
     "no_change_bytes": 196
   },
   "observed_boundaries": {
-    "report_after_early_card_update": "requires-explicit-attachment"
+    "report_after_early_card_update": "attached"
   },
   "limits": [
     "No real model/API, native host session, hardware or multi-machine field run.",

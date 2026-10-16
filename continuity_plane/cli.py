@@ -5432,6 +5432,7 @@ def _todo_activate(args: argparse.Namespace) -> int:
         reason=args.reason,
         data_root=args.data_root,
         session_id=args.session_id,
+        assignee=args.assignee,
     )
     print(json.dumps(value, ensure_ascii=False, sort_keys=True))
     return 0
@@ -6649,6 +6650,7 @@ def build_parser() -> argparse.ArgumentParser:
     todo_activate.add_argument("--data-root", default=None)
     todo_activate.add_argument("--item-id", required=True)
     todo_activate.add_argument("--reason", required=True)
+    todo_activate.add_argument("--assignee", help="Stable executor identity; never inferred from an MCP connection ID")
     todo_activate.add_argument(
         "--session-id", default=None, help="tag the current controller for recovery"
     )

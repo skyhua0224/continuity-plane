@@ -87,7 +87,7 @@ def _change(root, data_root, scope, change):
     return result
 
 
-def add(
+def candidate(
     root,
     *,
     reference_id,
@@ -146,6 +146,12 @@ def add(
         uses=[],
         created_at=datetime.now(UTC).isoformat(),
     )
+    return item
+
+
+def add(root, **parameters):
+    item = candidate(root, **parameters)
+    reference_id = item["reference_id"]
 
     def change(value):
         if any(i["reference_id"] == reference_id for i in value["items"]):
@@ -159,7 +165,7 @@ def add(
         value["items"].append(item)
         return item
 
-    return _change(root, data_root, scope, change)
+    return _change(root, parameters.get("data_root"), parameters.get("scope", "project"), change)
 
 
 def record(
@@ -328,9 +334,14 @@ def find(
 def hint(root, *, data_root=None):
     if preference(root, data_root=data_root)["preference"] != "primary-first":
         return None
+    import shlex
+
+    command = "continuity reference list --root " + shlex.quote(str(Path(root).resolve()))
+    if data_root:
+        command += " --data-root " + shlex.quote(str(data_root))
     return (
         "Reference preference: consult applicable standards and official OS/library docs for consequential design; "
-        "reuse `continuity reference list` / reference.list, record version and adoption reason. "
+        "inspect registered sources: " + command + ". "
         "Newest is not automatically best; missing sources flag uncertainty, not a global work stop."
     )
 
@@ -396,6 +407,12 @@ def command(args):
         )
     elif args.reference_command == "preference":
         result = preference(**shared, mode=args.mode)
+    elif args.reference_command in {"import-tsv", "export-tsv"}:
+        from .reference_tsv import import_tsv, export_tsv
+
+        result = (import_tsv if args.reference_command == "import-tsv" else export_tsv)(
+            **shared, file=args.file,
+        )
     else:
         result = find(
             **shared,
@@ -423,7 +440,7 @@ def register_cli(commands):
         help="Reuse external standards, official docs and reference repositories; no work gates",
     )
     sub = parser.add_subparsers(dest="reference_command", required=True)
-    for name in ("add", "list", "show", "record", "preference"):
+    for name in ("add", "list", "show", "record", "preference", "import-tsv", "export-tsv"):
         p = sub.add_parser(name)
         p.set_defaults(handler=command)
         p.add_argument("--root", default=".")
@@ -434,7 +451,9 @@ def register_cli(commands):
         p.add_argument("--max-output-bytes", type=int, default=4096)
         if name in {"add", "show", "record"}:
             p.add_argument("--reference-id", required=True)
-        if name == "add":
+        if name in {"import-tsv", "export-tsv"}:
+            p.add_argument("--file", required=True, help="Explicit source-index.tsv path; export refuses to overwrite an existing file")
+        elif name == "add":
             for field in ("title", "source"):
                 p.add_argument("--" + field, required=True)
             p.add_argument(

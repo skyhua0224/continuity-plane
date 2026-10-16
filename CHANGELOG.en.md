@@ -2,6 +2,14 @@
 
 Adoption: [deployment](docs/deployment.en.md), [recent release notes](docs/releases.en.md), [current coverage/known gaps](docs/validation.en.md). Historical entries retain their original scope. Regular GitHub Release classification does not remove alpha semantics.
 
+## 0.1.0-alpha.26
+
+- Attach final worker reports after early card updates; preserve newer attempts, reassignment and manual status. Replay interrupted metadata writes.
+- Separate stable MCP executor_id from connection/session identity. Card-projected Todo activation uses an explicit assignee and refuses unidentified activation or another executor's takeover.
+- Supply complete hook commands from known context, deduplicate oversized-checklist advice and avoid a second automatic Todo for card-based work.
+- Import/export source-index.tsv with stable keys, extra columns, atomic conflict rejection and candidate declarations. Never overwrite the repository index or imply sources were read.
+- Route MCP lookup through an explicit exact-root SSH bridge mapping. Do not forward local cache/data paths, read native account data or expose arbitrary remote process administration.
+
 ## 0.1.0-alpha.25
 
 - Forward dispatch/resume timeouts and provider effort; filter open-card Todo projections; accept OR event waits, atomic body-only updates and batch metrics.

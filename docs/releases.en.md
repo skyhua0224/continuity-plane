@@ -4,13 +4,13 @@
 
 ## Release category versus alpha version
 
-Published GitHub entries use regular **Release**; Alpha25 is Latest. Package `0.1.0a25` and tag `v0.1.0-alpha.25` stay unchanged. This does not claim production stability or change PyPI prerelease ordering: use an exact version or `--pre`.
+Published GitHub entries use regular **Release**. The current version is Alpha26, package `0.1.0a26`, tag `v0.1.0-alpha.26`; mark it Latest when published. This does not claim production stability or change PyPI prerelease ordering: use an exact version or `--pre`.
 
 Metadata cleanup does not rewrite tags/commits/assets/packages or historical publication dates. Old compatibility/evidence scope remains historical.
 
 ## Titles and notes
 
-Use `Continuity Plane Alpha N · User-facing theme`. Recent themes: [Alpha25](release-alpha25.md) controller continuity/dispatch; [Alpha24](release-alpha24.md) worker lifecycle/rules; [Alpha23](release-alpha23.md) cross-host continuation/routing; [Alpha22](release-alpha22.md) bounded retrieval/cards; [Alpha21](release-alpha21.md) plans/messages.
+Use `Continuity Plane Alpha N · User-facing theme`. Recent themes: [Alpha26](release-alpha26.md) smoother adoption/reliable reports; [Alpha25](release-alpha25.md) controller continuity/dispatch; [Alpha24](release-alpha24.md) worker lifecycle/rules; [Alpha23](release-alpha23.md) cross-host continuation/routing; [Alpha22](release-alpha22.md) bounded retrieval/cards; [Alpha21](release-alpha21.md) plans/messages.
 
 Avoid private project/device names, internal task IDs, raw commit-title lists and unsupported superlatives.
 

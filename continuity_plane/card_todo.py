@@ -125,6 +125,8 @@ def transition(
     item = next((i for i in document["items"] if i["item_id"] == item_id), None)
     if item is None:
         raise ValueError("Todo item does not exist in the card projection")
+    if status == "active" and not assignee:
+        raise ValueError("Card activation requires --assignee or CONTINUITY_ASSIGNEE; session_id is not executor identity")
     update_task(
         data_root,
         project_id=document["card_projection"]["project_id"],

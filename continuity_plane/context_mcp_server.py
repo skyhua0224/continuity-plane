@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -67,6 +68,7 @@ def _tool() -> dict:
                 "cache_path": {"type": "string", "minLength": 1},
                 "format": {"enum": ["brief", "json"], "default": "brief"},
                 "data_root": {"type": "string"},
+                "bridge_config": {"type": "string", "minLength": 1, "description": "Opt-in SSH bridge config with an exact local_root/remote_root repository mapping; no native account data is forwarded"},
                 "path_prefix": {"type": "string"},
                 "extensions": {"type": "array", "items": {"type": "string"}},
                 "max_results": {"type": "integer", "minimum": 1, "maximum": 200},
@@ -90,14 +92,15 @@ def _call_lookup(request_id: object, arguments: object) -> None:
     max_results = arguments.get("max_results", 20)
     max_output_bytes = arguments.get("max_output_bytes", 8192)
     format = arguments.get("format", "brief")
+    bridge = arguments.get("bridge_config", os.environ.get("CONTINUITY_BRIDGE_CONFIG"))
     from .usage_meter import adaptive_defaults
 
     default_count, default_budget = (
         adaptive_defaults(
             root_value, data_root=arguments.get("data_root"), format=format
         )
-        if isinstance(root_value, str)
-        else (20, 8192)
+        if isinstance(root_value, str) and not bridge
+        else ((8, 2048) if bridge else (20, 8192))
     )
     if "max_results" not in arguments:
         max_results = default_count
@@ -116,10 +119,20 @@ def _call_lookup(request_id: object, arguments: object) -> None:
         )
         or type(max_results) is not int
         or type(max_output_bytes) is not int
+        or not 1 <= max_results <= 200
+        or not 1024 <= max_output_bytes <= 65536
+        or (bridge is not None and (not isinstance(bridge, str) or not bridge))
+        or (arguments.get("path_prefix") is not None and not isinstance(arguments["path_prefix"], str))
+        or (arguments.get("extensions") is not None and (not isinstance(arguments["extensions"], list) or not all(isinstance(v, str) for v in arguments["extensions"])))
     ):
         _error(request_id, -32602, "lookup arguments are invalid")
         return
     try:
+        if bridge:
+            from .remote_lookup import lookup
+
+            _reply(request_id, lookup({**arguments, "max_results": max_results, "max_output_bytes": max_output_bytes}, bridge))
+            return
         root = Path(root_value).expanduser().resolve()
         result = lookup_code_index(
             root,

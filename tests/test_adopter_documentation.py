@@ -88,7 +88,7 @@ class AdopterDocumentationTests(unittest.TestCase):
         ):
             text = (self.docs / name).read_text(encoding="utf-8")
             self.assertIn(
-                "0.1.0a25" if name.startswith("deployment") else "report", text
+                VERSION if name.startswith("deployment") else "report", text
             )
 
     def test_three_primary_paths_have_at_most_ten_commands(self):
@@ -176,9 +176,9 @@ class AdopterDocumentationTests(unittest.TestCase):
         self.assertTrue(all(receipt["cases"].values()))
         self.assertLessEqual(receipt["measurements"]["lookup_bytes"], 1024)
         self.assertEqual(receipt["native_provider_requests"], 0)
-        self.assertIn(
+        self.assertEqual(
             receipt["observed_boundaries"]["report_after_early_card_update"],
-            {"requires-explicit-attachment", "attached"},
+            "attached",
         )
 
 

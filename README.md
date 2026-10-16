@@ -1,7 +1,5 @@
 # Continuity Plane
 
-**让下一次会话从工作现场接着做。**
-
 为 Codex、Claude Code 和其他 Agent 保存任务、规则、交接与验证证据；管理 worker 的派发、续跑和结束通知，并用有界检索减少重复阅读。
 
 [English](README.en.md) · [快速开始](USAGE.md) · [部署与升级](docs/deployment.md) · [工作流](docs/workflows.md) · [能力与验证](docs/validation.md) · [下载](https://github.com/skyhua0224/continuity-plane/releases/latest)
@@ -29,7 +27,7 @@
 
 ```bash
 python3 -m venv .venv
-.venv/bin/python -m pip install 'continuity-plane==0.1.0a25'
+.venv/bin/python -m pip install 'continuity-plane==0.1.0a26'
 .venv/bin/continuity init --root . --project-id demo
 .venv/bin/continuity collaboration register --project-id demo --control-root . --repository-root .
 .venv/bin/continuity whoami --root . --assignee controller --controller controller

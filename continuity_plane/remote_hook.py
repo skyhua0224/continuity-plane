@@ -195,6 +195,7 @@ def forward(payload, config, *, runner=subprocess.run):
         isinstance(outgoing.get("prompt"), str)
         and len(outgoing["prompt"].encode()) > 8192
     ):
+        outgoing["prompt_omitted_sha256"] = hashlib.sha256(outgoing["prompt"].encode()).hexdigest()
         outgoing.pop("prompt")
         outgoing["prompt_omitted"] = True
     if os.environ.get("CONTINUITY_ASSIGNEE") or config.get("assignee"):
@@ -478,9 +479,11 @@ def receive_main():
                 "additionalContext": (base + "\n" + note).strip(),
             }
         if payload.get("prompt_omitted"):
+            from .planning_adoption import omitted_checklist_hint
+
             base = result.get("hookSpecificOutput", {}).get("additionalContext", "")
-            reminder = "The current instruction exceeds automatic checklist intake budget; no partial checklist was saved. Reconcile the full user request through continuity_plan and continue the agreed stage."
-            if len((base + "\n" + reminder).encode()) <= 4096:
+            reminder = omitted_checklist_hint(payload, max_bytes=4096 - len(base.encode()) - 1)
+            if reminder and len((base + "\n" + reminder).encode()) <= 4096:
                 result["hookSpecificOutput"] = {
                     "hookEventName": event,
                     "additionalContext": (base + "\n" + reminder).strip(),

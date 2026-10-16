@@ -7,6 +7,7 @@ import contextlib
 import copy
 import io
 import json
+import os
 from pathlib import Path
 
 OPERATIONS = {
@@ -36,7 +37,7 @@ OPERATIONS = {
     },
     **{
         f"reference.{name}": ("reference", name)
-        for name in ("add", "list", "show", "record", "preference")
+        for name in ("add", "list", "show", "record", "preference", "import-tsv", "export-tsv")
     },
     **{
         f"todo.{name}": ("todo", name)
@@ -579,6 +580,7 @@ def tool_definitions():
         "root": {"type": "string", "minLength": 1},
         "project_id": {"type": "string", "minLength": 1},
         "data_root": {"type": "string", "minLength": 1},
+        "executor_id": {"type": "string", "minLength": 1, "description": "Stable planning identity across connections, not native account authentication"},
         "format": {"enum": ["brief", "json"]},
         "max_output_bytes": {"type": "integer", "minimum": 1024, "maximum": 131072},
     }
@@ -630,6 +632,7 @@ def extend_tools(legacy):
             properties.update(
                 data_root={"type": "string"},
                 project_id={"type": "string"},
+                executor_id={"type": "string", "minLength": 1},
                 format={"enum": ["json", "brief"]},
                 max_output_bytes={
                     "type": "integer",
@@ -688,6 +691,7 @@ def extend_tools(legacy):
                         "root": {"type": "string"},
                         "project_id": {"type": "string"},
                         "data_root": {"type": "string"},
+                        "executor_id": {"type": "string", "minLength": 1},
                         **(
                             {"session_id": {"type": "string"}}
                             if operation == "todo.activate"
@@ -730,6 +734,13 @@ def handle_tool(name, arguments):
         root = arguments.pop("root", None)
         project_id = arguments.pop("project_id", None)
         data_root = arguments.pop("data_root", None)
+        explicit_executor = arguments.pop("executor_id", None)
+        executor = explicit_executor or os.environ.get("CONTINUITY_ASSIGNEE")
+        if executor is not None:
+            from .collaboration_registry import _ASSIGNEE_RE
+
+            if not isinstance(executor, str) or not _ASSIGNEE_RE.fullmatch(executor):
+                raise ValueError("executor_id must be a valid stable assignee")
         if name == "continuity_plan":
             operation = arguments.pop("action")
             parameters = arguments.pop("parameters", {})
@@ -752,6 +763,13 @@ def handle_tool(name, arguments):
         if not isinstance(parameters, dict):
             raise ValueError("parameters must be an object")
         parameters = dict(parameters)
+        # A controller's implicit routing identity must not reassign every card
+        # it annotates. Explicit executor_id still requests ownership checking.
+        controller_annotation = operation == "task.update" and explicit_executor is None and os.environ.get("CONTINUITY_ROLE") == "controller" and "assignee" not in parameters
+        if executor and not controller_annotation and operation in {"task.add", "task.update", "task.claim", "todo.activate"}:
+            if parameters.get("assignee") not in {None, executor}:
+                raise ValueError("assignee conflicts with stable executor_id; use an explicit audited CLI reassignment")
+            parameters["assignee"] = executor
         requested_format = parameters.pop("format", None)
         if requested_format is not None:
             if "format" in original and requested_format != format:

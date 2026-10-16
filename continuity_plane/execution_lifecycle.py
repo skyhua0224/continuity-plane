@@ -158,20 +158,24 @@ def finish_execution(
                     )
                 card["updated_at"] = _now()
                 projection = "updated"
-                if report:
-                    import hashlib
+            # Evidence delivery is independent of status projection. A worker
+            # may already have submitted/completed its card before exiting.
+            # Only the current attempt and unchanged executor may attach it.
+            if report and card and card["assignee"] == assignee:
+                import hashlib
 
-                    text = report.get("text", "")
-                    if isinstance(text, str) and 0 < len(text.encode()) <= 65536:
-                        ledger.setdefault("task_details", {}).setdefault(task_id, {})[
-                            "report"
-                        ] = {
-                            **report,
-                            "sha256": hashlib.sha256(text.encode()).hexdigest(),
-                            "attempt_id": attempt_id,
-                            "commit": card.get("commit"),
-                            "recorded_at": _now(),
-                        }
+                text = report.get("text", "")
+                if isinstance(text, str) and 0 < len(text.encode()) <= 65536:
+                    ledger.setdefault("task_details", {}).setdefault(task_id, {})[
+                        "report"
+                    ] = {
+                        **report,
+                        "bytes": len(text.encode()),
+                        "sha256": hashlib.sha256(text.encode()).hexdigest(),
+                        "attempt_id": attempt_id,
+                        "commit": card.get("commit"),
+                        "recorded_at": _now(),
+                    }
         result = {
             "card_status": card["status"] if card else None,
             "card_projection": projection,

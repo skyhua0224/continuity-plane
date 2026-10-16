@@ -2,7 +2,7 @@
 
 [中文](validation.md) · [Workflows](workflows.en.md) · [Historical experiments](benchmarks.en.md)
 
-Scope: Alpha25 (`0.1.0a25`) and this documentation review. New synthetic CLI measurements, existing regressions, anonymous user feedback and uncovered behavior are distinct evidence classes.
+Scope: Alpha26 (`0.1.0a26`). New synthetic CLI measurements, existing regressions, anonymous user feedback and uncovered behavior are distinct evidence classes.
 
 ## Reproduce the current workflow check
 
@@ -27,9 +27,9 @@ The development tree uses `public/examples/`; a public checkout uses `examples/`
 | Single-update merge metadata | Pass; no actual Git merge |
 | Shared handoff, lesson, second-controller read-only | Pass |
 | Event paging, OR wait, quiet read | Pass; 196 bytes for this fixture's no-change response |
-| Worker updates card early | Gap reproduced: report file persists, but explicit attachment is required before report reads it |
+| Worker updates card early | Automatically attached and readable through report; manual attachment does not satisfy this check |
 
-Thirteen positive checks pass; one known boundary is reported separately. Fixture bytes are not production throughput, model-token reduction or billing savings.
+Thirteen positive checks pass; automatic report delivery after early card updates is checked separately. Fixture bytes are not production throughput, model-token reduction or billing savings.
 
 ## Capability/evidence matrix
 
@@ -37,31 +37,35 @@ Thirteen positive checks pass; one known boundary is reported separately. Fixtur
 |---|---|---|
 | Cards, evidence fields, body-only updates | CLI check + regressions | Metadata is not actual test execution |
 | Open-state card-backed Todo | Regressions + synthetic path | A second independent queue is optional |
-| Managed workers/reports | Normal-path check, anonymous adoption feedback | Early card changes can skip report attachment |
+| Managed workers/reports | Normal path, early-update/replay regressions, anonymous feedback | Stale attempts and reassigned executors remain guarded |
 | Timeout, idle, effort, native resume | Adapter/supervisor regressions | No new native-model/provider parameter field run |
 | Transient/policy failure and fallback | Classification/reservation/late-result regressions | No automatic channel switch after policy refusal or account quota prediction |
 | Changes/pagination/multi-event wait | CLI + concurrency/budget regressions | Not universal host wake-up; timeout is not worker failure |
 | Rules/audience/attachments/export | CLI + version/hash regressions | Delivery does not prove the worker read a policy |
-| References/lessons | Record/idempotence/correction regressions; lesson CLI | No dedicated source TSV round trip; reminders do not prove adoption |
+| References/lessons | Record/TSV roundtrip/conflict/correction regressions; lesson CLI | Explicit interchange; reminders do not prove adoption |
 | Index/brief/dependents/prompt code routes | Synthetic symbol + language/route regressions | New fixture uses Python; not a complete compiler graph |
 | Batches/decisions/metrics/merge metadata | Schema/source/fence regressions and user feedback | Does not execute Git or invent approval |
 | Controller leases/capacity/unknown operations | Second-controller CLI + concurrency regressions | Cooperating tool-mediated clients only |
 | Handoffs/integration refs/session binding | CLI + regressions | No retroactive full-history allocation or permanent connection identity |
 | Codex/Claude compaction | Controlled callbacks/dedup regressions; historical native manual record | No new natural/automatic-threshold/long-context model experiment |
 | Native Claude child observation | Official schema and controlled callback regressions | Natural full lifecycle unproven; no inferred success/exit code |
-| SSH CLI/hook/MCP | Existing installation/handshake evidence and isolation regressions | New synthetic script is not a multi-machine field run; retrieval root mapping is manual |
+| SSH CLI/hook/MCP | Existing handshakes plus isolation/mapped protocol regressions | No new physical two-machine trial; explicitly select bridge_config |
 | Tokens/cache/injection/task deltas | In-place import/counter regressions | No real-account collection in this check; no universal billing/causal savings result |
 | Drift/commitments | Parser/rule regressions and anonymous feedback | Not proof of all external/document facts |
 
 The [Alpha25 public release CI](https://github.com/skyhua0224/continuity-plane/actions/runs/38845950775) passed 268 tests. New documentation checks run on current main separately; neither released wheels nor historical counts are rewritten.
 
-## Known adoption gaps
+## Alpha26 adoption regressions
 
-1. Early card changes can separate report files from attachment. Temporarily attach the run receipt's report_file with `task update --report-file`, then use report.
-2. A new MCP connection can cause same-executor ownership friction; repeated force is not the intended finished design.
-3. Source/checklist-budget notices are not always complete, immediately executable commands. Tool usage itself is not the goal.
-4. Dedicated `source-index.tsv` import/export is missing. An existing repository source index can remain canonical.
-5. Remote MCP accepts explicit remote roots; hook mappings do not automatically translate retrieval roots or authorize arbitrary process administration.
+| Fix | Current evidence | Boundary |
+|---|---|---|
+| Reports after early updates | Review/completed/merged/blocked, stale-attempt and replay tests; automatic CLI report read | Reassigned executors and stale attempts cannot overwrite the new attachment |
+| Stable executor | Two fresh MCP processes; Todo activation with distinct connection IDs | Configure executor_id/CONTINUITY_ASSIGNEE; no silent takeover of old identities |
+| Actionable guidance | Real-parser command checks, dedup and no second card-workflow queue | Unknown write parameters are not invented; does not prove adoption |
+| Reference TSV | Unicode, extra columns, idempotence, atomic conflicts/invalid rows, MCP interface | Explicit interchange, no overwrite/automatic sync or proof of reading |
+| Mapped lookup | Separate synthetic repository through the receiving CLI protocol; unmapped/over-budget rejection | No new physical two-machine trial or arbitrary remote file/process administration |
+
+[test_a26_adoption.py](../tests/test_a26_adoption.py) contains thirteen synthetic regressions. See [deployment](deployment.en.md) and [Alpha26](release-alpha26.md) for setup and compatibility.
 
 ## Privacy and effect claims
 

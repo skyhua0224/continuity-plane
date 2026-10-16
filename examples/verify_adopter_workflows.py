@@ -321,26 +321,10 @@ def verify(workspace, cli):
     assert early["status"] == "completed"
     early_card = call("collaboration", "task", "show", *scope, "--task-id", "early")
     attached = bool(early_card.get("details", {}).get("report"))
-    if not attached:
-        assert "Synthetic fixture report" in Path(early["report_file"]).read_text(
-            encoding="utf-8"
-        )
-        call("report", "early", *scope, raw=True, expected=2)
-        call(
-            "collaboration",
-            "task",
-            "update",
-            *scope,
-            "--task-id",
-            "early",
-            "--report-file",
-            early["report_file"],
-        )
+    assert attached, "Supervisor must attach the report after an early card update"
     assert "Synthetic fixture report" in call("report", "early", *scope, raw=True)
     known = {
         "report_after_early_card_update": "attached"
-        if attached
-        else "requires-explicit-attachment"
     }
     call("todo", "from-cards", *scope, raw=True)
     verification = {

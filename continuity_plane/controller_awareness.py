@@ -3,6 +3,7 @@
 import hashlib
 import json
 import os
+import shlex
 from pathlib import Path
 from .collaboration_registry import (
     _atomic_write,
@@ -129,11 +130,14 @@ def _notice(payload, *, root=None, data_root=None, max_bytes=512):
                     )
                     + "; inspect quota report/handoff"
                 )
-            text = (
-                ("continuity: " + ", ".join(parts) + ".")
-                .encode()[:max_bytes]
-                .decode("utf-8", "ignore")
-            )
+            command = "continuity collaboration changes --project-id " + shlex.quote(registration["project_id"]) + " --since " + str(previous["cursor"])
+            command += " --data-root " + shlex.quote(str(data))
+            if rules and not finished and not blocked and not quota:
+                command = "continuity rules affected --project-id " + shlex.quote(registration["project_id"]) + " --data-root " + shlex.quote(str(data))
+            suffix = " Inspect: " + command
+            if len(suffix.encode()) + 32 > max_bytes:
+                suffix = " Parameters: continuity help changes"
+            text = ("continuity: " + ", ".join(parts) + ".").encode()[:max_bytes - len(suffix.encode())].decode("utf-8", "ignore") + suffix
             _atomic_write(marker, {"cursor": cursor, "rules_digest": rules_digest})
             return text
     except (OSError, ValueError, TypeError, KeyError):

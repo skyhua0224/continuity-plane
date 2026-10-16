@@ -4,6 +4,14 @@
 
 [English](CHANGELOG.en.md)
 
+## 0.1.0-alpha.26
+
+- worker 提前更新卡片状态后仍自动挂载最终报告；保留新 attempt、重新指派和手工状态保护，失败写入可重放。
+- MCP 的稳定 executor_id 与连接/session 分离；卡片投影的 Todo 激活使用明确 assignee，拒绝无身份激活和其他执行者抢占。
+- hook 提供已知上下文的完整命令；超长清单提醒去重，已有卡片不再自动建立第二份 Todo。
+- reference import-tsv/export-tsv 支持稳定键、扩展列、原子冲突拒绝与候选声明；不自动覆盖仓库索引或声称已经阅读。
+- MCP lookup 可通过显式 bridge_config 精确映射 SSH 仓库；不转发本机 cache/data 路径，不读取原生账号数据，不提供任意远端进程管理。
+
 ## 0.1.0-alpha.25
 
 - 派发/续跑预算与适配器 effort 透传；Todo 默认开放卡并可筛选；多事件 wait；原子 body-only 更新；批次 metrics。

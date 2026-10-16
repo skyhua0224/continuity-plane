@@ -309,7 +309,7 @@ def link_item(
     return _save(root, document, data_root)
 
 
-def activate_item(root, item_id: str, *, reason: str, data_root=None, session_id=None):
+def activate_item(root, item_id: str, *, reason: str, data_root=None, session_id=None, assignee=None):
     """Reorder current intent explicitly without erasing earlier progress."""
     if not isinstance(reason, str) or not reason.strip() or len(reason.encode()) > 2048:
         raise IntentTodoError("activation requires a bounded reason")
@@ -330,7 +330,8 @@ def activate_item(root, item_id: str, *, reason: str, data_root=None, session_id
             item_id,
             data_root=data_root,
             status="active",
-            assignee=session_id,
+            # Session IDs identify recovery, not executor ownership.
+            assignee=assignee or os.environ.get("CONTINUITY_ASSIGNEE"),
         )
     if session_id is not None and (
         not isinstance(session_id, str) or not session_id or len(session_id) > 256

@@ -4,6 +4,7 @@ import hashlib
 import json
 import os
 import re
+import shlex
 from pathlib import Path
 
 from .collaboration_registry import (
@@ -11,6 +12,7 @@ from .collaboration_registry import (
     _locked,
     default_data_root,
     next_task,
+    list_tasks,
     resolve_project,
 )
 from .intent_todo import IntentTodoError, compile_queue, load_queue
@@ -75,10 +77,16 @@ def context(payload, *, root=None, host="host", data_root=None):
         # Deterministic capture only for clear checklists, not arbitrary chat,
         # questions, incidental ideas or model-generated guesses.
         existing = load_queue(queue_root, data) or {}
+        card = next_task(data, project_id=project["project_id"], assignee=actor) if project else None
+        if card and card.get("assignee") != actor:
+            card = None
+        cards_only = bool(existing.get("card_projection") or card)
+        if project and not cards_only and not (existing.get("owner_session_id") == session and existing.get("items")):
+            cards_only = any(t["status"] in {"queued", "active", "dispatched", "blocked", "ready-for-review"} for t in list_tasks(data, project_id=project["project_id"]))
         foreign = existing.get("owner_session_id") not in {None, session}
-        if clear_checklist and foreign:
+        if clear_checklist and foreign and not cards_only:
             failure = "Another session owns the shared Todo; use separately assigned cards rather than silently appending to its queue"
-        if clear_checklist and not foreign:
+        if clear_checklist and not foreign and not cards_only:
             try:
                 compile_queue(
                     queue_root,
@@ -151,10 +159,13 @@ def context(payload, *, root=None, host="host", data_root=None):
         digest = hashlib.sha256(
             json.dumps(semantic, sort_keys=True, ensure_ascii=False).encode()
         ).hexdigest()
+        command = "continuity collaboration task list" if project else "continuity todo list"
+        command += " --root " + shlex.quote(str(queue_root)) + " --data-root " + shlex.quote(str(data))
+        if card:
+            command = "continuity collaboration task show --project-id " + shlex.quote(project["project_id"]) + " --task-id " + shlex.quote(card["task_id"]) + " --data-root " + shlex.quote(str(data))
         lines = [
             "Continuity planning metadata: no State claim required; ordinary work remains allowed.",
-            f"Project={(project or {}).get('project_id') or 'local'}; assignee={actor}; controller={os.environ.get('CONTINUITY_CONTROLLER') or 'operator'}. These are routing identities, not completion permissions.",
-            "Use continuity_help for exact parameters and continuity_plan for Todo/cards/collaboration; CLI: continuity help overview.",
+            "Inspect current work: " + command,
         ]
         if references:
             lines.insert(0, references)
@@ -179,12 +190,13 @@ def context(payload, *, root=None, host="host", data_root=None):
                 f"Your card {card['task_id']} ({card['status']}): {action_text}"
             )
         ending = "\nCapture explicit work once; link cards, verify, complete and continue within the agreed stage. Progress notes are nonterminal."
-        text = (
-            "\n".join(lines)
-            .encode()[: MAX_HINT_BYTES - len(ending.encode())]
-            .decode("utf-8", "ignore")
-            + ending
-        )
+        # Include complete lines only: never turn a bounded hint into a broken
+        # command. Unknown write arguments are deliberately not invented.
+        kept = []
+        for line in lines:
+            if len(("\n".join(kept + [line]) + ending).encode()) <= MAX_HINT_BYTES:
+                kept.append(line)
+        text = "\n".join(kept) + ending
         with _locked(marker):
             try:
                 previous = json.loads(marker.read_text())
@@ -196,3 +208,25 @@ def context(payload, *, root=None, host="host", data_root=None):
         return text
     except (OSError, ValueError, KeyError, TypeError):
         return None
+
+
+def omitted_checklist_hint(payload, *, data_root=None, max_bytes=MAX_HINT_BYTES):
+    """One advisory per omitted instruction/session; never requires a Todo."""
+    root, session = payload.get("cwd"), payload.get("session_id")
+    if not isinstance(root, str) or not Path(root).is_absolute() or not isinstance(session, str) or not session:
+        return None
+    key = hashlib.sha256((root + ":" + session + ":" + str(payload.get("prompt_omitted_sha256", "once"))).encode()).hexdigest()
+    path = Path(data_root or default_data_root()) / "omitted-checklists" / (key + ".json")
+    with _locked(path):
+        if path.exists():
+            return None
+        command = "continuity collaboration task list --root " + shlex.quote(root)
+        if data_root:
+            command += " --data-root " + shlex.quote(str(data_root))
+        text = "Large instruction was not auto-captured. Existing cards/handoff remain the plan; no separate Todo is required. Inspect: " + command
+        if len(text.encode()) > MAX_HINT_BYTES:
+            text = "Large instruction was not auto-captured; keep using existing cards/handoff. Parameters: continuity help task.list"
+        if len(text.encode()) > max_bytes:
+            return None
+        _atomic_write(path, {"noticed": True})
+    return text

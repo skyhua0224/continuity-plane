@@ -1,7 +1,5 @@
 # Continuity Plane
 
-**Let the next session continue from the work in progress.**
-
 Tasks, rules, handoffs and verification evidence for Codex, Claude Code and other agents. Dispatch workers, resume interrupted work, receive completion events and retrieve bounded code references.
 
 [中文](README.md) · [Quick start](USAGE.en.md) · [Deployment](docs/deployment.en.md) · [Workflows](docs/workflows.en.md) · [Capabilities and validation](docs/validation.en.md) · [Download](https://github.com/skyhua0224/continuity-plane/releases/latest)
@@ -29,7 +27,7 @@ Requires Python 3.11+. This example uses a macOS/Linux shell; see [deployment](d
 
 ```bash
 python3 -m venv .venv
-.venv/bin/python -m pip install 'continuity-plane==0.1.0a25'
+.venv/bin/python -m pip install 'continuity-plane==0.1.0a26'
 .venv/bin/continuity init --root . --project-id demo
 .venv/bin/continuity collaboration register --project-id demo --control-root . --repository-root .
 .venv/bin/continuity whoami --root . --assignee controller --controller controller
