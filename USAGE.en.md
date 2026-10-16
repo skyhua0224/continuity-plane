@@ -1,727 +1,112 @@
 # Usage
 
-[中文](USAGE.md)
+[中文](USAGE.md) · [README](README.en.md) · [Deployment](docs/deployment.en.md) · [Documentation](docs/README.en.md)
 
-## One-shot executor handoff
+## Choose a path
 
-At startup, read the project packet and the executor inbox:
-
-```bash
-continuity collaboration packet --project-id PROJECT --assignee EXECUTOR
-continuity collaboration inbox list --project-id PROJECT --recipient EXECUTOR
-```
-
-After code and verification, update the card and send a handoff:
-
-```bash
-continuity collaboration task update --project-id PROJECT --task-id TASK \
-  --status ready-for-review --branch BRANCH --commit SHA \
-  --verification "TEST COMMAND: pass"
-continuity collaboration inbox send --project-id PROJECT --message-id HANDOFF-ID \
-  --sender EXECUTOR --recipient DISPATCHER --body "Task ready for review; see commit SHA"
-```
-
-These commands record collaboration facts. They do not complete State Work or authorize merge/deploy.
-
-Controllers can use a cursor and shared context instead of polling every executor:
-
-```bash
-continuity collaboration changes --project-id PROJECT --since CURSOR --max-output-bytes 4096
-continuity collaboration rule-list --project-id PROJECT
-continuity collaboration commitment-list --project-id PROJECT
-continuity whoami --root . --assignee EXECUTOR --controller CONTROLLER
-```
-
-A one-shot executor may use `collaboration run --task-id TASK --assignee EXECUTOR -- COMMAND` to record start and finish events.
-
-For heartbeats, timeouts and exit classification, use the built-in Supervisor:
-
-```bash
-continuity supervisor run --project-id PROJECT --task-id TASK --assignee EXECUTOR \
-  --timeout-seconds 3600 --idle-timeout-seconds 600 --retry 1 -- COMMAND ARG...
-continuity supervisor daemon --project-id PROJECT
-```
-
-The Supervisor records collaboration events. It does not
-complete Work or edit State SQLite. It currently provides local foreground and one-shot daemon
-entry points; provider adapters and long-running service orchestration can be added separately.
-
-Alpha24 validates cards before spawning and projects current-run results:
-exit zero becomes ready-for-review; failure/interruption becomes blocked. Exit zero does not
-prove verification or merger. Older runs cannot overwrite newer runs or manual terminal states.
-The daemon can replay finish facts, but does not infer remote death from the local PID table.
-Finish facts precede durable card projection (`task.run-projected`); pending projection is explicit.
-
-```bash
-continuity collaboration wait --project-id PROJECT --since CURSOR \
-  --event attempt.finished --timeout-seconds 300 --max-output-bytes 4096
-```
-
-Wait is quiet until a match; timeout returns `timed_out: true` and exit code 2.
-Continue from next_cursor, not the separate full-log high_water_cursor. Oversized events may
-omit log details without skipping unreturned events. Blocking reads do not imply host wake-up.
-These capabilities are provided from Alpha24.
-
-See [field workflows](docs/field-workflows.md) for dispatch, rule delivery, remote deployment and
-evidence boundaries. Native Claude automatic quota querying is withdrawn, is not a release gate,
-and enables no account polling service. Real token/cache metering and explicit quota records remain
-separate; neither promises whole-account usage queries or actual monetary cost.
+| Goal | Start |
+|---|---|
+| Solo work that survives compaction | Initialization and continuation below |
+| Dispatch workers, wait and read reports | [Two-worker example](docs/workflows.en.md#one-controller-and-two-workers) |
+| A team or separate state host | [Team path](docs/workflows.en.md#a-team) and [SSH deployment](docs/deployment.en.md#separate-controller-and-state-hosts) |
+| Existing MASTER/STATUS or explicit State claims | [Advanced State adoption](docs/state-workflows.en.md) |
 
 ## Install
 
-Python 3.11 or newer is required. Earlier alpha releases completed installation,
-verification and uninstall probes on Linux x86_64, macOS arm64 and Windows AMD64.
-Alpha24 field acceptance in this batch is on Linux; the historical probes are not
-per-platform revalidation of this release.
-
-### Install From PyPI
+Python 3.11+. Prefer an isolated environment:
 
 ```bash
-python -m pip install continuity-plane==0.1.0a25
-```
-
-The release includes non-blocking lifecycle hooks, runtime diagnostics, explicit execution intent
-and OpenCodex-safe installation. Codex and Claude Code share compaction handoffs and local byte
-accounting. Host plugins must match the core release.
-
-Upgrade existing pipx environments in place rather than rebuilding uv-managed environments with
-`install --force`. Check that the new `continuity-host-hook` entry point is on PATH and reload
-MCP processes that still hold old code.
-
-```bash
-pipx upgrade continuity-plane --pip-args=--pre
-continuity --version
-command -v continuity-host-hook
-```
-
-This selects the latest prerelease. Use an explicitly pinned project environment when a fixed
-release is required.
-If a pipx/uv backend refuses to recreate an existing environment, update its interpreter in place
-without moving native account configuration:
-
-```bash
-uv pip install --python /path/to/pipx/venvs/continuity-plane/bin/python \
-  --reinstall-package continuity-plane 'continuity-plane==0.1.0a25'
-```
-
-Use Claude Code's native plugin installer; hooks come from the plugin without replacing settings:
-
-```bash
-claude plugin marketplace add skyhua0224/continuity-plane
-claude plugin install continuity-plane@continuity-plane --scope user
-claude plugin list
-```
-
-Start a new session or reload the plugin afterward: running sessions do not automatically acquire
-new MCP tools. Avoid registering the same services through both a plugin and duplicate handwritten
-MCP entries. See [compaction continuation and accounting](docs/lifecycle-parity.md).
-
-For a source checkout:
-
-```bash
-python -m venv .venv
-.venv/bin/python -m pip install --editable .
-```
-
-### Install From A GitHub Release
-
-Download a wheel or source archive from
-[Continuity Plane Releases](https://github.com/skyhua0224/continuity-plane/releases):
-
-```bash
-python -m pip install /path/to/continuity_plane-0.1.0a25-py3-none-any.whl
-```
-
-### Install Once For Many Projects
-
-Use a dedicated user virtual environment when one person manages several
-projects:
-
-```bash
-python3 -m venv ~/.local/share/continuity-plane/venv
-~/.local/share/continuity-plane/venv/bin/python \
-  -m pip install continuity-plane==0.1.0a25
-```
-
-Run the installed CLI with an explicit project root whenever the command is not
-on `PATH`:
-
-```bash
-~/.local/share/continuity-plane/venv/bin/continuity \
-  init --root /path/to/project --project-id my-project
-```
-
-### Isolate One Project
-
-For a project that pins its own control-plane version:
-
-```bash
-cd /path/to/project
 python3 -m venv .venv
-.venv/bin/python -m pip install continuity-plane==0.1.0a25
-.venv/bin/continuity init --root . --project-id my-project
+.venv/bin/python -m pip install 'continuity-plane==0.1.0a25'
 ```
 
-For control-plane development, replace the release path with an editable
-install of the source checkout. The package/repository name in these commands
-is `continuity-plane`; `project_id` and `display_name` are chosen by the
-project owner.
+On Windows use `.venv\Scripts\python.exe` and `.venv\Scripts\continuity.exe`. Later examples assume `continuity` is on PATH. Global pipx installation, upgrades, offline wheels and rollback are in [deployment](docs/deployment.en.md).
 
-## Initialize A Project
+## Initialize
+
+Run in your repository:
 
 ```bash
-continuity init \
-  --root /path/to/project \
-  --project-id my-project \
-  --display-name "My Project"
+continuity init --root . --project-id demo
+continuity collaboration register --project-id demo --control-root . --repository-root .
+continuity whoami --root . --assignee controller --controller controller
+continuity collaboration packet --project-id demo --assignee controller
 ```
 
-The command refuses to overwrite an existing control-plane directory. Project
-state stays under `.continuity/` and is independent of the agent or
-model currently in use.
+`init` creates project-local `.continuity/` with project.yaml, State SQLite and governance templates. `register` adds the project to the user collaboration registry. Do not reinitialize or overwrite existing plans; see State adoption first.
 
-```text
-.continuity/
-  project.yaml
-  MASTER.md
-  MASTER.en.md
-  STATUS.md
-  STATUS.en.md
-  state.sqlite3
-```
+`whoami` reports this invocation's identity; it neither acquires a lease nor logs into a provider. For a persistent shell set `CONTINUITY_ASSIGNEE` and `CONTINUITY_CONTROLLER`. Give concurrent worker instances separate identities.
 
-Verify the installation:
+## Connect your agent
+
+A working CLI does not prove hooks are enabled. Choose Codex, Claude Code or generic MCP in [deployment](docs/deployment.en.md), then inspect actual tools and event receipts. Keep native authentication and routing intact.
+
+## Compaction and continuation
+
+Save the small increment needed to continue:
 
 ```bash
-continuity verify --root /path/to/project
-continuity doctor --root /path/to/project
-continuity state show --root /path/to/project
+continuity handoff write --project-id demo --plan 'Finish the current regression before the next item' --next-action 'Run the task tests'
+continuity handoff show --project-id demo
+continuity lesson add --project-id demo --lesson-id check-logs --text 'Inspect the failing check before diagnosing load' --source 'Current regression record'
 ```
 
-## Attach An Existing MASTER And STATUS
-
-Do not overwrite an existing project's plan with the generated template. Create a
-read-only proposal first:
-
-```bash
-continuity attach plan \
-  --root /path/to/project \
-  --master /path/to/project/MASTER.md \
-  --status /path/to/project/STATUS.md \
-  --work-id work-current \
-  --work-title "Continue current delivery" \
-  --owner-ref agent-main \
-  --scope capability:delivery
-```
-
-This only reads the sources and records their hashes. Inspect
-`.continuity/attach-proposal.json`, then approve explicitly:
-
-```bash
-continuity attach approve \
-  --root /path/to/project \
-  --actor-ref agent-main \
-  --claim-id claim-demo
-```
-
-Approval uses State MCP to create a revisioned commit and claim. The initial
-template Work is marked rejected, the existing Work becomes active, and source
-evidence is bound to the proposal digest. A source change between planning and
-approval is rejected. Repeating approval returns `already-attached` without a
-duplicate Event.
-
-Long-running projects with an existing canonical MASTER should use this flow.
-The original MASTER keeps governance authority; `.continuity/MASTER.md` remains
-a local bridge.
-
-`state show` reads the typed snapshot through the same authorization and
-validation boundary used by integrations. The initial snapshot has revision
-zero and one proposed Work item named `work-initial`.
-
-## Separate Governance And Delivery Repositories
-
-A multi-repository project can keep `.continuity/` in its governance repository
-while implementation, commits, and delivery happen in another repository. Register
-the local delivery workspace from the governance root first:
-
-```bash
-continuity workspace register \
-  --root /path/to/governance \
-  --workspace-id service \
-  --workspace-root /path/to/service \
-  --allow-effect source-control.local \
-  --allow-effect source-control.history-rewrite \
-  --allow-effect source-control.push
-```
-
-The registry lives in ignored
-`.continuity/local/delivery-workspaces.json`. It binds the project profile,
-Git repository digest, absolute workspace root, and maximum effect set without
-writing State. A delivery Work must still bind its predecessor, implementation
-evidence, and current Git HEAD explicitly:
-
-```bash
-continuity work activate \
-  --root /path/to/governance \
-  --work-id work-delivery \
-  --work-title "Deliver verified service change" \
-  --owner-ref agent-main \
-  --claim-id claim-delivery \
-  --scope capability:delivery \
-  --execution-class delivery \
-  --source-ref issue://project/123 \
-  --predecessor-work-id work-implementation \
-  --implementation-evidence-id evidence-test-verified \
-  --workspace-id service \
-  --workspace-root /path/to/service \
-  --expected-head "$(git -C /path/to/service rev-parse HEAD)" \
-  --expected-ref HEAD \
-  --allow-effect source-control.local \
-  --allow-effect source-control.push
-```
-
-`source-control.local` covers `git add` and ordinary commits. `commit --amend`,
-rebase, and reset require the separate `source-control.history-rewrite` effect in
-both the Work and workspace registry. An external repository stays denied when
-its workspace ID, repository digest, or `repo://` claim scope does not match.
-
-## Choose A Runtime Profile
-
-### Local Embedded: Default
-
-`local-embedded` stores typed state, events, and local checkpoints in:
-
-```text
-.continuity/state.sqlite3
-```
-
-It requires no PostgreSQL, Docker, Docmost, network service, or Agent plugin.
-This is the recommended profile for personal projects and contributors working
-independently in their own clone.
-
-### Forge-Coordinated: Team Without A Shared Database
-
-Use the existing Git forge for shared visibility:
-
-- commit the project-owned `project.yaml` and canonical `MASTER.md` when the
-  team wants shared governance;
-- keep each contributor's SQLite database, personal STATUS overlay, artifacts,
-  and credentials local;
-- use Issues, PRs, branch ownership, review, and CI as the team coordination
-  boundary;
-- run `verify` and the project's normal test/build profile before publishing
-  evidence.
-
-This avoids requiring every contributor to connect to a PostgreSQL server. A
-local database does not provide a cross-machine unique claim, so the team must
-use the forge workflow for visibility until a shared State MCP adapter is
-deployed.
-
-### Personal PostgreSQL: Optional
-
-PostgreSQL is useful for one user who wants SQL inspection, durable backups, or
-several local workers sharing one database. It is not a requirement for a
-single-user installation. Install the optional extra in the environment that
-will run the adapter:
-
-```bash
-python -m pip install 'continuity-plane[postgres]==0.1.0a25'
-```
-
-The alpha CLI still defaults to SQLite. PostgreSQL is selected by an explicit
-Python or provider adapter, for example:
-
-```python
-from continuity_plane.postgres_state_store import PostgresStateStore
-
-store = PostgresStateStore("postgresql://localhost/context")
-store.initialize()
-```
-
-Keep the DSN outside Git. This adapter is a library integration boundary, not a
-reason to deploy PostgreSQL for every project.
-
-### Personal Docmost: Optional Human View
-
-Docmost is a human console and projection surface. It can display project
-graphs, decisions, evidence, context health, approvals, and replay views when
-an external State MCP provider and a Docmost connector are deployed.
-
-Docmost does not become the typed-state authority, and it is not required for
-local operation. The current alpha does not include a one-command Docmost
-deployment; treat this integration as preview infrastructure.
-
-### Shared-Strong: Team Authority Service
-
-Use `shared-strong` only when workers on different machines need one authority
-for claim, lease, ownership, expected revision, and external-effect admission.
-The deployment must provide a State MCP adapter with authorization, CAS,
-append-only events, durable receipts, project isolation, and audit retention.
-
-PostgreSQL is one possible backend; it is not the only architectural option.
-Do not put database credentials in `project.yaml`. The current release does not
-turn a local project into shared-strong automatically; this is an explicit
-deployment and adapter task.
-
-## Switch Runtime Profiles
-
-The current alpha initializes only `local-embedded` through the CLI. Other modes
-are enabled through adapters or team workflows; there is no
-`continuity profile switch` command yet.
-
-| Switch from the default to | Use case | Current action | Moves authority state |
-|---|---|---|---|
-| `forge-coordinated` | A team keeps GitHub/Gitea/GitLab and does not want a shared database | Keep local SQLite; commit team-owned governance templates; use Issue/PR/CI adapters for visibility | no |
-| personal PostgreSQL | One user needs SQL inspection, backups, or local workers | Install `continuity-plane[postgres]`; select PostgreSQL through a Python/provider adapter | the current CLI does not migrate |
-| personal Docmost | Graphs, approvals, and history are needed | Keep State MCP authority; connect read projections and controlled governance actions | no |
-| `shared-strong` | Several machines need unique claims, leases, and CAS | Deploy a conformed State MCP service, then validate export/import/rollback | yes; currently preview |
-
-Before switching:
-
-1. Stop workers and Agent Sessions that use the project state.
-2. Run `continuity verify --root /path/to/project`.
-3. Back up the complete `.continuity/` tree; do not copy a live SQLite file alone.
-4. Check the target adapter capability manifest.
-5. Move authority only when export/import preserves the snapshot and event head and rollback hashes match.
-6. Restore the backup and return to `local-embedded` if any gate fails.
-
-Linux, macOS, and Windows install, verify, and uninstall probes have passed, as
-has local-embedded state-bundle export/import/rollback. One-command cross-adapter
-profile switching is still unavailable; do not edit `project.yaml.runtime_profile`
-by hand to claim a completed switch.
-
-### Migrate Or Roll Back Local State
-
-These commands apply to `local-embedded` and provide a verified backup migration
-and atomic rollback path:
-
-```bash
-continuity export --root /path/to/project --output /safe/path/project-state.tar.gz
-continuity import --root /path/to/target --bundle /safe/path/project-state.tar.gz
-continuity rollback --root /path/to/target
-```
-
-Use `import --replace` only after backing up the target and confirming that its
-local authority should be replaced. A bundle member, hash, project identity, or
-checkpoint mismatch fails before replacement.
-
-## Agent Integration
-
-The control plane is installed beside the project and accessed through CLI,
-Python API, or a provider adapter. The core package requires no Agent plugin.
-The default Codex plugin provides bounded packets and checkpoint lifecycle only;
-it registers no MCP write tools and does not block ordinary development. Install
-the advanced State plugin only for explicit State operations.
-
-### Install The Public Codex Plugin
-
-Install the core package, then add this GitHub repository as a marketplace:
-
-```bash
-python -m pip install continuity-plane==0.1.0a25
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.25
-codex plugin add continuity-plane@continuity-plane
-```
-
-Start a new Session after installation. The core plugin loads one bounded packet
-at SessionStart and runs checkpoint lifecycle hooks around compaction. Questions
-do not advance the saved Work or emit recovery narration. Alpha13 advisory hooks provide only
-one-shot guidance and sanitized observation; they do not block ordinary development commands.
-
-Codex tracks hook trust separately from plugin installation. Review the current definitions in
-`/hooks`; changed definitions require renewed trust after an upgrade. Untrusted hooks are skipped by
-the host and must not be reported as adopted. Missing trust is not a reason to repeatedly reinstall
-plugins or rewrite model, provider, or key configuration.
-
-With cc-switch, never copy the live `config.toml` or `auth.json` wholesale into a common snippet or
-another provider. Shared integration settings contain only plugin switches and hook trust, not auth,
-routing, or model selection. Verify provider credentials and routes before and after changes; stop
-installation on concurrent drift without restoring an old whole file. Common snippets apply only to
-providers that opted in; preserve the other providers' choices.
-
-When cc-switch owns the Codex live configuration, the installer returns `deferred` before writing
-anything. This is a configuration-ownership notice, not a project-work gate; continue current work.
-Persistent profile integration is not yet verified. Business tasks need not switch profiles, stop
-the proxy, or recreate chats. Do not retry installation or merge provider configuration by hand.
-
-If cc-switch is completely uninstalled, installation may continue. OpenCodex's Codex
-config/catalog and stable systemd/basic-auth surfaces are fingerprinted before and after the edit;
-OpenCodex does not need to stop or restart. A partial leftover cc-switch data directory fails the
-installation rather than guessing provider configuration.
-
-Install the search plugin for explicit bounded current-worktree lookup in large repositories:
-
-```bash
-codex plugin add continuity-plane-search@continuity-plane
-continuity context search --root . --query "Runtime" --max-results 40 --max-output-bytes 8192
-```
-
-The command reads only the Git-tracked current worktree and bounds the complete
-JSON receipt. The search plugin registers one lookup MCP tool and no Skill.
-
-#### Incremental Code Index
-
-For large repositories, multiple Sessions, or another AI client that needs fast symbol lookup:
-
-```bash
-continuity context index --root .
-continuity context lookup --root . --query "Runtime" --max-results 20 --max-output-bytes 8192
-```
-
-`index` reads only Git-tracked files and stores file hashes, languages, and symbol locations in the
-user cache by default, outside the project. A second run reuses unchanged files; changing one file
-reparses one file. `lookup` returns short references with `repository_revision`, `index_revision`,
-and `file_sha256`, never source bodies. Any Agent can use the same contract through the CLI or API:
-
-```python
-from continuity_plane.code_index import lookup_code_index
-
-receipt = lookup_code_index(".", query="Runtime")
-```
-
-The index is a candidate-location layer and grants no State, memory, or side-effect authority.
-Verify the current worktree hash before opening source. A corrupt cache is treated as a miss and
-rebuilt, never as a reason to block project work.
-
-Install the advanced plugin only when Codex needs State tools:
-
-```bash
-codex plugin add continuity-plane-state@continuity-plane
-```
-
-The search plugin exposes `continuity_context_lookup`. It returns bounded symbol/path/hash
-references, refreshes only the user cache, establishes no State binding, and never intercepts
-shell commands. Other AI clients use the same contract through the CLI.
-
-The lookup receipt measures `cache_status` and `returned_bytes`; host traces measure model
-input/output tokens. A cache hit alone is not token savings and must be reconciled with matched
-context-input/output A/B results.
-
-A missing MCP tool or connection failure means retrieval is unavailable; an empty result means
-the query succeeded without matches. Neither changes project permissions. Try CLI once when the
-tool is unavailable; after a successful empty lookup, use narrow search without repeating the same
-lookup. Routine fallback needs no pause, reinstall, or narration. Only State writes need `resume`.
-
-### Compaction Recovery And Source Rebinding
-
-Core hooks run through the installed package's `continuity-codex-hook` entry point, without
-depending on a system Python alias. In `auto` mode, `SessionStart(source=compact)` injects the
-current bounded packet and directs the model to continue silently from `next_action`. Hook or
-State-sync failures are observed and degraded; they do not stop ordinary editing, builds, or tests.
-
-In alpha13, independent advisory hooks observe local tool boundaries without State calls
-or command gates, including under a leftover `strict` setting. Ordinary successes use `1/16` sampling;
-failures, recognized effects, and Continuity MCP calls retain observations. Missing compaction entry
-gets one retrieval hint (at most `1 KiB`) on the next tool, or one resume attempt on the next user
-message. Markers are project/session scoped, expire after 10 minutes, and are atomically consumed.
-Delivered recovery clears the marker. Normal operations emit no context; no hook installs plugins,
-changes Codex configuration, rewrites commands, activates Work, or retries indefinitely. When Bash
-returns a still-running `session_id`, the advisory hook emits one short hint to poll that handle
-with `write_stdin` before new reads or progress reports; completed commands remain silent and State
-is never called.
-If a Session still references a deleted plugin-cache path, the launcher tries the current `PLUGIN_ROOT`;
-when it is unavailable it exits quietly and leaves ordinary commands alone without switching versions.
-
-When an idle project's canonical MASTER or STATUS changes, `resume` returns
-`source_fresh=false`, `read_only=true`, and
-`next_action=rebind-source-and-activate-next-work`. `checkpoint verify` returns the structured
-`source_rebind_required` gate; neither command writes State. The next explicit `work activate`
-(standard or fully bound delivery) revalidates the source, creates current evidence, refreshes the
-checkpoint, and activates the Work in one State commit. If the source changes again during
-validation, the operation returns `source_fresh` and leaves the proposal, checkpoint, and revision
-unchanged.
-
-Verify actual adoption after starting or resuming a Session:
-
-```bash
-continuity doctor --root . --codex-home ~/.codex
-```
-
-The doctor reads plugin configuration, MCP policy, hook trust, the marketplace-selected plugin,
-active lease state, resume packet size, and sanitized lifecycle observations; it does not read chat
-content. `active` means the real plugin runtime and SessionStart are available, `configured`
-means no runtime event exists yet, `misconfigured` means an installation gate failed,
-`degraded` means a lease warning, oversized packet, or runtime drift, and `recoverable` means
-an expired claim can be reclaimed through autorun.
-
-The CLI v1 packet's `read_only` field applies only to Continuity State writes. The State MCP
-inspect/resume wrapper returns `read_only_scope=continuity-state` and
-`ordinary_project_work_allowed=true`; generated STATUS renders the project action as
-`continue-project-work-state-sync-pending`. Code edits, builds, tests, and reads continue without
-waiting for another Session.
-
-To upgrade the plugin, refresh the marketplace, reinstall it, and start a new
-Session:
-
-```bash
-codex plugin marketplace upgrade continuity-plane
-codex plugin add continuity-plane@continuity-plane
-codex plugin add continuity-plane-search@continuity-plane  # bounded lookup only
-codex plugin add continuity-plane-state@continuity-plane  # only for State MCP
-```
-
-Projects that do not need host hooks can keep using the core CLI alone; disabling
-the plugin does not delete `.continuity/` state.
-
-### One Session Across Multiple Projects
-
-With the advanced State plugin installed, a Session spanning a governance root,
-an implementation project, and another project inspects a governance root only for explicit State
-diagnosis, then resumes only before an explicit State write:
-
-```text
-continuity_inspect(root=/path/to/project-a)
-continuity_resume(root=/path/to/project-a)  # only before an explicit State write
-```
-
-Inspect does not write projections or establish a write binding; reuse its result
-within the turn. Resume adds the root to the Session's integrity-checked project
-set and makes it active. Work, claim, checkpoint, and effect requests for that
-project must use the same root; switch projects by calling resume once when a
-write is required. Relative roots resolve only against the last
-successful active root. After a Session binding exists, the terminal `cwd`
-cannot replace the active root. An unbound root, missing profile, digest
-mismatch, or corrupt binding is rejected before any CLI/State write instead of
-silently falling back to `cwd`. Register governance-to-delivery repository
-relationships with the workspace registry described above.
-
-## MASTER And STATUS
-
-`MASTER.md` stores stable intent, constraints, work dependencies, and completion
-gates. `STATUS.md` stores the active work, blocker, next action, and recovery
-entry. They are project templates, not copies of this repository's development
-history.
-
-Keep session narration and raw conversations out of both files. Dynamic history
-belongs in typed state and append-only events.
-
-Teams usually commit the canonical `MASTER.md` and explicitly team-owned project
-profile. Personal STATUS overlays, local state stores, and provider archives stay
-local. Team governance decides whether a project-level STATUS is committed.
-
-## Daily Workflow
-
-1. Read `STATUS.md`.
-2. Claim the active Work at the current revision.
-3. Compose a bounded Execution Packet.
-4. Load only applicable Skill rules and current evidence.
-5. Perform the action inside the claimed scope.
-6. Run the project's verification profile.
-7. Commit evidence and complete or release the claim.
-
-New ideas default to `capture-and-continue`. They do not replace active Work
-until a switch or promotion is explicitly admitted.
-
-## Context Composition
-
-The default packet contains only:
-
-- active Work and revision;
-- current decisions and constraints;
-- blockers and claim scope;
-- next action and return point;
-- selected Skill rule IDs and hashes;
-- evidence and artifact references;
-- continuation cursor and effect watermark.
-
-Large logs, diffs, reports, and source extracts remain content-addressed
-artifacts. Expand them only when required by the current action.
-
-## Skills
-
-Treat Skills as versioned rule packages, not task memory. Pin their version,
-digest, applicability, dependencies, conflicts, and expiry. Missing or changed
-Skills are quarantined before execution.
-
-Keep the always-loaded set small. A measured reference run reduced selected
-Skill source bytes by more than 96% while preserving the expected result.
+Enabled hooks save a session return point before compaction and restore it through the host's supported event. Claude injects at SessionStart(compact); PostCompact only verifies. Without hooks this does not happen automatically. A deferred shared-handoff refresh is a warning, not proof that shared state is current.
 
 ## Collaboration
 
-### Local And Forge-Coordinated
+Cards are the work list; Todo can project them instead of becoming a second stale queue.
 
-For most teams, use the existing Git forge for visible Work, branches, reviews,
-and CI. The control plane adds local claims, checkpoints, evidence receipts, and
-conflict warnings. Contributors do not need access to a shared database.
-
-### Shared-Strong
-
-Use shared-strong mode only when workers require a single claim/lease authority
-across machines. Every write or external effect must bind:
-
-```text
-project + active Work + claim + lease epoch + scope owner + expected revision
+```bash
+continuity todo from-cards --project-id demo
+continuity collaboration task list --project-id demo --status dispatched --format brief
+continuity collaboration changes --project-id demo --since 0
+continuity collaboration wait --project-id demo --since 0 --event attempt.finished --event attempt.timeout --timeout-seconds 30
 ```
 
-A stale lease or revision fails closed. Presence, chat messages, branches, and
-UI state never grant execution authority.
+Persist `next_cursor` and continue pages while `truncated` is true. A nonzero wait timeout is not a failed worker. Recipients must read and acknowledge messages; inbox is not a process wake-up mechanism. See [workflows](docs/workflows.en.md) for dispatch, handback and evidence.
 
-### Handoff
+## Read less code
 
-A handoff includes the checkpoint, task revision, next action, return point,
-effect watermark, claim status, and evidence refs. The receiving worker must
-acknowledge the exact first action before side effects are allowed.
+```bash
+continuity context index --root .
+continuity context lookup --root . --query YOUR_SYMBOL --format brief --max-output-bytes 1024
+continuity context dependents --root . --query YOUR_HEADER --format brief
+```
 
-## Verification Profiles
+Replace the identifiers. Indexing uses current Git tracked files; follow a miss with narrow search. Dependents are indexed relations, not a complete compiler call graph. Legacy subcommands do not share every flag: inspect `--help` rather than adding unsupported packet budget options.
 
-Projects decide which gates apply. Typical gates include static checks, tests,
-builds, contract fixtures, mutation testing, loopback, performance, fault
-recovery, and live-device checks.
+## Rules and primary sources
 
-Token or latency savings never waive a required verification gate.
+Make rules canonical; generate any script mirror and reference long policies by hash.
+
+```bash
+continuity rules export --project-id demo --audience worker --format text
+continuity reference list --root .
+continuity help reference.add
+```
+
+Record current standards and official OS/library documentation, sections read and adoption reasons. These are source declarations, not proof of correct implementation. Missing sources leave explicit unverified scope, not an invented “best” implementation.
+
+## Accounting and validation
+
+```bash
+continuity observe report --root .
+continuity help
+```
+
+Response bytes, hook overhead, replacement estimates and host tokens/cache counters are separate. Negative estimates remain visible. Unknown pricing, capacity or provenance stays unknown. See [validation](docs/validation.en.md) for current capabilities and synthetic measurements.
 
 ## Storage
 
-The default SQLite file is:
+State, collaboration data, index caches and native sessions are different stores. Paths, data-root flags, environment variables and remote isolation are in [deployment](docs/deployment.en.md). Do not move an account directory to query it elsewhere or keep recoverable artifacts on volatile storage.
 
-```text
-.continuity/state.sqlite3
-```
+## Backup and removal
 
-The file is created during initialization. `verify` and `doctor` fail when it
-is missing, belongs to another application, has a newer unsupported schema, or
-fails integrity checks.
+Back up project `.continuity/`, the collaboration data root and custom artifacts before removing software. State bundle export/import/rollback covers only its declared scope, not the entire collaboration registry or native accounts. See [State](docs/state-workflows.en.md).
 
-PostgreSQL is optional for shared coordination. Artifact storage may remain on
-the local filesystem or use an external object store. The state profile records
-which capabilities are available; unavailable enhancements degrade explicitly.
+## Releases and PyPI
 
-## Backup And Removal
+Current package: `0.1.0a25`; Git tag: `v0.1.0-alpha.25`. [GitHub Releases](https://github.com/skyhua0224/continuity-plane/releases/latest) use the regular Release category. The alpha version still signals evolving compatibility; PyPI installation requires an exact pin or `--pre`.
 
-Stop active workers before copying a live SQLite database. Back up the whole
-`.continuity/` directory, including templates and content-addressed
-artifacts referenced by current checkpoints.
-
-To remove the local integration, archive or delete that directory after all
-claims are closed. Project source and build behavior remain unchanged.
-
-## Public Repositories
-
-Commit project-owned templates only when the team wants shared governance.
-Personal STATUS overlays, provider archives, secrets, raw transcripts, local
-databases, and machine-specific paths belong in `.gitignore` or external
-storage.
-
-## Release And PyPI
-
-The current version is available from PyPI and GitHub Releases:
-
-<https://pypi.org/project/continuity-plane/0.1.0a25/>
-<https://github.com/skyhua0224/continuity-plane/releases>
-
-GitHub Releases trigger the build and PyPI OIDC publishing workflow in the `pypi`
-environment. Publication authorization depends on the PyPI project's Trusted
-Publisher binding. Tokens are not stored in the repository or a GitHub
-secret.
-
-## Verify The Release
-
-```bash
-python -m unittest discover -s tests -p 'test_*.py'
-python benchmarks/run_local_state.py --iterations 1000
-python -m build
-```
-
-The public benchmark uses a temporary project and requires no network service.
-Reference A/B measurements, sample sizes, limitations, and a content digest are
-stored in `benchmarks/reference-results.json`.
+[Changelog](CHANGELOG.en.md) · [Release policy](docs/releases.en.md)

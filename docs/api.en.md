@@ -2,6 +2,8 @@
 
 [中文](api.md)
 
+Start with [CLI workflows](workflows.en.md). MCP `continuity_help` exposes parameters and `continuity_plan` manages collaboration metadata without a prior State Session. `continuity-mcp` and `continuity-search-mcp` are independent stdio entrypoints; see [deployment](deployment.en.md) for local/remote setup.
+
 The command line interface provides local initialization, integrity checks, and
 authorized state reads:
 

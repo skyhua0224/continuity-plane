@@ -2,6 +2,8 @@
 
 [中文](project-views.md)
 
+These are optional projections and historical scale tests, not a bundled full UI or universal code-impact analyzer. See [current validation](validation.en.md) for supported core workflows.
+
 The hardest problem in a large repository is often not finding a string. It is
 understanding where a file, module, decision, or task belongs in the whole
 project. Continuity Plane provides read-only projections that turn one state

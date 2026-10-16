@@ -1,99 +1,62 @@
-# 压缩接续与本地计量 / Compaction continuation and local accounting
+# 压缩接续与计量 / Lifecycle and accounting
 
-核心包、Codex 三个插件与 Claude 插件统一为 alpha23。先更新核心，再用宿主的插件安装
-流程启用相同 tag；运行中的进程仍可能持有旧代码，需要检查工具表与事件记录并重载。
-只看到 CLI 版本不能证明 hook 生效。不要为升级覆盖 provider key 或整份宿主配置。
+[文档索引](README.md) · [Deployment](deployment.en.md) · [验证边界](validation.md)
 
-Codex 和 Claude 使用同一 session handoff 合同：压缩前保存下一步、约束、验证和 Git
-返回点；压缩后有界注入并静默继续。同一个压缩边界重复回调只注入一次；不同 Session
-不会复用返回点。没有可验证的会话记录时保留宿主摘要与当前用户意图，不重放旧 Work。
-Claude 的发布目录为 `integrations/claude/continuity-plane`，包含 plugin manifest、MCP 和
-hooks。`continuity-host-hook` 使用安装核心的解释器；压缩前后执行 checkpoint create/verify。
+## 当前版本与采用状态
+
+本页适用 Alpha25。安装包、宿主插件、MCP 连接和原生 hook 采用必须分别核对；旧会话不会因为 pip 升级而热加载新代码。检查工具表、serverInfo.version 和实际事件，而不是只看 CLI 版本。不要更换 provider 凭据或整体覆盖宿主配置。
+
+## 保存与恢复
+
+Codex 与 Claude 使用有界 session handoff：压缩前保存下一步、约束、验证入口和检出信息；恢复读取当前用户意图与可验证接续点，同一代恢复只交付一次。共享主控现场包含计划、批次、worker、待决事项；worker 压缩不能覆盖主控计划。
+
+权威集成 ref 和 checkout HEAD 分开。默认集成 ref 是注册根的 refs/heads/main；缺失就返回 unknown，不以另一个检出 HEAD 代替。可用 `collaboration context-set` 显式声明真实集成根与 ref。
+
+| 宿主 | 保存 | 验证与注入 |
+|---|---|---|
+| Codex | PreCompact | 按该客户端支持的 PostCompact 恢复路径；需要实际 hook 信任 |
+| Claude Code | PreCompact | PostCompact 验证；SessionStart(compact) 注入 |
+| 无 hook 的执行方 | 显式 handoff／卡片收尾 | 启动时读取 packet／handoff，不承诺自动发生 |
+
+共享交接因租约或 I/O 无法刷新时，本地保存继续，返回 `saved-with-warning`；恢复包保留这一事实。不能把仍在盘上的旧共享交接宣称为本次成功刷新。
+
+Claude 的 SubagentStart/Stop 仅提供原机／profile 作用域的观察；没有 PID、心跳、退出码或成功推断。受控回调测试与真实原生子代理现场使用分别记录。
+
+## 低噪声提醒
+
+结束事件、阻塞和规则变化有实际用途；重复的“请先使用某功能”不应被当作采用成功。使用卡片即可工作的主控不必再维护第二份 Todo。当前清单／reference 提示的可操作性仍有改进任务；不要把它们写成已完成的自动执行建议。
+
+`CONTINUITY_DISABLED=1` 可临时关闭 hook；`CONTINUITY_HOOK_DEBUG=1` 用于桥接排障。普通元数据失效不授予新权限，也不应冻结普通源码工作。
+
+## 真实计量与估算分开
 
 ```bash
-continuity observe report --root PROJECT_ROOT --data-root DATA_ROOT
-continuity context lookup --root PROJECT_ROOT --query SYMBOL --format brief --data-root DATA_ROOT
+continuity observe report --root . --data-root /path/to/data
+continuity context lookup --root . --query YOUR_SYMBOL --format brief --max-output-bytes 1024
 ```
 
-`retrieval_usage` 显示实际返回字节、hook 注入字节、按命令和 Session 分组的净估算。
-净值 = 估计替代的原始输出字节 − 实际返回字节 − hook 注入字节，允许为负。
-替代基线是估计，不是实际 token 计费或缓存节省率。只记录数字和匿名 Session 标识，
-不保存正文、源码或凭据；默认本地开启，可设 `CONTINUITY_METER=0` 关闭。
+- 返回与注入字节：实际输出／hook emission point 计数。
+- 净字节估算：估计替代的原始输出 − 返回 − hook 注入，允许负值；它不是计费差额。
+- Provider token：在所属机器／profile 原地读取被明确指定的宿主 usage，保存计数与来源；不迁移原始会话。
+- 提示词缓存与索引缓存：不同指标，不相互替代，也不等于 Continuity 导致的节省。
+- Session 绑定：`session bind` 只从绑定基线之后归属任务／批次增量，不追溯摊分全历史，不合并不同 origin，不虚构价格。
 
-## 执行建议 / Executor preferences
+未知 usage、窗口、费用和真实计费数据继续显示未知。公开历史实验不能替代长期真实会话的匹配对照。
 
-场景目录提供主控的判断起点：快速排查、日常实现、安全边界、对抗审查、深度设计、
-独立域调查、回归验证。场景不决定唯一执行器，显式用途、复杂度和时效参数覆盖预设。
+## 派发建议
+
+当前建议参考实际运行记录、时长与已记录 cooldown，而不只统计保存过的建议。显式模型选择和任务适配范围优先；忙碌／不可用可以使比例暂时不同。日常池与高成本专家池分开，思考档位是适配器实际支持的参数，不是所有模型通用的承诺。
 
 ```bash
 continuity collaboration scenarios
 continuity collaboration recommend --scenario quick-triage --busy-model grok
-continuity collaboration recommend --scenario security-boundary --busy-model glm --unavailable-model sol
-continuity collaboration recommend --scenario deep-design --complexity normal --urgency normal
+continuity collaboration recommend --scenario independent-review
 ```
 
-`--busy-model` 可重复，表示主控观察到拥挤，降低该模型优先级并允许切到其他适合的池；
-`--unavailable-model` 可重复，排除确实不可用的模型。这里不探测真实 provider 队列。
-排队、容量错误、超时或验证失败后，主控可以更新条件重算建议，不需要等待原模型恢复。
-多个任务挤向同一模型时，先考虑独立范围拆分或移交；每部分须可独立验证、写入范围
-无交叉、worktree 隔离。共享状态或证据耦合、协调成本较高时保留整体。
-建议不自动启动执行器、重试、扩大范围或改变任务优先级；没有候选也不冻结主控本地工作。
+推荐只是判断起点。派发必须使用已配置、原机/profile 匹配的适配器；认证错误与策略拒绝不通过换渠道自动重试。安全评审应准确描述授权范围和测试目标，不能通过隐藏真实性质规避审查。
 
-路由按任务用途选择候选池，与主控模型、Claude Code 或 Codex 无关：
+## English summary
 
-- 日常调查、修改和验证：Sonnet / Sol / Grok / GLM 四者同池分摊。
-- 速度优先的有界任务：同等计数时 Grok 优先。
-- 安全边界任务：同等计数时 GLM 优先；Sol 不可用时排除 Sol，并优先考虑 GLM。
-- 对抗审查、难题且无紧迫时限：Astra / Opus 同池分摊；不为凑比例派发昂贵模型。
+Alpha25 separates installation from observed host adoption. Claude verifies at PostCompact and injects at SessionStart(compact); Codex uses its supported native lifecycle. Shared-handoff failure is a visible warning, not a successful refresh. Native child callbacks are observations, not proven success.
 
-GLM 建议 `max`；Sol / Sonnet / Grok 默认 `high`，显式要求时可提高到 `max`；
-Astra / Opus 建议 `high`。这些是可读的路由别名和偏好，执行器必须核验实际模型、
-可用性和档位支持。OpenAI 的 [Codex 配置文档](https://developers.openai.com/codex/config-reference/)
-明确说明 reasoning effort 的可用档位依赖所选模型与客户端；不将通用偏好直接当作 API 参数。
-此策略不修改宿主配置，不提供调用额度承诺，不授予派发、合入或部署权限。
-
-```bash
-continuity collaboration recommend --project-id PROJECT --task-id TASK \
-  --complexity high --urgency low --domain transport --parallel-safe --save
-continuity collaboration recommend --purpose security --blocked-model sol
-continuity collaboration recommend --purpose adversarial-review
-continuity collaboration recommend --urgency high --thinking max
-```
-
-只有显式 `--save` 才在项目共享锁内按已保存任务建议的首选次数分摊同池模型。
-同一任务重复保存相同条件保持首选不变；预览、packet 与 hook 读取均不消耗分摊次数。
-四者均适配且可用时，优先选择已保存首选次数最少者，用途只用于同次数平局排序；
-从零开始的任一分配前缀最大差不超过 1。历史 `5:1:1:0` 先补 GLM 等较少者，
-直到追平；不为了均分使用 Astra/Opus。确有适配差异时用可重复的 `--eligible-model`
-声明适合的候选，均分仅在该范围内进行；忙碌/不可用条件可暂时产生差距。
-尚未保存路由的卡片按已有建议次数排序，同次数使用任务 ID 的稳定散列打破平局，
-避免每份开场包都优先同一个模型；读取不创建路由记录。
-这是计划分摊，尚未等同于真实派发次数、token 或费用均衡。独立数据根不会共享计数。
-保存的候选与思考档位由 packet 及两种宿主的会话 handoff 读取；Todo 携带默认建议。
-既有任务建议需要重新保存才采用新策略。模型切换接续同一计划与验证，不重做已完成项。
-模型暂不可用时可交给可用执行者处理独立子任务；并行要求范围、worktree 和验证隔离。
-建议缺失、额度不足或档位不支持均不构成普通工作的只读门。
-
-Routing is controller- and host-independent. Balance Sonnet/Sol/Grok/GLM for general work and
-Astra/Opus for hard flexible-deadline work or adversarial review; prefer Grok for speed
-and GLM for security boundaries or unavailable Sol when planned counts tie. GLM uses max guidance; routine
-models default to high with explicit max escalation; specialist models use high.
-Only saved recommendations count toward pool balancing, atomically and idempotently.
-Reads do not change allocation. This measures planned recommendations, not real usage.
-Least-planned-first allocation keeps a fresh eligible four-model pool within a gap of one
-and repairs historical skew. Use repeatable `--eligible-model` to narrow task suitability.
-Adapters validate aliases, availability and effort support; no provider is launched.
-Scenario presets are overridable starting points. Caller-reported congestion lowers a
-model's priority; unavailable models are excluded. Queue delay, capacity errors, timeouts
-and failed validation warrant reconsideration. Split only independently verifiable scopes
-with isolated worktrees and non-overlapping writes; retain coupled tasks as a whole.
-
-The core and both host adapters share a bounded session handoff. Save before compaction;
-verify and quietly continue afterward. Repeated callbacks do not reinject the same handoff,
-and sessions cannot read each other's return points. Claude ships a manifest, MCP config and
-hooks using the core interpreter. Host-specific plugin enabling/reload remains necessary.
-
-Accounting includes actual returned bytes and hook-injected bytes, grouped by command and
-anonymous session. Signed net byte estimates can be negative. They do not establish measured
-token savings. Executor preferences follow the current task and verification requirements;
-availability and process dispatch remain the host's responsibility.
+Actual response/injection bytes, replacement estimates, provider usage, prompt-cache counters and index-cache hits have different meanings. Prospective task/batch bindings do not retroactively allocate historical usage or infer prices. Routing uses recorded runs/cooldowns, not merely saved recommendations. See [validation](validation.en.md) for controlled tests, user feedback and remaining gaps.

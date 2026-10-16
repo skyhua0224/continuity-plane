@@ -1,243 +1,99 @@
 # Continuity Plane
 
-Typed Work/decision/constraint additions, per-lane task assignment and a durable inbox are
-available; see [onboarding and handoffs](docs/onboarding.en.md).
+**Let the next session continue from the work in progress.**
 
-It also includes C/C++/Objective-C indexing, AND queries, task summaries, Todo projection and retrieval metrics.
+Tasks, rules, handoffs and verification evidence for Codex, Claude Code and other agents. Dispatch workers, resume interrupted work, receive completion events and retrieve bounded code references.
 
+[中文](README.md) · [Quick start](USAGE.en.md) · [Deployment](docs/deployment.en.md) · [Workflows](docs/workflows.en.md) · [Capabilities and validation](docs/validation.en.md) · [Download](https://github.com/skyhua0224/continuity-plane/releases/latest)
+
+[![PyPI](https://img.shields.io/pypi/v/continuity-plane?include_prereleases)](https://pypi.org/project/continuity-plane/)
+[![Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 [![Managed with Continuity Plane](docs/assets/managed-with-continuity-plane.svg)](https://github.com/skyhua0224/continuity-plane)
-
-Continuity Plane keeps tasks, memory, evidence and context outside chat for long-running
-AI development, compaction recovery and cross-session collaboration.
-
-[中文 README](README.md)
-
-## Install
-
-Install one CLI first:
-
-```bash
-python -m pip install --upgrade continuity-plane
-```
-
-### Recent updates
-
-- Hooks, compaction recovery, collaboration metadata and the bounded code index are non-blocking by default.
-
-### Codex plugin (optional)
-
-The core package does not depend on a plugin. The default `continuity-plane` plugin is a
-lightweight core for bounded recovery and checkpoint lifecycle, with no State MCP tools or ordinary
-command gates. Advisory hooks and one-shot recovery compensation do not block ordinary development;
-see the [changelog](CHANGELOG.en.md) for the full history.
-
-```bash
-codex plugin marketplace add skyhua0224/continuity-plane
-codex plugin add continuity-plane@continuity-plane
-```
-
-Install the search plugin separately for bounded current-worktree lookup in large repositories:
-
-```bash
-codex plugin add continuity-plane-search@continuity-plane
-```
-
-For symbol-oriented lookup, build and query the incremental index:
-
-```bash
-continuity context index --root .
-continuity context lookup --root . --query "build_runtime"
-```
-
-The index cache lives outside the project, so new Sessions and other AI clients can reuse it.
-Results contain paths, lines, symbols, and file hashes; only changed files are reparsed.
-
-Install the advanced State plugin only when Codex must call resume, claim, checkpoint, or atomic
-Work transition tools:
-
-```bash
-codex plugin add continuity-plane-state@continuity-plane
-```
-
-The search plugin exposes one `continuity_context_lookup` MCP tool. Other AI clients use the CLI;
-both paths share the repository-isolated user cache. The State plugin is not part of code lookup.
-
-Start or resume a Session after installation, then verify real adoption:
-
-```bash
-continuity doctor --root . --codex-home ~/.codex
-```
-
-Both `codex_plugin.status` and `codex_plugin.runtime.status` must be `active`: configuration, MCP
-policy, all six hooks, script entrypoints, version, and SessionStart observation passed.
-`state_health` and `packet_health` expose lease warnings and recovery-packet size. Daily development
-uses non-blocking `auto`; `strict` is only for CI or explicit mandatory-blocking workflows.
-
-## Generic collaboration and vocabulary memory
-
-Recent releases add a lightweight collaboration ledger, global/project vocabulary memory, a skills
-audit, and a worktree inventory. They are collaboration hints only, grant no completion or
-external-effect authority, and local development continues when metadata is missing. See
-[`generic-collaboration-memory`](docs/architecture/generic-collaboration-memory.md).
-
-### One Project
-
-Use this when one repository should own its state and pinned control-plane version.
-
-```bash
-continuity init --root . --project-id my-project --display-name "My Project"
-```
-
-### One CLI For Multiple Projects
-
-Use this when one machine manages several repositories. Each project gets its own
-`.continuity/` directory and SQLite state.
-
-```bash
-continuity init --root /path/to/project-a --project-id project-a --display-name "Project A"
-continuity init --root /path/to/project-b --project-id project-b --display-name "Project B"
-```
-
-### Personal Use In A Collaborative Repository
-
-Use this when joining a team repository while keeping coordination local to your own Sessions.
-
-```bash
-continuity init --root /path/to/team-repo --project-id team-project --display-name "Team Project"
-```
-
-### Team-Wide Use
-
-Use this when the team needs shared Work, claims, PR/CI, and deployment state. Initialize
-locally first, then enable `forge-coordinated` or `shared-strong` when the project needs it.
-The default installation still requires neither PostgreSQL nor Docmost.
-
-Common parameters: `--root` selects the repository, `--project-id` is a stable lowercase
-identifier, and `--display-name` is the human-readable name. See the
-[complete installation, usage, and profile switching guide](USAGE.en.md).
 
 ## Problems It Solves
 
-| Scenario | Pain point | Details |
+| When this happens | What you can use today | Details |
 |---|---|---|
-| Compaction and long Sessions | The agent was fixing a test, then repeats an old question and redoes completed work | [Use case](docs/use-cases.en.md#compaction-makes-the-agent-look-different) |
-| Multi-Session and deployment races | Both Sessions think they can deploy until main, CI, and the environment conflict | [Use case](docs/use-cases.en.md#sessions-step-on-each-other) |
-| Team and multi-Agent work | Unpublished local work is invisible, so collaborators implement and search twice | [Use case](docs/use-cases.en.md#people-and-agents-repeat-each-others-work) |
-| Ideas and task switches | A casual idea pulls the agent away from the mainline and loses the return point | [Use case](docs/use-cases.en.md#a-casual-idea-pulls-the-mainline-away) |
-| Large projects | Hundreds of modules and cross-repository dependencies hide the impact of a change | [Use case](docs/use-cases.en.md#large-projects-lose-their-shape) |
-| Memory, Skills, and documentation drift | Old paths, decisions, and rules return after compaction | [Use case](docs/use-cases.en.md#memory-skills-and-documents-drift) |
+| Compaction loses the next action; the next agent starts exploring again | Bounded continuation and a shared controller handoff: plan, batch, workers, pending decisions and verification | [Lifecycle](docs/lifecycle-parity.md) |
+| Agents cannot see each other's progress | Task cards, inbox, incremental changes and blocking event waits | [Workflows](docs/workflows.en.md) |
+| A worker exits quietly and its report is buried in logs | `dispatch` / `resume` / `report`, supervised attempts, exit codes and attached reports | [Dispatch reference](docs/field-workflows.md#dispatch-resume-and-reports) |
+| Rules drift across scripts and workers miss constraints | Global/project audience rules, hashed policies, complete exports, prompt assembly and primary-source records | [Rules and sources](docs/workflows.en.md#rules-sources-and-lessons) |
+| Finding one symbol fills the context with source | Incremental indexing, brief output, bounded dependency queries and code routes in prompts | [Coverage](docs/validation.en.md) |
+| Plans drift, commitments disappear and merge evidence is unclear | Card-backed Todo, commit-bound verification, batches, decisions, commitments, lessons and drift checks | [Workflows](docs/workflows.en.md) |
 
-## Measured Results
+The core is one CLI. Tasks, retrieval and collaboration work without plugins. The default needs no cloud account, PostgreSQL, Docmost or resident daemon. Native agent clients keep their own authentication.
 
-| Scenario | Result | Details |
-|---|---|---|
-| Recovery after compaction | input tokens `-40.25%`; near-limit history `-95.06%`; quality `3/3` | [Recovery benchmark](docs/benchmarks.en.md#compaction-and-recovery) |
-| Code retrieval | input `-50.02%`; tool calls `-57.89%`; wall time `-27.41%`; quality `3/3` | [Retrieval benchmark](docs/benchmarks.en.md#code-retrieval) |
-| Skill loading | source bytes `-96.54%`; quality `3/3` | [Skill benchmark](docs/benchmarks.en.md#skill-loading) |
-| Multi-Session coordination | duplicate tool calls `-55.88%`; parallel wall time `-22.65%` | [Collaboration benchmark](docs/benchmarks.en.md#multi-session-collaboration) |
-| Consistency | mandatory consistency campaign `10/10`; dual-Session `1000/1000`; authority violations `0` | [Consistency benchmark](docs/benchmarks.en.md#consistency-and-limitations) |
-| Large-project views | 2,000 nodes / 5,000 edges; scale p95 `187.459764 ms` | [Project views](docs/project-views.en.md) |
+## Five-minute start
 
-These are scenario-level results from matched tasks and current fixtures, not one
-universal savings percentage. User tokens, useful window utilization, and accepted
-work between compactions are normalized by accepted Work and measured only when
-host traces expose the required signals. [Full methods and limitations](docs/benchmarks.en.md).
-
-
-The code index is a candidate-location layer; it does not replace current source, tests, or
-authoritative Typed State validation.
-
-## Architecture At A Glance
-
-```text
-Agent / IDE / CI / Human console
-              |
-              v
-       Execution Packet
-              |
-     +--------+---------+
-     |                  |
-Typed State         Evidence index
-revision + CAS      hashes + validity
-     |                  |
-     +--------+---------+
-              |
-      append-only events
-              |
-    checkpoint + replay canary
-              |
-      SQLite by default
-```
-
-Memory, retrieval, code graphs, and reviewers provide candidates only. Active
-tasks, completion, and external effects pass through State MCP authorization,
-expected revision or CAS, and validators.
-
-## Quick Start
-
-Requires Python 3.11 or later. From an installed CLI in the target project directory:
+Requires Python 3.11+. This example uses a macOS/Linux shell; see [deployment](docs/deployment.en.md) for Windows paths.
 
 ```bash
-continuity verify --root .
-continuity doctor --root .
-continuity state show --root .
+python3 -m venv .venv
+.venv/bin/python -m pip install 'continuity-plane==0.1.0a25'
+.venv/bin/continuity init --root . --project-id demo
+.venv/bin/continuity collaboration register --project-id demo --control-root . --repository-root .
+.venv/bin/continuity whoami --root . --assignee controller --controller controller
+.venv/bin/continuity collaboration packet --project-id demo --assignee controller
 ```
 
-Initialization creates `.continuity/`, a SQLite state store, and project-owned
-`MASTER.md`, `STATUS.md`, and English templates. The project chooses its own
-`project_id` and `display_name`.
+Run inside the target repository and choose a stable ID. Initialization refuses to overwrite an existing `.continuity/`; use the [State adoption guide](docs/state-workflows.en.md) for existing governance documents. Later examples assume `continuity` is on PATH.
 
-## Installation Profiles
+| Your workflow | Start here |
+|---|---|
+| One person protecting work from compaction | [Quick start](USAGE.en.md), then enable host hooks |
+| One controller with workers | [A complete two-worker path](docs/workflows.en.md#one-controller-and-two-workers) |
+| Multiple machines or a team | [SSH deployment](docs/deployment.en.md#separate-controller-and-state-hosts), then opt into fencing when needed |
 
-| Profile | Extra services | Use case | Details |
-|---|---|---|---|
-| `local-embedded` | none | personal work, offline development, local Sessions | [Configuration](docs/configuration.en.md) |
-| `forge-coordinated` | existing Git forge | ordinary open-source collaboration | [Configuration](docs/configuration.en.md#profiles) |
-| personal PostgreSQL | local/private PostgreSQL | SQL inspection, backup, local workers | [Configuration](docs/configuration.en.md#profiles) |
-| personal Docmost | Docmost plus connector | graphs, approvals, history | [Visual products](docs/visual-products.en.md) |
-| `shared-strong` | explicit State MCP service | unique cross-device claims, leases, and CAS | [Configuration](docs/configuration.en.md#profiles) |
+## Core capabilities
 
-The default path is `local-embedded`. PostgreSQL, Docmost, and `shared-strong`
-are optional enhancements.
+- **Work in progress:** bind sessions to tasks/batches; recover the shared plan, rules, commitments and lessons. The integration ref is distinct from checkout HEAD.
+- **Dispatch lifecycle:** assemble rules and card bodies, then run a configured adapter under the supervisor. New attempts default to 24 hours total / 90 minutes idle; limits and effort are explicit.
+- **Failure and resume:** classify failures and resume a recorded native thread where available. Policy refusals do not switch channels. Lease/capacity refusal preserves the finished result and explains deferral.
+- **Coordination:** filtered cards, paginated changes, multi-event waits and durable messages. Explicit controller fences and atomic reservations protect tool-mediated operations.
+- **Rules and evidence:** complete rule delivery, hashed attachments, source records, reports, structured verification, batch metrics and attributable decisions.
+- **Visible accounting:** response/injection bytes, host tokens and prompt-cache counters remain separate. Negative retrieval estimates stay visible; cache hits are not a savings claim.
 
-## Authority Boundaries
+Discover parameters through `continuity help` and command `--help`. Ordinary collaboration needs no State claim.
 
-- `Typed State`: current task, owner, revision, decisions, constraints, and gates;
-- `Event Log`: append-only changes, supersedes, and hash chain;
-- `Checkpoint`: recovery point for compaction, switches, handoffs, and crashes;
-- `Evidence`: provenance for current source, standards, official documents, and tests;
-- `MASTER.md`: project governance intent; `STATUS.md`: current recovery route;
-- Docmost: optional human console whose actions are State MCP constrained;
-- Obsidian: generated read-only view;
-- SQLite: default local authority; PostgreSQL: an explicitly selected adapter.
+## Codex and Claude Code
+
+| Entry point | Provides | Boundary |
+|---|---|---|
+| Codex plugin `continuity-plane` | Bounded recovery and lifecycle hooks | Core does not register State MCP; hooks still need host trust and actual events |
+| Codex plugin `continuity-plane-search` | `continuity_context_lookup` | Independent of State; use narrow search after a miss |
+| State plugin / explicit `continuity-mcp` | State tools and metadata tools such as `continuity_plan` | Metadata needs no State resume; authoritative writes keep their gates |
+| Claude Code plugin | MCP and eight host event hooks | SubagentStart/Stop are observations, not native process control |
+| Other agents | CLI or stdio MCP | No required provider or model |
+
+See [deployment](docs/deployment.en.md) for installation, discovery, hook checks, duplicate-server troubleshooting and removal. Running sessions do not hot-load new MCP code: reconnect or start a new session after upgrading.
+
+## Validation
+
+The [capability matrix](docs/validation.en.md) separates synthetic CLI measurements, automated regressions, user feedback and uncovered behavior. It covers dispatch, failed exits, reports, rules, events, handoffs and fencing.
+
+Historical compaction, retrieval, Skill and coordination comparisons remain in [benchmark methods](docs/benchmarks.en.md). They are not universal or current-version reduction rates. Useful window utilization, longitudinal per-task cost and causal token savings still require matched real-session evidence.
+
+## Data and operation boundaries
+
+- Credentials, private provider configuration and native sessions stay on their owning machine/profile. Remote use executes there instead of moving an account to another host.
+- Only authorized project records, artifact references and origin-labeled counters are shared. Keep recoverable work on persistent storage.
+- Inbox and hooks cannot wake every session. Reports are not permission to merge, push or deploy.
+- Controller leases coordinate cooperating clients, not arbitrary Git/scripts or an OS sandbox.
+- First `controller acquire` enables guarded ledger v4 for that project. Upgrade every participating dispatcher first; installation alone does not enable it.
 
 ## Documentation
 
-- [Usage guide](USAGE.en.md)
-- [Complete changes and upgrade notes](CHANGELOG.en.md)
-- [Architecture](docs/architecture.en.md)
-- [Configuration](docs/configuration.en.md)
-- [Python API](docs/api.en.md)
-- [Benchmark method](docs/benchmarks.en.md)
-- [Use cases](docs/use-cases.en.md)
-- [Large-project views](docs/project-views.en.md)
-- [Docmost and Obsidian visual product plan](docs/visual-products.en.md)
-- [Contributing](CONTRIBUTING.en.md)
-- [Security](SECURITY.en.md)
+| Need | Guide |
+|---|---|
+| Installation, upgrades, OS paths, remote hooks, rollback | [Deployment](docs/deployment.en.md) |
+| Solo, controller and team paths | [Quick start](USAGE.en.md) · [Workflows](docs/workflows.en.md) |
+| Current coverage and missing validation | [Validation](docs/validation.en.md) · [Historical experiments](docs/benchmarks.en.md) |
+| Detailed collaboration / advanced State | [Command reference](docs/field-workflows.md) · [State](docs/state-workflows.en.md) |
+| Changes, compatibility and release conventions | [Changelog](CHANGELOG.en.md) · [Release policy](docs/releases.en.md) |
+| Architecture, configuration, API, optional views | [Index](docs/README.en.md) · [Project views](docs/project-views.en.md) · [Visual products](docs/visual-products.en.md) · [Use cases](docs/use-cases.en.md) |
 
-## Release And License
+## Feedback and license
 
-The project is available from [PyPI](https://pypi.org/project/continuity-plane/)
-and [GitHub Releases](https://github.com/skyhua0224/continuity-plane/releases).
-The GitHub release also provides the core wheel, source archive, Codex plugin marketplace, and SHA256SUMS; see the
-[changelog](CHANGELOG.en.md).
+Report the version, sanitized command, expected/actual behavior and a minimal reproduction in [Issues](https://github.com/skyhua0224/continuity-plane/issues). Do not upload raw sessions, account files, device identifiers or private project data.
 
-Continuity Plane uses [Apache-2.0](LICENSE). Badges, README attribution, UI
-labels, and telemetry are optional; legal attribution follows LICENSE and NOTICE.
-
-## Current Status
-
-Linux x86_64, macOS arm64, and Windows AMD64 have completed installation,
-verification, and uninstall probes. Local state-bundle export/import/rollback is
-available. One-command cross-adapter profile switching, the complete Docmost
-connector, Obsidian Canvas/Bases, and `shared-strong` deployment remain planned.
+[Apache-2.0](LICENSE); attribution requirements are in [NOTICE](NOTICE). README badges and telemetry are optional.

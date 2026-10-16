@@ -2,6 +2,8 @@
 
 [English](project-views.en.md)
 
+本页介绍可选投影与历史规模测试，不代表默认安装含完整图形界面或任意代码依赖分析。当前可用核心与最新验证入口见 [验证矩阵](validation.md)。
+
 大型仓库的核心问题是无法判断当前看到的文件、模块、决定和任务在整个项目中
 处于什么位置。Continuity Plane 提供一组只读 projection，
 把同一 revision 的状态转换为可以由 Web、CLI、Docmost 或静态 vault 展示的数据。

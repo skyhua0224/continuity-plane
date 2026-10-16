@@ -1,45 +1,44 @@
-# Continuity Plane 0.1.0-alpha.21
+# Alpha21 · 计划录入与消息交接
 
-## 中文
+Plan intake and durable handoffs
 
-本次更新收口计划录入和多执行者协作的接入问题：
+包版本：`0.1.0a21`；tag：`v0.1.0-alpha.21`。历史版本功能范围按本页，不由当前文档反推。
 
-- Work、决定和约束可显式录入类型化 State：先预览，再按 revision 应用；不自动把文档中的完成标记当成验收。
-- 可在同一 State 事件中刷新 canonical 来源证据；保留现有 claim、scope 和历史证据。
-- task update 可直接指定执行者，同一执行者可按 lane 并行领取。
-- “Admin 方案”等中英混排别名可匹配空格、大小写及全角变体。
-- CLI/MCP 持久收件箱支持幂等发送、读取和确认；恢复包及 hook 可注入有界提示。
-- CLI 预期错误不再直接输出 Python 堆栈；支持直接 status 和统一根参数。
+## 这一版带来什么
 
-收件箱不保证唤醒被宿主占用的会话，不抢占 writer，不授予部署权限。运行中的 MCP
-客户端仍可能需要重连/重载；请检查实际工具列表。HTML 原型和 usage 自动移交不在本次发行中。
+- Work、决定与约束支持来源绑定的预览／revision apply，保留 claim、scope 与历史证据。
+- task update 可指定执行者；同执行方按 lane 认领，子身份可区分实例。
+- 持久 inbox 支持幂等发送、读取与确认；恢复包／hook 给出有界消息提示。
+- 改进中英混排 alias、预期 CLI 错误与接入文档。
 
-安装核心包：
+## 升级前注意
+
+消息不会保证唤醒任意会话或抢占 writer，也不授予外部操作权限。新增 MCP 工具需要重连／重载。后续版本的 supervisor 与主控租约不属于此历史版本。
+
+## 安装与升级
 
 ```bash
 python -m pip install --upgrade 'continuity-plane==0.1.0a21'
 continuity --version
 ```
 
-Codex 插件按 [README](../README.md) 中的 marketplace 安装方式更新；核心、Search、State
-三个插件均为 `0.1.0-alpha.21`。GitHub 与 Python 包使用各自的标准版本格式。
-已包含双语接入文档和回归测试；本次不宣称未经测量的 token 节省。
+已有 pipx 用户见[部署与升级](deployment.md)；插件选择同一 tag，并在宿主重连。普通 GitHub Release 分类不改变 alpha 包的兼容性阶段。
+
+## 验证与限制
+
+包含双语接入说明与回归；未测量的 token 节省不作声明。历史发布范围保留，当前接入以最新部署指南为准。
 
 ## English
 
-This release closes typed-planning and multi-executor onboarding gaps:
+- Preview/apply source-bound Work, decisions and constraints while retaining claims/scopes/evidence.
+- Update assignees and coordinate per-lane claims with child identities.
+- Send/read/ack durable idempotent inbox messages with bounded packet/hook hints.
+- Improve mixed-language aliases, expected CLI diagnostics and onboarding.
 
-- Explicit typed Work/decision/constraint additions: preview, then revision-bound apply. Document completion markers are not acceptance evidence.
-- Canonical source evidence can be refreshed in the same State event, preserving claims, scope and historical evidence.
-- Task update accepts an assignee, and active assignment is counted per lane.
-- Mixed-language phrase aliases support whitespace, case and full-width normalization.
-- A durable CLI/MCP inbox provides idempotent delivery, retrieval and acknowledgement, with bounded packet/hook hints.
-- Expected CLI errors produce concise diagnostics; direct status and consistent root arguments are supported.
+**Before upgrading:** Messages do not guarantee wake-up, preempt writers or authorize external actions. Reconnect for new MCP tools. Later supervisor/controller features are not part of this historical release.
 
-The inbox does not guarantee wake-up of host-owned sessions, take over writers or grant deployment
-authority. Running MCP clients may need reconnect/reload; inspect their actual tool catalog.
-The HTML prototype and usage-driven automatic handoff are excluded.
+Use the exact package pin above and matching plugin tag, then reconnect host/MCP sessions. GitHub's regular Release category does not change the alpha compatibility stage.
 
-Install using the command above. Update the three Codex plugins through the marketplace steps in
-[README](../README.md); all are `0.1.0-alpha.21`, while the Python distribution is `0.1.0a21`.
-Bilingual onboarding documentation and regression tests are included. No unmeasured token savings are claimed.
+**Evidence and limits:** Bilingual onboarding/regressions were included, without an unmeasured savings claim. Preserve the historical scope; use current deployment guidance for new adoption.
+
+[README](../README.md) · [Deployment](deployment.en.md) · [Usage](../USAGE.en.md) · [Current validation](validation.en.md) · [Changelog](../CHANGELOG.en.md)

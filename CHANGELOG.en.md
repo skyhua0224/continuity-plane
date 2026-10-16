@@ -1,5 +1,7 @@
 # Changelog
 
+Adoption: [deployment](docs/deployment.en.md), [recent release notes](docs/releases.en.md), [current coverage/known gaps](docs/validation.en.md). Historical entries retain their original scope. Regular GitHub Release classification does not remove alpha semantics.
+
 ## 0.1.0-alpha.25
 
 - Forward dispatch/resume timeouts and provider effort; filter open-card Todo projections; accept OR event waits, atomic body-only updates and batch metrics.

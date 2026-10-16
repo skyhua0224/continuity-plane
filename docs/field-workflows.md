@@ -1,5 +1,9 @@
 # Reliable worker and rule workflows
 
+[中文操作路径](workflows.md) · [Deployment](deployment.en.md) · [Current validation and known gaps](validation.en.md)
+
+This is the detailed command reference. Use the capability matrix for present coverage; historical Alpha24 observations below are not a new Alpha25 field trial. Todo, claim and inbox are optional when an existing card/handoff workflow already provides the needed coordination.
+
 ## Alpha25: controller workflow additions
 
 The following APIs are included in Alpha25 (`0.1.0a25`), not in Alpha24.

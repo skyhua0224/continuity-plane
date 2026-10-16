@@ -1,226 +1,99 @@
 # Continuity Plane
 
-[![Managed with Continuity Plane](docs/assets/managed-with-continuity-plane.svg)](https://github.com/skyhua0224/continuity-plane)
+**让下一次会话从工作现场接着做。**
 
-Continuity Plane 为长期 AI 开发保存任务、记忆、证据和上下文，支持压缩后接续与跨会话协作。
+为 Codex、Claude Code 和其他 Agent 保存任务、规则、交接与验证证据；管理 worker 的派发、续跑和结束通知，并用有界检索减少重复阅读。
 
-[English README](README.en.md)
+[English](README.en.md) · [快速开始](USAGE.md) · [部署与升级](docs/deployment.md) · [工作流](docs/workflows.md) · [能力与验证](docs/validation.md) · [下载](https://github.com/skyhua0224/continuity-plane/releases/latest)
 
-## 安装
-
-先安装一份 CLI：
-
-```bash
-python -m pip install --upgrade continuity-plane
-```
-
-### 近期更新
-
-- 类型化 Work/决定/约束录入、按工作线领取和持久收件箱；参见[接入与交接](docs/onboarding.md)。
-- 压缩返回点在 Codex/Claude 间使用同一合同，计量显示 hook 开销与净字节估算。
-  参见[压缩接续与计量](docs/lifecycle-parity.md)。
-- 默认非阻断 hook、压缩恢复、协作账本和有界代码索引均可用。
-
-### Codex 插件（可选）
-
-核心包不依赖插件。默认 `continuity-plane` plugin 是轻量 core，只提供有界恢复和
-checkpoint lifecycle，不注册 State MCP 工具，也不阻断普通开发命令。
-操作前后 advisory hook 与一次性恢复补偿默认不拦截普通开发；完整变更见
-[变更记录](CHANGELOG.md)。
-
-```bash
-codex plugin marketplace add skyhua0224/continuity-plane
-codex plugin add continuity-plane@continuity-plane
-```
-
-大型仓库需要有界 current-worktree 检索时，可单独安装 search plugin：
-
-```bash
-codex plugin add continuity-plane-search@continuity-plane
-```
-
-符号、类或函数定位可以建立增量索引：
-
-```bash
-continuity context index --root .
-continuity context lookup --root . --query "build_runtime"
-```
-
-索引缓存默认在项目外，返回路径、行号、符号和文件 hash；新 Session 或其他 AI 可复用，
-源码变化后只重解析变化文件。
-
-只有明确需要在 Codex 中调用 resume、claim、checkpoint 或原子 Work transition 时，
-才安装 advanced State plugin：
-
-```bash
-codex plugin add continuity-plane-state@continuity-plane
-```
-
-安装 search plugin 后，Codex 会看到单工具 `continuity_context_lookup` MCP；不支持 MCP 的
-其他 AI 使用上面的 CLI，二者共享按仓库隔离的用户缓存。State plugin 不参与代码检索。
-
-安装后新建或恢复一个 Session。确认插件已真实运行：
-
-```bash
-continuity doctor --root . --codex-home ~/.codex
-```
-
-`codex_plugin.status` 与 `codex_plugin.runtime.status` 均为 `active` 时，配置、MCP policy、
-6/6 hook、脚本入口、版本和 SessionStart 观测全部通过；`state_health` 与 `packet_health`
-分别显示租约预警和恢复包体积。普通开发使用非阻断 `auto`；`strict` 仅用于 CI 或显式
-强制场景。
-
-
-### 单项目
-
-适合希望每个仓库独立保存状态和版本的个人项目。
-
-```bash
-continuity init --root . --project-id my-project --display-name "My Project"
-```
-
-### 一个 CLI 管理多个项目
-
-适合在同一台机器上维护多个仓库；每个项目拥有独立的 `.continuity/` 和 SQLite。
-
-```bash
-continuity init --root /path/to/project-a --project-id project-a --display-name "Project A"
-continuity init --root /path/to/project-b --project-id project-b --display-name "Project B"
-```
-
-### 协作项目个人使用
-
-适合加入团队仓库但只想先管理自己的本地 Session，不要求团队部署服务。
-
-```bash
-continuity init --root /path/to/team-repo --project-id team-project --display-name "Team Project"
-```
-
-### 团队共同使用
-
-适合需要共享 Work、claim、PR/CI 和部署状态的团队。先完成本地初始化，再按项目条件
-启用 `forge-coordinated` 或 `shared-strong`；默认安装仍不要求 PostgreSQL 或 Docmost。
-
-常用参数：`--root` 指向目标仓库，`--project-id` 是稳定的小写标识，
-`--display-name` 是人类可读名称。详见[完整安装、使用与模式切换](USAGE.md)。
+[![PyPI 版本](https://img.shields.io/pypi/v/continuity-plane?include_prereleases)](https://pypi.org/project/continuity-plane/)
+[![Apache-2.0 许可](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+[![由 Continuity Plane 管理](docs/assets/managed-with-continuity-plane.svg)](https://github.com/skyhua0224/continuity-plane)
 
 ## 它解决哪些问题
 
-| 场景 | 痛点 | 详情 |
+| 遇到的情况 | 现在可以怎么做 | 详情 |
 |---|---|---|
-| 压缩与长 Session | 刚刚还在修测试，压缩后却重答旧问题，甚至把做完的工作重新做一遍 | [场景详情](docs/use-cases.md#压缩后像换了一个人) |
-| 多 Session 与部署竞态 | 两边都以为自己可以部署，直到 main、CI 和环境互相覆盖才发现冲突 | [场景详情](docs/use-cases.md#同一仓库的多个-session-会互相踩踏) |
-| 多人和多 Agent | 别人已经在本地做完的东西不可见，协作者只能重复实现、重复查资料 | [场景详情](docs/use-cases.md#多人和多-agent-不知道别人已经做了什么) |
-| Idea 与任务切换 | 一句临时想法让 Agent 离开主线，回来时找不到原任务的落点 | [场景详情](docs/use-cases.md#临时-idea-很容易把主线带跑) |
-| 大型项目 | 几百个模块和跨仓依赖堆在一起，人和 AI 都不知道改动会影响哪里 | [场景详情](docs/use-cases.md#大型项目里人和-ai-都不知道哪里是哪里) |
-| Memory、Skill、文档漂移 | 旧路径、旧决定和旧规则在压缩后重新冒出来 | [场景详情](docs/use-cases.md#memoryskill-和文档会漂移) |
+| 压缩后忘了下一步，接手者又从头探索 | 有界接续点与主控交接：计划、批次、在途 worker、待决事项和验证入口 | [接续与 hook](docs/lifecycle-parity.md) |
+| 多个 Agent 不知道彼此做到哪里 | 任务卡、收件箱、增量变更流；用 `wait` 等结束事件 | [协作](docs/workflows.md) |
+| worker 悄悄退出，报告埋在日志里 | `dispatch` / `resume` / `report`；supervisor 记录 attempt、退出码和挂卡报告 | [派发参考](docs/field-workflows.md#dispatch-resume-and-reports) |
+| 规则散落、反复复制，执行方漏读 | 全局／项目规则、受众、哈希附件、完整导出、提示词组装与一手资料登记 | [规则与资料](docs/workflows.md#规则资料与教训) |
+| 找一个符号读入几千行代码 | 增量索引、brief 输出、有界依赖查询；派卡自动附代码路标 | [检索边界](docs/validation.md) |
+| 计划漂移、承诺丢失、合入证据说不清 | 卡片驱动 Todo、commit 绑定验证、批次／决定、commitment、lesson 与漂移检查 | [工作流](docs/workflows.md) |
+
+核心是一份 CLI。没有插件也能使用任务卡、检索和协作；默认不需要云账号、PostgreSQL、Docmost 或常驻 daemon。原生 Agent 的登录仍由自己的客户端管理。
+
+## 五分钟开始
+
+需要 Python 3.11+。以下为 macOS/Linux shell；Windows 路径见[部署指南](docs/deployment.md)。
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install 'continuity-plane==0.1.0a25'
+.venv/bin/continuity init --root . --project-id demo
+.venv/bin/continuity collaboration register --project-id demo --control-root . --repository-root .
+.venv/bin/continuity whoami --root . --assignee controller --controller controller
+.venv/bin/continuity collaboration packet --project-id demo --assignee controller
+```
+
+在目标仓库运行，为真实项目选择稳定 ID。初始化拒绝覆盖已有 `.continuity/`；已有治理文档按[接入指南](docs/state-workflows.md)处理。后续示例假定 `continuity` 已在 PATH 中。
+
+| 用途 | 从哪里开始 |
+|---|---|
+| 一个人，防止压缩与交接丢信息 | [快速开始](USAGE.md)，再接入宿主 hook |
+| 主控 + 多个执行方 | [两个 worker 的完整路径](docs/workflows.md#一个主控与两个执行方) |
+| 多机器、团队共享状态 | [SSH 部署与隔离](docs/deployment.md#控制端与状态端分离)，再考虑主控租约 |
+
+## 核心能力
+
+- **工作现场**：session 绑定任务／批次；交接、规则、承诺与 lesson 随包出现。权威集成 ref 与检出 HEAD 分开标注。
+- **派发闭环**：从规则与卡片组装提示词，在 supervisor 下运行已配置适配器；新 attempt 默认总时长 24 小时、空闲 90 分钟，支持覆盖和 effort 透传。
+- **故障与续跑**：按错误类别处理，有原生会话引用时可原线程续跑。策略拒绝不自动换渠道；失去租约或名额时保留原结果并明确延期。
+- **协作与互斥**：筛选卡片、分页变更、多事件等待和持久消息；显式主控 fence 与原子容量预留保护经过工具的操作。
+- **规则与证据**：规则不静默裁剪，长文使用哈希附件；资料登记、报告、结构化验证、批次指标与批准来源均可追溯。
+- **可核对计量**：实际返回／注入字节、宿主 token 与提示词缓存分别报告；净估算允许为负，不把缓存命中冒充节省。
+
+完整参数以 `continuity help` 和各命令 `--help` 为准；不要求先建立 State claim 才能使用普通协作命令。
+
+## Codex 与 Claude Code
+
+| 入口 | 提供什么 | 注意事项 |
+|---|---|---|
+| Codex plugin `continuity-plane` | 有界恢复与生命周期 hook | core 不注册 State MCP；安装不等于 hook 已被信任和触发 |
+| Codex plugin `continuity-plane-search` | `continuity_context_lookup` | 可独立启用；空命中后继续窄范围搜索 |
+| State plugin／显式 `continuity-mcp` | State 工具与 `continuity_plan` 等协作工具 | 协作元数据无需 State resume；权威写入仍有授权门 |
+| Claude Code plugin | MCP 与 8 类宿主 hook | SubagentStart/Stop 是观察，不是原生进程控制 |
+| 其他 Agent | CLI 或 stdio MCP | 不限定 provider 与模型 |
+
+安装、工具发现、hook 验收、重复注册排查和卸载见[部署指南](docs/deployment.md)。运行中的会话不会热加载新 MCP；升级后重连或新开会话。
 
 ## 已测结果
 
-| 场景 | 结果 | 详情 |
-|---|---|---|
-| 压缩恢复 | input tokens `-40.25%`；近上限历史 `-95.06%`；quality `3/3` | [压缩实测](docs/benchmarks.md#压缩与恢复) |
-| 代码检索 | input `-50.02%`；tool calls `-57.89%`；wall time `-27.41%`；quality `3/3` | [检索实测](docs/benchmarks.md#代码检索) |
-| Skill 装载 | source bytes `-96.54%`；quality `3/3` | [Skill 实测](docs/benchmarks.md#skill-装载) |
-| 多 Session 协调 | duplicate tool calls `-55.88%`；parallel wall time `-22.65%` | [协作实测](docs/benchmarks.md#多-session-协作) |
-| 一致性 | 强一致性实验门 `10/10`；双 Session `1000/1000`；authority violation `0` | [一致性实测](docs/benchmarks.md#一致性与限制) |
-| 大型项目视图 | 2,000 nodes / 5,000 edges；scale p95 `187.459764 ms` | [图形视图](docs/project-views.md) |
+[验证矩阵](docs/validation.md)区分合成 CLI 实测、自动回归、使用反馈和尚未覆盖项，覆盖派发、失败退出、报告、规则、事件、交接与互斥。
 
-这些是匹配任务和当前 fixture 的场景级结果，不能合成为所有用户的统一节省率。
-用户 token、窗口有效利用率和两次压缩之间的有效工作量，按 accepted Work 归一化，
-并在 host trace 可见时计量。[完整方法和限制](docs/benchmarks.md)。
+历史压缩、检索、Skill 和协作对照保留在[实测方法](docs/benchmarks.md)，不作为最新版或任意项目的统一降幅。窗口有效利用率、长期每任务费用和因果 token 节省仍需匹配真实会话数据；未知保持未知。
 
+## 数据与操作边界
 
-代码索引是候选定位层；它不替代当前源码、测试或 Typed State 的权威验证。
-
-## 架构概览
-
-```text
-Agent / IDE / CI / 人类控制台
-              |
-              v
-       Execution Packet
-              |
-     +--------+---------+
-     |                  |
- Typed State        Evidence index
- revision + CAS     hash + validity
-     |                  |
-     +--------+---------+
-              |
-      append-only events
-              |
-      checkpoint + replay canary
-              |
-          SQLite 默认
-```
-
-Memory、检索系统、代码图和 reviewer 只能提供候选信息；active task、完成状态和外部
-副作用必须经过 State MCP 的 authorization、expected revision/CAS 和 validator。
-
-## 快速开始
-
-要求 Python 3.11 或更高版本。在已安装 CLI 的目标项目目录执行：
-
-```bash
-continuity verify --root .
-continuity doctor --root .
-continuity state show --root .
-```
-
-初始化会创建 `.continuity/`、SQLite 状态库以及项目自己的 `MASTER.md`、`STATUS.md`
-和英文模板。项目应自行决定 `project_id` 与 `display_name`。
-
-## 安装模式
-
-| 模式 | 外部服务 | 适用场景 | 详情 |
-|---|---|---|---|
-| `local-embedded` | 无 | 个人项目、离线开发、本机多 Session | [配置](docs/configuration.md) |
-| `forge-coordinated` | 已有 Git forge | 普通开源团队协作 | [配置](docs/configuration.md#profiles) |
-| 个人 PostgreSQL | 本地或私有 PostgreSQL | SQL 检查、备份、本地 worker | [配置](docs/configuration.md#profiles) |
-| 个人 Docmost | Docmost + connector | 图表、审批、历史观察 | [图形化产品](docs/visual-products.md) |
-| `shared-strong` | 显式 State MCP 服务 | 跨设备唯一 claim、lease 和 CAS | [配置](docs/configuration.md#profiles) |
-
-默认路径是 `local-embedded`。PostgreSQL、Docmost 和 shared-strong 都是可选增强。
-
-## 权威边界
-
-- `Typed State`：当前任务、owner、revision、决定、约束和门禁；
-- `Event Log`：append-only 状态变化、supersedes 和 hash chain；
-- `Checkpoint`：压缩、切换、交接和崩溃后的恢复点；
-- `Evidence`：当前源码、标准、官方文档和测试的 provenance；
-- `MASTER.md`：项目级治理意图；`STATUS.md`：当前恢复路由；
-- Docmost：可选的人类控制台，动作受 State MCP 约束；
-- Obsidian：生成的只读视图；
-- SQLite：默认本地 authority；PostgreSQL：显式选择的 adapter。
+- 凭据、私有 provider 配置和原生会话库留在所属机器／profile。远端访问执行远端命令，不搬账号到另一台机器查询。
+- 仅共享获准的项目记录、产物引用与带来源计数。可恢复数据放持久盘，临时目录只放可重建缓冲。
+- 收件箱与 hook 不保证唤醒任意会话；报告不自动授予合入、推送或部署权限。
+- 主控租约协调合作客户端，不拦截绕过工具的 Git／脚本，不是 OS sandbox。
+- 首次 `controller acquire` 启用该项目的 guarded ledger v4；先升级所有参与派发的客户端。安装本身不启用它。
 
 ## 文档
 
-- [完整使用教程](USAGE.md)
-- [完整变更与升级说明](CHANGELOG.md)
-- [架构说明](docs/architecture.md)
-- [配置说明](docs/configuration.md)
-- [Python API](docs/api.md)
-- [实测方法](docs/benchmarks.md)
-- [使用场景](docs/use-cases.md)
-- [大型项目视图](docs/project-views.md)
-- [Docmost 与 Obsidian 图形化产品计划](docs/visual-products.md)
-- [English README](README.en.md)
-- [贡献指南](CONTRIBUTING.md)
-- [安全策略](SECURITY.md)
+| 需要什么 | 入口 |
+|---|---|
+| 安装、升级、跨系统、远端 hook、回滚 | [部署与升级](docs/deployment.md) |
+| 个人／主控／团队三条路径 | [使用说明](USAGE.md) · [工作流](docs/workflows.md) |
+| 当前能力、实测方法、未验证项 | [验证矩阵](docs/validation.md) · [历史实验](docs/benchmarks.md) |
+| 协作全参数、State 高级用法 | [命令参考](docs/field-workflows.md) · [State](docs/state-workflows.md) |
+| 变更、兼容与发布约定 | [变更记录](CHANGELOG.md) · [发布规范](docs/releases.md) |
+| 架构、配置、API 与可选视图 | [文档索引](docs/README.md) · [项目视图](docs/project-views.md) · [可选图形产品](docs/visual-products.md) · [使用场景](docs/use-cases.md) |
 
-## Release 与许可证
+## 反馈与许可证
 
-项目已发布到 [PyPI](https://pypi.org/project/continuity-plane/) 和
-[GitHub Releases](https://github.com/skyhua0224/continuity-plane/releases)。GitHub
-Release 同时提供核心 wheel、source archive、Codex plugin marketplace 和 SHA256SUMS；
-详见 [发布说明](CHANGELOG.md)。
+[提交 Issue](https://github.com/skyhua0224/continuity-plane/issues)时附版本、脱敏命令、预期／实际行为及最小复现。不要上传原始会话、账号文件、设备标识或私有项目数据。
 
-Continuity Plane 使用 [Apache-2.0](LICENSE)。badge、README 署名、应用 UI 标签和
-telemetry 都是可选的，法律归属以 LICENSE 和 NOTICE 为准。
-
-## 当前状态
-
-Linux x86_64、macOS arm64 和 Windows AMD64 已完成安装、verify 和卸载；本地
-state bundle 的 export/import/rollback 已可用。跨 adapter 一键 profile switch、
-完整 Docmost connector、Obsidian Canvas/Bases 和 shared-strong 部署仍在后续计划中。
+采用 [Apache-2.0](LICENSE)，归属要求见 [NOTICE](NOTICE)。README badge 与遥测均非强制。

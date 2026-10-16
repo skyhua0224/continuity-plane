@@ -17,7 +17,7 @@ the quiet bounded continuation, as required by the native hook contract.
 Repeated post-compaction events do not repeat the injected context. Failed State verification does
 not revive an old Work or prevent ordinary authorized work.
 
-The development branch also observes SubagentStart/SubagentStop using the
+Alpha25 also observes SubagentStart/SubagentStop using the
 [official hook schemas](https://code.claude.com/docs/en/hooks#subagentstart).
 Only identifiers, agent type and origin-labeled observation metadata are recorded. Native transcript
 paths and final message bodies are neither read nor forwarded. A stop is not an exit code, successful

@@ -1,6 +1,8 @@
-# 实测方法
+# 历史实验与复现方法
 
 [English](benchmarks.en.md)
+
+本页保留早期特定 fixture 的对照，**不是 Alpha25 的通用效果或本轮新实测**。当前流程、合成复现与已知缺口见 [验证矩阵](validation.md)。旧数字只在原数据集、质量门和模型条件下成立；本轮没有重新运行付费模型的长上下文 A/B。
 
 `benchmarks/reference-results.json` 保存脱敏的 aggregate observation，不包含
 prompt、repository path、thread ID、provider credential 或私有项目名。

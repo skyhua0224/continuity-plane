@@ -1,0 +1,34 @@
+{
+  "schema_version": "continuity.adopter-workflow-check/v1",
+  "version": "0.1.0a25",
+  "dataset": "synthetic-only",
+  "native_provider_requests": 0,
+  "cases": {
+    "bootstrap_identity": true,
+    "brief_lookup_budget": true,
+    "complete_rules_and_mirror": true,
+    "inbox_delivery_ack": true,
+    "assigned_packet": true,
+    "prompt_from_rules_and_body": true,
+    "two_supervised_workers": true,
+    "final_report_readable": true,
+    "failed_exit_recorded_cli_nonzero": true,
+    "single_update_merge_metadata": true,
+    "shared_handoff_and_lesson": true,
+    "second_controller_read_only": true,
+    "pagination_and_multi_event_wait": true
+  },
+  "measurements": {
+    "lookup_bytes": 32,
+    "failed_worker_exit_code": 3,
+    "failed_dispatch_cli_exit_code": 2,
+    "no_change_bytes": 196
+  },
+  "observed_boundaries": {
+    "report_after_early_card_update": "requires-explicit-attachment"
+  },
+  "limits": [
+    "No real model/API, native host session, hardware or multi-machine field run.",
+    "Byte counts describe this fixture, not a token or billing reduction."
+  ]
+}

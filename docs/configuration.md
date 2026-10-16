@@ -91,5 +91,4 @@ continuity observe report --root .
 自动修改配置。报告先用候选文件的有界头尾样本识别项目哈希，只保留目标项目；
 `--session-limit` 再按 Session 身份配对 core/state 文件，最后限制 Session 数量；
 `files_scanned`、`paired_sessions` 和 `partial_sessions` 会明确报告覆盖范围。
-当前报告只返回 host usage 是否可用，不汇总 input/output/cached token，也不计算 token
-降幅；provider/host 没有提供 usage 时明确标记不可用。
+当前报告可以汇总宿主明确提供的 input/output 与缓存计数、导入覆盖、压缩保存／恢复及绑定后的任务／批次增量；缺失字段保持不可用。它不推断价格、完整账号额度或因果 token 降幅。来源隔离见 [接续与计量](lifecycle-parity.md)。

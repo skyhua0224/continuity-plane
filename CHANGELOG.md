@@ -1,5 +1,7 @@
 # 变更记录
 
+采用者入口：[部署](docs/deployment.md) · [近期版本说明](docs/releases.md) · [当前能力与已知限制](docs/validation.md)。历史条目保留当时范围，不把新版效果倒写到旧包。GitHub 分类统一为普通 Release，alpha 版本号保留。
+
 [English](CHANGELOG.en.md)
 
 ## 0.1.0-alpha.25

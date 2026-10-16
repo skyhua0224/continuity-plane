@@ -1,6 +1,8 @@
-# Benchmarks
+# Historical experiments and reproduction
 
 [中文](benchmarks.md)
+
+These are historical fixture comparisons, not a universal Alpha25 effect or newly rerun measurements. See [current validation](validation.en.md) for workflow checks and known gaps. Original dataset/model/quality conditions still apply; this refresh did not rerun paid long-context model A/B experiments.
 
 `benchmarks/reference-results.json` contains aggregate, sanitized observations
 from the release candidate. It does not contain prompts, repository paths,

@@ -1,5 +1,5 @@
 {
-  "file_count": 228,
+  "file_count": 245,
   "files": [
     {
       "path": ".agents/plugins/marketplace.json",
@@ -39,11 +39,11 @@
     },
     {
       "path": "CHANGELOG.en.md",
-      "sha256": "738c38397fa3a0b5318bd7a12800f467cb96c7a2c538d08dbad96a1af14560ab"
+      "sha256": "9e9c7321a58573c783468420960f694387ca1de11616f526a00aacc7cc02c244"
     },
     {
       "path": "CHANGELOG.md",
-      "sha256": "2d98af27b99f20088aee7c6c4e965e6ab3f0e702906f83f497488f1244ad5657"
+      "sha256": "e39a00633062039a8a390ec6a21582674620e685a2f2182ff93ea09f88ca369e"
     },
     {
       "path": "CONTRIBUTING.en.md",
@@ -67,11 +67,11 @@
     },
     {
       "path": "README.en.md",
-      "sha256": "e24a7fd96960b0dc893b564a59951a6757cac466aafc4408b2e3b4059339506c"
+      "sha256": "8e2d72621d3ad421e22fe76389f5c7a6a52bdd95699f6ee880ec73160995e2c1"
     },
     {
       "path": "README.md",
-      "sha256": "1dbf3c0c6fc52db8d2074fed3e7a8825b5f9d859589a844f89f8b4fa99c46ffb"
+      "sha256": "0623b09b57bd0a6d105f562c325cae36f8e511bf611c82e829f988205d52904c"
     },
     {
       "path": "SECURITY.en.md",
@@ -91,15 +91,19 @@
     },
     {
       "path": "USAGE.en.md",
-      "sha256": "c41f0a692ae8042df0baea55c18bd27ff74c171090dc664b29d81c34071b207b"
+      "sha256": "47f9f692660ff8ceaff343915fe57328ac7a252089e7a0509d7a85fd751c7f9e"
     },
     {
       "path": "USAGE.md",
-      "sha256": "6452ed9e48dc2b9bda80e9a3096b35f84808475f85aa4e683e37780fb1ab8027"
+      "sha256": "804117875100676dd9dc8cad0b900b6a634e3b9372df53093d6514e76ca28436"
     },
     {
       "path": "benchmarks/__init__.py",
       "sha256": "9f4538f699ae2a29b94679cce8e9ed27ec48810b5f4a324dfe54958770743a27"
+    },
+    {
+      "path": "benchmarks/adopter-workflows.json",
+      "sha256": "fb7278ab006cb2cfc2863722aef2aaa2f0bf82e0f801d55b7f2411c83d295a74"
     },
     {
       "path": "benchmarks/reference-results.json",
@@ -550,20 +554,28 @@
       "sha256": "494a1c5e855d648de502d9855fcbb48dcc3a2f56c806c22d6d4aa6fd2d870812"
     },
     {
+      "path": "docs/README.en.md",
+      "sha256": "7d62fb7b21fdab2a5b67c0f71089562c50caf4fe9ab981c322e24e2589cb0261"
+    },
+    {
+      "path": "docs/README.md",
+      "sha256": "fe529d1e5119068deefb17bec149033cca64987ef6dc533288ccc28031ad4623"
+    },
+    {
       "path": "docs/api.en.md",
-      "sha256": "6ef6f5a6fcff6bbe91ec554087718d3055ecb11b799be86417962c09f19d39d7"
+      "sha256": "106c6adbf978e5636a2a2ffd4bec24c76d45446ec73b6a863722f77915a34de5"
     },
     {
       "path": "docs/api.md",
-      "sha256": "d6490a2f8bd5b5020cdb6346c8a4c6b23618f005c42dac00803938651f3c374f"
+      "sha256": "5c961c5803d300144bdfc8f9a599366be4225102a47035a306c9de683a48ace5"
     },
     {
       "path": "docs/architecture.en.md",
-      "sha256": "49c37a7b5232f7ad2226264f926623d308132cfcccff25cd412f15d282b9842f"
+      "sha256": "63cfdda1d58293c6384d8a0363772bb12a41b39d2d3e3a1045b83469beb84c65"
     },
     {
       "path": "docs/architecture.md",
-      "sha256": "f22c3aa30cbee820f886d89aae1fb3b667e5c5b7e946da6105487ea805ab4259"
+      "sha256": "c28b728ed48e3b8d4bf8683eae216b1a344ee6beb278793cb9498eef584a99b6"
     },
     {
       "path": "docs/assets/managed-with-continuity-plane.svg",
@@ -571,27 +583,35 @@
     },
     {
       "path": "docs/benchmarks.en.md",
-      "sha256": "278574bdec0434d211fe90fcdfedf4ac8eb92b3bcd82f0821239c176006de0f9"
+      "sha256": "aa56c80a3bd58bb324c1bb6c7c3708dd44981b67c00c5f87504b04e4cce29b64"
     },
     {
       "path": "docs/benchmarks.md",
-      "sha256": "f981b3af953f5467e7de4dd69ea776956c7a5341272ab826374ce0ea9a88fcde"
+      "sha256": "f0f1d8b911363aab637944dec0eebb597ddb6418fb2e3abf237fe98986d1156a"
     },
     {
       "path": "docs/configuration.en.md",
-      "sha256": "c3ff40e2f127144992cc850d0144891ce27f2c9ab808f3c1af343f368fc15705"
+      "sha256": "340ab50ab702febd29296c26de1976412131a13ae026fafa4d639ecd52880528"
     },
     {
       "path": "docs/configuration.md",
-      "sha256": "310f96d6c04869354536919d89f4d5a4fa8040b23e495f04edb233db09d512d0"
+      "sha256": "00be0902a20d2d3afc81a99f89974fdf9754082ebb9cde6025604ec149b15d9a"
+    },
+    {
+      "path": "docs/deployment.en.md",
+      "sha256": "caf581ad7a12289db6ae2afded3af82f4239e4561d8b919f174dc122fd4c9a2c"
+    },
+    {
+      "path": "docs/deployment.md",
+      "sha256": "ac423ebd123784663282fa8d70a8d57daf58be3f21f862e2abf96051a1d68169"
     },
     {
       "path": "docs/field-workflows.md",
-      "sha256": "3f9f5e605f3ad6606d805b0e4f19335b0612511729842a3b545ef88fd488b1b5"
+      "sha256": "18f41fe222f80e97b4bbf3acd1ea9f3f0d27627efa13bf3d60da211fad4f966f"
     },
     {
       "path": "docs/lifecycle-parity.md",
-      "sha256": "1e2c61f0c2ce5f8a572ef1bb6c0b1e226d0d6c304939a8f3417d2c9c9a6f7ddf"
+      "sha256": "a5ade3c4991f92ab1097afe804869d85c962abe5323c0337daf445f8f3e9e755"
     },
     {
       "path": "docs/lightweight-observability-design.md",
@@ -599,39 +619,71 @@
     },
     {
       "path": "docs/onboarding.en.md",
-      "sha256": "8ec35c64a1a06dec30b58ad1d04f0a73f426299318a7333b7b61af18df28803f"
+      "sha256": "bf15ace2522908be2e15bdb66c35c67eb78b15bac4f40b2ef89ced0e83b93bf1"
     },
     {
       "path": "docs/onboarding.md",
-      "sha256": "e76dfcfb35e5796c819496ce8a4db4128fdf520ed25111f41412be542715636f"
+      "sha256": "26763d9ea51bab6b9016c426d692bf1adb8ad7c15c584c8568ef5b4592560e27"
     },
     {
       "path": "docs/project-views.en.md",
-      "sha256": "2f7b6ecdc794cd26a7dcecd4f3a6bfe294dfbdd0a74c1049b572167bc9075592"
+      "sha256": "16604f284423fe0d8ad2c1c6edfec02c564132cd556a852081ecb31d66d58252"
     },
     {
       "path": "docs/project-views.md",
-      "sha256": "99e5a7944813db45d1014d72d2ce7f0aba42d1574c7f3e9bb07850948c17b017"
+      "sha256": "45a77bacaf31f39c92c37a811e0c5e53710a104c028cd33a13cc51b69445f411"
     },
     {
       "path": "docs/release-alpha21.md",
-      "sha256": "ec414375b2d4f02907768a15ab80738b77c34d239df1411a6b006ac3966650c8"
+      "sha256": "c35441bff97142b4138af3faf7e71c4df89ed6a182b6f12488c07de49979e285"
     },
     {
       "path": "docs/release-alpha22.md",
-      "sha256": "a8ee918d6ba0b892cef742f484384f0c1a884f770750dbd9fdbc26b7549928f8"
+      "sha256": "45fd47fd3dd895b1141e1470c234afdbcf1732d51e67ce6300383ab38050dc99"
+    },
+    {
+      "path": "docs/release-alpha23.md",
+      "sha256": "627ce126798ed78b59d0fab145b35811920cfd42518a8e8ee2d42679f04abc63"
     },
     {
       "path": "docs/release-alpha24.md",
-      "sha256": "c6b7b4fcbe4dcc7e15a2b3e9387ed32a51e382c024972ad4ba2de81556e74f6e"
+      "sha256": "756a97e8b071b17aa83d783b3ef7d4cc7532575a7aeac287006521420cdaf560"
+    },
+    {
+      "path": "docs/release-alpha25.md",
+      "sha256": "7def872c690e902640e110721ec10e011eb36880aadcc62f287bbc3851e1fe54"
+    },
+    {
+      "path": "docs/releases.en.md",
+      "sha256": "aa0b1970e65f1907a131f51c0d60809d912720ba8688422b1efc18190c57b3bc"
+    },
+    {
+      "path": "docs/releases.md",
+      "sha256": "2d4b7e8f1c47f4f9b91e7a2d4553b2d2e4904b13028c925e517d986bb7ba78c0"
+    },
+    {
+      "path": "docs/state-workflows.en.md",
+      "sha256": "1ad2e9222760ccf75408ecbd7fcc7fba290b7dfb2fb2f527ba08f94f2f392e33"
+    },
+    {
+      "path": "docs/state-workflows.md",
+      "sha256": "f8adf674fcfebae5bbdc36fcd33186777d625b2ff21d825fb76e74bcccd9dc8b"
     },
     {
       "path": "docs/use-cases.en.md",
-      "sha256": "59459b9b626ce8837e9b2204a784dd09bc17d38e0c188038b4f6506e3781db4e"
+      "sha256": "36843431782b7f7027ba97b327e6764b9ad6602602db91c373cd240199e7454b"
     },
     {
       "path": "docs/use-cases.md",
-      "sha256": "e06121d40acdd453a61ff32c8a742e814a7f47f1e274fee6b31c382b399d7552"
+      "sha256": "f30dc9ebf190453fe8ffbe0e64fc6eddbf225144a1f9041eefc01adaac29e824"
+    },
+    {
+      "path": "docs/validation.en.md",
+      "sha256": "cb87e7ddfa883f609f1d36d6519bf1f3a099228df35ae59b6413be9371aaa4d3"
+    },
+    {
+      "path": "docs/validation.md",
+      "sha256": "c9616977cee98d392a399ddbc298a92faf6d0fe4c4438127e82b0248f968957e"
     },
     {
       "path": "docs/visual-products.en.md",
@@ -642,8 +694,20 @@
       "sha256": "b07e62d6cb0f1db0cdbf5f4ffaeabe086ea10754038c562857c48d9eed711584"
     },
     {
+      "path": "docs/workflows.en.md",
+      "sha256": "636563149fdd00dac447aee53e966e3b9dc579e44d0b991ea49c2d7708cbeb1a"
+    },
+    {
+      "path": "docs/workflows.md",
+      "sha256": "6666153e4f878476016269ecb842a3570d7133431cbd27864450ba1239bfca7b"
+    },
+    {
       "path": "examples/local_embedded.py",
       "sha256": "4ef226ac1cddd7305c4d70304a7be74b951a9802d1ef82c441d5bf69e3c9f002"
+    },
+    {
+      "path": "examples/verify_adopter_workflows.py",
+      "sha256": "b2ad6475d36a49151818122e1b4c8b1f16a3ff342df9118d73de0b17a6b67fce"
     },
     {
       "path": "integrations/claude/continuity-plane/.claude-plugin/plugin.json",
@@ -655,7 +719,7 @@
     },
     {
       "path": "integrations/claude/continuity-plane/README.md",
-      "sha256": "55c4cdb2081132daf730b7320b253e3dce86a59606c5987f2fe277945d3839ff"
+      "sha256": "9738ad8fa42070ff211c0fcf682218817490a0a16d97fcfd1a1af790d568f794"
     },
     {
       "path": "integrations/claude/continuity-plane/hooks/hooks.json",
@@ -836,6 +900,10 @@
     {
       "path": "tests/__init__.py",
       "sha256": "0b937f4eef7a790187c41667e3236dc2e325c72c4992593268610baea0d2c28b"
+    },
+    {
+      "path": "tests/test_adopter_documentation.py",
+      "sha256": "4840a04a39cdac89dc101069817becf100ba8b0051272eda1f3a894c5ef31472"
     },
     {
       "path": "tests/test_adoption_workflows.py",

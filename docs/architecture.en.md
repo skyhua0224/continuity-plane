@@ -1,68 +1,40 @@
-# Architecture
+# Architecture and authority boundaries
 
-[中文](architecture.md)
+[中文](architecture.md) · [Deployment](deployment.en.md) · [Validation](validation.en.md)
 
-Continuity Plane is an integration library, not an application runtime
-dependency. An agent host or project adapter invokes its services and provides
-a trusted request context.
+Continuity is provider-neutral developer tooling, not an application runtime dependency. CLI, MCP, plugins, hooks and existing SSH scripts can use the same capabilities.
 
 ```text
-Integration adapter
-  -> authorization boundary
-  -> State service
-       -> typed snapshot
-       -> append-only events
-       -> claim / lease / effect records
-  -> artifact store
-  -> context composer
-  -> checkpoint and replay canary
+CLI / MCP / host hook
+  ├─ collaboration registry → cards, changes, rules, reports, handoff
+  ├─ supervisor             → managed attempts, output capture, resume
+  ├─ retrieval / references → bounded code routes and source declarations
+  └─ optional State service → authorization, revision/CAS, claim, checkpoint
 ```
 
-## Authority
+## Separate coordination from State gates
 
-Typed state owns the current task, decisions, constraints, claims, revisions,
-and effect watermarks. Retrieval, memory, code graphs, model output, and human
-views are candidate or projection sources. They submit requests through the
-same authorization, revision, and validation boundary.
+Cards, Todo, messages, rules, lessons and batches are collaboration records. They need no State claim and grant no push/merge/deployment permission. Explicit project controller fencing coordinates tool-mediated dispatch and integration.
 
-## Local-First Storage
+Typed State has its own authoritative commit boundary: source freshness, trusted request context, expected revision/CAS, validators, claims and checkpoints. Retrieval, reports and model conclusions supply evidence candidates. This boundary is not a compulsory preflight ritual for ordinary source work.
 
-SQLite is the default state adapter. It supports personal projects, local agent
-sessions, and offline recovery without a service process. Shared deployments
-may select a backend that implements the same capability and conformance
-contracts.
+## Local-first and remote execution
 
-The deployment levels are independent:
+Default State uses project SQLite; collaboration and caches can live in user storage. No resident service is required. Remote use selects explicit SSH CLI/MCP endpoints. Hook project mappings do not migrate native account/session state.
 
-- `local-embedded` keeps the authority in one project's SQLite file;
-- `forge-coordinated` adds Git forge visibility while contributors retain local
-  state;
-- a personal PostgreSQL adapter is useful for SQL inspection or local workers,
-  but is not required;
-- Docmost is a human projection and approval surface, never the typed-state
-  authority;
-- `shared-strong` moves claim, lease, and CAS authority behind an explicit
-  shared State MCP service.
+Default installation does not provide a turnkey hosted shared-strong service, complete Docmost console or OS sandbox. Optional adapters and projections have separate coverage/deployment conditions: [State](state-workflows.en.md), [views](project-views.en.md), [visual products](visual-products.en.md).
 
-The alpha CLI provisions `local-embedded`. Other levels require an explicit
-adapter or deployment configuration.
+## Attempts and evidence
 
-## Large-Project Observation Surfaces
+The supervisor wraps configured adapters, records starts/heartbeats/finishes/exit codes and captures reports. Controllers decide suitability, approval and integration. Native Claude subagent callbacks are observations, not process control, heartbeat proof or inferred success.
 
-Project Graph, Decision/Evidence, and Relationship/Impact projections transform
-one State revision into bounded data for CLI, Web, Docmost, or Obsidian
-adapters. A deterministic DAG presents the mainline and dependencies. The
-force-directed relationship view explores clusters and impact. Layout
-coordinates carry no State authority.
+Packets are bounded startup entries; read large artifacts by reference. Rules, task bodies and code routes retain provenance. A hash proves content identity, not correctness. Shared plans and lessons do not create user authorization.
 
-Docmost is an optional shared console. Obsidian is a generated offline,
-read-only vault. The current alpha provides selected projection cores and a
-signed-vault generator. Complete pages, connectors, Canvas/Bases output, and a
-provider-neutral Context Health export follow the stages in
-[`visual-products.en.md`](visual-products.en.md).
+## Failure and isolation
 
-## Failure Model
-
-Every externally visible operation has a stable identity. Checkpoints record
-the event head, state revision, continuation cursor, and effect watermark.
-Recovery validates these bindings before another side effect is admitted.
+- Atomic writes stage beside their destination; persistent storage still needs backups.
+- Late-result protection separates attempt completion from card projection; outbox replay must not overwrite newer execution bindings.
+- Leases/reservations protect cooperating tool clients, not arbitrary Git/scripts or native agent creation.
+- Missing metadata does not prohibit ordinary authorized work; protected writes without a valid fence are refused with an explicit reason.
+- Credentials, native sessions and account queries remain on their owning host/profile; public receipts contain allowlisted aggregates.
+- The validation matrix records report attachment, reconnect ownership, source TSV and automatic retrieval mapping gaps rather than declaring them solved by this diagram.

@@ -2,6 +2,8 @@
 
 [English](api.en.md)
 
+采用者从 [CLI 工作流](workflows.md)开始。MCP 的 `continuity_help` 导出参数，`continuity_plan` 覆盖任务卡、Todo、规则、来源等元数据操作；这些调用不要求先绑定 State Session。`continuity-mcp` 与 `continuity-search-mcp` 是两个独立的 stdio 入口，安装／远端路径见 [部署](deployment.md)。
+
 命令行提供本地初始化、完整性检查和授权状态读取：
 
 ```bash

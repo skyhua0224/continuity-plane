@@ -1,694 +1,112 @@
-# 使用指南
+# 使用说明
 
-[English](USAGE.en.md)
+[English](USAGE.en.md) · [README](README.md) · [部署与升级](docs/deployment.md) · [完整文档](docs/README.md)
 
-## 一次性执行方的协作约定
+## 先选你的路径
 
-启动任务时先读取当前项目的 packet，再读取自己的收件箱：
-
-```bash
-continuity collaboration packet --project-id PROJECT --assignee EXECUTOR
-continuity collaboration inbox list --project-id PROJECT --recipient EXECUTOR
-```
-
-完成代码后更新任务卡并把结果发回派发者：
-
-```bash
-continuity collaboration task update --project-id PROJECT --task-id TASK \
-  --status ready-for-review --branch BRANCH --commit SHA \
-  --verification "TEST COMMAND: pass"
-continuity collaboration inbox send --project-id PROJECT --message-id HANDOFF-ID \
-  --sender EXECUTOR --recipient DISPATCHER --body "Task ready for review; see commit SHA"
-```
-
-这些命令记录协作事实，不自动完成 State Work、合并或部署。
-
-主控可以用增量变化游标和项目规则减少轮询：
-
-```bash
-continuity collaboration changes --project-id PROJECT --since CURSOR --max-output-bytes 4096
-continuity collaboration rule-list --project-id PROJECT
-continuity collaboration commitment-list --project-id PROJECT
-continuity whoami --root . --assignee EXECUTOR --controller CONTROLLER
-```
-
-一次性执行方可用 `collaboration run --task-id TASK --assignee EXECUTOR -- COMMAND` 记录启动和收尾。
-
-需要心跳、超时和退出分类时使用内置 Supervisor：
-
-```bash
-continuity supervisor run --project-id PROJECT --task-id TASK --assignee EXECUTOR \
-  --timeout-seconds 3600 --idle-timeout-seconds 600 --retry 1 -- COMMAND ARG...
-continuity supervisor daemon --project-id PROJECT
-```
-
-Supervisor 保存协作事件，不完成 Work、不改 SQLite。
-它是本地前台/单次 daemon 入口，Provider 适配器和长期服务编排可以继续扩展。
-
-Alpha24 的 worker 闭环增加了启动前卡片校验与结束投影：退出 0 转待评审，
-失败/中断转 blocked；退出 0 不等于验证通过或已合入。较旧运行不能覆盖新运行或人工终态。
-daemon 可重放结束事实修复投影，但不根据其他主机的 PID 表推断进程已经结束。
-结束事实先落盘，卡片投影随后完成并记录 `task.run-projected`；投影 pending 不会伪装成已持久化成功。
-
-```bash
-continuity collaboration wait --project-id PROJECT --since CURSOR \
-  --event attempt.finished --timeout-seconds 300 --max-output-bytes 4096
-```
-
-wait 安静等待匹配事件，超时输出 `timed_out: true` 并以 2 退出。
-使用返回的 next_cursor 接续；它与 high_water_cursor（完整日志水位）不同。
-大事件可按预算省略日志细节，但不跳过后续未返回的事件。
-这提供阻塞读取，不代表能够主动唤醒任意宿主会话。该能力从 Alpha24 提供。
-
-完整派发、规则交付、远端部署与证据边界见 [现场工作流](docs/field-workflows.md)。
-Claude 原生额度自动查询计划已撤销，不作为发行前提，不启用账号轮询服务。
-真实 token/缓存计量与显式额度记录独立保留，不承诺自动查询全账户用量或实际费用。
+| 想做什么 | 起点 |
+|---|---|
+| 一个人，压缩后接着做 | 下方初始化与接续 |
+| 主控派发、等待与收报告 | [两个执行方示例](docs/workflows.md#一个主控与两个执行方) |
+| 多人或多机共享项目 | [团队路径](docs/workflows.md#一个团队)与[SSH 部署](docs/deployment.md#控制端与状态端分离) |
+| 已有 MASTER／STATUS 或需要 State claim | [State 高级接入](docs/state-workflows.md) |
 
 ## 安装
 
-要求 Python 3.11 或更高版本。历史 alpha 已在 Linux x86_64、macOS arm64 和
-Windows AMD64 完成安装、verify 和卸载；Alpha24 本轮现场验收为 Linux，
-不将历史跨平台探针视为本版逐平台重验。
-
-### 从 PyPI 安装
+Python 3.11+。推荐隔离安装；不要把系统 Python 的权限问题当作项目故障。
 
 ```bash
-python -m pip install continuity-plane==0.1.0a25
-```
-
-发行包包含非阻断生命周期 hook、运行时诊断、明确执行意图与 OpenCodex 安全安装保护；
-Codex 与 Claude Code 共享压缩交接与本地字节计量。宿主插件必须与核心包使用相同发行版本。
-
-使用 pipx 的现有安装应原地升级，避免以 `install --force` 重建被 uv 管理的环境。
-升级后检查新增的 `continuity-host-hook` 是否在 PATH，并重载仍持有旧代码的 MCP 进程。
-
-```bash
-pipx upgrade continuity-plane --pip-args=--pre
-continuity --version
-command -v continuity-host-hook
-```
-
-此命令选择最新预发行包；需要固定版本时应使用项目隔离环境的明确版本约束。
-若 pipx/uv 后端拒绝重建既有环境，可直接更新其解释器，不搬运原生账号配置：
-
-```bash
-uv pip install --python /path/to/pipx/venvs/continuity-plane/bin/python \
-  --reinstall-package continuity-plane 'continuity-plane==0.1.0a25'
-```
-
-Claude Code 使用原生插件安装，hook 由插件提供，无需手写覆盖 settings：
-
-```bash
-claude plugin marketplace add skyhua0224/continuity-plane
-claude plugin install continuity-plane@continuity-plane --scope user
-claude plugin list
-```
-
-启用后新开会话或重载插件；已运行会话不会自动获得新 MCP 工具。不要同时登记同一套
-插件 MCP 与重复的手写 MCP。详见 [压缩接续与计量](docs/lifecycle-parity.md)。
-
-从源码 checkout 开发时：
-
-```bash
-python -m venv .venv
-.venv/bin/python -m pip install --editable .
-```
-
-### 从 GitHub Release 安装
-
-从 [Continuity Plane Releases](https://github.com/skyhua0224/continuity-plane/releases)
-下载 wheel 或 source archive：
-
-```bash
-python -m pip install /path/to/continuity_plane-0.1.0a25-py3-none-any.whl
-```
-
-### 全局安装，管理多个项目
-
-一个用户可以安装一份 CLI，然后为每个项目单独初始化：
-
-```bash
-python3 -m venv ~/.local/share/continuity-plane/venv
-~/.local/share/continuity-plane/venv/bin/python \
-  -m pip install continuity-plane==0.1.0a25
-
-~/.local/share/continuity-plane/venv/bin/continuity \
-  init --root /path/to/project --project-id my-project
-```
-
-### 单项目隔离安装
-
-```bash
-cd /path/to/project
 python3 -m venv .venv
-.venv/bin/python -m pip install continuity-plane==0.1.0a25
-.venv/bin/continuity init --root . --project-id my-project
+.venv/bin/python -m pip install 'continuity-plane==0.1.0a25'
 ```
 
-开发 Continuity Plane 本身时，可以把 wheel 路径替换为源码 checkout 的
-editable install。`my-project` 是占位示例，项目应自行选择 `project_id` 和
-`display_name`。
+Windows 使用 `.venv\Scripts\python.exe` 和 `.venv\Scripts\continuity.exe`。以下用 `continuity` 表示环境内的命令；可激活环境或使用完整可执行路径。全局 pipx、升级、离线 wheel 与回滚见[部署指南](docs/deployment.md)。
 
 ## 初始化项目
 
-```bash
-continuity init \
-  --root /path/to/project \
-  --project-id my-project \
-  --display-name "My Project"
-```
-
-初始化会创建：
-
-```text
-.continuity/
-  project.yaml
-  MASTER.md
-  MASTER.en.md
-  STATUS.md
-  STATUS.en.md
-  state.sqlite3
-```
-
-命令拒绝覆盖已有的控制面目录。项目状态与当前 Agent、模型和 Session 独立。
+在自己的仓库执行：
 
 ```bash
-continuity verify --root /path/to/project
-continuity doctor --root /path/to/project
-continuity state show --root /path/to/project
+continuity init --root . --project-id demo
+continuity collaboration register --project-id demo --control-root . --repository-root .
+continuity whoami --root . --assignee controller --controller controller
+continuity collaboration packet --project-id demo --assignee controller
 ```
 
-## 接入已有 MASTER 和 STATUS
+`init` 创建项目内 `.continuity/`，含 project.yaml、State SQLite 和治理模板；`register` 让项目进入用户级协作注册表。两者用途不同。不要重复 init 或覆盖已有计划；既有项目先阅读 State 接入指南。
 
-已有项目不要直接用模板覆盖原计划。先生成只读 proposal：
-
-```bash
-continuity attach plan \
-  --root /path/to/project \
-  --master /path/to/project/MASTER.md \
-  --status /path/to/project/STATUS.md \
-  --work-id work-current \
-  --work-title "Continue current delivery" \
-  --owner-ref agent-main \
-  --scope capability:delivery
-```
-
-这一步只读取并记录 MASTER/STATUS 的 hash，不写 SQLite。检查
-`.continuity/attach-proposal.json` 后，再显式批准：
-
-```bash
-continuity attach approve \
-  --root /path/to/project \
-  --actor-ref agent-main \
-  --claim-id claim-demo
-```
-
-批准会通过 State MCP 产生 revisioned commit 和 claim：初始模板 Work 被标记为
-rejected，现有 Work 进入 active，source evidence 绑定到 proposal hash。源 MASTER 或
-STATUS 在两步之间发生变化会拒绝批准。重复批准返回 `already-attached`，不会产生重复 Event。
-
-已有 canonical MASTER 的长期项目都应使用这个流程；原 MASTER 继续拥有治理权，
-`.continuity/MASTER.md` 只做本地桥接。
-
-`state show` 通过与集成相同的 authorization 和 validation 边界读取 typed snapshot。
-初始 snapshot revision 为零，并包含一个名为 `work-initial` 的 proposed Work。
-
-## 治理仓与交付仓分离
-
-多仓项目可以把 `.continuity/` 保存在治理仓，同时把实现、提交和发布放在独立仓库。
-先在治理根注册本地 delivery workspace：
-
-```bash
-continuity workspace register \
-  --root /path/to/governance \
-  --workspace-id service \
-  --workspace-root /path/to/service \
-  --allow-effect source-control.local \
-  --allow-effect source-control.history-rewrite \
-  --allow-effect source-control.push
-```
-
-注册表保存在被忽略的 `.continuity/local/delivery-workspaces.json`，绑定项目 profile、
-Git repository 摘要、绝对 workspace 根和 effect 上限，不写 State。Delivery Work
-仍须显式绑定前序 Work、实现证据和当前 Git HEAD：
-
-```bash
-continuity work activate \
-  --root /path/to/governance \
-  --work-id work-delivery \
-  --work-title "Deliver verified service change" \
-  --owner-ref agent-main \
-  --claim-id claim-delivery \
-  --scope capability:delivery \
-  --execution-class delivery \
-  --source-ref issue://project/123 \
-  --predecessor-work-id work-implementation \
-  --implementation-evidence-id evidence-test-verified \
-  --workspace-id service \
-  --workspace-root /path/to/service \
-  --expected-head "$(git -C /path/to/service rev-parse HEAD)" \
-  --expected-ref HEAD \
-  --allow-effect source-control.local \
-  --allow-effect source-control.push
-```
-
-`source-control.local` 覆盖 `git add` 和普通 commit。`commit --amend`、rebase 和 reset
-属于 `source-control.history-rewrite`，只有 Work 与 workspace 注册表都显式声明时才允许。
-外部仓库没有匹配的 workspace ID、repository 摘要或 `repo://` claim scope 时保持拒绝。
-
-## Profile 选择
-
-### `local-embedded`：默认
-
-状态、事件和本地 checkpoint 保存在：
-
-```text
-.continuity/state.sqlite3
-```
-
-不需要 PostgreSQL、Docker、Docmost、网络服务或 Agent plugin，适合个人项目、
-离线开发和独立协作者。
-
-### `forge-coordinated`：团队无需共享数据库
-
-团队继续使用已有 Git forge：
-
-- 需要共享治理时，提交项目的 `project.yaml` 和 canonical `MASTER.md`；
-- 每个人的 SQLite、个人 STATUS overlay、artifact 和凭据留在本地；
-- Issue、PR、branch ownership、review 和 CI 负责团队可见性；
-- 发布 Work 或证据前运行项目自己的 build/test profile。
-
-本模式不提供跨机器唯一 claim。需要唯一 claim 时，升级到 `shared-strong`。
-
-### 个人 PostgreSQL：可选
-
-个人想进行 SQL 检查、备份或让多个本地 worker 共用状态时，可以选择 PostgreSQL：
-
-```bash
-python -m pip install 'continuity-plane[postgres]==0.1.0a25'
-```
-
-当前 alpha CLI 仍默认 SQLite。PostgreSQL 通过显式 Python adapter 使用：
-
-```python
-from continuity_plane.postgres_state_store import PostgresStateStore
-
-store = PostgresStateStore("postgresql://localhost/context")
-store.initialize()
-```
-
-DSN 必须放在环境配置或 secret store，不得写进 Git。个人项目没有必要为了使用
-控制面部署 PostgreSQL。
-
-### 个人 Docmost：可选人类视图
-
-Docmost 是人类控制台和投影界面，可以展示 Project Graph、决定、证据、上下文健康、
-审批和 replay。它不能成为 typed-state authority，也不能绕过 State MCP。
-
-当前 alpha 不包含一键 Docmost 部署。需要外部 State MCP provider 和 Docmost
-connector；个人本地使用可以完全不安装 Docmost。
-
-### `shared-strong`：团队共享权威
-
-只有跨机器需要唯一 claim、lease、ownership、expected revision 和外部 effect
-门控时才使用它。部署必须提供带授权、CAS、append-only events、durable receipts、
-project isolation 和 audit retention 的 State MCP adapter。
-
-PostgreSQL 是一种后端，不是唯一选择。当前 release 不会自动把本地项目切成
-shared-strong。
-
-## 模式切换
-
-当前 alpha 只有 `local-embedded` 能通过 CLI 直接初始化。其他模式通过 adapter 或
-团队流程启用，尚不存在 `continuity profile switch` 命令。
-
-| 从默认模式切换到 | 适合场景 | 当前操作 | 是否移动权威状态 |
-|---|---|---|---|
-| `forge-coordinated` | 团队继续使用 GitHub/Gitea/GitLab，不想部署共享数据库 | 保留本地 SQLite；提交团队认可的治理模板；用 Issue/PR/CI adapter 提供共享可见性 | 否 |
-| 个人 PostgreSQL | 一个人需要 SQL 检查、备份或多个本地 worker | 安装 `continuity-plane[postgres]`，由 Python/provider adapter 显式选择 PostgreSQL | 当前 CLI 不自动迁移 |
-| 个人 Docmost | 需要图表、审批和历史浏览 | 保留 State MCP authority，连接只读 projection 和受控治理入口 | 否 |
-| `shared-strong` | 多台机器需要唯一 claim、lease 和 CAS | 部署 conformed State MCP service，再执行 export/import/rollback 验证 | 是；当前 preview |
-
-切换前执行：
-
-1. 停止使用该项目状态的 worker 和 Agent Session；
-2. 运行 `continuity verify --root /path/to/project`；
-3. 备份完整 `.continuity/`，不要只复制运行中的 SQLite 文件；
-4. 检查目标 adapter 的 capability manifest；
-5. 只有 export/import 后 snapshot、event head 和 rollback hash 一致，才能切换 authority；
-6. 失败时恢复备份并回到 `local-embedded`。
-
-Linux、macOS、Windows 的安装、verify、卸载以及 local-embedded state bundle 的
-export/import/rollback 已通过。跨 adapter 的一键 profile switch 仍未提供，因此
-不要手工修改 `project.yaml` 的 `runtime_profile` 来冒充已切换。
-
-### 迁移或回滚本地状态
-
-以下命令适用于 `local-embedded`，用于可验证的备份迁移和原子回滚：
-
-```bash
-continuity export --root /path/to/project --output /safe/path/project-state.tar.gz
-continuity import --root /path/to/target --bundle /safe/path/project-state.tar.gz
-continuity rollback --root /path/to/target
-```
-
-`import --replace` 只应在目标已备份且确实需要替换现有本地 authority 时使用。bundle
-成员、hash、project identity 或 checkpoint 绑定不一致时，导入会在替换前失败。
+`whoami` 显示本次身份，不会替你创建租约或登录 provider。长期 shell 可设置 `CONTINUITY_ASSIGNEE`、`CONTINUITY_CONTROLLER`；每名并发执行方使用独立名字或实例名。
 
 ## Agent 接入
 
-控制面安装在项目旁边，通过 CLI、Python API 或 provider adapter 使用。核心包不要求
-Agent plugin。默认 Codex plugin 只提供有界 packet 和 checkpoint lifecycle，不注册
-MCP 写工具，也不阻断普通开发。需要显式 State 操作时再安装 advanced State plugin；
-写入仍经过 authorization、revision/CAS、validator、claim 和 checkpoint。
+CLI 能用不代表 hook 已启用。按[部署指南](docs/deployment.md)选择 Codex、Claude Code 或通用 MCP，检查实际工具表与 hook 事件。保持 provider 的原有登录／路由，不复制整份配置。
 
-### 安装公开 Codex plugin
+## 压缩与接续
 
-先安装核心包，再把本项目 GitHub 仓库作为 marketplace：
+把接续需要的增量写进共享现场，而不必维护长篇状态报告：
 
 ```bash
-python -m pip install continuity-plane==0.1.0a25
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.25
-codex plugin add continuity-plane@continuity-plane
+continuity handoff write --project-id demo --plan '先完成当前回归，再处理下一项' --next-action '运行当前任务的测试'
+continuity handoff show --project-id demo
+continuity lesson add --project-id demo --lesson-id check-logs --text '先核对失败检查，再判断是否负载问题' --source '本次回归记录'
 ```
 
-安装后新建 Session。core plugin 在 `SessionStart` 加载有界 packet，并在
-`PreCompact`/`PostCompact` 执行 checkpoint 生命周期。普通问题不会推进保存的 Work，
-也不会输出恢复旁白。alpha13 的 advisory 工具 hook 只提供一次性提示和脱敏观测，不拦截普通开发命令。
-
-Codex 将 hook 信任与插件安装分开。通过 `/hooks` 审核并信任当前定义；升级后定义变化需要
-重新确认。未受信任的 hook 会被宿主跳过，不能报告为已采用，也不应触发反复重装或改写
-模型、provider、key 配置。
-
-使用 cc-switch 时，不要把 live `config.toml` 或 `auth.json` 整体复制到公共片段或其他
-provider。公共集成片段仅包含插件开关与 hook 信任，不包含认证、路由或模型选择字段。
-变更前后应检查所有 provider 凭据和路由是否保持不变；发现并发变化时停止安装，不覆盖
-回旧文件。公共片段只对选择启用它的 provider 生效，不应擅自改变其他 provider 的选择。
-
-如果 cc-switch 正在接管 Codex live 配置，安装器会在任何写入前返回 `deferred`。这是配置
-所有权提示，不是项目工作门禁；继续当前工作。独立 profile 的持久化接入仍待验证，不要求
-业务任务切换 profile、停止代理或重建聊天。不要反复执行安装器或手工合并 provider 配置。
-
-cc-switch 已完全卸载时，安装器可以继续；它会把 opencodex 的 Codex config/catalog 和
-systemd/basic-auth 稳定配置纳入变更前后指纹。opencodex 不需要停止或重启。若只残留半个
-cc-switch 数据目录，安装会失败并要求先明确清理状态，不会猜测 provider 配置。
-
-大型仓库希望显式启用有界 current-worktree 检索时安装：
-
-```bash
-codex plugin add continuity-plane-search@continuity-plane
-continuity context search --root . --query "Runtime" --max-results 40 --max-output-bytes 8192
-```
-
-该命令只读取 Git tracked current worktree，完整 JSON receipt 不超过指定字节预算；
-search plugin 只注册一个 lookup MCP 工具，不加载额外 Skill。
-
-#### 增量代码索引
-
-适合大型仓库、多个 Session 或需要让其他 AI 快速定位符号的场景：
-
-```bash
-continuity context index --root .
-continuity context lookup --root . --query "Runtime" --max-results 20 --max-output-bytes 8192
-```
-
-`index` 只读取 Git tracked 文件，把文件 hash、语言和符号位置写入用户缓存目录；默认不写
-项目目录。第二次执行会复用未变化文件，修改一个文件只重新解析一个文件。`lookup` 返回
-带 `repository_revision`、`index_revision` 和 `file_sha256` 的短引用，不返回源码正文。
-任何 Agent 都可以通过 CLI 或 Python API 使用同一合同：
-
-```python
-from continuity_plane.code_index import lookup_code_index
-
-receipt = lookup_code_index(".", query="Runtime")
-```
-
-索引是候选定位，不授予 State、memory 或副作用权限；展开源码前仍需按返回的 hash 验证
-当前工作树。缓存损坏时会被当作未命中并重建，不会阻断项目工作。
-
-需要在 Codex 内调用 State 工具时额外安装：
-
-```bash
-codex plugin add continuity-plane-state@continuity-plane
-```
-
-search plugin 提供 `continuity_context_lookup` MCP 工具。它只返回有界的 symbol/path/hash
-引用，刷新用户缓存，不建立 State binding，也不拦截 shell。其他 AI 通过 CLI 使用同一合同。
-
-`cache_status` 与 `returned_bytes` 由 lookup receipt 直接计量；模型 input/output token 由
-host trace 计量。缓存命中不能单独证明 token 节省，必须和同任务的上下文输入输出 A/B 对账。
-
-MCP 不可见或连接失败属于检索不可用；空结果是查询成功但无匹配。两者均不授予或撤销
-项目权限。工具不可用时可使用一次 CLI 查询；成功但零命中后直接窄检索，不重复相同 lookup。
-正常降级无需暂停、重装或逐次汇报；只有显式 State 写入才需要 resume。
-
-### 压缩恢复与 source rebind
-
-核心 hook 通过已安装包的 `continuity-codex-hook` 入口运行，不依赖系统 Python 别名。
-`auto` 模式在压缩后的 `SessionStart(source=compact)` 注入当前有界 packet，并要求模型
-静默从 `next_action` 继续；hook 或 State 同步失败只记录观测，不停止普通代码编辑、构建
-和测试。
-
-alpha13 的独立 advisory hook 不调用 State、不拒绝命令，即使环境残留 `strict` 也如此。
-普通成功操作按 `1/16` 采样；失败、识别到的副作用和 Continuity MCP 调用保留观测。
-压缩恢复漏送时，下次工具调用最多补一次 `1 KiB` 检索提示；若先收到用户消息，则尝试一次
-当前 resume。标记按项目/Session 隔离，10 分钟过期，原子消费；正常恢复送达就清除。
-正常操作零上下文输出；hook 不重装插件、不改 Codex 配置、不改写命令、不激活 Work、不无限重试。
-如果 Bash 返回仍在运行的 `session_id`，advisory hook 只补一次短提示，要求先用
-`write_stdin` 轮询该句柄再开始新的读取或阶段汇报；已完成命令不提示，也不调用 State。
-如果当前 Session 仍引用已经删除的插件缓存，launcher 会尝试当前 `PLUGIN_ROOT`；不可用时
-静默跳过，不影响普通命令，也不会自动切换到另一版本。
-
-项目 idle 且 canonical MASTER/STATUS 发生变化时，`resume` 返回
-`source_fresh=false`、`read_only=true` 和 `next_action=rebind-source-and-activate-next-work`；
-`checkpoint verify` 返回结构化 `source_rebind_required`，两者都不写 State。下一次显式
-`work activate`（standard 或已完整绑定的 delivery）会重新校验 source、生成当前 evidence、
-刷新 checkpoint，并在一次 State 提交中激活 Work。若 source 在校验期间再次变化，操作返回
-`source_fresh` 且 proposal、checkpoint 和 revision 保持不变。
-
-安装或恢复 Session 后验证实际采用状态：
-
-```bash
-continuity doctor --root . --codex-home ~/.codex
-```
-
-doctor 只读取插件配置、MCP policy、hook trust、marketplace 实际插件、active claim 租约、
-resume packet 体积和脱敏 lifecycle observation，不读取聊天正文。`active` 表示真实插件
-运行时与 SessionStart 均可用；`configured` 表示配置完成但尚无运行事件；`misconfigured`
-表示安装门未通过；`degraded` 表示租约预警、packet 超限或运行时漂移；`recoverable`
-表示过期 claim 可由 autorun 受控换签。
-
-CLI v1 packet 中的 `read_only` 仅指 Continuity State 写入。State MCP 的 inspect/resume
-外层返回 `read_only_scope=continuity-state` 与 `ordinary_project_work_allowed=true`；生成的
-STATUS 将项目动作显示为 `continue-project-work-state-sync-pending`。代码编辑、编译、测试
-和读取继续进行，不等待外部 Session。
-
-### 一个 Session 管理多个项目
-
-安装 advanced State plugin 后，同一个 Session 同时处理治理仓、实现仓和另一个项目时，
-只有显式诊断 State 才对治理根执行一次 inspect；需要 State 写入时执行一次 resume：
-
-```text
-continuity_inspect(root=/path/to/project-a)
-continuity_resume(root=/path/to/project-a)  # 仅在显式 State 写入前
-```
-
-inspect 不写投影、不建立写绑定；同一 turn 复用其结果，不得重复调用。resume 会把该 root
-加入当前 Session 的受校验项目集合，并把它设为 active root。
-之后该项目的 Work、claim、checkpoint 和 effect 请求必须使用相同 root；切换项目时
-再次显式调用 `continuity_resume`。相对 root 只相对上一次成功的 active root 解析。
-Session 已建立 binding 后，终端 `cwd` 不能替换 active root；未绑定、profile 缺失、
-digest 失配或损坏 binding 会在 CLI/State 写入前拒绝，而不会静默改用 cwd。治理根与
-独立 delivery workspace 的多仓关系仍按上一节的 registry 注册。
-
-升级 plugin 时刷新 marketplace 后重新安装，并新建 Session：
-
-```bash
-codex plugin marketplace upgrade continuity-plane
-codex plugin add continuity-plane@continuity-plane
-codex plugin add continuity-plane-search@continuity-plane  # 仅在需要有界检索时
-codex plugin add continuity-plane-state@continuity-plane  # 仅在需要 State MCP 时
-```
-
-如果某个项目暂时不需要宿主 hook，保留核心 CLI 即可；停用 plugin 不会删除项目的
-`.continuity/` 状态。
-
-## MASTER 与 STATUS
-
-`MASTER.md` 保存稳定目标、约束、工作依赖和完成门；`STATUS.md` 保存 active work、
-blocker、next action 和恢复入口。中英文版本同步提供，中文文件是默认入口。
-
-不要把 Session 叙事和原始对话写入这两份文件。动态历史属于 typed state、append-only
-events 和 checkpoint。
-
-项目团队通常提交 canonical `MASTER.md` 和明确属于团队的 project profile；个人
-STATUS overlay、本地状态库和 provider archive 保持本地。项目级 STATUS 是否提交由
-团队治理决定。
-
-## 日常流程
-
-1. 读取 `STATUS.md`；
-2. 在当前 revision claim active Work；
-3. 组合 bounded Execution Packet；
-4. 只加载适用 Skill 和当前 evidence；
-5. 在 claim scope 内执行动作；
-6. 运行项目 Verification Profile；
-7. 提交 evidence，完成或释放 claim。
-
-新想法默认 `capture-and-continue`，不会自动替换 active Work。
-
-## Context Composition
-
-默认 packet 只包含：
-
-- active Work 和 revision；
-- 当前决定、约束和 blocker；
-- claim scope、owner 和 return point；
-- 选中的 Skill rule ID 和 hash；
-- evidence、artifact ref 和 continuation cursor；
-- effect watermark。
-
-大型日志、diff、报告和源码片段留在 content-addressed artifact，只有当前动作需要
-时才有界展开。
-
-## Skills
-
-Skill 是带版本、hash、适用范围、依赖、冲突和 expiry 的规则包，不是动态任务记忆。
-缺失或漂移的 Skill 会先 quarantine。始终加载集合应保持很小；实测选中 Skill source
-bytes 降低超过 96%。
+安装并实际启用 hook 后，压缩前保存 session 接续点，压缩后按宿主合同恢复。Claude 在 SessionStart(compact) 注入；PostCompact 只验证。缺少 hook 时不会自动发生。共享交接刷新失败会告警，不能把旧共享计划当作新快照。
 
 ## 协作
 
-Alpha24 的完整规则交付、派发/续跑、远端 hook 与计量用法见
-[field-workflows](docs/field-workflows.md)。既有 MCP 连接需要重连后才加载新版。
-
-### Todo、任务卡与参数发现
-
-普通计划、资料、卡片和收件箱属于本地协作元数据，无需申请 State claim。
-权威 State 写入的 revision、授权和验证门仍独立生效。
-`continuity help overview` 列出操作，`continuity help task.add` 等主题直接读取
-CLI 参数定义。MCP 提供同一入口：`continuity_help` 和 `continuity_plan`。
-例如 `{"action":"task.list","project_id":"example","parameters":{"status":"active"}}`。
-两端都支持显式 `data_root`；MCP 新入口默认 brief，可选 JSON 与严格字节预算。
+卡片是工作清单，Todo 可从卡片生成；无需维护第二份过期队列。
 
 ```bash
-continuity todo compile --root "$PWD" --session-id session-a --prompt '1. Fix parser
-2. Add regression tests'
-continuity help task.add
-continuity todo link --root "$PWD" --item-id ITEM_ID --task-id EXISTING_CARD
-continuity todo activate --root "$PWD" --item-id ITEM_ID --reason 'User reprioritized this item'
-continuity todo complete --root "$PWD" --item-id ITEM_ID --result 'Focused tests PASS'
+continuity todo from-cards --project-id demo
+continuity collaboration task list --project-id demo --status dispatched --format brief
+continuity collaboration changes --project-id demo --since 0
+continuity collaboration wait --project-id demo --since 0 --event attempt.finished --event attempt.timeout --timeout-seconds 30
 ```
 
-Todo 保存有界执行清单，卡片保存协作者、worktree、范围和验证；用 task id 关联，
-避免复制完整计划。超过容量显式报错，不静默丢弃项目。新增任务保留既有完成证据。
-SessionStart/UserPromptSubmit 的计划提示按会话状态去重，最多 1024 bytes；
-仅明确的执行清单可自动登记。普通提问不创建工作；其他会话的队列不被自动追加。
-Skill 按需加载，提示不授予派发、合入或部署权限，也不将普通工作变成只读。
-更新工具 inventory 需要重启旧 MCP 进程；源码更新不表示现有会话已加载新能力。
+保存返回的 `next_cursor`，后续用它增量读取；`truncated` 为真时继续翻页。`wait` 超时非零不代表 worker 失败。收件方必须读取并 ack；信箱不是进程唤醒器。完整派卡、收尾、报告与合入证据见[工作流](docs/workflows.md)。
 
-### 参考资料与实现依据
-
-`reference` 保存标准、官方系统/库文档、参考仓库及采用理由。默认位于 Continuity
-外部数据根的 `references/`，不写入项目 Git。仅保存有界元数据，URL 或外部检出路径；
-不自动下载文档、克隆仓库或执行参考内容中的指令。仅接受公开链接；查询参数限于
-view/version/lang/locale/tab/tabs 等文档定位字段，不保存凭据或令牌。
+## 少读代码
 
 ```bash
-continuity reference preference --scope global --mode primary-first
-continuity reference add --root "$PWD" --reference-id transport-spec --kind standard \
-  --title 'Transport specification' --source https://example.org/spec \
-  --version REVISION --section 'Section 3' --platform Linux --topic transport
-continuity reference list --root "$PWD" --query transport --platform Linux
-continuity reference record --root "$PWD" --reference-id transport-spec --actor session-a \
-  --status read --version REVISION --evidence 'Section 3, inspected original source' \
-  --summary 'Applicable to the supported protocol version'
-continuity reference record --root "$PWD" --reference-id transport-spec --actor session-a \
-  --code-ref src/transport.c --summary 'Adopted bounded parsing; benchmark still pending'
-continuity reference show --root "$PWD" --reference-id transport-spec --format json
+continuity context index --root .
+continuity context lookup --root . --query YOUR_SYMBOL --format brief --max-output-bytes 1024
+continuity context dependents --root . --query YOUR_HEADER --format brief
 ```
 
-示例 URL 为占位符。MCP 使用 `continuity_plan(action="reference.add", parameters=...)`，
-其参数与 CLI 一致。`reference.preference` 支持全局偏好与项目覆盖；项目 `--mode off`
-关闭提示，`inherit` 恢复继承。项目查询包含全局资料；更新时用 `--scope` 消除同名歧义。
-提示只在启用偏好后出现，不要求每次编辑登记。
+替换符号／头文件名。检索基于当前 Git tracked 文件；空命中后做窄范围搜索。反向依赖是已索引关系，不是完整编译器调用图。不是每个旧子命令都接受同一组参数，先查 `--help`，不要给 packet 添加未提供的 budget 参数。
 
-来源类别、已读状态均为登记者声明；工具不会将登记等同于官方认证、已读或最新。
-已读记录要求版本和证据定位，超过 30 天提示复核，不自动断言资料过时。
-`record --status superseded --superseded-by ...` 保存替代线索；
-`--status unavailable` 保存无法读取的事实。采用记录可关联已存在的 task id。
-“最优”由支持版本、兼容、安全、维护成本和实测共同判断；不预设某个 OS API 必然最优。
-来源无法读取时记录不确定性并继续独立任务，仅真正无法判断正确性/安全性的部分需要决策。
-远端共享需要各端访问同一个数据服务/数据根；本功能不自动同步设备或修改宿主配置。
+## 规则与资料
 
-### 本地与 Forge-Coordinated
+使用规则作为唯一来源，脚本中的 common.txt 只当生成物；长文走哈希附件。
 
-多数团队继续使用现有 Git forge 展示 Work、branch、review 和 CI。控制面增加本地
-claim、checkpoint、evidence receipt 和冲突警告；贡献者无需连接共享数据库。
-
-### Shared-Strong
-
-所有权威写入或外部副作用都绑定：
-
-```text
-project + active Work + claim + lease epoch + scope owner + expected revision
+```bash
+continuity rules export --project-id demo --audience worker --format text
+continuity reference list --root .
+continuity help reference.add
 ```
 
-lease 或 revision 过期时操作 fail closed。presence、聊天消息、branch 和 UI 状态都
-不能授予执行权限。
+登记当前版本的标准、OS／库官方文档、已读章节与采用理由。资料记录是来源声明，不证明实现已正确；读不到来源就标明未验证范围，不凭模型记忆宣称最优。
 
-### 交接
+## 计量与验收
 
-交接必须携带 checkpoint、task revision、next action、return point、effect watermark、
-claim 状态和 evidence refs。接收方确认第一个动作后，才允许副作用。
+```bash
+continuity observe report --root .
+continuity help
+```
 
-## 验证 Profile
-
-项目自行决定需要哪些 gate：静态检查、测试、构建、contract fixture、mutation、loopback、
-性能、故障恢复和 live-device。节省 token 或降低延迟不能跳过必要验证。
+报告区分返回字节、hook 开销、估计替代量和宿主 token／缓存。负收益保留；费用、窗口或来源不明时不补造数字。当前能力和本轮合成实测见[验证矩阵](docs/validation.md)。
 
 ## 存储
 
-默认 SQLite 文件为：
-
-```text
-.continuity/state.sqlite3
-```
-
-初始化时创建该文件。文件缺失、属于其他应用、schema 版本高于当前支持范围或完整性
-检查失败时，`verify` 与 `doctor` 会拒绝继续。
-
-PostgreSQL 仅是可选 adapter。artifact 可以保存在本地文件系统或外部对象存储；
-profile 记录可用 capability，不可用增强必须显式降级。
+State、协作注册表、索引缓存和宿主会话不是同一份数据。默认路径与 `--data-root`、环境变量、远端隔离见[部署指南](docs/deployment.md)。不要用复制账号目录代替远端执行，不把可恢复日志、报告和会话引用放在易失临时盘。
 
 ## 备份与移除
 
-复制运行中的 SQLite 前先停止 worker。备份整个 `.continuity/`，包括 checkpoint 引用的
-template 和 content-addressed artifact。所有 claim 关闭后，才能归档或删除本地目录。
+先备份项目 `.continuity/`、用户级协作数据根与自定义产物，再卸载软件；卸载软件不等于删除记录。State bundle 的 export/import/rollback 仅覆盖其声明范围，不是整套协作与原生账号的备份，见[State 指南](docs/state-workflows.md)。
 
 ## Release 与 PyPI
 
-当前版本同时发布到 PyPI 和 GitHub Release：
+当前版本：`0.1.0a25`；Git tag：`v0.1.0-alpha.25`。[GitHub Releases](https://github.com/skyhua0224/continuity-plane/releases/latest) 统一使用普通 Release；alpha 版本号仍表示兼容性可能变化，PyPI 选择它仍需明确 pin 或 `--pre`。
 
-<https://pypi.org/project/continuity-plane/0.1.0a25/>
-<https://github.com/skyhua0224/continuity-plane/releases>
-
-GitHub Release 触发构建和 PyPI OIDC 发布 workflow，使用 `pypi` environment。
-发布权限由 PyPI 项目的 Trusted Publisher 绑定决定；token 不进入仓库或
-GitHub secret。
-
-## 公开仓库
-
-项目团队可以提交项目拥有的 governance template。个人 STATUS overlay、provider archive、
-secret、raw transcript、本地 database 和机器路径应写入 `.gitignore` 或外部存储。
-
-## 验证发行包
-
-```bash
-python -m unittest discover -s tests -p 'test_*.py'
-python benchmarks/run_local_state.py --iterations 1000
-python -m build
-```
-
-公开 benchmark 使用临时项目，不需要网络服务。完整 receipt、样本数、限制和 content digest
-位于 `benchmarks/reference-results.json`。
+[变更记录](CHANGELOG.md) · [发布与升级约定](docs/releases.md)
