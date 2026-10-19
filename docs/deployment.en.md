@@ -2,7 +2,7 @@
 
 [中文](deployment.md) · [Documentation](README.en.md) · [Quick start](../USAGE.en.md)
 
-Applies to CLI `0.1.0a27` and plugin tag `v0.1.0-alpha.27`. Verify CLI installation, MCP connections and native hook delivery separately.
+Applies to CLI `0.1.0a28` and plugin tag `v0.1.0-alpha.28`. Verify CLI installation, MCP connections and native hook delivery separately.
 
 ## Choose a topology
 
@@ -22,7 +22,7 @@ Python 3.11+; Git is needed for tracked-file retrieval. Install native agent cli
 
 ```bash
 python3 -m venv .venv
-.venv/bin/python -m pip install 'continuity-plane==0.1.0a27'
+.venv/bin/python -m pip install 'continuity-plane==0.1.0a28'
 .venv/bin/continuity --version
 ```
 
@@ -31,7 +31,7 @@ Windows PowerShell uses `py -3 -m venv .venv`, `.venv\Scripts\python.exe` and `.
 Optional global installation:
 
 ```bash
-pipx install 'continuity-plane==0.1.0a27'
+pipx install 'continuity-plane==0.1.0a28'
 pipx upgrade continuity-plane --pip-args=--pre
 ```
 
@@ -40,7 +40,7 @@ Check both `continuity --version` and `pipx list`. GitHub's regular Release cate
 If an existing pipx/uv environment refuses recreation, update its interpreter in place:
 
 ```bash
-uv pip install --python /path/to/pipx/venvs/continuity-plane/bin/python --reinstall-package continuity-plane 'continuity-plane==0.1.0a27'
+uv pip install --python /path/to/pipx/venvs/continuity-plane/bin/python --reinstall-package continuity-plane 'continuity-plane==0.1.0a28'
 ```
 
 pipx display metadata may still need its normal upgrade refresh. During a network failure, a hash-verified wheel can be installed offline. Do not disable TLS verification or persist temporary offline flags into future upgrades.
@@ -70,7 +70,7 @@ Coordinate writers and use a SQLite-supported backup method or a consistent quie
 Install the CLI, add the marketplace, then select the plugin:
 
 ```bash
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.27
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.28
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -94,7 +94,7 @@ If add reports a different registered source, back up the owner-host Codex confi
 ```bash
 # Repin only the Continuity marketplace
 codex plugin marketplace remove continuity-plane
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.27
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.28
 codex plugin marketplace upgrade continuity-plane
 ```
 
@@ -180,7 +180,7 @@ The bridge can forward the bounded current explicit checklist by default; the ex
 
 ### Remote retrieval
 
-Launch `continuity-search-mcp` over SSH with a remote repository `root`, or opt into Alpha27's local search-MCP routing: set tool argument `bridge_config` or server environment `CONTINUITY_BRIDGE_CONFIG=/path/to/bridge.json`. An exact local_root maps to remote_root and invokes `continuity-remote-cli`. Optional settings are `remote_cli_endpoint`, `lookup_timeout_seconds` and owning-host `remote_data_root`. Missing/ambiguous mappings or transport failure produce an error, never local fallback. Remote mode rejects local cache_path/data_root. There is no arbitrary file/process administration. This route has synthetic protocol tests, not a new Alpha27 two-machine field run.
+Launch `continuity-search-mcp` over SSH with a remote repository `root`, or opt into Alpha28's local search-MCP routing: set tool argument `bridge_config` or server environment `CONTINUITY_BRIDGE_CONFIG=/path/to/bridge.json`. An exact local_root maps to remote_root and invokes `continuity-remote-cli`. Optional settings are `remote_cli_endpoint`, `lookup_timeout_seconds` and owning-host `remote_data_root`. Missing/ambiguous mappings or transport failure produce an error, never local fallback. Remote mode rejects local cache_path/data_root. There is no arbitrary file/process administration. This route has synthetic protocol tests, not a new Alpha28 two-machine field run.
 
 Set server environment `CONTINUITY_ASSIGNEE=worker-a` or pass the same `executor_id` on each `continuity_plan` call. Task add/update/claim and Todo activation use that stable identity; other executors' conflicts remain rejected. session_id describes recovery and no longer becomes the card assignee. This is declared collaboration identity, not native account authentication; do not configure all workers with one identity.
 
@@ -195,7 +195,7 @@ A controller configured with `CONTINUITY_ROLE=controller` can annotate task meta
 | Missing message/end event | Recipient, task ID, pagination cursor and wait timeout; do not skip undelivered pages |
 | Missing rules | Complete rules export and attachment hashes, not silent clipping |
 | Own card rejected after MCP reconnect | Check CONTINUITY_ASSIGNEE/executor_id against the stored assignee; old connection IDs are not silently migrated |
-| Worker changes card before report capture | Fixed in Alpha27; check old runtimes, stale attempts or reassignment. Historical report files can still be attached explicitly |
+| Worker changes card before report capture | Fixed in Alpha28; check old runtimes, stale attempts or reassignment. Historical report files can still be attached explicitly |
 | Hook failure | Temporarily set `CONTINUITY_DISABLED=1`; retain evidence and configuration, not account deletion |
 
 Save software versions, configuration backups and data locations before upgrading. Restore compatible hook/MCP entrypoints and reconnect after rollback. A guarded ledger v4 project rejects older dispatchers: coordinate users and retain pre-upgrade backups rather than silently downgrading its schema.

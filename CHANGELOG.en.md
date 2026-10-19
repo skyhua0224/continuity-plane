@@ -2,6 +2,11 @@
 
 Adoption: [deployment](docs/deployment.en.md), [recent release notes](docs/releases.en.md), [current coverage/known gaps](docs/validation.en.md). Historical entries retain their original scope. Regular GitHub Release classification does not remove alpha semantics.
 
+## 0.1.0-alpha.28
+
+- Accept existing member-local tea login aliases with spaces, colons, Unicode and leading hyphens, retaining exact origin binding and control-character rejection. No native login rename or credential transfer.
+- [Release notes](docs/release-alpha28.md); Alpha27's collaboration/storage boundaries are unchanged.
+
 ## 0.1.0-alpha.27
 
 - Native private Gitea Issue/PR backend through member-local tea; shared task CLI/MCP, without a Continuity server.

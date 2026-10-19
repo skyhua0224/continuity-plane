@@ -1,10 +1,12 @@
 # Private Gitea Issue / PR collaboration
 
-Version 1, Alpha27 (`0.1.0a27`). The initial contract targets Gitea v1.24.7; check other deployments before adoption. See the [repository/global configuration contract](collaboration-storage.en.md) and [Chinese walkthrough](gitea-collaboration.md).
+Version 1, Alpha28 (`0.1.0a28`). The initial contract targets Gitea v1.24.7; check other deployments before adoption. See the [repository/global configuration contract](collaboration-storage.en.md) and [Chinese walkthrough](gitea-collaboration.md).
 
 Members run separate local CLI / MCP installations using their own Gitea accounts. Issues and event comments own tasks; PR / Git owns reviews and delivery. Local snapshots are caches. No Continuity server, shared database or permanent controller is required. Humans can participate from the Gitea UI.
 
 ## Connect and start
+
+Alpha28 accepts existing tea aliases including spaces, colons and Unicode, e.g. `--credential-ref 'tea:Company Gitea:3443'`. Do not rename or copy native logins or extract tokens to fit a schema.
 
 ```bash
 continuity collaboration register --project-id demo --control-root .

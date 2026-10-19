@@ -17,7 +17,7 @@ continuity collaboration packet --project-id demo --assignee agent-1
 continuity handoff show --project-id demo
 ```
 
-Alpha27 的 CLI 是 `0.1.0a27`，插件是 `0.1.0-alpha.27`。未注册的项目先走[初始化](../USAGE.md#初始化项目)，不覆盖已有 `.continuity/`。whoami 不登录 provider，也不授予主控租约。
+Alpha28 的 CLI 是 `0.1.0a28`，插件是 `0.1.0-alpha.28`。未注册的项目先走[初始化](../USAGE.md#初始化项目)，不覆盖已有 `.continuity/`。whoami 不登录 provider，也不授予主控租约。
 
 ## 可直接贴进简报
 

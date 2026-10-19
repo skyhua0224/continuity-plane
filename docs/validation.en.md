@@ -2,11 +2,11 @@
 
 [中文](validation.md) · [Workflows](workflows.en.md) · [Historical experiments](benchmarks.en.md)
 
-Scope: Alpha27 (`0.1.0a27`). New synthetic CLI measurements, existing regressions, anonymous user feedback and uncovered behavior are distinct evidence classes.
+Scope: Alpha28 (`0.1.0a28`). New synthetic CLI measurements, existing regressions, anonymous user feedback and uncovered behavior are distinct evidence classes.
 
 ## Reproduce the current workflow check
 
-Alpha27 adds an isolated real HTTPS Gitea 1.24.7 / local tea 0.15.0 two-synthetic-account private repository check; races and ambiguous writes use deterministic fixtures. See [release scope](release-alpha27.md). The adopter script below was rerun against an isolated Alpha27 installation; its receipt contains only allowlisted synthetic aggregates. Tag CI records this release's complete regression/build.
+Alpha28 adds an isolated real HTTPS Gitea 1.24.7 / local tea 0.15.0 two-synthetic-account private repository check; races and ambiguous writes use deterministic fixtures. See [release scope](release-alpha27.md). The adopter script below was rerun against an isolated Alpha28 installation; its receipt contains only allowlisted synthetic aggregates. Tag CI records this release's complete regression/build.
 
 Use a **new, empty persistent directory**, never your real registry/profile:
 
@@ -57,7 +57,7 @@ Thirteen positive checks pass; automatic report delivery after early card update
 
 The [Alpha25 public release CI](https://github.com/skyhua0224/continuity-plane/actions/runs/38845950775) passed 268 tests. New documentation checks run on current main separately; neither released wheels nor historical counts are rewritten.
 
-## Alpha27 adoption regressions
+## Alpha28 adoption regressions
 
 | Fix | Current evidence | Boundary |
 |---|---|---|
@@ -67,7 +67,7 @@ The [Alpha25 public release CI](https://github.com/skyhua0224/continuity-plane/a
 | Reference TSV | Unicode, extra columns, idempotence, atomic conflicts/invalid rows, MCP interface | Explicit interchange, no overwrite/automatic sync or proof of reading |
 | Mapped lookup | Separate synthetic repository through the receiving CLI protocol; unmapped/over-budget rejection | No new physical two-machine trial or arbitrary remote file/process administration |
 
-[test_a26_adoption.py](../tests/test_a26_adoption.py) contains thirteen synthetic regressions. See [deployment](deployment.en.md) and [Alpha27](release-alpha26.md) for setup and compatibility.
+[test_a26_adoption.py](../tests/test_a26_adoption.py) contains thirteen synthetic regressions. See [deployment](deployment.en.md) and [Alpha28](release-alpha26.md) for setup and compatibility.
 
 ## Privacy and effect claims
 

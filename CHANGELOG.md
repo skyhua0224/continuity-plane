@@ -4,6 +4,11 @@
 
 [English](CHANGELOG.en.md)
 
+## 0.1.0-alpha.28
+
+- 修复 Gitea 本机 tea 登录别名的兼容性：支持空格、冒号、Unicode 和连字符；保持实例匹配与控制字符拒绝，不要求改名或迁移原生凭据。
+- [发布说明](docs/release-alpha28.md)；协作权威与存储边界延续 Alpha27。
+
 ## 0.1.0-alpha.27
 
 - 原生 Gitea Issue／PR 后端，经成员本机 tea CLI 连接私有仓库；任务 CLI／MCP 共用合同，无额外 Continuity 服务。

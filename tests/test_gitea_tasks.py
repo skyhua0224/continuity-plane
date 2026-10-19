@@ -683,6 +683,36 @@ class AuthenticationTests(unittest.TestCase):
         with self.assertRaises(GiteaError):
             validate_config({**CONFIG, "credential_ref": "env:SOME_UNRELATED_SECRET"})
 
+    def test_real_cli_aliases_allow_spaces_colons_and_unicode(self):
+        for name in ("Company Gitea:3443", "本机 登录", "--literal-name"):
+            config = {**CONFIG, "credential_ref": "tea:" + name}
+            self.assertEqual(validate_config(config)["credential_ref"], "tea:" + name)
+            metadata = json.dumps([{"Name": name, "URL": CONFIG["instance"]}]).encode()
+            with patch(
+                "continuity_plane.gitea_transport.run_tea",
+                side_effect=[(0, metadata, b""), (0, b"--include --data", b"")],
+            ):
+                client = GiteaClient(config)
+            with patch(
+                "continuity_plane.gitea_transport.run_tea",
+                return_value=(0, b'{"login":"alice"}', b"HTTP/2.0 200 OK\n"),
+            ) as run:
+                self.assertEqual(client.identity(), "alice")
+                self.assertIn("--login=" + name, run.call_args.args[0])
+
+    def test_cli_alias_controls_empty_and_surrounding_space_are_rejected(self):
+        for name in (
+            "",
+            " name",
+            "name ",
+            "name\n--debug",
+            "name\x00",
+            "name\x7f",
+            "x" * 257,
+        ):
+            with self.assertRaises(GiteaError):
+                validate_config({**CONFIG, "credential_ref": "tea:" + name})
+
     def test_tea_origin_binding_and_no_secret_output(self):
         metadata = json.dumps(
             [{"Name": "member", "URL": CONFIG["instance"], "User": "alice"}]

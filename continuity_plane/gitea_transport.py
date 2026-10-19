@@ -57,7 +57,13 @@ def validate_config(value):
         raise GiteaError("repository must be owner/name")
     if any(s in {".", ".."} for s in value["repository"].split("/")):
         raise GiteaError("invalid repository")
-    if not re.fullmatch(r"tea:[A-Za-z0-9_.-]{1,128}", value["credential_ref"]):
+    reference = value["credential_ref"]
+    login = reference[4:] if reference.startswith("tea:") else ""
+    if (
+        not 1 <= len(login.encode("utf-8")) <= 256
+        or login != login.strip()
+        or any(ord(c) < 32 or 127 <= ord(c) <= 159 for c in login)
+    ):
         raise GiteaError(
             "credential_ref must be tea:LOGIN; use this member's local Gitea CLI login, never a token"
         )
@@ -199,10 +205,8 @@ class GiteaClient:
         command = [
             self.tea,
             "api",
-            "--login",
-            self.login,
-            "--repo",
-            self.config["repository"],
+            "--login=" + self.login,
+            "--repo=" + self.config["repository"],
             "--method",
             method,
             "--include",
