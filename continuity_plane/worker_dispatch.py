@@ -328,6 +328,8 @@ def dispatch(
     idle_timeout_seconds=None,
     controller_token=None,
     _replace_job_id=None,
+    reassign=False,
+    reassign_actor=None,
 ):
     from .collaboration_workflow import prompt
 
@@ -479,7 +481,40 @@ def dispatch(
         if type(value) not in (int, float) or not math.isfinite(value) or value <= 0:
             raise ValueError("worker timeouts must be finite positive seconds")
         budgets[key] = value
-    actor = assignee or task.get("assignee") or ("worker-" + model)
+    actor = assignee or ("worker-" + model if reassign else task.get("assignee")) or ("worker-" + model)
+    from .collaboration_registry import _load_ledger, update_task
+
+    ledger = _load_ledger(data, project_id)
+    from .delivery_records import scope_hash
+    require_policy_clear(data, project_id, task_id,
+                         scope_hash(task, ledger.get("task_details", {}).get(task_id, {}).get("body")))
+    recorded = ledger.get("execution_bindings", {}).get(task_id, {})
+    recorded_model = recorded.get("model") if recorded.get("assignee") == actor else None
+    known_models = {"sol", "sonnet", "grok", "glm", "astra", "opus"}
+    def model_identity(name):
+        normalized = _model_alias(name)
+        if normalized not in known_models:
+            normalized = _model_alias(profiles.get(name, {}).get("provider_model", name))
+        return normalized
+    assigned_model = model_identity(recorded_model) if recorded_model else _model_alias(actor)
+    target_model = model_identity(model)
+    mismatch = (
+        task.get("assignee") not in (None, actor)
+        or ((recorded_model is not None or assigned_model in known_models) and assigned_model != target_model)
+    )
+    # Explicit in-process handoffs come from the approved quota/fallback path;
+    # ordinary CLI dispatch cannot silently manufacture this continuation.
+    authorized_handoff = bool(handoff)
+    if mismatch and not reassign and not authorized_handoff:
+        raise ValueError(
+            "dispatch executor/model conflicts with the card assignment; no worker started. "
+            "Update the card first, or use --reassign --assignee <executor> --actor <your-stable-identity>."
+        )
+    if reassign:
+        if dry_run:
+            raise ValueError("--reassign mutates a card; update it explicitly before a dry-run")
+        task = update_task(data, project_id=project_id, task_id=task_id,
+                           assignee=actor, actor=reassign_actor or os.environ.get("CONTINUITY_ASSIGNEE"))
     controller = (
         controller
         or os.environ.get("CONTINUITY_CONTROLLER")
@@ -549,6 +584,7 @@ def dispatch(
         prompt_sha256=actual_prompt_sha,
         task_context_sha256=context_sha,
         scope_sha256=assembled["scope_sha256"],
+        expected_updated_at=task["updated_at"],
         command_receipt=[
             v.replace(values["prompt"], "<prompt:" + actual_prompt_sha + ">")
             for v in argv
@@ -653,6 +689,7 @@ def dispatch(
 
 def run_job(file):
     from .controller_lease import require, finish_reservation
+    from .execution_lifecycle import ExecutionBindingError
 
     job = json.loads(Path(file).read_text())
     try:
@@ -663,6 +700,15 @@ def run_job(file):
             job.get("controller_token"),
         )
         return _run_job(file)
+    except ExecutionBindingError as exc:
+        result = {"job_id": job["job_id"], "task_id": job["task_id"],
+                  "executed": False, "status": "failed", "reason": str(exc),
+                  "failure_class": "dispatch-validation", "card_projection": "preserved"}
+        _atomic_write(Path(job["job_dir"]) / "result.json", result)
+        from .execution_outbox import change
+        change(Path(job["data_root"]), job["project_id"], "dispatch.validation-failed",
+               job["task_id"], **{k: v for k, v in result.items() if k != "task_id"})
+        return result
     finally:
         try:
             finish_reservation(
@@ -716,6 +762,8 @@ def _run_job(file):
             workdir=job["worktree"],
             on_output=capture,
             rules_digest=job["rules_digest"],
+            expected_scope=job.get("scope_sha256"),
+            expected_updated_at=job.get("expected_updated_at"),
             rules_audience=job["rules_audience"],
             controller=job.get("controller"),
             command_receipt=job.get("command_receipt"),
@@ -927,6 +975,8 @@ def command(args):
             resume_job=args.resume_job,
             timeout_seconds=args.timeout_seconds,
             idle_timeout_seconds=args.idle_timeout_seconds,
+            reassign=args.reassign,
+            reassign_actor=args.actor,
         )
     print(render(value, format="json", max_output_bytes=65536))
     return 2 if value.get("status") in {"failed", "interrupted"} else 0
@@ -953,6 +1003,8 @@ def _run_parser(parser, action):
         help="Seconds without output per attempt; new workers default 5400 (90 min), resume retains recorded budget",
     )
     parser.add_argument("--retry", type=int, default=0)
+    parser.add_argument("--reassign", action="store_true", help="Explicitly transfer a non-running card before dispatch; normal owner/creator checks apply")
+    parser.add_argument("--actor", help="Stable caller for --reassign, distinct from the target --assignee")
     parser.add_argument(
         "--fallback-model",
         action="append",

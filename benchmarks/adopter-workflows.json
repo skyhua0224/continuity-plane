@@ -1,6 +1,6 @@
 {
   "schema_version": "continuity.adopter-workflow-check/v1",
-  "version": "0.1.0a26",
+  "version": "0.1.0a27",
   "dataset": "synthetic-only",
   "native_provider_requests": 0,
   "cases": {
@@ -22,7 +22,7 @@
     "lookup_bytes": 32,
     "failed_worker_exit_code": 3,
     "failed_dispatch_cli_exit_code": 2,
-    "no_change_bytes": 196
+    "no_change_bytes": 216
   },
   "observed_boundaries": {
     "report_after_early_card_update": "attached"

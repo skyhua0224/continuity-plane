@@ -163,6 +163,7 @@ class DispatchControlTests(unittest.TestCase):
         )
         # Exercise an unstarted legacy record, not replay a completed attempt id.
         job["job_id"] = "job-" + "f" * 16
+        job.pop("expected_updated_at", None)  # Legacy plans predate snapshot fencing.
         _atomic_write(path, job)
         with patch(
             "continuity_plane.supervisor.run_attempt", wraps=supervisor.run_attempt

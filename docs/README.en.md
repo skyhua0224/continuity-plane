@@ -6,6 +6,7 @@
 |---|---|
 | First use | [Usage](../USAGE.en.md) → [Deployment](deployment.en.md) → [Role workflows](workflows.en.md) |
 | Starting an agent / writing its brief | [Four commands and a pasteable convention](agent-start.en.md) |
+| Local CLI / AI sharing private Issues and PRs | [Gitea backend](gitea-collaboration.en.md) → [Repository/global configuration](collaboration-storage.en.md) |
 | Controller / worker | [Dispatch and handback](workflows.en.md) → [Detailed reference](field-workflows.md) |
 | Remote state / custom profile | [SSH and hooks](deployment.en.md#separate-controller-and-state-hosts) |
 | Verify usefulness | [Current validation](validation.en.md) → [Historical methods](benchmarks.en.md) |

@@ -38,6 +38,9 @@ def classify(text, *, now=None):
         r"\b(?:401|403)\b|unauthorized|invalid.api.key|permission denied", lower
     ):
         return {**result, "failure_class": "authentication"}
+    if re.search(r"upstream_reset_replay_refused|replay[_ -]refused|upstream[_ -]reset", lower):
+        return {**result, "failure_class": "upstream-reset", "requires_new_session": True,
+                "guidance": "Upstream reset/replay refusal is not a quota reset. Stop same-thread retries; preserve work and explicitly review a new session or an authorized model handoff."}
     for pattern, kind in (
         (r"\b429\b|rate.limit|too many requests", "rate-limit"),
         (r"\b(?:502|503|504)\b|bad gateway|temporarily unavailable", "gateway"),

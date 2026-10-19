@@ -2,6 +2,14 @@
 
 Adoption: [deployment](docs/deployment.en.md), [recent release notes](docs/releases.en.md), [current coverage/known gaps](docs/validation.en.md). Historical entries retain their original scope. Regular GitHub Release classification does not remove alpha semantics.
 
+## 0.1.0-alpha.27
+
+- Native private Gitea Issue/PR backend through member-local tea; shared task CLI/MCP, without a Continuity server.
+- Human claims, accepted handoffs, real reviewer requests, verified merges, explicit conflicts, ambiguous-write reconciliation and fully read sync-page ACK.
+- Repository/global storage contract and safe default ignore file; no native token extraction, account migration or competing cached task authority.
+- Read-time controller recovery reconciles reports/terminal attempts/unread inbox; automatic drafts, persistent consumers, task aliases and dispatch snapshot fencing.
+- [Release notes and limits](docs/release-alpha27.md), [Gitea mode](docs/gitea-collaboration.en.md), [configuration](docs/collaboration-storage.en.md).
+
 ## 0.1.0-alpha.26
 
 - Attach final worker reports after early card updates; preserve newer attempts, reassignment and manual status. Replay interrupted metadata writes.

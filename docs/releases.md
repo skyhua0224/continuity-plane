@@ -4,7 +4,7 @@
 
 ## Release 分类与 alpha 版本号
 
-GitHub 上已发布的版本统一使用普通 **Release**，当前版本 Alpha26。包版本为 `0.1.0a26`，tag 为 `v0.1.0-alpha.26`；新版本发布时标为 Latest。这不把代码宣称为生产稳定版，也不改变 PyPI 的预发行排序规则。
+GitHub 上已发布的版本统一使用普通 **Release**，当前版本 Alpha27。包版本为 `0.1.0a27`，tag 为 `v0.1.0-alpha.27`；新版本发布时标为 Latest。这不把代码宣称为生产稳定版，也不改变 PyPI 的预发行排序规则。
 
 升级使用明确版本约束，或在 pipx/pip 中显式允许 `--pre`。旧 tag、commit、发行资产与包内容不因分类／标题整理而重写。历史 Release 只修正分类和面向用户的说明，原发布年代与兼容范围保留。
 
@@ -14,6 +14,7 @@ GitHub 上已发布的版本统一使用普通 **Release**，当前版本 Alpha2
 
 | 版本 | 主题 | 说明 |
 |---|---|---|
+| Alpha27 | 私有 Issue／PR 协作与可靠接手 | [本版本](release-alpha27.md) |
 | Alpha26 | 顺手协作与可靠报告 | [本版本](release-alpha26.md) |
 | Alpha25 | 主控交接与可靠派发 | [本版本](release-alpha25.md) |
 | Alpha24 | Worker 闭环与规则交付 | [本版本](release-alpha24.md) |

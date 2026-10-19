@@ -7,6 +7,7 @@
 | 想做什么 | 起点 |
 |---|---|
 | 一个人，压缩后接着做 | 下方初始化与接续 |
+| 各成员本机 AI／CLI，共享私有 Issue／PR | [Gitea 模式](docs/gitea-collaboration.md) → [仓库与全局配置](docs/collaboration-storage.md)，无需 Continuity 服务器 |
 | 主控派发、等待与收报告 | [两个执行方示例](docs/workflows.md#一个主控与两个执行方) |
 | 多人或多机共享项目 | [团队路径](docs/workflows.md#一个团队)与[SSH 部署](docs/deployment.md#控制端与状态端分离) |
 | 已有 MASTER／STATUS 或需要 State claim | [State 高级接入](docs/state-workflows.md) |
@@ -17,7 +18,7 @@ Python 3.11+。推荐隔离安装；不要把系统 Python 的权限问题当作
 
 ```bash
 python3 -m venv .venv
-.venv/bin/python -m pip install 'continuity-plane==0.1.0a26'
+.venv/bin/python -m pip install 'continuity-plane==0.1.0a27'
 ```
 
 Windows 使用 `.venv\Scripts\python.exe` 和 `.venv\Scripts\continuity.exe`。以下用 `continuity` 表示环境内的命令；可激活环境或使用完整可执行路径。全局 pipx、升级、离线 wheel 与回滚见[部署指南](docs/deployment.md)。
@@ -109,6 +110,6 @@ State、协作注册表、索引缓存和宿主会话不是同一份数据。默
 
 ## Release 与 PyPI
 
-当前版本：`0.1.0a26`；Git tag：`v0.1.0-alpha.26`。[GitHub Releases](https://github.com/skyhua0224/continuity-plane/releases/latest) 统一使用普通 Release；alpha 版本号仍表示兼容性可能变化，PyPI 选择它仍需明确 pin 或 `--pre`。
+当前版本：`0.1.0a27`；Git tag：`v0.1.0-alpha.27`。[GitHub Releases](https://github.com/skyhua0224/continuity-plane/releases/latest) 统一使用普通 Release；alpha 版本号仍表示兼容性可能变化，PyPI 选择它仍需明确 pin 或 `--pre`。
 
 [变更记录](CHANGELOG.md) · [发布与升级约定](docs/releases.md)

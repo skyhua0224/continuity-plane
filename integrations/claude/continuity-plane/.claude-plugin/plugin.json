@@ -1,6 +1,6 @@
 {
   "name": "continuity-plane",
-  "version": "0.1.0-alpha.26",
+  "version": "0.1.0-alpha.27",
   "author": {"name": "Continuity Plane contributors"},
   "description": "Bounded compaction handoff, Todo/task collaboration, reusable references and local byte accounting",
   "skills": "./skills/"

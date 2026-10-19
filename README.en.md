@@ -4,7 +4,7 @@ Continuity is a shared task, collaboration and context-continuity tool for peopl
 
 Use the CLI directly or let an agent call its MCP tools. Codex and Claude Code plugins connect tools and lifecycle hooks to the host; hooks save, recover and surface changes at relevant events. Bounded retrieval reduces repeated code reading. Output bytes, host tokens and cache counters help measure the result—there is no universal savings promise.
 
-[中文](README.md) · [Get Alpha26](https://github.com/skyhua0224/continuity-plane/releases/latest) · [Deployment](docs/deployment.en.md) · [People and agents: starting guide](docs/agent-start.en.md)
+[中文](README.md) · [Get Alpha27](https://github.com/skyhua0224/continuity-plane/releases/latest) · [Deployment](docs/deployment.en.md) · [People and agents: starting guide](docs/agent-start.en.md)
 
 [![PyPI](https://img.shields.io/pypi/v/continuity-plane?include_prereleases)](https://pypi.org/project/continuity-plane/)
 [![Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
@@ -33,7 +33,7 @@ Local-first by default: no cloud account, external database or resident service 
 Python 3.11+ is required; code indexing also needs Git. A pipx installation makes the CLI available to host integrations:
 
 ```bash
-pipx install 'continuity-plane==0.1.0a26'
+pipx install 'continuity-plane==0.1.0a27'
 continuity --version
 # Register inside your repository; replace demo with its stable project ID
 continuity collaboration register --project-id demo --control-root . --repository-root .
@@ -69,6 +69,8 @@ The view follows card status and defaults to open states. Repeat --status or use
 
 <a id="collaboration"></a>
 ## collaboration
+
+Alpha27 provides a [private Gitea Issue / PR backend](docs/gitea-collaboration.en.md): members use their own local CLI / MCP and tea login for shared tasks, claims, accepted handoffs and real PR review requests, without a Continuity server. Issues own task state; local snapshots are caches. Conflicts are explicit; claims are not strong cross-machine locks. The [storage/configuration contract](docs/collaboration-storage.en.md) separates committed declarations from member-local data. Local-card examples below are a separate mode.
 
 ### Create, assign and update task cards
 
@@ -151,7 +153,7 @@ The CLI implements the operations. **MCP exposes callable tools; plugins install
 | Codex plugin continuity-plane | Session/compaction lifecycle hooks; no MCP registration | You want automatic recovery and notices |
 | Codex plugin continuity-plane-search | continuity-search-mcp and its lookup tool | You only need bounded code retrieval |
 | Codex plugin continuity-plane-state | continuity-mcp: Todo/collaboration plus advanced State tools | The agent should manage cards, rules and handoffs; ordinary planning needs no State claim |
-| Claude Code plugin continuity-plane | Collaboration skill, eight hook events and both continuity/continuity-search MCP servers | One plugin for planning, retrieval and lifecycle integration |
+| Claude Code plugin continuity-plane | Collaboration skill, lifecycle hooks and both continuity/continuity-search MCP servers | One plugin for planning, retrieval and lifecycle integration |
 | Other stdio MCP clients | Connect the two servers below directly | You do not use a supported plugin marketplace |
 
 ### Install a plugin
@@ -160,7 +162,7 @@ Install the CLI first. On Codex CLI versions supporting these commands, choose t
 
 ```bash
 # Core hooks, independent search, and planning/State are separate components
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.26
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.27
 codex plugin add continuity-plane@continuity-plane
 codex plugin add continuity-plane-search@continuity-plane
 codex plugin add continuity-plane-state@continuity-plane
@@ -230,6 +232,8 @@ Without plugins, add this connection configuration to your MCP client. It is hos
 | PostToolUse | Supported | Supported | Bounded observation and changed worker-end/blocker/rule notices |
 | Stop | Supported | Supported | Completion/continuation checks, not inferred verification or review acceptance |
 | SubagentStart / SubagentStop | Not supplied by this plugin | Supported | Observe native children, without invented PIDs, exit codes, success or complete reports |
+
+Current source also supplies SessionEnd to mark loss of native-child observation after the owner session ends; the published Alpha27 plugin's eight events do not include it. The [source-tree recovery correction](docs/field-workflows.md#development-source-controller-recovery-and-change-consumers) also adds read-time handoff observations, consumer acknowledgements, dispatch snapshot checks and task aliases. These require a subsequent build, not an unchanged Alpha27 install.
 
 Skills are instructions the model can load; MCP tools are callable operations; hooks run at lifecycle events. Notices are changed-only and do not guarantee waking an offline conversation. Managed attempt records require a worker running under supervision.
 
@@ -353,7 +357,7 @@ Explicitly configure SSH aliases, project roots and owning-host adapters. Bridge
 
 ## Validation and documentation
 
-Current release: Alpha26, package 0.1.0a26 and plugin 0.1.0-alpha.26. [Validation](docs/validation.en.md) separates synthetic workflows, controlled hooks, user feedback and unproven behavior. [Historical measurements](docs/benchmarks.en.md) are not universal results for the latest version or every project. Metadata failures grant no authority and do not require resetting State for ordinary coding work.
+Current release: Alpha27, package 0.1.0a27 and plugin 0.1.0-alpha.27. [Validation](docs/validation.en.md) separates synthetic workflows, controlled hooks, user feedback and unproven behavior. [Historical measurements](docs/benchmarks.en.md) are not universal results for the latest version or every project. Metadata failures grant no authority and do not require resetting State for ordinary coding work.
 
 | Continue with | Guide |
 |---|---|

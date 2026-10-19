@@ -53,8 +53,10 @@ OPERATIONS = {
     },
     **{
         f"task.{name}": ("collaboration", "task", name)
-        for name in ("add", "update", "list", "show", "claim", "next")
+        for name in ("add", "update", "list", "show", "claim", "next", "release", "block", "handoff-request", "handoff-accept", "ready-for-review", "request-review", "resolve")
     },
+    **{f"backend.{name}": ("collaboration", "backend", name)
+       for name in ("configure", "doctor", "sync", "pending", "replay", "cached")},
     **{
         name: ("collaboration", name)
         for name in (
@@ -139,6 +141,9 @@ READ_ACTIONS = {
     "task.list",
     "task.show",
     "task.next",
+    "backend.doctor",
+    "backend.pending",
+    "backend.cached",
     "todo.list",
     "packet",
     "changes",
@@ -184,6 +189,7 @@ def help_for(topic="overview"):
         "supervisor",
         "bridge",
         "context",
+        "backend",
     }:
         names = [
             name
@@ -193,7 +199,7 @@ def help_for(topic="overview"):
         return {
             "topic": topic,
             "operations": names,
-            "scope": "Local planning metadata only; no State claim, provider launch, merge or deployment.",
+            "scope": "Local planning by default; configured Gitea tasks use shared Issues/PR via member-local tea. No State claim, provider launch, merge or deployment.",
             "next": "Use continuity help OPERATION for its complete CLI/MCP parameters.",
             "cli_only_operations": list(CLI_HELP),
         }
@@ -228,6 +234,7 @@ def help_for(topic="overview"):
         "parameters": parameters,
         "help": parser.format_help(),
         "mutates_local_metadata": topic not in READ_ACTIONS,
+        "shared_backend_effects": "Configured gitea-issues task mutations publish to Issues or request real PR reviews using local member authentication; no merge/deploy authority",
     }
 
 
@@ -271,6 +278,15 @@ def _brief(value):
                 ],
                 value["next"],
             ]
+        if "read_model" in value and isinstance(value.get("observed"), dict):
+            observed = value["observed"]
+            changed = len(observed.get("changed_cards", []))
+            total = observed.get("changed_cards_total", changed)
+            return [f"handoff revision={value.get('revision', 0)} as_of={observed.get('as_of')} running={observed.get('running_workers_total', 0)} unread={observed.get('inbox', {}).get('count', 0)} changed_cards={changed}/{total} remaining_changed_cards={max(0, total-changed)}",
+                    "plan: " + str(value.get("plan") or "")[:300],
+                    "next: " + str(value.get("next_action") or "")[:240],
+                    *[_row(r) for r in observed.get("changed_cards", [])],
+                    "Read JSON for declared/observed provenance and omitted details."]
         rows = next(
             (
                 value[k]
@@ -281,8 +297,19 @@ def _brief(value):
         )
         if rows is not None:
             heading = f"status={value.get('status', 'ok')} count={len(rows)}"
+            if value.get("truncated"):
+                totals = [value[k] for k in ("total_items", "total_tasks", "total_changes", "total_messages", "total_matches") if isinstance(value.get(k), int)]
+                total = max(totals or [len(rows)])
+                heading += f" total={total} remaining={max(0, total - len(rows))} truncated=true"
+                heading += " [narrow filters or increase max_output_bytes]"
             if "next_cursor" in value:
                 heading += f" next_cursor={value['next_cursor']} timed_out={value.get('timed_out', False)}"
+            if value.get("ack_revision"):
+                heading += " ack_revision=" + value["ack_revision"]
+            if value.get("has_more"):
+                heading += " has_more=true"
+            if isinstance(value.get("consumer"), dict):
+                heading += f" consumer={value['consumer']['name']} acknowledged_cursor={value['consumer']['acknowledged_cursor']}"
             return [heading] + [_row(row) for row in rows]
         return [_row(value)]
     if isinstance(value, list):
@@ -340,6 +367,13 @@ def _row(row):
         line += " | EVIDENCE GAPS: " + ", ".join(row["evidence_gaps"])
     if row.get("planning_warnings"):
         line += " | NOTE: " + "; ".join(row["planning_warnings"])
+    if row.get("authority") == "gitea-issue":
+        line += " | revision=" + str(row.get("remote_revision", "")) + " | coordination-only, exclusive=false"
+    for flag in ("review_requested", "handoff_requested", "dependencies_ready"):
+        if row.get(flag):
+            line += " | " + flag
+    if row.get("conflict_count"):
+        line += " | conflicts=" + str(row["conflict_count"])
     return line
 
 
@@ -363,6 +397,20 @@ def render(value, *, format="json", max_output_bytes=8192):
         text = json.dumps(view, ensure_ascii=False, sort_keys=True)
         if len(text.encode()) <= budget:
             return text
+        if isinstance(view, dict) and isinstance(view.get("observed"), dict):
+            view["details_omitted"] = True
+            view["truncated"] = True
+            if "snapshot_scene" in view:
+                del view["snapshot_scene"]
+                continue
+            if "scene" in view:
+                del view["scene"]  # Compatibility alias, not a second observation.
+                continue
+            observed = view["observed"]
+            field = next((k for k in ("changed_cards", "changes_since_handoff", "workers", "native_workers", "reports", "drift", "recent_batches", "approved_decisions") if observed.get(k)), None)
+            if field:
+                observed[field].pop()
+                continue
         if isinstance(view, list):
             view = {"items": view, "total_items": len(view), "truncated": True}
         elif isinstance(view, dict):
@@ -405,6 +453,17 @@ def render(value, *, format="json", max_output_bytes=8192):
                         "total_tasks",
                         "total_changes",
                         "timed_out",
+                        "revision",
+                        "next_action",
+                        "remote_revision",
+                        "operation_id",
+                        "issue_number",
+                        "issue_url",
+                        "assignee",
+                        "authority",
+                        "exclusive",
+                        "claim_guarantee",
+                        "ack_revision",
                     }
                 }
                 essential.update(
@@ -412,6 +471,8 @@ def render(value, *, format="json", max_output_bytes=8192):
                     details_omitted=True,
                     hint="Increase max_output_bytes for complete fields.",
                 )
+                if isinstance(essential.get("next_action"), str):
+                    essential["next_action"] = essential["next_action"][:240]
                 if essential == view:
                     raise ValueError("output identifiers exceed budget")
                 view = essential
@@ -605,11 +666,11 @@ def tool_definitions():
         },
         {
             "name": "continuity_plan",
-            "description": "Manage Todo, task cards, collaboration and reference sources with full CLI parameter parity. Use continuity_help for parameter names. Local metadata only: no State claim, provider launch, merge or deployment. Default brief output.",
+            "description": "Manage tasks, Todo, collaboration and sources with CLI parity. Configured Gitea projects read/write shared Issues and real PR review requests using this member's local authentication; otherwise local metadata. No provider launch, merge or deployment. Discover parameters with continuity_help. Default brief output.",
             "annotations": {
                 "readOnlyHint": False,
                 "destructiveHint": False,
-                "openWorldHint": False,
+                "openWorldHint": True,
             },
             "inputSchema": {
                 "type": "object",
@@ -662,6 +723,8 @@ def extend_tools(legacy):
                         schema = {"type": "array", "items": schema}
                     properties[name] = schema
             if tool["name"] == "continuity_collaboration":
+                tool.setdefault("annotations", {})["openWorldHint"] = True
+                tool["description"] += " Configured Gitea projects read shared Issues via member-local tea."
                 properties.update(
                     status={"type": "string"},
                     lane_id={"type": "string"},
@@ -763,10 +826,25 @@ def handle_tool(name, arguments):
         if not isinstance(parameters, dict):
             raise ValueError("parameters must be an object")
         parameters = dict(parameters)
-        # A controller's implicit routing identity must not reassign every card
-        # it annotates. Explicit executor_id still requests ownership checking.
-        controller_annotation = operation == "task.update" and explicit_executor is None and os.environ.get("CONTINUITY_ROLE") == "controller" and "assignee" not in parameters
-        if executor and not controller_annotation and operation in {"task.add", "task.update", "task.claim", "todo.activate"}:
+        # Caller identity and target assignment are different. Controllers may
+        # create/delegate cards without becoming their executor. Explicit
+        # executor_id retains the stricter worker identity contract.
+        controller_delegation = (
+            operation in {"task.add", "task.update"}
+            and os.environ.get("CONTINUITY_ROLE") == "controller"
+            and (
+                explicit_executor is None
+                or explicit_executor == os.environ.get("CONTINUITY_ASSIGNEE")
+            )
+        )
+        from .gitea_cli import is_shared_project
+
+        shared = is_shared_project(data_root, project_id, root)
+        if executor and not shared and operation in {"task.add", "task.update"}:
+            if parameters.get("actor") not in (None, executor):
+                raise ValueError("actor conflicts with stable executor_id")
+            parameters["actor"] = executor
+        if executor and not shared and not controller_delegation and operation in {"task.add", "task.update", "task.claim", "todo.activate"}:
             if parameters.get("assignee") not in {None, executor}:
                 raise ValueError("assignee conflicts with stable executor_id; use an explicit audited CLI reassignment")
             parameters["assignee"] = executor

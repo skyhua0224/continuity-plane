@@ -6,6 +6,8 @@ Find the current task, next action and verification entry. CLI, SSH and MCP are 
 
 ## Registered project: four commands
 
+If `.continuity/collaboration.toml` declares gitea-issues, first follow the [Gitea workflow](gitea-collaboration.en.md): check features, your own local authentication and backend sync. Human Gitea accounts own shared tasks, not the local agent assignee below. No permanent controller is required. Installation needs user authorization; never request plaintext tokens.
+
 Run inside the project. Replace demo, agent-1 and controller with the real project, independent executor instance and controller. Concurrent workers must not share an identity.
 
 ```bash
@@ -15,7 +17,7 @@ continuity collaboration packet --project-id demo --assignee agent-1
 continuity handoff show --project-id demo
 ```
 
-Alpha26 CLI is 0.1.0a26; plugins are 0.1.0-alpha.26. First [initialize an unregistered project](../USAGE.en.md#initialize), without overwriting an existing .continuity directory. whoami neither logs into providers nor acquires a lease.
+Alpha27 CLI is 0.1.0a27; plugins are 0.1.0-alpha.27. First [initialize an unregistered project](../USAGE.en.md#initialize), without overwriting an existing .continuity directory. whoami neither logs into providers nor acquires a lease.
 
 ## Paste into the brief
 

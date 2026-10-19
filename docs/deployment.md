@@ -2,13 +2,14 @@
 
 [English](deployment.en.md) · [文档索引](README.md) · [快速开始](../USAGE.md)
 
-适用版本：CLI `0.1.0a26`，插件 tag `v0.1.0-alpha.26`。CLI、MCP 与宿主 hook 是三个需要分别验证的层次。
+适用版本：CLI `0.1.0a27`，插件 tag `v0.1.0-alpha.27`。CLI、MCP 与宿主 hook 是三个需要分别验证的层次。
 
 ## 选择部署方式
 
 | 场景 | 安装在哪 | 额外条件 |
 |---|---|---|
 | 个人／同机多个会话 | 本机一份 CLI，每项目单独注册 | 不需要后台服务 |
+| 跨成员共享私有 Issue／PR | 各自本机 CLI/MCP + tea 登录，同一 Gitea 仓库 | 无 Continuity 服务／共享数据库；[配置边界](collaboration-storage.md) |
 | Claude Code 或 Codex 自动接续 | CLI + 对应插件／hook | 宿主实际加载、信任并触发 hook |
 | 控制端与状态端分离 | 状态端 CLI/MCP，控制端 SSH bridge | 明确 SSH alias、两端项目路径与目标 profile |
 | 强一致 State 服务 | 显式部署相应 adapter/service | 不是默认一键能力，见 [State](state-workflows.md) |
@@ -21,7 +22,7 @@
 
 ```bash
 python3 -m venv .venv
-.venv/bin/python -m pip install 'continuity-plane==0.1.0a26'
+.venv/bin/python -m pip install 'continuity-plane==0.1.0a27'
 .venv/bin/continuity --version
 ```
 
@@ -30,7 +31,7 @@ Windows PowerShell 对应 `py -3 -m venv .venv`、`.venv\Scripts\python.exe` 和
 希望全局使用时可选 pipx：
 
 ```bash
-pipx install 'continuity-plane==0.1.0a26'
+pipx install 'continuity-plane==0.1.0a27'
 pipx upgrade continuity-plane --pip-args=--pre
 ```
 
@@ -39,12 +40,14 @@ pipx upgrade continuity-plane --pip-args=--pre
 已有 pipx/uv 环境无法重建时，更新原解释器，不使用破坏性重装：
 
 ```bash
-uv pip install --python /path/to/pipx/venvs/continuity-plane/bin/python --reinstall-package continuity-plane 'continuity-plane==0.1.0a26'
+uv pip install --python /path/to/pipx/venvs/continuity-plane/bin/python --reinstall-package continuity-plane 'continuity-plane==0.1.0a27'
 ```
 
 pipx 的显示元数据可能仍需其正常 upgrade 流程刷新。网络失败时可用已核对摘要的 wheel 离线安装；不要关闭 TLS 验证，也不要把临时离线参数永久留给后续升级。
 
 ## 数据分别放在哪里
+
+Gitea 模式先读[仓库与全局配置规范](collaboration-storage.md)：Issue／PR 是共享权威，仓库仅提交声明和规则；本机 State／注册表不成为远端任务账本。`~/.continuity` 仅在显式选作数据根时生效，并非隐式全局配置文件。
 
 | 数据 | 默认位置／选择方式 | 备份范围 |
 |---|---|---|
@@ -67,7 +70,7 @@ continuity storage inspect --path /path/to/persistent/work
 先安装 CLI。添加 marketplace，再选择插件：
 
 ```bash
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.26
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.27
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -91,7 +94,7 @@ codex plugin add continuity-plane-state@continuity-plane
 ```bash
 # 仅切换 Continuity 市场的固定版本
 codex plugin marketplace remove continuity-plane
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.26
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.27
 codex plugin marketplace upgrade continuity-plane
 ```
 
@@ -119,7 +122,7 @@ claude plugin install continuity-plane@continuity-plane --scope user
 claude plugin list
 ```
 
-本地插件使用安装包的 `continuity-host-hook`，包括 SessionStart、PreCompact、PostCompact、UserPromptSubmit、PostToolUse、Stop、SubagentStart、SubagentStop。新开会话后核对事件记录。
+本地插件使用安装包的 `continuity-host-hook`，包括 SessionStart、SessionEnd、PreCompact、PostCompact、UserPromptSubmit、PostToolUse、Stop、SubagentStart、SubagentStop。新开会话后核对事件记录。
 
 Claude PostCompact 只验证，SessionStart(compact) 才注入上下文。原生子代理 start/stop 只是观察，不能据此推断测试成功、退出码或完整报告。安装检查通过不代表自然发生的子代理生命周期已经实测。
 
@@ -179,7 +182,7 @@ bridge 默认可转发有界的当前显式清单指令；上例关闭了这一�
 
 ### 远端检索
 
-MCP 可以通过 SSH 在状态端启动 `continuity-search-mcp`，此时 `root` 是远端仓库。Alpha26 也支持本机 search MCP 显式指定工具参数 `bridge_config`，或启动环境 `CONTINUITY_BRIDGE_CONFIG=/path/to/bridge.json`：仅把精确匹配的 local_root 映射到 remote_root，经 `continuity-remote-cli` 执行检索。配置可选 `remote_cli_endpoint`、`lookup_timeout_seconds` 和所属机器的 `remote_data_root`。未匹配、多重匹配或传输失败时明确报错，不回退本机；远端模式拒绝本机 cache_path/data_root。没有任意远端文件／进程管理接口。此路由有合成协议测试，尚未作为 Alpha26 在真实双机环境重新实测。
+MCP 可以通过 SSH 在状态端启动 `continuity-search-mcp`，此时 `root` 是远端仓库。Alpha27 也支持本机 search MCP 显式指定工具参数 `bridge_config`，或启动环境 `CONTINUITY_BRIDGE_CONFIG=/path/to/bridge.json`：仅把精确匹配的 local_root 映射到 remote_root，经 `continuity-remote-cli` 执行检索。配置可选 `remote_cli_endpoint`、`lookup_timeout_seconds` 和所属机器的 `remote_data_root`。未匹配、多重匹配或传输失败时明确报错，不回退本机；远端模式拒绝本机 cache_path/data_root。没有任意远端文件／进程管理接口。此路由有合成协议测试，尚未作为 Alpha27 在真实双机环境重新实测。
 
 MCP 使用稳定执行者身份：在 server 环境设置 `CONTINUITY_ASSIGNEE=worker-a`，或每次 `continuity_plan` 传同一 `executor_id`。task add/update/claim 和 todo activate 自动沿用它；其他执行者的冲突仍被拒绝。session_id 只用于恢复，不再改写卡片 assignee。这是协作身份声明，不是原生账号认证；不要把所有 worker 配成同一身份。
 
@@ -194,7 +197,7 @@ MCP 使用稳定执行者身份：在 server 环境设置 `CONTINUITY_ASSIGNEE=w
 | 消息或结束事件没看到 | 收件人、task id、游标分页、wait 超时；不要跳到 high-water 跳过未交付页 |
 | 规则正文缺失 | 用 rules export；长文检查附件 hash，不接受静默截断 |
 | 更换 MCP 连接后自己的卡被拒 | 核对 CONTINUITY_ASSIGNEE/executor_id 与原 assignee 是否一致；不自动把旧连接身份转换为新身份 |
-| worker 提前改卡后报告未挂卡 | Alpha26 已修；核对是否是旧运行、旧 MCP、过期 attempt 或换过执行者，已有历史文件仍可显式挂载 |
+| worker 提前改卡后报告未挂卡 | Alpha27 已修；核对是否是旧运行、旧 MCP、过期 attempt 或换过执行者，已有历史文件仍可显式挂载 |
 | hook 故障影响体验 | 临时 `CONTINUITY_DISABLED=1`，保留日志与原配置；不要删除账号数据 |
 
 升级前保存软件版本、配置备份、注册表与自定义产物位置。回滚软件后恢复对应 hook/MCP 入口并重连。启用 guarded ledger v4 的项目不能指望旧 dispatcher 继续读取；保留升级前备份，先协调参与者，不擅自把新 schema 改回旧值。

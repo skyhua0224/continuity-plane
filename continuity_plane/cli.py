@@ -4780,6 +4780,7 @@ def _collaboration_task_add(args: argparse.Namespace) -> int:
         released_in=args.released_in,
         body=task_body(args),
         report_policy=args.report_policy,
+        actor=args.actor if args.actor is not None else os.environ.get("CONTINUITY_ASSIGNEE") or None,
     )
     print(json.dumps(task, ensure_ascii=False, sort_keys=True))
     return 0
@@ -4811,6 +4812,7 @@ def _collaboration_task_update(args: argparse.Namespace) -> int:
         body=task_body(args),
         force=args.force,
         force_reason=args.force_reason,
+        actor=args.actor if args.actor is not None else os.environ.get("CONTINUITY_ASSIGNEE") or None,
     )
     from .delivery_records import detail_view
 
@@ -4837,6 +4839,8 @@ def _collaboration_task_next(args: argparse.Namespace) -> int:
 
 
 def _collaboration_task_claim(args: argparse.Namespace) -> int:
+    if not args.assignee:
+        raise ValueError("local task claim requires --assignee; shared tasks use authenticated account")
     task = claim_task(
         args.data_root,
         project_id=args.project_id,
@@ -4951,14 +4955,8 @@ def _collaboration_task_list(args: argparse.Namespace) -> int:
 
 
 def _collaboration_changes(args: argparse.Namespace) -> int:
-    value = list_changes(
-        args.data_root,
-        project_id=args.project_id,
-        since=args.since,
-        max_results=args.max_results,
-    )
-    print(_bounded_changes(value, args.max_output_bytes))
-    return 0
+    from .change_consumers import command
+    return command(args, list_changes, _bounded_changes)
 
 
 def _bounded_changes(value: dict, budget: int) -> str:
@@ -5246,6 +5244,9 @@ def _collaboration_drift(args: argparse.Namespace) -> int:
                     "message": f"no card update for {age_hours:.1f} hours",
                 }
             )
+    from .controller_observation import report_facts
+    findings.extend(r for r in report_facts(args.data_root, args.project_id, tasks)
+                    if r["newer_than_card"])
     print(
         json.dumps(
             {
@@ -6212,6 +6213,9 @@ def build_parser() -> argparse.ArgumentParser:
     collaboration_task_add.add_argument("--preauthorized-effect", action="append")
     collaboration_task_add.add_argument("--queued-effect", action="append")
     collaboration_task_add.add_argument("--assignee", default=None)
+    collaboration_task_add.add_argument(
+        "--actor", help="Stable creator identity; defaults to CONTINUITY_ASSIGNEE, not the target assignee"
+    )
     collaboration_task_add.add_argument("--branch", default=None)
     collaboration_task_add.add_argument("--commit", default=None)
     collaboration_task_add.add_argument("--verification", default=None)
@@ -6252,6 +6256,9 @@ def build_parser() -> argparse.ArgumentParser:
     collaboration_task_update.add_argument("--blocked-reason", default=None)
     collaboration_task_update.add_argument("--result", default=None)
     collaboration_task_update.add_argument("--assignee", default=None)
+    collaboration_task_update.add_argument(
+        "--actor", help="Stable caller identity for reassignment, distinct from --assignee; defaults to CONTINUITY_ASSIGNEE"
+    )
     collaboration_task_update.add_argument("--branch", default=None)
     collaboration_task_update.add_argument("--commit", default=None)
     collaboration_task_update.add_argument("--verification", default=None)
@@ -6352,7 +6359,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     collaboration_changes.add_argument("--data-root", default=None)
     collaboration_changes.add_argument("--project-id", required=True)
-    collaboration_changes.add_argument("--since", type=int, default=0)
+    collaboration_changes.add_argument("--since", type=int, default=None)
+    collaboration_changes.add_argument("--consumer", help="Persisted project-scoped at-least-once consumer; reads replay until --ack")
+    collaboration_changes.add_argument("--ack", type=int, help="Acknowledge a previously returned cursor, then read the next page")
+    collaboration_changes.add_argument("--reset-consumer", action="store_true", help="Explicitly reset this consumer to --since; does not delete events")
     collaboration_changes.add_argument("--max-results", type=int, default=50)
     collaboration_changes.add_argument("--max-output-bytes", type=int, default=4096)
     collaboration_changes.set_defaults(handler=_collaboration_changes)
@@ -6749,6 +6759,16 @@ def build_parser() -> argparse.ArgumentParser:
             for action in leaf._actions:
                 if action.dest == "project_id":
                     action.required = False
+    from .gitea_cli import add_parsers as add_gitea_parsers
+
+    add_gitea_parsers(collaboration_commands, collaboration_task_commands)
+    # Both entrypoints share the exact parser and handler, including future flags.
+    task_group = commands.choices.get("task")
+    if task_group is not None:
+        aliases = next(a for a in task_group._actions if isinstance(a, argparse._SubParsersAction))
+        for name, leaf in collaboration_task_commands.choices.items():
+            aliases.add_parser(name, parents=[leaf], add_help=False,
+                               help=f"Alias of collaboration task {name}")
     return parser
 
 
@@ -6811,7 +6831,8 @@ def main(argv: list[str] | None = None) -> int:
         getattr(args, "handler", None) is _executor_recommendation and not args.save
     ) or getattr(args, "handler", None) is _executor_scenarios
     if (
-        getattr(args, "command", None) == "collaboration"
+        (getattr(args, "command", None) == "collaboration"
+         or (getattr(args, "command", None) == "task" and getattr(args, "task_action", None) != "merged"))
         and hasattr(args, "project_id")
         and args.project_id is None
         and not routing_preview
@@ -6847,7 +6868,10 @@ def main(argv: list[str] | None = None) -> int:
             args.root = str(resolve_control_root(args.root))
         except WorkspaceBindingError as exc:
             raise ValueError(str(exc)) from exc
-    result = int(args.handler(args))
+    from .gitea_cli import maybe_route
+
+    shared_result = maybe_route(args)
+    result = int(args.handler(args) if shared_result is None else shared_result)
     if result == 0 and getattr(args, "command", None) == "init":
         register_control_root(args.root)
     return result

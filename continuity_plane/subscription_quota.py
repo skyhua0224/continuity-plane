@@ -280,6 +280,7 @@ def return_ready(root, data_root, project_id, handoff_id, *, execute=False):
             resume=True,
             resume_job=value["primary_job"],
             background=True,
+            handoff={"approval_id": value["id"], "preserve_progress": True},
         )
         value["status"] = "returned"
         value["return_job"] = result["job_id"]

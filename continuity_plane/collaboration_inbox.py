@@ -64,6 +64,13 @@ def _messages(path: Path) -> list[dict[str, Any]]:
     return messages
 
 
+def unread_summary(data_root, *, project_id, recipient=None):
+    rows = [r for r in _messages(_path(data_root, project_id))
+            if r["acknowledged_at"] is None and (recipient is None or r["recipient"] == recipient)]
+    return {"count": len(rows), "oldest_at": min((r["created_at"] for r in rows), default=None),
+            "recipient": recipient, "scope": "recipient" if recipient else "project"}
+
+
 def send_message(
     data_root: Path | str | None,
     *,

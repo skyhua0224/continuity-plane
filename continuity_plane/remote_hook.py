@@ -185,10 +185,12 @@ def forward(payload, config, *, runner=subprocess.run):
     )
     outgoing = {k: payload[k] for k in allowed if k in payload}
     outgoing["cwd"] = remote
-    if payload.get("hook_event_name") in {"SubagentStart", "SubagentStop"}:
+    if payload.get("hook_event_name") in {"SubagentStart", "SubagentStop", "SessionStart", "SessionEnd"}:
         from .runtime_origin import current
+        from .native_subagents import boot_identity
 
         outgoing["collection_origin"] = current("claude")
+        outgoing["boot_id_sha256"] = boot_identity()
     if not config.get("forward_checklists", True):
         outgoing.pop("prompt", None)
     elif (
@@ -534,6 +536,7 @@ def install_profile(profile, config_file, executable):
         "Stop": "",
         "SubagentStart": "",
         "SubagentStop": "",
+        "SessionEnd": "",
     }
     with _locked(settings):
         original = settings.read_bytes() if settings.exists() else b"{}\n"

@@ -196,6 +196,7 @@ def compose_collaboration_packet(
         else []
     )
     packet["unread_message_count"] = len(messages)
+    packet["oldest_unread_message_at"] = min((m["created_at"] for m in messages), default=None)
     if messages:
         packet["inbox"] = [
             {**item, "body": item["body"][:512], "authority": "handoff-hint-only"}

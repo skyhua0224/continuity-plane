@@ -2,9 +2,11 @@
 
 [English](validation.en.md) · [工作流](workflows.md) · [历史实验](benchmarks.md)
 
-范围：Alpha26（`0.1.0a26`）。证据分为本轮合成 CLI、已有自动回归、匿名使用反馈和未覆盖项，不能互相替代。
+范围：Alpha27（`0.1.0a27`）。证据分为本轮合成 CLI、已有自动回归、匿名使用反馈和未覆盖项，不能互相替代。
 
 ## 本轮可复现实测
+
+Alpha27 新增本机 tea 0.15.0／HTTPS Gitea 1.24.7 双合成账号私有仓库验收；并发／断网／重复发送使用确定性合成测试，见[本版范围](release-alpha27.md)。下方采用者脚本已在隔离安装的 Alpha27 重跑，receipt 仅含允许公开的合成聚合数据；完整回归以 tag CI 为准。
 
 运行公开脚本；使用一个**新建、空的持久目录**，不指向自己的注册表或 provider profile：
 
@@ -26,7 +28,7 @@ python examples/verify_adopter_workflows.py --workspace /path/to/new-persistent-
 | 失败子进程 | 原退出码 3 被保存；dispatch CLI 非零（2） |
 | 单次 merged 元数据与 commit 绑定检查 | 通过；不执行真实 Git 合入 |
 | shared handoff、lesson、第二主控只读 | 通过 |
-| 逐条事件翻页、多事件 wait、无变化读取 | 通过；该 fixture 无变化响应 196 bytes |
+| 逐条事件翻页、多事件 wait、无变化读取 | 通过；该 fixture 无变化响应 216 bytes |
 | worker 提前改为待评审后的报告 | 自动挂卡并由 report 读取；不接受手工挂载替代此检查 |
 
 13 个正向检查通过，另验证提前改卡后的自动报告交付。字节数只描述该固定样例，不是生产项目吞吐、模型 token 降幅或费用节省。
@@ -55,7 +57,7 @@ python examples/verify_adopter_workflows.py --workspace /path/to/new-persistent-
 
 Alpha25 的[公开发行 CI](https://github.com/skyhua0224/continuity-plane/actions/runs/38845950775)通过 268 项测试。文档新增脚本和链接／命令检查另随当前主分支 CI 运行；不改写已发布 wheel 或历史 test count。
 
-## Alpha26 采用问题回归
+## Alpha27 采用问题回归
 
 | 修复 | 本轮证据 | 保留边界 |
 |---|---|---|

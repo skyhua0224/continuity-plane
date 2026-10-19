@@ -439,6 +439,7 @@ def list_changes(
         "next_cursor": selected[-1]["cursor"] if selected else since,
         "high_water_cursor": max([row["cursor"] for row in rows] or [0]),
         "changes": selected,
+        "total_changes": len(pending),
         "truncated": len(selected) < len(pending),
         "corrupt_lines": corrupt,
     }
@@ -624,8 +625,13 @@ def add_task(
     landed_commit: str | None = None,
     released_in: str | None = None,
     body: str | None = None,
+    actor: str | None = None,
 ) -> dict[str, Any]:
     """Add a bounded task card without granting execution authority."""
+    if actor is not None and (
+        not isinstance(actor, str) or _ASSIGNEE_RE.fullmatch(actor) is None
+    ):
+        raise CollaborationRegistryError("actor must be a valid stable assignee")
     root = Path(data_root) if data_root is not None else default_data_root()
     task = {
         "schema_version": TASK_CARD_SCHEMA,
@@ -662,6 +668,10 @@ def add_task(
             raise CollaborationRegistryError("task_id already exists")
         _note_lane(ledger, task)
         ledger["tasks"].append(task)
+        if actor is not None:
+            ledger.setdefault("task_details", {}).setdefault(task_id, {})[
+                "created_by"
+            ] = actor
         if body is not None:
             ledger.setdefault("task_details", {}).setdefault(task_id, {})["body"] = (
                 _text(body, "task body", 32768, multiline=True)
@@ -675,6 +685,7 @@ def add_task(
             task_id,
             status=task["status"],
             assignee=task["assignee"],
+            actor=actor,
         )
     return task
 
@@ -701,8 +712,13 @@ def update_task(
     body: str | None = None,
     force: bool = False,
     force_reason: str | None = None,
+    actor: str | None = None,
 ) -> dict[str, Any]:
     """Update a card; local completion is ready-for-review, not acceptance."""
+    if actor is not None and (
+        not isinstance(actor, str) or _ASSIGNEE_RE.fullmatch(actor) is None
+    ):
+        raise CollaborationRegistryError("actor must be a valid stable assignee")
     if force and (not isinstance(force_reason, str) or not force_reason.strip()):
         raise CollaborationRegistryError("--force requires a recorded --force-reason")
     root = Path(data_root) if data_root is not None else default_data_root()
@@ -714,6 +730,27 @@ def update_task(
         )
         if task is None:
             raise CollaborationRegistryError("task_id does not exist")
+        details = ledger.setdefault("task_details", {}).setdefault(task_id, {})
+        previous_assignee = task["assignee"]
+        reassigning = assignee is not None and assignee != previous_assignee
+        if reassigning and previous_assignee is not None and not force:
+            binding = ledger.get("execution_bindings", {}).get(task_id, {})
+            creator_can_reassign = (
+                actor is not None
+                and details.get("created_by") == actor
+                and details.get("claimed_by") != previous_assignee
+                and task["status"] != "dispatched"
+            )
+            if binding.get("status") == "running" or not (
+                actor == previous_assignee or creator_can_reassign
+            ):
+                raise CollaborationRegistryError(
+                    "task is already assigned to another session; use the current "
+                    "owner or recorded creator to reassign an unclaimed card, "
+                    "declaring the caller with --actor; "
+                    "a running attempt requires explicit --force --force-reason. "
+                    f"If you are the recorded owner, use --actor {previous_assignee} --assignee {assignee}."
+                )
         status_supplied = status is not None
         if not status_supplied:
             status = task["status"]
@@ -738,7 +775,6 @@ def update_task(
                 task[field] = value
         from .delivery_records import verification_record, merge_gate
 
-        details = ledger.setdefault("task_details", {}).setdefault(task_id, {})
         if verification_data is not None:
             verified = verification_record(verification_data, task.get("commit"))
             details["verification_records"] = (
@@ -766,15 +802,16 @@ def update_task(
                 {"reason": _text(force_reason, "force_reason", 2048), "at": _now()}
             )
         if assignee is not None:
-            if (
-                task["assignee"] is not None
-                and task["assignee"] != assignee
-                and not force
-            ):
-                raise CollaborationRegistryError(
-                    "task is already assigned to another session"
-                )
             task["assignee"] = assignee
+        if reassigning:
+            details.pop("claimed_by", None)
+            details["reassignments"] = (
+                details.get("reassignments", [])
+                + [{"from": previous_assignee, "to": assignee, "actor": actor,
+                    "at": _now(), "forced": force, "reason": force_reason}]
+            )[-32:]
+        if status_supplied and status == "active" and actor == task["assignee"] and actor is not None:
+            details["claimed_by"] = actor
         task["status"] = status
         if next_action is not None:
             task["next_action"] = _text(next_action, "next_action", 1024)
@@ -790,6 +827,7 @@ def update_task(
             task["blocked_reason"] = None
         if status_supplied and status == "queued":
             task["assignee"] = None
+            details.pop("claimed_by", None)
         task["updated_at"] = _now()
         _validate_task(task)
         _note_lane(ledger, task)
@@ -802,6 +840,8 @@ def update_task(
             task_id,
             status=status,
             assignee=task["assignee"],
+            actor=actor,
+            previous_assignee=previous_assignee,
         )
         return task
 
@@ -837,6 +877,9 @@ def claim_task(
             )
         task["status"] = "active"
         task["assignee"] = assignee
+        ledger.setdefault("task_details", {}).setdefault(task_id, {})[
+            "claimed_by"
+        ] = assignee
         if resolved_worktree is not None:
             task["worktree"] = resolved_worktree
         task["updated_at"] = _now()

@@ -125,6 +125,8 @@ def run_attempt(
     controller: str | None = None,
     event_prefix: str = "attempt",
     command_receipt: list[str] | None = None,
+    expected_scope: str | None = None,
+    expected_updated_at: str | None = None,
 ) -> dict[str, Any]:
     if not command:
         raise ValueError("command is required")
@@ -177,6 +179,9 @@ def run_attempt(
                 if retry_number
                 else None,
                 require_idle=True,
+                expected_scope=expected_scope,
+                expected_updated_at=expected_updated_at if retry_number == 0 else None,
+                model=model,
             )
         except ValueError as exc:
             if retry_number:
@@ -184,6 +189,8 @@ def run_attempt(
                 break
             raise
         except OSError:
+            if expected_scope is not None:
+                raise  # A prepared worker must not run an unvalidated task snapshot.
             enqueue(
                 root,
                 project_id,
@@ -335,8 +342,7 @@ def run_attempt(
                 classify(
                     "cyber_policy"
                     if policy_seen
-                    else getattr(on_output, "terminal_failure", None)
-                    or reader.snapshot()[1]
+                    else reader.snapshot()[1] + "\n" + (getattr(on_output, "terminal_failure", None) or "")
                 )
                 if status != "completed"
                 else {}
@@ -388,6 +394,23 @@ def run_attempt(
             **projection,
             **failure,
         }
+        if status == "failed" and failure.get("failure_class") in {"rate-limit", "capacity", "gateway", "upstream-reset"}:
+            if retry_number >= retry or not failure.get("retryable"):
+                last_result["retry_exhausted"] = retry_number >= retry
+                last_result["next_actions"] = [{
+                    "kind": "explicit-new-session",
+                    "command": ["continuity", "dispatch", "--project-id", project_id,
+                                "--task-id", task_id, "--assignee", assignee,
+                                *(["--model", model] if model else [])],
+                    "note": "Review current rules, card and existing work first; do not repeat completed steps. A different model needs an explicit authorized reassignment/handoff.",
+                }]
+                if failure.get("failure_class") == "rate-limit":
+                    last_result["next_actions"] = [{
+                        "kind": "wait-for-availability",
+                        "available_at": failure.get("available_at"),
+                        "command": ["continuity", "quota", "report", "--project-id", project_id],
+                        "note": "Honor provider retry-after/cooldown; a new thread does not reset quota. Consider another model only through an explicitly authorized handoff.",
+                    }]
         if status != "failed" or retry_number >= retry or not failure.get("retryable"):
             break
         delay = failure.get("retry_after_seconds")

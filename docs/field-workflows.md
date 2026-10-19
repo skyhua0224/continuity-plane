@@ -4,7 +4,98 @@
 
 This is the detailed command reference. Use the capability matrix for present coverage; historical Alpha24 observations below are not a new Alpha25 field trial. Todo, claim and inbox are optional when an existing card/handoff workflow already provides the needed coordination.
 
-## Alpha25: controller workflow additions
+## Source-tree fix: caller identity and reassignment
+
+The reassignment correction below is not included in the published `0.1.0a27` package.
+In the corrected source, task add/update accept `--actor` for the caller and
+`--assignee` for the target worker. Actor defaults to `CONTINUITY_ASSIGNEE`;
+creating a card records its creator. Do not use an MCP connection ID as this identity.
+
+```bash
+continuity collaboration task update --project-id demo --task-id parser-fix \
+  --actor controller --assignee worker-b
+```
+
+The recorded creator can change a planned assignment until the worker claims or
+starts it; the current owner can hand off its own non-running card. A running
+attempt still requires an explicit audited override. Legacy cards without a
+recorded creator are not silently attributed to the caller. Reassignments record
+the caller, old/new assignees and any override reason. These are local planning
+identities, not native account authentication or external-operation authorization.
+
+For a controller MCP, configure `CONTINUITY_ROLE=controller` and a stable
+`CONTINUITY_ASSIGNEE`: creating or changing a target no longer assigns the card
+to the controller. Explicit worker identities retain their ownership/conflict checks.
+Both CLI help and `continuity_help` expose the new actor parameter.
+
+## Development source: controller recovery and change consumers
+
+This section describes the current source-tree correction, not features already
+installed by the published `0.1.0a27` package. It requires a later build and fresh
+MCP connections; it does not migrate native accounts or provider sessions.
+
+`handoff show` keeps `declared` (the saved plan/revision) separate from `observed`
+(ledger, current-attempt terminal events and admitted report-file metadata at
+`as_of`). `snapshot_scene` remains the original snapshot. Reads do not rewrite
+the plan, mark tests passed or grant a controller lease. Events arriving after a
+crash are therefore visible on the next read without relying on a Stop hook.
+
+```bash
+continuity handoff show --project-id demo
+continuity handoff write --project-id demo --auto
+continuity collaboration drift --project-id demo
+```
+
+Auto write preserves the declared plan and saves an evidence-linked candidate
+draft. Normal controller lease checks still apply. Drift can report
+`report-without-card-update` with a path and modification time; it only inspects
+task-local reports beneath configured persistent artifact roots, not arbitrary
+files or provider transcripts. Existence is not an implementation verdict.
+Project-qualified work paths and job-index paths carry project attribution;
+old global `work/TASK/report.md` paths are labeled unattributed candidates.
+Verify project ownership before opening such a legacy report.
+
+Named consumers use **at-least-once** delivery with explicit acknowledgement:
+
+```bash
+continuity collaboration changes --project-id demo --consumer controller-a --max-output-bytes 2048
+# After processing that page, use its next_cursor (not high_water_cursor):
+continuity collaboration changes --project-id demo --consumer controller-a --ack RETURNED_CURSOR
+```
+
+No ack means replay, including after a crash. State is project/consumer scoped,
+locked and atomically stored in the data root; choose persistent storage. Budget
+trimming only acknowledges rows the caller explicitly confirms. A reset requires
+`--reset-consumer --since CURSOR`; it never deletes events. Consumers sharing a
+name share a checkpoint, so independent listeners need distinct names.
+
+`task list/show/add/update/claim/next` are aliases of the corresponding
+`collaboration task` leaves; `task merged` retains its existing behavior.
+Dispatch refuses executor/model conflicts and fences the prepared body/scope
+and card timestamp immediately before child startup. A rejected prepared job
+records `dispatch.validation-failed`, `executed:false` and preserves the card.
+
+```bash
+continuity dispatch --project-id demo --task-id parser-fix --model sol --assignee worker-sol --reassign --actor controller
+```
+
+Reassign is explicit, keeps owner/creator and running-attempt protections, and
+cannot be combined with dry-run. A generic provider-neutral executor name is
+allowed; recorded model bindings and unambiguous model names are checked.
+Authorized fallback/handoff remains explicit. Upstream replay-reset codes take
+precedence over an outer 429. Replay refusal can suggest an explicit new session;
+real rate limits instead advise honoring provider cooldown (a new thread does
+not reset quota). Recovery suggestions never authorize authentication/policy bypass.
+
+The Claude source plugin and bridge add `SessionEnd` (nine hook types in this
+source; the published Alpha27 plugin has eight). An owner-session end or a
+changed observed boot marks matching native attempts **lost to observation**,
+not exited successfully. Age without heartbeat is `unknown-stale`, not proof of
+exit. Native account data stays on its owning machine/profile.
+
+SessionEnd semantics follow the [official Claude hook contract](https://code.claude.com/docs/en/hooks#sessionend); Stop is a turn-end event and does not establish session exit.
+
+## Alpha25 API details
 
 The following APIs are included in Alpha25 (`0.1.0a25`), not in Alpha24.
 Upgrade and reconnect an existing MCP before relying on these actions.

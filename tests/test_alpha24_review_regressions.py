@@ -94,7 +94,7 @@ class ReviewRegressionTests(unittest.TestCase):
             official_subscription=True,
             provider="custom",
         )
-        dispatch(self.root, data_root=self.data, task_id="task", model="sonnet")
+        dispatch(self.root, data_root=self.data, task_id="task", model="sonnet", handoff=handoff)
         with self.assertRaisesRegex(ValueError, "policy refusal"):
             dispatch(
                 self.root,

@@ -4,6 +4,14 @@
 
 [English](CHANGELOG.en.md)
 
+## 0.1.0-alpha.27
+
+- 原生 Gitea Issue／PR 后端，经成员本机 tea CLI 连接私有仓库；任务 CLI／MCP 共用合同，无额外 Continuity 服务。
+- 共享认领、接受后交接、真实 PR 请求评审、合入验证、并发冲突、模糊写入去重与完整分页后 ACK。
+- 仓库声明／全局数据根分离，安全默认 `.gitignore`；不读取或迁移原生 Token，不把缓存变成第二套任务权威。
+- 主控交接读时对账报告／终态／未确认消息，自动草稿、持久 consumer、task 别名及改派／派发快照保护。
+- [发布说明与边界](docs/release-alpha27.md)；[Gitea 模式](docs/gitea-collaboration.md)；[配置规范](docs/collaboration-storage.md)。
+
 ## 0.1.0-alpha.26
 
 - worker 提前更新卡片状态后仍自动挂载最终报告；保留新 attempt、重新指派和手工状态保护，失败写入可重放。

@@ -168,15 +168,16 @@ def scene(data_root, project_id, *, root=None, session_id=None, provider=None, m
     except (OSError, ValueError):
         jobs = {}
     workers = []
+    from .controller_observation import observe
+    observed = observe(data, project_id, recipient=os.environ.get("CONTINUITY_ASSIGNEE"),
+                       max_items=max(64, len(ledger.get("execution_bindings", {}))))
+    running_ids = {r["task_id"] for r in observed["workers"] if r["status"] == "running"}
     running = [
         t
         for t in cards
-        if ledger.get("execution_bindings", {}).get(t["task_id"], {}).get("status")
-        == "running"
+        if t["task_id"] in running_ids
     ]
-    from .project_context import _load as load_context, _path as context_path
-
-    native = [r for r in load_context(context_path(data, project_id)).get("native_attempts", {}).values() if r["status"] == "running"]
+    native = [r for r in observed["native_workers"] if r["status"] != "stopped"]
     for task in running[:max_workers]:
         job = jobs.get(task["task_id"], {})
         thread = None
@@ -226,8 +227,14 @@ def scene(data_root, project_id, *, root=None, session_id=None, provider=None, m
         "lessons_total": learned["total_items"],
         "workers": workers,
         "workers_total": len(running),
-        "native_workers": [{"attempt_id": r["attempt_id"], "agent_type": r["agent_type"], "status": "observed-running; no heartbeat"} for r in native[:4]],
+        "native_workers": [{"attempt_id": r["attempt_id"], "agent_type": r["agent_type"], "status": "observed-running; no heartbeat" if r["status"] == "observed-running" else r["status"]} for r in native[:4]],
         "native_workers_total": len(native),
+        "observed_at": observed["as_of"],
+        "reports": observed["reports"][:3],
+        "reports_total": observed["reports_total"],
+        "inbox": observed["inbox"],
+        "controller_access": observed["controller"],
+        "drift_count": len(observed["drift"]),
         "work_cards_total": len(cards),
         "candidate_work": [
             {
@@ -271,6 +278,7 @@ def scene(data_root, project_id, *, root=None, session_id=None, provider=None, m
                     "candidate_work",
                     "lessons",
                     "native_workers",
+                    "reports",
                 )
                 if result[k]
             ),

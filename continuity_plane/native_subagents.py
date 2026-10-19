@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+import re
 from pathlib import Path
 
 from .collaboration_registry import (
@@ -12,6 +13,49 @@ from .collaboration_registry import (
     default_data_root,
 )
 from .project_context import _path, _load
+
+
+def boot_identity():
+    try:
+        return hashlib.sha256(Path("/proc/sys/kernel/random/boot_id").read_bytes()).hexdigest()
+    except OSError:
+        return None
+
+
+def session_event(data_root, project_id, payload):
+    """SessionEnd/changed boot prove loss of observation, not child exit/success."""
+    from .runtime_origin import current, validate
+    event = payload.get("hook_event_name")
+    if event not in {"SessionStart", "SessionEnd"}:
+        return None
+    origin = validate(payload.get("collection_origin") or current("claude"))
+    if origin["provider"] != "claude":
+        raise ValueError("Claude session metadata requires a Claude origin")
+    session = hashlib.sha256(str(payload.get("session_id") or "").encode()).hexdigest()
+    boot = payload.get("boot_id_sha256")
+    if boot is None and origin == current("claude"):
+        boot = boot_identity()
+    if boot is not None and (not isinstance(boot, str) or not re.fullmatch(r"[0-9a-f]{64}", boot)):
+        raise ValueError("invalid boot observation")
+    path = _path(data_root, project_id)
+    lost = []
+    with _locked(path):
+        doc = _load(path)
+        for value in doc.get("native_attempts", {}).values():
+            if value["status"] != "running" or value["collection_origin"] != origin:
+                continue
+            ended = event == "SessionEnd" and value["session"] == session
+            rebooted = boot and value.get("boot_id_sha256") and value["boot_id_sha256"] != boot
+            if not ended and not rebooted:
+                continue
+            value.update(status="lost", reason="owner-session-ended" if ended else "owner-boot-changed", observed_at=_now())
+            value["authority"] = "lost owner observation; child process exit and success are unknown"
+            doc.setdefault("native_pending_events", {})[value["attempt_id"] + ":lost"] = {"event": "attempt.lost", **value}
+            lost.append(value["attempt_id"])
+        if lost:
+            _atomic_write(path, doc)
+    flush(data_root, project_id)
+    return {"lost_attempts": lost, "child_exit_inferred": False}
 
 
 def observe(data_root, project_id, payload):
@@ -36,6 +80,9 @@ def observe(data_root, project_id, payload):
         raise ValueError(
             "native Claude subagent observation needs its Claude collection origin"
         )
+    boot = payload.get("boot_id_sha256")
+    if boot is not None and (not isinstance(boot, str) or not re.fullmatch(r"[0-9a-f]{64}", boot)):
+        raise ValueError("invalid boot observation")
     key = hashlib.sha256(
         json.dumps([origin, session, agent], sort_keys=True).encode()
     ).hexdigest()
@@ -61,6 +108,7 @@ def observe(data_root, project_id, payload):
             "agent_type": str(payload.get("agent_type") or "unknown")[:128],
             "session": hashlib.sha256(session.encode()).hexdigest(),
             "collection_origin": origin,
+            "boot_id_sha256": payload.get("boot_id_sha256") or (boot_identity() if origin == current("claude") else None),
             "observed_at": _now(),
             "authority": "host-hook-observation; no PID, heartbeat, success or exit-code inference",
         }

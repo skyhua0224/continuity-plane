@@ -8,7 +8,15 @@ from .collaboration_registry import default_data_root, project_data_dir, _atomic
 
 
 def tasks_page(
-    data_root, project_id, items, *, query, budget, cursor=None, page_size=None
+    data_root,
+    project_id,
+    items,
+    *,
+    query,
+    budget,
+    cursor=None,
+    page_size=None,
+    metadata=None,
 ):
     if not 1024 <= budget <= 131072:
         raise ValueError("output budget must be 1024–131072 bytes")
@@ -53,6 +61,7 @@ def tasks_page(
     while True:
         end = start + len(selected)
         result = {
+            **(metadata or {}),
             "items": selected,
             "total_items": len(items),
             "next_cursor": identity + ":" + str(end) if end < len(items) else None,

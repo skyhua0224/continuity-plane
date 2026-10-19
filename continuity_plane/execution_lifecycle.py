@@ -15,6 +15,10 @@ from .collaboration_registry import (
 )
 
 
+class ExecutionBindingError(CollaborationRegistryError):
+    """An execution was rejected before its child command could start."""
+
+
 def bind_execution(
     data_root,
     *,
@@ -24,6 +28,9 @@ def bind_execution(
     attempt_id,
     expected_previous=None,
     require_idle=False,
+    expected_scope=None,
+    expected_updated_at=None,
+    model=None,
 ):
     if not isinstance(attempt_id, str) or not attempt_id or len(attempt_id) > 128:
         raise CollaborationRegistryError("attempt_id must contain 1–128 characters")
@@ -39,7 +46,7 @@ def bind_execution(
                 "task_id does not exist; create the card before starting a worker"
             )
         if card["assignee"] not in (None, assignee):
-            raise CollaborationRegistryError("task is assigned to another executor")
+            raise ExecutionBindingError("task is assigned to another executor")
         if card["status"] in {
             "merged",
             "completed",
@@ -47,7 +54,7 @@ def bind_execution(
             "rejected",
             "superseded",
         }:
-            raise CollaborationRegistryError(
+            raise ExecutionBindingError(
                 "task is closed; create a successor card for another run"
             )
         bindings = ledger.setdefault("execution_bindings", {})
@@ -57,11 +64,17 @@ def bind_execution(
         scope_sha = scope_hash(
             card, ledger.get("task_details", {}).get(task_id, {}).get("body")
         )
+        if (expected_scope is not None and expected_scope != scope_sha) or (
+            expected_updated_at is not None and expected_updated_at != card["updated_at"]
+        ):
+            raise ExecutionBindingError(
+                "task changed after prompt preparation; rebuild the dispatch from the current card"
+            )
         if (
             expected_previous is not None
             and previous.get("attempt_id") != expected_previous
         ):
-            raise CollaborationRegistryError(
+            raise ExecutionBindingError(
                 "attempt was superseded; the older supervisor must not retry or reclaim it"
             )
         if (
@@ -69,11 +82,11 @@ def bind_execution(
             and previous.get("scope_sha256")
             and previous["scope_sha256"] != scope_sha
         ):
-            raise CollaborationRegistryError(
+            raise ExecutionBindingError(
                 "task scope changed; rebuild the assigned prompt before retrying"
             )
         if require_idle and previous.get("status") == "running":
-            raise CollaborationRegistryError(
+            raise ExecutionBindingError(
                 "task already has running attempt "
                 + str(previous.get("attempt_id"))
                 + "; inspect the actual worker or use another isolated task/worktree"
@@ -96,6 +109,7 @@ def bind_execution(
             "status": "running",
             "used_attempt_ids": used + [attempt_id],
             "scope_sha256": scope_sha,
+            "model": model,
         }
         ledger["updated_at"] = _now()
         _atomic_write(path, ledger)

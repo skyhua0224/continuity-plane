@@ -6,6 +6,7 @@ usage continues to be collected only by the owning host/profile.
 
 import hashlib
 import json
+import os
 import re
 from pathlib import Path
 
@@ -398,6 +399,7 @@ def handoff(
     completed_batch=None,
     controller=None,
     controller_token=None,
+    auto=False,
 ):
     from .controller_awareness import scene
     from .controller_lease import require
@@ -456,6 +458,11 @@ def handoff(
             "scene": snapshot,
             "authority": "declared-controller-plan-and-observed-project-metadata; no external-operation approval",
         }
+        if auto:
+            from .controller_observation import draft
+            value["draft"] = draft(data_root, project_id)
+        elif previous.get("draft"):
+            value["draft"] = previous["draft"]
         value["batch_state"] = (
             "recorded"
             if value["current_batch"]
@@ -591,11 +598,11 @@ def command(args):
             pending=args.pending,
             controller=args.controller,
             controller_token=args.controller_token,
+            auto=args.auto,
         )
     elif action == "handoff-show":
-        value = _load(_path(args.data_root, project_id)).get(
-            "handoff", {"status": "not-recorded"}
-        )
+        from .controller_observation import handoff_view
+        value = handoff_view(args.data_root, project_id, recipient=os.environ.get("CONTINUITY_ASSIGNEE"))
     else:
         value = integration(
             args.data_root,
@@ -654,6 +661,7 @@ def _arguments(parser, action):
         parser.add_argument("--controller")
         parser.add_argument("--controller-token")
     elif action == "handoff-write":
+        parser.add_argument("--auto", action="store_true", help="Refresh observations and generate an evidence-linked candidate draft; preserve declared plan")
         parser.add_argument("--plan")
         parser.add_argument("--next-action")
         parser.add_argument("--batch-id")

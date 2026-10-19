@@ -148,7 +148,7 @@ class Alpha24CompletionTests(unittest.TestCase):
             "sonnet",
             approval_source="test-only:explicit owner approval",
         )
-        dispatch(self.root, data_root=self.data, task_id="task", model="sonnet")
+        dispatch(self.root, data_root=self.data, task_id="task", model="sonnet", handoff=pending)
         now = datetime.now(UTC)
         record(
             self.data,
@@ -187,6 +187,7 @@ class Alpha24CompletionTests(unittest.TestCase):
             model="sol",
             resume=True,
             resume_job=initial["job_id"],
+            handoff=pending,
         )
         self.assertEqual(result["status"], "completed")
 

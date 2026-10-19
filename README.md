@@ -4,7 +4,7 @@ Continuity 是给人和 AI Agent 共用的任务清单、协作与上下文接�
 
 可以只用 CLI，也可以通过 MCP 让 Agent 直接操作；Codex／Claude Code 插件把这些能力接入宿主，hooks 在会话和压缩等时间点自动保存、恢复或提示变化。检索与输出预算减少重复读代码；实际字节、宿主 token 和缓存计数用于核对收益，不承诺统一节省率。
 
-[English](README.en.md) · [下载 Alpha26](https://github.com/skyhua0224/continuity-plane/releases/latest) · [部署升级](docs/deployment.md) · [人和 AI 开工指南](docs/agent-start.md)
+[English](README.en.md) · [下载 Alpha27](https://github.com/skyhua0224/continuity-plane/releases/latest) · [部署升级](docs/deployment.md) · [人和 AI 开工指南](docs/agent-start.md)
 
 [![PyPI 版本](https://img.shields.io/pypi/v/continuity-plane?include_prereleases)](https://pypi.org/project/continuity-plane/)
 [![Apache-2.0 许可](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
@@ -33,7 +33,7 @@ Continuity 是给人和 AI Agent 共用的任务清单、协作与上下文接�
 需要 Python 3.11+；代码索引还需要 Git。推荐用 pipx 安装，让宿主插件也能找到 CLI：
 
 ```bash
-pipx install 'continuity-plane==0.1.0a26'
+pipx install 'continuity-plane==0.1.0a27'
 continuity --version
 # 在目标仓库登记项目；demo 换成稳定的项目 ID
 continuity collaboration register --project-id demo --control-root . --repository-root .
@@ -69,6 +69,8 @@ continuity todo list --project-id demo --format brief
 
 <a id="collaboration"></a>
 ## collaboration
+
+Alpha27 提供[私有 Gitea Issue／PR 后端](docs/gitea-collaboration.md)：成员各用本机 CLI／MCP 和 tea 登录，共享任务、认领、接受交接及真实 PR 评审请求，无需 Continuity 服务器。Issue 是任务权威，本地仅保留缓存；冲突显式报告，认领不承诺跨机器强锁。[仓库与全局配置规范](docs/collaboration-storage.md)说明哪些文件可以提交、哪些必须留在本机。下方本地卡片示例与 Gitea 模式分开使用。
 
 ### 创建、分配与更新任务卡
 
@@ -151,7 +153,7 @@ CLI 是实际能力入口，**MCP 是让模型调用这些能力的工具接口�
 | Codex plugin `continuity-plane` | 会话／压缩等生命周期 hooks；不注册 MCP | 只需要自动接续与提醒 |
 | Codex plugin `continuity-plane-search` | `continuity-search-mcp`，一个代码检索工具 | 只想让 AI 做有界 lookup |
 | Codex plugin `continuity-plane-state` | `continuity-mcp`：Todo／协作工具与高级 State 工具 | 让 AI 直接管理卡片、规则、交接等；普通规划不需 State claim |
-| Claude Code plugin `continuity-plane` | 协作 skill、8 类 hook，以及 continuity／continuity-search 两个 MCP | 同一插件接入规划、检索和自动接续 |
+| Claude Code plugin `continuity-plane` | 协作 skill、生命周期 hooks，以及 continuity／continuity-search 两个 MCP | 同一插件接入规划、检索和自动接续 |
 | 其他支持 stdio MCP 的客户端 | 手工接入下方两个 server | 不依赖某个插件市场或模型 |
 
 ### 安装插件
@@ -160,7 +162,7 @@ CLI 是实际能力入口，**MCP 是让模型调用这些能力的工具接口�
 
 ```bash
 # 三项分别负责 hooks、检索、规划与 State；按需选择
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.26
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.27
 codex plugin add continuity-plane@continuity-plane
 codex plugin add continuity-plane-search@continuity-plane
 codex plugin add continuity-plane-state@continuity-plane
@@ -230,6 +232,8 @@ MCP 没有把所有 CLI 命令变成远程执行器：**dispatch／worker resume
 | PostToolUse | 支持 | 支持 | 有界观测与已变化的结束／阻塞／规则提醒 |
 | Stop | 支持 | 支持 | 收尾与接续检查；不把一次停止推断成验证或评审通过 |
 | SubagentStart／SubagentStop | 本插件不提供 | 支持 | 记录原生子代理的观察事件；不凭此推断 PID、退出码、成功或完整报告 |
+
+当前源码另有 SessionEnd，用于标记父会话结束后失去观察的原生子代理；已发布 Alpha27 的八类 hook 尚不包含它。[源码中的交接修复](docs/field-workflows.md#development-source-controller-recovery-and-change-consumers)还包括交接读时观察、consumer／ack、派工快照校验与 task 命令别名，需后续构建，不代表旧安装已经支持。
 
 Skill 给 Agent 可按需加载的协作方法；MCP 是可调用工具；hook 是在上述时间点运行的程序。它们作用不同。提醒只在有变化时给出，不能保证唤醒任何离线会话。只有在 supervisor 下运行的 worker 才有对应的受管运行记录。
 
@@ -353,7 +357,7 @@ SSH alias、项目 root 和执行器均需在所属机器显式配置。控制�
 
 ## 验证范围与完整文档
 
-当前版本为 Alpha26（包 `0.1.0a26`，插件 `0.1.0-alpha.26`）。[验证矩阵](docs/validation.md)把合成流程、受控 hook、真实使用反馈与尚未验证项分开；[历史实验](docs/benchmarks.md)的数字不代表每个项目或新版本的统一收益。核心故障不授予权限，也不要求为普通源码任务重置项目 State。
+当前版本为 Alpha27（包 `0.1.0a27`，插件 `0.1.0-alpha.27`）。[验证矩阵](docs/validation.md)把合成流程、受控 hook、真实使用反馈与尚未验证项分开；[历史实验](docs/benchmarks.md)的数字不代表每个项目或新版本的统一收益。核心故障不授予权限，也不要求为普通源码任务重置项目 State。
 
 | 继续了解 | 入口 |
 |---|---|

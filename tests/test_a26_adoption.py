@@ -19,6 +19,125 @@ from continuity_plane.reference_tsv import import_tsv, export_tsv
 from continuity_plane.reference_library import find, location
 
 
+class TaskReassignmentTests(unittest.TestCase):
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.root = Path(directory.name) / "repo"
+        self.root.mkdir()
+        self.data = Path(directory.name) / "external"
+        register_project(self.data, project_id="sample", control_root=self.root)
+        identity = patch.dict(os.environ, {"CONTINUITY_ASSIGNEE": "", "CONTINUITY_ROLE": ""})
+        identity.start()
+        self.addCleanup(identity.stop)
+
+    def execute(self, action, **parameters):
+        return execute(action, parameters, project_id="sample", root=str(self.root), data_root=str(self.data))
+
+    def card(self, **extra):
+        return self.execute("task.add", task_id="task", lane_id="lane", mode="patch", priority="p1", title="Reassignment fixture", objective="Check caller and target", next_action="Run checks", exit_criterion=["PASS"], **extra)
+
+    def tool(self, action, **parameters):
+        return handle_tool("continuity_plan", {"action": action, "project_id": "sample", "root": str(self.root), "data_root": str(self.data), "parameters": parameters})
+
+    def details(self):
+        return _load_ledger(self.data, "sample")["task_details"]["task"]
+
+    def test_cli_creator_reassigns_fresh_card_without_force(self):
+        with patch.dict(os.environ, {"CONTINUITY_ASSIGNEE": "controller"}):
+            self.card(assignee="sol")
+            card = self.execute("task.update", task_id="task", assignee="sonnet")
+        self.assertEqual(card["assignee"], "sonnet")
+        self.assertEqual(self.details()["created_by"], "controller")
+        record = self.details()["reassignments"][-1]
+        self.assertEqual((record["from"], record["to"], record["actor"]), ("sol", "sonnet", "controller"))
+        self.assertFalse(record["forced"])
+        self.assertNotIn("overrides", self.details())
+
+    def test_cli_explicit_actor_and_legacy_self_assignment(self):
+        self.card(assignee="controller")
+        card = self.execute("task.update", task_id="task", actor="controller", assignee="sonnet")
+        self.assertEqual(card["assignee"], "sonnet")
+
+    def test_controller_mcp_can_create_and_reassign_explicit_target(self):
+        with patch.dict(os.environ, {"CONTINUITY_ASSIGNEE": "controller", "CONTINUITY_ROLE": "controller"}):
+            self.tool("task.add", task_id="task", lane_id="lane", mode="patch", priority="p1", title="MCP fixture", objective="Delegate", next_action="Check", exit_criterion=["PASS"], assignee="sol")
+            self.tool("task.update", task_id="task", assignee="sonnet")
+            self.tool("task.update", task_id="task", body="Annotation after reconnect")
+        card = self.execute("task.show", task_id="task")
+        self.assertEqual(card["assignee"], "sonnet")
+        self.assertEqual(card["details"]["created_by"], "controller")
+
+    def test_controller_mcp_new_unassigned_card_is_not_implicitly_claimed(self):
+        with patch.dict(os.environ, {"CONTINUITY_ASSIGNEE": "controller", "CONTINUITY_ROLE": "controller"}):
+            self.tool("task.add", task_id="task", lane_id="lane", mode="patch", priority="p1", title="Queued", objective="Plan", next_action="Assign later", exit_criterion=["PASS"])
+        card = self.execute("task.show", task_id="task")
+        self.assertEqual((card["status"], card["assignee"]), ("queued", None))
+
+    def test_configured_controller_can_repeat_its_explicit_stable_identity(self):
+        self.card(actor="controller", assignee="sol")
+        with patch.dict(os.environ, {"CONTINUITY_ASSIGNEE": "controller", "CONTINUITY_ROLE": "controller"}):
+            handle_tool("continuity_plan", {"action": "task.update", "project_id": "sample", "root": str(self.root), "data_root": str(self.data), "executor_id": "controller", "parameters": {"task_id": "task", "assignee": "sonnet"}})
+        self.assertEqual(self.execute("task.show", task_id="task")["assignee"], "sonnet")
+
+    def test_creator_cannot_take_card_after_worker_claims_it(self):
+        self.card(actor="controller", assignee="sol")
+        self.execute("task.claim", task_id="task", assignee="sol")
+        before = _load_ledger(self.data, "sample")
+        with self.assertRaisesRegex(ValueError, "another session"):
+            self.execute("task.update", task_id="task", actor="controller", assignee="sonnet", body="must not persist")
+        self.assertEqual(_load_ledger(self.data, "sample"), before)
+
+    def test_worker_active_update_counts_as_actual_claim(self):
+        self.card(actor="controller", assignee="sol")
+        self.execute("task.update", task_id="task", actor="sol", status="active")
+        with self.assertRaisesRegex(ValueError, "another session"):
+            self.execute("task.update", task_id="task", actor="controller", assignee="sonnet")
+
+    def test_running_attempt_requires_audited_override_even_for_owner(self):
+        self.card(actor="controller", assignee="sol")
+        bind_execution(self.data, project_id="sample", task_id="task", assignee="sol", attempt_id="running")
+        for actor in ("controller", "sol", "other"):
+            with self.subTest(actor=actor), self.assertRaisesRegex(ValueError, "running attempt"):
+                self.execute("task.update", task_id="task", actor=actor, assignee="sonnet")
+        with self.assertRaisesRegex(ValueError, "force-reason"):
+            self.execute("task.update", task_id="task", actor="controller", assignee="sonnet", force=True)
+        self.execute("task.update", task_id="task", actor="controller", assignee="sonnet", force=True, force_reason="Owner approved transfer; old attempt cannot overwrite target")
+        self.assertTrue(self.details()["reassignments"][-1]["forced"])
+        finish_execution(self.data, project_id="sample", task_id="task", assignee="sol", attempt_id="running", status="completed", return_code=0, report={"text": "Stale report"})
+        self.assertNotIn("report", self.details())
+
+    def test_other_or_unknown_actor_cannot_reassign_or_invent_legacy_creator(self):
+        self.card(assignee="sol")
+        for actor in (None, "other", "controller"):
+            with self.subTest(actor=actor), self.assertRaisesRegex(ValueError, "another session"):
+                self.execute("task.update", task_id="task", actor=actor, assignee="sonnet")
+
+    def test_explicit_worker_identity_cannot_use_controller_delegation(self):
+        self.card(actor="controller", assignee="sol")
+        with patch.dict(os.environ, {"CONTINUITY_ASSIGNEE": "controller", "CONTINUITY_ROLE": "controller"}):
+            for params in ({"assignee": "sonnet"}, {"actor": "controller"}):
+                with self.subTest(params=params), self.assertRaisesRegex(ValueError, "conflicts"):
+                    handle_tool("continuity_plan", {"action": "task.update", "project_id": "sample", "root": str(self.root), "data_root": str(self.data), "executor_id": "sol", "parameters": {"task_id": "task", **params}})
+
+    def test_fresh_mcp_processes_preserve_creator_not_connection_id(self):
+        self.card(actor="controller", assignee="sol")
+        env = {**os.environ, "CONTINUITY_ASSIGNEE": "controller", "CONTINUITY_ROLE": "controller"}
+        for index, assignee in enumerate(("sonnet", "sol")):
+            request = {"jsonrpc": "2.0", "id": index, "method": "tools/call", "params": {"name": "continuity_plan", "arguments": {"action": "task.update", "project_id": "sample", "root": str(self.root), "data_root": str(self.data), "parameters": {"task_id": "task", "assignee": assignee}}}}
+            result = subprocess.run([sys.executable, "-m", "continuity_plane.codex_mcp_server"], input=json.dumps(request) + "\n", env=env, text=True, capture_output=True, timeout=15)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            response = json.loads(result.stdout)
+            self.assertNotIn("error", response)
+            self.assertFalse(response.get("result", {}).get("isError"), response)
+        self.assertEqual([r["to"] for r in self.details()["reassignments"]], ["sonnet", "sol"])
+
+    def test_invalid_actor_is_rejected_without_persisting(self):
+        with self.assertRaisesRegex(ValueError, "actor"):
+            self.card(actor="invalid actor")
+        self.assertEqual(_load_ledger(self.data, "sample")["tasks"], [])
+
+
 class Alpha26AdoptionTests(unittest.TestCase):
     def setUp(self):
         directory = tempfile.TemporaryDirectory()

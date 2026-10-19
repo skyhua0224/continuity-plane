@@ -8,6 +8,7 @@
 |---|---|
 | 首次使用 | [使用说明](../USAGE.md) → [部署](deployment.md) → [按角色工作流](workflows.md) |
 | 给 AI 接手／写任务简报 | [四条开工命令与简报约定](agent-start.md) |
+| 各自本机 AI／CLI，共享私有 Issue／PR | [Gitea 协作后端](gitea-collaboration.md) → [仓库与全局配置](collaboration-storage.md) |
 | 主控／执行方 | [派卡与收尾](workflows.md) → [详细参数](field-workflows.md) |
 | 远端或自定义 profile | [SSH 与 hook](deployment.md#控制端与状态端分离) |
 | 想核对是否有效 | [现版本能力与验证](validation.md) → [历史实验方法](benchmarks.md) |

@@ -6,6 +6,8 @@
 
 ## 已注册项目：四条命令
 
+存在 `.continuity/collaboration.toml` 且 backend 为 gitea-issues 时，先按[Gitea 开工流程](gitea-collaboration.md)检查版本、自己的认证和 backend sync。身份来自人类 Gitea 账号，不使用下方本地 agent assignee 认领，不要求固定主控。缺版本只能经用户授权安装，不能索取 Token。
+
 在项目目录执行，把 demo、agent-1、controller 换成实际项目、独立执行者实例和主控。并发 worker 不共用身份。
 
 ```bash
@@ -15,7 +17,7 @@ continuity collaboration packet --project-id demo --assignee agent-1
 continuity handoff show --project-id demo
 ```
 
-Alpha26 的 CLI 是 `0.1.0a26`，插件是 `0.1.0-alpha.26`。未注册的项目先走[初始化](../USAGE.md#初始化项目)，不覆盖已有 `.continuity/`。whoami 不登录 provider，也不授予主控租约。
+Alpha27 的 CLI 是 `0.1.0a27`，插件是 `0.1.0-alpha.27`。未注册的项目先走[初始化](../USAGE.md#初始化项目)，不覆盖已有 `.continuity/`。whoami 不登录 provider，也不授予主控租约。
 
 ## 可直接贴进简报
 
