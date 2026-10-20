@@ -1,6 +1,6 @@
 # Gitea 协作模式：仓库声明与本机数据
 
-版本：1；适用 Alpha28。此合同规定共享内容、成员本地配置与权威边界。操作命令见 [Gitea 协作](gitea-collaboration.md)。[English](collaboration-storage.en.md)
+版本：1；适用 Alpha29。此合同规定共享内容、成员本地配置与权威边界。操作命令见 [Gitea 协作](gitea-collaboration.md)。[English](collaboration-storage.en.md)
 
 ## 写入位置与权限
 
@@ -27,13 +27,15 @@ repository/
   .continuity/
     .gitignore
     collaboration.toml
+    controller-profile.json # 可选：共享交流与报告约定
+    knowledge/*.hash.json   # 可选：批准并人工评审的项目知识
   docs/collaboration/       # 可选：版本化规则和评审约定
   .gitea/                  # 可选：Issue / PR 模板
   AGENTS.md                # 可选：开工协议
 ```
 
 ```toml
-# .continuity/collaboration.toml：Alpha28 实际支持的字段
+# .continuity/collaboration.toml：Alpha29 实际支持的字段
 [collaboration]
 backend = "gitea-issues"
 instance = "https://forge.example.com:3443"
@@ -43,19 +45,23 @@ credential_ref = "tea:work"
 
 实例可带 HTTPS 端口／子路径。credential_ref 是约定的本地 tea 登录别名，每个人可各自建立名为 work 的登录，不能提交真实 Token。此文件没有 data_root、全局登录或模型凭据字段；不要加入看似生效的未支持字段。
 
-Alpha28 的 backend configure 在缺少 `.continuity/.gitignore` 时创建下列内容，已有文件原样保留：
+Alpha29 的 backend configure 在缺少 `.continuity/.gitignore` 时创建下列内容，已有文件原样保留：
 
 ```gitignore
-# Shared declaration only; runtime data stays member-local.
+# Shared declarations and reviewed knowledge only; runtime data stays member-local.
 *
 !.gitignore
 !collaboration.toml
+!controller-profile.json
+!knowledge/
+!knowledge/*.json
 ```
 
 仓库上层若整体忽略 `.continuity/`，显式审核后只添加这两个文件：
 
 ```bash
-git add -f .continuity/.gitignore .continuity/collaboration.toml
+git add -f .continuity/.gitignore .continuity/collaboration.toml \
+  .continuity/controller-profile.json .continuity/knowledge/REVIEWED.json
 git diff --cached --name-only
 ```
 

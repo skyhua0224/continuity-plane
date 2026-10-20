@@ -4780,7 +4780,9 @@ def _collaboration_task_add(args: argparse.Namespace) -> int:
         released_in=args.released_in,
         body=task_body(args),
         report_policy=args.report_policy,
-        actor=args.actor if args.actor is not None else os.environ.get("CONTINUITY_ASSIGNEE") or None,
+        actor=args.actor
+        if args.actor is not None
+        else os.environ.get("CONTINUITY_ASSIGNEE") or None,
     )
     print(json.dumps(task, ensure_ascii=False, sort_keys=True))
     return 0
@@ -4812,7 +4814,9 @@ def _collaboration_task_update(args: argparse.Namespace) -> int:
         body=task_body(args),
         force=args.force,
         force_reason=args.force_reason,
-        actor=args.actor if args.actor is not None else os.environ.get("CONTINUITY_ASSIGNEE") or None,
+        actor=args.actor
+        if args.actor is not None
+        else os.environ.get("CONTINUITY_ASSIGNEE") or None,
     )
     from .delivery_records import detail_view
 
@@ -4840,7 +4844,9 @@ def _collaboration_task_next(args: argparse.Namespace) -> int:
 
 def _collaboration_task_claim(args: argparse.Namespace) -> int:
     if not args.assignee:
-        raise ValueError("local task claim requires --assignee; shared tasks use authenticated account")
+        raise ValueError(
+            "local task claim requires --assignee; shared tasks use authenticated account"
+        )
     task = claim_task(
         args.data_root,
         project_id=args.project_id,
@@ -4956,6 +4962,7 @@ def _collaboration_task_list(args: argparse.Namespace) -> int:
 
 def _collaboration_changes(args: argparse.Namespace) -> int:
     from .change_consumers import command
+
     return command(args, list_changes, _bounded_changes)
 
 
@@ -5245,8 +5252,12 @@ def _collaboration_drift(args: argparse.Namespace) -> int:
                 }
             )
     from .controller_observation import report_facts
-    findings.extend(r for r in report_facts(args.data_root, args.project_id, tasks)
-                    if r["newer_than_card"])
+
+    findings.extend(
+        r
+        for r in report_facts(args.data_root, args.project_id, tasks)
+        if r["newer_than_card"]
+    )
     print(
         json.dumps(
             {
@@ -5710,14 +5721,18 @@ def _inbox(args: argparse.Namespace) -> int:
         )
     elif args.inbox_command == "ack":
         value = acknowledge(args.data_root, **common, message_id=args.message_id)
+    elif args.inbox_command == "archive":
+        from .collaboration_inbox import archive
+
+        value = archive(args.data_root, **common, limit=args.limit)
     else:
         value = list_messages(args.data_root, **common, limit=args.limit)
-    print(
-        json.dumps(
-            {"status": "ok", "messages": value, "provider_execution": False},
-            ensure_ascii=False,
-        )
+    payload = (
+        {"status": "ok", "archive": value, "provider_execution": False}
+        if args.inbox_command == "archive"
+        else {"status": "ok", "messages": value, "provider_execution": False}
     )
+    print(json.dumps(payload, ensure_ascii=False))
     return 0
 
 
@@ -5939,9 +5954,16 @@ def build_parser() -> argparse.ArgumentParser:
     resume.add_argument("continuation_text", nargs="?")
     for flag in ("data-root", "project-id", "model", "assignee"):
         resume.add_argument("--" + flag)
-    resume.add_argument("--effort", help="Provider effort forwarded unchanged; omit to retain recorded effort")
-    resume.add_argument("--timeout-seconds", type=float, help="Override recorded total attempt budget")
-    resume.add_argument("--idle-timeout-seconds", type=float, help="Override recorded no-output budget")
+    resume.add_argument(
+        "--effort",
+        help="Provider effort forwarded unchanged; omit to retain recorded effort",
+    )
+    resume.add_argument(
+        "--timeout-seconds", type=float, help="Override recorded total attempt budget"
+    )
+    resume.add_argument(
+        "--idle-timeout-seconds", type=float, help="Override recorded no-output budget"
+    )
     resume.add_argument("--controller")
     resume.add_argument("--controller-token")
     resume.add_argument("--resume-job")
@@ -6214,7 +6236,8 @@ def build_parser() -> argparse.ArgumentParser:
     collaboration_task_add.add_argument("--queued-effect", action="append")
     collaboration_task_add.add_argument("--assignee", default=None)
     collaboration_task_add.add_argument(
-        "--actor", help="Stable creator identity; defaults to CONTINUITY_ASSIGNEE, not the target assignee"
+        "--actor",
+        help="Stable creator identity; defaults to CONTINUITY_ASSIGNEE, not the target assignee",
     )
     collaboration_task_add.add_argument("--branch", default=None)
     collaboration_task_add.add_argument("--commit", default=None)
@@ -6257,7 +6280,8 @@ def build_parser() -> argparse.ArgumentParser:
     collaboration_task_update.add_argument("--result", default=None)
     collaboration_task_update.add_argument("--assignee", default=None)
     collaboration_task_update.add_argument(
-        "--actor", help="Stable caller identity for reassignment, distinct from --assignee; defaults to CONTINUITY_ASSIGNEE"
+        "--actor",
+        help="Stable caller identity for reassignment, distinct from --assignee; defaults to CONTINUITY_ASSIGNEE",
     )
     collaboration_task_update.add_argument("--branch", default=None)
     collaboration_task_update.add_argument("--commit", default=None)
@@ -6360,9 +6384,20 @@ def build_parser() -> argparse.ArgumentParser:
     collaboration_changes.add_argument("--data-root", default=None)
     collaboration_changes.add_argument("--project-id", required=True)
     collaboration_changes.add_argument("--since", type=int, default=None)
-    collaboration_changes.add_argument("--consumer", help="Persisted project-scoped at-least-once consumer; reads replay until --ack")
-    collaboration_changes.add_argument("--ack", type=int, help="Acknowledge a previously returned cursor, then read the next page")
-    collaboration_changes.add_argument("--reset-consumer", action="store_true", help="Explicitly reset this consumer to --since; does not delete events")
+    collaboration_changes.add_argument(
+        "--consumer",
+        help="Persisted project-scoped at-least-once consumer; reads replay until --ack",
+    )
+    collaboration_changes.add_argument(
+        "--ack",
+        type=int,
+        help="Acknowledge a previously returned cursor, then read the next page",
+    )
+    collaboration_changes.add_argument(
+        "--reset-consumer",
+        action="store_true",
+        help="Explicitly reset this consumer to --since; does not delete events",
+    )
     collaboration_changes.add_argument("--max-results", type=int, default=50)
     collaboration_changes.add_argument("--max-output-bytes", type=int, default=4096)
     collaboration_changes.set_defaults(handler=_collaboration_changes)
@@ -6373,7 +6408,12 @@ def build_parser() -> argparse.ArgumentParser:
     collaboration_wait.add_argument("--project-id")
     collaboration_wait.add_argument("--root", default=".")
     collaboration_wait.add_argument("--since", type=int, default=0)
-    collaboration_wait.add_argument("--event", action="append", default=None, help="Repeat for OR matching; omit for any event")
+    collaboration_wait.add_argument(
+        "--event",
+        action="append",
+        default=None,
+        help="Repeat for OR matching; omit for any event",
+    )
     collaboration_wait.add_argument("--task-id", default=None)
     collaboration_wait.add_argument("--assignee", default=None)
     collaboration_wait.add_argument("--timeout-seconds", type=float, default=300)
@@ -6660,7 +6700,10 @@ def build_parser() -> argparse.ArgumentParser:
     todo_activate.add_argument("--data-root", default=None)
     todo_activate.add_argument("--item-id", required=True)
     todo_activate.add_argument("--reason", required=True)
-    todo_activate.add_argument("--assignee", help="Stable executor identity; never inferred from an MCP connection ID")
+    todo_activate.add_argument(
+        "--assignee",
+        help="Stable executor identity; never inferred from an MCP connection ID",
+    )
     todo_activate.add_argument(
         "--session-id", default=None, help="tag the current controller for recovery"
     )
@@ -6680,8 +6723,17 @@ def build_parser() -> argparse.ArgumentParser:
     todo_cards.add_argument("--assignee")
     todo_cards.add_argument("--lane-id")
     card_states = todo_cards.add_mutually_exclusive_group()
-    card_states.add_argument("--status", choices=sorted(_TASK_STATUS), action="append", help="Repeat to select task states; default open, including ready-for-review")
-    card_states.add_argument("--all", action="store_true", help="Include closed cards; prior completion evidence remains stored regardless of view")
+    card_states.add_argument(
+        "--status",
+        choices=sorted(_TASK_STATUS),
+        action="append",
+        help="Repeat to select task states; default open, including ready-for-review",
+    )
+    card_states.add_argument(
+        "--all",
+        action="store_true",
+        help="Include closed cards; prior completion evidence remains stored regardless of view",
+    )
     todo_cards.add_argument("--format", choices=("brief", "json"), default="brief")
     todo_cards.add_argument("--max-output-bytes", type=int, default=8192)
     todo_cards.add_argument(
@@ -6738,20 +6790,22 @@ def build_parser() -> argparse.ArgumentParser:
         "inbox", help="durable local messages; never start another provider process"
     )
     inbox_commands = inbox.add_subparsers(dest="inbox_command", required=True)
-    for operation in ("send", "list", "ack"):
+    for operation in ("send", "list", "ack", "archive"):
         leaf = inbox_commands.add_parser(operation)
         leaf.add_argument("--data-root", default=None)
         leaf.add_argument("--project-id")
         leaf.add_argument("--root", default=".")
         leaf.add_argument("--recipient", required=True)
-        if operation != "list":
+        if operation in {"send", "ack"}:
             leaf.add_argument("--message-id", required=True)
         if operation == "send":
             leaf.add_argument("--sender", required=True)
             leaf.add_argument("--body", required=True)
             leaf.add_argument("--task-id")
-        if operation == "list":
-            leaf.add_argument("--limit", type=int, default=3)
+        if operation in {"list", "archive"}:
+            leaf.add_argument(
+                "--limit", type=int, default=100 if operation == "archive" else 3
+            )
         leaf.set_defaults(handler=_inbox)
     for group in (collaboration_task_commands, collaboration_effect_commands):
         for leaf in group.choices.values():
@@ -6763,12 +6817,24 @@ def build_parser() -> argparse.ArgumentParser:
 
     add_gitea_parsers(collaboration_commands, collaboration_task_commands)
     # Both entrypoints share the exact parser and handler, including future flags.
+    from .controller_memory_cli import register_cli as register_controller_memory
+
+    register_controller_memory(commands)
+    from .dispatch_health import register_cli as register_dispatch_health
+
+    register_dispatch_health(commands)
     task_group = commands.choices.get("task")
     if task_group is not None:
-        aliases = next(a for a in task_group._actions if isinstance(a, argparse._SubParsersAction))
+        aliases = next(
+            a for a in task_group._actions if isinstance(a, argparse._SubParsersAction)
+        )
         for name, leaf in collaboration_task_commands.choices.items():
-            aliases.add_parser(name, parents=[leaf], add_help=False,
-                               help=f"Alias of collaboration task {name}")
+            aliases.add_parser(
+                name,
+                parents=[leaf],
+                add_help=False,
+                help=f"Alias of collaboration task {name}",
+            )
     return parser
 
 
@@ -6831,8 +6897,13 @@ def main(argv: list[str] | None = None) -> int:
         getattr(args, "handler", None) is _executor_recommendation and not args.save
     ) or getattr(args, "handler", None) is _executor_scenarios
     if (
-        (getattr(args, "command", None) == "collaboration"
-         or (getattr(args, "command", None) == "task" and getattr(args, "task_action", None) != "merged"))
+        (
+            getattr(args, "command", None) == "collaboration"
+            or (
+                getattr(args, "command", None) == "task"
+                and getattr(args, "task_action", None) != "merged"
+            )
+        )
         and hasattr(args, "project_id")
         and args.project_id is None
         and not routing_preview
@@ -6860,9 +6931,15 @@ def main(argv: list[str] | None = None) -> int:
             "lesson",
             "handoff",
             "controller",
+            "memory",
+            "profile",
         }
         and not (args.command == "resume" and getattr(args, "task_id", None))
-        and not (args.command == "collaboration" and getattr(args, "collaboration_command", None) in {"context-set", "context-show"})
+        and not (
+            args.command == "collaboration"
+            and getattr(args, "collaboration_command", None)
+            in {"context-set", "context-show"}
+        )
     ):
         try:
             args.root = str(resolve_control_root(args.root))

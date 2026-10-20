@@ -11,11 +11,34 @@ import os
 from pathlib import Path
 
 OPERATIONS = {
-    **{f"controller.{name}": ("controller", name) for name in ("acquire", "renew", "release", "status")},
+    **{
+        f"memory.{name}": ("memory", name)
+        for name in (
+            "note",
+            "notes",
+            "show",
+            "adopt",
+            "revoke",
+            "grant",
+            "consent-revoke",
+            "ingest",
+            "share",
+            "history",
+        )
+    },
+    **{f"profile.{name}": ("profile", name) for name in ("show", "set")},
+    "controller.start": ("controller", "start"),
+    **{
+        f"controller.{name}": ("controller", name)
+        for name in ("acquire", "renew", "release", "status")
+    },
     **{f"session.{name}": ("session", name) for name in ("bind", "show", "unbind")},
     **{f"lesson.{name}": ("lesson", name) for name in ("add", "list", "show")},
     **{f"handoff.{name}": ("handoff", name) for name in ("write", "show")},
-    **{f"project.context-{name}": ("collaboration", "context-" + name) for name in ("set", "show")},
+    **{
+        f"project.context-{name}": ("collaboration", "context-" + name)
+        for name in ("set", "show")
+    },
     "storage.inspect": ("storage", "inspect"),
     **{
         f"quota.{name}": ("quota", name)
@@ -37,7 +60,15 @@ OPERATIONS = {
     },
     **{
         f"reference.{name}": ("reference", name)
-        for name in ("add", "list", "show", "record", "preference", "import-tsv", "export-tsv")
+        for name in (
+            "add",
+            "list",
+            "show",
+            "record",
+            "preference",
+            "import-tsv",
+            "export-tsv",
+        )
     },
     **{
         f"todo.{name}": ("todo", name)
@@ -53,10 +84,26 @@ OPERATIONS = {
     },
     **{
         f"task.{name}": ("collaboration", "task", name)
-        for name in ("add", "update", "list", "show", "claim", "next", "release", "block", "handoff-request", "handoff-accept", "ready-for-review", "request-review", "resolve")
+        for name in (
+            "add",
+            "update",
+            "list",
+            "show",
+            "claim",
+            "next",
+            "release",
+            "block",
+            "handoff-request",
+            "handoff-accept",
+            "ready-for-review",
+            "request-review",
+            "resolve",
+        )
     },
-    **{f"backend.{name}": ("collaboration", "backend", name)
-       for name in ("configure", "doctor", "sync", "pending", "replay", "cached")},
+    **{
+        f"backend.{name}": ("collaboration", "backend", name)
+        for name in ("configure", "doctor", "sync", "pending", "replay", "cached")
+    },
     **{
         name: ("collaboration", name)
         for name in (
@@ -79,7 +126,7 @@ OPERATIONS = {
     },
     **{
         f"inbox.{name}": ("collaboration", "inbox", name)
-        for name in ("send", "list", "ack")
+        for name in ("send", "list", "ack", "archive")
     },
     **{
         name: ("collaboration", name.replace(".", "-"))
@@ -114,6 +161,9 @@ CLI_HELP = {
     "supervisor.run": ("supervisor", "run"),
     "bridge.install": ("bridge", "install"),
     "task.merged": ("task", "merged"),
+    "task.batch-update": ("task", "batch-update"),
+    "dispatch-health.show": ("dispatch-health", "show"),
+    "dispatch-health.clear": ("dispatch-health", "clear"),
     **{
         f"context.{n}": ("context", n)
         for n in ("index", "lookup", "search", "dependents")
@@ -121,7 +171,16 @@ CLI_HELP = {
 }
 ALIASES.update(continuity_collaboration=None)
 READ_ACTIONS = {
-    "controller.status", "session.show", "lesson.list", "lesson.show", "handoff.show", "project.context-show",
+    "memory.notes",
+    "memory.show",
+    "memory.history",
+    "profile.show",
+    "controller.status",
+    "session.show",
+    "lesson.list",
+    "lesson.show",
+    "handoff.show",
+    "project.context-show",
     "storage.inspect",
     "reference.list",
     "reference.show",
@@ -190,6 +249,11 @@ def help_for(topic="overview"):
         "bridge",
         "context",
         "backend",
+        "memory",
+        "profile",
+        "handoff",
+        "inbox",
+        "dispatch-health",
     }:
         names = [
             name
@@ -240,6 +304,19 @@ def help_for(topic="overview"):
 
 def _brief(value):
     if isinstance(value, dict):
+        if value.get("packet_kind") == "controller-start/v1":
+            return [
+                f"status={value['status']} handoff_revision={value['handoff_revision']} complete={value['complete']}",
+                "profile="
+                + json.dumps(value["profile"], ensure_ascii=False, sort_keys=True),
+                "plan: " + str(value.get("plan") or ""),
+                "next: " + str(value.get("next_action") or ""),
+                "pending=" + json.dumps(value["pending_decisions"], ensure_ascii=False),
+                *[r["record_id"] + " | " + r["text"] for r in value["memory"]],
+                f"memory_omitted={value['memory_omitted']} shared_conflicts={value['shared_conflicts']}",
+                value["instruction_boundary"],
+                value["observations"],
+            ]
         if "prompt" in value and "prompt_sha256" in value:
             return [
                 f"prompt_sha256={value['prompt_sha256']} rules_digest={value.get('rules_digest')}",
@@ -282,11 +359,13 @@ def _brief(value):
             observed = value["observed"]
             changed = len(observed.get("changed_cards", []))
             total = observed.get("changed_cards_total", changed)
-            return [f"handoff revision={value.get('revision', 0)} as_of={observed.get('as_of')} running={observed.get('running_workers_total', 0)} unread={observed.get('inbox', {}).get('count', 0)} changed_cards={changed}/{total} remaining_changed_cards={max(0, total-changed)}",
-                    "plan: " + str(value.get("plan") or "")[:300],
-                    "next: " + str(value.get("next_action") or "")[:240],
-                    *[_row(r) for r in observed.get("changed_cards", [])],
-                    "Read JSON for declared/observed provenance and omitted details."]
+            return [
+                f"handoff revision={value.get('revision', 0)} as_of={observed.get('as_of')} running={observed.get('running_workers_total', 0)} unread={observed.get('inbox', {}).get('count', 0)} changed_cards={changed}/{total} remaining_changed_cards={max(0, total - changed)}",
+                "plan: " + str(value.get("plan") or "")[:300],
+                "next: " + str(value.get("next_action") or "")[:240],
+                *[_row(r) for r in observed.get("changed_cards", [])],
+                "Read JSON for declared/observed provenance and omitted details.",
+            ]
         rows = next(
             (
                 value[k]
@@ -298,7 +377,17 @@ def _brief(value):
         if rows is not None:
             heading = f"status={value.get('status', 'ok')} count={len(rows)}"
             if value.get("truncated"):
-                totals = [value[k] for k in ("total_items", "total_tasks", "total_changes", "total_messages", "total_matches") if isinstance(value.get(k), int)]
+                totals = [
+                    value[k]
+                    for k in (
+                        "total_items",
+                        "total_tasks",
+                        "total_changes",
+                        "total_messages",
+                        "total_matches",
+                    )
+                    if isinstance(value.get(k), int)
+                ]
                 total = max(totals or [len(rows)])
                 heading += f" total={total} remaining={max(0, total - len(rows))} truncated=true"
                 heading += " [narrow filters or increase max_output_bytes]"
@@ -334,7 +423,8 @@ def _row(row):
             fields.append("review-due")
         return " | ".join(str(v).replace("\n", " ") for v in fields if v)
     identity = (
-        row.get("rule_id")
+        row.get("record_id")
+        or row.get("rule_id")
         or row.get("task_id")
         or row.get("item_id")
         or row.get("message_id")
@@ -368,7 +458,11 @@ def _row(row):
     if row.get("planning_warnings"):
         line += " | NOTE: " + "; ".join(row["planning_warnings"])
     if row.get("authority") == "gitea-issue":
-        line += " | revision=" + str(row.get("remote_revision", "")) + " | coordination-only, exclusive=false"
+        line += (
+            " | revision="
+            + str(row.get("remote_revision", ""))
+            + " | coordination-only, exclusive=false"
+        )
     for flag in ("review_requested", "handoff_requested", "dependencies_ready"):
         if row.get(flag):
             line += " | " + flag
@@ -407,7 +501,23 @@ def render(value, *, format="json", max_output_bytes=8192):
                 del view["scene"]  # Compatibility alias, not a second observation.
                 continue
             observed = view["observed"]
-            field = next((k for k in ("changed_cards", "changes_since_handoff", "workers", "native_workers", "reports", "drift", "recent_batches", "approved_decisions") if observed.get(k)), None)
+            field = next(
+                (
+                    k
+                    for k in (
+                        "changed_cards",
+                        "changes_since_handoff",
+                        "workers",
+                        "native_workers",
+                        "reports",
+                        "drift",
+                        "recent_batches",
+                        "approved_decisions",
+                    )
+                    if observed.get(k)
+                ),
+                None,
+            )
             if field:
                 observed[field].pop()
                 continue
@@ -641,7 +751,11 @@ def tool_definitions():
         "root": {"type": "string", "minLength": 1},
         "project_id": {"type": "string", "minLength": 1},
         "data_root": {"type": "string", "minLength": 1},
-        "executor_id": {"type": "string", "minLength": 1, "description": "Stable planning identity across connections, not native account authentication"},
+        "executor_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stable planning identity across connections, not native account authentication",
+        },
         "format": {"enum": ["brief", "json"]},
         "max_output_bytes": {"type": "integer", "minimum": 1024, "maximum": 131072},
     }
@@ -724,7 +838,9 @@ def extend_tools(legacy):
                     properties[name] = schema
             if tool["name"] == "continuity_collaboration":
                 tool.setdefault("annotations", {})["openWorldHint"] = True
-                tool["description"] += " Configured Gitea projects read shared Issues via member-local tea."
+                tool["description"] += (
+                    " Configured Gitea projects read shared Issues via member-local tea."
+                )
                 properties.update(
                     status={"type": "string"},
                     lane_id={"type": "string"},
@@ -826,6 +942,29 @@ def handle_tool(name, arguments):
         if not isinstance(parameters, dict):
             raise ValueError("parameters must be an object")
         parameters = dict(parameters)
+        private_context = (
+            operation.startswith("memory.")
+            or operation.startswith("profile.")
+            or operation == "controller.start"
+            or (operation == "handoff.write" and parameters.get("capture_member"))
+        )
+        if private_context and not (
+            operation in {"profile.show", "controller.start"}
+            and parameters.get("public_only") is True
+        ):
+            if os.environ.get("CONTINUITY_PRIVATE_MEMORY_MCP") != "1":
+                raise ValueError(
+                    "private memory MCP is disabled; run on the owning host via CLI, or explicitly authorize this local stdio server with CONTINUITY_PRIVATE_MEMORY_MCP=1; never expose it across accounts"
+                )
+            from .controller_memory import member
+
+            if any(
+                parameters.get(k) not in {None, member()}
+                for k in ("member", "capture_member")
+            ):
+                raise ValueError(
+                    "private MCP context belongs to the configured local member"
+                )
         # Caller identity and target assignment are different. Controllers may
         # create/delegate cards without becoming their executor. Explicit
         # executor_id retains the stricter worker identity contract.
@@ -844,9 +983,16 @@ def handle_tool(name, arguments):
             if parameters.get("actor") not in (None, executor):
                 raise ValueError("actor conflicts with stable executor_id")
             parameters["actor"] = executor
-        if executor and not shared and not controller_delegation and operation in {"task.add", "task.update", "task.claim", "todo.activate"}:
+        if (
+            executor
+            and not shared
+            and not controller_delegation
+            and operation in {"task.add", "task.update", "task.claim", "todo.activate"}
+        ):
             if parameters.get("assignee") not in {None, executor}:
-                raise ValueError("assignee conflicts with stable executor_id; use an explicit audited CLI reassignment")
+                raise ValueError(
+                    "assignee conflicts with stable executor_id; use an explicit audited CLI reassignment"
+                )
             parameters["assignee"] = executor
         requested_format = parameters.pop("format", None)
         if requested_format is not None:

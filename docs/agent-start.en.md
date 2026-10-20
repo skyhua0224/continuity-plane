@@ -8,6 +8,8 @@ Find the current task, next action and verification entry. CLI, SSH and MCP are 
 
 If `.continuity/collaboration.toml` declares gitea-issues, first follow the [Gitea workflow](gitea-collaboration.en.md): check features, your own local authentication and backend sync. Human Gitea accounts own shared tasks, not the local agent assignee below. No permanent controller is required. Installation needs user authorization; never request plaintext tokens.
 
+For controller replacement or a new Claude/Codex controller, run `continuity controller start --project-id PROJECT --member LOCAL_MEMBER --format brief --max-output-bytes 4096`. It combines a bounded plan, next action, reporting/question/tool profile and approved memory. Private sources still require local consent; shared servers use `--public-only`. See [controller continuity](controller-memory.en.md).
+
 Run inside the project. Replace demo, agent-1 and controller with the real project, independent executor instance and controller. Concurrent workers must not share an identity.
 
 ```bash
@@ -17,7 +19,7 @@ continuity collaboration packet --project-id demo --assignee agent-1
 continuity handoff show --project-id demo
 ```
 
-Alpha28 CLI is 0.1.0a28; plugins are 0.1.0-alpha.28. First [initialize an unregistered project](../USAGE.en.md#initialize), without overwriting an existing .continuity directory. whoami neither logs into providers nor acquires a lease.
+Alpha29 CLI is 0.1.0a29; plugins are 0.1.0-alpha.29. First [initialize an unregistered project](../USAGE.en.md#initialize), without overwriting an existing .continuity directory. whoami neither logs into providers nor acquires a lease.
 
 ## Paste into the brief
 

@@ -2,11 +2,11 @@
 
 [English](validation.en.md) · [工作流](workflows.md) · [历史实验](benchmarks.md)
 
-范围：Alpha28（`0.1.0a28`）。证据分为本轮合成 CLI、已有自动回归、匿名使用反馈和未覆盖项，不能互相替代。
+范围：Alpha29（`0.1.0a29`）。证据分为本轮合成 CLI、已有自动回归、匿名使用反馈和未覆盖项，不能互相替代。
 
 ## 本轮可复现实测
 
-Alpha28 新增本机 tea 0.15.0／HTTPS Gitea 1.24.7 双合成账号私有仓库验收；并发／断网／重复发送使用确定性合成测试，见[本版范围](release-alpha27.md)。下方采用者脚本已在隔离安装的 Alpha28 重跑，receipt 仅含允许公开的合成聚合数据；完整回归以 tag CI 为准。
+Alpha27 已用本机 tea 0.15.0／HTTPS Gitea 1.24.7 双合成账号私有仓库验收；Alpha29 未另建真实 Gitea 现场，Gitea 相关本版变化由合成回归覆盖。下方采用者脚本已在隔离安装的 Alpha29 重跑，receipt 仅含允许公开的合成聚合数据；完整回归以 tag CI 为准。
 
 运行公开脚本；使用一个**新建、空的持久目录**，不指向自己的注册表或 provider profile：
 
@@ -23,15 +23,16 @@ python examples/verify_adopter_workflows.py --workspace /path/to/new-persistent-
 | 初始化、注册、身份与按 assignee 取卡 | 通过 |
 | brief 符号检索与 1024-byte 上限 | 通过；该合成命中返回 32 bytes |
 | 完整规则导出、镜像对比、规则／正文组装 | 通过 |
-| 收件箱发送、读取、ack | 通过 |
+| 收件箱发送、读取、ack、归档与重复抑制 | 通过；只归档已确认消息 |
 | 两个 Python worker 的 supervisor 运行与正常报告 | 通过 |
 | 失败子进程 | 原退出码 3 被保存；dispatch CLI 非零（2） |
 | 单次 merged 元数据与 commit 绑定检查 | 通过；不执行真实 Git 合入 |
 | shared handoff、lesson、第二主控只读 | 通过 |
+| 分域 profile、批准记忆与 `controller start` | 通过；固定样例返回 1,443 JSON bytes，预算 4,096 bytes |
 | 逐条事件翻页、多事件 wait、无变化读取 | 通过；该 fixture 无变化响应 216 bytes |
 | worker 提前改为待评审后的报告 | 自动挂卡并由 report 读取；不接受手工挂载替代此检查 |
 
-13 个正向检查通过，另验证提前改卡后的自动报告交付。字节数只描述该固定样例，不是生产项目吞吐、模型 token 降幅或费用节省。
+14 个正向检查通过，另验证提前改卡后的自动报告交付。字节数只描述该固定样例，不是生产项目吞吐、模型 token 降幅或费用节省。
 
 ## 核心能力与证据范围
 
@@ -45,6 +46,8 @@ python examples/verify_adopter_workflows.py --workspace /path/to/new-persistent-
 | changes、分页、OR wait | CLI 实测 + 并发／预算回归 | 无法唤醒所有宿主；超时不是 worker 失败 |
 | 规则、受众、附件与完整导出 | CLI 实测 + 版本／附件回归 | 指针／hash 不证明 worker 实际读过 |
 | reference 与 lesson | 记录、TSV 往返／冲突、更正回归；lesson CLI 实测 | 显式文件交换；提醒不等于采用 |
+| 主控 profile／记忆与原生笔记 | 分域、锁字段、候选、撤销、origin/symlink/权限门及有界 start 回归 | 原生写回和真实全量 memory 类型未实测；同 OS 用户需 sandbox |
+| inbox 归档、额度暂停、预留诊断 | 合成端到端与确定性回归 | 只消费已观察错误，不轮询 provider 额度 |
 | 代码索引、brief、依赖与提示词路标 | 合成符号命中 + 语言／路标回归 | 本轮样例为 Python；非完整编译器调用图 |
 | 批次、决定、metrics、一步关卡 | schema／来源／fence 回归；有使用反馈 | 记录声明，不自动执行 Git 或批准例外 |
 | controller lease、容量与未知操作确认 | CLI 第二主控实测 + 并发回归 | 仅协调经过工具的合作客户端 |
@@ -57,7 +60,7 @@ python examples/verify_adopter_workflows.py --workspace /path/to/new-persistent-
 
 Alpha25 的[公开发行 CI](https://github.com/skyhua0224/continuity-plane/actions/runs/38845950775)通过 268 项测试。文档新增脚本和链接／命令检查另随当前主分支 CI 运行；不改写已发布 wheel 或历史 test count。
 
-## Alpha28 采用问题回归
+## Alpha29 采用问题回归
 
 | 修复 | 本轮证据 | 保留边界 |
 |---|---|---|

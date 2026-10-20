@@ -400,6 +400,7 @@ def handoff(
     controller=None,
     controller_token=None,
     auto=False,
+    capture_member=None,
 ):
     from .controller_awareness import scene
     from .controller_lease import require
@@ -434,10 +435,16 @@ def handoff(
         # Snapshot under the same lock used by batch writers. An old batch
         # retry repairs the latest projection; it must not rewind a later batch.
         ledger = _load_ledger(Path(data_root or default_data_root()), project_id)
-        snapshot = scene(
-            data_root, project_id, root=root, max_bytes=16384, max_workers=64
-        )
         previous = doc.get("handoff", {})
+        snapshot = (
+            scene(data_root, project_id, root=root, max_bytes=16384, max_workers=64)
+            if auto
+            else {
+                "status": "deferred",
+                "basis": "fast save; observations not collected",
+                "details_command": "continuity handoff show --project-id " + project_id,
+            }
+        )
         value = {
             "schema_version": "context.controller-handoff/v1",
             "project_id": project_id,
@@ -460,6 +467,7 @@ def handoff(
         }
         if auto:
             from .controller_observation import draft
+
             value["draft"] = draft(data_root, project_id)
         elif previous.get("draft"):
             value["draft"] = previous["draft"]
@@ -477,6 +485,12 @@ def handoff(
             k: v for k, v in previous.items() if k not in {"revision", "updated_at"}
         }
         if value == old_content:
+            if capture_member:
+                from .controller_session import capture
+
+                capture(
+                    root, data_root, project_id, capture_member, previous["revision"]
+                )
             return previous
         value.update(revision=previous.get("revision", 0) + 1, updated_at=_now())
         history_path = (
@@ -487,6 +501,10 @@ def handoff(
         _atomic_write(history_path, value)
         doc["handoff"] = value
         _atomic_write(path, doc)
+    if capture_member:
+        from .controller_session import capture
+
+        capture(root, data_root, project_id, capture_member, value["revision"])
     return value
 
 
@@ -599,10 +617,14 @@ def command(args):
             controller=args.controller,
             controller_token=args.controller_token,
             auto=args.auto,
+            capture_member=args.capture_member,
         )
     elif action == "handoff-show":
         from .controller_observation import handoff_view
-        value = handoff_view(args.data_root, project_id, recipient=os.environ.get("CONTINUITY_ASSIGNEE"))
+
+        value = handoff_view(
+            args.data_root, project_id, recipient=os.environ.get("CONTINUITY_ASSIGNEE")
+        )
     else:
         value = integration(
             args.data_root,
@@ -661,7 +683,15 @@ def _arguments(parser, action):
         parser.add_argument("--controller")
         parser.add_argument("--controller-token")
     elif action == "handoff-write":
-        parser.add_argument("--auto", action="store_true", help="Refresh observations and generate an evidence-linked candidate draft; preserve declared plan")
+        parser.add_argument(
+            "--capture-member",
+            help="Explicit private profile snapshot for this local member; never stored in shared handoff",
+        )
+        parser.add_argument(
+            "--auto",
+            action="store_true",
+            help="Refresh observations and generate an evidence-linked candidate draft; preserve declared plan",
+        )
         parser.add_argument("--plan")
         parser.add_argument("--next-action")
         parser.add_argument("--batch-id")

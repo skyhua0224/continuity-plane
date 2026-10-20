@@ -38,18 +38,39 @@ def classify(text, *, now=None):
         r"\b(?:401|403)\b|unauthorized|invalid.api.key|permission denied", lower
     ):
         return {**result, "failure_class": "authentication"}
-    if re.search(r"upstream_reset_replay_refused|replay[_ -]refused|upstream[_ -]reset", lower):
-        return {**result, "failure_class": "upstream-reset", "requires_new_session": True,
-                "guidance": "Upstream reset/replay refusal is not a quota reset. Stop same-thread retries; preserve work and explicitly review a new session or an authorized model handoff."}
+    if re.search(
+        r"upstream_reset_replay_refused|replay[_ -]refused|upstream[_ -]reset", lower
+    ):
+        return {
+            **result,
+            "failure_class": "upstream-reset",
+            "requires_new_session": True,
+            "guidance": "Upstream reset/replay refusal is not a quota reset. Stop same-thread retries; preserve work and explicitly review a new session or an authorized model handoff.",
+        }
+    quota = bool(
+        re.search(
+            r"quota.{0,25}(?:exhausted|exceeded)|usage.{0,12}limit|you(?:'|’)ve hit your limit|额度.{0,10}(?:耗尽|用完)",
+            lower,
+        )
+    )
+    if quota:
+        result.update(
+            failure_class="quota-exhausted",
+            guidance="Pause this origin/model; known reset only. Do not keep resuming or invent a reset time.",
+        )
     for pattern, kind in (
-        (r"\b429\b|rate.limit|too many requests", "rate-limit"),
-        (r"\b(?:502|503|504)\b|bad gateway|temporarily unavailable", "gateway"),
-        (r"model.{0,40}(?:capacity|overloaded)|at capacity|满载", "capacity"),
+        ()
+        if quota
+        else (
+            (r"\b429\b|rate.limit|too many requests", "rate-limit"),
+            (r"\b(?:502|503|504)\b|bad gateway|temporarily unavailable", "gateway"),
+            (r"model.{0,40}(?:capacity|overloaded)|at capacity|满载", "capacity"),
+        )
     ):
         if re.search(pattern, lower):
             result.update(failure_class=kind, retryable=True)
             break
-    if not result["retryable"]:
+    if not result["retryable"] and not quota:
         return result
     delay = None
     header = re.search(r"retry-after\s*[:=]\s*([^\r\n]+)", text, re.I)

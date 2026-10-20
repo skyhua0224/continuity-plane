@@ -211,9 +211,19 @@ def verify(workspace, cli):
         "--message-id",
         "message",
     )
+    archived = call(
+        "collaboration",
+        "inbox",
+        "archive",
+        *scope,
+        "--recipient",
+        "worker-a",
+    )
     empty = call("collaboration", "inbox", "list", *scope, "--recipient", "worker-a")
     cases["inbox_delivery_ack"] = (
-        len(inbox["messages"]) == 1 and empty["messages"] == []
+        len(inbox["messages"]) == 1
+        and archived["archive"]["archived"] == 1
+        and empty["messages"] == []
     )
     packet = call("collaboration", "packet", *scope, "--assignee", "worker-a")
     cases["assigned_packet"] = packet["task"]["task_id"] == "a"
@@ -323,9 +333,7 @@ def verify(workspace, cli):
     attached = bool(early_card.get("details", {}).get("report"))
     assert attached, "Supervisor must attach the report after an early card update"
     assert "Synthetic fixture report" in call("report", "early", *scope, raw=True)
-    known = {
-        "report_after_early_card_update": "attached"
-    }
+    known = {"report_after_early_card_update": "attached"}
     call("todo", "from-cards", *scope, raw=True)
     verification = {
         "commit": commit,
@@ -382,6 +390,91 @@ def verify(workspace, cli):
     )
     cases["shared_handoff_and_lesson"] = (
         call("handoff", "show", *scope)["next_action"] == "Inspect reports"
+    )
+    profile_path = workspace / "profile.json"
+    profile_path.write_text(
+        json.dumps(
+            {
+                "language": "zh",
+                "report_format": "conclusion-first",
+                "question_policy": "plain-if-native-unavailable",
+            }
+        ),
+        encoding="utf-8",
+    )
+    call(
+        "profile",
+        "set",
+        *scope,
+        "--member",
+        "controller",
+        "--patch-file",
+        str(profile_path),
+        "--expected-revision",
+        "0",
+        "--format",
+        "json",
+    )
+    call(
+        "memory",
+        "note",
+        *scope,
+        "--member",
+        "controller",
+        "--record-id",
+        "report-style",
+        "--kind",
+        "preference",
+        "--scope",
+        "private-project",
+        "--source",
+        "synthetic-user-instruction",
+        "--text",
+        "Lead with the conclusion and separate verified facts.",
+        "--format",
+        "json",
+    )
+    call(
+        "memory",
+        "adopt",
+        *scope,
+        "--member",
+        "controller",
+        "--record-id",
+        "report-style",
+        "--expected-revision",
+        "1",
+        "--reason",
+        "Synthetic approval",
+        "--format",
+        "json",
+    )
+    controller_start = call(
+        "controller",
+        "start",
+        *scope,
+        "--member",
+        "controller",
+        "--capability",
+        "question",
+        "--max-output-bytes",
+        "4096",
+        "--format",
+        "json",
+    )
+    sizes["controller_start_json_bytes"] = len(
+        json.dumps(controller_start, ensure_ascii=False, sort_keys=True).encode()
+    )
+    sizes["controller_start_budget_bytes"] = 4096
+    cases["scoped_controller_start"] = (
+        controller_start["packet_kind"] == "controller-start/v1"
+        and controller_start["complete"]
+        and controller_start["next_action"] == "Inspect reports"
+        and controller_start["profile"]["values"]["language"] == "zh"
+        and any(
+            row["record_id"] == "report-style" for row in controller_start["memory"]
+        )
+        and controller_start["question_route"] == "native-if-actually-available"
     )
     lease = call(
         "controller", "acquire", *scope, "--owner", "controller", "--ttl-seconds", "300"

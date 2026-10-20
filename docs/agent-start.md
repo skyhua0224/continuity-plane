@@ -8,6 +8,8 @@
 
 存在 `.continuity/collaboration.toml` 且 backend 为 gitea-issues 时，先按[Gitea 开工流程](gitea-collaboration.md)检查版本、自己的认证和 backend sync。身份来自人类 Gitea 账号，不使用下方本地 agent assignee 认领，不要求固定主控。缺版本只能经用户授权安装，不能索取 Token。
 
+主控交接或更换 Claude／Codex 主控时，先运行 `continuity controller start --project-id PROJECT --member LOCAL_MEMBER --format brief --max-output-bytes 4096`。它合并有界计划、下一步、报告／提问／工具 profile 和获批记忆；私人来源仍需本机授权，共享服务器只用 `--public-only`。详见[主控连续性](controller-memory.md)。
+
 在项目目录执行，把 demo、agent-1、controller 换成实际项目、独立执行者实例和主控。并发 worker 不共用身份。
 
 ```bash
@@ -17,7 +19,7 @@ continuity collaboration packet --project-id demo --assignee agent-1
 continuity handoff show --project-id demo
 ```
 
-Alpha28 的 CLI 是 `0.1.0a28`，插件是 `0.1.0-alpha.28`。未注册的项目先走[初始化](../USAGE.md#初始化项目)，不覆盖已有 `.continuity/`。whoami 不登录 provider，也不授予主控租约。
+Alpha29 的 CLI 是 `0.1.0a29`，插件是 `0.1.0-alpha.29`。未注册的项目先走[初始化](../USAGE.md#初始化项目)，不覆盖已有 `.continuity/`。whoami 不登录 provider，也不授予主控租约。
 
 ## 可直接贴进简报
 

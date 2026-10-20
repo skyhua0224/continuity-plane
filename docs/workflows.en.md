@@ -56,7 +56,7 @@ Pasteable handoff convention:
 
 > Start by checking your identity, packet, rules and task body; read inbox/code routes when relevant. Finish with the final report, commit and actual verification, explicitly listing unverified scope. Hand back to the controller. Card status grants no push/merge authority.
 
-Normal successful attempts become ready-for-review; failed/interrupted attempts become blocked. Alpha28 attaches the current attempt's final report even after early card updates, without regressing manual status. Stale attempts or reassigned executors cannot replace the new attachment. See [validation](validation.en.md) for evidence scope.
+Normal successful attempts become ready-for-review; failed/interrupted attempts become blocked. Alpha29 attaches the current attempt's final report even after early card updates, without regressing manual status. Stale attempts or reassigned executors cannot replace the new attachment. See [validation](validation.en.md) for evidence scope.
 
 ### Integration and approval
 
@@ -84,6 +84,6 @@ First acquire enables guarded ledger v4. Expiry does not kill workers or grant t
 
 Keep rules canonical, with project/global scope and worker/reviewer/controller audiences. Check generated mirrors through `rules check-mirror`; long policies use hashed attachments, never silent clipping.
 
-`reference list/add/record` records primary sources and adoption reasons; `lesson add/list` preserves experience and corrections. Import the repository index with `reference import-tsv --file docs/authority/source-index.tsv`; generate a new comparison file with `reference export-tsv --file source-index.export.tsv`. Existing files are never overwritten. Key conflicts reject the entire import; imports declare candidates, not reading evidence. See [Alpha28](release-alpha26.md) for columns and identity setup.
+`reference list/add/record` records primary sources and adoption reasons; `lesson add/list` preserves experience and corrections. Import the repository index with `reference import-tsv --file docs/authority/source-index.tsv`; generate a new comparison file with `reference export-tsv --file source-index.export.tsv`. Existing files are never overwritten. Key conflicts reject the entire import; imports declare candidates, not reading evidence. See [Alpha29](release-alpha26.md) for columns and identity setup.
 
 `todo from-cards` is a view, open-state by default. A separate sequential Todo is optional. Inbox is useful when delivery and acknowledgement matter; existing reliable handoffs need not add a message ritual. Adoption should be measured by useful outcomes, not use of every command.

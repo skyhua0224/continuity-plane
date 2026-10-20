@@ -65,10 +65,18 @@ def _messages(path: Path) -> list[dict[str, Any]]:
 
 
 def unread_summary(data_root, *, project_id, recipient=None):
-    rows = [r for r in _messages(_path(data_root, project_id))
-            if r["acknowledged_at"] is None and (recipient is None or r["recipient"] == recipient)]
-    return {"count": len(rows), "oldest_at": min((r["created_at"] for r in rows), default=None),
-            "recipient": recipient, "scope": "recipient" if recipient else "project"}
+    rows = [
+        r
+        for r in _messages(_path(data_root, project_id))
+        if r["acknowledged_at"] is None
+        and (recipient is None or r["recipient"] == recipient)
+    ]
+    return {
+        "count": len(rows),
+        "oldest_at": min((r["created_at"] for r in rows), default=None),
+        "recipient": recipient,
+        "scope": "recipient" if recipient else "project",
+    }
 
 
 def send_message(
@@ -110,6 +118,13 @@ def send_message(
             "body": body,
             "task_id": task_id,
         }
+        archived = _load(path.parent / "inbox-archive" / (message_id + ".json"))
+        if archived is not None:
+            if any(archived.get(k) != v for k, v in payload.items()):
+                raise CollaborationRegistryError(
+                    "archived message ID already exists with different content"
+                )
+            return archived  # A retry is not a new notification.
         if existing:
             if any(existing[k] != v for k, v in payload.items()):
                 raise CollaborationRegistryError(
@@ -129,7 +144,14 @@ def send_message(
                 "messages": messages,
             },
         )
-        _record_change(Path(data_root or default_data_root()), project_id, "message.sent", task_id, recipient=recipient, message_id=message_id)
+        _record_change(
+            Path(data_root or default_data_root()),
+            project_id,
+            "message.sent",
+            task_id,
+            recipient=recipient,
+            message_id=message_id,
+        )
         return item
 
 
@@ -143,6 +165,53 @@ def list_messages(
         for m in _messages(_path(data_root, project_id))
         if m["recipient"] == recipient and m["acknowledged_at"] is None
     ][:limit]
+
+
+def archive(data_root, *, project_id, recipient, limit=100):
+    """Move only acknowledged messages to recoverable per-ID immutable files."""
+    if not _ASSIGNEE_RE.fullmatch(recipient) or not 1 <= limit <= 1000:
+        raise CollaborationRegistryError("recipient or archive limit is invalid")
+    path = _path(data_root, project_id)
+    with _locked(path):
+        messages = _messages(path)
+        selected = [
+            r
+            for r in messages
+            if r["recipient"] == recipient and r["acknowledged_at"] is not None
+        ][:limit]
+        for row in selected:
+            target = path.parent / "inbox-archive" / (row["message_id"] + ".json")
+            old = _load(target)
+            if old is not None and old != row:
+                raise CollaborationRegistryError(
+                    "archive conflict; original inbox preserved"
+                )
+            if old is None:
+                _atomic_write(target, row)
+        identities = {r["message_id"] for r in selected}
+        _atomic_write(
+            path,
+            {
+                "schema_version": "context.collaboration-inbox/v1alpha1",
+                "messages": [r for r in messages if r["message_id"] not in identities],
+            },
+        )
+        if selected:
+            _record_change(
+                Path(data_root or default_data_root()),
+                project_id,
+                "message.archived",
+                None,
+                recipient=recipient,
+                count=len(selected),
+            )
+    return {
+        "archived": len(selected),
+        "unacknowledged_preserved": True,
+        "deleted": False,
+        "recovery": str(path.parent / "inbox-archive"),
+        "duplicate_sends_suppressed": True,
+    }
 
 
 def acknowledge(
@@ -170,5 +239,12 @@ def acknowledge(
                     "messages": messages,
                 },
             )
-            _record_change(Path(data_root or default_data_root()), project_id, "message.acknowledged", item.get("task_id"), recipient=recipient, message_id=message_id)
+            _record_change(
+                Path(data_root or default_data_root()),
+                project_id,
+                "message.acknowledged",
+                item.get("task_id"),
+                recipient=recipient,
+                message_id=message_id,
+            )
         return item

@@ -2,6 +2,13 @@
 
 Adoption: [deployment](docs/deployment.en.md), [recent release notes](docs/releases.en.md), [current coverage/known gaps](docs/validation.en.md). Historical entries retain their original scope. Regular GitHub Release classification does not remove alpha semantics.
 
+## 0.1.0-alpha.29
+
+- Bounded controller start combines plan, next action, workflow profile, approved memory and repository knowledge; fast handoff no longer scans by default.
+- Scoped memory, candidate native-note ingestion, explicit adoption/revocation, locked project profiles and human-reviewed knowledge export.
+- Inbox archive, observed quota pause, reservation diagnosis and sequential JSON batch update.
+- [Release notes and limits](docs/release-alpha29.md), [guide](docs/controller-memory.en.md).
+
 ## 0.1.0-alpha.28
 
 - Accept existing member-local tea login aliases with spaces, colons, Unicode and leading hyphens, retaining exact origin binding and control-character rejection. No native login rename or credential transfer.

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import getpass
 import os
 import subprocess
 import sys
@@ -71,12 +72,17 @@ def handle_event(
         registration = resolve_project(root, data)
         if registration:
             from .native_subagents import session_event
+
             try:
                 session_event(data, registration["project_id"], payload)
             except (OSError, ValueError):
                 pass  # Observation failure must not block the host session.
         if event == "SessionEnd":
-            return {"continue": True, "injected_bytes": 0, "status": "session-end-observed"}
+            return {
+                "continue": True,
+                "injected_bytes": 0,
+                "status": "session-end-observed",
+            }
     if event in {"SessionStart", "PostToolUse"}:
         registration = resolve_project(root, data)
         if registration:
@@ -353,6 +359,7 @@ def handle_event(
         }
     prefix = "Continue the interrupted task from the latest user intent and host summary. Progress notes are nonterminal. Metadata status alone does not make authorized source/test work read-only; respect the actual user scope. Do not repeat answered messages, announce recovery, or reread whole planning documents. For unfamiliar code, use continuity_context_lookup once, then narrow rg on a miss. "
     stable_project_recovery = None
+    session_binding = None
     if valid:
         registration = resolve_project(root, data)
         from .project_context import integration
@@ -391,11 +398,31 @@ def handle_event(
         if registration:
             from .project_context import handoff_summary
             from .controller_awareness import scene
+
             try:
-                recovered["controller_handoff"] = handoff_summary(data, registration["project_id"])
-                recovered["controller_scene"] = scene(data, registration["project_id"], root=registration["control_root"])
+                recovered["controller_handoff"] = handoff_summary(
+                    data, registration["project_id"]
+                )
+                recovered["controller_scene"] = scene(
+                    data, registration["project_id"], root=registration["control_root"]
+                )
             except (OSError, ValueError, KeyError):
-                recovered["controller_observation_warning"] = "Current project observations unavailable; saved session evidence remains labeled as a snapshot."
+                recovered["controller_observation_warning"] = (
+                    "Current project observations unavailable; saved session evidence remains labeled as a snapshot."
+                )
+            controller_role = (
+                os.environ.get("CONTINUITY_ROLE") == "controller"
+                or (session_binding or {}).get("role") == "controller"
+            )
+            if controller_role:
+                member = os.environ.get("CONTINUITY_MEMBER") or getpass.getuser()
+                recovered["controller_entry_command"] = (
+                    "continuity controller start --project-id "
+                    + registration["project_id"]
+                    + " --member "
+                    + member
+                    + " --format brief --max-output-bytes 4096"
+                )
         context = prefix + _json(recovered)
         while len(context.encode()) > MAX_CONTEXT_BYTES:
             scene = recovered.get("controller_scene", {})
@@ -451,13 +478,23 @@ def handle_event(
                 if shared.get("revision"):
                     try:
                         current_scene = scene(
-                            data, registration["project_id"], root=registration["control_root"],
-                            max_bytes=1400, max_workers=4,
+                            data,
+                            registration["project_id"],
+                            root=registration["control_root"],
+                            max_bytes=1400,
+                            max_workers=4,
                         )
                     except (OSError, ValueError, KeyError):
-                        current_scene = {"status": "unavailable", "warning": "Project plan exists; current observations could not be read."}
-                    stable_project_recovery = {"controller_handoff": shared,
-                                               "controller_scene": {k: v for k, v in current_scene.items() if k != "observed_at"}}
+                        current_scene = {
+                            "status": "unavailable",
+                            "warning": "Project plan exists; current observations could not be read.",
+                        }
+                    stable_project_recovery = {
+                        "controller_handoff": shared,
+                        "controller_scene": {
+                            k: v for k, v in current_scene.items() if k != "observed_at"
+                        },
+                    }
                     context = prefix + (
                         "No verified handoff for this session. A project controller handoff exists; "
                         "use its declared plan and current observations below. This grants no lease or operation approval. "
@@ -474,7 +511,11 @@ def handle_event(
                 context += " Project controller handoff lookup failed; check continuity handoff show for this project before assuming it is absent."
     context = _clip(context, MAX_CONTEXT_BYTES)
     marker = path.with_suffix(".delivered.json")
-    identity = hashlib.sha256((_json(stable_project_recovery) if stable_project_recovery else context).encode()).hexdigest()
+    identity = hashlib.sha256(
+        (
+            _json(stable_project_recovery) if stable_project_recovery else context
+        ).encode()
+    ).hexdigest()
     with _locked(marker):
         try:
             previous = json.loads(marker.read_text())

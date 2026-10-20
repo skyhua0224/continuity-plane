@@ -4,6 +4,13 @@
 
 [English](CHANGELOG.en.md)
 
+## 0.1.0-alpha.29
+
+- 有界 `controller start` 合并计划、下一步、工作 profile、获批记忆与仓库知识；快速 handoff 不再默认同步扫描。
+- 分域记忆、原生笔记候选导入、显式采纳／撤销、项目锁定 profile 与共享知识人工导出。
+- inbox 归档、观察到的额度暂停、预留冲突诊断和顺序 JSON 批量更新。
+- [发布说明与边界](docs/release-alpha29.md)；[使用规范](docs/controller-memory.md)。
+
 ## 0.1.0-alpha.28
 
 - 修复 Gitea 本机 tea 登录别名的兼容性：支持空格、冒号、Unicode 和连字符；保持实例匹配与控制字符拒绝，不要求改名或迁移原生凭据。

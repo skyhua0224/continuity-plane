@@ -124,7 +124,8 @@ def receive_main():
                 )
             )
             return 0
-        if parsed.command not in {
+        public_start = parsed.command == "controller" and getattr(parsed, "memory_action", None) == "start" and getattr(parsed, "public_only", False)
+        if not public_start and parsed.command not in {
             "collaboration",
             "todo",
             "rules",

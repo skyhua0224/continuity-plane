@@ -4,7 +4,7 @@
 
 ## Release category versus alpha version
 
-Published GitHub entries use regular **Release**. The current version is Alpha28, package `0.1.0a28`, tag `v0.1.0-alpha.28`; mark it Latest when published. This does not claim production stability or change PyPI prerelease ordering: use an exact version or `--pre`. [Alpha28: Existing Gitea CLI login-name compatibility](release-alpha28.md).
+Published GitHub entries use regular **Release**. The current version is Alpha29, package `0.1.0a29`, tag `v0.1.0-alpha.29`; mark it Latest when published. This does not claim production stability or change PyPI prerelease ordering: use an exact version or `--pre`. [Alpha29: Controller continuity and scoped memory](release-alpha29.md).
 
 Metadata cleanup does not rewrite tags/commits/assets/packages or historical publication dates. Old compatibility/evidence scope remains historical.
 

@@ -6,7 +6,7 @@ This is the detailed command reference. Use the capability matrix for present co
 
 ## Source-tree fix: caller identity and reassignment
 
-The reassignment correction below is not included in the published `0.1.0a28` package.
+The reassignment correction below is not included in the published `0.1.0a29` package.
 In the corrected source, task add/update accept `--actor` for the caller and
 `--assignee` for the target worker. Actor defaults to `CONTINUITY_ASSIGNEE`;
 creating a card records its creator. Do not use an MCP connection ID as this identity.
@@ -31,7 +31,7 @@ Both CLI help and `continuity_help` expose the new actor parameter.
 ## Development source: controller recovery and change consumers
 
 This section describes the current source-tree correction, not features already
-installed by the published `0.1.0a28` package. It requires a later build and fresh
+installed by the published `0.1.0a29` package. It requires a later build and fresh
 MCP connections; it does not migrate native accounts or provider sessions.
 
 `handoff show` keeps `declared` (the saved plan/revision) separate from `observed`
@@ -88,7 +88,7 @@ real rate limits instead advise honoring provider cooldown (a new thread does
 not reset quota). Recovery suggestions never authorize authentication/policy bypass.
 
 The Claude source plugin and bridge add `SessionEnd` (nine hook types in this
-source; the published Alpha28 plugin has eight). An owner-session end or a
+source; the published Alpha29 plugin has eight). An owner-session end or a
 changed observed boot marks matching native attempts **lost to observation**,
 not exited successfully. Age without heartbeat is `unknown-stale`, not proof of
 exit. Native account data stays on its owning machine/profile.

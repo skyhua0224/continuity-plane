@@ -54,6 +54,17 @@ def backend_for(data_root=None, project_id=None, root=None):
 
 
 def add_parsers(collaboration_commands, task_commands):
+    batch = task_commands.add_parser(
+        "batch-update",
+        help="CLI-only bounded JSON batch; sequential, revisioned, stops on first failure",
+    )
+    batch.add_argument("--root", default=".")
+    batch.add_argument("--project-id")
+    batch.add_argument("--data-root")
+    batch.add_argument("--file", required=True)
+    batch.add_argument("--format", choices=("brief", "json"), default="brief")
+    batch.add_argument("--max-output-bytes", type=int, default=8192)
+    batch.set_defaults(handler=batch_update)
     backend = collaboration_commands.add_parser(
         "backend",
         help="Configure/check native Issue collaboration; credentials stay local",
@@ -216,7 +227,8 @@ def backend_command(args):
         if not ignore.exists():
             with ignore.open("x", encoding="utf-8") as handle:
                 handle.write(
-                    "# Shared declaration only; runtime data stays member-local.\n*\n!.gitignore\n!collaboration.toml\n"
+                    "# Shared declarations and reviewed knowledge only; runtime data stays member-local.\n"
+                    "*\n!.gitignore\n!collaboration.toml\n!controller-profile.json\n!knowledge/\n!knowledge/*.json\n"
                 )
                 handle.flush()
                 os.fsync(handle.fileno())
@@ -283,6 +295,109 @@ def backend_command(args):
                 resolves=intent["resolves"],
             )
     _print(args, value)
+    return 0
+
+
+def batch_update(args):
+    path = Path(args.file)
+    if path.stat().st_size > 131072:
+        raise GiteaError("batch file exceeds 128 KiB")
+    try:
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        raise GiteaError("batch file must be valid UTF-8 JSON") from None
+    updates = document.get("updates") if isinstance(document, dict) else None
+    if not isinstance(updates, list) or not 1 <= len(updates) <= 50:
+        raise GiteaError(
+            "batch needs 1..50 updates; large work belongs in separate reviewed batches"
+        )
+    allowed = {
+        "task_id",
+        "operation_id",
+        "expected_remote_revision",
+        "status",
+        "next_action",
+        "branch",
+        "commit",
+        "verification",
+        "pr",
+        "body",
+    }
+    backend = backend_for(args.data_root, args.project_id, args.root)
+    result = {
+        "status": "completed",
+        "total": len(updates),
+        "succeeded": [],
+        "failed": None,
+        "transactional": False,
+        "message": "Sequential revisioned updates; no all-or-none claim.",
+    }
+    for index, row in enumerate(updates):
+        if not isinstance(row, dict) or set(row) - allowed:
+            result.update(
+                status="stopped",
+                failed={"index": index, "reason": "unknown or invalid field"},
+            )
+            print(json.dumps(result, ensure_ascii=False, sort_keys=True))
+            return 1
+        fields = {
+            k: row[k]
+            for k in (
+                "status",
+                "next_action",
+                "branch",
+                "commit",
+                "verification",
+                "pr",
+                "body",
+            )
+            if k in row
+        }
+        try:
+            if backend:
+                for key in ("task_id", "operation_id", "expected_remote_revision"):
+                    if not row.get(key):
+                        raise GiteaError("shared batch requires " + key + " per item")
+                value = backend.mutate(
+                    row["task_id"],
+                    "update",
+                    fields,
+                    row["expected_remote_revision"],
+                    row["operation_id"],
+                )
+            else:
+                from .collaboration_registry import update_task
+
+                value = update_task(
+                    args.data_root,
+                    project_id=args.project_id,
+                    task_id=row.get("task_id"),
+                    body=row.get("body"),
+                    status=row.get("status"),
+                    next_action=row.get("next_action"),
+                    branch=row.get("branch"),
+                    commit=row.get("commit"),
+                    verification=row.get("verification"),
+                )
+            result["succeeded"].append(
+                {
+                    "index": index,
+                    "task_id": row.get("task_id"),
+                    "status": value.get("status"),
+                }
+            )
+        except (GiteaError, ValueError) as exc:
+            result.update(
+                status="stopped",
+                failed={
+                    "index": index,
+                    "task_id": row.get("task_id"),
+                    "reason": str(exc)[:500],
+                },
+            )
+            print(json.dumps(result, ensure_ascii=False, sort_keys=True))
+            return 1
+    print(json.dumps(result, ensure_ascii=False, sort_keys=True))
     return 0
 
 

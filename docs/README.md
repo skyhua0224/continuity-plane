@@ -10,6 +10,7 @@
 | 给 AI 接手／写任务简报 | [四条开工命令与简报约定](agent-start.md) |
 | 各自本机 AI／CLI，共享私有 Issue／PR | [Gitea 协作后端](gitea-collaboration.md) → [仓库与全局配置](collaboration-storage.md) |
 | 主控／执行方 | [派卡与收尾](workflows.md) → [详细参数](field-workflows.md) |
+| 换主控／接入记忆和交流习惯 | [主控连续性与分域记忆](controller-memory.md) |
 | 远端或自定义 profile | [SSH 与 hook](deployment.md#控制端与状态端分离) |
 | 想核对是否有效 | [现版本能力与验证](validation.md) → [历史实验方法](benchmarks.md) |
 | 维护者发布版本 | [发布规范](releases.md) → [变更记录](../CHANGELOG.md) |

@@ -353,7 +353,7 @@ class AdopterDocumentationTests(unittest.TestCase):
         self.assertEqual(value["dataset"], "synthetic-only")
         self.assertEqual(value["version"], VERSION)
         self.assertEqual(value["native_provider_requests"], 0)
-        self.assertEqual(len(value["cases"]), 13)
+        self.assertEqual(len(value["cases"]), 14)
         self.assertTrue(all(value["cases"].values()))
         for key in (
             "host",

@@ -13,7 +13,13 @@ import unittest
 from unittest.mock import patch
 
 from continuity_plane.cli import main
-from continuity_plane.collaboration_registry import register_project
+from continuity_plane.collaboration_inbox import (
+    acknowledge,
+    archive,
+    list_messages,
+    send_message,
+)
+from continuity_plane.collaboration_registry import add_task, register_project
 from continuity_plane.gitea_cli import backend_for
 from continuity_plane.gitea_tasks import (
     EVENT_MARKER,
@@ -34,6 +40,7 @@ from continuity_plane.planning_api import (
     help_for,
     tool_definitions,
 )
+from continuity_plane.retry_policy import classify
 
 
 CONFIG = {
@@ -646,7 +653,14 @@ class GiteaIntegrationTests(unittest.TestCase):
         ignore = self.root / ".continuity/.gitignore"
         self.assertEqual(
             ignore.read_text().splitlines()[1:],
-            ["*", "!.gitignore", "!collaboration.toml"],
+            [
+                "*",
+                "!.gitignore",
+                "!collaboration.toml",
+                "!controller-profile.json",
+                "!knowledge/",
+                "!knowledge/*.json",
+            ],
         )
         declaration.unlink()
         ignore.write_text("existing ignore\n")
@@ -775,6 +789,122 @@ class AuthenticationTests(unittest.TestCase):
         with patch.object(client, "request", return_value=[{"id": 1}]) as request:
             self.assertEqual(client.all("/issues/1/comments"), [{"id": 1}])
             self.assertEqual(request.call_count, 1)
+
+
+class RetirementAndHealthTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.data = self.root / "data"
+        register_project(self.data, project_id="sample", control_root=self.root)
+
+    def test_inbox_archive_is_acknowledged_only_recoverable_and_idempotent(self):
+        send_message(
+            self.data,
+            project_id="sample",
+            message_id="one",
+            sender="a",
+            recipient="alice",
+            body="one",
+        )
+        send_message(
+            self.data,
+            project_id="sample",
+            message_id="two",
+            sender="a",
+            recipient="alice",
+            body="two",
+        )
+        self.assertEqual(
+            archive(self.data, project_id="sample", recipient="alice")["archived"],
+            0,
+        )
+        acknowledge(
+            self.data,
+            project_id="sample",
+            recipient="alice",
+            message_id="one",
+        )
+        self.assertEqual(
+            archive(self.data, project_id="sample", recipient="alice")["archived"],
+            1,
+        )
+        self.assertEqual(
+            [
+                m["message_id"]
+                for m in list_messages(
+                    self.data, project_id="sample", recipient="alice"
+                )
+            ],
+            ["two"],
+        )
+        self.assertEqual(
+            send_message(
+                self.data,
+                project_id="sample",
+                message_id="one",
+                sender="a",
+                recipient="alice",
+                body="one",
+            )["message_id"],
+            "one",
+        )
+        self.assertTrue(
+            (self.data / "projects/sample/inbox-archive/one.json").is_file()
+        )
+
+    def test_quota_is_not_plain_permanent_failure_or_rate_limit(self):
+        value = classify("Usage limit reached; retry at 2026-10-21T01:02:03Z")
+        self.assertEqual(value["failure_class"], "quota-exhausted")
+        self.assertFalse(value["retryable"])
+        self.assertEqual(value["available_at"], "2026-10-21T01:02:03+00:00")
+
+    def test_batch_update_stops_at_failure_and_reports_no_transaction(self):
+        add_task(
+            self.data,
+            project_id="sample",
+            task_id="alpha",
+            lane_id="scope",
+            mode="patch",
+            priority="p1",
+            title="Alpha",
+            objective="Check batch",
+            next_action="Start",
+            exit_criteria=["Pass"],
+        )
+        path = self.root / "batch.json"
+        path.write_text(
+            json.dumps(
+                {
+                    "updates": [
+                        {"task_id": "alpha", "next_action": "Continue"},
+                        {"task_id": "missing", "next_action": "Fail"},
+                    ]
+                }
+            )
+        )
+        output = io.StringIO()
+        with redirect_stdout(output):
+            code = main(
+                [
+                    "task",
+                    "batch-update",
+                    "--project-id",
+                    "sample",
+                    "--data-root",
+                    str(self.data),
+                    "--file",
+                    str(path),
+                    "--format",
+                    "json",
+                ]
+            )
+        value = json.loads(output.getvalue())
+        self.assertEqual(code, 1)
+        self.assertEqual(value["status"], "stopped")
+        self.assertEqual(value["failed"]["index"], 1)
+        self.assertFalse(value["transactional"])
 
 
 if __name__ == "__main__":

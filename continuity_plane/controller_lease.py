@@ -149,8 +149,19 @@ def reserve(
         reservations = doc.setdefault("dispatch_reservations", {})
         previous = reservations.get(task_id)
         if previous and previous["job_id"] != replace_job_id:
+            binding = (
+                _load_ledger(Path(data_root or default_data_root()), project_id)
+                .get("execution_bindings", {})
+                .get(task_id, {})
+            )
+            kind = (
+                "duplicate-running-attempt"
+                if binding.get("status") == "running"
+                and binding.get("attempt_id") == previous["job_id"]
+                else "stale-or-unobserved-reservation"
+            )
             raise ValueError(
-                "task already has a dispatch reservation; inspect the attempt before duplicate launch"
+                f"task already has a dispatch reservation: {kind}; job={previous['job_id']} owner={previous.get('owner')} reserved_at={previous.get('reserved_at')}; inspect changes, then use controller clear-reservation with the exact job ID if reconciled; no automatic takeover"
             )
         if replace_job_id is not None and (
             not previous or previous["job_id"] != replace_job_id

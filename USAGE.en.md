@@ -8,6 +8,7 @@
 |---|---|
 | Solo work that survives compaction | Initialization and continuation below |
 | Member-local CLI/AI sharing private Issues/PRs | [Gitea mode](docs/gitea-collaboration.en.md) → [Repository/global configuration](docs/collaboration-storage.en.md), without a Continuity server |
+| ClaudeA to ClaudeB controller replacement with plan and reporting habits | [Controller continuity](docs/controller-memory.en.md) |
 | Dispatch workers, wait and read reports | [Two-worker example](docs/workflows.en.md#one-controller-and-two-workers) |
 | A team or separate state host | [Team path](docs/workflows.en.md#a-team) and [SSH deployment](docs/deployment.en.md#separate-controller-and-state-hosts) |
 | Existing MASTER/STATUS or explicit State claims | [Advanced State adoption](docs/state-workflows.en.md) |
@@ -18,7 +19,7 @@ Python 3.11+. Prefer an isolated environment:
 
 ```bash
 python3 -m venv .venv
-.venv/bin/python -m pip install 'continuity-plane==0.1.0a28'
+.venv/bin/python -m pip install 'continuity-plane==0.1.0a29'
 ```
 
 On Windows use `.venv\Scripts\python.exe` and `.venv\Scripts\continuity.exe`. Later examples assume `continuity` is on PATH. Global pipx installation, upgrades, offline wheels and rollback are in [deployment](docs/deployment.en.md).
@@ -110,6 +111,6 @@ Back up project `.continuity/`, the collaboration data root and custom artifacts
 
 ## Releases and PyPI
 
-Current package: `0.1.0a28`; Git tag: `v0.1.0-alpha.28`. [GitHub Releases](https://github.com/skyhua0224/continuity-plane/releases/latest) use the regular Release category. The alpha version still signals evolving compatibility; PyPI installation requires an exact pin or `--pre`.
+Current package: `0.1.0a29`; Git tag: `v0.1.0-alpha.29`. [GitHub Releases](https://github.com/skyhua0224/continuity-plane/releases/latest) use the regular Release category. The alpha version still signals evolving compatibility; PyPI installation requires an exact pin or `--pre`.
 
 [Changelog](CHANGELOG.en.md) · [Release policy](docs/releases.en.md)

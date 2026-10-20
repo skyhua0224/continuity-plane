@@ -1,6 +1,6 @@
 # Gitea mode: repository declarations and member-local data
 
-Version 1, Alpha28. [中文](collaboration-storage.md) · [Commands](gitea-collaboration.en.md)
+Version 1, Alpha29. [中文](collaboration-storage.md) · [Commands](gitea-collaboration.en.md)
 
 | Data | Location | Sharing / authority |
 |---|---|---|
@@ -24,6 +24,8 @@ SCOPE derives from instance/repository/credential_ref. Local project IDs may dif
 .continuity/
   .gitignore
   collaboration.toml
+  controller-profile.json # optional shared conventions
+  knowledge/*.hash.json   # optional reviewed project knowledge
 docs/collaboration/       # optional versioned policy
 .gitea/                  # optional Issue / PR templates
 AGENTS.md                # optional start protocol
@@ -40,12 +42,16 @@ credential_ref = "tea:work"
 Each member creates their own work login locally. HTTPS ports and subpaths are supported. Do not add unsupported data_root, account or model-token fields. configure creates the following .continuity/.gitignore only if absent; existing content is preserved:
 
 ```gitignore
+# Shared declarations and reviewed knowledge only; runtime data stays member-local.
 *
 !.gitignore
 !collaboration.toml
+!controller-profile.json
+!knowledge/
+!knowledge/*.json
 ```
 
-If the parent repository ignores .continuity entirely, explicitly review and add only these files with `git add -f .continuity/.gitignore .continuity/collaboration.toml`. Never force-add the whole directory. No competing tasks.json, shared Todo, native session directory or credentials belong here. Existing MASTER / STATUS may hold policy or clearly sourced projections, not independently writable task authority. Enabling Gitea never auto-uploads or deletes local cards.
+If the parent repository ignores .continuity entirely, explicitly review and add only approved files. Never force-add the whole directory. No competing tasks.json, shared Todo, native session directory or credentials belong here. Existing MASTER / STATUS may hold policy or clearly sourced projections, not independently writable task authority. Enabling Gitea never auto-uploads or deletes local cards.
 
 ## Global directory and ~/.continuity
 

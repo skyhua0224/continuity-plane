@@ -481,26 +481,43 @@ def dispatch(
         if type(value) not in (int, float) or not math.isfinite(value) or value <= 0:
             raise ValueError("worker timeouts must be finite positive seconds")
         budgets[key] = value
-    actor = assignee or ("worker-" + model if reassign else task.get("assignee")) or ("worker-" + model)
+    actor = (
+        assignee
+        or ("worker-" + model if reassign else task.get("assignee"))
+        or ("worker-" + model)
+    )
     from .collaboration_registry import _load_ledger, update_task
 
     ledger = _load_ledger(data, project_id)
     from .delivery_records import scope_hash
-    require_policy_clear(data, project_id, task_id,
-                         scope_hash(task, ledger.get("task_details", {}).get(task_id, {}).get("body")))
+
+    require_policy_clear(
+        data,
+        project_id,
+        task_id,
+        scope_hash(task, ledger.get("task_details", {}).get(task_id, {}).get("body")),
+    )
     recorded = ledger.get("execution_bindings", {}).get(task_id, {})
-    recorded_model = recorded.get("model") if recorded.get("assignee") == actor else None
+    recorded_model = (
+        recorded.get("model") if recorded.get("assignee") == actor else None
+    )
     known_models = {"sol", "sonnet", "grok", "glm", "astra", "opus"}
+
     def model_identity(name):
         normalized = _model_alias(name)
         if normalized not in known_models:
-            normalized = _model_alias(profiles.get(name, {}).get("provider_model", name))
+            normalized = _model_alias(
+                profiles.get(name, {}).get("provider_model", name)
+            )
         return normalized
-    assigned_model = model_identity(recorded_model) if recorded_model else _model_alias(actor)
+
+    assigned_model = (
+        model_identity(recorded_model) if recorded_model else _model_alias(actor)
+    )
     target_model = model_identity(model)
-    mismatch = (
-        task.get("assignee") not in (None, actor)
-        or ((recorded_model is not None or assigned_model in known_models) and assigned_model != target_model)
+    mismatch = task.get("assignee") not in (None, actor) or (
+        (recorded_model is not None or assigned_model in known_models)
+        and assigned_model != target_model
     )
     # Explicit in-process handoffs come from the approved quota/fallback path;
     # ordinary CLI dispatch cannot silently manufacture this continuation.
@@ -512,9 +529,16 @@ def dispatch(
         )
     if reassign:
         if dry_run:
-            raise ValueError("--reassign mutates a card; update it explicitly before a dry-run")
-        task = update_task(data, project_id=project_id, task_id=task_id,
-                           assignee=actor, actor=reassign_actor or os.environ.get("CONTINUITY_ASSIGNEE"))
+            raise ValueError(
+                "--reassign mutates a card; update it explicitly before a dry-run"
+            )
+        task = update_task(
+            data,
+            project_id=project_id,
+            task_id=task_id,
+            assignee=actor,
+            actor=reassign_actor or os.environ.get("CONTINUITY_ASSIGNEE"),
+        )
     controller = (
         controller
         or os.environ.get("CONTINUITY_CONTROLLER")
@@ -610,6 +634,9 @@ def dispatch(
     plan["storage"] = describe(jobdir)
     if dry_run:
         return {**plan, "executed": False}
+    from .dispatch_health import require_available
+
+    require_available(data, project_id, profile["execution_origin"], model)
     from .supervisor import daemon_once
     from .collaboration_registry import _load_ledger
 
@@ -701,13 +728,25 @@ def run_job(file):
         )
         return _run_job(file)
     except ExecutionBindingError as exc:
-        result = {"job_id": job["job_id"], "task_id": job["task_id"],
-                  "executed": False, "status": "failed", "reason": str(exc),
-                  "failure_class": "dispatch-validation", "card_projection": "preserved"}
+        result = {
+            "job_id": job["job_id"],
+            "task_id": job["task_id"],
+            "executed": False,
+            "status": "failed",
+            "reason": str(exc),
+            "failure_class": "dispatch-validation",
+            "card_projection": "preserved",
+        }
         _atomic_write(Path(job["job_dir"]) / "result.json", result)
         from .execution_outbox import change
-        change(Path(job["data_root"]), job["project_id"], "dispatch.validation-failed",
-               job["task_id"], **{k: v for k, v in result.items() if k != "task_id"})
+
+        change(
+            Path(job["data_root"]),
+            job["project_id"],
+            "dispatch.validation-failed",
+            job["task_id"],
+            **{k: v for k, v in result.items() if k != "task_id"},
+        )
         return result
     finally:
         try:
@@ -779,6 +818,21 @@ def _run_job(file):
         "log_truncated": capture.log_truncated,
         "executed": True,
     }
+    from .dispatch_health import record as record_health
+
+    try:
+        record_health(
+            job["data_root"],
+            job["project_id"],
+            job["execution_origin"],
+            job["model"],
+            result,
+        )
+    except (OSError, ValueError) as exc:
+        value["metadata_warning"] = (
+            "Worker finished, but observed cooldown could not be stored: "
+            + str(exc)[:300]
+        )
     if result.get("failure_class") in {"policy-review", "output-incomplete"}:
         from .execution_outbox import change as record_stop
 
@@ -1003,8 +1057,15 @@ def _run_parser(parser, action):
         help="Seconds without output per attempt; new workers default 5400 (90 min), resume retains recorded budget",
     )
     parser.add_argument("--retry", type=int, default=0)
-    parser.add_argument("--reassign", action="store_true", help="Explicitly transfer a non-running card before dispatch; normal owner/creator checks apply")
-    parser.add_argument("--actor", help="Stable caller for --reassign, distinct from the target --assignee")
+    parser.add_argument(
+        "--reassign",
+        action="store_true",
+        help="Explicitly transfer a non-running card before dispatch; normal owner/creator checks apply",
+    )
+    parser.add_argument(
+        "--actor",
+        help="Stable caller for --reassign, distinct from the target --assignee",
+    )
     parser.add_argument(
         "--fallback-model",
         action="append",
