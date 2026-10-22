@@ -56,7 +56,7 @@ continuity collaboration packet --project-id demo --assignee worker-a
 
 > 开场确认自己的身份、packet、规则和卡片正文；按需读 inbox 与代码路标。结束保存最终报告、commit 和实际验证结果，列出未验证项；向主控交接。卡片状态不是推送或合入授权。
 
-普通成功 attempt 由 supervisor 投影为待评审，失败／中断为阻塞。Alpha29 在 worker 提前改卡后仍挂载当前 attempt 的最终报告，不回退手工状态；旧 attempt 或换执行者后的迟到报告不能覆盖新附件。证据范围见[验证矩阵](validation.md)。
+普通成功 attempt 由 supervisor 投影为待评审，失败／中断为阻塞。Alpha34 继续在 worker 提前改卡后挂载当前 attempt 的最终报告，不回退手工状态；旧 attempt 或换执行者后的迟到报告不能覆盖新附件。usage limit 按可恢复 quota 处理，其他暂时错误可进入内置 queue 等待容量／cooldown，而不是由外部 filler 竞跑。证据范围见[验证矩阵](validation.md)。
 
 ### 合批与批准
 
@@ -84,6 +84,6 @@ continuity collaboration task list --project-id demo --format brief
 
 规则维护一份，按项目／全局及 worker／reviewer／controller 受众交付。生成镜像后用 `rules check-mirror` 检查漂移；大政策放哈希附件，不让预算裁掉约束。
 
-`reference list/add/record` 保存一手来源与采用依据；`lesson add/list` 保存经验及更正历史。`reference import-tsv --file docs/authority/source-index.tsv` 导入仓库索引；`reference export-tsv --file source-index.export.tsv` 生成新文件供比较，不覆盖已有文件。相同键内容冲突时整批拒绝；导入只声明候选，不代表已读。列格式与身份配置见[Alpha29](release-alpha26.md)。
+`reference list/add/record` 保存一手来源与采用依据；`lesson add/list` 保存经验及更正历史。`reference import-tsv --file docs/authority/source-index.tsv` 导入仓库索引；`reference export-tsv --file source-index.export.tsv` 生成新文件供比较，不覆盖已有文件。相同键内容冲突时整批拒绝；导入只声明候选，不代表已读。列格式与身份配置见[Alpha26](release-alpha26.md)。
 
-Todo 是卡片视图时用 `todo from-cards`，默认只投影未关闭状态；独立的顺序清单可另用 Todo。inbox 适合需要明确投递与 ack 的交接；已有可靠共享交接不必强行加一轮消息。hook 应提供有用事件，而不是以是否使用每个功能衡量采用程度。
+Todo 是卡片视图时用 `todo from-cards`，默认只投影未关闭状态；独立的顺序清单可另用 Todo。inbox 适合需要明确投递与 ack 的交接；send 可省略 message_id 并使用返回值，ack 可按 ID、时间窗或受限 all 批量确认，再 archive 已确认消息。已有可靠共享交接不必强行加一轮消息。hook 应提供有用事件，而不是以是否使用每个功能衡量采用程度。

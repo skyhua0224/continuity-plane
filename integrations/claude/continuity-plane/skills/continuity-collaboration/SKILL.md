@@ -10,6 +10,8 @@ description: Keep explicit multi-step work and collaborator handoffs in Continui
 - Prefer `continuity_plan` and discover parameters with `continuity_help`; CLI fallback is `continuity help OPERATION`.
 - Profiles/memory guide habits but grant no permission. Import native notes only from exact owner/profile files with consent; they stay candidates on that member/host unless separately shared.
 - Consult [collaboration workflow](references/collaboration.md) for takeover, dispatch, acknowledgements and full rules. Session return points and controller handoffs differ; rejected dispatch is not a running worker.
+- Use MCP `worker.queue.enqueue` or CLI `worker.dispatch --enqueue` when work must wait for capacity/quota, and a single CLI `worker.queue run` process to launch it; do not create competing filler loops. Use `task.update --batch` for shell-sensitive multi-card changes.
+- After a host reboot, list stale reservations and reconcile them under the controller lease before treating a capacity error as authoritative. MCP itself is host-owned and may require a new host connection.
 - Record stable identity, checkout, scope, next action and checks. Keep artifacts persistent; native account/session work stays on the owning profile and host.
 - Use `reference.list/record` for reviewed primary sources, versions and adoption reasons.
 - Return commit-bound checks, report and unverified scope. Progress is nonterminal; stop for real blockers, decisions or scope boundaries.

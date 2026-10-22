@@ -4,10 +4,9 @@
 
 This is the detailed command reference. Use the capability matrix for present coverage; historical Alpha24 observations below are not a new Alpha25 field trial. Todo, claim and inbox are optional when an existing card/handoff workflow already provides the needed coordination.
 
-## Source-tree fix: caller identity and reassignment
+## Caller identity and reassignment
 
-The reassignment correction below is not included in the published `0.1.0a29` package.
-In the corrected source, task add/update accept `--actor` for the caller and
+Alpha34 includes the reassignment behavior below. Task add/update accept `--actor` for the caller and
 `--assignee` for the target worker. Actor defaults to `CONTINUITY_ASSIGNEE`;
 creating a card records its creator. Do not use an MCP connection ID as this identity.
 
@@ -28,11 +27,11 @@ For a controller MCP, configure `CONTINUITY_ROLE=controller` and a stable
 to the controller. Explicit worker identities retain their ownership/conflict checks.
 Both CLI help and `continuity_help` expose the new actor parameter.
 
-## Development source: controller recovery and change consumers
+## Controller recovery and change consumers
 
-This section describes the current source-tree correction, not features already
-installed by the published `0.1.0a29` package. It requires a later build and fresh
-MCP connections; it does not migrate native accounts or provider sessions.
+This section describes Alpha34. Upgrade package and host plugins together and
+open fresh MCP connections; the upgrade does not migrate native accounts or
+provider sessions.
 
 `handoff show` keeps `declared` (the saved plan/revision) separate from `observed`
 (ledger, current-attempt terminal events and admitted report-file metadata at
@@ -87,8 +86,7 @@ precedence over an outer 429. Replay refusal can suggest an explicit new session
 real rate limits instead advise honoring provider cooldown (a new thread does
 not reset quota). Recovery suggestions never authorize authentication/policy bypass.
 
-The Claude source plugin and bridge add `SessionEnd` (nine hook types in this
-source; the published Alpha29 plugin has eight). An owner-session end or a
+The Alpha34 Claude plugin and bridge include `SessionEnd` and nine hook types. An owner-session end or a
 changed observed boot marks matching native attempts **lost to observation**,
 not exited successfully. Age without heartbeat is `unknown-stale`, not proof of
 exit. Native account data stays on its owning machine/profile.
@@ -287,6 +285,13 @@ session is not blindly resumed or sent to another provider. Independent reviews 
 legitimate repository scope, correctness checks and authorized fixtures accurately; wording changes
 must not hide the nature of a task. Preferred scenario names are `independent-review` and
 `boundary-validation`; older aliases remain compatible.
+
+HTTP 401/403, Cloudflare/proxy interception and gateway diagnostics are authentication or
+transport failures unless the provider emits an explicit model-safety marker. Continuity permits an
+explicit same-thread resume for the former. If a legacy result still carries `policy-review`, first
+resume once so preserved evidence can reclassify it. For genuinely ambiguous evidence, a controller
+must review the exact job and use `worker clear-policy-review --reason …`; the command records an
+auditable correction and does not erase logs or authorize a fresh replay.
 
 ## Evidence and integration
 

@@ -18,7 +18,9 @@ from continuity_plane.collaboration_registry import (
     _load_ledger,
     _record_change,
     add_task,
+    change_cursor_at_or_before,
     list_changes,
+    latest_change_cursor,
     project_data_dir,
     register_project,
     update_task,
@@ -326,6 +328,19 @@ class ControllerRecoveryTests(unittest.TestCase):
         before = observe(self.data, "sample", recipient="controller")["inbox"]
         self.assertEqual(before["count"], 1)
         self.assertIsNotNone(before["oldest_at"])
+        self.assertIn("--all", before["ack_all_command"])
+        self.assertIn("archive", before["archive_command"])
+        self.assertIn("--before", before["bulk_ack_command"])
+        self.assertTrue(
+            before["acknowledge_command"].startswith(
+                "continuity collaboration inbox ack --project-id sample --recipient controller"
+            )
+        )
+        self.assertTrue(
+            before["archive_command"].startswith(
+                "continuity collaboration inbox archive --project-id sample --recipient controller"
+            )
+        )
         acknowledge(
             self.data, project_id="sample", recipient="controller", message_id="first"
         )
@@ -560,7 +575,7 @@ class ControllerRecoveryTests(unittest.TestCase):
     def test_top_level_task_aliases_share_the_collaboration_contract(self):
         common = ["--project-id", "sample", "--data-root", str(self.data)]
         rows = self.cli(["task", "list", *common])
-        self.assertEqual(rows[0]["task_id"], "task")
+        self.assertEqual(rows["items"][0]["task_id"], "task")
         value = self.cli(
             ["task", "update", *common, "--task-id", "task", "--body", "Alias update"]
         )
@@ -770,6 +785,127 @@ class ControllerRecoveryTests(unittest.TestCase):
         self.assertEqual(value["declared"]["plan"], "Keep integration order")
         self.assertIn("as_of", value["observed"])
         self.assertTrue(value["truncated"])
+
+    def test_fast_handoff_records_current_change_cursor_without_scene_scan(self):
+        _record_change(
+            self.data,
+            "sample",
+            "task.updated",
+            "task",
+            status="active",
+        )
+        value = handoff(
+            self.root,
+            self.data,
+            "sample",
+            plan="Keep the current cursor",
+            next_action="Resume from the saved event boundary",
+        )
+        self.assertEqual(value["scene"]["status"], "deferred")
+        self.assertEqual(
+            value["scene"]["change_cursor"],
+            latest_change_cursor(self.data, project_id="sample"),
+        )
+
+    def test_handoff_can_bound_events_by_saved_timestamp_for_old_snapshots(self):
+        base_cursor = list_changes(self.data, project_id="sample")["high_water_cursor"]
+        times = iter(
+            (
+                "2026-10-20T00:01:00+00:00",
+                "2026-10-20T00:02:00+00:00",
+                "2026-10-20T00:03:00+00:00",
+            )
+        )
+        with patch(
+            "continuity_plane.collaboration_registry._now",
+            side_effect=lambda: next(times),
+        ):
+            for event in ("one", "two", "three"):
+                _record_change(
+                    self.data,
+                    "sample",
+                    event,
+                    "task",
+                )
+        self.assertEqual(
+            change_cursor_at_or_before(
+                self.data,
+                project_id="sample",
+                timestamp="2026-10-20T00:02:30+00:00",
+            ),
+            base_cursor + 2,
+        )
+
+    def test_ordinary_event_append_does_not_read_full_history(self):
+        with patch(
+            "pathlib.Path.read_text",
+            side_effect=AssertionError("ordinary event append scanned full history"),
+        ):
+            _record_change(
+                self.data,
+                "sample",
+                "task.updated",
+                "task",
+                status="active",
+            )
+        latest = list_changes(self.data, project_id="sample")["changes"][-1]
+        self.assertEqual(latest["event"], "task.updated")
+
+    def test_truncated_handoff_keeps_pending_decisions_and_attention(self):
+        handoff(
+            self.root,
+            self.data,
+            "sample",
+            plan="Keep integration order",
+            next_action="Resolve the provider reset",
+            pending=["Approve the next integration batch"],
+        )
+        self.card("blocked")
+        update_task(
+            self.data,
+            project_id="sample",
+            task_id="blocked",
+            status="blocked",
+            blocked_reason="quota reset required",
+        )
+        self.card("failed")
+        bind_execution(
+            self.data,
+            project_id="sample",
+            task_id="failed",
+            assignee="worker-sol",
+            attempt_id="attempt-failed",
+        )
+        _record_change(
+            self.data,
+            "sample",
+            "attempt.finished",
+            "failed",
+            attempt_id="attempt-failed",
+            status="failed",
+            failure_class="quota-exhausted",
+            reason="usage limit reached",
+        )
+        for index in range(20):
+            task_id = "change-" + str(index)
+            self.card(task_id)
+            update_task(
+                self.data,
+                project_id="sample",
+                task_id=task_id,
+                next_action="ordinary history " + ("x" * 180),
+            )
+        value = self.execute("handoff.show", max_output_bytes=1024)
+        self.assertEqual(
+            value["declared"]["pending_decisions"],
+            ["Approve the next integration batch"],
+        )
+        attention = value["observed"]["attention"]
+        self.assertTrue(any(row["kind"] == "blocked-card" for row in attention))
+        self.assertTrue(
+            any(row["kind"] == "failed-or-interrupted-attempt" for row in attention)
+        )
+        self.assertTrue(value["details_omitted"])
 
     def test_corrupt_consumer_state_is_not_silently_recreated(self):
         self.execute("changes", consumer="controller")

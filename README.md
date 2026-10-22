@@ -4,7 +4,7 @@ Continuity 是给人和 AI Agent 共用的任务清单、协作与上下文接�
 
 可以只用 CLI，也可以通过 MCP 让 Agent 直接操作；Codex／Claude Code 插件把这些能力接入宿主，hooks 在会话和压缩等时间点自动保存、恢复或提示变化。检索与输出预算减少重复读代码；实际字节、宿主 token 和缓存计数用于核对收益，不承诺统一节省率。
 
-[English](README.en.md) · [下载 Alpha29](https://github.com/skyhua0224/continuity-plane/releases/latest) · [部署升级](docs/deployment.md) · [人和 AI 开工指南](docs/agent-start.md)
+[English](README.en.md) · [下载 Alpha34](https://github.com/skyhua0224/continuity-plane/releases/latest) · [部署升级](docs/deployment.md) · [人和 AI 开工指南](docs/agent-start.md)
 
 [![PyPI 版本](https://img.shields.io/pypi/v/continuity-plane?include_prereleases)](https://pypi.org/project/continuity-plane/)
 [![Apache-2.0 许可](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
@@ -34,7 +34,7 @@ Continuity 是给人和 AI Agent 共用的任务清单、协作与上下文接�
 需要 Python 3.11+；代码索引还需要 Git。推荐用 pipx 安装，让宿主插件也能找到 CLI：
 
 ```bash
-pipx install 'continuity-plane==0.1.0a29'
+pipx install 'continuity-plane==0.1.0a34'
 continuity --version
 # 在目标仓库登记项目；demo 换成稳定的项目 ID
 continuity collaboration register --project-id demo --control-root . --repository-root .
@@ -66,12 +66,12 @@ continuity todo from-cards --project-id demo --assignee worker-a
 continuity todo list --project-id demo --format brief
 ```
 
-视图随卡片状态变化，默认只看未关闭状态；可用重复的 `--status` 或 `--all` 调整。旧队列留作历史。卡片视图的 activate 使用 `--assignee` 或 CONTINUITY_ASSIGNEE，session-id 只作恢复标签。参数查询：`continuity help todo.compile`、`continuity help todo.from-cards`。
+视图随卡片状态变化，默认只看未关闭状态；可用重复的 `--status` 或 `--all` 调整。brief 中的 `execution_state` 区分 queued、assigned、running、blocked 和 review：仅分给 worker 的卡显示 assigned，只有存在运行中的 execution binding 才显示 running；阻塞行同时给出短原因。旧队列留作历史。卡片视图的 activate 使用 `--assignee` 或 CONTINUITY_ASSIGNEE，session-id 只作恢复标签。参数查询：`continuity help todo.compile`、`continuity help todo.from-cards`。
 
 <a id="collaboration"></a>
 ## collaboration
 
-Alpha29 提供[私有 Gitea Issue／PR 后端](docs/gitea-collaboration.md)：成员各用本机 CLI／MCP 和 tea 登录，共享任务、认领、接受交接及真实 PR 评审请求，无需 Continuity 服务器。Issue 是任务权威，本地仅保留缓存；冲突显式报告，认领不承诺跨机器强锁。[仓库与全局配置规范](docs/collaboration-storage.md)说明哪些文件可以提交、哪些必须留在本机。下方本地卡片示例与 Gitea 模式分开使用。
+Alpha34 继续提供[私有 Gitea Issue／PR 后端](docs/gitea-collaboration.md)：成员各用本机 CLI／MCP 和 tea 登录，共享任务、认领、接受交接及真实 PR 评审请求，无需 Continuity 服务器。Issue 是任务权威，本地仅保留缓存；冲突显式报告，认领不承诺跨机器强锁。[仓库与全局配置规范](docs/collaboration-storage.md)说明哪些文件可以提交、哪些必须留在本机。下方本地卡片示例与 Gitea 模式分开使用。
 
 ### 创建、分配与更新任务卡
 
@@ -98,14 +98,28 @@ continuity collaboration task show --project-id demo --task-id parser-fix --incl
 
 update 只改正文时不用重复传 status。常见状态包括 queued、dispatched、active、blocked、ready-for-review、completed、merged，以及 rejected／superseded；本地完成与最终评审分开。列表支持状态、assignee、lane、关键词、更新时间和结果数筛选，`--all` 才包含已关闭卡，`--full` 展开字段。优先级为 p0／p1／p2；泳道用于区分并行工作。allowed-file 是范围声明，不是操作系统沙箱。
 
+在 SSH、zsh 或其他容易发生引号拆分的环境，批量更新可把正文和字段放进 JSON 文件：
+
+```bash
+continuity collaboration task update --project-id demo --batch updates.json
+cat updates.json | continuity collaboration task update --project-id demo --batch -
+```
+
+批次按文件顺序执行，最多 50 项；遇到第一项错误就停止并返回完成／失败索引，不宣称全有或全无事务。共享 Gitea 模式仍要求每项携带 `operation_id` 与 `expected_remote_revision`。
+
+`--dependency ID`（可重复）在本地和 Gitea 卡上表达前置任务；`task list --dependencies-ready` 只返回前置已完成／merged 的卡。未满足依赖会阻止 claim、转 active 和 dispatch。两种后端的 `task list` 都返回同一 envelope：`items`、`total_items`、`next_cursor`、`has_more`，不再混用 list 和 object。
+
 ### 消息、增量变化与等待
 
-收件箱保存带 ID 的消息，接收方可读后 ack；它不保证唤醒任意宿主。
+收件箱保存带 ID 的消息，接收方可读后 ack；它不保证唤醒任意宿主。`send` 的 `--message-id` 可省略，Continuity 会生成并返回最终 ID；显式 ID 仍是幂等键。`ack` 可按单条 ID、时间截止点或 `--all` 分批确认，确认后再 archive。
 
 ```bash
 continuity collaboration inbox send --project-id demo --sender worker-a --recipient controller --message-id parser-note-1 --task-id parser-fix --body '需要确认解析行为的兼容要求'
 continuity collaboration inbox list --project-id demo --recipient controller
 continuity collaboration inbox ack --project-id demo --recipient controller --message-id parser-note-1
+continuity collaboration inbox ack --project-id demo --recipient controller --before 2026-10-20T00:00:00Z --limit 1000
+continuity collaboration inbox ack --project-id demo --recipient controller --all --limit 1000
+continuity collaboration inbox archive --project-id demo --recipient controller --limit 1000
 ```
 
 用 changes 回答“不在的时候发生了什么”，用 wait 阻塞等 worker 结束，减少反复读全账本与查进程：
@@ -134,13 +148,31 @@ continuity report parser-fix --project-id demo
 
 也可配置 `--provider claude` 或 custom。dispatch 从完整规则、任务正文、附件引用和有界代码路标组装提示词，保存运行 ID、日志、原生会话引用及报告。卡片必须先存在；并行修改前为每张卡准备隔离 worktree。后台运行后先用 wait 等对应任务的结束事件，再读 report。
 
+需要排队而非立即启动时，用 Continuity 自己的持久队列，不再维护竞态的 filler 脚本：
+
+```bash
+continuity dispatch --project-id demo --task-id parser-fix --model primary --enqueue --request-id parser-fix-a --priority 10
+continuity worker queue run --project-id demo --watch --controller controller
+continuity worker queue status --project-id demo
+continuity worker queue pause --reason 'maintenance'
+continuity worker queue resume
+```
+
+同项目同一数据根只有一个 queue runner 能持有非阻塞单实例锁。runner 复用正常 dispatch 的卡片、控制器租约、client-family 容量和已观察 quota／cooldown 检查；容量或额度门未满足时请求留在队列，临时 429／quota／gateway 结果带退避重新入队。MCP 可安全调用 `worker.queue.enqueue/status/pause/resume/cancel/requeue`；真正启动 provider 进程的 `worker.queue.run` 保持 CLI-only。入队、等待、阻塞、退避和启动都写 change feed，可被 `changes`／`wait` 和 hook 消费。`pause` 是主机级开关，不会杀正在运行的 worker。参数见 `continuity help worker.queue.run`。
+
 supervisor 记录 attempt 的开始、心跳、结束原因、退出码与超时。当前 attempt 成功时进入待评审，失败／中断进入阻塞；worker 已手工更新状态时保留该状态，仍挂最终报告。迟到的旧 attempt 不能覆盖新运行。
+
+dispatch／resume 使用派发安全事件的派生索引：首次升级顺序回填一次，之后只读 change log 的新增尾部。索引损坏或日志替换时会从权威 JSONL 重建；不需要手工删除历史，也不会因为“索引不存在”跳过拒绝门。
+
+主机崩溃或重启后先用 `continuity controller reservations --project-id demo --state stale` 查看遗留 job。确认重启后，在持有 controller lease 时执行 `controller reconcile-host --apply --reason …`；它只清理 host／boot 或主机身份变化证明为 stale 的 reservation。stale 不再占用容量。容量作用域是“当前项目 + host + profile + client-family”，不宣称能证明多个项目共享账号的总并发。
 
 ```bash
 continuity worker resume --project-id demo --task-id parser-fix --continuation '从已保存的进度继续并先核对已有测试结果' --background
 ```
 
-执行方续跑使用 **worker resume**；顶层 resume 属于高级 State 恢复。原生续跑需要适配器支持及所属机器／profile 的会话引用；不把账号或线程目录搬到另一台机器尝试恢复。effort 原样透传，实际支持由适配器决定；新任务总时长／空闲默认 24 小时／90 分钟，可单独覆盖。
+执行方续跑使用 **worker resume**；顶层 resume 属于高级 State 恢复。原生续跑需要适配器支持及所属机器／profile 的会话引用；不把账号或线程目录搬到另一台机器尝试恢复。effort 原样透传，实际支持由适配器决定；新任务总时长／空闲默认 24 小时／90 分钟，可单独覆盖。usage limit 是 quota exhaustion，不是内容策略拒绝：若 provider 给出未来 reset，所属 official-subscription profile 会自动记录并暂停 origin／model，reset 后优先续跑原线程；旧版误标的 job 会在证据仍可读时追加分类更正。
+
+HTTP 401／403、Cloudflare／代理拦截页和 gateway 错误不会被通用的 “policy” 字样升级成内容拒绝；只有明确的模型安全标记才算 `policy-review`。旧 job 仍误标时，主控复核后可执行 `continuity worker clear-policy-review --task-id … --job-id job-… --actor … --reason …`，留下单次可审计更正并允许原线程显式 resume。
 
 已有启动脚本可用 `collaboration run --task-id … --assignee … -- <命令>` 或 supervisor run 只包装任意命令的记账。`supervisor daemon` 目前是执行主机上的单轮存活核对，不是自动部署的常驻服务。暂时错误可按有限 retry／明确 fallback 策略处理；认证失败与策略拒绝不自动换渠道重试。
 
@@ -148,6 +180,8 @@ continuity worker resume --project-id demo --task-id parser-fix --continuation '
 ## MCP 与插件：让 Agent 直接使用
 
 CLI 是实际能力入口，**MCP 是让模型调用这些能力的工具接口，插件负责把 MCP、skills 或 hooks 装进宿主**。安装哪个插件决定你会看到什么，不必全装，也不要与相同服务的手工 MCP 配置重复注册。
+
+MCP 是宿主管理的本地 stdio 子进程；主机重启或宿主 kill 后，Continuity 状态库不会自行拉起它。重连新 MCP 前可继续走 CLI／SSH；`collaboration doctor` 会明确这一生命周期边界。
 
 | 接入包 | 自动提供什么 | 适合谁 |
 |---|---|---|
@@ -163,7 +197,7 @@ CLI 是实际能力入口，**MCP 是让模型调用这些能力的工具接口�
 
 ```bash
 # 三项分别负责 hooks、检索、规划与 State；按需选择
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.29
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.34
 codex plugin add continuity-plane@continuity-plane
 codex plugin add continuity-plane-search@continuity-plane
 codex plugin add continuity-plane-state@continuity-plane
@@ -189,7 +223,7 @@ claude plugin list
 | `continuity_plan` | action 选择 Todo、task、inbox、rules、reference、handoff、lesson、session、changes、wait、batch／decision、usage，以及 worker.prepare 预览等操作 |
 | `continuity_collaboration`／`continuity_collaboration_packet` | 读取协作视图、派给自己的任务入口；不建立 State 写绑定 |
 | `continuity_todo_compile`、`continuity_todo_list`、`continuity_todo_complete`、`continuity_todo_block`、`continuity_todo_link`、`continuity_todo_activate` | Todo 的直接工具入口；也可统一走 continuity_plan |
-| `continuity_inbox` | 发送、读取、确认持久消息 |
+| `continuity_inbox` | 发送、读取、单条／批量确认和归档持久消息；send 可自动生成 ID，错误返回结构化 failed_gate |
 | `continuity_context_lookup` | 另一个 search server 提供的有界符号／路径检索，默认 brief |
 | `continuity_resume`、`continuity_inspect` | 绑定恢复入口／只读检查高级 State |
 | `continuity_checkpoint`、`continuity_autorun` | 创建／验证 checkpoint，或从已验证现场继续当前 Work |
@@ -234,7 +268,7 @@ MCP 没有把所有 CLI 命令变成远程执行器：**dispatch／worker resume
 | Stop | 支持 | 支持 | 收尾与接续检查；不把一次停止推断成验证或评审通过 |
 | SubagentStart／SubagentStop | 本插件不提供 | 支持 | 记录原生子代理的观察事件；不凭此推断 PID、退出码、成功或完整报告 |
 
-Alpha29 的插件与源码交接包含 SessionEnd，用于标记父会话结束后失去观察的原生子代理。[交接实现](docs/field-workflows.md#development-source-controller-recovery-and-change-consumers)还包含交接读时观察、consumer／ack、派工快照校验与 task 命令别名。安装旧版本不会自动获得这些行为，需要升级并重连宿主。
+Alpha34 的插件与源码交接包含 SessionEnd，用于标记父会话结束后失去观察的原生子代理。[交接实现](docs/field-workflows.md#development-source-controller-recovery-and-change-consumers)还包含交接读时观察、consumer／ack、派工快照校验与 task 命令别名。安装旧版本不会自动获得这些行为，需要升级并重连宿主。
 
 Skill 给 Agent 可按需加载的协作方法；MCP 是可调用工具；hook 是在上述时间点运行的程序。它们作用不同。提醒只在有变化时给出，不能保证唤醒任何离线会话。只有在 supervisor 下运行的 worker 才有对应的受管运行记录。
 
@@ -294,7 +328,9 @@ continuity collaboration commitment-add --project-id demo --commitment-id compat
 continuity collaboration commitment-list --project-id demo
 ```
 
-通过 `collaboration context-set` 指定真实集成根与 Git ref，区别权威集成 HEAD 和某个 checkout 的 HEAD；`session bind` 把原生会话声明为主控或执行方，并关联 task／batch。压缩前和批次记录后的共享现场刷新遵守角色与租约；刷新失败会保留告警，不把旧文件当新现场。
+通过 `collaboration context-set --integration-base main` 设置项目级默认实现基线；它区别权威集成 HEAD 和某个 checkout 的 HEAD。仓库 `.continuity/controller-profile.json` 中锁定的 `integration_base` 也可作为项目默认值。组装 worker prompt 时会自动携带该 base 及可用的权威 HEAD，并明确它只是实现起点，不授予 merge、push、deploy 或所有权。`session bind` 把原生会话声明为主控或执行方，并关联 task／batch。压缩前和批次记录后的共享现场刷新遵守角色与租约；刷新失败会保留告警，不把旧文件当新现场。
+
+`handoff show` 在预算不足时先保留待决事项、阻塞卡、失败／中断 attempt 和“报告已写但卡未更新”，普通 changes 后丢弃。快速 handoff write 会记录当前 change cursor，后续 show 只处理该边界后的新事件；旧交接没有 cursor 时写一次新交接即可。brief 的 unread 明确表示未确认 inbox 消息数，并给出批量 ack 与 archive 命令；确认只移出 unread，archive 才移到可恢复归档。
 
 <a id="verification"></a>
 ## 验证、合入批次与决定
@@ -311,7 +347,7 @@ continuity help decision-add
 
 报告路径须是真实文件。branch、commit、landed_commit、released_in 分别保存相应 Git 事实；`--verification-json` 把 checks 与 unverified 分开，并把验证绑定到真实 commit。`batch-add` 记录一批卡、基线、结果提交、门结果和 metrics；`decision-add` 保存实际批准来源、例外与更正，status-render 可生成投影。
 
-证据齐备时 task update 可一次提交元数据并标记 merged；`task merged … --batch …` 可使用已有批次记录。两者都不执行 Git 合并、快进或推送。缺证据会显露；override 需要记录 reason，不能靠元数据伪造用户批准。
+证据齐备时 task update 可一次提交元数据并标记 merged；`task merged … --batch …` 可使用已有批次记录。两者都不执行 Git 合并、快进或推送。缺证据会显露；override 需要记录 reason，不能靠元数据伪造用户批准。非代码 decision 可以不绑定 commit；一旦提供 commit，仍进行严格对象 ID 校验。
 
 <a id="usage"></a>
 ## 计量、模型推荐与可用性
@@ -338,6 +374,10 @@ continuity observe ingest-usage --root . --provider claude --session-id OWN_SESS
 
 recommend 用场景、任务适配、实际运行次数／时长与已记录 cooldown 提供建议；日常池与高成本专家池分开，可限定 eligible-model 或明确忙碌／不可用模型。它不自动派发，不保证所有模型刚好均分，也不能获知未记录的账号容量。quota 记录已知额度、可用性与明确批准的交接，不提供自动查询 Claude 原生额度的承诺。
 
+`quota record` 缺少正式订阅声明时，错误会直接指出需要 `--official-subscription`，避免把 token 计数误当订阅额度。worker 观察到明确 usage limit 且有 reset 时自动写入该 origin／model 的 quota 记录；无可用 reset 时只暂停并保持 unknown，不伪造恢复时间。
+
+`dispatch-health show` 现在解释暂停的 failure class、provider reason、task／attempt、观察时间和 reset；容量作用域也随 `controller status`／`reservations` 输出。
+
 <a id="advanced"></a>
 ## 远端、互斥与其他高级命令
 
@@ -359,7 +399,7 @@ SSH alias、项目 root 和执行器均需在所属机器显式配置。控制�
 
 ## 验证范围与完整文档
 
-当前版本为 Alpha29（包 `0.1.0a29`，插件 `0.1.0-alpha.29`）。[验证矩阵](docs/validation.md)把合成流程、受控 hook、真实使用反馈与尚未验证项分开；[历史实验](docs/benchmarks.md)的数字不代表每个项目或新版本的统一收益。核心故障不授予权限，也不要求为普通源码任务重置项目 State。
+当前版本为 Alpha34（包 `0.1.0a34`，插件 `0.1.0-alpha.34`）。[验证矩阵](docs/validation.md)把合成流程、受控 hook、真实使用反馈与尚未验证项分开；[历史实验](docs/benchmarks.md)的数字不代表每个项目或新版本的统一收益。核心故障不授予权限，也不要求为普通源码任务重置项目 State。
 
 | 继续了解 | 入口 |
 |---|---|

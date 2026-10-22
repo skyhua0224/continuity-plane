@@ -184,6 +184,19 @@ class AdopterDocumentationTests(unittest.TestCase):
                 report.write_text(
                     "Synthetic README verification report. No model requests.\n"
                 )
+                (root / "updates.json").write_text(
+                    json.dumps(
+                        {
+                            "updates": [
+                                {
+                                    "task_id": "parser-fix",
+                                    "body": "Synthetic README batch update.",
+                                }
+                            ]
+                        }
+                    ),
+                    encoding="utf-8",
+                )
                 env = {
                     "PATH": os.environ.get("PATH", ""),
                     "CONTINUITY_DATA_ROOT": str(Path(directory) / "data"),

@@ -1463,7 +1463,11 @@ class MCPProbeTests(unittest.TestCase):
                 self.assertEqual(codex_mcp_server.main(), 0)
             run_cli.assert_not_called()
             response = json.loads(stdout.getvalue())
-            self.assertEqual(response["error"]["code"], -32004)
+            self.assertTrue(response["result"]["isError"])
+            self.assertEqual(
+                response["result"]["structuredContent"]["failed_gate"],
+                "policy_invalid",
+            )
 
 
 class HookProbeTests(unittest.TestCase):

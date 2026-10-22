@@ -11,7 +11,7 @@ from contextlib import redirect_stdout
 from io import StringIO
 from pathlib import Path
 
-from continuity_plane.cli import main
+from continuity_plane.cli import build_parser, main
 from continuity_plane.collaboration_registry import (
     add_task,
     claim_task,
@@ -633,7 +633,6 @@ class OnboardingTests(unittest.TestCase):
                         "action": "send",
                         "sender": "author",
                         "recipient": "worker",
-                        "message_id": "mcp-message",
                         "body": "Continue",
                     },
                 },
@@ -641,6 +640,33 @@ class OnboardingTests(unittest.TestCase):
             {
                 "jsonrpc": "2.0",
                 "id": 3,
+                "method": "tools/call",
+                "params": {
+                    "name": "continuity_inbox",
+                    "arguments": {
+                        "root": str(self.root),
+                        "action": "send",
+                        "recipient": "worker",
+                        "body": "Missing sender",
+                    },
+                },
+            },
+            {
+                "jsonrpc": "2.0",
+                "id": 4,
+                "method": "tools/call",
+                "params": {
+                    "name": "continuity_plan",
+                    "arguments": {
+                        "root": str(self.root),
+                        "action": "todo.list",
+                        "parameters": {"bogus": True},
+                    },
+                },
+            },
+            {
+                "jsonrpc": "2.0",
+                "id": 5,
                 "method": "tools/call",
                 "params": {
                     "name": "continuity_collaboration_packet",
@@ -662,8 +688,239 @@ class OnboardingTests(unittest.TestCase):
             "continuity_inbox", [t["name"] for t in replies[0]["result"]["tools"]]
         )
         self.assertNotIn("error", replies[1])
-        packet = json.loads(replies[2]["result"]["content"][0]["text"])
-        self.assertEqual(packet["inbox"][0]["message_id"], "mcp-message")
+        sent = replies[1]["result"]["structuredContent"]["messages"]
+        self.assertEqual(
+            replies[1]["result"]["structuredContent"]["message_id"],
+            sent["message_id"],
+        )
+        self.assertRegex(
+            sent["message_id"],
+            r"^[a-z0-9][a-z0-9._-]{0,127}$",
+        )
+        self.assertTrue(replies[2]["result"]["isError"])
+        self.assertEqual(
+            replies[2]["result"]["structuredContent"]["failed_gate"],
+            "inbox_invalid",
+        )
+        self.assertTrue(replies[3]["result"]["isError"])
+        self.assertEqual(
+            replies[3]["result"]["structuredContent"]["status"],
+            "error",
+        )
+        packet = json.loads(replies[4]["result"]["content"][0]["text"])
+        self.assertEqual(packet["inbox"][0]["message_id"], sent["message_id"])
+
+        ack_request = {
+            "jsonrpc": "2.0",
+            "id": 5,
+            "method": "tools/call",
+            "params": {
+                "name": "continuity_inbox",
+                "arguments": {
+                    "root": str(self.root),
+                    "action": "ack",
+                    "recipient": "worker",
+                    "message_id": sent["message_id"],
+                },
+            },
+        }
+        ack_result = subprocess.run(
+            [sys.executable, "-m", "continuity_plane.codex_mcp_server"],
+            input=json.dumps(ack_request) + "\n",
+            capture_output=True,
+            text=True,
+            env=env,
+        )
+        self.assertEqual(ack_result.returncode, 0, ack_result.stderr)
+        ack_reply = json.loads(ack_result.stdout)
+        self.assertEqual(
+            ack_reply["result"]["structuredContent"]["messages"]["message_id"],
+            sent["message_id"],
+        )
+
+    def test_inbox_cli_generated_id_idempotency_and_bulk_ack(self):
+        sent_payload = self.call(
+            [
+                "collaboration",
+                "inbox",
+                "send",
+                "--root",
+                str(self.root),
+                "--data-root",
+                str(self.data),
+                "--project-id",
+                "sample",
+                "--recipient",
+                "worker",
+                "--sender",
+                "author",
+                "--body",
+                "Generated ID",
+            ]
+        )
+        sent = sent_payload["messages"]
+        self.assertEqual(sent_payload["message_id"], sent["message_id"])
+        self.assertRegex(sent["message_id"], r"^[a-z0-9][a-z0-9._-]{0,127}$")
+        first = self.call(
+            [
+                "collaboration",
+                "inbox",
+                "send",
+                "--root",
+                str(self.root),
+                "--data-root",
+                str(self.data),
+                "--project-id",
+                "sample",
+                "--recipient",
+                "worker",
+                "--sender",
+                "author",
+                "--message-id",
+                "stable-id",
+                "--body",
+                "Stable",
+            ]
+        )["messages"]
+        second = self.call(
+            [
+                "collaboration",
+                "inbox",
+                "send",
+                "--root",
+                str(self.root),
+                "--data-root",
+                str(self.data),
+                "--project-id",
+                "sample",
+                "--recipient",
+                "worker",
+                "--sender",
+                "author",
+                "--message-id",
+                "stable-id",
+                "--body",
+                "Stable",
+            ]
+        )["messages"]
+        self.assertEqual(first["message_id"], second["message_id"])
+        self.assertEqual(
+            len(list_messages(self.data, project_id="sample", recipient="worker")),
+            2,
+        )
+        bulk = self.call(
+            [
+                "collaboration",
+                "inbox",
+                "ack",
+                "--root",
+                str(self.root),
+                "--data-root",
+                str(self.data),
+                "--project-id",
+                "sample",
+                "--recipient",
+                "worker",
+                "--before",
+                "2099-01-01T00:00:00Z",
+                "--limit",
+                "1",
+            ]
+        )["messages"]
+        self.assertEqual(bulk["count"], 1)
+        self.assertEqual(
+            len(list_messages(self.data, project_id="sample", recipient="worker")),
+            1,
+        )
+        all_remaining = self.call(
+            [
+                "collaboration",
+                "inbox",
+                "ack",
+                "--root",
+                str(self.root),
+                "--data-root",
+                str(self.data),
+                "--project-id",
+                "sample",
+                "--recipient",
+                "worker",
+                "--all",
+                "--limit",
+                "10",
+            ]
+        )["messages"]
+        self.assertEqual(all_remaining["count"], 1)
+        archived = self.call(
+            [
+                "collaboration",
+                "inbox",
+                "archive",
+                "--root",
+                str(self.root),
+                "--data-root",
+                str(self.data),
+                "--project-id",
+                "sample",
+                "--recipient",
+                "worker",
+                "--limit",
+                "10",
+            ]
+        )["archive"]
+        self.assertEqual(archived["archived"], 2)
+
+    def test_inbox_cli_and_mcp_required_fields_share_one_contract(self):
+        parser = build_parser()
+        collaboration = next(
+            action for action in parser._actions if action.dest == "command"
+        ).choices["collaboration"]
+        collaboration_actions = next(
+            action
+            for action in collaboration._actions
+            if action.dest == "collaboration_command"
+        ).choices
+        inbox_parser = collaboration_actions["inbox"]
+        inbox = next(
+            action for action in inbox_parser._actions if action.dest == "inbox_command"
+        ).choices
+        send_actions = {action.dest: action for action in inbox["send"]._actions}
+        ack_actions = {action.dest: action for action in inbox["ack"]._actions}
+        self.assertFalse(send_actions["message_id"].required)
+        self.assertTrue(send_actions["sender"].required)
+        self.assertTrue(send_actions["body"].required)
+        self.assertFalse(ack_actions["message_id"].required)
+        self.assertFalse(ack_actions["before"].required)
+        self.assertFalse(ack_actions["all"].required)
+        self.assertTrue(inbox["ack"]._mutually_exclusive_groups[0].required)
+
+        request = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "tools/list",
+        }
+        completed = subprocess.run(
+            [sys.executable, "-m", "continuity_plane.codex_mcp_server"],
+            input=json.dumps(request) + "\n",
+            capture_output=True,
+            text=True,
+            env={**os.environ, "CONTINUITY_DATA_ROOT": str(self.data)},
+        )
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        reply = json.loads(completed.stdout)
+        tool = next(
+            item
+            for item in reply["result"]["tools"]
+            if item["name"] == "continuity_inbox"
+        )
+        schema = tool["inputSchema"]
+        self.assertNotIn("message_id", schema["required"])
+        send_rule, ack_rule = schema["allOf"]
+        self.assertEqual(send_rule["then"]["required"], ["sender", "body"])
+        self.assertIn(
+            {"required": ["message_id"]},
+            ack_rule["then"]["oneOf"],
+        )
 
 
 if __name__ == "__main__":

@@ -4,7 +4,7 @@
 
 ## Release 分类与 alpha 版本号
 
-GitHub 上已发布的版本统一使用普通 **Release**，当前版本 Alpha29。包版本为 `0.1.0a29`，tag 为 `v0.1.0-alpha.29`；新版本发布时标为 Latest。这不把代码宣称为生产稳定版，也不改变 PyPI 的预发行排序规则。
+GitHub 上已发布的版本统一使用普通 **Release**，当前版本 Alpha34。包版本为 `0.1.0a34`，tag 为 `v0.1.0-alpha.34`；新版本发布时标为 Latest。这不把代码宣称为生产稳定版，也不改变 PyPI 的预发行排序规则。
 
 升级使用明确版本约束，或在 pipx/pip 中显式允许 `--pre`。旧 tag、commit、发行资产与包内容不因分类／标题整理而重写。历史 Release 只修正分类和面向用户的说明，原发布年代与兼容范围保留。
 
@@ -14,6 +14,11 @@ GitHub 上已发布的版本统一使用普通 **Release**，当前版本 Alpha2
 
 | 版本 | 主题 | 说明 |
 |---|---|---|
+| Alpha34 | HTTP 拦截与模型内容拒绝分流 | [本版本](release-alpha34.md) |
+| Alpha33 | 派发热路径与历史规模解耦 | [本版本](release-alpha33.md) |
+| Alpha32 | 主机恢复、依赖与可解释调度 | [本版本](release-alpha32.md) |
+| Alpha31 | 可靠 inbox 契约与结构化 MCP 错误 | [本版本](release-alpha31.md) |
+| Alpha30 | 可靠派发队列与可行动交接 | [本版本](release-alpha30.md) |
 | Alpha29 | 主控连续性与分域记忆 | [本版本](release-alpha29.md) |
 | Alpha28 | 兼容现有 Gitea 登录名称 | [本版本](release-alpha28.md) |
 | Alpha27 | 私有 Issue／PR 协作与可靠接手 | [本版本](release-alpha27.md) |

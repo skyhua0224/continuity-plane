@@ -115,7 +115,10 @@ def observe(data_root, project_id, *, recipient=None, since=0, max_items=12):
         jobs = json.loads((directory / "worker-jobs.json").read_text())
     except (OSError, ValueError):
         jobs = {}
-    cursor, events = event_facts(data, project_id)
+    # Handoff views only need terminal events after the saved scene cursor.
+    # Replaying the entire append-only history made large projects block for
+    # minutes even though older events were already represented in the snapshot.
+    cursor, events = event_facts(data, project_id, since=max(0, int(since or 0)))
     terminal = {}
     for row in events:
         if row.get("event") in {
@@ -141,6 +144,8 @@ def observe(data_root, project_id, *, recipient=None, since=0, max_items=12):
                 "status": status,
                 "source": "terminal-event" if end else "execution-binding",
                 "cursor": end.get("cursor") if end else None,
+                "failure_class": end.get("failure_class") if end else None,
+                "reason": end.get("reason") if end else None,
             }
         )
     context = _load(_path(data, project_id))
@@ -178,6 +183,77 @@ def observe(data_root, project_id, *, recipient=None, since=0, max_items=12):
         if t["status"] in {"active", "dispatched"}
         and now - (timestamp(t.get("updated_at")) or now) >= 6 * 3600
     ]
+    attention = []
+    for card in cards:
+        if card["status"] == "blocked":
+            attention.append(
+                {
+                    "kind": "blocked-card",
+                    "task_id": card["task_id"],
+                    "status": card["status"],
+                    "title": card["title"],
+                    "reason": card.get("blocked_reason") or card.get("next_action"),
+                    "details_command": f"continuity collaboration task show --project-id {project_id} --task-id {card['task_id']}",
+                }
+            )
+        elif card["status"] == "ready-for-review":
+            attention.append(
+                {
+                    "kind": "review-waiting",
+                    "task_id": card["task_id"],
+                    "status": card["status"],
+                    "title": card["title"],
+                    "reason": card.get("next_action"),
+                    "details_command": f"continuity collaboration task show --project-id {project_id} --task-id {card['task_id']}",
+                }
+            )
+    for worker in workers:
+        if worker["status"] in {"failed", "interrupted", "blocked"}:
+            attention.append(
+                {
+                    "kind": "failed-or-interrupted-attempt",
+                    "task_id": worker["task_id"],
+                    "attempt_id": worker["attempt_id"],
+                    "status": worker["status"],
+                    "failure_class": worker.get("failure_class"),
+                    "reason": worker.get("reason"),
+                    "details_command": f"continuity collaboration task show --project-id {project_id} --task-id {worker['task_id']}",
+                }
+            )
+    for report in reports:
+        if report.get("newer_than_card"):
+            attention.append(
+                {
+                    "kind": "report-without-card-update",
+                    "task_id": report["task_id"],
+                    "status": "attention",
+                    "reason": "worker report is newer than the card; review it before redispatch",
+                    "details_command": f"continuity worker report --project-id {project_id} --task-id {report['task_id']}",
+                }
+            )
+    unique_attention = []
+    seen_attention = set()
+    for row in attention:
+        identity = (
+            row.get("kind"),
+            row.get("task_id"),
+            row.get("attempt_id"),
+        )
+        if identity not in seen_attention:
+            unique_attention.append(row)
+            seen_attention.add(identity)
+    priority = {
+        "blocked-card": 0,
+        "failed-or-interrupted-attempt": 1,
+        "report-without-card-update": 2,
+        "review-waiting": 3,
+    }
+    unique_attention.sort(
+        key=lambda row: (
+            priority.get(row.get("kind"), 99),
+            row.get("task_id") or "",
+        )
+    )
     changes = [
         {k: r.get(k) for k in ("cursor", "event", "task_id", "observed_at")}
         for r in events
@@ -191,6 +267,8 @@ def observe(data_root, project_id, *, recipient=None, since=0, max_items=12):
             "task_id": card["task_id"],
             "status": card["status"],
             "assignee": card["assignee"],
+            "title": card["title"],
+            "blocked_reason": card.get("blocked_reason"),
             "next_action": card["next_action"][:240],
             "updated_at": card["updated_at"],
             "details_command": f"continuity task show --project-id {project_id} --task-id {card['task_id']}",
@@ -231,6 +309,8 @@ def observe(data_root, project_id, *, recipient=None, since=0, max_items=12):
         ),
         "reports": reports[:limit],
         "reports_total": len(reports),
+        "attention": unique_attention[:limit],
+        "attention_total": len(unique_attention),
         "drift": (stale + [r for r in reports if r["newer_than_card"]])[:limit],
         "inbox": unread_summary(data, project_id=project_id, recipient=recipient),
         "controller": view(data, project_id, recipient),
@@ -247,6 +327,14 @@ def handoff_view(data_root, project_id, *, recipient=None):
 
     saved = _load(_path(data_root, project_id)).get("handoff")
     since = (saved or {}).get("scene", {}).get("change_cursor", 0)
+    if not since and saved and saved.get("updated_at"):
+        from .collaboration_registry import change_cursor_at_or_before
+
+        since = change_cursor_at_or_before(
+            data_root,
+            project_id=project_id,
+            timestamp=saved["updated_at"],
+        )
     observed = observe(data_root, project_id, recipient=recipient, since=since)
     # Preserve the original scene's in-flight-only counters for older clients.
     scene = {

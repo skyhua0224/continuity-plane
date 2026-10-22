@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 from contextlib import redirect_stdout
+from datetime import UTC, datetime, timedelta
 import io
 import json
 from pathlib import Path
@@ -855,10 +856,49 @@ class RetirementAndHealthTests(unittest.TestCase):
         )
 
     def test_quota_is_not_plain_permanent_failure_or_rate_limit(self):
-        value = classify("Usage limit reached; retry at 2026-10-21T01:02:03Z")
+        reset_at = (
+            (datetime.now(UTC) + timedelta(hours=1))
+            .replace(microsecond=0)
+            .isoformat()
+            .replace("+00:00", "Z")
+        )
+        value = classify(f"Usage limit reached; retry at {reset_at}")
         self.assertEqual(value["failure_class"], "quota-exhausted")
-        self.assertFalse(value["retryable"])
-        self.assertEqual(value["available_at"], "2026-10-21T01:02:03+00:00")
+        self.assertTrue(value["retryable"])
+        self.assertTrue(value["resume_same_session"])
+        self.assertFalse(value["requires_new_session"])
+        self.assertEqual(value["available_at"], reset_at.replace("Z", "+00:00"))
+        from continuity_plane.retry_policy import policy_refusal
+
+        self.assertFalse(
+            policy_refusal(
+                "Usage policy violation: usage limit reached; retry after reset"
+            )
+        )
+        self.assertEqual(
+            classify(
+                f"Usage policy violation: usage limit reached; retry at {reset_at}"
+            )["failure_class"],
+            "quota-exhausted",
+        )
+        self.assertEqual(
+            classify("Provider content policy refusal")["failure_class"],
+            "policy-review",
+        )
+
+    def test_quota_record_names_the_missing_subscription_flag(self):
+        from continuity_plane.subscription_quota import record
+
+        with self.assertRaisesRegex(ValueError, "--official-subscription"):
+            record(
+                self.data,
+                "sample",
+                "gpt-6.1-sol",
+                used_percent=100,
+                resets_at="2099-01-01T00:00:00+00:00",
+                source="manual",
+                official_subscription=False,
+            )
 
     def test_batch_update_stops_at_failure_and_reports_no_transaction(self):
         add_task(

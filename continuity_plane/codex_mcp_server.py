@@ -20,7 +20,12 @@ from .light_observability import (
 )
 from .workspace_binding import WorkspaceBindingError, resolve_control_root
 from .collaboration_packet import compose_safe_collaboration_packet
-from .collaboration_inbox import send_message, list_messages, acknowledge
+from .collaboration_inbox import (
+    acknowledge,
+    acknowledge_many,
+    list_messages,
+    send_message,
+)
 from .collaboration_registry import resolve_project, list_changes, list_tasks
 from .collaboration_context import list_rules, list_commitments
 from .intent_todo import (
@@ -87,15 +92,47 @@ _STATE_SYNC_PENDING_ACTIONS = {
 
 
 def _reply(request_id: object, result: dict) -> None:
-    print(json.dumps({"jsonrpc": "2.0", "id": request_id, "result": result}), flush=True)
+    print(
+        json.dumps({"jsonrpc": "2.0", "id": request_id, "result": result}), flush=True
+    )
 
 
 def _error(request_id: object, code: int, message: str) -> None:
     print(
         json.dumps(
-            {"jsonrpc": "2.0", "id": request_id, "error": {"code": code, "message": message}}
+            {
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "error": {"code": code, "message": message},
+            }
         ),
         flush=True,
+    )
+
+
+def _tool_error(
+    request_id: object,
+    message: object,
+    *,
+    failed_gate: str = "invalid_input",
+    error_type: str | None = None,
+) -> None:
+    """Return an MCP tool result instead of leaking a Python exception."""
+    value = {
+        "status": "error",
+        "failed_gate": failed_gate,
+        "message": str(message)[:2048],
+    }
+    if error_type:
+        value["error_type"] = error_type
+    encoded = json.dumps(value, ensure_ascii=False, sort_keys=True)
+    _reply(
+        request_id,
+        {
+            "content": [{"type": "text", "text": encoded}],
+            "structuredContent": value,
+            "isError": True,
+        },
     )
 
 
@@ -124,21 +161,15 @@ def _binding_from_output(output: str) -> dict | None:
         envelope = json.loads(output)
     except json.JSONDecodeError:
         return None
-    if (
-        not isinstance(envelope, dict)
-        or envelope.get("schema_version")
-        not in {
-            "context.recovery-envelope/v1alpha1",
-            "context.resume-packet/v1alpha1",
-        }
-    ):
+    if not isinstance(envelope, dict) or envelope.get("schema_version") not in {
+        "context.recovery-envelope/v1alpha1",
+        "context.resume-packet/v1alpha1",
+    }:
         return None
     active_work = envelope.get("active_work")
     claim = envelope.get("claim")
     idle = active_work is None and claim is None
-    if not idle and (
-        not isinstance(active_work, dict) or not isinstance(claim, dict)
-    ):
+    if not idle and (not isinstance(active_work, dict) or not isinstance(claim, dict)):
         return None
     if idle:
         next_action = envelope.get("next_action")
@@ -227,7 +258,9 @@ def _requested_root(value: object, active_root: Path | None) -> Path | None:
     return resolved
 
 
-def _run_cli_with_retry(command: list[str], root: Path) -> subprocess.CompletedProcess[str]:
+def _run_cli_with_retry(
+    command: list[str], root: Path
+) -> subprocess.CompletedProcess[str]:
     last = subprocess.CompletedProcess(command, 1, "", "operation failed")
     for attempt in range(3):
         try:
@@ -269,7 +302,11 @@ def _write_binding_error(
     work_id: object | None = None,
 ) -> bool:
     if binding is None:
-        _error(request_id, -32001, "session binding is unavailable; write tools are disabled")
+        _error(
+            request_id,
+            -32001,
+            "session binding is unavailable; write tools are disabled",
+        )
         return True
     if not _binding_is_writable(binding):
         _error(
@@ -301,7 +338,11 @@ def _write_transition_binding_error(
     successor_claim_id: object,
 ) -> bool:
     if binding is None:
-        _error(request_id, -32001, "session binding is unavailable; write tools are disabled")
+        _error(
+            request_id,
+            -32001,
+            "session binding is unavailable; write tools are disabled",
+        )
         return True
     if not _binding_is_writable(binding):
         _error(
@@ -319,7 +360,11 @@ def _write_transition_binding_error(
         and successor_claim_id == binding["claim_id"]
     )
     if not current_path and not replay_path:
-        _error(request_id, -32003, "transition binding does not match the active or returned claim")
+        _error(
+            request_id,
+            -32003,
+            "transition binding does not match the active or returned claim",
+        )
         return True
     return False
 
@@ -330,10 +375,16 @@ def _write_activation_binding_error(
     binding: dict | None,
 ) -> bool:
     if binding is None:
-        _error(request_id, -32001, "session binding is unavailable; write tools are disabled")
+        _error(
+            request_id,
+            -32001,
+            "session binding is unavailable; write tools are disabled",
+        )
         return True
     if binding["mode"] != "idle":
-        _error(request_id, -32003, "successor activation requires an idle session binding")
+        _error(
+            request_id, -32003, "successor activation requires an idle session binding"
+        )
         return True
     stale_source_rebind = (
         binding["read_only"]
@@ -362,7 +413,11 @@ def _claim_recovery_binding_error(
     new_claim_id: str | None,
 ) -> bool:
     if binding is None:
-        _error(request_id, -32001, "session binding is unavailable; write tools are disabled")
+        _error(
+            request_id,
+            -32001,
+            "session binding is unavailable; write tools are disabled",
+        )
         return True
     if binding["mode"] != "active":
         _error(request_id, -32003, "claim recovery requires an active session binding")
@@ -385,7 +440,8 @@ def _claim_recovery_binding_error(
                 _error(
                     request_id,
                     -32002,
-                    "State writes are not ready; heartbeat recovery requires a stale canonical source with a valid bound claim and verified checkpoint" + _READ_ONLY_SCOPE_NOTE,
+                    "State writes are not ready; heartbeat recovery requires a stale canonical source with a valid bound claim and verified checkpoint"
+                    + _READ_ONLY_SCOPE_NOTE,
                 )
                 return True
         return False
@@ -401,14 +457,12 @@ def _claim_recovery_binding_error(
             _error(
                 request_id,
                 -32002,
-                "State writes are not ready; only the expired bound claim can be recovered" + _READ_ONLY_SCOPE_NOTE,
+                "State writes are not ready; only the expired bound claim can be recovered"
+                + _READ_ONLY_SCOPE_NOTE,
             )
             return True
         return False
-    replay = (
-        claim_id != binding["claim_id"]
-        and new_claim_id == binding["claim_id"]
-    )
+    replay = claim_id != binding["claim_id"] and new_claim_id == binding["claim_id"]
     if not replay:
         _error(
             request_id,
@@ -466,318 +520,447 @@ def main() -> int:
             _reply(
                 request_id,
                 {
-                    "tools": extend_tools([
-                        {
-                            "name": "continuity_inspect",
-                            "description": "只读检查当前有界恢复状态，不建立写绑定或刷新投影 / Read bounded continuity state without binding writes or refreshing projections.",
-                            "annotations": _READ_ONLY_ANNOTATIONS,
-                            "inputSchema": {
-                                "type": "object",
-                                "additionalProperties": False,
-                                "required": ["root"],
-                                "properties": {"root": {"type": "string", "minLength": 1}},
-                            },
-                        },
-                        {
-                            "name": "continuity_inbox",
-                            "description": "Send, list or acknowledge durable project messages. Local sidecar only; no provider wake or effect authority.",
-                            "annotations": _LOCAL_WRITE_ANNOTATIONS,
-                            "inputSchema": {
-                                "type": "object", "additionalProperties": False,
-                                "required": ["root", "action", "recipient"],
-                                "properties": {
-                                    "root": {"type": "string"},
-                                    "action": {"enum": ["send", "list", "ack"]},
-                                    "recipient": {"type": "string"}, "sender": {"type": "string"},
-                                    "message_id": {"type": "string"}, "body": {"type": "string", "maxLength": 2048},
-                                    "task_id": {"type": "string"},
-                                },
-                            },
-                        },
-                        {
-                            "name": "continuity_collaboration_packet",
-                            "description": "读取当前项目的一张有界任务与词汇提示卡；只读、非阻塞，不授予任何 State 或外部效果权限 / Read one bounded task and vocabulary hint packet; read-only and non-blocking.",
-                            "annotations": _READ_ONLY_ANNOTATIONS,
-                            "inputSchema": {
-                                "type": "object",
-                                "additionalProperties": False,
-                                "required": ["root"],
-                                "properties": {
-                                    "root": {"type": "string", "minLength": 1},
-                                    "query": {"type": "string", "maxLength": 4096},
-                                    "assignee": {"type": "string", "maxLength": 256},
-                                },
-                            },
-                        },
-                        {
-                            "name": "continuity_collaboration",
-                            "description": "Read bounded collaboration packet, changes, rules or commitments from the registered project. No State claim or provider launch.",
-                            "annotations": _READ_ONLY_ANNOTATIONS,
-                            "inputSchema": {"type": "object", "additionalProperties": False, "required": ["root", "action"], "properties": {"root": {"type": "string"}, "action": {"enum": ["packet", "changes", "rules", "commitments", "tasks"]}, "assignee": {"type": "string"}, "since": {"type": "integer"}, "max_results": {"type": "integer"}, "query": {"type": "string"}}},
-                        },
-                        {
-                            "name": "continuity_resume",
-                            "description": "读取有界恢复包并绑定本 MCP Session 的项目根；全局插件首次调用需传绝对路径 / Read the bounded packet and bind this MCP session to the project root; use an absolute path for the first global-plugin call.",
-                            "annotations": _LOCAL_WRITE_ANNOTATIONS,
-                            "inputSchema": {
-                                "type": "object",
-                                "additionalProperties": False,
-                                "required": ["root"],
-                                "properties": {"root": {"type": "string", "minLength": 1}},
-                            },
-                        },
-                        {
-                            "name": "continuity_todo_compile",
-                            "description": "将多事项用户意图编译为有序本地 TodoQueue；不写 State、不授予外部效果权限 / Compile a multi-item intent into an ordered local TodoQueue without State or external-effect authority.",
-                            "annotations": _LOCAL_WRITE_ANNOTATIONS,
-                            "inputSchema": {
-                                "type": "object",
-                                "additionalProperties": False,
-                                "required": ["root", "prompt"],
-                                "properties": {
-                                    "root": {"type": "string", "minLength": 1},
-                                    "prompt": {"type": "string", "minLength": 1, "maxLength": 12000},
-                                    "master_path": {"type": "string", "minLength": 1},
-                                    "master_section": {"type": "string", "minLength": 1},
-                                },
-                            },
-                        },
-                        {
-                            "name": "continuity_todo_list",
-                            "description": "读取当前项目 TodoQueue；只读 State 仍允许使用 / Read the current project TodoQueue; independent of read-only State.",
-                            "annotations": _READ_ONLY_ANNOTATIONS,
-                            "inputSchema": {
-                                "type": "object",
-                                "additionalProperties": False,
-                                "required": ["root"],
-                                "properties": {"root": {"type": "string", "minLength": 1}},
-                            },
-                        },
-                        {
-                            "name": "continuity_todo_complete",
-                            "description": "完成当前 TodoQueue 项并自动激活下一项；只写本地侧车 / Complete the active TodoQueue item and advance locally.",
-                            "annotations": _LOCAL_WRITE_ANNOTATIONS,
-                            "inputSchema": {
-                                "type": "object",
-                                "additionalProperties": False,
-                                "required": ["root", "item_id"],
-                                "properties": {
-                                    "root": {"type": "string", "minLength": 1},
-                                    "item_id": {"type": "string", "minLength": 1},
-                                    "result": {"type": "string", "maxLength": 2048},
-                                },
-                            },
-                        },
-                        {
-                            "name": "continuity_todo_block",
-                            "description": "记录 TodoQueue 当前项的真实 blocker；只写本地侧车 / Record a real TodoQueue blocker locally.",
-                            "annotations": _LOCAL_WRITE_ANNOTATIONS,
-                            "inputSchema": {
-                                "type": "object",
-                                "additionalProperties": False,
-                                "required": ["root", "item_id", "reason"],
-                                "properties": {
-                                    "root": {"type": "string", "minLength": 1},
-                                    "item_id": {"type": "string", "minLength": 1},
-                                    "reason": {"type": "string", "minLength": 1, "maxLength": 2048},
-                                },
-                            },
-                        },
-                        {
-                            "name": "continuity_autorun",
-                            "description": "从已验证 checkpoint 继续当前 Work；同一 checkpoint 幂等，lease 临近或过期时按受控路径续租或换签 / Continue the current Work from a verified checkpoint; idempotent per checkpoint with controlled heartbeat or reclaim.",
-                            "annotations": _LOCAL_WRITE_ANNOTATIONS,
-                            "inputSchema": {
-                                "type": "object",
-                                "additionalProperties": False,
-                                "required": ["root"],
-                                "properties": {"root": {"type": "string", "minLength": 1}},
-                            },
-                        },
-                        {
-                            "name": "continuity_checkpoint",
-                            "description": "创建或验证 immutable checkpoint；本 MCP Session 须先调用 continuity_resume / Create or verify a checkpoint after continuity_resume binds this MCP session.",
-                            "annotations": _LOCAL_WRITE_ANNOTATIONS,
-                            "inputSchema": {
-                                "type": "object",
-                                "additionalProperties": False,
-                                "required": ["root", "action"],
-                                "properties": {
-                                    "root": {"type": "string", "minLength": 1},
-                                    "action": {"enum": ["create", "verify"]},
-                                },
-                            },
-                        },
-                        {
-                            "name": "continuity_work_complete",
-                            "description": "用 checkpoint-bound evidence 完成 Work 并释放 claim；须先调用 continuity_resume / Complete Work and release its claim after continuity_resume binds this MCP session.",
-                            "annotations": _LOCAL_WRITE_ANNOTATIONS,
-                            "inputSchema": {
-                                "type": "object",
-                                "additionalProperties": False,
-                                "required": [
-                                    "root",
-                                    "work_id",
-                                    "claim_id",
-                                    "actor_ref",
-                                    "evidence_files",
-                                ],
-                                "properties": {
-                                    "root": {"type": "string", "minLength": 1},
-                                    "work_id": {"type": "string", "minLength": 1},
-                                    "claim_id": {"type": "string", "minLength": 1},
-                                    "actor_ref": {"type": "string", "minLength": 1},
-                                    "evidence_files": {
-                                        "type": "array",
-                                        "minItems": 1,
-                                        "maxItems": 32,
-                                        "items": {"type": "string", "minLength": 1},
+                    "tools": extend_tools(
+                        [
+                            {
+                                "name": "continuity_inspect",
+                                "description": "只读检查当前有界恢复状态，不建立写绑定或刷新投影 / Read bounded continuity state without binding writes or refreshing projections.",
+                                "annotations": _READ_ONLY_ANNOTATIONS,
+                                "inputSchema": {
+                                    "type": "object",
+                                    "additionalProperties": False,
+                                    "required": ["root"],
+                                    "properties": {
+                                        "root": {"type": "string", "minLength": 1}
                                     },
                                 },
                             },
-                        },
-                        {
-                            "name": "continuity_work_transition",
-                            "description": "完成当前依赖 Work，并在单一 State 事件中释放 claim、解析依赖 blocker、激活预声明 return point、签发新 claim 和刷新 checkpoint / Complete the active dependency and atomically return to its predeclared Work with a fresh claim and checkpoint.",
-                            "annotations": _LOCAL_WRITE_ANNOTATIONS,
-                            "inputSchema": {
-                                "type": "object",
-                                "additionalProperties": False,
-                                "required": [
-                                    "root",
-                                    "work_id",
-                                    "claim_id",
-                                    "actor_ref",
-                                    "return_work_id",
-                                    "successor_claim_id",
-                                    "successor_scope",
-                                    "resolved_blocker_id",
-                                    "workspace_root",
-                                    "expected_head",
-                                    "evidence_files",
-                                ],
-                                "properties": {
-                                    "root": {"type": "string", "minLength": 1},
-                                    "work_id": {"type": "string", "minLength": 1},
-                                    "claim_id": {"type": "string", "minLength": 1},
-                                    "actor_ref": {"type": "string", "minLength": 1},
-                                    "return_work_id": {"type": "string", "minLength": 1},
-                                    "successor_claim_id": {"type": "string", "minLength": 1},
-                                    "successor_scope": {
-                                        "type": "array",
-                                        "minItems": 1,
-                                        "maxItems": 128,
-                                        "items": {"type": "string", "minLength": 1},
+                            {
+                                "name": "continuity_inbox",
+                                "description": "Send, list, acknowledge or archive durable project messages. send may omit message_id and returns the generated ID; explicit IDs remain idempotent. ack supports one ID or bounded recipient batches. Local sidecar only; no provider wake or effect authority.",
+                                "annotations": _LOCAL_WRITE_ANNOTATIONS,
+                                "inputSchema": {
+                                    "type": "object",
+                                    "additionalProperties": False,
+                                    "required": ["root", "action", "recipient"],
+                                    "properties": {
+                                        "root": {"type": "string"},
+                                        "action": {
+                                            "enum": ["send", "list", "ack", "archive"]
+                                        },
+                                        "recipient": {"type": "string"},
+                                        "sender": {"type": "string"},
+                                        "message_id": {
+                                            "type": "string",
+                                            "description": "Optional for send; generated when omitted. Required for single-message ack.",
+                                        },
+                                        "body": {"type": "string", "maxLength": 2048},
+                                        "task_id": {"type": "string"},
+                                        "before": {
+                                            "type": "string",
+                                            "description": "Timezone-bearing ISO-8601 cutoff for bulk ack or archive.",
+                                        },
+                                        "all": {
+                                            "type": "boolean",
+                                            "description": "For bulk ack, select all unconfirmed messages for the recipient up to limit.",
+                                        },
+                                        "limit": {
+                                            "type": "integer",
+                                            "minimum": 1,
+                                            "maximum": 1000,
+                                        },
                                     },
-                                    "resolved_blocker_id": {"type": "string", "minLength": 1},
-                                    "remaining_blocker_id": {"type": "string", "minLength": 1},
-                                    "remaining_blocker_reason": {"type": "string", "minLength": 1},
-                                    "workspace_root": {"type": "string", "minLength": 1},
-                                    "expected_head": {
-                                        "type": "string",
-                                        "pattern": "^[0-9a-f]{40}$",
-                                    },
-                                    "expected_ref": {"type": "string", "minLength": 1},
-                                    "evidence_files": {
-                                        "type": "array",
-                                        "minItems": 1,
-                                        "maxItems": 32,
-                                        "items": {"type": "string", "minLength": 1},
+                                    "allOf": [
+                                        {
+                                            "if": {
+                                                "properties": {
+                                                    "action": {"const": "send"}
+                                                },
+                                                "required": ["action"],
+                                            },
+                                            "then": {"required": ["sender", "body"]},
+                                        },
+                                        {
+                                            "if": {
+                                                "properties": {
+                                                    "action": {"const": "ack"}
+                                                },
+                                                "required": ["action"],
+                                            },
+                                            "then": {
+                                                "oneOf": [
+                                                    {"required": ["message_id"]},
+                                                    {"required": ["before"]},
+                                                    {
+                                                        "properties": {
+                                                            "all": {"const": True}
+                                                        },
+                                                        "required": ["all"],
+                                                    },
+                                                ]
+                                            },
+                                        },
+                                    ],
+                                },
+                            },
+                            {
+                                "name": "continuity_collaboration_packet",
+                                "description": "读取当前项目的一张有界任务与词汇提示卡；只读、非阻塞，不授予任何 State 或外部效果权限 / Read one bounded task and vocabulary hint packet; read-only and non-blocking.",
+                                "annotations": _READ_ONLY_ANNOTATIONS,
+                                "inputSchema": {
+                                    "type": "object",
+                                    "additionalProperties": False,
+                                    "required": ["root"],
+                                    "properties": {
+                                        "root": {"type": "string", "minLength": 1},
+                                        "query": {"type": "string", "maxLength": 4096},
+                                        "assignee": {
+                                            "type": "string",
+                                            "maxLength": 256,
+                                        },
                                     },
                                 },
                             },
-                        },
-                        {
-                            "name": "continuity_work_activate",
-                            "description": "添加并认领下一个 source-bound Work；须先调用 continuity_resume / Add and claim the next Work after continuity_resume binds this MCP session.",
-                            "annotations": _LOCAL_WRITE_ANNOTATIONS,
-                            "inputSchema": {
-                                "type": "object",
-                                "additionalProperties": False,
-                                "required": [
-                                    "root",
-                                    "work_id",
-                                    "work_title",
-                                    "owner_ref",
-                                    "claim_id",
-                                    "scope",
-                                ],
-                                "properties": {
-                                    "root": {"type": "string", "minLength": 1},
-                                    "work_id": {"type": "string", "minLength": 1},
-                                    "work_title": {"type": "string", "minLength": 1},
-                                    "owner_ref": {"type": "string", "minLength": 1},
-                                    "claim_id": {"type": "string", "minLength": 1},
-                                    "scope": {
-                                        "type": "array",
-                                        "minItems": 1,
-                                        "maxItems": 128,
-                                        "items": {"type": "string", "minLength": 1},
-                                    },
-                                    "execution_class": {
-                                        "enum": ["standard", "delivery"]
-                                    },
-                                    "source_ref": {"type": "string", "minLength": 1},
-                                    "predecessor_work_id": {
-                                        "type": "string",
-                                        "minLength": 1,
-                                    },
-                                    "implementation_evidence_ids": {
-                                        "type": "array",
-                                        "minItems": 1,
-                                        "maxItems": 32,
-                                        "items": {"type": "string", "minLength": 1},
-                                    },
-                                    "workspace_id": {
-                                        "type": "string",
-                                        "minLength": 1,
-                                    },
-                                    "workspace_root": {
-                                        "type": "string",
-                                        "minLength": 1,
-                                    },
-                                    "expected_head": {
-                                        "type": "string",
-                                        "pattern": "^[0-9a-f]{40}$",
-                                    },
-                                    "expected_ref": {"type": "string", "minLength": 1},
-                                    "allow_effects": {
-                                        "type": "array",
-                                        "minItems": 1,
-                                        "maxItems": 16,
-                                        "items": {"type": "string", "minLength": 1},
+                            {
+                                "name": "continuity_collaboration",
+                                "description": "Read bounded collaboration packet, changes, rules or commitments from the registered project. No State claim or provider launch.",
+                                "annotations": _READ_ONLY_ANNOTATIONS,
+                                "inputSchema": {
+                                    "type": "object",
+                                    "additionalProperties": False,
+                                    "required": ["root", "action"],
+                                    "properties": {
+                                        "root": {"type": "string"},
+                                        "action": {
+                                            "enum": [
+                                                "packet",
+                                                "changes",
+                                                "rules",
+                                                "commitments",
+                                                "tasks",
+                                            ]
+                                        },
+                                        "assignee": {"type": "string"},
+                                        "since": {"type": "integer"},
+                                        "max_results": {"type": "integer"},
+                                        "query": {"type": "string"},
                                     },
                                 },
                             },
-                        },
-                        {
-                            "name": "continuity_claim_recover",
-                            "description": "续租或恢复 claim，并在同一调用内受控刷新已变更的 canonical source 与 checkpoint；失败时仅 State 同步待恢复，普通项目工作继续 / Heartbeat or reclaim and, when narrowly authorized, refresh changed canonical sources and the checkpoint in one call; failure never blocks ordinary project work.",
-                            "annotations": _LOCAL_WRITE_ANNOTATIONS,
-                            "inputSchema": {
-                                "type": "object",
-                                "additionalProperties": False,
-                                "required": [
-                                    "root",
-                                    "action",
-                                    "claim_id",
-                                    "actor_ref"
-                                ],
-                                "properties": {
-                                    "root": {"type": "string", "minLength": 1},
-                                    "action": {"enum": ["heartbeat", "reclaim"]},
-                                    "claim_id": {"type": "string", "minLength": 1},
-                                    "new_claim_id": {"type": ["string", "null"]},
-                                    "actor_ref": {"type": "string", "minLength": 1},
-                                    "lease_ttl_ms": {
-                                        "type": "integer",
-                                        "minimum": 1,
-                                        "maximum": 604800000
-                                    }
-                                }
-                            }
-                        }
-                    ])
+                            {
+                                "name": "continuity_resume",
+                                "description": "读取有界恢复包并绑定本 MCP Session 的项目根；全局插件首次调用需传绝对路径 / Read the bounded packet and bind this MCP session to the project root; use an absolute path for the first global-plugin call.",
+                                "annotations": _LOCAL_WRITE_ANNOTATIONS,
+                                "inputSchema": {
+                                    "type": "object",
+                                    "additionalProperties": False,
+                                    "required": ["root"],
+                                    "properties": {
+                                        "root": {"type": "string", "minLength": 1}
+                                    },
+                                },
+                            },
+                            {
+                                "name": "continuity_todo_compile",
+                                "description": "将多事项用户意图编译为有序本地 TodoQueue；不写 State、不授予外部效果权限 / Compile a multi-item intent into an ordered local TodoQueue without State or external-effect authority.",
+                                "annotations": _LOCAL_WRITE_ANNOTATIONS,
+                                "inputSchema": {
+                                    "type": "object",
+                                    "additionalProperties": False,
+                                    "required": ["root", "prompt"],
+                                    "properties": {
+                                        "root": {"type": "string", "minLength": 1},
+                                        "prompt": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "maxLength": 12000,
+                                        },
+                                        "master_path": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                        },
+                                        "master_section": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                        },
+                                    },
+                                },
+                            },
+                            {
+                                "name": "continuity_todo_list",
+                                "description": "读取当前项目 TodoQueue；只读 State 仍允许使用 / Read the current project TodoQueue; independent of read-only State.",
+                                "annotations": _READ_ONLY_ANNOTATIONS,
+                                "inputSchema": {
+                                    "type": "object",
+                                    "additionalProperties": False,
+                                    "required": ["root"],
+                                    "properties": {
+                                        "root": {"type": "string", "minLength": 1}
+                                    },
+                                },
+                            },
+                            {
+                                "name": "continuity_todo_complete",
+                                "description": "完成当前 TodoQueue 项并自动激活下一项；只写本地侧车 / Complete the active TodoQueue item and advance locally.",
+                                "annotations": _LOCAL_WRITE_ANNOTATIONS,
+                                "inputSchema": {
+                                    "type": "object",
+                                    "additionalProperties": False,
+                                    "required": ["root", "item_id"],
+                                    "properties": {
+                                        "root": {"type": "string", "minLength": 1},
+                                        "item_id": {"type": "string", "minLength": 1},
+                                        "result": {"type": "string", "maxLength": 2048},
+                                    },
+                                },
+                            },
+                            {
+                                "name": "continuity_todo_block",
+                                "description": "记录 TodoQueue 当前项的真实 blocker；只写本地侧车 / Record a real TodoQueue blocker locally.",
+                                "annotations": _LOCAL_WRITE_ANNOTATIONS,
+                                "inputSchema": {
+                                    "type": "object",
+                                    "additionalProperties": False,
+                                    "required": ["root", "item_id", "reason"],
+                                    "properties": {
+                                        "root": {"type": "string", "minLength": 1},
+                                        "item_id": {"type": "string", "minLength": 1},
+                                        "reason": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "maxLength": 2048,
+                                        },
+                                    },
+                                },
+                            },
+                            {
+                                "name": "continuity_autorun",
+                                "description": "从已验证 checkpoint 继续当前 Work；同一 checkpoint 幂等，lease 临近或过期时按受控路径续租或换签 / Continue the current Work from a verified checkpoint; idempotent per checkpoint with controlled heartbeat or reclaim.",
+                                "annotations": _LOCAL_WRITE_ANNOTATIONS,
+                                "inputSchema": {
+                                    "type": "object",
+                                    "additionalProperties": False,
+                                    "required": ["root"],
+                                    "properties": {
+                                        "root": {"type": "string", "minLength": 1}
+                                    },
+                                },
+                            },
+                            {
+                                "name": "continuity_checkpoint",
+                                "description": "创建或验证 immutable checkpoint；本 MCP Session 须先调用 continuity_resume / Create or verify a checkpoint after continuity_resume binds this MCP session.",
+                                "annotations": _LOCAL_WRITE_ANNOTATIONS,
+                                "inputSchema": {
+                                    "type": "object",
+                                    "additionalProperties": False,
+                                    "required": ["root", "action"],
+                                    "properties": {
+                                        "root": {"type": "string", "minLength": 1},
+                                        "action": {"enum": ["create", "verify"]},
+                                    },
+                                },
+                            },
+                            {
+                                "name": "continuity_work_complete",
+                                "description": "用 checkpoint-bound evidence 完成 Work 并释放 claim；须先调用 continuity_resume / Complete Work and release its claim after continuity_resume binds this MCP session.",
+                                "annotations": _LOCAL_WRITE_ANNOTATIONS,
+                                "inputSchema": {
+                                    "type": "object",
+                                    "additionalProperties": False,
+                                    "required": [
+                                        "root",
+                                        "work_id",
+                                        "claim_id",
+                                        "actor_ref",
+                                        "evidence_files",
+                                    ],
+                                    "properties": {
+                                        "root": {"type": "string", "minLength": 1},
+                                        "work_id": {"type": "string", "minLength": 1},
+                                        "claim_id": {"type": "string", "minLength": 1},
+                                        "actor_ref": {"type": "string", "minLength": 1},
+                                        "evidence_files": {
+                                            "type": "array",
+                                            "minItems": 1,
+                                            "maxItems": 32,
+                                            "items": {"type": "string", "minLength": 1},
+                                        },
+                                    },
+                                },
+                            },
+                            {
+                                "name": "continuity_work_transition",
+                                "description": "完成当前依赖 Work，并在单一 State 事件中释放 claim、解析依赖 blocker、激活预声明 return point、签发新 claim 和刷新 checkpoint / Complete the active dependency and atomically return to its predeclared Work with a fresh claim and checkpoint.",
+                                "annotations": _LOCAL_WRITE_ANNOTATIONS,
+                                "inputSchema": {
+                                    "type": "object",
+                                    "additionalProperties": False,
+                                    "required": [
+                                        "root",
+                                        "work_id",
+                                        "claim_id",
+                                        "actor_ref",
+                                        "return_work_id",
+                                        "successor_claim_id",
+                                        "successor_scope",
+                                        "resolved_blocker_id",
+                                        "workspace_root",
+                                        "expected_head",
+                                        "evidence_files",
+                                    ],
+                                    "properties": {
+                                        "root": {"type": "string", "minLength": 1},
+                                        "work_id": {"type": "string", "minLength": 1},
+                                        "claim_id": {"type": "string", "minLength": 1},
+                                        "actor_ref": {"type": "string", "minLength": 1},
+                                        "return_work_id": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                        },
+                                        "successor_claim_id": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                        },
+                                        "successor_scope": {
+                                            "type": "array",
+                                            "minItems": 1,
+                                            "maxItems": 128,
+                                            "items": {"type": "string", "minLength": 1},
+                                        },
+                                        "resolved_blocker_id": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                        },
+                                        "remaining_blocker_id": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                        },
+                                        "remaining_blocker_reason": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                        },
+                                        "workspace_root": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                        },
+                                        "expected_head": {
+                                            "type": "string",
+                                            "pattern": "^[0-9a-f]{40}$",
+                                        },
+                                        "expected_ref": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                        },
+                                        "evidence_files": {
+                                            "type": "array",
+                                            "minItems": 1,
+                                            "maxItems": 32,
+                                            "items": {"type": "string", "minLength": 1},
+                                        },
+                                    },
+                                },
+                            },
+                            {
+                                "name": "continuity_work_activate",
+                                "description": "添加并认领下一个 source-bound Work；须先调用 continuity_resume / Add and claim the next Work after continuity_resume binds this MCP session.",
+                                "annotations": _LOCAL_WRITE_ANNOTATIONS,
+                                "inputSchema": {
+                                    "type": "object",
+                                    "additionalProperties": False,
+                                    "required": [
+                                        "root",
+                                        "work_id",
+                                        "work_title",
+                                        "owner_ref",
+                                        "claim_id",
+                                        "scope",
+                                    ],
+                                    "properties": {
+                                        "root": {"type": "string", "minLength": 1},
+                                        "work_id": {"type": "string", "minLength": 1},
+                                        "work_title": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                        },
+                                        "owner_ref": {"type": "string", "minLength": 1},
+                                        "claim_id": {"type": "string", "minLength": 1},
+                                        "scope": {
+                                            "type": "array",
+                                            "minItems": 1,
+                                            "maxItems": 128,
+                                            "items": {"type": "string", "minLength": 1},
+                                        },
+                                        "execution_class": {
+                                            "enum": ["standard", "delivery"]
+                                        },
+                                        "source_ref": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                        },
+                                        "predecessor_work_id": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                        },
+                                        "implementation_evidence_ids": {
+                                            "type": "array",
+                                            "minItems": 1,
+                                            "maxItems": 32,
+                                            "items": {"type": "string", "minLength": 1},
+                                        },
+                                        "workspace_id": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                        },
+                                        "workspace_root": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                        },
+                                        "expected_head": {
+                                            "type": "string",
+                                            "pattern": "^[0-9a-f]{40}$",
+                                        },
+                                        "expected_ref": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                        },
+                                        "allow_effects": {
+                                            "type": "array",
+                                            "minItems": 1,
+                                            "maxItems": 16,
+                                            "items": {"type": "string", "minLength": 1},
+                                        },
+                                    },
+                                },
+                            },
+                            {
+                                "name": "continuity_claim_recover",
+                                "description": "续租或恢复 claim，并在同一调用内受控刷新已变更的 canonical source 与 checkpoint；失败时仅 State 同步待恢复，普通项目工作继续 / Heartbeat or reclaim and, when narrowly authorized, refresh changed canonical sources and the checkpoint in one call; failure never blocks ordinary project work.",
+                                "annotations": _LOCAL_WRITE_ANNOTATIONS,
+                                "inputSchema": {
+                                    "type": "object",
+                                    "additionalProperties": False,
+                                    "required": [
+                                        "root",
+                                        "action",
+                                        "claim_id",
+                                        "actor_ref",
+                                    ],
+                                    "properties": {
+                                        "root": {"type": "string", "minLength": 1},
+                                        "action": {"enum": ["heartbeat", "reclaim"]},
+                                        "claim_id": {"type": "string", "minLength": 1},
+                                        "new_claim_id": {"type": ["string", "null"]},
+                                        "actor_ref": {"type": "string", "minLength": 1},
+                                        "lease_ttl_ms": {
+                                            "type": "integer",
+                                            "minimum": 1,
+                                            "maximum": 604800000,
+                                        },
+                                    },
+                                },
+                            },
+                        ]
+                    )
                 },
             )
         elif method == "tools/call":
@@ -786,17 +969,25 @@ def main() -> int:
                 _error(request_id, -32602, "params must be an object")
                 continue
             tool_name = params.get("name")
-            if isinstance(tool_name,str) and tool_name in {*_PLAN_ALIASES,"continuity_plan","continuity_help"}:
-                arguments=params.get("arguments",{})
-                if not isinstance(arguments,dict):
-                    _error(request_id,-32602,"arguments must be an object")
+            if isinstance(tool_name, str) and tool_name in {
+                *_PLAN_ALIASES,
+                "continuity_plan",
+                "continuity_help",
+            }:
+                arguments = params.get("arguments", {})
+                if not isinstance(arguments, dict):
+                    _error(request_id, -32602, "arguments must be an object")
                     continue
                 try:
-                    result=handle_tool(tool_name,arguments)
-                except (OSError,ValueError,TypeError,KeyError) as exc:
-                    _error(request_id,-32602,str(exc)[:2048])
+                    result = handle_tool(tool_name, arguments)
+                except (OSError, ValueError, TypeError, KeyError) as exc:
+                    _tool_error(
+                        request_id,
+                        exc,
+                        error_type=type(exc).__name__,
+                    )
                     continue
-                _reply(request_id,result)
+                _reply(request_id, result)
                 continue
             if tool_name not in {
                 "continuity_inspect",
@@ -826,25 +1017,37 @@ def main() -> int:
                 _error(request_id, -32602, "root is required")
                 continue
             requested_root = _requested_root(root, active_root)
-            if requested_root is None and tool_name in {"continuity_collaboration_packet", "continuity_collaboration", "continuity_inbox"}:
+            if requested_root is None and tool_name in {
+                "continuity_collaboration_packet",
+                "continuity_collaboration",
+                "continuity_inbox",
+            }:
                 candidate = Path(root).expanduser().resolve()
                 if resolve_project(candidate) is not None:
                     requested_root = candidate
             if requested_root is None:
-                _error(request_id, -32000, "root does not match this MCP session project")
+                _error(
+                    request_id,
+                    -32000,
+                    "root does not match this MCP session project",
+                )
                 continue
             root_key = str(requested_root)
-            if tool_name not in {
-                "continuity_inspect",
-                "continuity_collaboration_packet",
-                "continuity_collaboration",
-                "continuity_inbox",
-                "continuity_todo_compile",
-                "continuity_todo_list",
-                "continuity_todo_complete",
-                "continuity_todo_block",
-                "continuity_resume",
-            } and root_key not in session_roots:
+            if (
+                tool_name
+                not in {
+                    "continuity_inspect",
+                    "continuity_collaboration_packet",
+                    "continuity_collaboration",
+                    "continuity_inbox",
+                    "continuity_todo_compile",
+                    "continuity_todo_list",
+                    "continuity_todo_complete",
+                    "continuity_todo_block",
+                    "continuity_resume",
+                }
+                and root_key not in session_roots
+            ):
                 _error(
                     request_id,
                     -32001,
@@ -860,9 +1063,12 @@ def main() -> int:
             }:
                 try:
                     if tool_name == "continuity_todo_compile":
-                        value = compile_queue(requested_root, str(arguments.get("prompt") or ""),
-                                              master_path=arguments.get("master_path"),
-                                              master_section=arguments.get("master_section"))
+                        value = compile_queue(
+                            requested_root,
+                            str(arguments.get("prompt") or ""),
+                            master_path=arguments.get("master_path"),
+                            master_section=arguments.get("master_section"),
+                        )
                         value = value or {"status": "no-multi-item-intent"}
                     elif tool_name == "continuity_todo_list":
                         value = load_queue(requested_root) or {"status": "empty"}
@@ -879,12 +1085,27 @@ def main() -> int:
                             str(arguments.get("reason") or ""),
                         )
                 except (IntentTodoError, TypeError, ValueError) as exc:
-                    _error(request_id, -32602, str(exc))
+                    _tool_error(
+                        request_id,
+                        exc,
+                        failed_gate="todo_invalid",
+                        error_type=type(exc).__name__,
+                    )
                     continue
-                _reply(request_id, {
-                    "content": [{"type": "text", "text": json.dumps(value, ensure_ascii=False, sort_keys=True)}],
-                    "structuredContent": value,
-                })
+                _reply(
+                    request_id,
+                    {
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": json.dumps(
+                                    value, ensure_ascii=False, sort_keys=True
+                                ),
+                            }
+                        ],
+                        "structuredContent": value,
+                    },
+                )
                 continue
             try:
                 probe = probes.get(root_key)
@@ -892,15 +1113,16 @@ def main() -> int:
                     probe = _load_session_probe(requested_root)
                     probes[root_key] = probe
             except PolicyConfigError:
-                _error(
+                _tool_error(
                     request_id,
-                    -32004,
                     "Continuity policy is invalid; State tools are unavailable but ordinary project work remains allowed",
+                    failed_gate="policy_invalid",
                 )
                 continue
             binding = (
                 None
-                if tool_name in {
+                if tool_name
+                in {
                     "continuity_inspect",
                     "continuity_collaboration_packet",
                     "continuity_resume",
@@ -910,60 +1132,180 @@ def main() -> int:
             if tool_name == "continuity_collaboration":
                 project = resolve_project(requested_root)
                 if project is None:
-                    _error(request_id, -32602, "project is not registered")
+                    _tool_error(
+                        request_id,
+                        "project is not registered",
+                        failed_gate="project_not_registered",
+                    )
                     continue
                 action = arguments.get("action")
-                if action == "packet":
-                    value = compose_safe_collaboration_packet(None, project_id=project["project_id"], query=str(arguments.get("query") or "")[:4096], assignee=arguments.get("assignee"))
-                elif action == "changes":
-                    value = list_changes(None, project_id=project["project_id"], since=int(arguments.get("since") or 0), max_results=int(arguments.get("max_results") or 50))
-                elif action == "rules":
-                    value = list_rules(None, project_id=project["project_id"])
-                elif action == "commitments":
-                    value = list_commitments(None, project_id=project["project_id"])
-                elif action == "tasks":
-                    value = list_tasks(None, project_id=project["project_id"], query=arguments.get("query"), max_results=int(arguments.get("max_results") or 50))
-                else:
-                    _error(request_id, -32602, "action is unsupported")
+                try:
+                    if action == "packet":
+                        value = compose_safe_collaboration_packet(
+                            None,
+                            project_id=project["project_id"],
+                            query=str(arguments.get("query") or "")[:4096],
+                            assignee=arguments.get("assignee"),
+                        )
+                    elif action == "changes":
+                        value = list_changes(
+                            None,
+                            project_id=project["project_id"],
+                            since=int(arguments.get("since") or 0),
+                            max_results=int(arguments.get("max_results") or 50),
+                        )
+                    elif action == "rules":
+                        value = list_rules(None, project_id=project["project_id"])
+                    elif action == "commitments":
+                        value = list_commitments(None, project_id=project["project_id"])
+                    elif action == "tasks":
+                        value = list_tasks(
+                            None,
+                            project_id=project["project_id"],
+                            query=arguments.get("query"),
+                            max_results=int(arguments.get("max_results") or 50),
+                        )
+                    else:
+                        raise ValueError("action is unsupported")
+                except (KeyError, OSError, TypeError, ValueError) as exc:
+                    _tool_error(
+                        request_id,
+                        exc,
+                        failed_gate="collaboration_invalid",
+                        error_type=type(exc).__name__,
+                    )
                     continue
-                _reply(request_id, {"content": [{"type": "text", "text": json.dumps(value, ensure_ascii=False, sort_keys=True)}], "structuredContent": value})
+                _reply(
+                    request_id,
+                    {
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": json.dumps(
+                                    value, ensure_ascii=False, sort_keys=True
+                                ),
+                            }
+                        ],
+                        "structuredContent": value,
+                    },
+                )
                 continue
             if tool_name == "continuity_inbox":
                 project = resolve_project(requested_root)
                 if project is None:
-                    _error(request_id, -32602, "project is not registered")
+                    _tool_error(
+                        request_id,
+                        "project is not registered",
+                        failed_gate="project_not_registered",
+                    )
                     continue
                 try:
-                    common = {"project_id": project["project_id"], "recipient": arguments["recipient"]}
+                    recipient = arguments.get("recipient")
+                    if not isinstance(recipient, str) or not recipient:
+                        raise ValueError("recipient is required")
+                    common = {
+                        "project_id": project["project_id"],
+                        "recipient": recipient,
+                    }
                     action = arguments.get("action")
                     if action == "send":
-                        value = send_message(None, **common, message_id=arguments["message_id"], sender=arguments["sender"], body=arguments["body"], task_id=arguments.get("task_id"))
+                        sender = arguments.get("sender")
+                        body = arguments.get("body")
+                        if not isinstance(sender, str) or not sender:
+                            raise ValueError("sender is required for send")
+                        if not isinstance(body, str) or not body:
+                            raise ValueError("body is required for send")
+                        value = send_message(
+                            None,
+                            **common,
+                            message_id=arguments.get("message_id"),
+                            sender=sender,
+                            body=body,
+                            task_id=arguments.get("task_id"),
+                        )
                     elif action == "list":
-                        value = list_messages(None, **common)
+                        value = list_messages(
+                            None,
+                            **common,
+                            limit=int(arguments.get("limit") or 3),
+                        )
                     elif action == "ack":
-                        value = acknowledge(None, **common, message_id=arguments["message_id"])
+                        message_id = arguments.get("message_id")
+                        if message_id:
+                            value = acknowledge(None, **common, message_id=message_id)
+                        else:
+                            value = acknowledge_many(
+                                None,
+                                **common,
+                                before=arguments.get("before"),
+                                all_messages=arguments.get("all") is True,
+                                limit=int(arguments.get("limit") or 1000),
+                            )
+                    elif action == "archive":
+                        from .collaboration_inbox import archive
+
+                        value = archive(
+                            None,
+                            **common,
+                            before=arguments.get("before"),
+                            limit=int(arguments.get("limit") or 100),
+                        )
                     else:
-                        raise ValueError("action must be send, list or ack")
+                        raise ValueError("action must be send, list, ack or archive")
                 except (ValueError, KeyError, TypeError, OSError) as exc:
-                    _error(request_id, -32602, str(exc))
+                    _tool_error(
+                        request_id,
+                        exc,
+                        failed_gate="inbox_invalid",
+                        error_type=type(exc).__name__,
+                    )
                     continue
-                _reply(request_id, {"content": [{"type": "text", "text": json.dumps({"messages": value, "provider_execution": False}, ensure_ascii=False)}]})
+                payload = {"messages": value, "provider_execution": False}
+                if action == "send":
+                    payload["message_id"] = value["message_id"]
+                _reply(
+                    request_id,
+                    {
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": json.dumps(
+                                    payload, ensure_ascii=False, sort_keys=True
+                                ),
+                            }
+                        ],
+                        "structuredContent": payload,
+                    },
+                )
                 continue
             if tool_name == "continuity_collaboration_packet":
                 project = resolve_project(requested_root)
                 if project is None:
-                    _error(request_id, -32000, "project is not registered")
+                    _tool_error(
+                        request_id,
+                        "project is not registered",
+                        failed_gate="project_not_registered",
+                    )
                     continue
-                packet = compose_safe_collaboration_packet(
-                    None,
-                    project_id=project["project_id"],
-                    query=str(arguments.get("query") or "")[:4096],
-                    assignee=(
-                        str(arguments["assignee"])
-                        if arguments.get("assignee") is not None
-                        else None
-                    ),
-                )
+                try:
+                    packet = compose_safe_collaboration_packet(
+                        None,
+                        project_id=project["project_id"],
+                        query=str(arguments.get("query") or "")[:4096],
+                        assignee=(
+                            str(arguments["assignee"])
+                            if arguments.get("assignee") is not None
+                            else None
+                        ),
+                    )
+                except (KeyError, OSError, TypeError, ValueError) as exc:
+                    _tool_error(
+                        request_id,
+                        exc,
+                        failed_gate="packet_invalid",
+                        error_type=type(exc).__name__,
+                    )
+                    continue
                 _reply(
                     request_id,
                     {
@@ -1043,7 +1385,10 @@ def main() -> int:
                     or not isinstance(evidence_files, list)
                     or not evidence_files
                     or len(evidence_files) > 32
-                    or any(not isinstance(value, str) or not value for value in evidence_files)
+                    or any(
+                        not isinstance(value, str) or not value
+                        for value in evidence_files
+                    )
                 ):
                     _error(request_id, -32602, "completion arguments are invalid")
                     continue
@@ -1087,7 +1432,10 @@ def main() -> int:
                 remaining_reason = arguments.get("remaining_blocker_reason")
                 expected_ref = arguments.get("expected_ref")
                 if (
-                    any(not isinstance(value, str) or not value for value in values.values())
+                    any(
+                        not isinstance(value, str) or not value
+                        for value in values.values()
+                    )
                     or not isinstance(scopes, list)
                     or not scopes
                     or len(scopes) > 128
@@ -1095,10 +1443,16 @@ def main() -> int:
                     or not isinstance(evidence_files, list)
                     or not evidence_files
                     or len(evidence_files) > 32
-                    or any(not isinstance(value, str) or not value for value in evidence_files)
+                    or any(
+                        not isinstance(value, str) or not value
+                        for value in evidence_files
+                    )
                     or (remaining_id is None) != (remaining_reason is None)
                     or (remaining_id is not None and not isinstance(remaining_id, str))
-                    or (remaining_reason is not None and not isinstance(remaining_reason, str))
+                    or (
+                        remaining_reason is not None
+                        and not isinstance(remaining_reason, str)
+                    )
                     or (expected_ref is not None and not isinstance(expected_ref, str))
                 ):
                     _error(request_id, -32602, "transition arguments are invalid")
@@ -1185,10 +1539,16 @@ def main() -> int:
                 unknown_fields = sorted(set(arguments) - allowed_fields)
                 if unknown_fields:
                     activation_diagnostics.append(
-                        {"field": "arguments", "reason": "unknown_fields", "value": unknown_fields}
+                        {
+                            "field": "arguments",
+                            "reason": "unknown_fields",
+                            "value": unknown_fields,
+                        }
                     )
                 missing_base = [
-                    field for field, value in zip(required, values) if not isinstance(value, str) or not value
+                    field
+                    for field, value in zip(required, values)
+                    if not isinstance(value, str) or not value
                 ]
                 if missing_base:
                     activation_diagnostics.extend(
@@ -1199,9 +1559,14 @@ def main() -> int:
                     activation_diagnostics.append(
                         {"field": "scope", "reason": "non_empty_array"}
                     )
-                elif len(scope) > 128 or any(not isinstance(value, str) or not value for value in scope):
+                elif len(scope) > 128 or any(
+                    not isinstance(value, str) or not value for value in scope
+                ):
                     activation_diagnostics.append(
-                        {"field": "scope", "reason": "array_of_non_empty_strings_max_128"}
+                        {
+                            "field": "scope",
+                            "reason": "array_of_non_empty_strings_max_128",
+                        }
                     )
                 if execution_class not in {"standard", "delivery"}:
                     activation_diagnostics.append(
@@ -1209,7 +1574,8 @@ def main() -> int:
                     )
                 elif execution_class == "standard":
                     present = [
-                        field for field, value in zip(
+                        field
+                        for field, value in zip(
                             (
                                 "source_ref",
                                 "predecessor_work_id",
@@ -1226,7 +1592,11 @@ def main() -> int:
                     ]
                     if present:
                         activation_diagnostics.append(
-                            {"field": "execution_class", "reason": "standard_forbids_delivery_fields", "present": present}
+                            {
+                                "field": "execution_class",
+                                "reason": "standard_forbids_delivery_fields",
+                                "present": present,
+                            }
                         )
                 else:
                     for field, value in (
@@ -1242,34 +1612,51 @@ def main() -> int:
                             )
                     if isinstance(expected_head, str) and (
                         len(expected_head) != 40
-                        or any(character not in "0123456789abcdef" for character in expected_head)
+                        or any(
+                            character not in "0123456789abcdef"
+                            for character in expected_head
+                        )
                     ):
                         activation_diagnostics.append(
-                            {"field": "expected_head", "reason": "40_lowercase_hex_characters"}
+                            {
+                                "field": "expected_head",
+                                "reason": "40_lowercase_hex_characters",
+                            }
                         )
                     if evidence_ids is not None and (
                         not isinstance(evidence_ids, list)
                         or not evidence_ids
                         or len(evidence_ids) > 32
-                        or any(not isinstance(value, str) or not value for value in evidence_ids)
+                        or any(
+                            not isinstance(value, str) or not value
+                            for value in evidence_ids
+                        )
                     ):
                         activation_diagnostics.append(
-                            {"field": "implementation_evidence_ids", "reason": "non_empty_array_max_32"}
+                            {
+                                "field": "implementation_evidence_ids",
+                                "reason": "non_empty_array_max_32",
+                            }
                         )
                     if allow_effects is not None and (
                         not isinstance(allow_effects, list)
                         or not allow_effects
                         or len(allow_effects) > 16
-                        or any(not isinstance(value, str) or not value for value in allow_effects)
+                        or any(
+                            not isinstance(value, str) or not value
+                            for value in allow_effects
+                        )
                     ):
                         activation_diagnostics.append(
-                            {"field": "allow_effects", "reason": "non_empty_array_max_16"}
+                            {
+                                "field": "allow_effects",
+                                "reason": "non_empty_array_max_16",
+                            }
                         )
                 if (
                     activation_diagnostics
                     or set(arguments) - allowed_fields
-                    or
-                    any(not isinstance(value, str) or not value for value in values)
+                    or any(not isinstance(value, str) or not value for value in values)
                     or not isinstance(scope, list)
                     or not scope
                     or len(scope) > 128
@@ -1388,8 +1775,7 @@ def main() -> int:
                         "actor_ref",
                         "lease_ttl_ms",
                     }
-                    or
-                    action not in {"heartbeat", "reclaim"}
+                    or action not in {"heartbeat", "reclaim"}
                     or not isinstance(claim_id, str)
                     or not claim_id
                     or not isinstance(actor_ref, str)

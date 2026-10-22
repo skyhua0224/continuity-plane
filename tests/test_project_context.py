@@ -1,6 +1,7 @@
 """Shared project context, native-hook observations and cooperating controller locks."""
 
 import contextlib
+from contextlib import redirect_stdout
 import hashlib
 import io
 import json
@@ -13,10 +14,17 @@ from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import patch
 
 from tests import test_adoption_workflows
-from continuity_plane.collaboration_registry import list_changes, add_task
+from continuity_plane.cli import main
+from continuity_plane.collaboration_registry import (
+    add_task,
+    list_changes,
+    register_project,
+)
 from continuity_plane.controller_lease import (
     acquire,
+    reconcile_host,
     require,
+    reservation_report,
     reserve,
     finish_reservation,
     view,
@@ -478,6 +486,105 @@ class ProjectContextTests(unittest.TestCase):
         finish_reservation(self.data, "sample", "task", "job-a")
         self.assertEqual(_load(_path(self.data, "sample"))["dispatch_reservations"], {})
 
+    def test_host_reboot_reconciles_stale_reservations_before_capacity(self):
+        profile = configure(
+            self.data,
+            model="sol",
+            provider="custom",
+            profile_provider="codex",
+            argv=[sys.executable, "-c", "print('done')"],
+        )
+        lease = acquire(
+            self.data, "sample", owner="controller", client_limits={"codex": 1}
+        )
+        with patch(
+            "continuity_plane.controller_lease._boot_fingerprint",
+            return_value="a" * 64,
+        ):
+            reserve(
+                self.data,
+                "sample",
+                task_id="task",
+                job_id="job-old",
+                owner="controller",
+                token=lease["token"],
+                profile=profile,
+            )
+        with patch(
+            "continuity_plane.controller_lease._boot_fingerprint",
+            return_value="b" * 64,
+        ):
+            report = reservation_report(self.data, "sample")
+            self.assertEqual(report["items"][0]["reason"], "host-boot-changed")
+            self.assertEqual(
+                report["capacity"][0]["scope"],
+                "project+host+profile+client-family",
+            )
+            listed = self.execute(
+                "controller.reservations",
+                state="stale",
+            )
+            self.assertEqual(listed["items"][0]["job_id"], "job-old")
+            status = self.execute(
+                "controller.status",
+            )
+            self.assertIn("per project", status["capacity_semantics"])
+            reserve(
+                self.data,
+                "sample",
+                task_id="other",
+                job_id="job-new",
+                owner="controller",
+                token=lease["token"],
+                profile=profile,
+            )
+            dry_run = reconcile_host(self.data, "sample")
+            applied = reconcile_host(
+                self.data,
+                "sample",
+                apply=True,
+                reason="verified host reboot",
+                owner="controller",
+                token=lease["token"],
+            )
+        self.assertEqual(dry_run["cleared_count"], 0)
+        self.assertEqual(applied["cleared_count"], 1)
+        self.assertEqual(
+            list(_load(_path(self.data, "sample"))["dispatch_reservations"]),
+            ["other"],
+        )
+
+    def test_clear_reservation_reports_already_absent_exactly(self):
+        lease = acquire(self.data, "sample", owner="controller")
+        with redirect_stdout(io.StringIO()) as output:
+            code = main(
+                [
+                    "controller",
+                    "clear-reservation",
+                    "--root",
+                    str(self.root),
+                    "--data-root",
+                    str(self.data),
+                    "--project-id",
+                    "sample",
+                    "--owner",
+                    "controller",
+                    "--token",
+                    lease["token"],
+                    "--task-id",
+                    "task",
+                    "--job-id",
+                    "job-missing",
+                    "--reason",
+                    "verified absent",
+                ]
+            )
+        self.assertEqual(code, 0)
+        value = json.loads(output.getvalue())
+        self.assertFalse(value["cleared"])
+        self.assertEqual(value["status"], "not-found")
+        self.assertIn("nothing was changed", value["message"])
+
     def test_dispatch_and_baseline_respect_controller_lease_but_body_updates_do_not(
         self,
     ):
@@ -516,6 +623,8 @@ class ProjectContextTests(unittest.TestCase):
             "lesson.add",
             "handoff.write",
             "controller.acquire",
+            "controller.reservations",
+            "controller.reconcile-host",
             "project.context-set",
         ):
             self.assertTrue(help_for(topic)["parameters"])
@@ -616,6 +725,38 @@ class ProjectContextTests(unittest.TestCase):
         self.assertEqual(shared["current_batch"], "batch16")
         self.assertEqual(shared["next_action"], "Run tests")
         self.assertEqual(shared["batch_state"], "planned-or-unbound")
+
+    def test_worker_prompt_includes_project_integration_base_as_non_authority(self):
+        from continuity_plane.collaboration_workflow import prompt
+
+        profile = self.root / ".continuity" / "controller-profile.json"
+        profile.parent.mkdir(parents=True)
+        profile.write_text(
+            json.dumps(
+                {
+                    "defaults": {"integration_base": "release/next"},
+                    "locked_fields": ["integration_base"],
+                }
+            ),
+            encoding="utf-8",
+        )
+        value = prompt(
+            self.data,
+            project_id="sample",
+            task_id="task",
+            assignee="worker",
+            audience="worker",
+            controller="controller",
+        )
+        self.assertEqual(
+            value["prompt"].count('"integration_base"'),
+            1,
+        )
+        self.assertIn('"ref": "refs/heads/release/next"', value["prompt"])
+        self.assertIn(
+            "not merge, push, deploy, or ownership authorization",
+            value["prompt"],
+        )
 
     def test_two_simultaneous_reservations_for_one_card_have_one_winner(self):
         profile = configure(
@@ -775,12 +916,54 @@ class ProjectContextTests(unittest.TestCase):
                     str(self.data),
                 ],
                 cwd=self.root.parent,
+                env={
+                    **os.environ,
+                    "PYTHONPATH": os.path.dirname(os.path.dirname(__file__)),
+                },
                 capture_output=True,
                 text=True,
                 timeout=10,
             )
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIsInstance(json.loads(result.stdout), dict)
+
+    def test_root_project_mismatch_reports_both_registered_identities(self):
+        other_root = self.root.parent / "other-project"
+        other_root.mkdir()
+        register_project(
+            self.data,
+            project_id="other-project",
+            control_root=other_root,
+        )
+        result = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "continuity_plane.cli",
+                "handoff",
+                "show",
+                "--root",
+                str(self.root),
+                "--project-id",
+                "other-project",
+                "--data-root",
+                str(self.data),
+            ],
+            cwd=self.root.parent,
+            env={
+                **os.environ,
+                "PYTHONPATH": os.path.dirname(os.path.dirname(__file__)),
+            },
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(f"requested_root={self.root}", result.stderr)
+        self.assertIn("requested_project_id=other-project", result.stderr)
+        self.assertIn("root_project_id=sample", result.stderr)
+        self.assertIn(f"requested_project_registered_root={other_root}", result.stderr)
+        self.assertIn("requested_project_registered_id=other-project", result.stderr)
 
     def test_batch_record_refreshes_shared_scene_without_erasing_the_plan(self):
         self.execute(

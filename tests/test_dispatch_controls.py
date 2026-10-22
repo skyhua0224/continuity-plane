@@ -6,6 +6,7 @@ import subprocess
 import threading
 import unittest
 from concurrent.futures import ThreadPoolExecutor
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 from unittest.mock import Mock
 
@@ -196,6 +197,79 @@ class DispatchControlTests(unittest.TestCase):
                 (4, 2),
             )
 
+    def test_usage_limit_is_quota_exhaustion_and_is_recorded_for_subscription(self):
+        reset_at = (
+            (datetime.now(UTC) + timedelta(hours=1))
+            .replace(microsecond=0)
+            .isoformat()
+            .replace("+00:00", "Z")
+        )
+        output = (
+            "Usage policy violation: usage limit reached; retry at " + reset_at
+        )
+        self.adapter(
+            code=f'print({json.dumps(output)}); raise SystemExit(1)'
+        )
+        profiles = json.loads((self.data / "executor-adapters.json").read_text())
+        self.assertTrue(profiles["sol"]["official_subscription"] is False)
+        configure(
+            self.data,
+            model="sol",
+            provider="custom",
+            official_subscription=True,
+            argv=[
+                sys.executable,
+                "-c",
+                f"print({json.dumps(output)}); raise SystemExit(1)",
+                "{effort}",
+            ],
+            resume_argv=[
+                sys.executable,
+                "-c",
+                "pass",
+                "{effort}",
+                "{thread_id}",
+            ],
+        )
+        result = self.dispatch(model="sol")
+        self.assertEqual(result["status"], "failed")
+        self.assertEqual(result["failure_class"], "quota-exhausted")
+        self.assertEqual(result["quota_record"]["used_percent"], 100)
+        self.assertEqual(
+            result["quota_record"]["resets_at"],
+            reset_at.replace("Z", "+00:00"),
+        )
+        from continuity_plane.collaboration_registry import _atomic_write
+
+        result_file = self.job_path(result).parent / "result.json"
+        legacy = json.loads(result_file.read_text())
+        legacy.update(
+            failure_class="policy-review",
+            reason="provider-policy-review",
+        )
+        _atomic_write(result_file, legacy)
+        job_document = json.loads(self.job_path(result).read_text())
+        _record_change(
+            self.data,
+            "sample",
+            "dispatch.policy-stopped",
+            "task",
+            job_id=result["job_id"],
+            attempt_id=result["job_id"],
+            scope_sha256=job_document["scope_sha256"],
+        )
+        (self.job_path(result).parent / "thread").write_text(
+            "thread-legacy", encoding="utf-8"
+        )
+        resumed = self.dispatch(resume=True, dry_run=True)
+        self.assertEqual(resumed["resume"], True)
+        repaired = json.loads(result_file.read_text())
+        self.assertEqual(repaired["failure_class"], "quota-exhausted")
+        self.assertEqual(
+            repaired["classification_correction"]["from"],
+            "policy-review",
+        )
+
     def test_bad_limits_and_effort_never_spawn(self):
         self.adapter()
         for value in (0, -1, float("inf"), float("nan"), True, "5"):
@@ -341,6 +415,118 @@ class DispatchControlTests(unittest.TestCase):
         self.assertEqual(len(self.execute("todo.from-cards", all=True)["items"]), 9)
         self.assertEqual(len(list_tasks(self.data, project_id="sample")), 9)
 
+    def test_todo_distinguishes_assignment_from_live_execution(self):
+        view = self.execute("todo.from-cards")
+        self.assertEqual(view["items"][0]["execution_state"], "assigned")
+        from continuity_plane.execution_lifecycle import bind_execution
+
+        bind_execution(
+            self.data,
+            project_id="sample",
+            task_id="task",
+            assignee="worker",
+            attempt_id="attempt-live",
+        )
+        view = self.execute("todo.from-cards")
+        self.assertEqual(view["items"][0]["execution_state"], "running")
+        update_task(
+            self.data,
+            project_id="sample",
+            task_id="task",
+            status="blocked",
+            blocked_reason="waiting for provider reset",
+        )
+        blocked = self.execute("todo.from-cards")["items"][0]
+        self.assertEqual(blocked["execution_state"], "blocked")
+        self.assertEqual(blocked["blocked_reason"], "waiting for provider reset")
+
+    def test_local_dependencies_gate_claim_and_dispatch_and_filter_lists(self):
+        self.assertIn(
+            "dependency",
+            {row["name"] for row in help_for("task.add")["parameters"]},
+        )
+        self.assertIn(
+            "dependencies_ready",
+            {row["name"] for row in help_for("task.list")["parameters"]},
+        )
+        add_task(
+            self.data,
+            project_id="sample",
+            task_id="dependent",
+            lane_id="scope",
+            mode="patch",
+            priority="p1",
+            title="Dependent",
+            objective="Wait for prerequisite",
+            next_action="Start only after dependency",
+            exit_criteria=["Pass"],
+            dependencies=["task"],
+            body="Dependent task",
+        )
+        with self.assertRaisesRegex(ValueError, "dependencies"):
+            self.execute(
+                "task.claim",
+                task_id="dependent",
+                assignee="worker-dependent",
+            )
+        self.adapter()
+        with self.assertRaisesRegex(ValueError, "dependencies"):
+            dispatch(
+                self.root,
+                data_root=self.data,
+                task_id="dependent",
+                model="sol",
+                assignee="worker-dependent",
+            )
+        self.assertNotIn(
+            "dependent",
+            {
+                row["task_id"]
+                for row in list_tasks(
+                    self.data,
+                    project_id="sample",
+                    dependencies_ready=True,
+                )
+            },
+        )
+        update_task(
+            self.data,
+            project_id="sample",
+            task_id="task",
+            status="completed",
+            result="Prerequisite verified",
+        )
+        ready = list_tasks(
+            self.data,
+            project_id="sample",
+            dependencies_ready=True,
+        )
+        self.assertIn("dependent", {row["task_id"] for row in ready})
+
+    def test_task_list_local_and_shared_shape_is_always_paged_object(self):
+        value = self.execute("task.list", format="json")
+        self.assertIsInstance(value, dict)
+        self.assertEqual(
+            {"items", "total_items", "next_cursor", "has_more"} - set(value),
+            set(),
+        )
+
+    def test_non_code_decision_does_not_require_commit(self):
+        value = self.execute(
+            "decision-add",
+            record_id="ui-choice",
+            record_json=json.dumps(
+                {
+                    "actor": "owner",
+                    "source": "user-message-2026-10-21",
+                    "text": "Use the reviewed UI direction",
+                    "approved": True,
+                }
+            ),
+        )
+        self.assertEqual(value["value"]["text"], "Use the reviewed UI direction")
+        self.assertNotIn("commit", value["value"])
+
     def test_live_open_view_drops_closed_cards_without_deleting_evidence(self):
         from continuity_plane.intent_todo import load_queue
 
@@ -378,6 +564,254 @@ class DispatchControlTests(unittest.TestCase):
             x for x in help_for("task.update")["parameters"] if x["name"] == "status"
         )
         self.assertFalse(spec["required"])
+
+    def test_task_update_batch_file_runs_without_shell_quoting(self):
+        add_task(
+            self.data,
+            project_id="sample",
+            task_id="second",
+            lane_id="scope",
+            mode="patch",
+            priority="p2",
+            title="Second",
+            objective="Batch",
+            next_action="Start",
+            exit_criteria=["Pass"],
+            body="Initial second body",
+        )
+        path = self.root / "updates.json"
+        path.write_text(
+            json.dumps(
+                {
+                    "updates": [
+                        {
+                            "task_id": "task",
+                            "body": "Updated first body",
+                            "next_action": "Continue first",
+                        },
+                        {
+                            "task_id": "second",
+                            "status": "blocked",
+                            "blocked_reason": "waiting on evidence",
+                        },
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+        result = self.execute("task.update", batch=str(path))
+        self.assertEqual(result["status"], "completed")
+        self.assertEqual(len(result["succeeded"]), 2)
+        cards = {
+            row["task_id"]: row for row in list_tasks(self.data, project_id="sample")
+        }
+        self.assertEqual(cards["second"]["status"], "blocked")
+        self.assertEqual(
+            detail_view(self.data, "sample", "task")["body"],
+            "Updated first body",
+        )
+
+    def test_queue_is_single_instance_ordered_and_duplicate_safe(self):
+        from continuity_plane import dispatch_queue as queue
+
+        add_task(
+            self.data,
+            project_id="sample",
+            task_id="second",
+            lane_id="scope",
+            mode="patch",
+            priority="p2",
+            title="Second",
+            objective="Queue",
+            next_action="Start",
+            exit_criteria=["Pass"],
+            assignee="worker",
+            body="Second queued body",
+        )
+        queue.enqueue(
+            self.root,
+            data_root=self.data,
+            project_id="sample",
+            task_id="task",
+            model="sol",
+            request_id="request-low",
+            priority=20,
+            timeout_seconds=10,
+            idle_timeout_seconds=5,
+        )
+        queue.enqueue(
+            self.root,
+            data_root=self.data,
+            project_id="sample",
+            task_id="second",
+            model="sol",
+            request_id="request-high",
+            priority=10,
+            timeout_seconds=10,
+            idle_timeout_seconds=5,
+        )
+        calls = []
+
+        def launch(*args, **kwargs):
+            calls.append((args, kwargs))
+            return {"job_id": "job-" + format(len(calls), "016x")}
+
+        with patch(
+            "continuity_plane.dispatch_queue._dispatch", side_effect=launch
+        ):
+            result = queue.run(
+                self.root,
+                data_root=self.data,
+                project_id="sample",
+                controller="controller",
+                max_launches=2,
+            )
+        self.assertEqual(
+            [row["task_id"] for row in result["launched"]], ["second", "task"]
+        )
+        self.assertEqual(len(calls), 2)
+        duplicate = queue.enqueue(
+            self.root,
+            data_root=self.data,
+            project_id="sample",
+            task_id="task",
+            model="sol",
+            request_id="request-other",
+            timeout_seconds=10,
+            idle_timeout_seconds=5,
+        )
+        self.assertTrue(duplicate["duplicate_suppressed"])
+        lock_path = project_data_dir(self.data, "sample") / "dispatch-queue-runner.lock"
+        with queue._runner_lock(lock_path):
+            second_runner = queue.run(
+                self.root, data_root=self.data, project_id="sample"
+            )
+        self.assertEqual(second_runner["status"], "already-running")
+
+    def test_queue_honors_host_pause_and_capacity_gate(self):
+        from continuity_plane import dispatch_queue as queue
+
+        queue.pause_host(self.data, "maintenance")
+        with patch("continuity_plane.dispatch_queue._dispatch") as launch:
+            paused = queue.run(
+                self.root,
+                data_root=self.data,
+                project_id="sample",
+            )
+        self.assertEqual(paused["status"], "paused")
+        launch.assert_not_called()
+        queue.resume_host(self.data)
+        queue.enqueue(
+            self.root,
+            data_root=self.data,
+            project_id="sample",
+            task_id="task",
+            model="sol",
+            request_id="capacity-request",
+            timeout_seconds=10,
+            idle_timeout_seconds=5,
+        )
+        with patch(
+            "continuity_plane.dispatch_queue._dispatch",
+            side_effect=ValueError("client dispatch capacity is full (1)"),
+        ):
+            result = queue.run(
+                self.root,
+                data_root=self.data,
+                project_id="sample",
+            )
+        self.assertEqual(result["waiting"][0]["gate"], "dispatch capacity is full")
+        status = queue.status(self.root, data_root=self.data, project_id="sample")
+        self.assertEqual(status["items"][0]["status"], "queued")
+        self.assertEqual(status["items"][0]["last_gate"], "dispatch capacity is full")
+        events = {
+            row["event"]
+            for row in list_changes(self.data, project_id="sample")["changes"]
+        }
+        self.assertIn("dispatch.queue-enqueued", events)
+        self.assertIn("dispatch.queue-waiting", events)
+
+    def test_queue_requeues_transient_failure_with_retry_backoff(self):
+        from continuity_plane import dispatch_queue as queue
+
+        queue.enqueue(
+            self.root,
+            data_root=self.data,
+            project_id="sample",
+            task_id="task",
+            model="sol",
+            request_id="transient-request",
+            timeout_seconds=10,
+            idle_timeout_seconds=5,
+        )
+        with patch(
+            "continuity_plane.dispatch_queue._dispatch",
+            return_value={"job_id": "job-" + "a" * 16},
+        ):
+            first = queue.run(self.root, data_root=self.data, project_id="sample")
+        self.assertEqual(len(first["launched"]), 1)
+        result_file = (
+            project_data_dir(self.data, "sample")
+            / "worker-jobs"
+            / ("job-" + "a" * 16)
+            / "result.json"
+        )
+        result_file.parent.mkdir(parents=True)
+        result_file.write_text(
+            json.dumps(
+                {
+                    "status": "failed",
+                    "failure_class": "rate-limit",
+                    "reason": "429 too many requests",
+                }
+            ),
+            encoding="utf-8",
+        )
+        with patch("continuity_plane.dispatch_queue._dispatch") as launch:
+            second = queue.run(self.root, data_root=self.data, project_id="sample")
+        launch.assert_not_called()
+        self.assertEqual(second["launched"], [])
+        item = queue.status(self.root, data_root=self.data, project_id="sample")[
+            "items"
+        ][0]
+        self.assertEqual(item["status"], "queued")
+        self.assertEqual(item["last_gate"], "rate-limit")
+        self.assertIsNotNone(item["retry_not_before"])
+        events = {
+            row["event"]
+            for row in list_changes(self.data, project_id="sample")["changes"]
+        }
+        self.assertIn("dispatch.queue-launched", events)
+        self.assertIn("dispatch.queue-retry-scheduled", events)
+
+    def test_mcp_parity_exposes_safe_queue_enqueue_and_status(self):
+        queued = self.execute(
+            "worker.queue.enqueue",
+            task_id="task",
+            model="sol",
+            request_id="mcp-enqueue",
+            timeout_seconds=10,
+            idle_timeout_seconds=5,
+        )
+        self.assertEqual(queued["request_id"], "mcp-enqueue")
+        status = self.execute(
+            "worker.queue.status",
+            format="json",
+        )
+        self.assertEqual(status["items"][0]["request_id"], "mcp-enqueue")
+        specs = {row["name"] for row in help_for("worker.queue.enqueue")["parameters"]}
+        self.assertTrue(
+            {
+                "task_id",
+                "model",
+                "effort",
+                "timeout_seconds",
+                "idle_timeout_seconds",
+                "request_id",
+                "priority",
+            }
+            <= specs
+        )
 
     def test_concurrent_body_write_does_not_restore_a_stale_status(self):
         gate = threading.Barrier(2)

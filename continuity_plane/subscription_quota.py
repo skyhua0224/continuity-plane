@@ -47,7 +47,7 @@ def record(
     now = now or datetime.now(UTC)
     if not official_subscription:
         raise ValueError(
-            "subscription quota must be explicitly identified; token counts are not subscription limits"
+            "subscription quota must be explicitly identified; add --official-subscription when this snapshot is the native client's subscription limit. Token/API usage counts are not subscription limits"
         )
     if type(used_percent) not in (int, float) or not 0 <= used_percent <= 100:
         raise ValueError("used-percent must be 0–100")

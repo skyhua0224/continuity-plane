@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import os
+import sys
 from pathlib import Path
 
 from .collaboration_registry import (
@@ -146,17 +148,12 @@ def add_parsers(collaboration_commands, task_commands):
             action.required = False
     for name in ("add", "update"):
         parser = task_commands.choices[name]
-        parser.add_argument(
-            "--dependency",
-            action="append",
-            help="Stable shared task ID; hint, not module ownership",
-        )
         parser.add_argument("--pr", type=int, help="PR number in configured repository")
     parser = task_commands.choices["list"]
     for action in parser._actions:
         if action.dest == "status":
             action.choices = sorted(set(action.choices) | {"conflict"})
-    for flag in ("mine", "created-by-me", "review-requested", "dependencies-ready"):
+    for flag in ("mine", "created-by-me", "review-requested"):
         parser.add_argument("--" + flag, action="store_true")
     update = task_commands.choices["update"]
     update.add_argument("--title", help="Shared task title, recorded as an Issue event")
@@ -300,13 +297,27 @@ def backend_command(args):
 
 def batch_update(args):
     path = Path(args.file)
-    if path.stat().st_size > 131072:
-        raise GiteaError("batch file exceeds 128 KiB")
     try:
-        document = json.loads(path.read_text(encoding="utf-8"))
+        if str(path) == "-":
+            raw = sys.stdin.read(131073)
+            if len(raw.encode("utf-8")) > 131072:
+                raise GiteaError("batch file exceeds 128 KiB")
+        else:
+            if path.stat().st_size > 131072:
+                raise GiteaError("batch file exceeds 128 KiB")
+            raw = path.read_text(encoding="utf-8")
+        document = json.loads(raw)
+    except GiteaError:
+        raise
     except (OSError, ValueError):
         raise GiteaError("batch file must be valid UTF-8 JSON") from None
-    updates = document.get("updates") if isinstance(document, dict) else None
+    updates = (
+        document.get("updates")
+        if isinstance(document, dict)
+        else document
+        if isinstance(document, list)
+        else None
+    )
     if not isinstance(updates, list) or not 1 <= len(updates) <= 50:
         raise GiteaError(
             "batch needs 1..50 updates; large work belongs in separate reviewed batches"
@@ -317,13 +328,29 @@ def batch_update(args):
         "expected_remote_revision",
         "status",
         "next_action",
+        "blocked_reason",
+        "result",
+        "assignee",
+        "dependencies",
         "branch",
         "commit",
         "verification",
+        "landed_commit",
+        "released_in",
+        "worktree",
+        "allowed_files",
+        "verification_json",
         "pr",
         "body",
+        "actor",
+        "force",
+        "force_reason",
     }
     backend = backend_for(args.data_root, args.project_id, args.root)
+    registration = _registration(args.data_root, args.project_id, args.root)
+    project_id = args.project_id or (registration or {}).get("project_id")
+    if not project_id:
+        raise GiteaError("batch update requires a registered project")
     result = {
         "status": "completed",
         "total": len(updates),
@@ -345,9 +372,18 @@ def batch_update(args):
             for k in (
                 "status",
                 "next_action",
+                "blocked_reason",
+                "result",
+                "assignee",
+                "dependencies",
                 "branch",
                 "commit",
                 "verification",
+                "landed_commit",
+                "released_in",
+                "worktree",
+                "allowed_files",
+                "verification_json",
                 "pr",
                 "body",
             )
@@ -361,7 +397,24 @@ def batch_update(args):
                 value = backend.mutate(
                     row["task_id"],
                     "update",
-                    fields,
+                    {
+                        key: value
+                        for key, value in fields.items()
+                        if key
+                        in {
+                            "status",
+                            "next_action",
+                            "blocked_reason",
+                            "result",
+                            "assignee",
+                            "dependencies",
+                            "branch",
+                            "commit",
+                            "verification",
+                            "pr",
+                            "body",
+                        }
+                    },
                     row["expected_remote_revision"],
                     row["operation_id"],
                 )
@@ -370,14 +423,26 @@ def batch_update(args):
 
                 value = update_task(
                     args.data_root,
-                    project_id=args.project_id,
+                    project_id=project_id,
                     task_id=row.get("task_id"),
                     body=row.get("body"),
                     status=row.get("status"),
                     next_action=row.get("next_action"),
+                    blocked_reason=row.get("blocked_reason"),
+                    result=row.get("result"),
+                    assignee=row.get("assignee"),
+                    dependencies=row.get("dependencies"),
                     branch=row.get("branch"),
                     commit=row.get("commit"),
                     verification=row.get("verification"),
+                    landed_commit=row.get("landed_commit"),
+                    released_in=row.get("released_in"),
+                    worktree=row.get("worktree"),
+                    allowed_files=row.get("allowed_files"),
+                    verification_data=row.get("verification_json"),
+                    force=bool(row.get("force", False)),
+                    force_reason=row.get("force_reason"),
+                    actor=row.get("actor") or os.environ.get("CONTINUITY_ASSIGNEE"),
                 )
             result["succeeded"].append(
                 {
@@ -663,7 +728,6 @@ def maybe_route(args):
                 "operation_id",
                 "expected_remote_revision",
                 "pr",
-                "dependency",
                 "mine",
                 "created_by_me",
                 "review_requested",

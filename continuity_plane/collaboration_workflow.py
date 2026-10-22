@@ -42,11 +42,13 @@ def prompt(
     audience="worker",
     expected_revision=None,
     controller=None,
+    ledger=None,
 ):
     from .delivery_records import scope_hash
 
     data = Path(data_root or default_data_root())
-    ledger = _load_ledger(data, project_id)
+    if ledger is None:
+        ledger = _load_ledger(data, project_id)
     task = next((t for t in ledger["tasks"] if t["task_id"] == task_id), None)
     if not task:
         raise ValueError("task_id does not exist")
@@ -88,6 +90,7 @@ def prompt(
         or "operator",
         "worktree": task["worktree"],
         "allowed_files": task["allowed_files"],
+        "dependencies": task.get("dependencies", []),
         "exit_criteria": task["exit_criteria"],
         "branch": task["branch"],
         "commit": task["commit"],
@@ -142,6 +145,47 @@ def prompt(
         preference = hint(registration["control_root"], data_root=data)
         if preference:
             instructions["source_preference"] = preference
+        from .controller_memory import effective
+        from .project_context import integration
+
+        project_profile = effective(
+            registration["control_root"],
+            data,
+            project_id,
+            "controller",
+            include_private=False,
+        )
+        configured_base = project_profile["values"].get("integration_base")
+        if configured_base and not re.fullmatch(
+            r"[A-Za-z0-9][A-Za-z0-9_./-]{0,255}", str(configured_base)
+        ):
+            raise ValueError(
+                "project integration_base is not a valid Git branch or ref name"
+            )
+        selected_integration = integration(
+            data, project_id, registration["control_root"]
+        )
+        base_ref = (
+            configured_base
+            if configured_base and str(configured_base).startswith("refs/")
+            else "refs/heads/" + str(configured_base)
+            if configured_base
+            else selected_integration.get("ref")
+        )
+        instructions["integration_base"] = {
+            "ref": base_ref,
+            "head": (
+                selected_integration.get("head")
+                if base_ref == selected_integration.get("ref")
+                else None
+            ),
+            "source": (
+                ".continuity/controller-profile.json:integration_base"
+                if configured_base
+                else "registered project integration context"
+            ),
+            "authority": "default implementation starting base; not merge, push, deploy, or ownership authorization",
+        }
     from .vocabulary_memory import resolve as resolve_vocabulary
 
     vocabulary_query = " ".join((body + " " + task["objective"]).split())
@@ -157,7 +201,7 @@ def prompt(
         + "\n\nAssigned work (metadata does not authorize merge/deploy):\n"
         + json.dumps(instructions, ensure_ascii=False, sort_keys=True)
     )
-    text += "\nStart: read your packet and inbox. Finish: attach report and commit-bound verification, mark ready-for-review, and send an inbox message to your dispatcher. A queued card is not a running worker."
+    text += "\nStart: read your packet and inbox, then verify integration_base and the observed checkout before editing. Finish: attach report and commit-bound verification, mark ready-for-review, and send an inbox message to your dispatcher. A queued card is not a running worker."
     text += "\nKeep recoverable work, reports, thread IDs and checkpoints in the persistent CONTINUITY_WORK_ROOT or Continuity data root, not temporary or memory-backed mounts. Only disposable reproducible buffers belong in temp directories. Authentication, account queries and native session resume stay on the owning host/profile; share authorized task artifacts or normalized observations, never migrate private profile/session state to query elsewhere."
     if audience == "reviewer" or task["mode"] == "scout":
         text += "\nIndependent repository review: identify correctness, authorization and error-handling failures using the declared code and authorized test fixtures. Preserve accurate technical facts and state any uncertainty or missing authorization; do not conceal the nature of the requested work."
@@ -234,7 +278,7 @@ def _record_ledger(
                 )
             if type(value.get("approved", False)) is not bool:
                 raise ValueError("approved must be boolean")
-            if value.get("approved"):
+            if value.get("commit") is not None:
                 _commit(value.get("commit"))
         else:
             _commit(value.get("baseline"))
@@ -337,7 +381,13 @@ def record(
 def command(args):
     from .planning_api import render
 
-    render({}, format=args.format, max_output_bytes=args.max_output_bytes)
+    requested_output_bytes = args.max_output_bytes
+    effective_output_bytes = (
+        min(requested_output_bytes, 131072)
+        if args.workflow_action == "batch-list"
+        else requested_output_bytes
+    )
+    render({}, format=args.format, max_output_bytes=effective_output_bytes)
     if args.workflow_action == "prompt":
         value = prompt(
             args.data_root,
@@ -381,10 +431,27 @@ def command(args):
         ledger = _load_ledger(
             Path(args.data_root or default_data_root()), args.project_id
         )
-        value = {
-            "items": list(ledger.get("workflow_records", {}).get(kind, {}).values())
-        }
-    print(render(value, format=args.format, max_output_bytes=args.max_output_bytes))
+        items = sorted(
+            ledger.get("workflow_records", {}).get(kind, {}).values(),
+            key=lambda item: (item.get("recorded_at", ""), item.get("id", "")),
+        )
+        if kind == "batch":
+            from .metadata_pages import records_page
+
+            value = records_page(
+                args.data_root,
+                args.project_id,
+                kind,
+                items,
+                budget=effective_output_bytes,
+                cursor=args.cursor,
+            )
+            if requested_output_bytes > effective_output_bytes:
+                value["requested_max_output_bytes"] = requested_output_bytes
+                value["budget_capped_to"] = effective_output_bytes
+        else:
+            value = {"items": items}
+    print(render(value, format=args.format, max_output_bytes=effective_output_bytes))
     return 0
 
 
@@ -400,6 +467,10 @@ def register_cli(commands):
         parser.add_argument("--data-root")
         parser.add_argument("--format", choices=("brief", "json"), default="json")
         parser.add_argument("--max-output-bytes", type=int, default=32768)
+        if name == "batch-list":
+            parser.add_argument(
+                "--cursor", help="Continue an immutable batch-list snapshot"
+            )
         if name == "prompt":
             parser.add_argument("--task-id", required=True)
             parser.add_argument("--assignee")

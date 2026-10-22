@@ -9,14 +9,15 @@ import tempfile
 import uuid
 import hashlib
 import math
+from datetime import UTC, datetime
 from pathlib import Path
 from .collaboration_registry import (
     _atomic_write,
+    _load_ledger,
     _locked,
     default_data_root,
     project_data_dir,
     resolve_project,
-    list_tasks,
 )
 
 DEFAULT_TIMEOUT_SECONDS = 24 * 60 * 60
@@ -234,11 +235,195 @@ def _argv(profile, values, resume=False):
     ] + (["--resume", values["thread_id"]] if resume else [])
 
 
+def _repair_legacy_classification(data_root, project_id, task_id, job):
+    if not isinstance(job, dict) or not job.get("job_dir"):
+        return None
+    result_file = Path(job["job_dir"]) / "result.json"
+    try:
+        result = json.loads(result_file.read_text())
+    except (OSError, ValueError):
+        return None
+    if result.get("failure_class") != "policy-review":
+        return result
+    from .retry_policy import classify, policy_refusal
+
+    evidence = "\n".join(
+        str(result.get(key) or "")
+        for key in ("output_tail", "terminal_failure", "reason")
+    )
+    log_file = Path(job["job_dir"]) / "output.jsonl"
+    try:
+        with log_file.open("rb") as stream:
+            stream.seek(0, os.SEEK_END)
+            stream.seek(max(0, stream.tell() - 8192))
+            evidence += "\n" + stream.read().decode("utf-8", errors="replace")
+    except OSError:
+        pass
+    classified = classify(evidence)
+    if classified.get("failure_class") == "policy-review" or policy_refusal(evidence):
+        return result
+    if classified.get("failure_class") not in {
+        "authentication",
+        "quota-exhausted",
+        "rate-limit",
+        "capacity",
+        "gateway",
+        "upstream-reset",
+    }:
+        return result
+    corrected = {
+        **result,
+        **classified,
+        "classification_correction": {
+            "from": "policy-review",
+            "to": classified["failure_class"],
+            "basis": "original provider evidence reclassified; no strong policy signal",
+            "corrected_at": datetime.now(UTC).isoformat(),
+        },
+    }
+    _atomic_write(result_file, corrected)
+    try:
+        from .execution_outbox import change
+
+        change(
+            Path(data_root or default_data_root()),
+            project_id,
+            "dispatch.classification-corrected",
+            task_id,
+            job_id=job.get("job_id"),
+            attempt_id=job.get("job_id"),
+            scope_sha256=job.get("scope_sha256"),
+            previous_class="policy-review",
+            failure_class=classified["failure_class"],
+        )
+    except (OSError, ValueError, KeyError):
+        corrected["metadata_warning"] = (
+            "classification corrected locally; correction event is pending or unavailable"
+        )
+    return corrected
+
+
+def clear_policy_review(
+    root,
+    *,
+    data_root=None,
+    project_id=None,
+    task_id,
+    job_id,
+    reason,
+    actor=None,
+    controller=None,
+    controller_token=None,
+):
+    """Record an audited human review that clears one false policy block."""
+
+    registration = resolve_project(root, data_root)
+    project_id = project_id or (registration or {}).get("project_id")
+    if not project_id:
+        raise ValueError("registered project root or project-id is required")
+    if not isinstance(job_id, str) or not re.fullmatch(r"job-[0-9a-f]{16}", job_id):
+        raise ValueError("job-id must identify one recorded worker job")
+    if not isinstance(reason, str) or not reason.strip() or len(reason) > 2048:
+        raise ValueError("policy-review clearance requires a bounded, nonempty reason")
+    from .collaboration_registry import _ASSIGNEE_RE
+
+    actor = actor or os.environ.get("CONTINUITY_ASSIGNEE") or "operator"
+    if _ASSIGNEE_RE.fullmatch(actor) is None:
+        raise ValueError("actor must be a stable assignee identity")
+    data = Path(data_root or default_data_root())
+    from .controller_lease import require
+
+    require(
+        data,
+        project_id,
+        controller or os.environ.get("CONTINUITY_CONTROLLER"),
+        controller_token or os.environ.get("CONTINUITY_CONTROLLER_TOKEN"),
+    )
+    job_path = project_data_dir(data, project_id) / "worker-jobs" / job_id / "job.json"
+    try:
+        job = json.loads(job_path.read_text(encoding="utf-8"))
+        result_path = job_path.with_name("result.json")
+        result = json.loads(result_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise ValueError("recorded worker job or result is unavailable") from exc
+    if job.get("task_id") != task_id or job.get("project_id") != project_id:
+        raise ValueError("job does not belong to the requested project/task")
+    if result.get("failure_class") != "policy-review":
+        correction = result.get("classification_correction") or {}
+        if correction.get("to") == "operator-cleared":
+            return {
+                "status": "already-cleared",
+                "project_id": project_id,
+                "task_id": task_id,
+                "job_id": job_id,
+                "previous_failure_class": correction.get("from"),
+                "failure_class": result.get("failure_class"),
+                "correction": correction,
+            }
+        raise ValueError("worker job is not awaiting policy review")
+    scope = job.get("scope_sha256")
+    if not isinstance(scope, str) or not scope:
+        raise ValueError("worker job has no scope binding; refusing an unaudited override")
+    corrected_at = datetime.now(UTC).isoformat()
+    correction = {
+        "from": "policy-review",
+        "to": "operator-cleared",
+        "basis": "explicit human review of provider/HTTP evidence",
+        "reason": reason.strip(),
+        "actor": actor,
+        "corrected_at": corrected_at,
+        "job_id": job_id,
+    }
+    from .execution_outbox import change
+
+    recorded = change(
+        data,
+        project_id,
+        "dispatch.classification-corrected",
+        task_id,
+        event_id="policy-clear:" + job_id,
+        job_id=job_id,
+        attempt_id=job_id,
+        scope_sha256=scope,
+        previous_class="policy-review",
+        failure_class="operator-cleared",
+        reason=reason.strip(),
+        corrected_by=actor,
+    )
+    if not recorded:
+        raise ValueError("classification correction could not be journaled; no result was changed")
+    corrected = {
+        **result,
+        "failure_class": "operator-cleared",
+        "retryable": False,
+        "resume_same_session": True,
+        "requires_new_session": False,
+        "classification_correction": correction,
+        "manual_review": {
+            "actor": actor,
+            "reason": reason.strip(),
+            "reviewed_at": corrected_at,
+            "authority": "explicit controller/operator metadata; not provider authentication",
+        },
+    }
+    _atomic_write(result_path, corrected)
+    return {
+        "status": "cleared",
+        "project_id": project_id,
+        "task_id": task_id,
+        "job_id": job_id,
+        "previous_failure_class": "policy-review",
+        "failure_class": "operator-cleared",
+        "correction": correction,
+    }
+
+
 def require_policy_clear(data_root, project_id, task_id, scope):
     """An older thread is not an escape from a newer refusal on this scope."""
-    directory = project_data_dir(Path(data_root or default_data_root()), project_id)
-    from .collaboration_registry import list_changes
+    from . import dispatch_safety
     from .execution_outbox import directory as outbox_directory
+
+    corrections = set()
 
     def stop(kind):
         label = (
@@ -256,10 +441,25 @@ def require_policy_clear(data_root, project_id, task_id, scope):
         except (OSError, ValueError):
             continue
         if (
+            row.get("event") == "dispatch.classification-corrected"
+            and row.get("project_id") == project_id
+            and row.get("task_id") == task_id
+            and row.get("fields", {}).get("scope_sha256") == scope
+        ):
+            corrections.add(
+                (task_id, row.get("fields", {}).get("job_id"), scope)
+            )
+        if (
             row.get("project_id") == project_id
             and row.get("task_id") == task_id
             and row.get("event")
             in {"dispatch.policy-stopped", "dispatch.review-required"}
+            and (
+                task_id,
+                row.get("fields", {}).get("job_id"),
+                scope,
+            )
+            not in corrections
             and Path(row.get("data_root", "")).resolve()
             == Path(data_root or default_data_root()).resolve()
             and row.get("fields", {}).get("scope_sha256") == scope
@@ -270,39 +470,15 @@ def require_policy_clear(data_root, project_id, task_id, scope):
                 else "output-incomplete"
             )
 
-    cursor = 0
-    while True:
-        page = list_changes(
-            data_root, project_id=project_id, since=cursor, max_results=500
-        )
-        for row in page["changes"]:
-            if (
-                row.get("event")
-                in {"dispatch.policy-stopped", "dispatch.review-required"}
-                and row.get("task_id") == task_id
-                and row.get("scope_sha256") == scope
-            ):
-                stop(
-                    "policy-review"
-                    if row["event"] == "dispatch.policy-stopped"
-                    else "output-incomplete"
-                )
-        cursor = page["next_cursor"]
-        if not page["truncated"]:
-            break
-    for path in (directory / "worker-jobs").glob("*/job.json"):
-        try:
-            job = json.loads(path.read_text())
-            if job.get("task_id") != task_id or job.get("scope_sha256") != scope:
-                continue
-            result_file = path.parent / "result.json"
-            result = json.loads(result_file.read_text()) if result_file.exists() else {}
-        except (OSError, ValueError):
-            # Legacy directories can belong to unrelated tasks. New stops are
-            # independently journaled with a task/scope binding above.
-            continue
-        if result.get("failure_class") in {"policy-review", "output-incomplete"}:
-            stop(result["failure_class"])
+    refused = dispatch_safety.blocked(data_root, project_id, task_id, scope)
+    if refused is not None:
+        event, job_id = refused
+        if (task_id, job_id, scope) not in corrections:
+            stop(
+                "policy-review"
+                if event == "dispatch.policy-stopped"
+                else "output-incomplete"
+            )
 
 
 def dispatch(
@@ -337,17 +513,23 @@ def dispatch(
     project_id = project_id or (registration or {}).get("project_id")
     if not project_id:
         raise ValueError("registered project root or project-id is required")
-    task = next(
-        (
-            t
-            for t in list_tasks(data_root, project_id=project_id)
-            if t["task_id"] == task_id
-        ),
-        None,
-    )
+    data = Path(data_root or default_data_root())
+    ledger = _load_ledger(data, project_id)
+    task = next((t for t in ledger["tasks"] if t["task_id"] == task_id), None)
     if task is None:
         raise ValueError("task_id does not exist")
-    data = Path(data_root or default_data_root())
+    body = ledger.get("task_details", {}).get(task_id, {}).get("body")
+    if not isinstance(body, str) or not body.strip():
+        raise ValueError(
+            "task body is empty; set task update --body before assembling a worker prompt"
+        )
+    if not resume:
+        from .collaboration_registry import dependencies_ready
+
+        if not dependencies_ready(task, ledger["tasks"]):
+            raise ValueError(
+                "task dependencies are not complete; wait for dependency cards to be completed or merged before dispatch"
+            )
     directory = project_data_dir(data, project_id)
     index = directory / "worker-jobs.json"
     jobs = json.loads(index.read_text()) if index.exists() else {}
@@ -365,6 +547,8 @@ def dispatch(
             or previous.get("project_id") != project_id
         ):
             raise ValueError("resume job belongs to a different task/project")
+    if previous:
+        _repair_legacy_classification(data, project_id, task_id, previous)
     if resume and not previous:
         raise ValueError("no recorded run exists for this task")
     if resume:
@@ -486,16 +670,15 @@ def dispatch(
         or ("worker-" + model if reassign else task.get("assignee"))
         or ("worker-" + model)
     )
-    from .collaboration_registry import _load_ledger, update_task
+    from .collaboration_registry import update_task
 
-    ledger = _load_ledger(data, project_id)
     from .delivery_records import scope_hash
 
     require_policy_clear(
         data,
         project_id,
         task_id,
-        scope_hash(task, ledger.get("task_details", {}).get(task_id, {}).get("body")),
+        scope_hash(task, body),
     )
     recorded = ledger.get("execution_bindings", {}).get(task_id, {})
     recorded_model = (
@@ -539,6 +722,9 @@ def dispatch(
             assignee=actor,
             actor=reassign_actor or os.environ.get("CONTINUITY_ASSIGNEE"),
         )
+        ledger["tasks"] = [
+            task if item["task_id"] == task_id else item for item in ledger["tasks"]
+        ]
     controller = (
         controller
         or os.environ.get("CONTINUITY_CONTROLLER")
@@ -553,6 +739,7 @@ def dispatch(
         assignee=actor,
         controller=controller,
         audience=audience,
+        ledger=ledger,
     )
     require_policy_clear(data, project_id, task_id, assembled["scope_sha256"])
     if previous and not resume:
@@ -638,7 +825,6 @@ def dispatch(
 
     require_available(data, project_id, profile["execution_origin"], model)
     from .supervisor import daemon_once
-    from .collaboration_registry import _load_ledger
 
     daemon_once(data, project_id=project_id)
     binding = (
@@ -827,12 +1013,47 @@ def _run_job(file):
             job["execution_origin"],
             job["model"],
             result,
+            task_id=job["task_id"],
+            attempt_id=job["job_id"],
         )
     except (OSError, ValueError) as exc:
         value["metadata_warning"] = (
             "Worker finished, but observed cooldown could not be stored: "
             + str(exc)[:300]
         )
+    if (
+        result.get("failure_class") == "quota-exhausted"
+        and result.get("available_at")
+        and job.get("profile", {}).get("official_subscription")
+    ):
+        try:
+            from .subscription_quota import record as record_quota
+
+            value["quota_record"] = record_quota(
+                job["data_root"],
+                job["project_id"],
+                job["model"],
+                used_percent=100,
+                resets_at=result["available_at"],
+                source="worker.provider-error:" + job["job_id"],
+                official_subscription=True,
+                provider=job["execution_origin"]["provider"],
+                origin=job["execution_origin"],
+            )
+        except (OSError, ValueError) as exc:
+            value["quota_record"] = {
+                "status": "record-failed",
+                "reason": str(exc)[:300],
+            }
+    elif result.get("failure_class") == "quota-exhausted":
+        value["quota_record"] = {
+            "status": "not-recorded",
+            "reason": (
+                "adapter is not declared as an official subscription"
+                if not job.get("profile", {}).get("official_subscription")
+                else "provider error did not contain a usable reset time; dispatch remains paused by observed health"
+            ),
+        }
     if result.get("failure_class") in {"policy-review", "output-incomplete"}:
         from .execution_outbox import change as record_stop
 
@@ -1008,6 +1229,49 @@ def command(args):
             + segment
         )
         return 0
+    elif args.worker_action == "clear-policy-review":
+        value = clear_policy_review(
+            args.root,
+            data_root=args.data_root,
+            project_id=args.project_id,
+            task_id=args.task_id,
+            job_id=args.job_id,
+            reason=args.reason,
+            actor=args.actor,
+            controller=args.controller,
+            controller_token=args.controller_token,
+        )
+    elif getattr(args, "enqueue", False) or args.worker_action == "enqueue":
+        if args.worker_action == "prepare":
+            raise ValueError("prepare and enqueue are separate operations")
+        if args.dry_run:
+            raise ValueError(
+                "--dry-run previews only; remove --dry-run to persist --enqueue"
+            )
+        from .dispatch_queue import enqueue
+
+        value = enqueue(
+            args.root,
+            data_root=args.data_root,
+            project_id=args.project_id,
+            task_id=args.task_id,
+            model=args.model,
+            effort=args.effort,
+            assignee=args.assignee,
+            continuation=args.continuation,
+            retry=args.retry,
+            timeout_seconds=args.timeout_seconds,
+            idle_timeout_seconds=args.idle_timeout_seconds,
+            fallback_models=args.fallback_model,
+            resume=args.worker_action == "resume",
+            resume_job=args.resume_job,
+            audience=args.audience,
+            priority=args.priority,
+            request_id=args.request_id,
+            controller=args.controller,
+            reassign=args.reassign,
+            reassign_actor=args.actor,
+        )
     else:
         value = dispatch(
             args.root,
@@ -1037,7 +1301,11 @@ def command(args):
 
 
 def _run_parser(parser, action):
-    parser.set_defaults(handler=command, worker_action=action)
+    parser.set_defaults(
+        handler=command,
+        worker_action=action,
+        **({"enqueue": True} if action == "enqueue" else {}),
+    )
     for field in ("project-id", "data-root", "model", "assignee"):
         parser.add_argument("--" + field)
     parser.add_argument("--root", default=".")
@@ -1074,6 +1342,22 @@ def _run_parser(parser, action):
     )
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--background", action="store_true")
+    if action != "enqueue":
+        parser.add_argument(
+            "--enqueue",
+            action="store_true",
+            help="Persist this dispatch request instead of starting it immediately",
+        )
+    parser.add_argument(
+        "--request-id",
+        help="Stable idempotency key for --enqueue; repeat content is suppressed",
+    )
+    parser.add_argument(
+        "--priority",
+        type=int,
+        default=100,
+        help="Queue priority; lower runs first",
+    )
     parser.add_argument(
         "--resume-job",
         help="Original recorded job id, including a primary session preserved before failover",
@@ -1097,6 +1381,23 @@ def register_cli(commands):
     sub = parser.add_subparsers(dest="worker_action", required=True)
     for action in ("dispatch", "resume", "prepare"):
         _run_parser(sub.add_parser(action), action)
+    clearance = sub.add_parser(
+        "clear-policy-review",
+        help="Clear one reviewed false policy-review classification with an audited reason",
+    )
+    clearance.set_defaults(handler=command, worker_action="clear-policy-review")
+    clearance.add_argument("--root", default=".")
+    clearance.add_argument("--project-id")
+    clearance.add_argument("--data-root")
+    clearance.add_argument("--task-id", required=True)
+    clearance.add_argument("--job-id", required=True)
+    clearance.add_argument("--reason", required=True)
+    clearance.add_argument("--actor")
+    clearance.add_argument("--controller")
+    clearance.add_argument("--controller-token")
+    from .dispatch_queue import register_cli as register_queue_cli
+
+    register_queue_cli(sub)
     configure_parser = sub.add_parser("configure")
     configure_parser.set_defaults(handler=command)
     configure_parser.add_argument("--data-root")

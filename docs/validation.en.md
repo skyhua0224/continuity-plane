@@ -2,11 +2,11 @@
 
 [中文](validation.md) · [Workflows](workflows.en.md) · [Historical experiments](benchmarks.en.md)
 
-Scope: Alpha29 (`0.1.0a29`). New synthetic CLI measurements, existing regressions, anonymous user feedback and uncovered behavior are distinct evidence classes.
+Scope: Alpha34 (`0.1.0a34`). New synthetic CLI measurements, existing regressions, anonymous user feedback and uncovered behavior are distinct evidence classes.
 
 ## Reproduce the current workflow check
 
-Alpha27 established an isolated HTTPS Gitea 1.24.7 / local tea 0.15.0 two-synthetic-account private repository check. Alpha29 adds no new external Gitea field run; its Gitea changes use deterministic regressions. The adopter script below was rerun against an isolated Alpha29 installation; its receipt contains only allowlisted synthetic aggregates. Tag CI records this release's complete regression/build.
+Alpha27 established an isolated HTTPS Gitea 1.24.7 / local tea 0.15.0 two-synthetic-account private repository check. Alpha34 adds no new external Gitea field run; collaboration changes use deterministic regressions. The adopter script below was rerun from a fresh persistent venv containing only the Alpha34 wheel and a new workspace. Its receipt contains allowlisted synthetic aggregates only; tag CI remains authoritative for the release build.
 
 Use a **new, empty persistent directory**, never your real registry/profile:
 
@@ -28,7 +28,7 @@ The development tree uses `public/examples/`; a public checkout uses `examples/`
 | Failed child | Original exit 3 recorded; dispatch CLI nonzero (2) |
 | Single-update merge metadata | Pass; no actual Git merge |
 | Shared handoff, lesson, second-controller read-only | Pass |
-| Scoped profile, approved memory and controller start | Pass; 1,443 JSON bytes in this fixture within a 4,096-byte budget |
+| Scoped profile, approved memory and controller start | Pass; 1,442 JSON bytes in this fixture within a 4,096-byte budget |
 | Event paging, OR wait, quiet read | Pass; 216 bytes for this fixture's no-change response |
 | Worker updates card early | Automatically attached and readable through report; manual attachment does not satisfy this check |
 
@@ -48,6 +48,9 @@ Fourteen positive checks pass; automatic report delivery after early card update
 | References/lessons | Record/TSV roundtrip/conflict/correction regressions; lesson CLI | Explicit interchange; reminders do not prove adoption |
 | Controller profile/memory/native notes | Scope, locked fields, candidate, revocation, origin/symlink/permission gates and bounded start regressions | Native writeback and full real-memory format coverage remain unmeasured; same-OS agents need sandboxing |
 | Inbox archive, quota pause, reservation diagnosis | Synthetic end-to-end and deterministic regressions | Consumes observed errors only; no provider quota polling |
+| Worker queue, handoff priority, assigned/running, batch and integration_base | Single-instance/order/duplicate/capacity/host-pause/transient-backoff, bounded handoff, state projection, JSON batch and prompt regressions | No cross-machine strong lock, process sandbox or automatic wake-up |
+| Inbox generated IDs, bulk acknowledgement and structured MCP errors | CLI/MCP generated ID, explicit-ID idempotence, returned-ID ack, before/all batching, archive and schema/argparse conditional-field regressions | ACK is not host wake-up; archive does not delete; one call covers at most 1000 messages |
+| Host-restart reservations, local dependencies, list envelope and cooldown reasons | boot/host stale detection, stale capacity exclusion, reconcile, dependency gating, paged envelope, non-code decision, health reason and large-history append regressions | Capacity is project+host+profile+client-family; MCP lifecycle remains host-owned |
 | Index/brief/dependents/prompt code routes | Synthetic symbol + language/route regressions | New fixture uses Python; not a complete compiler graph |
 | Batches/decisions/metrics/merge metadata | Schema/source/fence regressions and user feedback | Does not execute Git or invent approval |
 | Controller leases/capacity/unknown operations | Second-controller CLI + concurrency regressions | Cooperating tool-mediated clients only |
@@ -60,6 +63,50 @@ Fourteen positive checks pass; automatic report delivery after early card update
 
 The [Alpha25 public release CI](https://github.com/skyhua0224/continuity-plane/actions/runs/38845950775) passed 268 tests. New documentation checks run on current main separately; neither released wheels nor historical counts are rewritten.
 
+## Alpha34 adoption regressions
+
+| Fix | Current evidence | Boundary |
+|---|---|---|
+| HTTP interception vs. content refusal | 401/403, Cloudflare, cf-ray, proxy and explicit `cyber_policy` precedence; legacy correction | Explicit model-safety markers still block blind replay; clearance requires exact job and reason |
+| Automatic and reviewed resume | Same-thread dry-run resume after 403; exact-job clearance, idempotent event and result correction | `operator-cleared` is a local audit decision, not provider authentication or a new content-safety approval |
+
+## Alpha33 adoption regressions
+
+| Fix | Current evidence | Boundary |
+|---|---|---|
+| Dispatch hot path | Incremental safety index, corruption rebuild, tail-only reads and first/subsequent timings on large local projects | First upgrade still performs one sequential backfill; the change log remains authoritative |
+| Input and output bounds | Empty bodies fail before policy history; oversized `batch-list` budgets cap and return a cursor | A single record larger than 131072 bytes still fails explicitly rather than disappearing |
+| Token diagnostics | Expiry, owner, missing token and wrong-project token have distinct messages | Controller tokens are cooperative fencing, not native account authentication |
+
+## Alpha32 adoption regressions
+
+| Fix | Current evidence | Boundary |
+|---|---|---|
+| Host-restart reservations | host/boot fingerprints, legacy boot-time inference, reservation inventory, dry-run/apply reconcile, clear outcomes and stale capacity exclusion | Only provably stale records are cleared; unknown/live remain |
+| Dependencies and list shape | local/shared dependencies, dependencies-ready, claim/active/dispatch gates and one paged envelope | Dependencies are scheduling hints and gates, not module ownership |
+| Decisions, health and performance | non-code decisions without commit, dispatch-health reason/task/attempt, and no full-history scan for events without event IDs | Other project writers can still delay the project lock; no universal concurrency guarantee |
+| MCP host restart | collaboration doctor explains host ownership and CLI/SSH fallback | Continuity does not auto-spawn a host stdio process |
+
+## Alpha31 adoption regressions
+
+| Fix | Current evidence | Boundary |
+|---|---|---|
+| MCP send without message_id | CLI/MCP generate and return an ID; explicit-ID resend is deduplicated; the returned ID can be acknowledged | Generated IDs do not make retries idempotent; pass an explicit ID when that is required |
+| Raw MCP exceptions | Missing inbox sender and invalid planning parameters return isError/structuredContent/failed_gate | JSON-RPC errors remain for unknown tools or malformed envelopes |
+| Large unread inbox | Bounded acknowledgement by time or all, followed by archive of acknowledged messages | The human still chooses the acknowledgement window; historical messages are not auto-acknowledged |
+| Root/project drift | Error includes requested root/project and both registered identities with a correction command | Local registration is not automatically merged with a remote authority |
+
+## Alpha30 adoption regressions
+
+| Fix | Current evidence | Boundary |
+|---|---|---|
+| Durable dispatch queue | Single-instance lock, priority, duplicate suppression, host pause, capacity gate, quota/rate-limit backoff and state tests | Lock covers one project/data root; not a remote queue or provider SLA |
+| Handoff truncation | Pending decision, blocked card and failed attempt retained at a 1 KiB budget | Ordinary change history may be omitted; request a larger budget for full detail |
+| Todo state | Assigned and live running binding are distinct; blocked reasons are retained | A native child without heartbeat remains an observation, not proof of a controlled run |
+| Usage limit | Quota outranks generic policy wording; automatic quota recording, pause and legacy-job correction tests | Uses provider reset evidence only; unknown reset is never invented |
+| Shell-safe task batch | File/stdin JSON, stop-on-first-error and local/shared field routing tests | Not an all-or-none transaction across Issues |
+| Reservation and integration base | Live/stale/unknown diagnosis and non-authority integration_base prompt regression | Diagnosis does not terminate or take over a process; base grants no merge authority |
+
 ## Alpha29 adoption regressions
 
 | Fix | Current evidence | Boundary |
@@ -70,7 +117,7 @@ The [Alpha25 public release CI](https://github.com/skyhua0224/continuity-plane/a
 | Reference TSV | Unicode, extra columns, idempotence, atomic conflicts/invalid rows, MCP interface | Explicit interchange, no overwrite/automatic sync or proof of reading |
 | Mapped lookup | Separate synthetic repository through the receiving CLI protocol; unmapped/over-budget rejection | No new physical two-machine trial or arbitrary remote file/process administration |
 
-[test_a26_adoption.py](../tests/test_a26_adoption.py) contains thirteen synthetic regressions. See [deployment](deployment.en.md) and [Alpha29](release-alpha26.md) for setup and compatibility.
+[test_a26_adoption.py](../tests/test_a26_adoption.py) contains thirteen Alpha26 synthetic regressions. Alpha34 classification and clearance tests live in `tests/test_alpha34_policy_classification.py`; Alpha33 dispatch hot-path tests remain in `tests/test_alpha33_dispatch_hot_path.py`. See [Alpha34](release-alpha34.md) for this release's limits.
 
 ## Privacy and effect claims
 

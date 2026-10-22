@@ -17,7 +17,16 @@ def _path(data_root, project_id, origin, model):
     )
 
 
-def record(data_root, project_id, origin, model, failure):
+def record(
+    data_root,
+    project_id,
+    origin,
+    model,
+    failure,
+    *,
+    task_id=None,
+    attempt_id=None,
+):
     if failure.get("failure_class") not in {
         "quota-exhausted",
         "rate-limit",
@@ -33,6 +42,11 @@ def record(data_root, project_id, origin, model, failure):
             "origin": origin,
             "model": model,
             "basis": "observed worker error; no subscription query",
+            "reason": failure.get("reason") or failure.get("guidance"),
+            "failure_guidance": failure.get("guidance"),
+            "task_id": task_id,
+            "attempt_id": attempt_id,
+            "observed_at": datetime.now(UTC).isoformat(),
             "status": "paused",
         }
         _atomic_write(path, item)
@@ -57,7 +71,11 @@ def require_available(data_root, project_id, origin, model, *, now=None):
         + item["failure_class"]
         + "; reset="
         + (until or "unknown")
-        + "; inspect the original error; use dispatch-health clear with a recorded reason after reconciliation"
+        + "; reason="
+        + str(item.get("reason") or item.get("basis") or "not-recorded")
+        + "; task="
+        + str(item.get("task_id") or "unknown")
+        + "; inspect the original attempt; use dispatch-health clear with a recorded reason after reconciliation"
     )
 
 
@@ -90,6 +108,15 @@ def show(data_root, project_id):
                         "available_at": value.get("available_at"),
                         "status": value.get("status"),
                         "basis": value.get("basis"),
+                        "reason": value.get("reason"),
+                        "explanation": value.get("reason")
+                        or value.get("failure_guidance")
+                        or "No provider detail was stored with this observed cooldown.",
+                        "failure_guidance": value.get("failure_guidance"),
+                        "task_id": value.get("task_id"),
+                        "attempt_id": value.get("attempt_id"),
+                        "observed_at": value.get("observed_at"),
+                        "scope": "project data root + host/profile + model",
                     }
                 )
     return {

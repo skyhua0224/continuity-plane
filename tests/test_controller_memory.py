@@ -11,10 +11,19 @@ from unittest.mock import patch
 
 from continuity_plane import controller_memory as memory
 from continuity_plane import controller_session
-from continuity_plane.collaboration_registry import add_task, register_project
+from continuity_plane.collaboration_registry import (
+    _atomic_write,
+    add_task,
+    register_project,
+)
 from continuity_plane.cli import main
 from continuity_plane.controller_lease import acquire, reserve
-from continuity_plane.dispatch_health import clear, record, require_available
+from continuity_plane.dispatch_health import (
+    clear,
+    record,
+    require_available,
+    show,
+)
 from continuity_plane.planning_api import handle_tool
 from continuity_plane.project_context import handoff
 from continuity_plane.runtime_origin import current
@@ -418,10 +427,17 @@ class MemoryTests(unittest.TestCase):
             {
                 "failure_class": "quota-exhausted",
                 "available_at": "2099-01-01T00:00:00+00:00",
+                "reason": "usage limit reached",
+                "guidance": "Resume after provider reset",
             },
+            task_id="task",
+            attempt_id="attempt-quota",
         )
-        with self.assertRaisesRegex(ValueError, "dispatch paused"):
+        with self.assertRaisesRegex(ValueError, "reason=usage limit reached"):
             require_available(self.data, "sample", origin, "gpt-6.1-sol")
+        shown = show(self.data, "sample")
+        self.assertEqual(shown["items"][0]["task_id"], "task")
+        self.assertEqual(shown["items"][0]["reason"], "usage limit reached")
         require_available(self.data, "sample", origin, "other-model")
         with self.assertRaisesRegex(ValueError, "reason"):
             clear(self.data, "sample", origin, "gpt-6.1-sol", "")
@@ -459,7 +475,55 @@ class MemoryTests(unittest.TestCase):
             profile=profile,
         )
         with self.assertRaisesRegex(
-            ValueError, "stale-or-unobserved-reservation.*job-one"
+            ValueError,
+            "state=unknown reason=no-live-binding-or-terminal-result job=job-one",
+        ):
+            reserve(
+                self.data,
+                "sample",
+                task_id="task",
+                job_id="job-two",
+                owner="controller",
+                token=lease["token"],
+                profile=profile,
+            )
+
+    def test_reservation_reports_terminal_result_as_stale(self):
+        register_project(self.data, project_id="sample", control_root=self.root)
+        add_task(
+            self.data,
+            project_id="sample",
+            task_id="task",
+            lane_id="scope",
+            mode="patch",
+            priority="p1",
+            title="Task",
+            objective="Check reservation",
+            next_action="Run",
+            exit_criteria=["Pass"],
+        )
+        lease = acquire(self.data, "sample", owner="controller")
+        profile = {"provider": "codex", "execution_origin": current("codex")}
+        reserve(
+            self.data,
+            "sample",
+            task_id="task",
+            job_id="job-one",
+            owner="controller",
+            token=lease["token"],
+            profile=profile,
+        )
+        _atomic_write(
+            self.data
+            / "projects"
+            / "sample"
+            / "worker-jobs"
+            / "job-one"
+            / "result.json",
+            {"status": "failed", "failure_class": "quota-exhausted"},
+        )
+        with self.assertRaisesRegex(
+            ValueError, "state=stale reason=terminal-result-failed"
         ):
             reserve(
                 self.data,

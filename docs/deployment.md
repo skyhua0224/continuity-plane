@@ -2,7 +2,7 @@
 
 [English](deployment.en.md) · [文档索引](README.md) · [快速开始](../USAGE.md)
 
-适用版本：CLI `0.1.0a29`，插件 tag `v0.1.0-alpha.29`。CLI、MCP 与宿主 hook 是三个需要分别验证的层次。
+适用版本：CLI `0.1.0a34`，插件 tag `v0.1.0-alpha.34`。CLI、MCP 与宿主 hook 是三个需要分别验证的层次。
 
 ## 选择部署方式
 
@@ -22,7 +22,7 @@
 
 ```bash
 python3 -m venv .venv
-.venv/bin/python -m pip install 'continuity-plane==0.1.0a29'
+.venv/bin/python -m pip install 'continuity-plane==0.1.0a34'
 .venv/bin/continuity --version
 ```
 
@@ -31,7 +31,7 @@ Windows PowerShell 对应 `py -3 -m venv .venv`、`.venv\Scripts\python.exe` 和
 希望全局使用时可选 pipx：
 
 ```bash
-pipx install 'continuity-plane==0.1.0a29'
+pipx install 'continuity-plane==0.1.0a34'
 pipx upgrade continuity-plane --pip-args=--pre
 ```
 
@@ -40,7 +40,7 @@ pipx upgrade continuity-plane --pip-args=--pre
 已有 pipx/uv 环境无法重建时，更新原解释器，不使用破坏性重装：
 
 ```bash
-uv pip install --python /path/to/pipx/venvs/continuity-plane/bin/python --reinstall-package continuity-plane 'continuity-plane==0.1.0a29'
+uv pip install --python /path/to/pipx/venvs/continuity-plane/bin/python --reinstall-package continuity-plane 'continuity-plane==0.1.0a34'
 ```
 
 pipx 的显示元数据可能仍需其正常 upgrade 流程刷新。网络失败时可用已核对摘要的 wheel 离线安装；不要关闭 TLS 验证，也不要把临时离线参数永久留给后续升级。
@@ -70,7 +70,7 @@ continuity storage inspect --path /path/to/persistent/work
 先安装 CLI。添加 marketplace，再选择插件：
 
 ```bash
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.29
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.34
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -94,7 +94,7 @@ codex plugin add continuity-plane-state@continuity-plane
 ```bash
 # 仅切换 Continuity 市场的固定版本
 codex plugin marketplace remove continuity-plane
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.29
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.34
 codex plugin marketplace upgrade continuity-plane
 ```
 
@@ -182,7 +182,7 @@ bridge 默认可转发有界的当前显式清单指令；上例关闭了这一�
 
 ### 远端检索
 
-MCP 可以通过 SSH 在状态端启动 `continuity-search-mcp`，此时 `root` 是远端仓库。Alpha29 也支持本机 search MCP 显式指定工具参数 `bridge_config`，或启动环境 `CONTINUITY_BRIDGE_CONFIG=/path/to/bridge.json`：仅把精确匹配的 local_root 映射到 remote_root，经 `continuity-remote-cli` 执行检索。配置可选 `remote_cli_endpoint`、`lookup_timeout_seconds` 和所属机器的 `remote_data_root`。未匹配、多重匹配或传输失败时明确报错，不回退本机；远端模式拒绝本机 cache_path/data_root。没有任意远端文件／进程管理接口。此路由有合成协议测试，尚未作为 Alpha29 在真实双机环境重新实测。
+MCP 可以通过 SSH 在状态端启动 `continuity-search-mcp`，此时 `root` 是远端仓库。Alpha29 引入并由 Alpha34 保留本机 search MCP 的显式 `bridge_config`，或启动环境 `CONTINUITY_BRIDGE_CONFIG=/path/to/bridge.json`：仅把精确匹配的 local_root 映射到 remote_root，经 `continuity-remote-cli` 执行检索。配置可选 `remote_cli_endpoint`、`lookup_timeout_seconds` 和所属机器的 `remote_data_root`。未匹配、多重匹配或传输失败时明确报错，不回退本机；远端模式拒绝本机 cache_path/data_root。没有任意远端文件／进程管理接口。此路由有合成协议测试，尚未作为 Alpha34 在真实双机环境重新实测。
 
 MCP 使用稳定执行者身份：在 server 环境设置 `CONTINUITY_ASSIGNEE=worker-a`，或每次 `continuity_plan` 传同一 `executor_id`。task add/update/claim 和 todo activate 自动沿用它；其他执行者的冲突仍被拒绝。session_id 只用于恢复，不再改写卡片 assignee。这是协作身份声明，不是原生账号认证；不要把所有 worker 配成同一身份。
 
@@ -193,13 +193,16 @@ MCP 使用稳定执行者身份：在 server 环境设置 `CONTINUITY_ASSIGNEE=w
 | 表现 | 先检查 |
 |---|---|
 | CLI 新、MCP 旧／工具缺失 | 新建 MCP 连接，核对 serverInfo.version 与实际工具表，不重建项目 State |
+| 主机 kill／重启后 MCP 不在 | MCP 由宿主管理且不跨重启存活；新开宿主 MCP，或在重连前走 CLI／显式 SSH remote。用 `collaboration doctor` 查看生命周期提示 |
 | 压缩后没接续 | 当前机器、实际 profile、hook 信任、PreCompact/恢复成对记录；不能只查包版本 |
 | 消息或结束事件没看到 | 收件人、task id、游标分页、wait 超时；不要跳到 high-water 跳过未交付页 |
 | 规则正文缺失 | 用 rules export；长文检查附件 hash，不接受静默截断 |
 | 更换 MCP 连接后自己的卡被拒 | 核对 CONTINUITY_ASSIGNEE/executor_id 与原 assignee 是否一致；不自动把旧连接身份转换为新身份 |
-| worker 提前改卡后报告未挂卡 | Alpha29 已修；核对是否是旧运行、旧 MCP、过期 attempt 或换过执行者，已有历史文件仍可显式挂载 |
+| worker 提前改卡后报告未挂卡 | Alpha29 起已修；核对是否是旧运行、旧 MCP、过期 attempt 或换过执行者，已有历史文件仍可显式挂载 |
+| dispatch／resume 持续高 CPU | Alpha34 起核对 `dispatch-safety-index.json` 与 change log 的尾部偏移；不要删除 change log。项目首次升级会有一次顺序回填，后续派发应只读新增尾部 |
+| HTTP 403／Cloudflare 被标成 policy-review | 先核对原始 `output_tail`；若没有明确模型安全标记，resume 会按 HTTP/鉴权证据重分类。仍无法自动判断时，复核精确 job 后使用 `worker clear-policy-review --reason …` |
 | hook 故障影响体验 | 临时 `CONTINUITY_DISABLED=1`，保留日志与原配置；不要删除账号数据 |
 
-升级前保存软件版本、配置备份、注册表与自定义产物位置。回滚软件后恢复对应 hook/MCP 入口并重连。启用 guarded ledger v4 的项目不能指望旧 dispatcher 继续读取；保留升级前备份，先协调参与者，不擅自把新 schema 改回旧值。
+升级前保存软件版本、配置备份、注册表与自定义产物位置。回滚软件后恢复对应 hook/MCP 入口并重连。启用 guarded ledger v4 的项目不能指望旧 dispatcher 继续读取；保留升级前备份，先协调参与者，不擅自把新 schema 改回旧值。主机重启后的遗留 reservation 用 `controller reservations --state stale` 查看，并在持有租约时执行 `controller reconcile-host --apply --reason …`。
 
 卸载插件或 CLI 不会自动清空项目记录。不要使用递归删除命令清理整个用户数据根或 provider profile。

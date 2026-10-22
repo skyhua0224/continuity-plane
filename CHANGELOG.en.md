@@ -2,6 +2,43 @@
 
 Adoption: [deployment](docs/deployment.en.md), [recent release notes](docs/releases.en.md), [current coverage/known gaps](docs/validation.en.md). Historical entries retain their original scope. Regular GitHub Release classification does not remove alpha semantics.
 
+## 0.1.0-alpha.34
+
+- HTTP 401/403, Cloudflare/proxy interception and gateway diagnostics no longer become content refusals from generic "policy" wording; explicit model-safety markers still take precedence.
+- Legacy false labels can be reclassified from preserved evidence; when needed, a controller can use exact-job, reason-required `worker clear-policy-review`, recording an idempotent correction that permits same-thread resume.
+- [Release notes](docs/release-alpha34.md).
+
+## 0.1.0-alpha.33
+
+- Dispatch and resume use an incremental safety index instead of repaging the full change log on every launch; one sequential backfill is followed by tail-only reads.
+- Empty task bodies fail before policy-history and worker-directory work; oversized `batch-list` budgets are capped with a snapshot cursor.
+- Controller lease diagnostics distinguish expiry, owner mismatch, missing tokens and project-scoped token mismatch.
+- [Release notes and measurements](docs/release-alpha33.md).
+
+## 0.1.0-alpha.32
+
+- Bind reservations to host/boot fingerprints, inventory stale jobs and explicitly reconcile host-restart leftovers before capacity failure; clarify clear outcomes.
+- Add local dependencies and dependency-ready filtering; local and Gitea task lists share a bounded paged envelope.
+- Allow non-code decisions without a commit; expose dispatch-health pause reason, task/attempt and capacity scope.
+- Remove full-history reads from ordinary event appends, reducing task add/update latency on large histories.
+- [Release notes and MCP restart boundary](docs/release-alpha32.md).
+
+## 0.1.0-alpha.31
+
+- Inbox send message_id is optional and server-generated; explicit IDs remain idempotent under one CLI/MCP contract.
+- MCP tool input failures return structuredContent, failed_gate, error_type and isError instead of leaking raw KeyError text.
+- Inbox ack supports one ID, a bounded time cutoff or --all, followed by archive of acknowledged messages; handoff exposes the commands.
+- Handoff root/project mismatch errors show requested and both registered identities; schema/argparse conditional fields gain contract regressions.
+- [Release notes](docs/release-alpha31.md).
+
+## 0.1.0-alpha.30
+
+- Add a durable single-instance local worker queue with host pause, capacity/quota/cooldown gates, transient backoff requeue and explicit state; external filler scripts are no longer required.
+- Prioritize pending decisions, blocked/failed attempts and report reconciliation in bounded handoff; clarify inbox unread/ack; distinguish assigned from running Todo cards and show blocker reasons.
+- Classify usage limits as recoverable quota exhaustion, record known resets, pause the exact origin/model and repair recoverable legacy policy-review misclassifications.
+- Add JSON batch/stdin task updates, explicit live/stale/unknown reservation diagnosis and project integration_base prompt delivery without merge authority.
+- [Release notes and limits](docs/release-alpha30.md).
+
 ## 0.1.0-alpha.29
 
 - Bounded controller start combines plan, next action, workflow profile, approved memory and repository knowledge; fast handoff no longer scans by default.

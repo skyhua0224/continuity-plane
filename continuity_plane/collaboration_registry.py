@@ -77,7 +77,10 @@ def _now() -> str:
 
 
 def _atomic_write(path: Path, document: dict[str, Any]) -> None:
-    if isinstance(document, dict) and document.get("schema_version") == GUARDED_DISPATCH_LEDGER_SCHEMA:
+    if (
+        isinstance(document, dict)
+        and document.get("schema_version") == GUARDED_DISPATCH_LEDGER_SCHEMA
+    ):
         document["writer_version"] = VERSION
         document["minimum_reader_schema"] = 4
         document["controller_fencing_required"] = True
@@ -268,6 +271,7 @@ def _validate_task(task: dict[str, Any]) -> dict[str, Any]:
         "allowed_files",
         "preauthorized_effects",
         "queued_effects",
+        "dependencies",
         "exit_criteria",
         "blocked_reason",
         "result",
@@ -310,9 +314,18 @@ def _validate_task(task: dict[str, Any]) -> dict[str, Any]:
         "allowed_files",
         "preauthorized_effects",
         "queued_effects",
+        "dependencies",
         "exit_criteria",
     ):
         _string_list(task[field], field)
+    if len(task["dependencies"]) > 64 or any(
+        _ID_RE.fullmatch(value) is None for value in task["dependencies"]
+    ):
+        raise CollaborationRegistryError(
+            "dependencies must contain at most 64 stable task IDs"
+        )
+    if task["task_id"] in task["dependencies"]:
+        raise CollaborationRegistryError("task cannot depend on itself")
     if not task["exit_criteria"]:
         raise CollaborationRegistryError("exit_criteria must not be empty")
     overlap = set(task["preauthorized_effects"]) & set(task["queued_effects"])
@@ -364,26 +377,35 @@ def _record_change(
     path = _changes_path(data_root, project_id)
     path.parent.mkdir(parents=True, exist_ok=True)
     with _locked(path):
-        try:
-            existing = path.read_text(encoding="utf-8").splitlines()
-        except FileNotFoundError:
-            existing = []
-        rows = []
-        for line in existing:
+        prefix = ""
+        if fields.get("event_id"):
             try:
-                row = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if isinstance(row, dict):
-                rows.append(row)
-        if fields.get("event_id") and any(
-            row.get("event_id") == fields["event_id"] for row in rows
-        ):
-            return
-        cursor = max(
-            [len(existing)]
-            + [row["cursor"] for row in rows if type(row.get("cursor")) is int]
-        )
+                existing = path.read_text(encoding="utf-8").splitlines()
+            except FileNotFoundError:
+                existing = []
+            rows = []
+            for line in existing:
+                try:
+                    row = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(row, dict):
+                    rows.append(row)
+            if any(row.get("event_id") == fields["event_id"] for row in rows):
+                return
+            cursor = max(
+                [len(existing)]
+                + [row["cursor"] for row in rows if type(row.get("cursor")) is int]
+            )
+        else:
+            cursor = latest_change_cursor(data_root, project_id=project_id)
+            try:
+                with path.open("rb") as stream:
+                    stream.seek(-1, os.SEEK_END)
+                    if stream.read(1) != b"\n":
+                        prefix = "\n"
+            except (FileNotFoundError, OSError):
+                pass
         payload = {
             **fields,
             "cursor": cursor + 1,
@@ -392,7 +414,9 @@ def _record_change(
             "task_id": task_id,
         }
         with path.open("a", encoding="utf-8") as stream:
-            stream.write(json.dumps(payload, ensure_ascii=False, sort_keys=True) + "\n")
+            stream.write(
+                prefix + json.dumps(payload, ensure_ascii=False, sort_keys=True) + "\n"
+            )
             stream.flush()
             os.fsync(stream.fileno())
 
@@ -445,6 +469,77 @@ def list_changes(
     }
 
 
+def latest_change_cursor(data_root: Path | str | None, *, project_id: str) -> int:
+    """Read the last valid cursor without parsing the full append-only history."""
+    root = Path(data_root) if data_root is not None else default_data_root()
+    path = _changes_path(root, project_id)
+    try:
+        with path.open("rb") as stream:
+            stream.seek(0, os.SEEK_END)
+            size = stream.tell()
+            stream.seek(max(0, size - 1024 * 1024))
+            lines = stream.read().splitlines()
+    except FileNotFoundError:
+        return 0
+    for line in reversed(lines):
+        try:
+            row = json.loads(line)
+        except (ValueError, UnicodeError):
+            continue
+        if isinstance(row, dict) and type(row.get("cursor")) is int:
+            return row["cursor"]
+    return 0
+
+
+def change_cursor_at_or_before(
+    data_root: Path | str | None,
+    *,
+    project_id: str,
+    timestamp: str,
+) -> int:
+    """Find the newest event cursor at or before an ISO time by scanning backward."""
+    cutoff = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+    if cutoff.tzinfo is None:
+        raise CollaborationRegistryError("change cursor timestamp requires a timezone")
+    root = Path(data_root) if data_root is not None else default_data_root()
+    path = _changes_path(root, project_id)
+    try:
+        stream = path.open("rb")
+    except FileNotFoundError:
+        return 0
+    with stream:
+        stream.seek(0, os.SEEK_END)
+        position = stream.tell()
+        carry = b""
+        while position > 0:
+            size = min(1024 * 1024, position)
+            position -= size
+            stream.seek(position)
+            block = stream.read(size) + carry
+            lines = block.split(b"\n")
+            carry = lines[0] if position > 0 else b""
+            if position > 0:
+                lines = lines[1:]
+            for line in reversed(lines):
+                if not line:
+                    continue
+                try:
+                    row = json.loads(line)
+                except (ValueError, UnicodeError):
+                    continue
+                if not isinstance(row, dict) or type(row.get("cursor")) is not int:
+                    continue
+                try:
+                    observed = datetime.fromisoformat(
+                        str(row["observed_at"]).replace("Z", "+00:00")
+                    )
+                except (KeyError, TypeError, ValueError):
+                    continue
+                if observed.tzinfo is not None and observed <= cutoff:
+                    return row["cursor"]
+    return 0
+
+
 def wait_for_changes(
     data_root,
     *,
@@ -459,10 +554,16 @@ def wait_for_changes(
     """Wait quietly for matching facts; never launch or wake another provider."""
     names = [event] if isinstance(event, str) else event
     if names is not None and (
-        not isinstance(names, (list, tuple)) or not names
-        or any(not isinstance(name, str) or not name.strip() or len(name) > 128 for name in names)
+        not isinstance(names, (list, tuple))
+        or not names
+        or any(
+            not isinstance(name, str) or not name.strip() or len(name) > 128
+            for name in names
+        )
     ):
-        raise CollaborationRegistryError("event must be a nonempty event name or list of names")
+        raise CollaborationRegistryError(
+            "event must be a nonempty event name or list of names"
+        )
     events = set(names) if names is not None else None
     if (
         not math.isfinite(timeout_seconds)
@@ -522,7 +623,10 @@ def _load_ledger(data_root: Path, project_id: str) -> dict[str, Any]:
     }:
         document["schema_version"] = DISPATCH_LEDGER_SCHEMA
         document.setdefault("writer_version", "legacy")
-    elif document.get("schema_version") not in {DISPATCH_LEDGER_SCHEMA, GUARDED_DISPATCH_LEDGER_SCHEMA}:
+    elif document.get("schema_version") not in {
+        DISPATCH_LEDGER_SCHEMA,
+        GUARDED_DISPATCH_LEDGER_SCHEMA,
+    }:
         raise CollaborationRegistryError(
             "ledger was written by a newer Continuity build; upgrade this CLI/MCP before reading it"
         )
@@ -532,6 +636,7 @@ def _load_ledger(data_root: Path, project_id: str) -> dict[str, Any]:
     for item in document.get("tasks", []):
         if isinstance(item, dict):
             item.setdefault("report_policy", "silent_until_stage_complete")
+            item.setdefault("dependencies", [])
             item.setdefault("branch", None)
             item.setdefault("commit", None)
             item.setdefault("verification", None)
@@ -601,6 +706,14 @@ def _note_lane(ledger, task):
         existing["planning_warnings"] = []
 
 
+def dependencies_ready(task, tasks):
+    by_id = {item["task_id"]: item for item in tasks}
+    return all(
+        by_id.get(dependency_id, {}).get("status") in {"completed", "merged"}
+        for dependency_id in task.get("dependencies", [])
+    )
+
+
 def add_task(
     data_root: Path | str | None,
     *,
@@ -617,6 +730,7 @@ def add_task(
     allowed_files: list[str] | None = None,
     preauthorized_effects: list[str] | None = None,
     queued_effects: list[str] | None = None,
+    dependencies: list[str] | None = None,
     assignee: str | None = None,
     report_policy: str = "silent_until_stage_complete",
     branch: str | None = None,
@@ -649,6 +763,7 @@ def add_task(
         "allowed_files": list(allowed_files or []),
         "preauthorized_effects": list(preauthorized_effects or []),
         "queued_effects": list(queued_effects or []),
+        "dependencies": list(dependencies or []),
         "exit_criteria": list(exit_criteria),
         "blocked_reason": None,
         "result": None,
@@ -666,6 +781,10 @@ def add_task(
         ledger = _load_ledger(root, project_id)
         if any(item["task_id"] == task_id for item in ledger["tasks"]):
             raise CollaborationRegistryError("task_id already exists")
+        if task["status"] == "active" and not dependencies_ready(task, ledger["tasks"]):
+            raise CollaborationRegistryError(
+                "task dependencies are not complete; keep the card queued until dependency cards are completed or merged"
+            )
         _note_lane(ledger, task)
         ledger["tasks"].append(task)
         if actor is not None:
@@ -707,6 +826,7 @@ def update_task(
     released_in: str | None = None,
     worktree: Path | str | None = None,
     allowed_files: list[str] | None = None,
+    dependencies: list[str] | None = None,
     report: dict | None = None,
     verification_data: dict | None = None,
     body: str | None = None,
@@ -760,6 +880,20 @@ def update_task(
             )
         if status not in _TASK_STATUS:
             raise CollaborationRegistryError("task status is invalid")
+        candidate_dependencies = (
+            task["dependencies"] if dependencies is None else dependencies
+        )
+        if (
+            status == "active"
+            and not dependencies_ready(
+                {**task, "dependencies": candidate_dependencies},
+                ledger["tasks"],
+            )
+            and not force
+        ):
+            raise CollaborationRegistryError(
+                "task dependencies are not complete; resolve them or use an audited force override"
+            )
         for field, value in (
             ("branch", branch),
             ("commit", commit),
@@ -807,10 +941,23 @@ def update_task(
             details.pop("claimed_by", None)
             details["reassignments"] = (
                 details.get("reassignments", [])
-                + [{"from": previous_assignee, "to": assignee, "actor": actor,
-                    "at": _now(), "forced": force, "reason": force_reason}]
+                + [
+                    {
+                        "from": previous_assignee,
+                        "to": assignee,
+                        "actor": actor,
+                        "at": _now(),
+                        "forced": force,
+                        "reason": force_reason,
+                    }
+                ]
             )[-32:]
-        if status_supplied and status == "active" and actor == task["assignee"] and actor is not None:
+        if (
+            status_supplied
+            and status == "active"
+            and actor == task["assignee"]
+            and actor is not None
+        ):
             details["claimed_by"] = actor
         task["status"] = status
         if next_action is not None:
@@ -819,6 +966,8 @@ def update_task(
             task["worktree"] = str(Path(worktree).resolve())
         if allowed_files is not None:
             task["allowed_files"] = allowed_files
+        if dependencies is not None:
+            task["dependencies"] = dependencies
         if blocked_reason is not None:
             task["blocked_reason"] = blocked_reason
         if result is not None:
@@ -875,11 +1024,15 @@ def claim_task(
             raise CollaborationRegistryError(
                 "task is already assigned to another session"
             )
+        if task["status"] == "queued" and not dependencies_ready(task, ledger["tasks"]):
+            raise CollaborationRegistryError(
+                "task dependencies are not complete; claim after dependency cards are completed or merged"
+            )
         task["status"] = "active"
         task["assignee"] = assignee
-        ledger.setdefault("task_details", {}).setdefault(task_id, {})[
-            "claimed_by"
-        ] = assignee
+        ledger.setdefault("task_details", {}).setdefault(task_id, {})["claimed_by"] = (
+            assignee
+        )
         if resolved_worktree is not None:
             task["worktree"] = resolved_worktree
         task["updated_at"] = _now()
@@ -907,6 +1060,7 @@ def list_tasks(
     lane_id: str | None = None,
     updated_after: str | None = None,
     query: str | None = None,
+    dependencies_ready: bool = False,
     max_results: int | None = None,
 ) -> list[dict[str, Any]]:
     root = Path(data_root) if data_root is not None else default_data_root()
@@ -926,9 +1080,27 @@ def list_tasks(
             for item in tasks
             if needle in json.dumps(item, ensure_ascii=False).casefold()
         ]
-    if any(
+    if dependencies_ready:
+        all_tasks = _load_ledger(root, project_id)["tasks"]
+        by_id = {item["task_id"]: item for item in all_tasks}
+        tasks = [
+            item
+            for item in tasks
+            if all(
+                by_id.get(dependency_id, {}).get("status") in {"completed", "merged"}
+                for dependency_id in item["dependencies"]
+            )
+        ]
+    if dependencies_ready or any(
         value is not None
-        for value in (status, assignee, lane_id, updated_after, query, max_results)
+        for value in (
+            status,
+            assignee,
+            lane_id,
+            updated_after,
+            query,
+            max_results,
+        )
     ):
         tasks.sort(key=lambda item: (item["updated_at"], item["task_id"]), reverse=True)
     return tasks[:max_results] if max_results is not None else tasks
@@ -1037,7 +1209,11 @@ def next_task(
             return min(
                 active, key=lambda item: (order[item["priority"]], item["task_id"])
             )
-    queued = [item for item in ledger["tasks"] if item["status"] == "queued"]
+    queued = [
+        item
+        for item in ledger["tasks"]
+        if item["status"] == "queued" and dependencies_ready(item, ledger["tasks"])
+    ]
     if not queued:
         return None
     return min(queued, key=lambda item: (order[item["priority"]], item["task_id"]))

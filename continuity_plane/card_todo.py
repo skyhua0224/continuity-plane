@@ -1,6 +1,15 @@
 """Todo as a live card projection, retaining legacy queues for single-agent use."""
 
-from .collaboration_registry import resolve_project, list_tasks, update_task, _TASK_STATUS
+from pathlib import Path
+
+from .collaboration_registry import (
+    _TASK_STATUS,
+    _load_ledger,
+    default_data_root,
+    list_tasks,
+    resolve_project,
+    update_task,
+)
 
 OPEN_STATES = ("queued", "active", "dispatched", "blocked", "ready-for-review")
 
@@ -17,8 +26,25 @@ MAP = {
 }
 
 
+def _execution_state(task, binding):
+    """Separate card assignment from observable attempt liveness."""
+    if task["status"] == "blocked":
+        return "blocked"
+    if task["status"] == "ready-for-review":
+        return "review"
+    if task["status"] in {"completed", "merged", "rejected", "superseded"}:
+        return "closed"
+    if binding.get("status") == "running":
+        return "running"
+    if task["status"] in {"active", "dispatched"}:
+        return "assigned" if task.get("assignee") else "queued"
+    return "queued"
+
+
 def project(document, root, data_root):
     config = document["card_projection"]
+    ledger = _load_ledger(Path(data_root or default_data_root()), config["project_id"])
+    bindings = ledger.get("execution_bindings", {})
     tasks = list_tasks(data_root, project_id=config["project_id"])
     ids = config.get("task_ids")
     tasks = [
@@ -41,6 +67,11 @@ def project(document, root, data_root):
             title=t["title"],
             status=MAP[t["status"]],
             task_status=t["status"],
+            execution_state=_execution_state(t, bindings.get(t["task_id"], {})),
+            assignee=t.get("assignee"),
+            blocked_reason=t.get("blocked_reason"),
+            attempt_id=bindings.get(t["task_id"], {}).get("attempt_id"),
+            attempt_status=bindings.get(t["task_id"], {}).get("status"),
             result=t.get("result"),
             order=i + 1,
         )
@@ -55,15 +86,29 @@ def project(document, root, data_root):
             else "completed"
         )
     )
+    for state in ("queued", "assigned", "running", "blocked", "review"):
+        view[state + "_total"] = sum(
+            item["execution_state"] == state for item in view["items"]
+        )
     view["source"] = "task-cards"
     return view
 
 
-def enable(root, data_root=None, *, assignee=None, lane_id=None, linked_only=False, statuses=None, include_closed=False):
+def enable(
+    root,
+    data_root=None,
+    *,
+    assignee=None,
+    lane_id=None,
+    linked_only=False,
+    statuses=None,
+    include_closed=False,
+):
     from .intent_todo import load_queue, _write, queue_path, SCHEMA_VERSION, _now
 
     if statuses is not None and (
-        not isinstance(statuses, (list, tuple)) or not statuses
+        not isinstance(statuses, (list, tuple))
+        or not statuses
         or any(s not in _TASK_STATUS for s in statuses)
     ):
         raise ValueError("statuses must be a nonempty list of task states")
@@ -126,7 +171,9 @@ def transition(
     if item is None:
         raise ValueError("Todo item does not exist in the card projection")
     if status == "active" and not assignee:
-        raise ValueError("Card activation requires --assignee or CONTINUITY_ASSIGNEE; session_id is not executor identity")
+        raise ValueError(
+            "Card activation requires --assignee or CONTINUITY_ASSIGNEE; session_id is not executor identity"
+        )
     update_task(
         data_root,
         project_id=document["card_projection"]["project_id"],

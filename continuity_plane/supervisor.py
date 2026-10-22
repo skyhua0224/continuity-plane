@@ -338,17 +338,17 @@ def run_attempt(
                 status = "failed"
                 reason = "provider-reported-failure"
             policy_seen = reader.policy_seen or getattr(on_output, "policy_seen", False)
-            failure = (
-                classify(
-                    "cyber_policy"
-                    if policy_seen
-                    else reader.snapshot()[1]
-                    + "\n"
-                    + (getattr(on_output, "terminal_failure", None) or "")
-                )
-                if status != "completed"
-                else {}
+            diagnostic_text = (
+                reader.snapshot()[1]
+                + "\n"
+                + (getattr(on_output, "terminal_failure", None) or "")
             )
+            if policy_seen:
+                # Keep the original provider text and add a strong marker. The
+                # previous hard-coded replacement discarded a simultaneous
+                # usage-limit signal and misclassified resumable quota errors.
+                diagnostic_text += "\ncyber_policy"
+            failure = classify(diagnostic_text) if status != "completed" else {}
             if failure.get("failure_class") == "policy-review":
                 reason = "provider-policy-review"
             elif not reader.drained:

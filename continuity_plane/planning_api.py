@@ -30,7 +30,14 @@ OPERATIONS = {
     "controller.start": ("controller", "start"),
     **{
         f"controller.{name}": ("controller", name)
-        for name in ("acquire", "renew", "release", "status")
+        for name in (
+            "acquire",
+            "renew",
+            "release",
+            "status",
+            "reservations",
+            "reconcile-host",
+        )
     },
     **{f"session.{name}": ("session", name) for name in ("bind", "show", "unbind")},
     **{f"lesson.{name}": ("lesson", name) for name in ("add", "list", "show")},
@@ -81,6 +88,10 @@ OPERATIONS = {
             "activate",
             "from-cards",
         )
+    },
+    **{
+        f"worker.queue.{name}": ("worker", "queue", name)
+        for name in ("enqueue", "status", "pause", "resume", "cancel", "requeue")
     },
     **{
         f"task.{name}": ("collaboration", "task", name)
@@ -156,8 +167,9 @@ CLI_HELP = {
     "quota.tick": ("quota", "tick"),
     **{
         f"worker.{n}": ("worker", n)
-        for n in ("dispatch", "resume", "report", "configure")
+        for n in ("dispatch", "resume", "report", "configure", "clear-policy-review")
     },
+    "worker.queue.run": ("worker", "queue", "run"),
     "supervisor.run": ("supervisor", "run"),
     "bridge.install": ("bridge", "install"),
     "task.merged": ("task", "merged"),
@@ -176,6 +188,7 @@ READ_ACTIONS = {
     "memory.history",
     "profile.show",
     "controller.status",
+    "controller.reservations",
     "session.show",
     "lesson.list",
     "lesson.show",
@@ -195,6 +208,7 @@ READ_ACTIONS = {
     "status-render",
     "decision-list",
     "usage.report",
+    "worker.queue.status",
     "quota.report",
     "whoami",
     "task.list",
@@ -359,11 +373,29 @@ def _brief(value):
             observed = value["observed"]
             changed = len(observed.get("changed_cards", []))
             total = observed.get("changed_cards_total", changed)
+            pending = value.get("declared", {}).get("pending_decisions") or []
+            attention = observed.get("attention") or []
+            inbox = observed.get("inbox", {})
+            inbox_hint = (
+                f"unread={inbox.get('count', 0)} {inbox.get('unit', 'inbox messages')} "
+                f"scope={inbox.get('scope', 'unknown')} oldest={inbox.get('oldest_at')}; "
+                f"bulk-ack: {inbox.get('bulk_ack_command', 'continuity collaboration inbox ack --before TIME --limit 1000')}; "
+                f"ack-one: {inbox.get('acknowledge_command', 'continuity collaboration inbox ack')}; "
+                f"archive-after-ack: {inbox.get('archive_command', 'continuity collaboration inbox archive --limit 1000')}"
+            )
             return [
-                f"handoff revision={value.get('revision', 0)} as_of={observed.get('as_of')} running={observed.get('running_workers_total', 0)} unread={observed.get('inbox', {}).get('count', 0)} changed_cards={changed}/{total} remaining_changed_cards={max(0, total - changed)}",
+                f"handoff revision={value.get('revision', 0)} as_of={observed.get('as_of')} running={observed.get('running_workers_total', 0)} attention={len(attention)} changed_cards={changed}/{total} remaining_changed_cards={max(0, total - changed)}",
+                f"unread={inbox.get('count', 0)} {inbox.get('unit', 'inbox messages')} scope={inbox.get('scope', 'unknown')} oldest={inbox.get('oldest_at')}",
+                *[f"PENDING DECISION | {str(item)[:320]}" for item in pending],
+                *[_row(r) for r in attention],
                 "plan: " + str(value.get("plan") or "")[:300],
                 "next: " + str(value.get("next_action") or "")[:240],
-                *[_row(r) for r in observed.get("changed_cards", [])],
+                inbox_hint,
+                *[
+                    _row(r)
+                    for r in observed.get("changed_cards", [])
+                    if r.get("task_id") not in {a.get("task_id") for a in attention}
+                ],
                 "Read JSON for declared/observed provenance and omitted details.",
             ]
         rows = next(
@@ -431,7 +463,7 @@ def _row(row):
         or row.get("project_id")
         or ""
     )
-    status = row.get("status") or row.get("event") or ""
+    status = row.get("execution_state") or row.get("status") or row.get("event") or ""
     title = (
         row.get("title")
         or row.get("next_action")
@@ -444,6 +476,8 @@ def _row(row):
     line = " | ".join(str(v).replace("\n", " ") for v in (identity, status, title) if v)
     if row.get("assignee"):
         line += " | " + str(row["assignee"])
+    if row.get("blocked_reason"):
+        line += " | blocked: " + str(row["blocked_reason"])[:240]
     if row.get("next_action") and row.get("title"):
         line += " -> " + str(row["next_action"]).replace("\n", " ")
     if row.get("attachment"):
@@ -469,6 +503,81 @@ def _row(row):
     if row.get("conflict_count"):
         line += " | conflicts=" + str(row["conflict_count"])
     return line
+
+
+def _critical_handoff(value, budget=None):
+    declared = value.get("declared") or {}
+    observed = value.get("observed") or {}
+    pending = list(declared.get("pending_decisions") or [])
+    attention = list(observed.get("attention") or [])
+    candidates = []
+    for pending_limit, attention_limit, text_limit in (
+        (4, 8, 320),
+        (3, 5, 240),
+        (2, 3, 160),
+        (1, 2, 100),
+        (1, 2, 64),
+        (1, 2, 48),
+        (1, 2, 32),
+        (1, 1, 64),
+        (1, 1, 48),
+    ):
+        candidate = {
+            "revision": value.get("revision", 0),
+            "declared": {
+                "plan": str(declared.get("plan") or "")[: text_limit * 2],
+                "next_action": str(declared.get("next_action") or "")[:text_limit],
+                "pending_decisions": [
+                    str(item)[:text_limit] for item in pending[:pending_limit]
+                ],
+                "pending_decisions_total": len(pending),
+            },
+            "observed": {
+                "as_of": observed.get("as_of"),
+                "attention": [
+                    {
+                        key: (
+                            str(row.get(key))[:text_limit]
+                            if key in {"title", "reason"}
+                            else row.get(key)
+                        )
+                        for key in (
+                            "kind",
+                            "task_id",
+                            "status",
+                            "reason",
+                            "failure_class",
+                        )
+                        if row.get(key) is not None
+                    }
+                    for row in attention[:attention_limit]
+                ],
+                "attention_total": len(attention),
+                "inbox": {
+                    key: (observed.get("inbox") or {}).get(key)
+                    for key in (
+                        "count",
+                        "unit",
+                        "scope",
+                        "oldest_at",
+                        "acknowledge_command",
+                    )
+                    if (observed.get("inbox") or {}).get(key) is not None
+                },
+                "change_cursor": observed.get("change_cursor"),
+            },
+            "truncated": True,
+            "details_omitted": True,
+            "priority": "pending-decisions-and-blocked-failed-attention-first",
+        }
+        candidates.append(candidate)
+        if (
+            budget is None
+            or len(json.dumps(candidate, ensure_ascii=False, sort_keys=True).encode())
+            <= budget
+        ):
+            return candidate
+    return candidates[-1]
 
 
 def render(value, *, format="json", max_output_bytes=8192):
@@ -505,21 +614,34 @@ def render(value, *, format="json", max_output_bytes=8192):
                 (
                     k
                     for k in (
-                        "changed_cards",
                         "changes_since_handoff",
+                        "recent_batches",
+                        "approved_decisions",
+                        "changed_cards",
                         "workers",
                         "native_workers",
                         "reports",
                         "drift",
-                        "recent_batches",
-                        "approved_decisions",
                     )
                     if observed.get(k)
                 ),
                 None,
             )
             if field:
-                observed[field].pop()
+                # Plain history is discarded before attention. Blocked,
+                # failed and report-without-card-update rows live in attention.
+                if field in {
+                    "changes_since_handoff",
+                    "recent_batches",
+                    "approved_decisions",
+                }:
+                    observed[field].clear()
+                else:
+                    observed[field].pop()
+                continue
+            critical = _critical_handoff(view, budget)
+            if critical != view:
+                view = critical
                 continue
         if isinstance(view, list):
             view = {"items": view, "total_items": len(view), "truncated": True}
@@ -837,7 +959,9 @@ def extend_tools(legacy):
                         schema = {"type": "array", "items": schema}
                     properties[name] = schema
             if tool["name"] == "continuity_collaboration":
-                tool.setdefault("annotations", {})["openWorldHint"] = True
+                annotations = dict(tool.get("annotations") or {})
+                annotations["openWorldHint"] = True
+                tool["annotations"] = annotations
                 tool["description"] += (
                     " Configured Gitea projects read shared Issues via member-local tea."
                 )

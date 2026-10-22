@@ -5,6 +5,7 @@ This coordinates cooperating clients; it is not an OS sandbox or account auth.
 
 import math
 import os
+import socket
 import subprocess
 import time
 import uuid
@@ -19,6 +20,7 @@ from .collaboration_registry import (
     default_data_root,
     _load_ledger,
     _ledger_path,
+    project_data_dir,
     GUARDED_DISPATCH_LEDGER_SCHEMA,
 )
 
@@ -33,15 +35,45 @@ def _require(doc, owner=None, token=None, *, required=False):
         return None  # Existing projects keep their explicit pre-lease workflow.
     owner = owner or os.environ.get("CONTINUITY_CONTROLLER")
     token = token or os.environ.get("CONTINUITY_CONTROLLER_TOKEN")
-    if (
-        lease["expires_at"] <= time.time()
-        or owner != lease["owner"]
-        or token != lease["token"]
-    ):
+    if lease["expires_at"] <= time.time():
         raise ValueError(
-            f"controller operation is read-only: holder={lease['owner']}, expires_at={lease['expires_at']}; acquire/renew the project controller lease"
+            f"controller operation is read-only because the project lease expired: holder={lease['owner']}, expires_at={lease['expires_at']}; acquire/renew this project's lease"
+        )
+    if owner != lease["owner"]:
+        raise ValueError(
+            f"controller operation is read-only because the controller owner does not match: holder={lease['owner']}, expires_at={lease['expires_at']}; obtain or release this project's lease rather than reusing another project's controller identity"
+        )
+    if not token:
+        raise ValueError(
+            f"controller operation is read-only because a project-scoped token is required: holder={lease['owner']}; use the token returned by controller acquire/renew for this project"
+        )
+    if token != lease["token"]:
+        raise ValueError(
+            f"controller operation is read-only because the controller token does not match the active lease: holder={lease['owner']}; controller tokens are project-scoped, so acquire/renew this project's lease instead of reusing a token from another project"
         )
     return lease
+
+
+def _host_fingerprint():
+    return hashlib.sha256(socket.gethostname().encode()).hexdigest()
+
+
+def _boot_fingerprint():
+    try:
+        value = Path("/proc/sys/kernel/random/boot_id").read_bytes().strip()
+    except OSError:
+        return None
+    return hashlib.sha256(value).hexdigest() if value else None
+
+
+def _boot_started_at():
+    try:
+        for line in Path("/proc/stat").read_text().splitlines():
+            if line.startswith("btime "):
+                return int(line.split()[1])
+    except (OSError, ValueError, IndexError):
+        return None
+    return None
 
 
 def require(data_root, project_id, owner=None, token=None):
@@ -128,6 +160,81 @@ def release(data_root, project_id, *, owner, token):
     return {"released": True, "fencing_still_enabled": True}
 
 
+def _reservation_diagnostic(
+    data_root, project_id, task_id, reservation, *, ledger=None
+):
+    data = Path(data_root or default_data_root())
+    ledger = ledger or _load_ledger(data, project_id)
+    binding = ledger.get("execution_bindings", {}).get(task_id, {})
+    job_id = reservation.get("job_id")
+    result_path = (
+        project_data_dir(data, project_id) / "worker-jobs" / str(job_id) / "result.json"
+    )
+    try:
+        result = json.loads(result_path.read_text())
+    except (OSError, ValueError):
+        result = {}
+    age = max(0, round(time.time() - reservation.get("reserved_at", time.time())))
+    current_boot = _boot_fingerprint()
+    current_host = _host_fingerprint()
+    boot_started_at = _boot_started_at()
+    if reservation.get("host_sha256") and reservation["host_sha256"] != current_host:
+        state = "stale"
+        reason = "host-identity-changed"
+        next_step = "This reservation belongs to another host identity. Verify the owning runtime, then clear the exact stale job."
+    elif (
+        reservation.get("boot_sha256")
+        and current_boot
+        and reservation["boot_sha256"] != current_boot
+    ):
+        state = "stale"
+        reason = "host-boot-changed"
+        next_step = "The reservation predates the current host boot. Reconcile host reservations; no worker from that boot can still be running."
+    elif (
+        not reservation.get("boot_sha256")
+        and boot_started_at is not None
+        and reservation.get("reserved_at", 0) < boot_started_at
+    ):
+        state = "stale"
+        reason = "host-boot-changed"
+        next_step = "This legacy reservation predates the current host boot. Reconcile host reservations; no worker from that boot can still be running."
+    elif binding.get("status") == "running" and binding.get("attempt_id") == job_id:
+        state = "live"
+        reason = "execution-binding-running"
+        next_step = "Inspect the live attempt and wait for its terminal event; do not clear the reservation."
+    elif result.get("status"):
+        state = "stale"
+        reason = "terminal-result-" + str(result["status"])
+        next_step = "The recorded attempt is already terminal. Reconcile the card and clear the exact reservation, then dispatch normally."
+    elif binding and binding.get("status") != "running":
+        state = "stale"
+        reason = "terminal-execution-binding-" + str(binding.get("status"))
+        next_step = "Inspect the attempt result, then clear the exact reservation after reconciling the card."
+    else:
+        state = "unknown"
+        reason = "no-live-binding-or-terminal-result"
+        next_step = "Inspect the job log, thread and process state. If the process is gone, reconcile before clearing the exact reservation."
+    return {
+        "state": state,
+        "reason": reason,
+        "job_id": job_id,
+        "owner": reservation.get("owner"),
+        "reserved_age_seconds": age,
+        "attempt_status": binding.get("status"),
+        "attempt_id": binding.get("attempt_id"),
+        "result_status": result.get("status"),
+        "host_sha256": reservation.get("host_sha256"),
+        "boot_sha256": reservation.get("boot_sha256"),
+        "current_boot": bool(
+            reservation.get("boot_sha256")
+            and current_boot
+            and reservation["boot_sha256"] == current_boot
+        ),
+        "boot_started_at": boot_started_at,
+        "next_step": next_step,
+    }
+
+
 def reserve(
     data_root,
     project_id,
@@ -149,19 +256,16 @@ def reserve(
         reservations = doc.setdefault("dispatch_reservations", {})
         previous = reservations.get(task_id)
         if previous and previous["job_id"] != replace_job_id:
-            binding = (
-                _load_ledger(Path(data_root or default_data_root()), project_id)
-                .get("execution_bindings", {})
-                .get(task_id, {})
-            )
-            kind = (
-                "duplicate-running-attempt"
-                if binding.get("status") == "running"
-                and binding.get("attempt_id") == previous["job_id"]
-                else "stale-or-unobserved-reservation"
-            )
+            detail = _reservation_diagnostic(data_root, project_id, task_id, previous)
             raise ValueError(
-                f"task already has a dispatch reservation: {kind}; job={previous['job_id']} owner={previous.get('owner')} reserved_at={previous.get('reserved_at')}; inspect changes, then use controller clear-reservation with the exact job ID if reconciled; no automatic takeover"
+                "task already has a dispatch reservation: "
+                f"state={detail['state']} reason={detail['reason']} "
+                f"job={detail['job_id']} owner={detail['owner']} "
+                f"reserved_age_seconds={detail['reserved_age_seconds']} "
+                f"attempt_status={detail['attempt_status']} "
+                f"result_status={detail['result_status']}. "
+                + detail["next_step"]
+                + " Automatic takeover is disabled; use controller clear-reservation with the exact job ID only after reconciliation."
             )
         if replace_job_id is not None and (
             not previous or previous["job_id"] != replace_job_id
@@ -171,15 +275,33 @@ def reserve(
             )
         client = profile.get("profile_provider", profile["provider"])
         origin = profile.get("execution_origin")
-        active = [
-            r
-            for r in reservations.values()
-            if r["client"] == client and r["origin"] == origin and r is not previous
-        ]
+        ledger = _load_ledger(Path(data_root or default_data_root()), project_id)
+        active = []
+        stale = []
+        for active_task_id, reservation in reservations.items():
+            if (
+                reservation["client"] != client
+                or reservation["origin"] != origin
+                or reservation is previous
+            ):
+                continue
+            detail = _reservation_diagnostic(
+                data_root,
+                project_id,
+                active_task_id,
+                reservation,
+                ledger=ledger,
+            )
+            if detail["state"] == "stale":
+                stale.append({"task_id": active_task_id, **detail})
+            else:
+                active.append({"task_id": active_task_id, **detail})
         limit = (lease or {}).get("client_limits", {}).get(client)
         if limit is not None and len(active) >= limit:
             raise ValueError(
-                f"{client} dispatch capacity is full ({limit}); wait for an attempt to finish"
+                f"{client} project dispatch capacity is full ({len(active)}/{limit}); "
+                "scope=current-project+host+profile+client-family; "
+                f"stale_reservations_ignored={len(stale)}. Wait for a live attempt or use controller reservations/reconcile-host after a host restart."
             )
         reservations[task_id] = {
             "job_id": job_id,
@@ -188,8 +310,148 @@ def reserve(
             "owner": owner,
             "fence": (lease or {}).get("fence"),
             "reserved_at": time.time(),
+            "host_sha256": _host_fingerprint(),
+            "boot_sha256": _boot_fingerprint(),
         }
         _atomic_write(path, doc)
+
+
+def reservation_report(data_root, project_id, *, state=None):
+    path = _path(data_root, project_id)
+    doc = _load(path)
+    ledger = _load_ledger(Path(data_root or default_data_root()), project_id)
+    lease = doc.get("controller_lease") or {}
+    rows = [
+        {
+            "task_id": task_id,
+            **_reservation_diagnostic(
+                data_root,
+                project_id,
+                task_id,
+                reservation,
+                ledger=ledger,
+            ),
+        }
+        for task_id, reservation in sorted(doc.get("dispatch_reservations", {}).items())
+    ]
+    selected = [row for row in rows if state is None or row["state"] == state]
+    capacity = {}
+    for row in rows:
+        reservation = doc["dispatch_reservations"][row["task_id"]]
+        identity = (
+            reservation["client"]
+            + ":"
+            + json.dumps(reservation["origin"], sort_keys=True)
+        )
+        bucket = capacity.setdefault(
+            identity,
+            {
+                "client": reservation["client"],
+                "origin": reservation["origin"],
+                "limit": lease.get("client_limits", {}).get(reservation["client"]),
+                "live": 0,
+                "unknown": 0,
+                "stale": 0,
+            },
+        )
+        bucket[row["state"]] += 1
+    for item in capacity.values():
+        item["counted_against_capacity"] = item["live"] + item["unknown"]
+        item["scope"] = "project+host+profile+client-family"
+    return {
+        "status": "ok",
+        "project_id": project_id,
+        "scope": "project-data-root",
+        "capacity_semantics": "Limits are enforced per project registration, host, profile and client family. They do not prove a cross-project native account cap.",
+        "current_host_boot_only": True,
+        "items": selected,
+        "total_items": len(selected),
+        "counts": {
+            name: sum(row["state"] == name for row in rows)
+            for name in ("live", "stale", "unknown")
+        },
+        "capacity": list(capacity.values()),
+    }
+
+
+def reconcile_host(
+    data_root,
+    project_id,
+    *,
+    apply=False,
+    include_terminal=False,
+    reason=None,
+    owner=None,
+    token=None,
+):
+    from .collaboration_registry import _record_change
+
+    if apply and (not isinstance(reason, str) or not reason.strip()):
+        raise ValueError("reconcile-host --apply requires --reason")
+    path = _path(data_root, project_id)
+    cleared = []
+    with _locked(path):
+        doc = _load(path)
+        if apply:
+            _require(doc, owner, token, required=True)
+        ledger = _load_ledger(Path(data_root or default_data_root()), project_id)
+        rows = []
+        for task_id, reservation in sorted(
+            doc.get("dispatch_reservations", {}).items()
+        ):
+            rows.append(
+                {
+                    "task_id": task_id,
+                    **_reservation_diagnostic(
+                        data_root,
+                        project_id,
+                        task_id,
+                        reservation,
+                        ledger=ledger,
+                    ),
+                }
+            )
+        candidates = [
+            row
+            for row in rows
+            if row["state"] == "stale"
+            and (
+                include_terminal
+                or row["reason"] in {"host-boot-changed", "host-identity-changed"}
+            )
+        ]
+        if apply:
+            for row in candidates:
+                reservation = doc.get("dispatch_reservations", {}).get(row["task_id"])
+                if reservation and reservation.get("job_id") == row["job_id"]:
+                    del doc["dispatch_reservations"][row["task_id"]]
+                    cleared.append(row)
+            if cleared:
+                _atomic_write(path, doc)
+    if apply:
+        for row in cleared:
+            _record_change(
+                Path(data_root or default_data_root()),
+                project_id,
+                "dispatch.reservation-reconciled",
+                row["task_id"],
+                attempt_id=row["job_id"],
+                reason=reason,
+                state_reason=row["reason"],
+                owner=owner,
+                scope="host-restart",
+            )
+    return {
+        "status": "applied" if apply else "dry-run",
+        "project_id": project_id,
+        "scope": "project-data-root",
+        "include_terminal": include_terminal,
+        "candidates": candidates,
+        "cleared_count": len(cleared) if apply else 0,
+        "cleared": cleared,
+        "unknown_preserved": sum(row["state"] == "unknown" for row in rows),
+        "live_preserved": sum(row["state"] == "live" for row in rows),
+    }
 
 
 def view(data_root, project_id, owner=None, token=None):
@@ -360,6 +622,11 @@ def command(args):
 
         require(args.data_root, project_id, args.owner, args.token)
         _text(args.reason, "override reason", 2048)
+        before = (
+            _load(_path(args.data_root, project_id))
+            .get("dispatch_reservations", {})
+            .get(args.task_id)
+        )
         cleared = finish_reservation(
             args.data_root, project_id, args.task_id, args.job_id, force=True
         )
@@ -375,8 +642,32 @@ def command(args):
             )
         value = {
             "cleared": cleared,
-            "warning": "Operator declared the old attempt safe to replace; no process was terminated",
+            "status": "cleared" if cleared else "not-found",
+            "task_id": args.task_id,
+            "job_id": args.job_id,
+            "reservation_before_clear": before,
+            "message": (
+                "The exact reservation was removed. No process was terminated."
+                if cleared
+                else "No reservation with this exact job ID exists; nothing was changed."
+            ),
         }
+    elif args.controller_action == "reservations":
+        value = reservation_report(
+            args.data_root,
+            project_id,
+            state=args.state,
+        )
+    elif args.controller_action == "reconcile-host":
+        value = reconcile_host(
+            args.data_root,
+            project_id,
+            apply=args.apply,
+            include_terminal=args.include_terminal,
+            reason=args.reason,
+            owner=args.owner,
+            token=args.token,
+        )
     elif args.controller_action == "run":
         argv = args.argv[1:] if args.argv[:1] == ["--"] else args.argv
         if not argv:
@@ -434,9 +725,17 @@ def command(args):
             return (
                 result.returncode if result.returncode >= 0 else 128 - result.returncode
             )
-    else:
+    elif args.controller_action == "status":
         value = view(args.data_root, project_id, args.owner, args.token)
-    print(render(value, format="json", max_output_bytes=args.max_output_bytes))
+        reservations = reservation_report(args.data_root, project_id)
+        value.update(
+            reservation_counts=reservations["counts"],
+            capacity=reservations["capacity"],
+            capacity_semantics=reservations["capacity_semantics"],
+        )
+    else:
+        raise ValueError("unsupported controller action")
+    print(render(value, format=args.format, max_output_bytes=args.max_output_bytes))
     return 0
 
 
@@ -451,6 +750,8 @@ def register_cli(commands):
         "renew",
         "release",
         "status",
+        "reservations",
+        "reconcile-host",
         "run",
         "clear-reservation",
         "clear-operation",
@@ -461,12 +762,24 @@ def register_cli(commands):
         leaf.add_argument("--project-id")
         leaf.add_argument("--data-root")
         leaf.add_argument("--max-output-bytes", type=int, default=8192)
-        leaf.add_argument("--owner", required=action != "status")
+        leaf.add_argument(
+            "--owner",
+            required=action
+            in {
+                "acquire",
+                "renew",
+                "release",
+                "run",
+                "clear-reservation",
+                "clear-operation",
+            },
+        )
         leaf.add_argument(
             "--token",
             required=action
             in {"renew", "release", "run", "clear-reservation", "clear-operation"},
         )
+        leaf.add_argument("--format", choices=("brief", "json"), default="json")
         if action == "clear-operation":
             leaf.add_argument("--operation-id", required=True)
             leaf.add_argument("--reason", required=True)
@@ -474,6 +787,16 @@ def register_cli(commands):
             leaf.add_argument("--task-id", required=True)
             leaf.add_argument("--job-id", required=True)
             leaf.add_argument("--reason", required=True)
+        if action == "reservations":
+            leaf.add_argument("--state", choices=("live", "stale", "unknown"))
+        if action == "reconcile-host":
+            leaf.add_argument("--apply", action="store_true")
+            leaf.add_argument(
+                "--include-terminal",
+                action="store_true",
+                help="Also clear stale reservations whose attempt result is already terminal; default only host reboot/identity changes",
+            )
+            leaf.add_argument("--reason")
         if action in {"acquire", "renew"}:
             leaf.add_argument("--ttl-seconds", type=float, default=300)
             leaf.add_argument(

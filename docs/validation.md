@@ -2,11 +2,11 @@
 
 [English](validation.en.md) · [工作流](workflows.md) · [历史实验](benchmarks.md)
 
-范围：Alpha29（`0.1.0a29`）。证据分为本轮合成 CLI、已有自动回归、匿名使用反馈和未覆盖项，不能互相替代。
+范围：Alpha34（`0.1.0a34`）。证据分为本轮合成 CLI、已有自动回归、匿名使用反馈和未覆盖项，不能互相替代。
 
 ## 本轮可复现实测
 
-Alpha27 已用本机 tea 0.15.0／HTTPS Gitea 1.24.7 双合成账号私有仓库验收；Alpha29 未另建真实 Gitea 现场，Gitea 相关本版变化由合成回归覆盖。下方采用者脚本已在隔离安装的 Alpha29 重跑，receipt 仅含允许公开的合成聚合数据；完整回归以 tag CI 为准。
+Alpha27 已用本机 tea 0.15.0／HTTPS Gitea 1.24.7 双合成账号私有仓库验收；Alpha34 未另建真实 Gitea 现场，协作相关变化由合成回归覆盖。下方采用者脚本已在仅安装 Alpha34 wheel 的新持久 venv 与全新工作目录重跑；receipt 只含允许公开的合成聚合数据，完整发行构建仍以 tag CI 为准。
 
 运行公开脚本；使用一个**新建、空的持久目录**，不指向自己的注册表或 provider profile：
 
@@ -28,7 +28,7 @@ python examples/verify_adopter_workflows.py --workspace /path/to/new-persistent-
 | 失败子进程 | 原退出码 3 被保存；dispatch CLI 非零（2） |
 | 单次 merged 元数据与 commit 绑定检查 | 通过；不执行真实 Git 合入 |
 | shared handoff、lesson、第二主控只读 | 通过 |
-| 分域 profile、批准记忆与 `controller start` | 通过；固定样例返回 1,443 JSON bytes，预算 4,096 bytes |
+| 分域 profile、批准记忆与 `controller start` | 通过；固定样例返回 1,442 JSON bytes，预算 4,096 bytes |
 | 逐条事件翻页、多事件 wait、无变化读取 | 通过；该 fixture 无变化响应 216 bytes |
 | worker 提前改为待评审后的报告 | 自动挂卡并由 report 读取；不接受手工挂载替代此检查 |
 
@@ -48,6 +48,9 @@ python examples/verify_adopter_workflows.py --workspace /path/to/new-persistent-
 | reference 与 lesson | 记录、TSV 往返／冲突、更正回归；lesson CLI 实测 | 显式文件交换；提醒不等于采用 |
 | 主控 profile／记忆与原生笔记 | 分域、锁字段、候选、撤销、origin/symlink/权限门及有界 start 回归 | 原生写回和真实全量 memory 类型未实测；同 OS 用户需 sandbox |
 | inbox 归档、额度暂停、预留诊断 | 合成端到端与确定性回归 | 只消费已观察错误，不轮询 provider 额度 |
+| worker queue、handoff 优先级、assigned／running、batch、integration_base | 单实例／去重／容量门／host pause／transient backoff、低预算交接、状态投影、JSON batch 与 prompt 回归 | 不提供跨机器强锁、强制进程隔离或自动唤醒 |
+| inbox 无 ID 发送、批量确认与 MCP 结构化错误 | CLI／MCP 生成 ID、显式 ID 幂等、ack 返回值、before／all 批量确认、archive 与 schema／argparse 条件字段回归 | ack 不等于宿主唤醒；archive 不删除；单批最多 1000 条 |
+| 主机重启 reservation、本地依赖、统一列表、cooldown 原因 | boot/host stale 判定、容量忽略 stale、reconcile、dependency gating、paged envelope、非代码 decision、健康原因和大历史追加回归 | 容量仅按项目+host+profile+client-family；MCP 生命周期仍由宿主管理 |
 | 代码索引、brief、依赖与提示词路标 | 合成符号命中 + 语言／路标回归 | 本轮样例为 Python；非完整编译器调用图 |
 | 批次、决定、metrics、一步关卡 | schema／来源／fence 回归；有使用反馈 | 记录声明，不自动执行 Git 或批准例外 |
 | controller lease、容量与未知操作确认 | CLI 第二主控实测 + 并发回归 | 仅协调经过工具的合作客户端 |
@@ -60,6 +63,50 @@ python examples/verify_adopter_workflows.py --workspace /path/to/new-persistent-
 
 Alpha25 的[公开发行 CI](https://github.com/skyhua0224/continuity-plane/actions/runs/38845950775)通过 268 项测试。文档新增脚本和链接／命令检查另随当前主分支 CI 运行；不改写已发布 wheel 或历史 test count。
 
+## Alpha34 采用问题回归
+
+| 修复 | 本轮证据 | 保留边界 |
+|---|---|---|
+| HTTP 拦截与内容拒绝 | 401/403、Cloudflare、cf-ray、代理页与明确 `cyber_policy` 的优先序回归；旧 job 自动分类更正 | 明确模型安全标记仍阻断自动重放；复核解除需要理由与精确 job |
+| 自动与人工续跑 | 403 场景同一 thread 的 dry-run resume；exact-job 解除、幂等事件和结果更正 | `operator-cleared` 是本地审计决定，不是 provider 鉴权或新的内容安全批准 |
+
+## Alpha33 采用问题回归
+
+| 修复 | 本轮证据 | 保留边界 |
+|---|---|---|
+| 派发热路径 | 增量 safety index、损坏重建、只消费追加尾部、真实大项目首次/后续耗时 | 首次升级仍需一次顺序回填；change log 仍是权威 |
+| 输入与输出预算 | 空 body 在策略历史前失败；`batch-list` 超大预算封顶并返回 cursor | 单条记录无法放入 131072 字节时仍明确报错，不静默丢记录 |
+| token 诊断 | 过期、owner、缺 token、错项目 token 分别说明 | controller token 是协作 fence，不是原生账号认证 |
+
+## Alpha32 采用问题回归
+
+| 修复 | 本轮证据 | 保留边界 |
+|---|---|---|
+| 重启遗留 reservation | host/boot 指纹、旧 reservation 的 boot 时间判断、reservation inventory、dry-run/apply reconcile、clear 结果和容量忽略 stale 回归 | 只清理能证明 stale 的记录；unknown/live 保留 |
+| 依赖与列表 | 本地 Gitea 同构 dependencies、dependencies-ready、claim/active/dispatch 门和统一 paged envelope | 依赖是排序提示和运行门，不构成模块所有权 |
+| 决定、健康与性能 | 非代码 decision 无 commit、dispatch-health 原因/task/attempt、无 event-id 不扫完整历史 | 当前项目锁定仍可能等待其他 writer；不是无限并发性能保证 |
+| MCP 主机重启 | collaboration doctor 明确宿主管理与 CLI／SSH 降级路径 | Continuity 不自动拉起宿主 stdio 进程 |
+
+## Alpha31 采用问题回归
+
+| 修复 | 本轮证据 | 保留边界 |
+|---|---|---|
+| MCP send 缺 message_id | CLI／MCP 缺省生成并返回 ID；显式 ID 重发不重复投递；返回 ID 可 ack | 自动 ID 不提供重试幂等；需要重发幂等时显式传 ID |
+| MCP 裸异常 | inbox 缺 sender 与 planning 非法参数均返回 isError／structuredContent／failed_gate | JSON-RPC 协议错误仍用于未知工具或非法 envelope |
+| 大批未确认 inbox | 时间窗或 all 的受限批量 ack，随后 archive 已确认消息 | 使用者仍需决定确认范围；不自动确认历史消息 |
+| root／project 漂移 | 错误显示请求 root／project 与两边注册身份及纠正命令 | 本地注册不会与远端权威状态自动合并 |
+
+## Alpha30 采用问题回归
+
+| 修复 | 本轮证据 | 保留边界 |
+|---|---|---|
+| 持久派发队列 | 单实例锁、优先级、重复抑制、host pause、容量门、quota／rate-limit 退避和状态回归 | 锁覆盖同一项目／数据根；不是远端队列或 provider SLA |
+| handoff 截断 | 1 KiB 预算下仍保留 pending decision、blocked 与 failed attempt | 普通 change 历史可省略；完整细节需提高预算 |
+| Todo 状态 | assigned 与实际 running binding 分开，blocked 带原因 | 无 heartbeat 的 native child 仍是观察，不是受控运行证明 |
+| usage limit | quota 优先于泛化 policy 文案；自动 quota 记录、暂停与旧 job 分类更正回归 | 只使用 provider 错误中的 reset；未知 reset 不伪造 |
+| shell-safe batch | 文件与 stdin JSON、首错停止、本地／共享字段路径回归 | 不是跨 Issue 全有或全无事务 |
+| reservation 与 integration base | live／stale／unknown 诊断；worker prompt 带非授权 base | 诊断不自动终止或接管进程；base 不授权合入 |
+
 ## Alpha29 采用问题回归
 
 | 修复 | 本轮证据 | 保留边界 |
@@ -70,7 +117,7 @@ Alpha25 的[公开发行 CI](https://github.com/skyhua0224/continuity-plane/acti
 | 来源 TSV | Unicode、扩展列、幂等、冲突／无效行无部分写入、MCP 接口 | 显式导入导出；不覆盖已有文件、不自动同步或验证已读 |
 | 映射远端检索 | 独立合成仓库经 CLI 接收协议检索；映射失败／超预算拒绝 | 未做真实双机新实测；无任意远端文件／进程管理 |
 
-回归入口：[test_a26_adoption.py](../tests/test_a26_adoption.py)，13 项合成检查。[部署](deployment.md)与[版本说明](release-alpha26.md)给出配置及兼容事项。
+回归入口：[test_a26_adoption.py](../tests/test_a26_adoption.py)，13 项 Alpha26 合成检查。Alpha34 分类与复核解除用例位于 `tests/test_alpha34_policy_classification.py`；Alpha33 dispatch hot-path 用例仍在 `tests/test_alpha33_dispatch_hot_path.py`。[版本说明](release-alpha34.md)列出本版边界。
 
 ## 隐私与效果声明
 

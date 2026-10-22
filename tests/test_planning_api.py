@@ -108,18 +108,22 @@ class PlanningAPITests(unittest.TestCase):
         self.assertEqual(
             self.execute("task.show", task_id="task")["result"], "Honest worker report"
         )
-        self.assertEqual(self.execute("task.list"), [])
+        self.assertEqual(self.execute("task.list")["items"], [])
         rows = self.execute("task.list", all=True, full=True)
-        self.assertEqual(rows[0]["objective"], "Check parity")
+        self.assertEqual(rows["items"][0]["objective"], "Check parity")
         self.assertEqual(
-            self.execute("task.list", status="merged")[0]["task_id"], "task"
+            self.execute("task.list", status="merged")["items"][0]["task_id"],
+            "task",
         )
 
     def test_task_default_filter_honors_updated_after_and_budget(self):
         for i in range(12):
             self.card(f"task-{i}")
         self.assertEqual(
-            self.execute("task.list", updated_after="2999-01-01T00:00:00+00:00"), []
+            self.execute("task.list", updated_after="2999-01-01T00:00:00+00:00")[
+                "items"
+            ],
+            [],
         )
         reply = self.tool(
             "continuity_plan",
@@ -303,7 +307,10 @@ class PlanningAPITests(unittest.TestCase):
             action="task.list",
             parameters={"full": True, "format": "json"},
         )
-        self.assertEqual(expanded["structuredContent"][0]["objective"], "Check parity")
+        self.assertEqual(
+            expanded["structuredContent"]["items"][0]["objective"],
+            "Check parity",
+        )
         for format in ("brief", "json"):
             text = render(
                 [{"task_id": str(i), "title": "中" * 300} for i in range(20)],

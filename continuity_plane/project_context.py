@@ -17,6 +17,7 @@ from .collaboration_registry import (
     _record_change,
     _load_ledger,
     default_data_root,
+    latest_change_cursor,
     project_data_dir,
     resolve_project,
     list_projects,
@@ -268,6 +269,12 @@ def context_set(
         raise ValueError(
             "integration-root must be an existing absolute path on the authority host"
         )
+    if (
+        isinstance(integration_ref, str)
+        and re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_./-]{0,255}", integration_ref)
+        and not integration_ref.startswith("refs/")
+    ):
+        integration_ref = "refs/heads/" + integration_ref
     if not isinstance(integration_ref, str) or not re.fullmatch(
         r"[A-Za-z0-9][A-Za-z0-9_./-]{0,255}", integration_ref
     ):
@@ -442,6 +449,10 @@ def handoff(
             else {
                 "status": "deferred",
                 "basis": "fast save; observations not collected",
+                "change_cursor": latest_change_cursor(
+                    Path(data_root or default_data_root()),
+                    project_id=project_id,
+                ),
                 "details_command": "continuity handoff show --project-id " + project_id,
             }
         )
@@ -529,8 +540,9 @@ def handoff_summary(data_root, project_id):
 def resolve_context_args(args):
     root = args.root
     registration = resolve_project(root or ".", args.data_root)
-    if args.project_id and root is None:
-        registration = next(
+    registered_by_id = None
+    if args.project_id:
+        registered_by_id = next(
             (
                 p
                 for p in list_projects(args.data_root)
@@ -538,13 +550,35 @@ def resolve_context_args(args):
             ),
             None,
         )
-    if (
-        not registration
-        or args.project_id
-        and registration["project_id"] != args.project_id
-    ):
+    if args.project_id and root is None:
+        registration = registered_by_id
+    if args.project_id and registered_by_id is None:
         raise ValueError(
-            "registered root and project-id must identify the same project"
+            "project-id is not registered in this data root: "
+            f"requested_project_id={args.project_id} "
+            f"requested_root={str(Path(root).resolve()) if root else None} "
+            f"data_root={Path(args.data_root).resolve() if args.data_root else Path(default_data_root()).resolve()}; "
+            "register the owning root on this host before retrying. If the authoritative state is on another host, use the explicit --remote/--remote-root CLI route instead of copying its data."
+        )
+    if not registration:
+        raise ValueError(
+            "root is not registered in this data root: "
+            f"requested_root={str(Path(root).resolve()) if root else None} "
+            f"requested_project_id={args.project_id} "
+            f"data_root={Path(args.data_root).resolve() if args.data_root else Path(default_data_root()).resolve()}; "
+            "if the registered project belongs to another host, use the explicit --remote/--remote-root route"
+        )
+    if args.project_id and registration["project_id"] != args.project_id:
+        raise ValueError(
+            "registered root and project-id identify different projects: "
+            f"requested_root={str(Path(root).resolve()) if root else None} "
+            f"requested_project_id={args.project_id} "
+            f"root_project_id={registration['project_id']} "
+            f"root_project_root={registration.get('control_root')} "
+            f"requested_project_registered_root={registered_by_id.get('control_root')} "
+            f"requested_project_registered_id={registered_by_id['project_id']}; "
+            f"re-run with --root {registered_by_id.get('control_root')} or omit --root while keeping --project-id {args.project_id}. "
+            "If the owning registration is on another host, use the explicit --remote/--remote-root CLI route."
         )
     args.root = str(Path(root or registration["control_root"]).resolve())
     args.project_id = registration["project_id"]
@@ -679,7 +713,13 @@ def _arguments(parser, action):
             )
     elif action == "context-set":
         parser.add_argument("--integration-root", required=True)
-        parser.add_argument("--integration-ref", default="refs/heads/main")
+        parser.add_argument(
+            "--integration-ref",
+            "--integration-base",
+            dest="integration_ref",
+            default="refs/heads/main",
+            help="Project default implementation base; refs/heads/ is added for a base branch name",
+        )
         parser.add_argument("--controller")
         parser.add_argument("--controller-token")
     elif action == "handoff-write":

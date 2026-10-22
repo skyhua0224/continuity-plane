@@ -4,6 +4,43 @@
 
 [English](CHANGELOG.en.md)
 
+## 0.1.0-alpha.34
+
+- HTTP 401／403、Cloudflare／代理拦截与 gateway 诊断不再因通用 “policy” 字样误判为内容拒绝；明确模型安全标记仍优先。
+- 旧误标 job 可从原始证据自动重分类；必要时主控可用精确 job、理由和 actor 执行 `worker clear-policy-review`，记录幂等更正并允许原线程续跑。
+- [发布说明](docs/release-alpha34.md)。
+
+## 0.1.0-alpha.33
+
+- dispatch／resume 使用增量安全索引，不再在每次派发时反复分页重放完整 change log；首次顺序回填，之后只读新增尾部。
+- 空 task body 在策略历史与 worker 目录处理前失败；`batch-list` 超大预算自动封顶并提供快照 cursor。
+- controller lease 明确区分过期、owner、缺 token 与 project-scoped token 不匹配。
+- [发布说明与实测](docs/release-alpha33.md)。
+
+## 0.1.0-alpha.32
+
+- reservation 绑定 host/boot 指纹，新增 stale 库存与显式 host reconcile；重启遗留不再先占容量，clear 结果明确。
+- 本地卡片支持依赖与 dependencies-ready 过滤；本地和 Gitea task list 统一返回有界 paged envelope。
+- 非代码 decision 可省略 commit；dispatch-health 显示暂停原因、task/attempt 和容量作用域。
+- 普通 change 追加不再读取完整历史，降低大项目 task add/update 延迟。
+- [发布说明与 MCP 重启边界](docs/release-alpha32.md)。
+
+## 0.1.0-alpha.31
+
+- inbox send 的 message_id 可省略并由服务端生成；显式 ID 保持幂等，CLI 与 MCP 使用同一合同。
+- MCP 工具输入异常统一返回 structuredContent、failed_gate、error_type 与 isError，不再泄露裸 KeyError。
+- inbox 支持单条、--before 或 --all 的受限批量 ack，随后可 archive 已确认消息；handoff 给出批量处理命令。
+- handoff root／project 不一致错误同时显示请求值和两边注册身份；schema／argparse 条件字段进入回归合同。
+- [发布说明](docs/release-alpha31.md)。
+
+## 0.1.0-alpha.30
+
+- 新增本地持久、单实例的 worker 派发队列：面板开关、容量／quota／cooldown 门、临时失败退避回队和显式状态；不再依赖外部 filler 脚本。
+- handoff 低预算优先保留待决事项、阻塞／失败 attempt 与报告对账，并明确 inbox unread／ack；Todo 区分 assigned／running 并显示 blocker。
+- usage limit 归为可恢复 quota exhaustion，自动记录已知 reset、暂停 origin/model，并纠正旧版可恢复的 policy-review 误标。
+- task update 支持 JSON batch／stdin；reservation 明确 live／stale／unknown；项目 integration_base 自动进入 worker prompt 且不授予合入权限。
+- [发布说明与限制](docs/release-alpha30.md)。
+
 ## 0.1.0-alpha.29
 
 - 有界 `controller start` 合并计划、下一步、工作 profile、获批记忆与仓库知识；快速 handoff 不再默认同步扫描。

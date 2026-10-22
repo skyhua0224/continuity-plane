@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from pathlib import Path
+import re
 from typing import Any
+import uuid
 
 from .collaboration_registry import (
     CollaborationRegistryError,
@@ -71,26 +74,59 @@ def unread_summary(data_root, *, project_id, recipient=None):
         if r["acknowledged_at"] is None
         and (recipient is None or r["recipient"] == recipient)
     ]
+    recipient_arg = recipient or "<member>"
+    base = f"--project-id {project_id} --recipient {recipient_arg}"
     return {
         "count": len(rows),
+        "unit": "unacknowledged inbox messages",
         "oldest_at": min((r["created_at"] for r in rows), default=None),
         "recipient": recipient,
         "scope": "recipient" if recipient else "project",
+        "list_command": f"continuity collaboration inbox list {base}",
+        "acknowledge_command": (
+            f"continuity collaboration inbox ack {base} --message-id <message-id>"
+        ),
+        "bulk_ack_command": (
+            f"continuity collaboration inbox ack {base} "
+            "--before <timezone-ISO-8601> --limit 1000"
+        ),
+        "ack_all_command": (
+            f"continuity collaboration inbox ack {base} --all --limit 1000"
+        ),
+        "archive_command": (
+            f"continuity collaboration inbox archive {base} --limit 1000"
+        ),
+        "acknowledgement": "Acknowledged messages leave the unread count; archive then moves acknowledged messages to recoverable storage without deleting them.",
     }
+
+
+def generated_message_id(sender: str, *, now: datetime | None = None) -> str:
+    """Return a lowercase, bounded, collision-resistant message identity."""
+    if not isinstance(sender, str) or not sender:
+        raise CollaborationRegistryError("sender is required to generate a message ID")
+    now = now or datetime.now(UTC)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=UTC)
+    slug = re.sub(r"[^a-z0-9._-]+", "-", sender.casefold()).strip("-._")
+    slug = (slug or "message")[:48]
+    stamp = now.astimezone(UTC).strftime("%Y%m%dT%H%M%S%fZ").lower()
+    return f"{slug}-{stamp}-{uuid.uuid4().hex[:8]}"
 
 
 def send_message(
     data_root: Path | str | None,
     *,
     project_id: str,
-    message_id: str,
+    message_id: str | None = None,
     sender: str,
     recipient: str,
     body: str,
     task_id: str | None = None,
 ) -> dict[str, Any]:
+    message_id = message_id or generated_message_id(sender)
     if (
-        not _ID_RE.fullmatch(message_id)
+        not isinstance(message_id, str)
+        or not _ID_RE.fullmatch(message_id)
         or not _ASSIGNEE_RE.fullmatch(sender)
         or not _ASSIGNEE_RE.fullmatch(recipient)
     ):
@@ -167,17 +203,33 @@ def list_messages(
     ][:limit]
 
 
-def archive(data_root, *, project_id, recipient, limit=100):
+def archive(data_root, *, project_id, recipient, limit=100, before=None):
     """Move only acknowledged messages to recoverable per-ID immutable files."""
     if not _ASSIGNEE_RE.fullmatch(recipient) or not 1 <= limit <= 1000:
         raise CollaborationRegistryError("recipient or archive limit is invalid")
+    cutoff = None
+    if before is not None:
+        try:
+            cutoff = datetime.fromisoformat(before.replace("Z", "+00:00"))
+        except (AttributeError, TypeError, ValueError):
+            raise CollaborationRegistryError(
+                "archive before must be ISO-8601"
+            ) from None
+        if cutoff.tzinfo is None:
+            raise CollaborationRegistryError("archive before must include a timezone")
     path = _path(data_root, project_id)
     with _locked(path):
         messages = _messages(path)
         selected = [
             r
             for r in messages
-            if r["recipient"] == recipient and r["acknowledged_at"] is not None
+            if r["recipient"] == recipient
+            and r["acknowledged_at"] is not None
+            and (
+                cutoff is None
+                or datetime.fromisoformat(r["acknowledged_at"].replace("Z", "+00:00"))
+                <= cutoff
+            )
         ][:limit]
         for row in selected:
             target = path.parent / "inbox-archive" / (row["message_id"] + ".json")
@@ -211,6 +263,91 @@ def archive(data_root, *, project_id, recipient, limit=100):
         "deleted": False,
         "recovery": str(path.parent / "inbox-archive"),
         "duplicate_sends_suppressed": True,
+    }
+
+
+def acknowledge_many(
+    data_root,
+    *,
+    project_id,
+    recipient,
+    before=None,
+    all_messages=False,
+    limit=1000,
+    now=None,
+):
+    """Acknowledge one recipient's messages in a bounded, explicit batch."""
+    if not _ASSIGNEE_RE.fullmatch(recipient) or not 1 <= limit <= 1000:
+        raise CollaborationRegistryError("recipient or acknowledgment limit is invalid")
+    if all_messages and before is not None:
+        raise CollaborationRegistryError("choose --all or --before, not both")
+    if not all_messages and before is None:
+        raise CollaborationRegistryError(
+            "bulk acknowledgement requires --all or --before"
+        )
+    cutoff = None
+    if before is not None:
+        try:
+            cutoff = datetime.fromisoformat(before.replace("Z", "+00:00"))
+        except (AttributeError, TypeError, ValueError):
+            raise CollaborationRegistryError(
+                "acknowledge before must be ISO-8601"
+            ) from None
+        if cutoff.tzinfo is None:
+            raise CollaborationRegistryError(
+                "acknowledge before must include a timezone"
+            )
+    acknowledged_at = (now or datetime.now(UTC)).isoformat()
+    path = _path(data_root, project_id)
+    with _locked(path):
+        messages = _messages(path)
+        selected = []
+        for item in messages:
+            if (
+                item["recipient"] != recipient
+                or item["acknowledged_at"] is not None
+                or (
+                    cutoff is not None
+                    and datetime.fromisoformat(
+                        item["created_at"].replace("Z", "+00:00")
+                    )
+                    > cutoff
+                )
+            ):
+                continue
+            selected.append(item)
+            if len(selected) >= limit:
+                break
+        for item in selected:
+            item["acknowledged_at"] = acknowledged_at
+        if selected:
+            _atomic_write(
+                path,
+                {
+                    "schema_version": "context.collaboration-inbox/v1alpha1",
+                    "messages": messages,
+                },
+            )
+            _record_change(
+                Path(data_root or default_data_root()),
+                project_id,
+                "message.acknowledged-bulk",
+                None,
+                recipient=recipient,
+                count=len(selected),
+                before=before,
+                all=all_messages,
+                first_message_id=selected[0]["message_id"],
+                last_message_id=selected[-1]["message_id"],
+            )
+    return {
+        "status": "acknowledged",
+        "recipient": recipient,
+        "count": len(selected),
+        "limit": limit,
+        "before": before,
+        "all": all_messages,
+        "message_ids": [item["message_id"] for item in selected],
     }
 
 

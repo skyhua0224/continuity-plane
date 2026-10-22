@@ -53,7 +53,12 @@ from .collaboration_packet import (
     compose_collaboration_packet,
     compose_safe_collaboration_packet,
 )
-from .collaboration_inbox import send_message, list_messages, acknowledge
+from .collaboration_inbox import (
+    acknowledge,
+    acknowledge_many,
+    list_messages,
+    send_message,
+)
 from .collaboration_context import (
     add_rule,
     list_rules,
@@ -4772,6 +4777,7 @@ def _collaboration_task_add(args: argparse.Namespace) -> int:
         allowed_files=args.allowed_file or [],
         preauthorized_effects=args.preauthorized_effect or [],
         queued_effects=args.queued_effect or [],
+        dependencies=args.dependency or [],
         assignee=args.assignee,
         branch=args.branch,
         commit=args.commit,
@@ -4789,6 +4795,13 @@ def _collaboration_task_add(args: argparse.Namespace) -> int:
 
 
 def _collaboration_task_update(args: argparse.Namespace) -> int:
+    if getattr(args, "batch", None):
+        from .gitea_cli import batch_update
+
+        args.file = args.batch
+        return batch_update(args)
+    if getattr(args, "clear_dependencies", False) and getattr(args, "dependency", None):
+        raise ValueError("choose --dependency or --clear-dependencies, not both")
     from .delivery_records import read_report, task_body
 
     task = update_task(
@@ -4807,6 +4820,7 @@ def _collaboration_task_update(args: argparse.Namespace) -> int:
         released_in=args.released_in,
         worktree=args.worktree,
         allowed_files=args.allowed_file,
+        dependencies=[] if args.clear_dependencies else args.dependency,
         report=read_report(args.report_file) if args.report_file else None,
         verification_data=json.loads(args.verification_json)
         if args.verification_json
@@ -4874,8 +4888,10 @@ def _collaboration_task_list(args: argparse.Namespace) -> int:
             "all",
             "summary",
             "evidence_gaps",
+            "dependencies_ready",
         )
     }
+    snapshot_query = {**query, "backend": "local-collaboration"}
     if args.cursor:
         from .planning_api import render
 
@@ -4883,7 +4899,7 @@ def _collaboration_task_list(args: argparse.Namespace) -> int:
             args.data_root,
             args.project_id,
             [],
-            query=query,
+            query=snapshot_query,
             budget=args.max_output_bytes,
             cursor=args.cursor,
             page_size=args.max_results,
@@ -4898,6 +4914,7 @@ def _collaboration_task_list(args: argparse.Namespace) -> int:
         lane_id=args.lane_id,
         updated_after=args.updated_after,
         query=args.query,
+        dependencies_ready=args.dependencies_ready,
     )
     if args.status is None and not args.all:
         tasks = [
@@ -4906,6 +4923,11 @@ def _collaboration_task_list(args: argparse.Namespace) -> int:
             if item["status"] in {"queued", "active", "dispatched", "blocked"}
         ]
     tasks.sort(key=lambda item: (item["updated_at"], item["task_id"]), reverse=True)
+    from .collaboration_registry import dependencies_ready as task_dependencies_ready
+
+    all_tasks = list_tasks(args.data_root, project_id=args.project_id)
+    for task in tasks:
+        task["dependencies_ready"] = task_dependencies_ready(task, all_tasks)
     if args.summary:
         value = [
             {
@@ -4917,6 +4939,8 @@ def _collaboration_task_list(args: argparse.Namespace) -> int:
                     "lane_id",
                     "title",
                     "next_action",
+                    "dependencies",
+                    "dependencies_ready",
                     "updated_at",
                 )
             }
@@ -4940,17 +4964,18 @@ def _collaboration_task_list(args: argparse.Namespace) -> int:
         value = [row for row in value if row.get("evidence_gaps")]
     from .planning_api import render
 
-    if (args.max_results is not None and len(value) > args.max_results) or len(
-        json.dumps(value, ensure_ascii=False).encode()
-    ) + 1 > args.max_output_bytes:
-        value = tasks_page(
-            args.data_root,
-            args.project_id,
-            value,
-            query=query,
-            budget=args.max_output_bytes,
-            page_size=args.max_results,
-        )
+    value = tasks_page(
+        args.data_root,
+        args.project_id,
+        value,
+        query=snapshot_query,
+        budget=args.max_output_bytes,
+        page_size=args.max_results,
+        metadata={
+            "authority": "local-collaboration",
+            "read_model": "project-local-page-snapshot",
+        },
+    )
 
     print(
         render(
@@ -5290,6 +5315,11 @@ def _collaboration_doctor(args: argparse.Namespace) -> int:
                 "current_cli_version": VERSION,
                 "restart_required": document.get("writer_version")
                 not in {None, VERSION},
+                "mcp_lifecycle": {
+                    "process_owner": "calling Codex/Claude host",
+                    "survives_host_reboot": False,
+                    "reconnect_action": "Open a new host session or restart the MCP server; until then use the CLI or explicit SSH remote CLI",
+                },
             },
             ensure_ascii=False,
             sort_keys=True,
@@ -5720,11 +5750,21 @@ def _inbox(args: argparse.Namespace) -> int:
             task_id=args.task_id,
         )
     elif args.inbox_command == "ack":
-        value = acknowledge(args.data_root, **common, message_id=args.message_id)
+        value = (
+            acknowledge(args.data_root, **common, message_id=args.message_id)
+            if args.message_id
+            else acknowledge_many(
+                args.data_root,
+                **common,
+                before=args.before,
+                all_messages=args.all,
+                limit=args.limit,
+            )
+        )
     elif args.inbox_command == "archive":
         from .collaboration_inbox import archive
 
-        value = archive(args.data_root, **common, limit=args.limit)
+        value = archive(args.data_root, **common, limit=args.limit, before=args.before)
     else:
         value = list_messages(args.data_root, **common, limit=args.limit)
     payload = (
@@ -5732,6 +5772,8 @@ def _inbox(args: argparse.Namespace) -> int:
         if args.inbox_command == "archive"
         else {"status": "ok", "messages": value, "provider_execution": False}
     )
+    if args.inbox_command == "send":
+        payload["message_id"] = value["message_id"]
     print(json.dumps(payload, ensure_ascii=False))
     return 0
 
@@ -6232,6 +6274,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     collaboration_task_add.add_argument("--worktree", default=None)
     collaboration_task_add.add_argument("--allowed-file", action="append")
+    collaboration_task_add.add_argument(
+        "--dependency",
+        action="append",
+        help="Stable task ID that must be completed or merged before this card may become active",
+    )
     collaboration_task_add.add_argument("--preauthorized-effect", action="append")
     collaboration_task_add.add_argument("--queued-effect", action="append")
     collaboration_task_add.add_argument("--assignee", default=None)
@@ -6258,7 +6305,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     collaboration_task_update.add_argument("--data-root", default=None)
     collaboration_task_update.add_argument("--project-id", required=True)
-    collaboration_task_update.add_argument("--task-id", required=True)
+    update_target = collaboration_task_update.add_mutually_exclusive_group(
+        required=True
+    )
+    update_target.add_argument("--task-id")
+    update_target.add_argument(
+        "--batch",
+        help="UTF-8 JSON file with 1..50 updates, or - for stdin; shell-safe sequential updates",
+    )
     collaboration_task_update.add_argument(
         "--status",
         choices=(
@@ -6295,6 +6349,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     collaboration_task_update.add_argument(
         "--allowed-file", action="append", help="replace planned file scope"
+    )
+    collaboration_task_update.add_argument(
+        "--dependency",
+        action="append",
+        help="Replace dependency task IDs; omit to preserve them",
+    )
+    collaboration_task_update.add_argument(
+        "--clear-dependencies",
+        action="store_true",
+        help="Explicitly remove every dependency from this card",
     )
     collaboration_task_update.add_argument(
         "--report-file", help="Attach a UTF-8 report, max 64 KiB, stored outside Git"
@@ -6360,6 +6424,11 @@ def build_parser() -> argparse.ArgumentParser:
     collaboration_task_list.add_argument("--lane-id", default=None)
     collaboration_task_list.add_argument("--updated-after", default=None)
     collaboration_task_list.add_argument("--query", default=None)
+    collaboration_task_list.add_argument(
+        "--dependencies-ready",
+        action="store_true",
+        help="Only cards whose dependency cards are completed or merged",
+    )
     collaboration_task_list.add_argument("--summary", action="store_true", default=True)
     collaboration_task_list.add_argument("--full", dest="summary", action="store_false")
     collaboration_task_list.add_argument("--max-results", type=int, default=None)
@@ -6796,15 +6865,35 @@ def build_parser() -> argparse.ArgumentParser:
         leaf.add_argument("--project-id")
         leaf.add_argument("--root", default=".")
         leaf.add_argument("--recipient", required=True)
-        if operation in {"send", "ack"}:
-            leaf.add_argument("--message-id", required=True)
         if operation == "send":
+            leaf.add_argument(
+                "--message-id",
+                help="Optional idempotency key; generated when omitted",
+            )
             leaf.add_argument("--sender", required=True)
             leaf.add_argument("--body", required=True)
             leaf.add_argument("--task-id")
+        if operation == "ack":
+            mode = leaf.add_mutually_exclusive_group(required=True)
+            mode.add_argument("--message-id")
+            mode.add_argument(
+                "--before",
+                help="Acknowledge this recipient's messages created at or before this timezone-bearing ISO-8601 time",
+            )
+            mode.add_argument(
+                "--all",
+                action="store_true",
+                help="Acknowledge all unconfirmed messages for this recipient, bounded by --limit",
+            )
+            leaf.add_argument("--limit", type=int, default=1000)
         if operation in {"list", "archive"}:
             leaf.add_argument(
                 "--limit", type=int, default=100 if operation == "archive" else 3
+            )
+        if operation == "archive":
+            leaf.add_argument(
+                "--before",
+                help="Archive messages acknowledged at or before this timezone-bearing ISO-8601 time",
             )
         leaf.set_defaults(handler=_inbox)
     for group in (collaboration_task_commands, collaboration_effect_commands):

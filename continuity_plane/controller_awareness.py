@@ -67,6 +67,12 @@ def _notice(payload, *, root=None, data_root=None, max_bytes=512):
                     or (r["event"] == "task.updated" and r.get("status") == "blocked")
                     or r["event"] == "rule.updated"
                     or r["event"] == "quota.changed"
+                    or r["event"]
+                    in {
+                        "dispatch.queue-waiting",
+                        "dispatch.queue-blocked",
+                        "dispatch.queue-retry-scheduled",
+                    }
                 )
                 cursor = page["next_cursor"]
                 if not page["truncated"]:
@@ -108,12 +114,28 @@ def _notice(payload, *, root=None, data_root=None, max_bytes=512):
             ]
             rules = [r for r in relevant if r["event"] == "rule.updated"]
             quota = [r for r in relevant if r["event"] == "quota.changed"]
+            queue = [
+                r
+                for r in relevant
+                if r["event"]
+                in {
+                    "dispatch.queue-waiting",
+                    "dispatch.queue-blocked",
+                    "dispatch.queue-retry-scheduled",
+                }
+            ]
             parts = []
             if finished:
                 parts.append(
                     f"{len(finished)} worker ended ("
                     + "; ".join(
-                        "%s %s" % (r.get("task_id") or r.get("agent_type") or r.get("attempt_id"), r.get("reason") or r.get("status"))
+                        "%s %s"
+                        % (
+                            r.get("task_id")
+                            or r.get("agent_type")
+                            or r.get("attempt_id"),
+                            r.get("reason") or r.get("status"),
+                        )
                         for r in finished[:3]
                     )
                     + ")"
@@ -130,14 +152,30 @@ def _notice(payload, *, root=None, data_root=None, max_bytes=512):
                     )
                     + "; inspect quota report/handoff"
                 )
-            command = "continuity collaboration changes --project-id " + shlex.quote(registration["project_id"]) + " --since " + str(previous["cursor"])
+            if queue:
+                parts.append(
+                    f"{len(queue)} queued dispatch gate(s); inspect worker queue status or changes"
+                )
+            command = (
+                "continuity collaboration changes --project-id "
+                + shlex.quote(registration["project_id"])
+                + " --since "
+                + str(previous["cursor"])
+            )
             command += " --data-root " + shlex.quote(str(data))
             if rules and not finished and not blocked and not quota:
-                command = "continuity rules affected --project-id " + shlex.quote(registration["project_id"]) + " --data-root " + shlex.quote(str(data))
+                command = (
+                    "continuity rules affected --project-id "
+                    + shlex.quote(registration["project_id"])
+                    + " --data-root "
+                    + shlex.quote(str(data))
+                )
             suffix = " Inspect: " + command
             if len(suffix.encode()) + 32 > max_bytes:
                 suffix = " Parameters: continuity help changes"
-            text = ("continuity: " + ", ".join(parts) + ".").encode()[:max_bytes - len(suffix.encode())].decode("utf-8", "ignore") + suffix
+            text = ("continuity: " + ", ".join(parts) + ".").encode()[
+                : max_bytes - len(suffix.encode())
+            ].decode("utf-8", "ignore") + suffix
             _atomic_write(marker, {"cursor": cursor, "rules_digest": rules_digest})
             return text
     except (OSError, ValueError, TypeError, KeyError):
@@ -151,7 +189,16 @@ def notice(*args, **kwargs):
         return None
 
 
-def scene(data_root, project_id, *, root=None, session_id=None, provider=None, max_bytes=2200, max_workers=8):
+def scene(
+    data_root,
+    project_id,
+    *,
+    root=None,
+    session_id=None,
+    provider=None,
+    max_bytes=2200,
+    max_workers=8,
+):
     from .collaboration_context import list_commitments
     from .collaboration_registry import project_data_dir
 
@@ -169,14 +216,17 @@ def scene(data_root, project_id, *, root=None, session_id=None, provider=None, m
         jobs = {}
     workers = []
     from .controller_observation import observe
-    observed = observe(data, project_id, recipient=os.environ.get("CONTINUITY_ASSIGNEE"),
-                       max_items=max(64, len(ledger.get("execution_bindings", {}))))
-    running_ids = {r["task_id"] for r in observed["workers"] if r["status"] == "running"}
-    running = [
-        t
-        for t in cards
-        if t["task_id"] in running_ids
-    ]
+
+    observed = observe(
+        data,
+        project_id,
+        recipient=os.environ.get("CONTINUITY_ASSIGNEE"),
+        max_items=max(64, len(ledger.get("execution_bindings", {}))),
+    )
+    running_ids = {
+        r["task_id"] for r in observed["workers"] if r["status"] == "running"
+    }
+    running = [t for t in cards if t["task_id"] in running_ids]
     native = [r for r in observed["native_workers"] if r["status"] != "stopped"]
     for task in running[:max_workers]:
         job = jobs.get(task["task_id"], {})
@@ -185,7 +235,10 @@ def scene(data_root, project_id, *, root=None, session_id=None, provider=None, m
             try:
                 from .runtime_origin import require_local
 
-                require_local(job.get("execution_origin"), job.get("profile", {}).get("profile_provider", "codex"))
+                require_local(
+                    job.get("execution_origin"),
+                    job.get("profile", {}).get("profile_provider", "codex"),
+                )
                 with Path(job["thread_file"]).open("rb") as stream:
                     thread = stream.read(256).decode("utf-8").strip()
             except (OSError, UnicodeError, ValueError):
@@ -206,28 +259,56 @@ def scene(data_root, project_id, *, root=None, session_id=None, provider=None, m
     ][-3:]
     from .project_context import integration, binding, lessons
 
-    integration_state = integration(data, project_id, root) if root else {"head": None, "available": False}
-    session_binding = binding(data, project_id, provider, session_id) if session_id and provider else None
+    integration_state = (
+        integration(data, project_id, root)
+        if root
+        else {"head": None, "available": False}
+    )
+    session_binding = (
+        binding(data, project_id, provider, session_id)
+        if session_id and provider
+        else None
+    )
     learned = lessons(data, project_id, max_results=2)
     cursor, ended = 0, None
     while True:
         page = list_changes(data, project_id=project_id, since=cursor, max_results=500)
         for row in page["changes"]:
-            if row["event"] in {"attempt.finished", "attempt.timeout", "dispatch.policy-stopped"}:
+            if row["event"] in {
+                "attempt.finished",
+                "attempt.timeout",
+                "dispatch.policy-stopped",
+            }:
                 ended = row["cursor"]
         cursor = page["next_cursor"]
         if not page["truncated"]:
             break
     result = {
         "integration": integration_state,
-        "session_binding": {k: session_binding.get(k) for k in ("task_id", "batch_id", "active")} if session_binding else None,
+        "session_binding": {
+            k: session_binding.get(k) for k in ("task_id", "batch_id", "active")
+        }
+        if session_binding
+        else None,
         "change_cursor": cursor,
         "last_ended_cursor": ended,
-        "lessons": [{"id": r["lesson_id"], "text": r["text"][:120], "source": r["source"][:100]} for r in learned["items"]],
+        "lessons": [
+            {"id": r["lesson_id"], "text": r["text"][:120], "source": r["source"][:100]}
+            for r in learned["items"]
+        ],
         "lessons_total": learned["total_items"],
         "workers": workers,
         "workers_total": len(running),
-        "native_workers": [{"attempt_id": r["attempt_id"], "agent_type": r["agent_type"], "status": "observed-running; no heartbeat" if r["status"] == "observed-running" else r["status"]} for r in native[:4]],
+        "native_workers": [
+            {
+                "attempt_id": r["attempt_id"],
+                "agent_type": r["agent_type"],
+                "status": "observed-running; no heartbeat"
+                if r["status"] == "observed-running"
+                else r["status"],
+            }
+            for r in native[:4]
+        ],
         "native_workers_total": len(native),
         "observed_at": observed["as_of"],
         "reports": observed["reports"][:3],

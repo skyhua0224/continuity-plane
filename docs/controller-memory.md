@@ -1,6 +1,6 @@
 # 主控连续性与分域记忆
 
-版本：1；适用 Alpha29。此功能保存可恢复的工作方式、交流习惯和获批项目知识，不读取或复制原生账号、Token、完整会话或目录树。
+版本：1；适用 Alpha34。此功能保存可恢复的工作方式、交流习惯和获批项目知识，不读取或复制原生账号、Token、完整会话或目录树。
 
 ## 开工入口
 
@@ -69,7 +69,7 @@ continuity memory notes --project-id demo --member alice --include-candidates --
 continuity memory consent-revoke --project-id demo --member alice --consent-id notes-v1
 ```
 
-一次授权后，所属机器上的 `controller start` 会自动增量刷新这些精确文件，无需每次手动 ingest；刷新失败只报告来源不可用，不阻塞计划恢复。导入内容始终是候选 `lesson`，不是可执行指令。撤销后不再读取或注入。写回原生记忆、跨设备／成员迁移和内容分享都要分别授权；Alpha29 不修改原生文件，也不宣称双向写回。
+一次授权后，所属机器上的 `controller start` 会自动增量刷新这些精确文件，无需每次手动 ingest；刷新失败只报告来源不可用，不阻塞计划恢复。导入内容始终是候选 `lesson`，不是可执行指令。撤销后不再读取或注入。写回原生记忆、跨设备／成员迁移和内容分享都要分别授权；Alpha34 仍不修改原生文件，也不宣称双向写回。
 
 本地 stdio MCP 默认拒绝私人 memory/profile/controller.start。所属主机明确设置 `CONTINUITY_PRIVATE_MEMORY_MCP=1` 才可调用，且不能指定其他 member。共享服务器只用 `--public-only`。
 
