@@ -240,6 +240,9 @@ class AdopterDocumentationTests(unittest.TestCase):
                         )
                         if not selected or "--remote" in argv:
                             continue
+                        if argv[:3] == ["collaboration", "inbox", "wait"]:
+                            # Live streams have separate subprocess acceptance tests.
+                            continue
                         argv = [
                             item_id
                             if v == "ITEM_ID"

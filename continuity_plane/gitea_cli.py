@@ -345,6 +345,8 @@ def batch_update(args):
         "actor",
         "force",
         "force_reason",
+        "controller_token",
+        "unassign",
     }
     backend = backend_for(args.data_root, args.project_id, args.root)
     registration = _registration(args.data_root, args.project_id, args.root)
@@ -442,6 +444,8 @@ def batch_update(args):
                     verification_data=row.get("verification_json"),
                     force=bool(row.get("force", False)),
                     force_reason=row.get("force_reason"),
+                    controller_token=row.get("controller_token"),
+                    unassign=bool(row.get("unassign", False)),
                     actor=row.get("actor") or os.environ.get("CONTINUITY_ASSIGNEE"),
                 )
             result["succeeded"].append(
@@ -509,7 +513,7 @@ def route_task(args, backend):
                     t
                     for t in tasks
                     if all(
-                        all_tasks.get(d, {}).get("status") in {"completed", "merged"}
+                        all_tasks.get(d, {}).get("status") in {"completed", "merged", "superseded"}
                         for d in t["dependencies"]
                     )
                 ]
@@ -592,6 +596,8 @@ def route_task(args, backend):
             "worktree",
             "preauthorized_effect",
             "queued_effect",
+            "unassign",
+            "controller_token",
         )
         if getattr(args, field, None)
     ]
@@ -731,7 +737,6 @@ def maybe_route(args):
                 "mine",
                 "created_by_me",
                 "review_requested",
-                "dependencies_ready",
             )
         ):
             raise GiteaError(

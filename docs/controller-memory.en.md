@@ -1,6 +1,6 @@
 # Controller continuity and scoped memory
 
-Version 1, Alpha34. [中文](controller-memory.md). Restores working style and approved knowledge without copying native accounts, tokens, full sessions or discovered directory trees.
+Version 1, Alpha35. [中文](controller-memory.md). Restores working style and approved knowledge without copying native accounts, tokens, full sessions or discovered directory trees.
 
 ## Start
 
@@ -52,7 +52,7 @@ continuity memory ingest --project-id demo --member alice --consent-id notes-v1
 continuity memory consent-revoke --project-id demo --member alice --consent-id notes-v1
 ```
 
-After one grant, `controller start` on the owning machine incrementally refreshes those exact files automatically; no repeated manual ingest is required. An unavailable source is reported without blocking plan recovery. Imported material remains candidate lessons and never becomes executable instruction. Native writeback, cross-host transfer and sharing require separate authorization. Alpha34 still does not mutate native files or claim bidirectional writeback. Private MCP access is disabled by default; an owning local stdio server may set `CONTINUITY_PRIVATE_MEMORY_MCP=1`, with no other-member override. Shared servers use public-only context.
+After one grant, `controller start` on the owning machine incrementally refreshes those exact files automatically; no repeated manual ingest is required. An unavailable source is reported without blocking plan recovery. Imported material remains candidate lessons and never becomes executable instruction. Native writeback, cross-host transfer and sharing require separate authorization. Alpha35 still does not mutate native files or claim bidirectional writeback. Private MCP access is disabled by default; an owning local stdio server may set `CONTINUITY_PRIVATE_MEMORY_MCP=1`, with no other-member override. Shared servers use public-only context.
 
 ## Handoff and failures
 

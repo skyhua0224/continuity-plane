@@ -418,6 +418,56 @@ def clear_policy_review(
     }
 
 
+def _job_history_path(data_root, project_id):
+    return project_data_dir(data_root, project_id) / "worker-job-history.json"
+
+
+def _record_job_history(job, status, result=None):
+    result = result or {}
+    path = _job_history_path(job["data_root"], job["project_id"])
+    now = datetime.now(UTC).isoformat()
+    terminal = {"completed", "failed", "interrupted", "blocked"}
+    with _locked(path):
+        try:
+            rows = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+        except (OSError, ValueError) as exc:
+            raise ValueError("worker job history is unreadable") from exc
+        previous = rows.get(job["job_id"], {})
+        if previous.get("status") in terminal and status not in terminal:
+            return previous
+        record = {
+            **previous,
+            "job_id": job["job_id"],
+            "task_id": job["task_id"],
+            "model": job.get("model"),
+            "assignee": job.get("assignee"),
+            "status": status,
+            "job_status": status,
+            "dispatched_at": previous.get("dispatched_at")
+            or job.get("dispatched_at")
+            or now,
+            "started_at": result.get("started_at") or previous.get("started_at"),
+            "finished_at": result.get("finished_at") or previous.get("finished_at"),
+            "exit_code": result.get("return_code", previous.get("exit_code")),
+            "reason": result.get("reason", previous.get("reason")),
+            "failure_class": result.get("failure_class", previous.get("failure_class")),
+            "observed_cwd": result.get("observed_cwd", previous.get("observed_cwd")),
+            "observed_head": result.get("observed_head", previous.get("observed_head")),
+            "observed_branch": result.get("observed_branch", previous.get("observed_branch")),
+            "updated_at": now,
+        }
+        rows[job["job_id"]] = record
+        if len(rows) > 5000:
+            ordered = sorted(
+                rows.values(),
+                key=lambda value: value.get("updated_at") or "",
+                reverse=True,
+            )[:5000]
+            rows = {value["job_id"]: value for value in ordered}
+        _atomic_write(path, rows)
+    return record
+
+
 def require_policy_clear(data_root, project_id, task_id, scope):
     """An older thread is not an escape from a newer refusal on this scope."""
     from . import dispatch_safety
@@ -591,6 +641,12 @@ def dispatch(
             raise ValueError("no configured and available adapter matches this task")
         model = names[0]
         fallback_models = tuple(fallback_models) or tuple(names[1:])
+    if not fallback_models and not handoff:
+        from .worker_policy import fallback_candidates
+
+        fallback_models = tuple(
+            fallback_candidates(data, project_id, model)
+        )
     if (
         not isinstance(fallback_models, (list, tuple))
         or len(fallback_models) > 5
@@ -705,6 +761,13 @@ def dispatch(
     # Explicit in-process handoffs come from the approved quota/fallback path;
     # ordinary CLI dispatch cannot silently manufacture this continuation.
     authorized_handoff = bool(handoff)
+    controller = (
+        controller
+        or os.environ.get("CONTINUITY_CONTROLLER")
+        or os.environ.get("CONTINUITY_ASSIGNEE")
+        or os.environ.get("CODEX_THREAD_ID")
+        or "operator"
+    )
     if mismatch and not reassign and not authorized_handoff:
         raise ValueError(
             "dispatch executor/model conflicts with the card assignment; no worker started. "
@@ -715,23 +778,26 @@ def dispatch(
             raise ValueError(
                 "--reassign mutates a card; update it explicitly before a dry-run"
             )
+        from .controller_lease import require
+
+        require(data, project_id, controller, controller_token)
         task = update_task(
             data,
             project_id=project_id,
             task_id=task_id,
             assignee=actor,
-            actor=reassign_actor or os.environ.get("CONTINUITY_ASSIGNEE"),
+            actor=reassign_actor or controller,
+            controller_token=controller_token,
+            force_reason=(
+                "explicit project fallback policy selected a new worker after transient retry exhaustion"
+                if authorized_handoff
+                else "dispatch --reassign selected a new worker after controller review"
+            ),
+            force=authorized_handoff,
         )
         ledger["tasks"] = [
             task if item["task_id"] == task_id else item for item in ledger["tasks"]
         ]
-    controller = (
-        controller
-        or os.environ.get("CONTINUITY_CONTROLLER")
-        or os.environ.get("CONTINUITY_ASSIGNEE")
-        or os.environ.get("CODEX_THREAD_ID")
-        or "operator"
-    )
     assembled = prompt(
         data,
         project_id=project_id,
@@ -786,6 +852,9 @@ def dispatch(
     actual_prompt_sha = hashlib.sha256(values["prompt"].encode()).hexdigest()
     argv = _argv(profile, values, resume)
     plan = dict(
+        status="dispatched",
+        job_status="dispatched",
+        dispatched_at=datetime.now(UTC).isoformat(),
         task_id=task_id,
         model=model,
         assignee=actor,
@@ -868,6 +937,16 @@ def dispatch(
             current = json.loads(index.read_text()) if index.exists() else {}
             current[task_id] = plan
             _atomic_write(index, current)
+        try:
+            _record_job_history(
+                {**plan, "data_root": str(data), "project_id": project_id},
+                "dispatched", plan,
+            )
+        except (OSError, ValueError, KeyError) as exc:
+            plan["metadata_warning_job_history"] = (
+                "Job is dispatched, but bounded history could not be updated: "
+                + str(exc)[:300]
+            )
         if background:
             with (jobdir / "supervisor.log").open("ab") as log:
                 process = subprocess.Popen(
@@ -924,6 +1003,7 @@ def run_job(file):
             "card_projection": "preserved",
         }
         _atomic_write(Path(job["job_dir"]) / "result.json", result)
+        _persist_job_terminal(job, result)
         from .execution_outbox import change
 
         change(
@@ -947,6 +1027,7 @@ def _run_job(file):
     from .supervisor import run_attempt
 
     job = json.loads(Path(file).read_text())
+    job_state_warning = None
     from .runtime_origin import require_local
 
     if not job.get("execution_origin"):
@@ -960,6 +1041,13 @@ def _run_job(file):
     require_policy_clear(
         job["data_root"], job["project_id"], job["task_id"], job["scope_sha256"]
     )
+    try:
+        _persist_job_running(job)
+    except (OSError, ValueError, KeyError) as exc:
+        job_state_warning = (
+            "Worker is starting, but running job state could not be stored: "
+            + str(exc)[:300]
+        )
     capture = Capture(job["job_dir"])
     values = {
         **job["values"],
@@ -1003,6 +1091,11 @@ def _run_job(file):
         "log_file": str(Path(job["job_dir"]) / "output.jsonl"),
         "log_truncated": capture.log_truncated,
         "executed": True,
+        **(
+            {"metadata_warning_job_state": job_state_warning}
+            if job_state_warning
+            else {}
+        ),
     }
     from .dispatch_health import record as record_health
 
@@ -1074,9 +1167,17 @@ def _run_job(file):
         value["metadata_warning"] = (
             "Run finished, but the local result file could not be saved; inspect the execution outbox/events"
         )
+    try:
+        _persist_job_terminal(job, result)
+    except (OSError, ValueError, KeyError) as exc:
+        value["metadata_warning_job_state"] = str(exc)[:300]
     if (
         result.get("retryable")
         and result.get("failure_class") != "policy-review"
+        and (
+            job.get("retry", 0) == 0
+            or result.get("retry_exhausted")
+        )
         and job.get("fallback_models")
     ):
         try:
@@ -1101,12 +1202,105 @@ def _run_job(file):
                     "Finished attempt retained; fallback notification could not be recorded"
                 )
         try:
-            _atomic_write(Path(job["job_dir"]) / "result.json", value)
+            _atomic_write(
+                Path(job["job_dir"]) / "result.json",
+                {
+                    **(value.get("primary_result") or value),
+                    "fallback_job_id": value.get("fallback_job_id"),
+                },
+            )
         except OSError:
             value["metadata_warning"] = (
                 "Finished attempt retained in events; fallback result could not be saved locally"
             )
+    try:
+        from .worker_policy import launch_completion_hook
+
+        receipt = launch_completion_hook(job, result)
+        if receipt is not None:
+            value["completion_hook"] = receipt
+            _atomic_write(
+                Path(job["job_dir"]) / "result.json",
+                {
+                    **(value.get("primary_result") or value),
+                    "fallback_job_id": value.get("fallback_job_id"),
+                    "completion_hook": receipt,
+                },
+            )
+    except (OSError, ValueError, KeyError) as exc:
+        value["metadata_warning_completion_hook"] = (
+            "Worker result is retained, but the optional completion hook receipt could not be stored: "
+            + str(exc)[:300]
+        )
     return value
+
+
+def _persist_job_terminal(job, result):
+    """Write the same terminal fact to the job document and its bounded index."""
+
+    job_path = Path(job["job_dir"]) / "job.json"
+    current = json.loads(job_path.read_text(encoding="utf-8"))
+    terminal = {
+        **current,
+        "status": result.get("status"),
+        "job_status": result.get("status"),
+        "exit_code": result.get("return_code"),
+        "reason": result.get("reason"),
+        "failure_class": result.get("failure_class"),
+        "finished_at": result.get("finished_at") or datetime.now(UTC).isoformat(),
+    }
+    for key in (
+        "observed_cwd",
+        "observed_head",
+        "observed_branch",
+        "runtime_tracking_error",
+    ):
+        if result.get(key) is not None:
+            terminal[key] = result[key]
+    _atomic_write(job_path, terminal)
+    _record_job_history(job, result.get("status") or "unknown", result)
+    index = Path(job["job_dir"]).parent.parent / "worker-jobs.json"
+    with _locked(index):
+        rows = json.loads(index.read_text(encoding="utf-8")) if index.exists() else {}
+        indexed = rows.get(job["task_id"])
+        if isinstance(indexed, dict) and indexed.get("job_id") == job["job_id"]:
+            rows[job["task_id"]] = {
+                **indexed,
+                "status": terminal["status"],
+                "job_status": terminal["job_status"],
+                "exit_code": terminal["exit_code"],
+                "reason": terminal["reason"],
+                "failure_class": terminal["failure_class"],
+                "finished_at": terminal["finished_at"],
+            }
+            _atomic_write(index, rows)
+    return terminal
+
+
+def _persist_job_running(job):
+    job_path = Path(job["job_dir"]) / "job.json"
+    current = json.loads(job_path.read_text(encoding="utf-8"))
+    running = {
+        **current,
+        "status": "running",
+        "job_status": "running",
+        "started_at": datetime.now(UTC).isoformat(),
+    }
+    _atomic_write(job_path, running)
+    _record_job_history(job, "running", {"started_at": running["started_at"]})
+    index = Path(job["job_dir"]).parent.parent / "worker-jobs.json"
+    with _locked(index):
+        rows = json.loads(index.read_text(encoding="utf-8")) if index.exists() else {}
+        indexed = rows.get(job["task_id"])
+        if isinstance(indexed, dict) and indexed.get("job_id") == job["job_id"]:
+            rows[job["task_id"]] = {
+                **indexed,
+                "status": "running",
+                "job_status": "running",
+                "started_at": running["started_at"],
+            }
+            _atomic_write(index, rows)
+    return running
 
 
 def _fallback(job, result, value):
@@ -1125,6 +1319,7 @@ def _fallback(job, result, value):
     if not candidates:
         return value
     next_model, *remaining = candidates
+    next_assignee = "worker-" + _model_alias(next_model)
     # Keep the old reservation until reserve() swaps it atomically under the
     # context lock, after validating the current lease and replacement capacity.
     next_result = dispatch(
@@ -1138,7 +1333,7 @@ def _fallback(job, result, value):
         idle_timeout_seconds=job.get(
             "idle_timeout_seconds", LEGACY_IDLE_TIMEOUT_SECONDS
         ),
-        assignee=job["assignee"],
+        assignee=next_assignee,
         retry=job["retry"],
         controller=job.get("controller"),
         controller_token=job.get("controller_token"),
@@ -1151,6 +1346,8 @@ def _fallback(job, result, value):
             "report_file": job["report_file"],
             "checkout": job["worktree"],
         },
+        reassign=True,
+        reassign_actor=job.get("controller"),
     )
     try:
         change(
@@ -1162,6 +1359,8 @@ def _fallback(job, result, value):
             to_model=next_model,
             reason=result.get("failure_class"),
             previous_job=job["job_id"],
+            from_assignee=job["assignee"],
+            to_assignee=next_assignee,
         )
     except (OSError, ValueError, KeyError):
         next_result["metadata_warning"] = (
@@ -1170,13 +1369,25 @@ def _fallback(job, result, value):
     return {
         **next_result,
         "previous_jobs": [job["job_id"], *next_result.get("previous_jobs", [])],
+        "primary_job_id": job["job_id"],
+        "fallback_job_id": next_result["job_id"],
+        "primary_result": value,
     }
 
 
 def command(args):
     from .planning_api import render
 
-    if args.worker_action == "configure":
+    if args.worker_action == "jobs":
+        value = list_jobs(
+            args.data_root,
+            project_id=args.project_id,
+            root=args.root,
+            status=args.status,
+            since=args.since,
+            max_results=args.max_results,
+        )
+    elif args.worker_action == "configure":
         value = configure(
             args.data_root,
             model=args.model,
@@ -1374,6 +1585,95 @@ def _run_parser(parser, action):
     )
 
 
+def list_jobs(data_root, *, project_id=None, root=".", status=None, since=None, max_results=100):
+    if not 1 <= max_results <= 1000:
+        raise ValueError("max-results must be between 1 and 1000")
+    cutoff = None
+    if since is not None:
+        try:
+            cutoff = datetime.fromisoformat(since.replace("Z", "+00:00"))
+        except (AttributeError, ValueError):
+            raise ValueError("since must be a timezone-bearing ISO-8601 timestamp") from None
+        if cutoff.tzinfo is None:
+            raise ValueError("since requires a timezone")
+    if not project_id:
+        project = resolve_project(root, data_root)
+        if project is None:
+            raise ValueError("registered root or project-id is required")
+        project_id = project["project_id"]
+    data = Path(data_root or default_data_root())
+    index = project_data_dir(data, project_id) / "worker-jobs.json"
+    history_path = _job_history_path(data, project_id)
+    try:
+        rows = json.loads(index.read_text(encoding="utf-8")) if index.exists() else {}
+    except (OSError, ValueError) as exc:
+        raise ValueError("worker job index is unreadable") from exc
+    try:
+        history = (
+            json.loads(history_path.read_text(encoding="utf-8"))
+            if history_path.exists()
+            else {}
+        )
+    except (OSError, ValueError) as exc:
+        raise ValueError("worker job history is unreadable") from exc
+    items = list(history.values()) if isinstance(history, dict) else []
+    seen_jobs = {item.get("job_id") for item in items if isinstance(item, dict)}
+    for task_id, item in rows.items():
+        if isinstance(item, dict) and item.get("job_id") not in seen_jobs:
+            items.append({**item, "task_id": task_id})
+    ended = {"completed", "failed", "interrupted", "blocked"}
+    selected = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        task_id = item.get("task_id")
+        job_status = item.get("job_status") or item.get("status") or "unknown"
+        if status == "ended" and job_status not in ended:
+            continue
+        if status not in {None, "ended"} and job_status != status:
+            continue
+        observed = (
+            item.get("finished_at")
+            or item.get("dispatched_at")
+            or item.get("observed_at")
+        )
+        if cutoff is not None:
+            try:
+                if not observed or datetime.fromisoformat(str(observed).replace("Z", "+00:00")) < cutoff:
+                    continue
+            except (TypeError, ValueError):
+                continue
+        selected.append(
+            {
+                "task_id": task_id,
+                "job_id": item.get("job_id"),
+                "status": job_status,
+                "model": item.get("model"),
+                "assignee": item.get("assignee"),
+                "exit_code": item.get("exit_code"),
+                "reason": item.get("reason"),
+                "failure_class": item.get("failure_class"),
+                "dispatched_at": item.get("dispatched_at"),
+                "finished_at": item.get("finished_at"),
+            }
+        )
+    selected.sort(
+        key=lambda row: (row.get("finished_at") or row.get("dispatched_at") or "", row["task_id"]),
+        reverse=True,
+    )
+    return {
+        "schema_version": "context.worker-jobs/v1alpha1",
+        "project_id": project_id,
+        "status_filter": status,
+        "since": since,
+        "items": selected[:max_results],
+        "total_items": len(selected),
+        "truncated": len(selected) > max_results,
+        "source": "bounded worker-job-history.json plus current worker-jobs.json",
+        "metadata_warning": "Legacy jobs absent from bounded history fall back to the current index; inspect unknown jobs by exact job ID.",
+    }
+
+
 def register_cli(commands):
     parser = commands.add_parser(
         "worker", help="Configure adapters, dispatch, resume and read final reports"
@@ -1444,6 +1744,69 @@ def register_cli(commands):
             action="store_true",
             help="Return the complete report or fail explicitly if it exceeds the budget",
         )
+    events = sub.add_parser(
+        "events",
+        help="Stream started/progress/completed/failed events with resumable cursors",
+    )
+    events.set_defaults(handler=events_command)
+    events.add_argument("--data-root")
+    events.add_argument("--project-id")
+    events.add_argument("--all-projects", action="store_true")
+    events.add_argument("--follow", action="store_true")
+    events.add_argument(
+        "--since-cursor",
+        help="Integer for one project; project:cursor pairs for --all-projects",
+    )
+    events.add_argument("--max-events", type=int)
+    events.add_argument("--poll-seconds", type=float, default=0.5)
+    events.add_argument("--max-output-bytes", type=int, default=4096)
+    jobs = sub.add_parser(
+        "jobs", help="List current worker jobs by running/ended state"
+    )
+    jobs.set_defaults(handler=command, worker_action="jobs")
+    jobs.add_argument("--data-root")
+    jobs.add_argument("--project-id")
+    jobs.add_argument("--root", default=".")
+    jobs.add_argument(
+        "--status",
+        choices=("running", "dispatched", "ended", "completed", "failed", "interrupted", "blocked"),
+    )
+    jobs.add_argument("--since", help="ISO-8601 lower bound on the recorded timestamp")
+    jobs.add_argument("--max-results", type=int, default=100)
+    fallback = sub.add_parser(
+        "fallback-policy", help="Configure explicit transient-failure model fallbacks"
+    )
+    fallback.set_defaults(handler=fallback_command)
+    fallback.add_argument("--data-root")
+    fallback.add_argument("--project-id")
+    fallback.add_argument("--root", default=".")
+    fallback_group = fallback.add_subparsers(dest="fallback_action", required=True)
+    for action in ("show", "set"):
+        leaf = fallback_group.add_parser(action)
+        leaf.set_defaults(handler=fallback_command)
+        leaf.add_argument("--data-root")
+        leaf.add_argument("--project-id")
+        leaf.add_argument("--root", default=".")
+        if action == "set":
+            leaf.add_argument("--model", required=True)
+            leaf.add_argument("--candidate", action="append", default=[])
+            leaf.add_argument("--clear", action="store_true")
+    hook = sub.add_parser(
+        "completion-hook", help="Configure a non-blocking on-job-end local command"
+    )
+    hook.set_defaults(handler=completion_hook_command)
+    hook.add_argument("--data-root")
+    hook.add_argument("--project-id")
+    hook.add_argument("--root", default=".")
+    hook_group = hook.add_subparsers(dest="hook_action", required=True)
+    for action in ("show", "set", "clear"):
+        leaf = hook_group.add_parser(action)
+        leaf.set_defaults(handler=completion_hook_command)
+        leaf.add_argument("--data-root")
+        leaf.add_argument("--project-id")
+        leaf.add_argument("--root", default=".")
+        if action == "set":
+            leaf.add_argument("--argv-json", required=True)
     _run_parser(
         commands.add_parser(
             "dispatch",
@@ -1451,6 +1814,28 @@ def register_cli(commands):
         ),
         "dispatch",
     )
+
+
+def events_command(args):
+    from .collaboration_stream import worker_events_command
+
+    if args.max_events is not None and args.max_events < 1:
+        raise ValueError("max-events must be positive")
+    if not 1024 <= args.max_output_bytes <= 131072:
+        raise ValueError("max-output-bytes must be 1024–131072")
+    return worker_events_command(args)
+
+
+def fallback_command(args):
+    from .worker_policy import fallback_command as command_fallback
+
+    return command_fallback(args)
+
+
+def completion_hook_command(args):
+    from .worker_policy import completion_hook_command as command_hook
+
+    return command_hook(args)
 
 
 if __name__ == "__main__":

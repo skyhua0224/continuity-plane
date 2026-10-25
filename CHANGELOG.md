@@ -4,6 +4,16 @@
 
 [English](CHANGELOG.en.md)
 
+## 0.1.0-alpha.35
+
+- 新增 cursor-based `worker events --follow`、`inbox wait` 与 unread count；完成、失败、限流和阻塞不再依赖监控时间窗。
+- `job.json`、worker index 与 result 同步 running／终态、exit_code、完成时间和实际 cwd／HEAD；心跳记录 idle 时长及 build-lock 诊断。
+- supervisor 无运行 binding 时不再重放历史；有 binding 时从启动 cursor 增量核对。task show 默认预算提高到 64 KiB，旧正文依赖只给迁移提示。
+- 增加可选 host 级声明容量、cooldown 自动 expired、项目 fallback policy、transient retry 后显式改派与非阻塞 completion hook。
+- `queued` 保留 assignee，新增显式 `--unassign`；活动 controller lease 可凭理由改派；superseded 作为依赖终态。
+- 新增可选 canonical repository PATH Git write guard；明确它是防误操作，不是安全沙箱。默认仍不修改 Git、账号或 provider 配置。
+- [发布说明与限制](docs/release-alpha35.md)。
+
 ## 0.1.0-alpha.34
 
 - HTTP 401／403、Cloudflare／代理拦截与 gateway 诊断不再因通用 “policy” 字样误判为内容拒绝；明确模型安全标记仍优先。

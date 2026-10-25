@@ -2,11 +2,11 @@
 
 [中文](validation.md) · [Workflows](workflows.en.md) · [Historical experiments](benchmarks.en.md)
 
-Scope: Alpha34 (`0.1.0a34`). New synthetic CLI measurements, existing regressions, anonymous user feedback and uncovered behavior are distinct evidence classes.
+Scope: Alpha35 (`0.1.0a35`). New synthetic CLI measurements, existing regressions, anonymous user feedback and uncovered behavior are distinct evidence classes.
 
 ## Reproduce the current workflow check
 
-Alpha27 established an isolated HTTPS Gitea 1.24.7 / local tea 0.15.0 two-synthetic-account private repository check. Alpha34 adds no new external Gitea field run; collaboration changes use deterministic regressions. The adopter script below was rerun from a fresh persistent venv containing only the Alpha34 wheel and a new workspace. Its receipt contains allowlisted synthetic aggregates only; tag CI remains authoritative for the release build.
+Alpha27 established an isolated HTTPS Gitea 1.24.7 / local tea 0.15.0 two-synthetic-account private repository check. Alpha35 adds no new external Gitea field run; collaboration changes use deterministic regressions. The adopter script below was rerun from a fresh persistent venv containing only the Alpha35 wheel and a new workspace. Its receipt contains allowlisted synthetic aggregates only; tag CI remains authoritative for the release build.
 
 Use a **new, empty persistent directory**, never your real registry/profile:
 
@@ -28,7 +28,7 @@ The development tree uses `public/examples/`; a public checkout uses `examples/`
 | Failed child | Original exit 3 recorded; dispatch CLI nonzero (2) |
 | Single-update merge metadata | Pass; no actual Git merge |
 | Shared handoff, lesson, second-controller read-only | Pass |
-| Scoped profile, approved memory and controller start | Pass; 1,442 JSON bytes in this fixture within a 4,096-byte budget |
+| Scoped profile, approved memory and controller start | Pass; 1,443 JSON bytes in this fixture within a 4,096-byte budget |
 | Event paging, OR wait, quiet read | Pass; 216 bytes for this fixture's no-change response |
 | Worker updates card early | Automatically attached and readable through report; manual attachment does not satisfy this check |
 
@@ -62,6 +62,19 @@ Fourteen positive checks pass; automatic report delivery after early card update
 | Drift/commitments | Parser/rule regressions and anonymous feedback | Not proof of all external/document facts |
 
 The [Alpha25 public release CI](https://github.com/skyhua0224/continuity-plane/actions/runs/38845950775) passed 268 tests. New documentation checks run on current main separately; neither released wheels nor historical counts are rewritten.
+
+## Alpha35 adoption regressions
+
+| Fix | Current evidence | Boundary |
+|---|---|---|
+| Missed worker events and monitoring windows | worker events --follow emits an appended event as NDJSON from its cursor; all-project cursor parsing is covered | A local CLI stream is not a remote wake-up service; --all-projects uses project:cursor pairs |
+| Inbox completion notices | inbox wait consumes the persistent message event; inbox unread --count agrees with the same acknowledgement fact | Recipient acknowledgement remains explicit; another host's AI is not automatically woken |
+| Job terminal state and observed checkout | job.json/index running to completed, exit_code 0, actual cwd/HEAD, finish cursor and nonblocking metadata failure | Legacy jobs are not backfilled with invented facts; native children without heartbeat remain observations |
+| Dispatch hot path and output | No running binding forbids history scanning; a binding reads from its start cursor; build-lock idle is diagnostic; task show defaults to 64 KiB | Oversized single records still fail explicitly; lock waits are not killed |
+| Capacity, quota and fallback | Cross-project host gate, prior-boot exclusion, expired cooldown clearance and transient-only fallback with reassignment | Host capacity is operator policy; auth/policy failures do not fallback; no account-quota query |
+| Card semantics and safety | queued preserves assignee, explicit unassign, controller-lease reason, superseded dependency, PATH Git guard and async completion hook | The Git wrapper is not a sandbox and absolute paths bypass it; the hook is not a remote wake-up |
+
+Focused regressions are in `tests/test_alpha35_control_observability.py`, alongside existing supervisor, dispatch, project-context, controller-recovery and adoption suites.
 
 ## Alpha34 adoption regressions
 
@@ -117,7 +130,7 @@ The [Alpha25 public release CI](https://github.com/skyhua0224/continuity-plane/a
 | Reference TSV | Unicode, extra columns, idempotence, atomic conflicts/invalid rows, MCP interface | Explicit interchange, no overwrite/automatic sync or proof of reading |
 | Mapped lookup | Separate synthetic repository through the receiving CLI protocol; unmapped/over-budget rejection | No new physical two-machine trial or arbitrary remote file/process administration |
 
-[test_a26_adoption.py](../tests/test_a26_adoption.py) contains thirteen Alpha26 synthetic regressions. Alpha34 classification and clearance tests live in `tests/test_alpha34_policy_classification.py`; Alpha33 dispatch hot-path tests remain in `tests/test_alpha33_dispatch_hot_path.py`. See [Alpha34](release-alpha34.md) for this release's limits.
+[test_a26_adoption.py](../tests/test_a26_adoption.py) contains thirteen Alpha26 synthetic regressions. Alpha35 observability tests live in `tests/test_alpha35_control_observability.py`; Alpha34 classification and clearance tests remain in `tests/test_alpha34_policy_classification.py`. See [Alpha35](release-alpha35.md) for this release's limits.
 
 ## Privacy and effect claims
 

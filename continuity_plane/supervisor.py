@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import math
+import re
 import signal
 import socket
 import subprocess
@@ -19,9 +20,18 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from .collaboration_registry import list_changes, default_data_root
+from .collaboration_registry import (
+    _load_ledger,
+    default_data_root,
+    iter_changes,
+    latest_change_cursor,
+)
 from .execution_outbox import change as _record_change, enqueue
-from .execution_lifecycle import bind_execution, finish_execution
+from .execution_lifecycle import (
+    bind_execution,
+    finish_execution,
+    record_execution_process,
+)
 
 
 def _now() -> str:
@@ -43,6 +53,69 @@ def _process_identity(pid):
         return boot + ":" + start
     except (OSError, IndexError):
         return None
+
+
+def _observed_workspace(pid, fallback=None):
+    """Observe the process checkout without treating it as the card's planned worktree."""
+
+    observed = {
+        "observed_cwd": None,
+        "observed_head": None,
+        "observed_branch": None,
+        "observation_error": None,
+    }
+    try:
+        observed["observed_cwd"] = os.readlink(f"/proc/{pid}/cwd")
+    except (OSError, ValueError):
+        observed["observation_error"] = "process-cwd-unavailable"
+    cwd = observed["observed_cwd"]
+    if not cwd:
+        return observed
+    for key, argv in (
+        ("observed_head", ["git", "-C", cwd, "rev-parse", "--verify", "HEAD"]),
+        (
+            "observed_branch",
+            ["git", "-C", cwd, "symbolic-ref", "--quiet", "--short", "HEAD"],
+        ),
+    ):
+        try:
+            completed = subprocess.run(
+                argv,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=True,
+                timeout=2,
+                check=False,
+            )
+            if completed.returncode == 0 and completed.stdout.strip():
+                observed[key] = completed.stdout.strip()[:256]
+        except (OSError, subprocess.SubprocessError):
+            continue
+    return observed
+
+
+def _idle_diagnostic(tail, idle_seconds):
+    """Classify an idle output tail without claiming it proves the wait cause."""
+
+    text = (tail or "")[-4096:].casefold()
+    patterns = (
+        (r"waiting (?:for|on).{0,80}(?:build|w2-|shared|lock)", "waiting-for-build-lock"),
+        (r"(?:build|shared)[-_ ]lock.{0,80}(?:wait|blocked)", "waiting-for-build-lock"),
+        (r"flock|fcntl.{0,40}lock|futex", "possible-lock-wait"),
+        (r"waiting for (?:another|other) (?:process|worker)", "waiting-for-peer-process"),
+    )
+    for pattern, reason in patterns:
+        if re.search(pattern, text):
+            return {
+                "idle_seconds": round(float(idle_seconds), 3),
+                "idle_reason": reason,
+                "idle_evidence": "bounded-output-tail-heuristic; not proof",
+            }
+    return {
+        "idle_seconds": round(float(idle_seconds), 3),
+        "idle_reason": "no-output-observed" if idle_seconds >= 1 else "recent-output",
+        "idle_evidence": "process-output-observation; no termination by this diagnostic",
+    }
 
 
 def _kill(process):
@@ -158,6 +231,9 @@ def run_attempt(
     from .retry_policy import classify, resume_argv
 
     root = Path(data_root or default_data_root())
+    from .git_guard import prepare as prepare_git_guard
+
+    git_guard_dir = prepare_git_guard(root, project_id)
     base_attempt = attempt_id or f"attempt-{uuid.uuid4().hex[:16]}"
     last_result: dict[str, Any] = {}
     retry_wait = 0.0
@@ -215,9 +291,13 @@ def run_attempt(
                 stdin=subprocess.DEVNULL,
                 env={
                     **os.environ,
-                    "PATH": str(Path(sys.executable).parent)
-                    + os.pathsep
-                    + os.environ.get("PATH", ""),
+                    "PATH": os.pathsep.join(
+                        [
+                            *([str(git_guard_dir)] if git_guard_dir else []),
+                            str(Path(sys.executable).parent),
+                            os.environ.get("PATH", ""),
+                        ]
+                    ),
                     "CONTINUITY_ASSIGNEE": assignee,
                     "CONTINUITY_TASK_ID": task_id,
                     "CONTINUITY_PROJECT_ID": project_id,
@@ -258,6 +338,26 @@ def run_attempt(
                 "reason": reason,
                 **projection,
             }
+        process_identity = _process_identity(process.pid)
+        workspace_observation = _observed_workspace(process.pid, workdir)
+        runtime_tracking_error = None
+        try:
+            record_execution_process(
+                root,
+                project_id=project_id,
+                task_id=task_id,
+                attempt_id=current_attempt,
+                pid=process.pid,
+                host_id=host_id,
+                process_identity=process_identity,
+                **workspace_observation,
+            )
+        except (OSError, ValueError) as exc:
+            # Process observation is diagnostic metadata. It must not turn a
+            # successfully spawned worker into a failed launch.
+            runtime_tracking_error = (
+                "execution process metadata unavailable: " + str(exc)[:300]
+            )
         reader = _OutputTail(process.stdout, on_output)
         status = "failed"
         reason = None
@@ -281,14 +381,27 @@ def run_attempt(
                 rules_audience=rules_audience,
                 pid=process.pid,
                 retry=retry_number,
-                process_identity=_process_identity(process.pid),
+                process_identity=process_identity,
                 started_at=_now(),
                 host_id=host_id,
                 storage=_storage,
+                **workspace_observation,
+                **(
+                    {"runtime_tracking_error": runtime_tracking_error}
+                    if runtime_tracking_error
+                    else {}
+                ),
             )
             while process.poll() is None:
                 now = time.monotonic()
                 if now - last_heartbeat >= heartbeat_seconds:
+                    sampled = _observed_workspace(process.pid)
+                    if sampled.get("observed_cwd"):
+                        workspace_observation = sampled
+                    output_at, output_tail = reader.snapshot()
+                    idle_metrics = _idle_diagnostic(
+                        output_tail, max(0.0, now - output_at)
+                    )
                     _record_change(
                         root,
                         project_id,
@@ -298,6 +411,8 @@ def run_attempt(
                         assignee=assignee,
                         pid=process.pid,
                         elapsed_seconds=round(now - started, 3),
+                        **workspace_observation,
+                        **idle_metrics,
                     )
                     last_heartbeat = now
                 if now - started >= timeout_seconds:
@@ -312,6 +427,19 @@ def run_attempt(
                     break
                 time.sleep(min(0.1, heartbeat_seconds))
             return_code = process.wait()
+            if workspace_observation.get("observed_cwd"):
+                # The process has exited: refresh HEAD in its last observed
+                # checkout without inventing a new process cwd.
+                checkout = workspace_observation["observed_cwd"]
+                try:
+                    final_head = subprocess.run(
+                        ["git", "-C", checkout, "rev-parse", "--verify", "HEAD"],
+                        capture_output=True, text=True, timeout=2, check=False,
+                    )
+                    if final_head.returncode == 0:
+                        workspace_observation["observed_head"] = final_head.stdout.strip()
+                except (OSError, subprocess.SubprocessError):
+                    pass
             if status == "failed" and return_code == 0:
                 status = "completed"
             elif status == "failed" and return_code < 0:
@@ -385,6 +513,12 @@ def run_attempt(
                 model=model,
                 report=attached_report,
                 event_prefix=event_prefix,
+                **workspace_observation,
+                **(
+                    {"runtime_tracking_error": runtime_tracking_error}
+                    if runtime_tracking_error
+                    else {}
+                ),
                 **failure,
             )
         last_result = {
@@ -393,6 +527,12 @@ def run_attempt(
             "return_code": return_code,
             "reason": reason,
             "storage": _storage,
+            **workspace_observation,
+            **(
+                {"runtime_tracking_error": runtime_tracking_error}
+                if runtime_tracking_error
+                else {}
+            ),
             **projection,
             **failure,
         }
@@ -490,84 +630,110 @@ def _safe_finish(data_root, **fields):
 def daemon_once(data_root: Path | str | None, *, project_id: str) -> dict[str, Any]:
     """Reconcile started attempts whose process disappeared without a finish event."""
     root = Path(data_root or default_data_root())
-    rows = []
-    cursor = 0
-    while True:
-        events = list_changes(
-            root, project_id=project_id, since=cursor, max_results=500
+    ledger = _load_ledger(root, project_id)
+    bindings = {
+        task_id: binding
+        for task_id, binding in ledger.get("execution_bindings", {}).items()
+        if binding.get("status") == "running"
+    }
+    # Ordinary dispatches with no in-flight binding must not replay the entire
+    # append-only journal. This was the dominant cost on large projects.
+    if not bindings:
+        return {
+            "project_id": project_id,
+            "reconciled": [],
+            "next_cursor": latest_change_cursor(root, project_id=project_id),
+        }
+    reconciled = []
+    local_host = socket.gethostname()
+    now = datetime.now(UTC)
+    high_water = latest_change_cursor(root, project_id=project_id)
+    for task_id, binding in bindings.items():
+        attempt_id = binding.get("attempt_id")
+        start_cursor = binding.get("event_start_cursor")
+        since = (
+            start_cursor
+            if type(start_cursor) is int
+            else max(0, high_water - 5000)
         )
-        rows.extend(events["changes"])
-        cursor = events["next_cursor"]
-        if not events["truncated"]:
-            break
-    rows = [row for row in rows if not row.get("observed_native")]
-    starts = {
-        (row.get("task_id"), row.get("attempt_id")): row
-        for row in rows
-        if row.get("event") in {"attempt.started", "run.started"}
-    }
-    finished = {
-        (row.get("task_id"), row.get("attempt_id"))
-        for row in rows
-        if row.get("event") in {"attempt.finished", "run.finished"}
-    }
-    # Finish facts precede the card write, so replay can repair a crash in that gap.
-    for row in rows:
-        if row.get("event") in {"attempt.finished", "run.finished"}:
+        started = None
+        finished = None
+        for row in iter_changes(root, project_id=project_id, since=since):
+            if (
+                row.get("task_id") != task_id
+                or row.get("attempt_id") != attempt_id
+                or row.get("observed_native")
+            ):
+                continue
+            if row.get("event") in {"attempt.started", "run.started"}:
+                started = row
+            elif row.get("event") in {"attempt.finished", "run.finished"}:
+                finished = row
+        if finished is not None:
+            # Finish facts precede the card write, so replay repairs that crash
+            # gap with the exact original outcome and report.
             finish_execution(
                 root,
                 project_id=project_id,
-                task_id=row.get("task_id"),
-                assignee=row.get("assignee"),
-                attempt_id=row.get("attempt_id"),
-                status=row["status"],
-                return_code=row.get("return_code"),
-                reason=row.get("reason"),
-                finished_at=row.get("finished_at"),
-                host_id=row.get("host_id"),
-                report=row.get("report"),
+                task_id=task_id,
+                assignee=finished.get("assignee"),
+                attempt_id=attempt_id,
+                status=finished["status"],
+                return_code=finished.get("return_code"),
+                reason=finished.get("reason"),
+                finished_at=finished.get("finished_at"),
+                host_id=finished.get("host_id"),
+                report=finished.get("report"),
                 replay=True,
-                event_prefix=row["event"].split(".")[0],
+                event_prefix=finished["event"].split(".")[0],
             )
-    reconciled = []
-    for key, row in starts.items():
-        attempt_id = key[1]
-        pid = row.get("pid")
-        alive = (
-            _alive(pid)
-            if isinstance(pid, int) and row.get("host_id") == socket.gethostname()
-            else False
-        )
+            reconciled.append(attempt_id)
+            continue
+        evidence = {**binding, **(started or {})}
+        host_id = evidence.get("host_id")
+        pid = evidence.get("pid")
+        if host_id and host_id != local_host:
+            continue
+        alive = _alive(pid) if type(pid) is int else False
         current_identity = _process_identity(pid) if alive else None
         reused = bool(
             alive
-            and row.get("process_identity")
+            and evidence.get("process_identity")
             and current_identity
-            and row["process_identity"] != current_identity
+            and evidence["process_identity"] != current_identity
         )
-        if (
-            key in finished
-            or row.get("host_id") != socket.gethostname()
-            or not isinstance(row.get("pid"), int)
-            or (alive and not reused)
-        ):
+        if alive and not reused:
+            continue
+        if started is None and type(pid) is not int:
+            bound_at = evidence.get("bound_at")
+            try:
+                age = (
+                    now - datetime.fromisoformat(str(bound_at).replace("Z", "+00:00"))
+                ).total_seconds()
+            except (TypeError, ValueError):
+                age = 0
+            # A concurrent launcher may be between bind and start-event write.
+            if age < 15:
+                continue
+            # Missing process evidence cannot prove death. Host restart
+            # reconciliation uses boot-bound reservations separately.
             continue
         finish_execution(
             root,
             project_id=project_id,
-            task_id=row.get("task_id"),
+            task_id=task_id,
             attempt_id=attempt_id,
-            assignee=row.get("assignee"),
-            pid=row["pid"],
-            host_id=row.get("host_id"),
+            assignee=binding.get("assignee"),
+            pid=pid,
+            host_id=host_id or local_host,
             status="interrupted",
             return_code=None,
             reason="process-identity-changed" if reused else "process-not-alive",
-            event_prefix=row["event"].split(".")[0],
+            event_prefix=(started or {}).get("event", "attempt.started").split(".")[0],
         )
         reconciled.append(attempt_id)
     return {
         "project_id": project_id,
         "reconciled": reconciled,
-        "next_cursor": events["next_cursor"],
+        "next_cursor": latest_change_cursor(root, project_id=project_id),
     }

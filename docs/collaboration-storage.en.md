@@ -1,6 +1,6 @@
 # Gitea mode: repository declarations and member-local data
 
-Version 1, Alpha34. [中文](collaboration-storage.md) · [Commands](gitea-collaboration.en.md)
+Version 1, Alpha35. [中文](collaboration-storage.md) · [Commands](gitea-collaboration.en.md)
 
 | Data | Location | Sharing / authority |
 |---|---|---|
@@ -14,6 +14,7 @@ Version 1, Alpha34. [中文](collaboration-storage.md) · [Commands](gitea-colla
 | Consumer progress | Same scope consumers/ | Local, ACK after complete pagination; no shared cursor file |
 | Recovery, index, usage, reports, work directories | Local data/cache/recovery roots, optional ignored repository sidecars | Local state, not another shared task ledger; no raw transcripts in Git |
 | Global rules and reference registry | Data root global-rules/, references/ | Local by default; not automatically synced to teammates |
+| Fallback, completion hook, canonical write guard, host capacity and bounded worker-job index | Data-root worker-policy.json, project-context.json, host-capacity.json and projects/ID/worker-job-history.json | Member/host policy and bounded local observations; never task authority or provider-quota proof |
 | Native login, token and AI session data | Each member's own tea / host profile | Never copied between machines or profiles; Continuity invokes tea without extracting tokens |
 
 SCOPE derives from instance/repository/credential_ref. Local project IDs may differ between members. AI executor changes never transfer human ownership. Handoff requests are not acceptance.
@@ -83,3 +84,9 @@ Shared rules should live in versioned repository policy. Local rules import/expo
 An AGENTS.md start contract should read the declaration and versioned rules, check CLI / backend doctor / sync, mutate tasks only through Issues with observed remote_revision and stable operation-id, read all pages before ACK, and keep merge/publish/deploy authorization independent. REV is an observation hash, not server CAS. Never claim a handoff or review was accepted merely because it was requested. No permanent controller, State init or extra database is required.
 
 Missing installation uses an explicitly user-approved build and persistent prefix via the [bootstrap script](../examples/gitea-bootstrap.py). Missing credentials require native local tea login, never a pasted plaintext token.
+
+## Alpha35 member-local worker policy
+
+worker-policy.json stores explicit fallback candidates and optional on-job-end argv. project-context.json worker_write_guard stores canonical roots and enablement. The top-level host-capacity.json stores operator-declared client-family limits for this host. None belongs in Git, and none proves another machine's login, provider quota or live process state. Copying these files does not migrate native authentication and must never be used to query another member's account.
+
+The canonical write guard materializes a PATH Git wrapper in persistent local data and blocks ordinary push/update-ref/receive-pack mistakes; it is not an OS sandbox. The completion hook uses local argv, a separate log and a receipt without a shell; it is not a remote wake-up service. Shared policy belongs in reviewed repository documents; each member separately configures local paths, credentials and data roots.

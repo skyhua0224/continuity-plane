@@ -2,7 +2,7 @@
 
 [中文](deployment.md) · [Documentation](README.en.md) · [Quick start](../USAGE.en.md)
 
-Applies to CLI `0.1.0a34` and plugin tag `v0.1.0-alpha.34`. Verify CLI installation, MCP connections and native hook delivery separately.
+Applies to CLI `0.1.0a35` and plugin tag `v0.1.0-alpha.35`. Verify CLI installation, MCP connections and native hook delivery separately.
 
 ## Choose a topology
 
@@ -22,7 +22,7 @@ Python 3.11+; Git is needed for tracked-file retrieval. Install native agent cli
 
 ```bash
 python3 -m venv .venv
-.venv/bin/python -m pip install 'continuity-plane==0.1.0a34'
+.venv/bin/python -m pip install 'continuity-plane==0.1.0a35'
 .venv/bin/continuity --version
 ```
 
@@ -31,7 +31,7 @@ Windows PowerShell uses `py -3 -m venv .venv`, `.venv\Scripts\python.exe` and `.
 Optional global installation:
 
 ```bash
-pipx install 'continuity-plane==0.1.0a34'
+pipx install 'continuity-plane==0.1.0a35'
 pipx upgrade continuity-plane --pip-args=--pre
 ```
 
@@ -40,7 +40,7 @@ Check both `continuity --version` and `pipx list`. GitHub's regular Release cate
 If an existing pipx/uv environment refuses recreation, update its interpreter in place:
 
 ```bash
-uv pip install --python /path/to/pipx/venvs/continuity-plane/bin/python --reinstall-package continuity-plane 'continuity-plane==0.1.0a34'
+uv pip install --python /path/to/pipx/venvs/continuity-plane/bin/python --reinstall-package continuity-plane 'continuity-plane==0.1.0a35'
 ```
 
 pipx display metadata may still need its normal upgrade refresh. During a network failure, a hash-verified wheel can be installed offline. Do not disable TLS verification or persist temporary offline flags into future upgrades.
@@ -65,12 +65,35 @@ continuity storage inspect --path /path/to/persistent/work
 
 Coordinate writers and use a SQLite-supported backup method or a consistent quiet window. Do not copy a partially changing dataset. State bundle export/import/rollback does not back up the entire external collaboration registry.
 
+### Optional Alpha35 member-local policy
+
+These settings belong to the selected local data root and host. They do not sync across machines or prove provider account quota.
+
+```bash
+# Operator-declared capacity shared across registered projects on this host
+continuity controller host-capacity --project-id demo \
+  --owner controller --token "$CONTROLLER_TOKEN" \
+  --host-client-limit total=8
+
+# Configured candidates used only after same-session transient retry exhaustion
+continuity worker fallback-policy set --project-id demo \
+  --model primary --candidate secondary
+
+# Optional ordinary Git-ref write protection for a canonical checkout
+continuity collaboration context-set --project-id demo \
+  --integration-root /workspace/demo --integration-base main \
+  --worker-write-policy canonical-read-only \
+  --canonical-repository-root /workspace/demo
+```
+
+Host capacity is a local run gate, not total account quota. The Git wrapper is materialized under the local persistent data directory; it guards ordinary PATH invocation of push/update-ref/receive-pack and is not a mount/namespace sandbox. Use a separate OS user, read-only mount or VM for strong isolation. Configure an optional local completion argv with `worker completion-hook set --argv-json ...`; its log and receipt stay in the job directory and it is not a remote wake-up channel.
+
 ## Codex plugin and MCP
 
 Install the CLI, add the marketplace, then select the plugin:
 
 ```bash
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.34
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.35
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -94,7 +117,7 @@ If add reports a different registered source, back up the owner-host Codex confi
 ```bash
 # Repin only the Continuity marketplace
 codex plugin marketplace remove continuity-plane
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.34
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.35
 codex plugin marketplace upgrade continuity-plane
 ```
 
@@ -180,7 +203,7 @@ The bridge can forward the bounded current explicit checklist by default; the ex
 
 ### Remote retrieval
 
-Launch `continuity-search-mcp` over SSH with a remote repository `root`, or use the local search-MCP routing introduced in Alpha29 and retained in Alpha34: set tool argument `bridge_config` or server environment `CONTINUITY_BRIDGE_CONFIG=/path/to/bridge.json`. An exact local_root maps to remote_root and invokes `continuity-remote-cli`. Optional settings are `remote_cli_endpoint`, `lookup_timeout_seconds` and owning-host `remote_data_root`. Missing/ambiguous mappings or transport failure produce an error, never local fallback. Remote mode rejects local cache_path/data_root. There is no arbitrary file/process administration. This route has synthetic protocol tests, not a new Alpha34 two-machine field run.
+Launch `continuity-search-mcp` over SSH with a remote repository `root`, or use the local search-MCP routing introduced in Alpha29 and retained in Alpha35: set tool argument `bridge_config` or server environment `CONTINUITY_BRIDGE_CONFIG=/path/to/bridge.json`. An exact local_root maps to remote_root and invokes `continuity-remote-cli`. Optional settings are `remote_cli_endpoint`, `lookup_timeout_seconds` and owning-host `remote_data_root`. Missing/ambiguous mappings or transport failure produce an error, never local fallback. Remote mode rejects local cache_path/data_root. There is no arbitrary file/process administration. This route has synthetic protocol tests, not a new Alpha35 two-machine field run.
 
 Set server environment `CONTINUITY_ASSIGNEE=worker-a` or pass the same `executor_id` on each `continuity_plan` call. Task add/update/claim and Todo activation use that stable identity; other executors' conflicts remain rejected. session_id describes recovery and no longer becomes the card assignee. This is declared collaboration identity, not native account authentication; do not configure all workers with one identity.
 
@@ -194,10 +217,14 @@ A controller configured with `CONTINUITY_ROLE=controller` can annotate task meta
 | MCP absent after host kill/reboot | The host-owned MCP does not survive reboot. Open a new host MCP or use CLI/explicit SSH remote until reconnected; `collaboration doctor` reports the lifecycle boundary |
 | No compaction continuation | Actual machine/profile, hook trust and paired save/restore records |
 | Missing message/end event | Recipient, task ID, pagination cursor and wait timeout; do not skip undelivered pages |
+| Worker ended but monitoring did not wake | Reconnect `worker events --since-cursor … --follow`. Checkpoints and hooks do not replace a durable event stream |
+| job.json lacks status/exit_code | New Alpha35 jobs synchronize terminal state; reconcile legacy jobs from result.json without inventing missing facts |
 | Missing rules | Complete rules export and attachment hashes, not silent clipping |
 | Own card rejected after MCP reconnect | Check CONTINUITY_ASSIGNEE/executor_id against the stored assignee; old connection IDs are not silently migrated |
 | Worker changes card before report capture | Fixed from Alpha29; check old runtimes, stale attempts or reassignment. Historical report files can still be attached explicitly |
-| Dispatch/resume stays CPU-bound | From Alpha34, inspect the tail offset in `dispatch-safety-index.json` and the change log; do not delete the change log. The first launch after upgrade performs one sequential backfill; later launches should consume only appended bytes |
+| Dispatch/resume stays CPU-bound | From Alpha35, inspect current execution bindings first: no running attempt must not replay history. Then inspect `dispatch-safety-index.json` and the change-log tail; do not delete history |
+| Host capacity or expired cooldown is confusing | Alpha35 computes expired in show and no longer keeps dispatch blocked after reset. Clear by model and use `--all-matching` for multiple provider records |
+| Worker pushed into a canonical repository | Confirm canonical-read-only and its roots were enabled. Absolute git paths or another program can bypass the wrapper; use OS isolation rather than claiming a sandbox |
 | HTTP 403/Cloudflare is labelled policy-review | Inspect original `output_tail`; absent an explicit model safety marker, resume reclassifies from the HTTP/auth evidence. If ambiguity remains, review the exact job and use `worker clear-policy-review --reason …` |
 | Hook failure | Temporarily set `CONTINUITY_DISABLED=1`; retain evidence and configuration, not account deletion |
 

@@ -19,7 +19,7 @@ Python 3.11+。推荐隔离安装；不要把系统 Python 的权限问题当作
 
 ```bash
 python3 -m venv .venv
-.venv/bin/python -m pip install 'continuity-plane==0.1.0a34'
+.venv/bin/python -m pip install 'continuity-plane==0.1.0a35'
 ```
 
 Windows 使用 `.venv\Scripts\python.exe` 和 `.venv\Scripts\continuity.exe`。以下用 `continuity` 表示环境内的命令；可激活环境或使用完整可执行路径。全局 pipx、升级、离线 wheel 与回滚见[部署指南](docs/deployment.md)。
@@ -66,9 +66,12 @@ continuity todo from-cards --project-id demo
 continuity collaboration task list --project-id demo --status dispatched --format brief
 continuity collaboration changes --project-id demo --since 0
 continuity collaboration wait --project-id demo --since 0 --event attempt.finished --event attempt.timeout --timeout-seconds 30
+continuity worker events --project-id demo --since-cursor 0 --follow
+continuity collaboration inbox wait --project-id demo --recipient controller --follow
+continuity collaboration inbox unread --project-id demo --recipient controller --count
 ```
 
-保存返回的 `next_cursor`，后续用它增量读取；`truncated` 为真时继续翻页。`wait` 超时非零不代表 worker 失败。收件方必须读取并 ack；信箱不是进程唤醒器。send 可省略 message_id，ack 可按 ID 或带 `--before/--all --limit` 批量确认，随后 archive 已确认消息。完整派卡、收尾、报告与合入证据见[工作流](docs/workflows.md)。
+保存返回的 `next_cursor`，后续用它增量读取；`truncated` 为真时继续翻页。`worker events` 用 `stream_cursor` 持续输出启动、进度、完成、失败、限流和阻塞，不需要 30 分钟监控窗口；`--all-projects` 使用 `project:cursor` 对。`wait` 或 inbox wait 超时非零不代表 worker 失败。收件方必须读取并 ack；信箱 wait 是本地观察，不是远程进程唤醒器。send 可省略 message_id，ack 可按 ID 或带 `--before/--all --limit` 批量确认，随后 archive 已确认消息。完整派卡、收尾、报告与合入证据见[工作流](docs/workflows.md)。
 
 需要等待容量或额度时，用 `continuity dispatch … --enqueue` 入队，再以 `continuity worker queue run --watch` 启动单实例 runner；`worker queue status` 查看 gate，`worker queue pause`／`resume` 控制本机是否继续派发。临时 429／quota／gateway 会带退避回队，状态变化进入 change feed。参数以 `continuity help worker.queue.run` 为准。
 
@@ -113,6 +116,6 @@ State、协作注册表、索引缓存和宿主会话不是同一份数据。默
 
 ## Release 与 PyPI
 
-当前版本：`0.1.0a34`；Git tag：`v0.1.0-alpha.34`。[GitHub Releases](https://github.com/skyhua0224/continuity-plane/releases/latest) 统一使用普通 Release；alpha 版本号仍表示兼容性可能变化，PyPI 选择它仍需明确 pin 或 `--pre`。
+当前版本：`0.1.0a35`；Git tag：`v0.1.0-alpha.35`。[GitHub Releases](https://github.com/skyhua0224/continuity-plane/releases/latest) 统一使用普通 Release；alpha 版本号仍表示兼容性可能变化，PyPI 选择它仍需明确 pin 或 `--pre`。
 
 [变更记录](CHANGELOG.md) · [发布与升级约定](docs/releases.md)

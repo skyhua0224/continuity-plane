@@ -56,7 +56,7 @@ Pasteable handoff convention:
 
 > Start by checking your identity, packet, rules and task body; read inbox/code routes when relevant. Finish with the final report, commit and actual verification, explicitly listing unverified scope. Hand back to the controller. Card status grants no push/merge authority.
 
-Normal successful attempts become ready-for-review; failed/interrupted attempts become blocked. Alpha34 continues to attach the current attempt's final report after early card updates without regressing manual status. Usage limits are recoverable quota conditions; other transient outcomes can wait in the built-in queue under capacity/cooldown gates instead of competing external filler scripts. See [validation](validation.en.md) for evidence scope.
+Normal successful attempts become ready-for-review; failed/interrupted attempts become blocked. Alpha35 continues to attach the current attempt's final report after early card updates without regressing manual status. Usage limits are recoverable quota conditions; other transient outcomes can wait in the built-in queue under capacity/cooldown gates instead of competing external filler scripts. See [validation](validation.en.md) for evidence scope.
 
 ### Integration and approval
 

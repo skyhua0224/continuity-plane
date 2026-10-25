@@ -79,19 +79,76 @@ def require_available(data_root, project_id, origin, model, *, now=None):
     )
 
 
-def clear(data_root, project_id, origin, model, reason):
+def _effective_status(item, *, now=None):
+    if item.get("status") != "paused":
+        return item.get("status"), False
+    until = item.get("available_at")
+    if not until:
+        paused = item.get("failure_class") == "quota-exhausted"
+        return ("paused" if paused else "observed-no-reset"), paused
+    try:
+        expires = datetime.fromisoformat(str(until).replace("Z", "+00:00"))
+    except ValueError:
+        return "paused-invalid-reset", True
+    if expires <= (now or datetime.now(UTC)):
+        return "expired", False
+    return "paused", True
+
+
+def clear(
+    data_root,
+    project_id,
+    origin,
+    model,
+    reason,
+    *,
+    all_matching=False,
+):
     from .project_context import _text
+    from .executor_routing import _model_alias
 
     _text(reason, "availability reconciliation reason", 2048)
-    require_local(origin, origin["provider"])
-    path = _path(data_root, project_id, origin, model)
-    with _locked(path):
+    if origin is not None:
+        require_local(origin, origin["provider"])
+        paths = [_path(data_root, project_id, origin, model)]
+    else:
+        folder = project_data_dir(data_root, project_id) / "dispatch-health"
+        paths = sorted(folder.glob("*.json")) if folder.exists() else []
+    matches = []
+    for path in paths:
         item = _load(path)
-        if not item:
-            raise ValueError("no observed cooldown exists")
-        item.update(status="manually-reconciled", reason=reason)
-        _atomic_write(path, item)
-    return {"status": "reconciled", "account_query": False}
+        if item and _model_alias(item.get("model")) == _model_alias(model):
+            try:
+                observed_origin = item.get("origin") or {}
+                require_local(observed_origin, observed_origin.get("provider"))
+            except ValueError:
+                continue
+            matches.append((path, item))
+    if not matches:
+        raise ValueError("no observed cooldown matches this model/provider scope")
+    if len(matches) > 1 and not all_matching:
+        raise ValueError(
+            "multiple origin/provider cooldowns match this model; add --provider to choose one or --all-matching"
+        )
+    cleared = []
+    for path, item in matches:
+        with _locked(path):
+            current = _load(path) or item
+            current.update(status="manually-reconciled", reason=reason)
+            _atomic_write(path, current)
+        cleared.append(
+            {
+                "health_id": path.stem,
+                "model": current.get("model"),
+                "provider": (current.get("origin") or {}).get("provider"),
+            }
+        )
+    return {
+        "status": "reconciled",
+        "cleared": cleared,
+        "account_query": False,
+        "scope": "exact observed origin/model records",
+    }
 
 
 def show(data_root, project_id):
@@ -101,12 +158,17 @@ def show(data_root, project_id):
         for path in sorted(folder.glob("*.json")):
             value = _load(path)
             if value:
+                effective, paused = _effective_status(value)
                 rows.append(
                     {
+                        "health_id": path.stem,
                         "model": value.get("model"),
+                        "provider": (value.get("origin") or {}).get("provider"),
                         "failure_class": value.get("failure_class"),
                         "available_at": value.get("available_at"),
-                        "status": value.get("status"),
+                        "status": effective,
+                        "recorded_status": value.get("status"),
+                        "effective_paused": paused,
                         "basis": value.get("basis"),
                         "reason": value.get("reason"),
                         "explanation": value.get("reason")
@@ -117,6 +179,15 @@ def show(data_root, project_id):
                         "attempt_id": value.get("attempt_id"),
                         "observed_at": value.get("observed_at"),
                         "scope": "project data root + host/profile + model",
+                        "clear_command": (
+                            "continuity dispatch-health clear --project-id "
+                            + project_id
+                            + " --provider "
+                            + str((value.get("origin") or {}).get("provider") or "custom")
+                            + " --model "
+                            + str(value.get("model") or "")
+                            + " --reason <reason>"
+                        ),
                     }
                 )
     return {
@@ -140,10 +211,11 @@ def register_cli(commands):
         leaf.add_argument("--max-output-bytes", type=int, default=4096)
         if action == "clear":
             leaf.add_argument(
-                "--provider", choices=("codex", "claude", "custom"), required=True
+                "--provider", choices=("codex", "claude", "custom")
             )
             leaf.add_argument("--model", required=True)
             leaf.add_argument("--reason", required=True)
+            leaf.add_argument("--all-matching", action="store_true")
         leaf.set_defaults(handler=command, health_action=action)
 
 
@@ -156,9 +228,10 @@ def command(args):
         value = clear(
             args.data_root,
             args.project_id,
-            current(args.provider),
+            current(args.provider) if args.provider else None,
             args.model,
             args.reason,
+            all_matching=args.all_matching,
         )
     print(render(value, format=args.format, max_output_bytes=args.max_output_bytes))
     return 0

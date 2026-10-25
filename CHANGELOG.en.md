@@ -2,6 +2,16 @@
 
 Adoption: [deployment](docs/deployment.en.md), [recent release notes](docs/releases.en.md), [current coverage/known gaps](docs/validation.en.md). Historical entries retain their original scope. Regular GitHub Release classification does not remove alpha semantics.
 
+## 0.1.0-alpha.35
+
+- Add cursor-based `worker events --follow`, `inbox wait` and unread count; completion, failure, rate limiting and blockage no longer depend on a monitoring time window.
+- Synchronize running/terminal state, exit_code, finish time and observed cwd/HEAD across job.json, the worker index and result; heartbeats classify idle and ordinary build-lock waits.
+- Skip history replay when no execution binding is running and reconcile active bindings only from their start cursor. Increase task-show default budget to 64 KiB and surface legacy body-text dependencies as migration hints.
+- Add optional host-declared capacity, automatic cooldown expiry, project fallback policy, explicit reassignment after transient retry exhaustion and a non-blocking completion hook.
+- Preserve assignee on queued status, add explicit --unassign, allow reason-recorded controller-lease reassignment and treat superseded as a terminal dependency.
+- Add an opt-in canonical-repository PATH Git write guard, explicitly not a security sandbox. No default Git, account or provider configuration mutation.
+- [Release notes and limits](docs/release-alpha35.md).
+
 ## 0.1.0-alpha.34
 
 - HTTP 401/403, Cloudflare/proxy interception and gateway diagnostics no longer become content refusals from generic "policy" wording; explicit model-safety markers still take precedence.

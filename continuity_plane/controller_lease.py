@@ -85,6 +85,24 @@ def require(data_root, project_id, owner=None, token=None):
     )
 
 
+def active_owner(data_root, project_id, *, now=None):
+    """Return the unexpired cooperating controller owner without granting authority."""
+
+    try:
+        lease = _load(_path(data_root, project_id)).get("controller_lease") or {}
+    except (OSError, ValueError, KeyError):
+        return None
+    expires_at = lease.get("expires_at")
+    owner = lease.get("owner")
+    if (
+        not isinstance(owner, str)
+        or type(expires_at) not in (int, float)
+        or expires_at <= (time.time() if now is None else now)
+    ):
+        return None
+    return owner
+
+
 def acquire(
     data_root,
     project_id,
@@ -246,6 +264,16 @@ def reserve(
     profile,
     replace_job_id=None,
 ):
+    from .host_capacity import path as host_capacity_path
+
+    with _locked(host_capacity_path(data_root)):
+        return _reserve(
+            data_root, project_id, task_id=task_id, job_id=job_id,
+            owner=owner, token=token, profile=profile, replace_job_id=replace_job_id,
+        )
+
+
+def _reserve(data_root, project_id, *, task_id, job_id, owner, token, profile, replace_job_id=None):
     required = _load_ledger(Path(data_root or default_data_root()), project_id).get(
         "controller_fencing_required", False
     )
@@ -275,6 +303,9 @@ def reserve(
             )
         client = profile.get("profile_provider", profile["provider"])
         origin = profile.get("execution_origin")
+        from .host_capacity import enforce as enforce_host_capacity
+
+        enforce_host_capacity(data_root, client, exclude=(project_id, task_id))
         ledger = _load_ledger(Path(data_root or default_data_root()), project_id)
         active = []
         stale = []
@@ -317,6 +348,8 @@ def reserve(
 
 
 def reservation_report(data_root, project_id, *, state=None):
+    from .host_capacity import usage as host_capacity_usage
+
     path = _path(data_root, project_id)
     doc = _load(path)
     ledger = _load_ledger(Path(data_root or default_data_root()), project_id)
@@ -371,6 +404,7 @@ def reservation_report(data_root, project_id, *, state=None):
             for name in ("live", "stale", "unknown")
         },
         "capacity": list(capacity.values()),
+        "host_capacity": host_capacity_usage(data_root),
     }
 
 
@@ -658,6 +692,24 @@ def command(args):
             project_id,
             state=args.state,
         )
+    elif args.controller_action == "host-capacity":
+        from .host_capacity import load as host_capacity_load, set_limits, usage
+
+        if args.host_client_limit:
+            if not project_id:
+                raise ValueError("changing host capacity requires a registered project lease")
+            require(args.data_root, project_id, args.owner, args.token)
+            limits = {}
+            for entry in args.host_client_limit:
+                name, separator, limit = entry.partition("=")
+                if not separator or not limit.isdigit() or int(limit) < 1:
+                    raise ValueError(
+                        "host-client-limit must be CLIENT=POSITIVE_INTEGER"
+                    )
+                limits[name] = int(limit)
+            value = set_limits(args.data_root, limits)
+        else:
+            value = {**host_capacity_load(args.data_root), **usage(args.data_root)}
     elif args.controller_action == "reconcile-host":
         value = reconcile_host(
             args.data_root,
@@ -732,6 +784,7 @@ def command(args):
             reservation_counts=reservations["counts"],
             capacity=reservations["capacity"],
             capacity_semantics=reservations["capacity_semantics"],
+            host_capacity=reservations["host_capacity"],
         )
     else:
         raise ValueError("unsupported controller action")
@@ -755,6 +808,7 @@ def register_cli(commands):
         "run",
         "clear-reservation",
         "clear-operation",
+        "host-capacity",
     ):
         leaf = leaves.add_parser(action)
         leaf.set_defaults(handler=command)
@@ -789,6 +843,13 @@ def register_cli(commands):
             leaf.add_argument("--reason", required=True)
         if action == "reservations":
             leaf.add_argument("--state", choices=("live", "stale", "unknown"))
+        if action == "host-capacity":
+            leaf.add_argument(
+                "--host-client-limit",
+                action="append",
+                default=[],
+                help="Set host-wide client capacity, e.g. codex=8; requires a controller lease",
+            )
         if action == "reconcile-host":
             leaf.add_argument("--apply", action="store_true")
             leaf.add_argument(

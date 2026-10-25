@@ -12,6 +12,7 @@ from .collaboration_registry import (
     _now,
     _record_change,
     default_data_root,
+    latest_change_cursor,
 )
 
 
@@ -110,7 +111,60 @@ def bind_execution(
             "used_attempt_ids": used + [attempt_id],
             "scope_sha256": scope_sha,
             "model": model,
+            "event_start_cursor": latest_change_cursor(root, project_id=project_id),
+            "bound_at": _now(),
         }
+        ledger["updated_at"] = _now()
+        _atomic_write(path, ledger)
+
+
+def record_execution_process(
+    data_root,
+    *,
+    project_id,
+    task_id,
+    attempt_id,
+    pid,
+    host_id,
+    process_identity=None,
+    started_at=None,
+    observed_cwd=None,
+    observed_head=None,
+    observed_branch=None,
+    observation_error=None,
+):
+    """Attach owned-process identity after spawn without weakening the binding gate."""
+
+    if type(pid) is not int or pid <= 0:
+        raise CollaborationRegistryError("execution pid is invalid")
+    if not isinstance(host_id, str) or not host_id or len(host_id.encode()) > 255:
+        raise CollaborationRegistryError("execution host identity is invalid")
+    if process_identity is not None and (
+        not isinstance(process_identity, str) or len(process_identity.encode()) > 256
+    ):
+        raise CollaborationRegistryError("execution process identity is invalid")
+    root = Path(data_root or default_data_root())
+    path = _ledger_path(root, project_id)
+    with _locked(path):
+        ledger = _load_ledger(root, project_id)
+        binding = ledger.get("execution_bindings", {}).get(task_id, {})
+        if (
+            binding.get("status") != "running"
+            or binding.get("attempt_id") != attempt_id
+        ):
+            raise CollaborationRegistryError(
+                "execution binding changed before process identity was recorded"
+            )
+        binding.update(
+            pid=pid,
+            host_id=host_id,
+            process_identity=process_identity,
+            started_at=started_at or _now(),
+            observed_cwd=observed_cwd,
+            observed_head=observed_head,
+            observed_branch=observed_branch,
+            observation_error=observation_error,
+        )
         ledger["updated_at"] = _now()
         _atomic_write(path, ledger)
 
@@ -196,7 +250,7 @@ def finish_execution(
         }
         # Journal first. If the ledger write fails, daemon replay reapplies this
         # projection. Stable event IDs make that replay idempotent.
-        _record_change(
+        finish_event = _record_change(
             root,
             project_id,
             event_prefix + ".finished",
@@ -218,9 +272,27 @@ def finish_execution(
             **details,
             **({"report": report} if report else {}),
         )
+        if finish_event:
+            result["finished_at"] = finish_event.get("finished_at")
+            result["cursor"] = finish_event.get("cursor")
         if current:
-            binding["status"] = status
-            binding["reason"] = reason
+            binding.update(
+                status=status,
+                reason=reason,
+                return_code=return_code,
+                finished_at=finish_event.get("finished_at")
+                if finish_event
+                else _now(),
+                finished_cursor=finish_event.get("cursor") if finish_event else None,
+            )
+            if "failure_class" in details:
+                binding["failure_class"] = details["failure_class"]
+            if observed_cwd := details.get("observed_cwd"):
+                binding["observed_cwd"] = observed_cwd
+            if observed_head := details.get("observed_head"):
+                binding["observed_head"] = observed_head
+            if observed_branch := details.get("observed_branch"):
+                binding["observed_branch"] = observed_branch
             ledger["updated_at"] = _now()
             _atomic_write(path, ledger)
             _record_change(

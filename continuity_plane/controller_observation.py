@@ -13,7 +13,8 @@ from .collaboration_registry import (
     _load_ledger,
     _now,
     default_data_root,
-    list_changes,
+    iter_changes,
+    latest_change_cursor,
     list_projects,
     project_data_dir,
 )
@@ -28,14 +29,10 @@ def timestamp(value):
 
 def event_facts(data_root, project_id, since=0):
     cursor, facts = since, []
-    while True:
-        page = list_changes(
-            data_root, project_id=project_id, since=cursor, max_results=500
-        )
-        facts.extend(page["changes"])
-        if not page["truncated"] or page["next_cursor"] <= cursor:
-            return page["next_cursor"], facts
-        cursor = page["next_cursor"]
+    for row in iter_changes(data_root, project_id=project_id, since=since):
+        facts.append(row)
+        cursor = max(cursor, row["cursor"])
+    return cursor, facts
 
 
 def report_facts(data_root, project_id, cards=None, jobs=None):
@@ -143,9 +140,16 @@ def observe(data_root, project_id, *, recipient=None, since=0, max_items=12):
                 "assignee": binding.get("assignee"),
                 "status": status,
                 "source": "terminal-event" if end else "execution-binding",
-                "cursor": end.get("cursor") if end else None,
-                "failure_class": end.get("failure_class") if end else None,
-                "reason": end.get("reason") if end else None,
+                "cursor": end.get("cursor")
+                if end
+                else binding.get("finished_cursor"),
+                "failure_class": end.get("failure_class")
+                if end
+                else binding.get("failure_class"),
+                "reason": end.get("reason") if end else binding.get("reason"),
+                "observed_cwd": binding.get("observed_cwd"),
+                "observed_head": binding.get("observed_head"),
+                "observed_branch": binding.get("observed_branch"),
             }
         )
     context = _load(_path(data, project_id))
@@ -297,8 +301,17 @@ def observe(data_root, project_id, *, recipient=None, since=0, max_items=12):
             }
             for r in decisions[-3:]
         ],
-        "change_cursor": cursor,
-        "last_ended_cursor": max([r["cursor"] for r in terminal.values()] or [0]),
+        "change_cursor": max(
+            cursor, latest_change_cursor(data, project_id=project_id)
+        ),
+        "last_ended_cursor": max(
+            [r["cursor"] for r in terminal.values()]
+            + [
+                binding.get("finished_cursor") or 0
+                for binding in ledger.get("execution_bindings", {}).values()
+            ]
+            + [0]
+        ),
         "workers": workers[-limit:] if limit else [],
         "workers_total": len(workers),
         "running_workers_total": sum(r["status"] == "running" for r in workers),

@@ -105,7 +105,7 @@ def compose_collaboration_packet(
     # a controller from dumping the full dispatch ledger into context.
     try:
         all_tasks = list_tasks(root, project_id=project_id)
-        packet["in_flight"] = [
+        in_flight = [
             {
                 key: item[key]
                 for key in (
@@ -121,9 +121,11 @@ def compose_collaboration_packet(
             for item in all_tasks
             if item["status"] in {"active", "dispatched", "blocked"}
         ]
-        packet["in_flight"].sort(
+        in_flight.sort(
             key=lambda item: (item["updated_at"], item["task_id"]), reverse=True
         )
+        packet["in_flight_total"] = len(in_flight)
+        packet["in_flight"] = in_flight[:32]
     except CollaborationRegistryError:
         packet["in_flight"] = []
     registration = next(

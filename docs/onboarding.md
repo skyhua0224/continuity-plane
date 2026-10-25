@@ -22,7 +22,7 @@ continuity collaboration task list --project-id demo --assignee worker-a --forma
 
 ## 开场与收尾
 
-开场读取必要的 packet、规则、正文和代码路标；收件箱有消息时再取。完成后保留报告、commit、实际检查与未验证范围，由主控评审。supervisor 结束可投影待评审／阻塞；Alpha34 继续在提前改卡后挂载当前 attempt 的报告并保留手工状态，详见[验证](validation.md)。
+开场读取必要的 packet、规则、正文和代码路标；收件箱有消息时再取。完成后保留报告、commit、实际检查与未验证范围，由主控评审。supervisor 结束可投影待评审／阻塞；Alpha35 继续在提前改卡后挂载当前 attempt 的报告并保留手工状态，详见[验证](validation.md)。
 
 ## 持久收件箱
 

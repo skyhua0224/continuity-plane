@@ -19,7 +19,7 @@ Python 3.11+. Prefer an isolated environment:
 
 ```bash
 python3 -m venv .venv
-.venv/bin/python -m pip install 'continuity-plane==0.1.0a34'
+.venv/bin/python -m pip install 'continuity-plane==0.1.0a35'
 ```
 
 On Windows use `.venv\Scripts\python.exe` and `.venv\Scripts\continuity.exe`. Later examples assume `continuity` is on PATH. Global pipx installation, upgrades, offline wheels and rollback are in [deployment](docs/deployment.en.md).
@@ -66,9 +66,12 @@ continuity todo from-cards --project-id demo
 continuity collaboration task list --project-id demo --status dispatched --format brief
 continuity collaboration changes --project-id demo --since 0
 continuity collaboration wait --project-id demo --since 0 --event attempt.finished --event attempt.timeout --timeout-seconds 30
+continuity worker events --project-id demo --since-cursor 0 --follow
+continuity collaboration inbox wait --project-id demo --recipient controller --follow
+continuity collaboration inbox unread --project-id demo --recipient controller --count
 ```
 
-Persist `next_cursor` and continue pages while `truncated` is true. A nonzero wait timeout is not a failed worker. Recipients must read and acknowledge messages; inbox is not a process wake-up mechanism. Send may omit message_id; acknowledgement supports one ID or bounded `--before/--all --limit` batches, then archive of acknowledged messages. See [workflows](docs/workflows.en.md) for dispatch, handback and evidence.
+Persist `next_cursor` and continue pages while `truncated` is true. worker events streams started, progress, completed, failed, rate-limited and blocked facts from stream_cursor without a monitoring window; --all-projects uses project:cursor pairs. A wait or inbox-wait timeout is not a failed worker. Inbox wait is local observation, not a remote process wake-up. Send may omit message_id; acknowledgement supports one ID or bounded `--before/--all --limit` batches, then archive of acknowledged messages. See [workflows](docs/workflows.en.md) for dispatch, handback and evidence.
 
 When work must wait for capacity or quota, enqueue with `continuity dispatch … --enqueue`, then run one `continuity worker queue run --watch` process. Use `worker queue status` for gates and `worker queue pause`/`resume` for the host switch. Transient 429/quota/gateway outcomes return with backoff and queue transitions enter the change feed. See `continuity help worker.queue.run`.
 
@@ -113,6 +116,6 @@ Back up project `.continuity/`, the collaboration data root and custom artifacts
 
 ## Releases and PyPI
 
-Current package: `0.1.0a34`; Git tag: `v0.1.0-alpha.34`. [GitHub Releases](https://github.com/skyhua0224/continuity-plane/releases/latest) use the regular Release category. The alpha version still signals evolving compatibility; PyPI installation requires an exact pin or `--pre`.
+Current package: `0.1.0a35`; Git tag: `v0.1.0-alpha.35`. [GitHub Releases](https://github.com/skyhua0224/continuity-plane/releases/latest) use the regular Release category. The alpha version still signals evolving compatibility; PyPI installation requires an exact pin or `--pre`.
 
 [Changelog](CHANGELOG.en.md) · [Release policy](docs/releases.en.md)

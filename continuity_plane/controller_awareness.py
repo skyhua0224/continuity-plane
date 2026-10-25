@@ -9,8 +9,9 @@ from .collaboration_registry import (
     _atomic_write,
     _locked,
     default_data_root,
+    iter_changes,
+    latest_change_cursor,
     resolve_project,
-    list_changes,
     list_tasks,
     _load_ledger,
 )
@@ -41,29 +42,28 @@ def _notice(payload, *, root=None, data_root=None, max_bytes=512):
     try:
         with _locked(marker):
             previous = json.loads(marker.read_text()) if marker.exists() else None
-            first = list_changes(
-                data,
-                project_id=registration["project_id"],
-                since=(previous or {}).get("cursor", 0),
-                max_results=500,
-            )
             if previous is None:
                 _atomic_write(
                     marker,
                     {
-                        "cursor": first["high_water_cursor"],
+                        "cursor": latest_change_cursor(
+                            data, project_id=registration["project_id"]
+                        ),
                         "rules_digest": rules_digest,
                     },
                 )
                 return None
             cursor = previous["cursor"]
             relevant = []
-            page = first
-            for _ in range(10):
-                relevant.extend(
-                    r
-                    for r in page["changes"]
-                    if r["event"] in {"attempt.finished", "run.finished"}
+            scanned = 0
+            for r in iter_changes(
+                data,
+                project_id=registration["project_id"],
+                since=cursor,
+            ):
+                scanned += 1
+                if (
+                    r["event"] in {"attempt.finished", "run.finished"}
                     or (r["event"] == "task.updated" and r.get("status") == "blocked")
                     or r["event"] == "rule.updated"
                     or r["event"] == "quota.changed"
@@ -73,16 +73,11 @@ def _notice(payload, *, root=None, data_root=None, max_bytes=512):
                         "dispatch.queue-blocked",
                         "dispatch.queue-retry-scheduled",
                     }
-                )
-                cursor = page["next_cursor"]
-                if not page["truncated"]:
+                ):
+                    relevant.append(r)
+                cursor = max(cursor, r["cursor"])
+                if scanned >= 5000:
                     break
-                page = list_changes(
-                    data,
-                    project_id=registration["project_id"],
-                    since=cursor,
-                    max_results=500,
-                )
             if previous.get("rules_digest") != rules_digest and not any(
                 r["event"] == "rule.updated" for r in relevant
             ):
@@ -217,10 +212,12 @@ def scene(
     workers = []
     from .controller_observation import observe
 
+    current_cursor = latest_change_cursor(data, project_id=project_id)
     observed = observe(
         data,
         project_id,
         recipient=os.environ.get("CONTINUITY_ASSIGNEE"),
+        since=current_cursor,
         max_items=max(64, len(ledger.get("execution_bindings", {}))),
     )
     running_ids = {
@@ -270,19 +267,8 @@ def scene(
         else None
     )
     learned = lessons(data, project_id, max_results=2)
-    cursor, ended = 0, None
-    while True:
-        page = list_changes(data, project_id=project_id, since=cursor, max_results=500)
-        for row in page["changes"]:
-            if row["event"] in {
-                "attempt.finished",
-                "attempt.timeout",
-                "dispatch.policy-stopped",
-            }:
-                ended = row["cursor"]
-        cursor = page["next_cursor"]
-        if not page["truncated"]:
-            break
+    cursor = observed["change_cursor"]
+    ended = observed["last_ended_cursor"] or None
     result = {
         "integration": integration_state,
         "session_binding": {

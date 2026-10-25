@@ -6,7 +6,7 @@ This is the detailed command reference. Use the capability matrix for present co
 
 ## Caller identity and reassignment
 
-Alpha34 includes the reassignment behavior below. Task add/update accept `--actor` for the caller and
+Alpha35 includes the reassignment behavior below. Task add/update accept `--actor` for the caller and
 `--assignee` for the target worker. Actor defaults to `CONTINUITY_ASSIGNEE`;
 creating a card records its creator. Do not use an MCP connection ID as this identity.
 
@@ -17,7 +17,11 @@ continuity collaboration task update --project-id demo --task-id parser-fix \
 
 The recorded creator can change a planned assignment until the worker claims or
 starts it; the current owner can hand off its own non-running card. A running
-attempt still requires an explicit audited override. Legacy cards without a
+attempt still requires an explicit audited override. The active controller-lease
+holder can reassign a non-running card with `--actor <lease-owner> --reason ...`;
+the reason is persisted and no impersonation of the old owner is required.
+`status=queued` preserves the assignment, while `--unassign` is the explicit
+clear operation. Legacy cards without a
 recorded creator are not silently attributed to the caller. Reassignments record
 the caller, old/new assignees and any override reason. These are local planning
 identities, not native account authentication or external-operation authorization.
@@ -29,7 +33,7 @@ Both CLI help and `continuity_help` expose the new actor parameter.
 
 ## Controller recovery and change consumers
 
-This section describes Alpha34. Upgrade package and host plugins together and
+This section describes Alpha35. Upgrade package and host plugins together and
 open fresh MCP connections; the upgrade does not migrate native accounts or
 provider sessions.
 
@@ -43,6 +47,10 @@ crash are therefore visible on the next read without relying on a Stop hook.
 continuity handoff show --project-id demo
 continuity handoff write --project-id demo --auto
 continuity collaboration drift --project-id demo
+continuity worker events --project-id demo --since-cursor LAST_CURSOR --follow
+continuity collaboration inbox wait --project-id demo --recipient controller --follow
+continuity collaboration inbox unread --project-id demo --recipient controller --count
+continuity worker jobs --project-id demo --status ended
 ```
 
 Auto write preserves the declared plan and saves an evidence-linked candidate
@@ -68,6 +76,14 @@ trimming only acknowledges rows the caller explicitly confirms. A reset requires
 `--reset-consumer --since CURSOR`; it never deletes events. Consumers sharing a
 name share a checkpoint, so independent listeners need distinct names.
 
+Alpha35 adds a cursor-based live projection over the same append-only facts:
+single-project cursors are integers; `--all-projects` uses comma-separated
+`project:cursor` pairs. Each worker row carries `stream_cursor`. New job
+documents and `worker-job-history.json` record running/terminal status, exit
+code and finish time. Execution bindings also record observed PID, cwd, Git HEAD,
+start cursor and finish cursor. These are observations, not proof that the
+planned worktree or provider outcome was correct.
+
 `task list/show/add/update/claim/next` are aliases of the corresponding
 `collaboration task` leaves; `task merged` retains its existing behavior.
 Dispatch refuses executor/model conflicts and fences the prepared body/scope
@@ -85,8 +101,13 @@ Authorized fallback/handoff remains explicit. Upstream replay-reset codes take
 precedence over an outer 429. Replay refusal can suggest an explicit new session;
 real rate limits instead advise honoring provider cooldown (a new thread does
 not reset quota). Recovery suggestions never authorize authentication/policy bypass.
+Project fallback policy (`worker fallback-policy set`) is consulted only after
+the same-session transient retry budget is exhausted. Authentication and
+content-policy outcomes never trigger it. Optional host capacity and canonical
+Git write guard are local operator policy; neither is provider quota proof or a
+security sandbox.
 
-The Alpha34 Claude plugin and bridge include `SessionEnd` and nine hook types. An owner-session end or a
+The Alpha35 Claude plugin and bridge include `SessionEnd` and nine hook types. An owner-session end or a
 changed observed boot marks matching native attempts **lost to observation**,
 not exited successfully. Age without heartbeat is `unknown-stale`, not proof of
 exit. Native account data stays on its owning machine/profile.

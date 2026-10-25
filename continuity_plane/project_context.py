@@ -256,6 +256,8 @@ def context_set(
     integration_root,
     integration_ref="refs/heads/main",
     *,
+    canonical_repository_roots=None,
+    worker_write_policy=None,
     controller=None,
     controller_token=None,
 ):
@@ -284,6 +286,22 @@ def context_set(
             "integration ref is not available on this host; no checkout HEAD substituted"
         )
     path = _path(data_root, project_id)
+    protected_roots = None
+    if canonical_repository_roots is not None:
+        if not isinstance(canonical_repository_roots, (list, tuple)):
+            raise ValueError("canonical-repository-root must be repeatable paths")
+        protected_roots = []
+        for item in canonical_repository_roots:
+            candidate = Path(item).expanduser()
+            if not candidate.is_absolute() or not candidate.is_dir():
+                raise ValueError(
+                    "canonical-repository-root must identify an existing absolute directory"
+                )
+            resolved = str(candidate.resolve())
+            if resolved not in protected_roots:
+                protected_roots.append(resolved)
+    if worker_write_policy not in {None, "canonical-read-only", "unprotected"}:
+        raise ValueError("worker-write-policy must be canonical-read-only or unprotected")
     with _locked(path):
         doc = _load(path)
         from .controller_lease import _require
@@ -294,8 +312,53 @@ def context_set(
             "ref": integration_ref,
             "recorded_at": _now(),
         }
+        if protected_roots is not None or worker_write_policy is not None:
+            previous = doc.get("worker_write_guard", {})
+            roots = (
+                protected_roots
+                if protected_roots is not None
+                else previous.get("canonical_roots", [])
+            )
+            policy = worker_write_policy or (
+                "canonical-read-only"
+                if previous.get("enabled")
+                else "unprotected"
+            )
+            if policy == "canonical-read-only" and not roots:
+                raise ValueError(
+                    "canonical-read-only worker policy requires at least one canonical-repository-root"
+                )
+            doc["worker_write_guard"] = {
+                "enabled": policy == "canonical-read-only",
+                "canonical_roots": roots,
+                "mechanism": "PATH git wrapper; not an OS security sandbox",
+                "recorded_at": _now(),
+            }
         _atomic_write(path, doc)
-    return doc["integration"]
+    return {
+        "integration": doc["integration"],
+        **(
+            {"worker_write_guard": doc["worker_write_guard"]}
+            if doc.get("worker_write_guard")
+            else {}
+        ),
+    }
+
+
+def worker_write_guard(data_root, project_id):
+    document = _load(_path(data_root, project_id))
+    value = document.get("worker_write_guard")
+    if value is None:
+        return {
+            "enabled": False,
+            "canonical_roots": [],
+            "mechanism": "disabled",
+        }
+    if not isinstance(value, dict) or not isinstance(
+        value.get("canonical_roots"), list
+    ):
+        raise ValueError("worker write guard configuration is invalid")
+    return value
 
 
 def integration(data_root, project_id, fallback_root):
@@ -636,6 +699,8 @@ def command(args):
             project_id,
             args.integration_root,
             args.integration_ref,
+            canonical_repository_roots=args.canonical_repository_root,
+            worker_write_policy=args.worker_write_policy,
             controller=args.controller,
             controller_token=args.controller_token,
         )
@@ -660,11 +725,14 @@ def command(args):
             args.data_root, project_id, recipient=os.environ.get("CONTINUITY_ASSIGNEE")
         )
     else:
-        value = integration(
-            args.data_root,
-            project_id,
-            (registration or {}).get("control_root", args.root),
-        )
+        value = {
+            **integration(
+                args.data_root,
+                project_id,
+                (registration or {}).get("control_root", args.root),
+            ),
+            "worker_write_guard": worker_write_guard(args.data_root, project_id),
+        }
     print(render(value, format=args.format, max_output_bytes=args.max_output_bytes))
     return 0
 
@@ -722,6 +790,16 @@ def _arguments(parser, action):
         )
         parser.add_argument("--controller")
         parser.add_argument("--controller-token")
+        parser.add_argument(
+            "--canonical-repository-root",
+            action="append",
+            help="Block worker Git ref writes into each canonical repository root through a PATH wrapper",
+        )
+        parser.add_argument(
+            "--worker-write-policy",
+            choices=("canonical-read-only", "unprotected"),
+            help="Explicit worker Git write policy; the wrapper is not a security sandbox",
+        )
     elif action == "handoff-write":
         parser.add_argument(
             "--capture-member",

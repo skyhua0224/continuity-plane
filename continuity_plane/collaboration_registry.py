@@ -373,39 +373,25 @@ def _record_change(
     event: str,
     task_id: str | None = None,
     **fields: Any,
-) -> None:
+) -> dict[str, Any] | None:
     path = _changes_path(data_root, project_id)
     path.parent.mkdir(parents=True, exist_ok=True)
     with _locked(path):
         prefix = ""
         if fields.get("event_id"):
-            try:
-                existing = path.read_text(encoding="utf-8").splitlines()
-            except FileNotFoundError:
-                existing = []
-            rows = []
-            for line in existing:
-                try:
-                    row = json.loads(line)
-                except json.JSONDecodeError:
-                    continue
-                if isinstance(row, dict):
-                    rows.append(row)
-            if any(row.get("event_id") == fields["event_id"] for row in rows):
-                return
-            cursor = max(
-                [len(existing)]
-                + [row["cursor"] for row in rows if type(row.get("cursor")) is int]
-            )
-        else:
-            cursor = latest_change_cursor(data_root, project_id=project_id)
-            try:
-                with path.open("rb") as stream:
-                    stream.seek(-1, os.SEEK_END)
-                    if stream.read(1) != b"\n":
-                        prefix = "\n"
-            except (FileNotFoundError, OSError):
-                pass
+            from .journal_index import find_event
+
+            existing = find_event(path, fields["event_id"])
+            if existing is not None:
+                return existing
+        cursor = latest_change_cursor(data_root, project_id=project_id)
+        try:
+            with path.open("rb") as stream:
+                stream.seek(-1, os.SEEK_END)
+                if stream.read(1) != b"\n":
+                    prefix = "\n"
+        except (FileNotFoundError, OSError):
+            pass
         payload = {
             **fields,
             "cursor": cursor + 1,
@@ -419,6 +405,7 @@ def _record_change(
             )
             stream.flush()
             os.fsync(stream.fileno())
+        return payload
 
 
 def list_changes(
@@ -467,6 +454,39 @@ def list_changes(
         "truncated": len(selected) < len(pending),
         "corrupt_lines": corrupt,
     }
+
+
+def iter_changes(
+    data_root: Path | str | None,
+    *,
+    project_id: str,
+    since: int = 0,
+):
+    """Stream valid appended events without repeatedly reparsing pages."""
+
+    if type(since) is not int or since < 0:
+        raise CollaborationRegistryError("since is invalid")
+    root = Path(data_root) if data_root is not None else default_data_root()
+    path = _changes_path(root, project_id)
+    try:
+        from .journal_index import offset_after
+
+        offset = offset_after(path, since) if since else 0
+        with path.open("rb") as stream:
+            stream.seek(offset)
+            for line in stream:
+                try:
+                    row = json.loads(line)
+                except (ValueError, UnicodeError):
+                    continue
+                if (
+                    isinstance(row, dict)
+                    and type(row.get("cursor")) is int
+                    and row["cursor"] > since
+                ):
+                    yield row
+    except FileNotFoundError:
+        return
 
 
 def latest_change_cursor(data_root: Path | str | None, *, project_id: str) -> int:
@@ -709,7 +729,8 @@ def _note_lane(ledger, task):
 def dependencies_ready(task, tasks):
     by_id = {item["task_id"]: item for item in tasks}
     return all(
-        by_id.get(dependency_id, {}).get("status") in {"completed", "merged"}
+        by_id.get(dependency_id, {}).get("status")
+        in {"completed", "merged", "superseded"}
         for dependency_id in task.get("dependencies", [])
     )
 
@@ -830,9 +851,11 @@ def update_task(
     report: dict | None = None,
     verification_data: dict | None = None,
     body: str | None = None,
+    unassign: bool = False,
     force: bool = False,
     force_reason: str | None = None,
     actor: str | None = None,
+    controller_token: str | None = None,
 ) -> dict[str, Any]:
     """Update a card; local completion is ready-for-review, not acceptance."""
     if actor is not None and (
@@ -841,6 +864,8 @@ def update_task(
         raise CollaborationRegistryError("actor must be a valid stable assignee")
     if force and (not isinstance(force_reason, str) or not force_reason.strip()):
         raise CollaborationRegistryError("--force requires a recorded --force-reason")
+    if unassign and assignee is not None:
+        raise CollaborationRegistryError("choose --assignee or --unassign, not both")
     root = Path(data_root) if data_root is not None else default_data_root()
     path = _ledger_path(root, project_id)
     with _locked(path):
@@ -852,9 +877,31 @@ def update_task(
             raise CollaborationRegistryError("task_id does not exist")
         details = ledger.setdefault("task_details", {}).setdefault(task_id, {})
         previous_assignee = task["assignee"]
-        reassigning = assignee is not None and assignee != previous_assignee
+        if unassign:
+            assignee = None
+        reassigning = unassign or (
+            assignee is not None and assignee != previous_assignee
+        )
+        controller_can_reassign = False
         if reassigning and previous_assignee is not None and not force:
             binding = ledger.get("execution_bindings", {}).get(task_id, {})
+            from .controller_lease import active_owner
+
+            controller_can_reassign = (
+                actor is not None
+                and active_owner(data_root, project_id) == actor
+            )
+            if controller_can_reassign:
+                from .controller_lease import _require
+                from .project_context import _load as load_context, _path as context_path
+
+                _require(load_context(context_path(root, project_id)), actor, controller_token)
+            if controller_can_reassign and (
+                not isinstance(force_reason, str) or not force_reason.strip()
+            ):
+                raise CollaborationRegistryError(
+                    "active controller reassignment requires --reason so the ownership transfer is auditable"
+                )
             creator_can_reassign = (
                 actor is not None
                 and details.get("created_by") == actor
@@ -862,11 +909,14 @@ def update_task(
                 and task["status"] != "dispatched"
             )
             if binding.get("status") == "running" or not (
-                actor == previous_assignee or creator_can_reassign
+                actor == previous_assignee
+                or creator_can_reassign
+                or controller_can_reassign
             ):
                 raise CollaborationRegistryError(
                     "task is already assigned to another session; use the current "
-                    "owner or recorded creator to reassign an unclaimed card, "
+                    "owner, recorded creator, or active controller-lease holder to "
+                    "reassign an unclaimed card, "
                     "declaring the caller with --actor; "
                     "a running attempt requires explicit --force --force-reason. "
                     f"If you are the recorded owner, use --actor {previous_assignee} --assignee {assignee}."
@@ -944,11 +994,16 @@ def update_task(
                 + [
                     {
                         "from": previous_assignee,
-                        "to": assignee,
+                        "to": None if unassign else assignee,
                         "actor": actor,
                         "at": _now(),
                         "forced": force,
                         "reason": force_reason,
+                        "authority": (
+                            "controller-lease"
+                            if controller_can_reassign
+                            else "recorded-owner-or-creator"
+                        ),
                     }
                 ]
             )[-32:]
@@ -974,8 +1029,10 @@ def update_task(
             task["result"] = result
         if status_supplied and status != "blocked":
             task["blocked_reason"] = None
-        if status_supplied and status == "queued":
+        if unassign:
             task["assignee"] = None
+            details.pop("claimed_by", None)
+        elif status_supplied and status == "queued":
             details.pop("claimed_by", None)
         task["updated_at"] = _now()
         _validate_task(task)
@@ -1020,7 +1077,7 @@ def claim_task(
             raise CollaborationRegistryError(
                 "only queued or active tasks can be claimed"
             )
-        if task["status"] == "active" and task["assignee"] != assignee:
+        if task["assignee"] not in (None, assignee):
             raise CollaborationRegistryError(
                 "task is already assigned to another session"
             )

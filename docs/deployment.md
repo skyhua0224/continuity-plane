@@ -2,7 +2,7 @@
 
 [English](deployment.en.md) · [文档索引](README.md) · [快速开始](../USAGE.md)
 
-适用版本：CLI `0.1.0a34`，插件 tag `v0.1.0-alpha.34`。CLI、MCP 与宿主 hook 是三个需要分别验证的层次。
+适用版本：CLI `0.1.0a35`，插件 tag `v0.1.0-alpha.35`。CLI、MCP 与宿主 hook 是三个需要分别验证的层次。
 
 ## 选择部署方式
 
@@ -22,7 +22,7 @@
 
 ```bash
 python3 -m venv .venv
-.venv/bin/python -m pip install 'continuity-plane==0.1.0a34'
+.venv/bin/python -m pip install 'continuity-plane==0.1.0a35'
 .venv/bin/continuity --version
 ```
 
@@ -31,7 +31,7 @@ Windows PowerShell 对应 `py -3 -m venv .venv`、`.venv\Scripts\python.exe` 和
 希望全局使用时可选 pipx：
 
 ```bash
-pipx install 'continuity-plane==0.1.0a34'
+pipx install 'continuity-plane==0.1.0a35'
 pipx upgrade continuity-plane --pip-args=--pre
 ```
 
@@ -40,7 +40,7 @@ pipx upgrade continuity-plane --pip-args=--pre
 已有 pipx/uv 环境无法重建时，更新原解释器，不使用破坏性重装：
 
 ```bash
-uv pip install --python /path/to/pipx/venvs/continuity-plane/bin/python --reinstall-package continuity-plane 'continuity-plane==0.1.0a34'
+uv pip install --python /path/to/pipx/venvs/continuity-plane/bin/python --reinstall-package continuity-plane 'continuity-plane==0.1.0a35'
 ```
 
 pipx 的显示元数据可能仍需其正常 upgrade 流程刷新。网络失败时可用已核对摘要的 wheel 离线安装；不要关闭 TLS 验证，也不要把临时离线参数永久留给后续升级。
@@ -65,12 +65,35 @@ continuity storage inspect --path /path/to/persistent/work
 
 备份前协调写入者，使用 SQLite 认可的备份方式或一致性停写窗口；不要复制一半正在变化的数据集。`export/import/rollback` 的 State bundle 不覆盖整套外部协作注册表。
 
+### Alpha35 的可选本机策略
+
+这些设置只作用于当前主机与当前数据根，不跨机器同步，也不证明 provider 账号额度：
+
+```bash
+# 当前 host 所有已注册项目共享的 operator 声明容量
+continuity controller host-capacity --project-id demo \
+  --owner controller --token "$CONTROLLER_TOKEN" \
+  --host-client-limit total=8
+
+# 只在同会话 transient retry 耗尽后尝试的已配置 adapter
+continuity worker fallback-policy set --project-id demo \
+  --model primary --candidate secondary
+
+# 可选：worker 对 canonical checkout 的 Git ref 写入防护
+continuity collaboration context-set --project-id demo \
+  --integration-root /workspace/demo --integration-base main \
+  --worker-write-policy canonical-read-only \
+  --canonical-repository-root /workspace/demo
+```
+
+host capacity 是本地运行门，不是账号总额度。Git wrapper 位于本机持久数据的 `worker-git-guard/`，只拦截通过 PATH 调用的普通 push／update-ref／receive-pack；不是 mount／namespace 沙箱。需要强隔离时使用独立 OS 用户、只读挂载或虚拟机。完成钩子用 `worker completion-hook set --argv-json ...` 配置本机 argv，日志与 receipt 写进 job 目录；它不是远程唤醒渠道。
+
 ## Codex plugin 与 MCP
 
 先安装 CLI。添加 marketplace，再选择插件：
 
 ```bash
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.34
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.35
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -94,7 +117,7 @@ codex plugin add continuity-plane-state@continuity-plane
 ```bash
 # 仅切换 Continuity 市场的固定版本
 codex plugin marketplace remove continuity-plane
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.34
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.35
 codex plugin marketplace upgrade continuity-plane
 ```
 
@@ -182,7 +205,7 @@ bridge 默认可转发有界的当前显式清单指令；上例关闭了这一�
 
 ### 远端检索
 
-MCP 可以通过 SSH 在状态端启动 `continuity-search-mcp`，此时 `root` 是远端仓库。Alpha29 引入并由 Alpha34 保留本机 search MCP 的显式 `bridge_config`，或启动环境 `CONTINUITY_BRIDGE_CONFIG=/path/to/bridge.json`：仅把精确匹配的 local_root 映射到 remote_root，经 `continuity-remote-cli` 执行检索。配置可选 `remote_cli_endpoint`、`lookup_timeout_seconds` 和所属机器的 `remote_data_root`。未匹配、多重匹配或传输失败时明确报错，不回退本机；远端模式拒绝本机 cache_path/data_root。没有任意远端文件／进程管理接口。此路由有合成协议测试，尚未作为 Alpha34 在真实双机环境重新实测。
+MCP 可以通过 SSH 在状态端启动 `continuity-search-mcp`，此时 `root` 是远端仓库。Alpha29 引入并由 Alpha35 保留本机 search MCP 的显式 `bridge_config`，或启动环境 `CONTINUITY_BRIDGE_CONFIG=/path/to/bridge.json`：仅把精确匹配的 local_root 映射到 remote_root，经 `continuity-remote-cli` 执行检索。配置可选 `remote_cli_endpoint`、`lookup_timeout_seconds` 和所属机器的 `remote_data_root`。未匹配、多重匹配或传输失败时明确报错，不回退本机；远端模式拒绝本机 cache_path/data_root。没有任意远端文件／进程管理接口。此路由有合成协议测试，尚未作为 Alpha35 在真实双机环境重新实测。
 
 MCP 使用稳定执行者身份：在 server 环境设置 `CONTINUITY_ASSIGNEE=worker-a`，或每次 `continuity_plan` 传同一 `executor_id`。task add/update/claim 和 todo activate 自动沿用它；其他执行者的冲突仍被拒绝。session_id 只用于恢复，不再改写卡片 assignee。这是协作身份声明，不是原生账号认证；不要把所有 worker 配成同一身份。
 
@@ -196,10 +219,14 @@ MCP 使用稳定执行者身份：在 server 环境设置 `CONTINUITY_ASSIGNEE=w
 | 主机 kill／重启后 MCP 不在 | MCP 由宿主管理且不跨重启存活；新开宿主 MCP，或在重连前走 CLI／显式 SSH remote。用 `collaboration doctor` 查看生命周期提示 |
 | 压缩后没接续 | 当前机器、实际 profile、hook 信任、PreCompact/恢复成对记录；不能只查包版本 |
 | 消息或结束事件没看到 | 收件人、task id、游标分页、wait 超时；不要跳到 high-water 跳过未交付页 |
+| worker 结束但监控没醒 | 用 `worker events --since-cursor … --follow` 从原 cursor 续读；checkpoint 与 hook 都不替代持续事件流 |
+| job.json 没有 status／exit_code | Alpha35 起新 job 会同步终态；旧 job 只用 result.json 对账，不补造缺失事实 |
 | 规则正文缺失 | 用 rules export；长文检查附件 hash，不接受静默截断 |
 | 更换 MCP 连接后自己的卡被拒 | 核对 CONTINUITY_ASSIGNEE/executor_id 与原 assignee 是否一致；不自动把旧连接身份转换为新身份 |
 | worker 提前改卡后报告未挂卡 | Alpha29 起已修；核对是否是旧运行、旧 MCP、过期 attempt 或换过执行者，已有历史文件仍可显式挂载 |
-| dispatch／resume 持续高 CPU | Alpha34 起核对 `dispatch-safety-index.json` 与 change log 的尾部偏移；不要删除 change log。项目首次升级会有一次顺序回填，后续派发应只读新增尾部 |
+| dispatch／resume 持续高 CPU | Alpha35 起先核对当前 execution bindings；无运行 attempt 不重放历史。再查 `dispatch-safety-index.json` 与 change log 尾部偏移；不要删除 change log |
+| host 容量显示 paused／expired 混乱 | Alpha35 的 show 会现算 expired，派发在 reset 后不再被旧记录挡住；clear 可只给 model 并按 `--all-matching` 处理多个 provider 记录 |
+| worker 误 push 到 canonical 仓库 | 先核对是否真的启用 canonical-read-only 与 root；绝对 git 路径或其他程序可绕过 wrapper，改用 OS 隔离而不是声称已有沙箱 |
 | HTTP 403／Cloudflare 被标成 policy-review | 先核对原始 `output_tail`；若没有明确模型安全标记，resume 会按 HTTP/鉴权证据重分类。仍无法自动判断时，复核精确 job 后使用 `worker clear-policy-review --reason …` |
 | hook 故障影响体验 | 临时 `CONTINUITY_DISABLED=1`，保留日志与原配置；不要删除账号数据 |
 

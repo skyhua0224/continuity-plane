@@ -1,38 +1,58 @@
 """Read-only model load from actual attempts; no allocation on recommendation reads."""
 
 from datetime import UTC, datetime, timedelta
-from .collaboration_registry import list_changes
+import json
+from .collaboration_registry import (
+    _atomic_write, _locked, default_data_root, iter_changes,
+    latest_change_cursor, project_data_dir,
+)
+
+
+def _attempts(data_root, project_id):
+    path = project_data_dir(data_root or default_data_root(), project_id) / "runtime-attempt-index.json"
+    journal = path.with_name("changes.jsonl")
+    with _locked(path):
+        try:
+            info = journal.stat()
+            identity = [info.st_dev, info.st_ino]
+        except FileNotFoundError:
+            identity = None
+        try:
+            index = json.loads(path.read_text())
+        except (OSError, ValueError):
+            index = {}
+        high_water = latest_change_cursor(data_root, project_id=project_id)
+        if index.get("identity") != identity or index.get("cursor", 0) > high_water:
+            index = {}
+        cursor = index.get("cursor", 0)
+        attempts = index.get("attempts", {})
+        if cursor == high_water and index:
+            return attempts.values()
+        for row in iter_changes(data_root, project_id=project_id, since=cursor):
+            cursor = max(cursor, row["cursor"])
+            if row.get("event") not in {"attempt.started", "attempt.finished", "run.started", "run.finished"}:
+                continue
+            key = json.dumps([row.get("task_id"), row.get("attempt_id")])
+            attempts.setdefault(key, {})[
+                "start" if row["event"].endswith("started") else "finish"
+            ] = {
+                key: row[key] for key in (
+                    "model", "assignee", "finished_at", "observed_at", "status",
+                    "elapsed_seconds", "retryable", "available_at",
+                ) if key in row
+            }
+        _atomic_write(path, {"identity": identity, "cursor": cursor, "attempts": attempts})
+        return attempts.values()
 
 
 def statistics(data_root, project_id, now=None):
     from .executor_routing import _model_alias
 
     now = now or datetime.now(UTC)
-    attempts = {}
-    cursor = 0
-    while True:
-        page = list_changes(
-            data_root, project_id=project_id, since=cursor, max_results=500
-        )
-        for row in page["changes"]:
-            if row["event"] not in {
-                "attempt.started",
-                "attempt.finished",
-                "run.started",
-                "run.finished",
-            }:
-                continue
-            key = (row.get("task_id"), row.get("attempt_id"))
-            attempts.setdefault(key, {})[
-                "start" if row["event"].endswith("started") else "finish"
-            ] = row
-        cursor = page["next_cursor"]
-        if not page["truncated"]:
-            break
     stats = {}
     successes = {}
     throttles = {}
-    for attempt in attempts.values():
+    for attempt in _attempts(data_root, project_id):
         start = attempt.get("start", {})
         finish = attempt.get("finish", {})
         model = _model_alias(

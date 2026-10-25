@@ -4,13 +4,13 @@
 
 ## Release category versus alpha version
 
-Published GitHub entries use regular **Release**. The current version is Alpha34, package `0.1.0a34`, tag `v0.1.0-alpha.34`; mark it Latest when published. This does not claim production stability or change PyPI prerelease ordering: use an exact version or `--pre`. [Alpha34: Separate HTTP interception from model content refusals](release-alpha34.md).
+Published GitHub entries use regular **Release**. The current version is Alpha35, package `0.1.0a35`, tag `v0.1.0-alpha.35`; mark it Latest when published. This does not claim production stability or change PyPI prerelease ordering: use an exact version or `--pre`. [Alpha35: Observable dispatch and resumable waits](release-alpha35.md).
 
 Metadata cleanup does not rewrite tags/commits/assets/packages or historical publication dates. Old compatibility/evidence scope remains historical.
 
 ## Titles and notes
 
-Use `Continuity Plane Alpha N · User-facing theme`. Recent themes: [Alpha34](release-alpha34.md) HTTP interception vs. content refusal; [Alpha33](release-alpha33.md) dispatch hot path/indexed history; [Alpha32](release-alpha32.md) host recovery/dependencies/explainable dispatch; [Alpha31](release-alpha31.md) reliable inbox/structured MCP errors; [Alpha30](release-alpha30.md) reliable queue/actionable handoff; [Alpha29](release-alpha29.md) controller continuity/scoped memory; [Alpha28](release-alpha28.md) existing Gitea login aliases; [Alpha27](release-alpha27.md) private Issue/PR collaboration.
+Use `Continuity Plane Alpha N · User-facing theme`. Recent themes: [Alpha35](release-alpha35.md) observable dispatch and resumable waits; [Alpha34](release-alpha34.md) HTTP interception vs. content refusal; [Alpha33](release-alpha33.md) dispatch hot path/indexed history; [Alpha32](release-alpha32.md) host recovery/dependencies/explainable dispatch; [Alpha31](release-alpha31.md) reliable inbox/structured MCP errors; [Alpha30](release-alpha30.md) reliable queue/actionable handoff; [Alpha29](release-alpha29.md) controller continuity/scoped memory; [Alpha28](release-alpha28.md) existing Gitea login aliases; [Alpha27](release-alpha27.md) private Issue/PR collaboration.
 
 Avoid private project/device names, internal task IDs, raw commit-title lists and unsupported superlatives.
 

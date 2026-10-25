@@ -1,6 +1,6 @@
 # Gitea 协作模式：仓库声明与本机数据
 
-版本：1；适用 Alpha34。此合同规定共享内容、成员本地配置与权威边界。操作命令见 [Gitea 协作](gitea-collaboration.md)。[English](collaboration-storage.en.md)
+版本：1；适用 Alpha35。此合同规定共享内容、成员本地配置与权威边界。操作命令见 [Gitea 协作](gitea-collaboration.md)。[English](collaboration-storage.en.md)
 
 ## 写入位置与权限
 
@@ -16,6 +16,7 @@
 | 成员自己的同步进度 | 同 scope 下 `consumers/` | 不提交、不共用文件 | 完整读完分页再 ACK，未确认可重放 |
 | 压缩恢复、代码索引、用量、报告、工作目录 | 本机恢复／数据／缓存根，必要时仓库 `.continuity/` 的本机侧车 | 不提交；报告中仅有获准项目摘要才发布到 Issue | 不成为第二份共享任务权威；原始会话不进入 Git |
 | 全局规则、参考资料登记 | 用户数据根 `global-rules/`、`references/` | 默认仅本机 | rule/reference 的 global scope，不自动向队友同步 |
+| fallback、completion hook、canonical write guard、host capacity、worker job 状态索引 | 用户数据根的 `worker-policy.json`、`project-context.json`、`host-capacity.json`、`projects/<id>/worker-job-history.json` | 默认不提交、不同步 | 成员／主机策略和有界本地观察，不是 Issue 任务状态或 provider 额度证明 |
 | 原生登录、Token、账号与模型会话 | 成员自己的 tea／AI 客户端配置 | 不提交、不搬到别的机器／profile | Continuity 调本机 tea，不读取或导出其 Token 配置 |
 
 `<scope>` 是实例、仓库和 credential_ref 的本地派生键，不是团队账号数据库。成员更换 AI 不改变 Issue 驱动者；handoff-request 不等于对方接受。每位成员只使用自己的本机登录。
@@ -35,7 +36,7 @@ repository/
 ```
 
 ```toml
-# .continuity/collaboration.toml：Alpha34 实际支持的字段
+# .continuity/collaboration.toml：Alpha35 实际支持的字段
 [collaboration]
 backend = "gitea-issues"
 instance = "https://forge.example.com:3443"
@@ -45,7 +46,7 @@ credential_ref = "tea:work"
 
 实例可带 HTTPS 端口／子路径。credential_ref 是约定的本地 tea 登录别名，每个人可各自建立名为 work 的登录，不能提交真实 Token。此文件没有 data_root、全局登录或模型凭据字段；不要加入看似生效的未支持字段。
 
-Alpha34 的 backend configure 在缺少 `.continuity/.gitignore` 时创建下列内容，已有文件原样保留：
+Alpha35 的 backend configure 在缺少 `.continuity/.gitignore` 时创建下列内容，已有文件原样保留：
 
 ```gitignore
 # Shared declarations and reviewed knowledge only; runtime data stays member-local.
@@ -108,3 +109,9 @@ AGENTS.md 可采用以下简短约定：
 > 先读 `.continuity/collaboration.toml` 和版本化协作规则；检查 CLI 版本、backend doctor 与 backend sync。任务只在 Issue 更新；认领使用当前成员的本机认证。每次写入携带刚观察的 remote_revision 和稳定 operation-id；REV 是快照哈希，不是服务器 CAS。请求交接／评审后不声称对方已接受。分页读完再 ACK。变更 AI 不改变人类驱动者；合并、发布、部署需要独立授权。不要迁移原生登录、凭据或完整会话数据。
 
 缺安装时使用[启动脚本](../examples/gitea-bootstrap.py)并要求用户明确批准安装来源和持久路径；缺认证时提示在当前机器登录 tea，不索取明文 Token。Gitea 模式不用先 init State、部署数据库或建立永久 controller。
+
+## Alpha35 本机 worker 策略
+
+`worker-policy.json` 保存显式 fallback 候选和可选 on-job-end argv；`project-context.json` 的 `worker_write_guard` 保存 canonical root 与启用状态；数据根顶层 `host-capacity.json` 保存 operator 对当前 host 的 client-family 上限。三者都不进入仓库，也不能证明另一台机器的登录、账号额度或真实进程状态。迁移这些文件不会迁移宿主认证，不能借此查询别人的账号。
+
+canonical write guard 使用持久数据根中的 PATH Git wrapper，只拦截普通 push／update-ref／receive-pack 误写，不是安全沙箱。completion hook 使用 local argv、独立日志与 receipt，不经 shell；它也不是远程唤醒服务。若团队需要相同规则，应把规则本身写入获评审的共享文档，由各成员分别显式配置本机策略，而不是提交某人的路径、Token 或数据根。

@@ -835,9 +835,15 @@ class DispatchControlTests(unittest.TestCase):
         )
         self.assertEqual(detail_view(self.data, "sample", "task")["body"], "New body")
 
-    def test_explicit_active_still_requires_assignee(self):
+    def test_queued_preserves_assignment_until_explicit_unassign(self):
         self.execute("task.update", task_id="task", status="queued")
         self.execute("task.update", task_id="task", body="Queued instructions")
+        self.assertEqual(
+            list_tasks(self.data, project_id="sample")[0]["assignee"], "worker"
+        )
+        self.execute("task.update", task_id="task", status="active")
+        self.execute("task.update", task_id="task", status="queued")
+        self.execute("task.update", task_id="task", actor="worker", unassign=True)
         with self.assertRaisesRegex(ValueError, "assignee"):
             self.execute("task.update", task_id="task", status="active")
         self.assertEqual(

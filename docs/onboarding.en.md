@@ -22,7 +22,7 @@ MCP reconnect/card ownership usability remains a known gap. Check stable identit
 
 ## Start and finish
 
-Read relevant packet, rules, body and code routes; retrieve inbox when messages matter. Finish with report, commit, actual checks and explicit unverified scope for controller review. Supervisor completion projects review/blocked status; Alpha34 also attaches the current attempt's report after early card updates, preserving manual status. See [validation](validation.en.md).
+Read relevant packet, rules, body and code routes; retrieve inbox when messages matter. Finish with report, commit, actual checks and explicit unverified scope for controller review. Supervisor completion projects review/blocked status; Alpha35 also attaches the current attempt's report after early card updates, preserving manual status. See [validation](validation.en.md).
 
 ## Durable inbox
 

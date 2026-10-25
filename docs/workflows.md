@@ -56,7 +56,7 @@ continuity collaboration packet --project-id demo --assignee worker-a
 
 > 开场确认自己的身份、packet、规则和卡片正文；按需读 inbox 与代码路标。结束保存最终报告、commit 和实际验证结果，列出未验证项；向主控交接。卡片状态不是推送或合入授权。
 
-普通成功 attempt 由 supervisor 投影为待评审，失败／中断为阻塞。Alpha34 继续在 worker 提前改卡后挂载当前 attempt 的最终报告，不回退手工状态；旧 attempt 或换执行者后的迟到报告不能覆盖新附件。usage limit 按可恢复 quota 处理，其他暂时错误可进入内置 queue 等待容量／cooldown，而不是由外部 filler 竞跑。证据范围见[验证矩阵](validation.md)。
+普通成功 attempt 由 supervisor 投影为待评审，失败／中断为阻塞。Alpha35 继续在 worker 提前改卡后挂载当前 attempt 的最终报告，不回退手工状态；旧 attempt 或换执行者后的迟到报告不能覆盖新附件。usage limit 按可恢复 quota 处理，其他暂时错误可进入内置 queue 等待容量／cooldown，而不是由外部 filler 竞跑。证据范围见[验证矩阵](validation.md)。
 
 ### 合批与批准
 

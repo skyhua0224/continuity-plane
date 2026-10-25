@@ -137,7 +137,7 @@ OPERATIONS = {
     },
     **{
         f"inbox.{name}": ("collaboration", "inbox", name)
-        for name in ("send", "list", "ack", "archive")
+        for name in ("send", "list", "ack", "archive", "unread", "wait")
     },
     **{
         name: ("collaboration", name.replace(".", "-"))
@@ -163,11 +163,22 @@ CLI_HELP = {
     "controller.run": ("controller", "run"),
     "controller.clear-reservation": ("controller", "clear-reservation"),
     "controller.clear-operation": ("controller", "clear-operation"),
+    "controller.host-capacity": ("controller", "host-capacity"),
     "quota.refresh": ("quota", "refresh"),
     "quota.tick": ("quota", "tick"),
     **{
         f"worker.{n}": ("worker", n)
-        for n in ("dispatch", "resume", "report", "configure", "clear-policy-review")
+        for n in (
+            "dispatch",
+            "resume",
+            "report",
+            "configure",
+            "clear-policy-review",
+            "events",
+            "jobs",
+            "fallback-policy",
+            "completion-hook",
+        )
     },
     "worker.queue.run": ("worker", "queue", "run"),
     "supervisor.run": ("supervisor", "run"),
@@ -227,6 +238,8 @@ READ_ACTIONS = {
     "rule.list",
     "commitment.list",
     "inbox.list",
+    "inbox.unread",
+    "inbox.wait",
 }
 PLURALS = {
     "exit_criteria": "exit_criterion",
@@ -727,6 +740,13 @@ def execute(operation, parameters=None, *, root=None, project_id=None, data_root
     if operation == "wait" and isinstance(parameters.get("event"), str):
         # Older MCP callers supplied one string before --event was repeatable.
         parameters["event"] = [parameters["event"]]
+    if operation == "inbox.wait":
+        if parameters.get("follow"):
+            raise ValueError("inbox.wait --follow is CLI-only; MCP waits for one bounded message")
+        timeout = parameters.get("timeout_seconds", 30)
+        if timeout is None or type(timeout) not in (int, float) or not 0 <= timeout <= 30:
+            raise ValueError("MCP inbox.wait timeout_seconds must be between 0 and 30")
+        parameters["timeout_seconds"] = timeout
     if operation == "status-render" and parameters.get("output"):
         raise ValueError(
             "status file output is CLI-only; planning MCP returns the read-only projection"
@@ -1024,7 +1044,7 @@ def handle_tool(name, arguments):
         65536
         if name == "continuity_plan"
         and arguments.get("action")
-        in {"rules.export", "rules.history", "rules.attachment"}
+        in {"rules.export", "rules.history", "rules.attachment", "task.show"}
         else 8192
     )
     budget = arguments.pop("max_output_bytes", default_budget)
@@ -1112,6 +1132,7 @@ def handle_tool(name, arguments):
             and not shared
             and not controller_delegation
             and operation in {"task.add", "task.update", "task.claim", "todo.activate"}
+            and not (operation == "task.update" and parameters.get("unassign"))
         ):
             if parameters.get("assignee") not in {None, executor}:
                 raise ValueError(

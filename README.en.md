@@ -4,7 +4,7 @@ Continuity is a shared task, collaboration and context-continuity tool for peopl
 
 Use the CLI directly or let an agent call its MCP tools. Codex and Claude Code plugins connect tools and lifecycle hooks to the host; hooks save, recover and surface changes at relevant events. Bounded retrieval reduces repeated code reading. Output bytes, host tokens and cache counters help measure the result—there is no universal savings promise.
 
-[中文](README.md) · [Get Alpha34](https://github.com/skyhua0224/continuity-plane/releases/latest) · [Deployment](docs/deployment.en.md) · [People and agents: starting guide](docs/agent-start.en.md)
+[中文](README.md) · [Get Alpha35](https://github.com/skyhua0224/continuity-plane/releases/latest) · [Deployment](docs/deployment.en.md) · [People and agents: starting guide](docs/agent-start.en.md)
 
 [![PyPI](https://img.shields.io/pypi/v/continuity-plane?include_prereleases)](https://pypi.org/project/continuity-plane/)
 [![Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
@@ -17,6 +17,7 @@ Use the CLI directly or let an agent call its MCP tools. Codex and Claude Code p
 | Save “fix A, test B” and advance through the work | [Todo](#todo): compile, inspect, switch, block, complete, or project existing cards |
 | Assign work, share progress and collect reports | [collaboration](#collaboration): cards, bodies, assignees, lanes, scope, inbox and changes |
 | Stop assembling prompts and polling worker processes manually | [Worker](#worker): dispatch/supervisor, heartbeats, timeouts, resume and attached reports |
+| Observe progress without a monitoring time window | [Worker](#worker): cursor event tail, inbox wait, job terminal state and idle diagnostics |
 | Let an AI manage plans and query the project | [MCP and plugins](#mcp): concrete tools, connection configuration and component choices |
 | Save before compaction, recover afterward, notice worker endings | [Hooks](#hooks): events, host differences and what is actually automatic |
 | Locate symbols, files and dependents | [Code retrieval](#context): incremental index, brief output, reverse dependencies and prompt routes |
@@ -34,7 +35,7 @@ Local-first by default: no cloud account, external database or resident service 
 Python 3.11+ is required; code indexing also needs Git. A pipx installation makes the CLI available to host integrations:
 
 ```bash
-pipx install 'continuity-plane==0.1.0a34'
+pipx install 'continuity-plane==0.1.0a35'
 continuity --version
 # Register inside your repository; replace demo with its stable project ID
 continuity collaboration register --project-id demo --control-root . --repository-root .
@@ -71,7 +72,7 @@ The view follows card status and defaults to open states. Repeat --status or use
 <a id="collaboration"></a>
 ## collaboration
 
-Alpha34 retains the [private Gitea Issue / PR backend](docs/gitea-collaboration.en.md): members use their own local CLI / MCP and tea login for shared tasks, claims, accepted handoffs and real PR review requests, without a Continuity server. Issues own task state; local snapshots are caches. Conflicts are explicit; claims are not strong cross-machine locks. The [storage/configuration contract](docs/collaboration-storage.en.md) separates committed declarations from member-local data. Local-card examples below are a separate mode.
+Alpha35 retains the [private Gitea Issue / PR backend](docs/gitea-collaboration.en.md): members use their own local CLI / MCP and tea login for shared tasks, claims, accepted handoffs and real PR review requests, without a Continuity server. Issues own task state; local snapshots are caches. Conflicts are explicit; claims are not strong cross-machine locks. The [storage/configuration contract](docs/collaboration-storage.en.md) separates committed declarations from member-local data. Local-card examples below are a separate mode.
 
 ### Create, assign and update task cards
 
@@ -96,7 +97,7 @@ continuity collaboration task update --project-id demo --task-id parser-fix --bo
 continuity collaboration task show --project-id demo --task-id parser-fix --include-report --format brief
 ```
 
-Body-only updates preserve status. States include queued, dispatched, active, blocked, ready-for-review, completed, merged, rejected and superseded; local completion is separate from acceptance. Filter lists by status, assignee, lane, query, update time and result count. --all includes closed cards; --full expands fields. Priorities are p0/p1/p2, and lanes separate parallel work. Allowed-file declarations are not an OS sandbox.
+Body-only updates preserve status. Moving to queued preserves the assignee; only explicit `--unassign` clears it. An active controller-lease holder may reassign with a recorded `--reason` without impersonating the old owner. States include queued, dispatched, active, blocked, ready-for-review, completed, merged, rejected and superseded; local completion is separate from acceptance. Filter lists by status, assignee, lane, query, update time and result count. --all includes closed cards; --full expands fields. task show defaults to 64 KiB and larger lists continue from next_cursor. Priorities are p0/p1/p2, and lanes separate parallel work. Allowed-file declarations are not an OS sandbox.
 
 For SSH, zsh or any shell where quoting a long body is error-prone, put the updates in JSON:
 
@@ -107,7 +108,7 @@ cat updates.json | continuity collaboration task update --project-id demo --batc
 
 Updates run sequentially, at most 50 per file, and stop at the first failure with completion/failure indexes. The batch is not an all-or-none transaction. Shared Gitea mode still requires `operation_id` and `expected_remote_revision` per item.
 
-`--dependency ID` (repeatable) expresses prerequisite cards in both local and Gitea modes; `task list --dependencies-ready` returns only cards whose prerequisites are completed or merged. Claim, activation and dispatch reject unmet dependencies. Local and Gitea list calls now share one envelope: `items`, `total_items`, `next_cursor`, `has_more`.
+`--dependency ID` (repeatable) expresses prerequisite cards in both local and Gitea modes; completed, merged and superseded are terminal. `task list --dependencies-ready` returns only cards satisfying that rule. Claim, activation and dispatch reject unmet dependencies. A legacy “Depends on:” sentence is surfaced as a migration hint and never silently inferred as a dependency. Local and Gitea list calls now share one envelope: `items`, `total_items`, `next_cursor`, `has_more`.
 
 ### Inbox, incremental changes and waiting
 
@@ -120,6 +121,8 @@ continuity collaboration inbox ack --project-id demo --recipient controller --me
 continuity collaboration inbox ack --project-id demo --recipient controller --before 2026-10-20T00:00:00Z --limit 1000
 continuity collaboration inbox ack --project-id demo --recipient controller --all --limit 1000
 continuity collaboration inbox archive --project-id demo --recipient controller --limit 1000
+continuity collaboration inbox unread --project-id demo --recipient controller --count
+continuity collaboration inbox wait --project-id demo --recipient controller --follow
 ```
 
 Use changes for “what happened while I was away?” and wait to block on worker events instead of rereading the ledger or polling processes:
@@ -130,7 +133,7 @@ continuity collaboration changes --project-id demo --since 0 --max-output-bytes 
 continuity collaboration wait --project-id demo --since 0 --event attempt.finished --event attempt.timeout --event dispatch.policy-stopped --timeout-seconds 30
 ```
 
-If truncated, keep reading from next_cursor. Jumping to high-water skips undelivered events. Multiple event filters match any listed event; a wait timeout is not worker failure. `collaboration drift` checks stale/contradictory records; collaboration doctor reports ledger writer versions.
+If truncated, keep reading from next_cursor. Jumping to high-water skips undelivered events. Multiple event filters match any listed event; a wait timeout is not worker failure. `collaboration drift` checks stale/contradictory records; collaboration doctor reports ledger writer versions. inbox wait observes new messages by default (use --include-unread to start from existing unread); --follow has no deadline, and reconnecting scripts use stream_cursor.
 
 <a id="worker"></a>
 ## Worker: dispatch, supervision, resume and reports
@@ -144,6 +147,9 @@ continuity collaboration prompt --project-id demo --task-id parser-fix --assigne
 continuity dispatch --project-id demo --task-id parser-fix --model primary --effort high --dry-run
 continuity dispatch --project-id demo --task-id parser-fix --model primary --effort high --background --timeout-seconds 86400 --idle-timeout-seconds 5400
 continuity report parser-fix --project-id demo
+continuity worker events --project-id demo --since-cursor 0 --follow
+continuity worker events --all-projects --since-cursor 'demo:120,other:80' --follow
+continuity worker jobs --project-id demo --status ended
 ```
 
 Claude and custom adapters are also supported. Dispatch assembles complete rules, the card body, attachment references and bounded code routes. It retains run IDs, logs, native session references and reports. The card must exist. Prepare isolated worktrees before parallel edits. After background dispatch, wait for that task's end event before reading its report.
@@ -160,11 +166,13 @@ continuity worker queue resume
 
 One runner can hold the non-blocking single-instance lock for a project/data root. It reuses normal dispatch validation for cards, controller lease, client-family capacity and observed quota/cooldown. MCP safely exposes `worker.queue.enqueue/status/pause/resume/cancel/requeue`; `worker.queue.run`, which starts provider processes, remains CLI-only. Capacity or quota gates leave requests queued; transient 429/quota/gateway outcomes return with backoff. Enqueue, waiting, blocked, retry and launch transitions enter the change feed for `changes`/`wait` and hooks. `pause` is a host switch and does not kill workers already running. See `continuity help worker.queue.run`.
 
-Supervisor records attempt starts, heartbeats, completion reasons, exit codes and timeouts. Current successful attempts become ready-for-review; failures/interruption become blocked. It preserves manually changed status while attaching the final report. A stale attempt cannot overwrite a newer run.
+worker events emits newline-delimited started, progress, completed, failed, rate-limited and blocked facts from cursors rather than a monitoring time window. A single-project cursor is an integer; --all-projects uses project:cursor pairs and every row carries stream_cursor.
+
+Supervisor records attempt starts, heartbeats, no-output duration, completion reasons, exit codes and timeouts. After spawn it samples PID identity, actual cwd and Git HEAD. Current successful attempts become ready-for-review; failures/interruption become blocked. It preserves manually changed status while attaching the final report. A stale attempt cannot overwrite a newer run. job.json and worker-jobs.json persist running/terminal status and exit_code, so completion is no longer inferred only from result.json.
 
 Dispatch and resume use a derived safety index: one sequential backfill after upgrade, then only appended change-log bytes. A damaged index or replaced journal rebuilds from authoritative JSONL. There is no need to delete history, and a missing index never bypasses a refusal gate.
 
-After a host crash or reboot, run `continuity controller reservations --project-id demo --state stale` to inspect leftover job IDs. With the controller lease, `controller reconcile-host --apply --reason …` clears only reservations proven stale by host/boot or host-identity changes. Stale reservations no longer count against capacity. Capacity scope is current project + host + profile + client family; it does not claim a cross-project provider-account cap.
+After a host crash or reboot, run `continuity controller reservations --project-id demo --state stale` to inspect leftover job IDs. With the controller lease, `controller reconcile-host --apply --reason …` clears only reservations proven stale by host/boot or host-identity changes. Stale reservations no longer count against capacity. The default scope is current project + host + profile + client family. `controller host-capacity --host-client-limit total=8` adds an operator-declared host-wide local gate; it is not proof of a native account limit.
 
 ```bash
 continuity worker resume --project-id demo --task-id parser-fix --continuation 'Continue saved progress; check existing verification first' --background
@@ -174,7 +182,9 @@ Use **worker resume** for executors; top-level resume belongs to advanced State 
 
 HTTP 401/403, Cloudflare/proxy interception pages and gateway diagnostics are not upgraded to content refusal merely because they contain generic "policy" text; only explicit model-safety markers yield `policy-review`. For a legacy false label, a controller may review the exact job and run `continuity worker clear-policy-review --task-id … --job-id job-… --actor … --reason …`, recording one auditable correction and permitting an explicit same-thread resume.
 
-Existing launch scripts can use `collaboration run --task-id … --assignee … -- <command>` or supervisor run for command bookkeeping. `supervisor daemon` currently performs one owner-host liveness reconciliation pass, not automatic resident-service installation. Retries and explicit fallback are bounded by transient-error policy; authentication errors and policy refusals do not trigger automatic channel switching.
+Existing launch scripts can use `collaboration run --task-id … --assignee … -- <command>` or supervisor run for command bookkeeping. `supervisor daemon` performs one owner-host liveness pass, not resident-service installation; it skips full-history replay when no attempt is running. Retries and a project fallback policy handle selected transient failures; authentication errors and policy refusals do not trigger automatic channel switching. `worker completion-hook` can launch a local argv asynchronously and record a receipt without blocking worker completion; it is not a remote wake-up.
+
+For an explicitly protected canonical repository, set `--worker-write-policy canonical-read-only` and one or more `--canonical-repository-root` values in collaboration context-set. A Continuity Git wrapper on worker PATH blocks ordinary push/update-ref/receive-pack writes into that repository. This prevents mistakes, not hostile bypass through absolute git paths, another program or a more privileged account.
 
 <a id="mcp"></a>
 ## MCP and plugins: direct agent access
@@ -197,7 +207,7 @@ Install the CLI first. On Codex CLI versions supporting these commands, choose t
 
 ```bash
 # Core hooks, independent search, and planning/State are separate components
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.34
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.35
 codex plugin add continuity-plane@continuity-plane
 codex plugin add continuity-plane-search@continuity-plane
 codex plugin add continuity-plane-state@continuity-plane
@@ -268,7 +278,7 @@ Without plugins, add this connection configuration to your MCP client. It is hos
 | Stop | Supported | Supported | Completion/continuation checks, not inferred verification or review acceptance |
 | SubagentStart / SubagentStop | Not supplied by this plugin | Supported | Observe native children, without invented PIDs, exit codes, success or complete reports |
 
-The Alpha34 plugin and source handoff include SessionEnd to mark loss of native-child observation after the owner session ends. The [handoff implementation](docs/field-workflows.md#development-source-controller-recovery-and-change-consumers) also includes read-time observations, consumer acknowledgements, dispatch snapshot checks and task aliases. Older installs require an upgrade and host reconnect.
+The Alpha35 plugin and source handoff retain SessionEnd and add resumable worker events, inbox wait/unread, job terminal state and actual-checkout observations. The [handoff implementation](docs/field-workflows.md#development-source-controller-recovery-and-change-consumers) also includes read-time observations, consumer acknowledgements, dispatch snapshot checks and task aliases. Older installs require an upgrade and host reconnect.
 
 Skills are instructions the model can load; MCP tools are callable operations; hooks run at lifecycle events. Notices are changed-only and do not guarantee waking an offline conversation. Managed attempt records require a worker running under supervision.
 
@@ -401,7 +411,7 @@ Explicitly configure SSH aliases, project roots and owning-host adapters. Bridge
 
 ## Validation and documentation
 
-Current release: Alpha34, package 0.1.0a34 and plugin 0.1.0-alpha.34. [Validation](docs/validation.en.md) separates synthetic workflows, controlled hooks, user feedback and unproven behavior. [Historical measurements](docs/benchmarks.en.md) are not universal results for the latest version or every project. Metadata failures grant no authority and do not require resetting State for ordinary coding work.
+Current release: Alpha35, package 0.1.0a35 and plugin 0.1.0-alpha.35. [Validation](docs/validation.en.md) separates synthetic workflows, controlled hooks, user feedback and unproven behavior. [Historical measurements](docs/benchmarks.en.md) are not universal results for the latest version or every project. Metadata failures grant no authority and do not require resetting State for ordinary coding work.
 
 | Continue with | Guide |
 |---|---|

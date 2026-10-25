@@ -2,11 +2,11 @@
 
 [English](validation.en.md) · [工作流](workflows.md) · [历史实验](benchmarks.md)
 
-范围：Alpha34（`0.1.0a34`）。证据分为本轮合成 CLI、已有自动回归、匿名使用反馈和未覆盖项，不能互相替代。
+范围：Alpha35（`0.1.0a35`）。证据分为本轮合成 CLI、已有自动回归、匿名使用反馈和未覆盖项，不能互相替代。
 
 ## 本轮可复现实测
 
-Alpha27 已用本机 tea 0.15.0／HTTPS Gitea 1.24.7 双合成账号私有仓库验收；Alpha34 未另建真实 Gitea 现场，协作相关变化由合成回归覆盖。下方采用者脚本已在仅安装 Alpha34 wheel 的新持久 venv 与全新工作目录重跑；receipt 只含允许公开的合成聚合数据，完整发行构建仍以 tag CI 为准。
+Alpha27 已用本机 tea 0.15.0／HTTPS Gitea 1.24.7 双合成账号私有仓库验收；Alpha35 未另建真实 Gitea 现场，协作相关变化由合成回归覆盖。下方采用者脚本在仅安装 Alpha35 wheel 的新持久 venv 与全新工作目录重跑；receipt 只含允许公开的合成聚合数据，完整发行构建仍以 tag CI 为准。
 
 运行公开脚本；使用一个**新建、空的持久目录**，不指向自己的注册表或 provider profile：
 
@@ -28,7 +28,7 @@ python examples/verify_adopter_workflows.py --workspace /path/to/new-persistent-
 | 失败子进程 | 原退出码 3 被保存；dispatch CLI 非零（2） |
 | 单次 merged 元数据与 commit 绑定检查 | 通过；不执行真实 Git 合入 |
 | shared handoff、lesson、第二主控只读 | 通过 |
-| 分域 profile、批准记忆与 `controller start` | 通过；固定样例返回 1,442 JSON bytes，预算 4,096 bytes |
+| 分域 profile、批准记忆与 `controller start` | 通过；固定样例返回 1,443 JSON bytes，预算 4,096 bytes |
 | 逐条事件翻页、多事件 wait、无变化读取 | 通过；该 fixture 无变化响应 216 bytes |
 | worker 提前改为待评审后的报告 | 自动挂卡并由 report 读取；不接受手工挂载替代此检查 |
 
@@ -62,6 +62,19 @@ python examples/verify_adopter_workflows.py --workspace /path/to/new-persistent-
 | 漂移与未了结承诺 | 当前解析与规则回归；匿名反馈 | 不是对所有文档与外部世界的真实性证明 |
 
 Alpha25 的[公开发行 CI](https://github.com/skyhua0224/continuity-plane/actions/runs/38845950775)通过 268 项测试。文档新增脚本和链接／命令检查另随当前主分支 CI 运行；不改写已发布 wheel 或历史 test count。
+
+## Alpha35 采用问题回归
+
+| 修复 | 本轮证据 | 保留边界 |
+|---|---|---|
+| worker 事件漏接与轮询窗口 | `worker events --follow` 在进程启动后追加事件、从 cursor 输出 NDJSON；多项目 cursor 解析回归 | 本地 CLI 流不是远程唤醒服务；`--all-projects` 使用 project:cursor 对 |
+| inbox 完成通知 | `inbox wait` 从持久 change 读取新消息，`inbox unread --count` 与同一未确认事实一致 | ack 仍是接收方动作；不保证另一台宿主的 AI 被唤醒 |
+| job 终态与现场 | `job.json`／索引 running→completed、exit_code=0、实际 cwd／HEAD、结束 cursor 和 metadata 失败非阻塞回归 | 旧 job 缺失字段不补造；没有 heartbeat 的 native child 仍是观察 |
+| 派发热路径与输出 | 无 running binding 时禁止历史扫描；有 binding 从启动 cursor 增量读；heartbeat 标记 build-lock idle；task show 默认 64 KiB | 超长单记录仍有明确预算失败；不会杀等待锁的进程 |
+| 容量、quota 与 fallback | 跨注册项目 host gate、旧 boot 排除、expired cooldown 放行；项目 fallback 仅 transient 后换 sonnet 并改派 | host capacity 是 operator 声明；认证／内容策略拒绝不 fallback；不是账号额度查询 |
+| 卡片语义与安全 | queued 保留 assignee、显式 unassign、controller lease 改派原因、superseded 依赖；PATH Git guard；异步 completion hook | Git wrapper 不是安全沙箱；绝对路径可绕过；hook 不是远程唤醒 |
+
+聚焦 Alpha35 回归位于 `tests/test_alpha35_control_observability.py`；原有 supervisor、dispatch、project-context、controller-recovery 与 adoption 回归同时运行。
 
 ## Alpha34 采用问题回归
 
@@ -117,7 +130,7 @@ Alpha25 的[公开发行 CI](https://github.com/skyhua0224/continuity-plane/acti
 | 来源 TSV | Unicode、扩展列、幂等、冲突／无效行无部分写入、MCP 接口 | 显式导入导出；不覆盖已有文件、不自动同步或验证已读 |
 | 映射远端检索 | 独立合成仓库经 CLI 接收协议检索；映射失败／超预算拒绝 | 未做真实双机新实测；无任意远端文件／进程管理 |
 
-回归入口：[test_a26_adoption.py](../tests/test_a26_adoption.py)，13 项 Alpha26 合成检查。Alpha34 分类与复核解除用例位于 `tests/test_alpha34_policy_classification.py`；Alpha33 dispatch hot-path 用例仍在 `tests/test_alpha33_dispatch_hot_path.py`。[版本说明](release-alpha34.md)列出本版边界。
+回归入口：[test_a26_adoption.py](../tests/test_a26_adoption.py)，13 项 Alpha26 合成检查。Alpha35 可观察性用例位于 `tests/test_alpha35_control_observability.py`；Alpha34 分类与复核解除用例保留在 `tests/test_alpha34_policy_classification.py`。[版本说明](release-alpha35.md)列出本版边界。
 
 ## 隐私与效果声明
 

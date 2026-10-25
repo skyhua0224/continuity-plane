@@ -4821,6 +4821,8 @@ def _collaboration_task_update(args: argparse.Namespace) -> int:
         worktree=args.worktree,
         allowed_files=args.allowed_file,
         dependencies=[] if args.clear_dependencies else args.dependency,
+        unassign=args.unassign,
+        controller_token=args.controller_token,
         report=read_report(args.report_file) if args.report_file else None,
         verification_data=json.loads(args.verification_json)
         if args.verification_json
@@ -4960,6 +4962,26 @@ def _collaboration_task_list(args: argparse.Namespace) -> int:
         warnings = details.get(row["task_id"], {}).get("planning_warnings", [])
         if warnings:
             row["planning_warnings"] = warnings
+        body = details.get(row["task_id"], {}).get("body")
+        if (
+            not row.get("dependencies")
+            and isinstance(body, str)
+            and any(
+                marker in body.casefold()
+                for marker in ("depends on:", "dependency:", "依赖：", "依赖:")
+            )
+        ):
+            row["legacy_dependency_hint"] = {
+                "status": "body-text-not-structured-dependency",
+                "repair_command": (
+                    "continuity collaboration task update --project-id "
+                    + args.project_id
+                    + " --task-id "
+                    + row["task_id"]
+                    + " --dependency <task-id>"
+                ),
+                "note": "Continuity does not silently infer dependencies from prose.",
+            }
     if args.evidence_gaps:
         value = [row for row in value if row.get("evidence_gaps")]
     from .planning_api import render
@@ -5765,8 +5787,43 @@ def _inbox(args: argparse.Namespace) -> int:
         from .collaboration_inbox import archive
 
         value = archive(args.data_root, **common, limit=args.limit, before=args.before)
+    elif args.inbox_command == "unread":
+        from .collaboration_inbox import unread_summary
+
+        value = unread_summary(
+            args.data_root, project_id=args.project_id, recipient=args.recipient
+        )
+    elif args.inbox_command == "wait":
+        from .collaboration_stream import inbox_messages, parse_cursor_map
+
+        timeout = args.timeout_seconds
+        if timeout is None and not args.follow:
+            timeout = 300
+        try:
+            for value in inbox_messages(
+                args.data_root,
+                project_id=args.project_id,
+                recipient=args.recipient,
+                since_cursor=(
+                    0 if args.include_unread else
+                    parse_cursor_map(str(args.since_cursor), [args.project_id])[args.project_id]
+                    if args.since_cursor is not None else None
+                ),
+                follow=args.follow,
+                timeout_seconds=timeout,
+                poll_seconds=args.poll_seconds,
+            ):
+                print(json.dumps(value, ensure_ascii=False, sort_keys=True), flush=True)
+                if value.get("timed_out"):
+                    return 2
+        except KeyboardInterrupt:
+            return 0
+        return 0
     else:
         value = list_messages(args.data_root, **common, limit=args.limit)
+    if args.inbox_command == "unread":
+        print(json.dumps(value, ensure_ascii=False, sort_keys=True))
+        return 0
     payload = (
         {"status": "ok", "archive": value, "provider_execution": False}
         if args.inbox_command == "archive"
@@ -6277,7 +6334,7 @@ def build_parser() -> argparse.ArgumentParser:
     collaboration_task_add.add_argument(
         "--dependency",
         action="append",
-        help="Stable task ID that must be completed or merged before this card may become active",
+        help="Stable task ID that must be completed, merged or superseded before this card may become active",
     )
     collaboration_task_add.add_argument("--preauthorized-effect", action="append")
     collaboration_task_add.add_argument("--queued-effect", action="append")
@@ -6333,6 +6390,15 @@ def build_parser() -> argparse.ArgumentParser:
     collaboration_task_update.add_argument("--blocked-reason", default=None)
     collaboration_task_update.add_argument("--result", default=None)
     collaboration_task_update.add_argument("--assignee", default=None)
+    collaboration_task_update.add_argument(
+        "--controller-token",
+        help="Active controller fence token for lease-authorized reassignment; defaults to CONTINUITY_CONTROLLER_TOKEN",
+    )
+    collaboration_task_update.add_argument(
+        "--unassign",
+        action="store_true",
+        help="Explicitly clear the assignee; changing status to queued preserves it",
+    )
     collaboration_task_update.add_argument(
         "--actor",
         help="Stable caller identity for reassignment, distinct from --assignee; defaults to CONTINUITY_ASSIGNEE",
@@ -6403,7 +6469,7 @@ def build_parser() -> argparse.ArgumentParser:
     collaboration_task_show.add_argument(
         "--format", choices=("brief", "json"), default="json"
     )
-    collaboration_task_show.add_argument("--max-output-bytes", type=int, default=8192)
+    collaboration_task_show.add_argument("--max-output-bytes", type=int, default=65536)
     collaboration_task_show.set_defaults(handler=_collaboration_task_show)
     collaboration_task_claim = collaboration_task_commands.add_parser(
         "claim", help="claim one queued card"
@@ -6427,7 +6493,7 @@ def build_parser() -> argparse.ArgumentParser:
     collaboration_task_list.add_argument(
         "--dependencies-ready",
         action="store_true",
-        help="Only cards whose dependency cards are completed or merged",
+        help="Only cards whose dependency cards are completed, merged or superseded",
     )
     collaboration_task_list.add_argument("--summary", action="store_true", default=True)
     collaboration_task_list.add_argument("--full", dest="summary", action="store_false")
@@ -6896,6 +6962,28 @@ def build_parser() -> argparse.ArgumentParser:
                 help="Archive messages acknowledged at or before this timezone-bearing ISO-8601 time",
             )
         leaf.set_defaults(handler=_inbox)
+    inbox_unread = inbox_commands.add_parser(
+        "unread", help="count unacknowledged messages without expanding their bodies"
+    )
+    inbox_unread.add_argument("--data-root", default=None)
+    inbox_unread.add_argument("--project-id")
+    inbox_unread.add_argument("--root", default=".")
+    inbox_unread.add_argument("--recipient")
+    inbox_unread.add_argument("--count", action="store_true")
+    inbox_unread.set_defaults(handler=_inbox)
+    inbox_wait = inbox_commands.add_parser(
+        "wait", help="wait for one new recipient message using a resumable cursor"
+    )
+    inbox_wait.add_argument("--data-root", default=None)
+    inbox_wait.add_argument("--project-id")
+    inbox_wait.add_argument("--root", default=".")
+    inbox_wait.add_argument("--recipient", required=True)
+    inbox_wait.add_argument("--since-cursor", help="Integer or returned project:cursor")
+    inbox_wait.add_argument("--include-unread", action="store_true")
+    inbox_wait.add_argument("--follow", action="store_true")
+    inbox_wait.add_argument("--timeout-seconds", type=float)
+    inbox_wait.add_argument("--poll-seconds", type=float, default=0.5)
+    inbox_wait.set_defaults(handler=_inbox)
     for group in (collaboration_task_commands, collaboration_effect_commands):
         for leaf in group.choices.values():
             leaf.add_argument("--root", default=".")
