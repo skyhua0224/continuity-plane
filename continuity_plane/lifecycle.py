@@ -27,8 +27,8 @@ MAX_CONTEXT_BYTES = 4096
 
 RESUME_INSTRUCTION = (
     "Resume the interrupted task. Progress notes are nonterminal; metadata status "
-    "does not make authorized source/test work read-only. For unfamiliar code, "
-    "call continuity_context_lookup once, then narrow rg. Do not reread planning "
+    "does not make authorized source/test work read-only. Use rg for a known name; "
+    "use continuity_context_lookup when rg would return many matches. Do not reread planning "
     "documents or repeat answered messages."
 )
 

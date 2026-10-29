@@ -67,11 +67,11 @@
     },
     {
       "path": "README.en.md",
-      "sha256": "c64875b0a3ee0614f7cafb7dd130f413a62bde6e63c240546d7f73c0c504c192"
+      "sha256": "10aaf8dcd2a97bee50b2e949ef09b68174d88039a697023feac5ef9336e90127"
     },
     {
       "path": "README.md",
-      "sha256": "22b2e27b723243c53ece7aa0ba91eeb62791e4926d343c7159a176676d0f82fe"
+      "sha256": "f6fa901e6ad0888ae648928a13c0106f0e7330cc1aa7ec154cd3fe999ce07e61"
     },
     {
       "path": "SECURITY.en.md",
@@ -123,7 +123,7 @@
     },
     {
       "path": "continuity_plane/agent_tools.py",
-      "sha256": "7fc5f313de7c146b1854a12f28ba62f4a41e4864ee047aa0b3b5d476e19e7754"
+      "sha256": "f75a50952318cfa4be347b3e8691b8da32038c8085ae8a0ce97adc6fbd48fb5a"
     },
     {
       "path": "continuity_plane/artifact_store.py",
@@ -167,7 +167,7 @@
     },
     {
       "path": "continuity_plane/cli.py",
-      "sha256": "364bbb5a95a8e0f9a7d0dbc2d648f019374d1b2a4580035804079ad7011efe1b"
+      "sha256": "5216dfe5e77df3e839ba18d44eccd2abbb390ff928b6bc90897ebb2be8910815"
     },
     {
       "path": "continuity_plane/code_index.py",
@@ -215,7 +215,7 @@
     },
     {
       "path": "continuity_plane/collaboration_workflow.py",
-      "sha256": "15c58924ed73a5ef361fa07b282ba4275ae20d9b83192143f713bf77e820ae5c"
+      "sha256": "57c9e35a6298026d9f1f1607b033628ac215c2b62d3e431e65cf0972717521d5"
     },
     {
       "path": "continuity_plane/compiled_skill_packet.py",
@@ -223,7 +223,7 @@
     },
     {
       "path": "continuity_plane/context_mcp_server.py",
-      "sha256": "ad64abf974df0d4494e4369bcc297b3aea69937c2025d666db9d4989e3ba287c"
+      "sha256": "689e158a74bf28d7e904f228e3a5dacb9c33dbe3e3d85063cf0c92d4ae3e7fff"
     },
     {
       "path": "continuity_plane/controller_awareness.py",
@@ -363,7 +363,7 @@
     },
     {
       "path": "continuity_plane/lifecycle.py",
-      "sha256": "d7fd8ec7fb632bb77584533cbffbe9e795da25f7ea9834dd272dd6f0e40b3fc5"
+      "sha256": "bf79c0fda68910b9c6ef7d1c5ad7a347f1410ec79ecb5f259931043e4be3d804"
     },
     {
       "path": "continuity_plane/light_observability.py",
@@ -583,7 +583,7 @@
     },
     {
       "path": "continuity_plane/supervisor.py",
-      "sha256": "66e24c54dd86f40b2b3f51fe323ae015d162c52e154a9b4276f21b5844e5b4eb"
+      "sha256": "8154deaa41d3506183f728f162485a1aad2f24de0af03df45203019d1127461a"
     },
     {
       "path": "continuity_plane/task_shortcuts.py",
@@ -923,7 +923,7 @@
     },
     {
       "path": "integrations/claude/continuity-plane/skills/continuity-collaboration/SKILL.md",
-      "sha256": "32d6191d3e5292324f7eb5a8a20e66ebe1c0301a91075704e491c3ec0fe2bcea"
+      "sha256": "96ccfb719a70b0c60b9ef1ddd8e7e3357e0662554707ceab2e744ad941a6baba"
     },
     {
       "path": "integrations/claude/continuity-plane/skills/continuity-collaboration/references/collaboration.md",
@@ -971,7 +971,7 @@
     },
     {
       "path": "plugins/continuity-plane-state/skills/continuity-plane/SKILL.md",
-      "sha256": "a99084d68ea82cbd2f5e7fac50fdb3a11061732d721a181523da7b57098b36e5"
+      "sha256": "034c17db3424767090d797f71fd4c3809d612476aa19cf9d6454b97e3f89bff4"
     },
     {
       "path": "plugins/continuity-plane-state/skills/continuity-plane/references/collaboration.md",
@@ -1135,7 +1135,7 @@
     },
     {
       "path": "tests/test_a36_truthful_state.py",
-      "sha256": "c73cee53eb2e9165f56bede5607e4d71aa9ab79f6cfb726ed61b50d611f978f3"
+      "sha256": "60f9df5d0ef070edc23ba0906d1aaaf5ff3fddc266ae6701fed4e17c202b3986"
     },
     {
       "path": "tests/test_a36_wait_report.py",

@@ -60,10 +60,11 @@ def _tool() -> dict:
     return {
         "name": "continuity_context_lookup",
         "description": (
-            "Use when you need to know where a function, type, macro, file or header is "
-            "defined or used: returns a few file:line locations with short excerpts from an "
-            "index of the Git-tracked files (default about 1 KB). Faster and smaller than grep "
-            "over the repository. An empty result is a normal miss; then do one narrow search."
+            "Use when a grep would return many matches, or to see where a function, type, "
+            "macro, file or header is used or depended on across a large repository: returns "
+            "a few file:line locations, definitions first, from an index of the Git-tracked "
+            "files (default about 1 KB). For one known name a plain grep is usually cheaper. "
+            "An empty result is a normal miss; then do one narrow search."
         ),
         "annotations": _ANNOTATIONS,
         "inputSchema": {
@@ -245,10 +246,12 @@ def main() -> int:
                     "capabilities": {"tools": {}},
                     "serverInfo": {"name": "continuity-search", "version": VERSION},
                     "instructions": (
-                        "Use continuity_context_lookup to find where a symbol, file or "
-                        "header is defined or used before reading files or running broad "
-                        "grep. It returns a few bounded locations (about 1 KB). On an "
-                        "empty result, run one narrow search instead of repeating the query."
+                        "Use continuity_context_lookup when a plain grep would return many "
+                        "matches, or to list where a symbol, file or header is used or "
+                        "depended on across a large repository. It returns a few bounded "
+                        "locations, definitions first (about 1 KB). For a single name your own "
+                        "grep is usually cheaper. On an empty result, run one narrow search "
+                        "instead of repeating the query."
                     ),
                 },
             )

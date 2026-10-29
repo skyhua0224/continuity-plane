@@ -32,7 +32,7 @@ Planning work with more than one step, agent or session: continuity_task_add for
 Sending work to another agent: continuity_worker_dispatch (preview first, then launch=true), then wait outside the model: run `continuity worker wait --project-id P --task-id T` as a background shell task and read continuity_worker_report when it exits. continuity_events_wait checks once and returns; never call it in a loop, every call re-reads your whole context. continuity_worker_report returns a short summary with headings; page with offset.
 Working on a card: continuity_progress at milestones, continuity_report_final when done (it attaches the report, marks the card ready for review and tells the dispatcher), continuity_review_request to ask for a review, continuity_inbox to ask a question.
 Before context runs out or you hand over: continuity_handoff_write; a new controller reads continuity_handoff_show.
-Finding code: continuity_context_lookup (bounded results) before broad grep.
+Finding code: grep a known name; continuity_context_lookup when grep would return many matches or for usages in a large repository.
 project_id and your identity default from the environment; pass project_id when you work on several projects. Every tool returns `next` with the call that usually follows."""
 
 

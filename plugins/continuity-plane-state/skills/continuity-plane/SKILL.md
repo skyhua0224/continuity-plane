@@ -9,7 +9,7 @@ Call the `continuity` MCP tools. Fall back to the `continuity` command only when
 
 ## Dispatched onto a card (most Codex sessions)
 1. `continuity_start` with the project_id and task_id from your prompt: card, messages, changes.
-2. Work in the checkout the card names. Use `continuity_context_lookup` to locate code.
+2. Work in the checkout the card names. Grep for a known name; use `continuity_context_lookup` when grep would return many matches.
 3. `continuity_progress(note=…)` after each milestone, so the dispatcher sees where you are.
 4. Finish with `continuity_report_final(summary, checks, unverified, branch, commit)`. It stores the report, sets ready-for-review and messages the dispatcher. Do not write report files or edit the card by hand.
 5. Need a decision? `continuity_inbox(action="send", recipient=<dispatcher>, body=…)`, then continue with what you can.

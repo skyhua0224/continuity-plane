@@ -46,6 +46,8 @@ from .state_store import StateStoreError
 from .release_version import VERSION
 
 if TYPE_CHECKING:
+    import sqlite3
+
     from .sqlite_state_store import SQLiteStateStore
     from .state_mcp import RequestContext, StateMCPService
 
@@ -1980,7 +1982,7 @@ def _capture_json_handler(handler: Any, args: argparse.Namespace) -> dict[str, A
     return document
 
 
-def _autorun_ledger(root: Path) -> sqlite3.Connection:
+def _autorun_ledger(root: Path) -> "sqlite3.Connection":
     import sqlite3
 
     path = root / ".continuity/autorun.sqlite3"

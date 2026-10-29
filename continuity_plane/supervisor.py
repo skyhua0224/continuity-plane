@@ -28,7 +28,6 @@ from .collaboration_registry import (
 )
 from .execution_outbox import change as _record_change, enqueue
 from .execution_lifecycle import (
-    LOST_REASONS,
     bind_execution,
     finish_execution,
     job_id_of,

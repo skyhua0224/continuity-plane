@@ -11,7 +11,7 @@ Use the `continuity` MCP tools; run the `continuity` CLI only if they are unavai
 - Start or resume: `continuity_start` (your cards, unread messages, recent changes).
 - Taking over a project: `continuity_handoff_show`, then `continuity_task_list`.
 - Before you stop or the context fills: `continuity_handoff_write(plan, next_action, pending)`.
-- Finding code: `continuity_context_lookup` before broad grep.
+- Finding code: grep for one known name; `continuity_context_lookup` when grep would return many matches or for usages across a large repo.
 
 ## As controller
 - One card per piece of work: `continuity_task_add(task_id, title, body, assignee)`. The body says what to do, the scope and how to check it.

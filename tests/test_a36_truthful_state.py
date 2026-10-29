@@ -11,7 +11,6 @@ import threading
 import time
 import unittest
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
 
 from continuity_plane import collaboration_stream
 from continuity_plane.collaboration_registry import (

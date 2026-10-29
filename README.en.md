@@ -2,7 +2,7 @@
 
 # Continuity Plane
 
-**Let several AI coding agents work on one project in relay: nothing gets lost, progress stays visible, and a new session picks up where the last one stopped.**
+**A project record for AI coding agents: the plan, who does what and how far it got survive new sessions, compaction and hand-offs between agents.**
 
 [![PyPI](https://img.shields.io/pypi/v/continuity-plane?include_prereleases)](https://pypi.org/project/continuity-plane/) [![Release](https://img.shields.io/github/v/release/skyhua0224/continuity-plane?include_prereleases)](https://github.com/skyhua0224/continuity-plane/releases/latest) [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE) [![Managed with Continuity Plane](docs/assets/managed-with-continuity-plane.svg)](https://github.com/skyhua0224/continuity-plane)
 
@@ -12,11 +12,47 @@
 
 ---
 
-When you use agents such as Claude Code or Codex on anything larger than one change, the same problems keep coming back: the plan disappears when the context is compacted; the agents you sent off work in isolation and you cannot tell who has finished; reports are buried in logs; and every new session or model needs the whole story again.
+## What it is
 
-Continuity keeps that story in one shared project record. **Task cards** say what each piece of work is, who does it and how it is checked. **Run records** show when each agent started, whether it is stuck and what it reported. **Handoffs** keep the coordinator's plan and open decisions. Agents read and write these records through MCP tools, and the plugins save and restore them at session start and around compaction, without you having to remind anyone.
+When you work with AI coding agents such as Claude Code or Codex, the plan, the division of work and the progress live only in the chat. Once the chat is compacted, closed or handed to another agent, they are gone: a new session re-reads the code to guess where things stand, and agents you sent off cannot see what the others are doing.
 
-It runs locally by default: no account, database or background service.
+Continuity is a small tool that runs on your machine and gives your agents a **project record that outlives the chat**: the pieces of work (task cards), who is doing each, how far it got, what was reported and what is still undecided. Agents read and write it themselves through MCP tools, and the plugins save and restore it at session start and around compaction. You do not type commands or remind anyone.
+
+It runs locally: no account, database or background service.
+
+## When it helps
+
+| Situation | Without Continuity | With Continuity |
+|---|---|---|
+| The context was compacted, or you start a new session the next day | The plan stays in the old chat; the agent re-reads code to guess progress | The new session starts with the current task, next step, constraints and open decisions |
+| One agent coordinates and hands work to others | You write prompts, watch processes and dig reports out of logs | The coordinator splits work into cards, learns at once when one ends, and finds the report on the card |
+| Agents run sub-tasks in the background | Claude Code's native background sub-agents re-read their whole transcript with their own model every 30 seconds, just to update a status line | Workers dispatched by Continuity are separate processes without that cost |
+| Another person or model takes over | Explain everything again | The handoff keeps the plan, assignments and open decisions |
+
+## 📊 Measured: with and without
+
+Real Claude Code sessions (Sonnet 5.5) in isolated directories; the prompts never mention Continuity. Method and tool: `tools/run_value_eval.py`.
+
+**Taking over yesterday's work** (the previous session is gone; the new one must state each task's status, its owner and the open decision; 5 facts, 3 runs per arm)
+
+| | Facts right (3 runs) | Tokens (median) |
+|---|---|---:|
+| Code and git history only | 1, 1, 1 | 77,640 |
+| A PLAN.md written when the work started | 2, 4, 1 | 78,531 |
+| **With Continuity** | **4, 4, 5** | **64,333** |
+
+**Background sub-tasks** (Claude Code 2.1.312, one sub-task running about 2.5 minutes)
+
+| | Extra "progress summary" model calls |
+|---|---:|
+| Native background sub-agent | 5 (one every 30 s, each with the sub-agent's full transcript) |
+| **Worker dispatched by Continuity** | **0** |
+
+**After compaction**: the resume packet is about 1.1 KB and states the current task, next step, constraints, open decisions and verification entry correctly (simulated session, 3 runs).
+
+**Where it does not save**: finding where 3 types are defined in an 807-file C++ repository, Claude's own grep found all of them in one call with 37k tokens; Continuity's lookup also found them all but needed extra turns to load the tool and query, using 85k tokens. For a simple "where is this name defined", grep is the better tool; Continuity's lookup helps when grep returns too many matches or when you need every place a symbol is used in a large repository.
+
+Improvements between versions are in each version's [release notes](docs/releases.en.md).
 
 ## ✨ Highlights
 
@@ -25,7 +61,7 @@ It runs locally by default: no account, database or background service.
 - **Told when work ends** — when a worker finishes, fails, is rate-limited or gets stuck, the coordinator sees it in the conversation together with the tool to call next, across every project it leads
 - **Survives compaction and new sessions** — plugins save and restore "what comes next" at session start and around compaction; a new coordinator gets the plan, open decisions and approvals from the handoff
 - **Agents use it without being told** — the MCP server explains itself, everyday operations are separate typed tools, dispatched workers are told which tools to call, and a shell detour gets one reminder
-- **Read less code** — a local code index returns a few locations for a symbol, path or reverse dependency, about 1 KB by default and far smaller than a repository-wide grep
+- **Read less when grep is noisy** — a local code index returns a few locations for a symbol, path or reverse dependency, definitions first, about 1 KB by default; for one known name a plain grep is cheaper
 - **Shared rules and sources** — rules, terminology, reference documents and lessons are kept apart, and the matching rules travel with every dispatch
 - **Usage you can see** — `continuity observe adoption` counts how each agent session reached Continuity, through MCP or the CLI, and which operations still go through the shell
 
@@ -140,42 +176,6 @@ The MCP tools you will see most:
 | Everything else (rules, sources, quota, queue, batches) | `continuity_plan(action=…)`, parameters from `continuity_help` |
 
 Every command, parameter and hook: [command and tool reference](docs/commands.en.md).
-
-## 📊 Measurements
-
-Alpha36 against Alpha35. Methods, samples and commands are in the [Alpha36 notes](docs/release-alpha36.md).
-
-**Real agent sessions** (Claude Code, Sonnet 5.5, 3 runs per scenario and version, prompts never mention Continuity)
-
-| Scenario | Continuity operations via MCP | Median cost | Median tokens |
-|---|---|---:|---:|
-| Coordinator splits 3 tasks, assigns them, writes a handoff | 5–82 % → **100 %** | $0.185 → **$0.128** | 342,725 → **177,317** |
-| Take over after compaction | 0 % → **100 %** | $0.063 → **$0.055** | 68,048 → 64,061 |
-
-**Reads on a large project** (1,101 cards, 237k events; `hyperfine` 3×20 runs, median)
-
-| Operation | Alpha35 | Alpha36 |
-|---|---:|---:|
-| Last 50 changes | 812 ms | **61 ms** |
-| Coordinator handoff | 466 ms | **174 ms** |
-| Cards awaiting review | 333 ms | **168 ms** |
-
-**Code lookup** (807-file, ~115k-line C/C++ repository; 48 labelled queries + 8 held-out symbols)
-
-| Metric | Alpha35 | Alpha36 |
-|---|---:|---:|
-| First result is the definition (labelled / held-out) | 13.8 % / 1 of 8 | **100 % / 7 of 8** |
-| Warm lookup, in-process median | 589 ms | **84 ms** |
-
-**Resuming after compaction** (simulated session: 30 prompts, 200 tool calls)
-
-| Metric | Alpha35 | Alpha36 |
-|---|---:|---:|
-| Context injected after compaction | 3,974 B | **1,150 B** |
-| Hook injection over the session | 7,792 B | **2,950 B** |
-| Resume accuracy (active card, next step, constraints, open decisions, verification) | — | **5/5** |
-
-Machine: Intel i7-13700KF (24 threads), 31 GB, Linux, Python 3.13/3.14. Earlier experiments: [historical experiments](docs/benchmarks.en.md).
 
 ## 📚 Documentation
 
