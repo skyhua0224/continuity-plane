@@ -32,6 +32,39 @@ def _commit(value):
     return value
 
 
+_TASK_MARK = "----- Task -----"
+
+_HOW_TO_WORK = "How to work with Continuity (MCP tools from the `continuity` server).\n1. Start: call continuity_start once — it returns this card, unread messages and changes. Then verify integration_base and the observed checkout before editing.\n2. While working: continuity_progress(note=…) at each milestone; continuity_context_lookup(query=…) to find code before broad grep; continuity_inbox(action='send', recipient=<dispatcher>, body=…) for a question that blocks you.\n3. Finish: continuity_report_final(summary=…, checks=[{name, command, status, result}], unverified=[…], branch=…, commit=…). It saves the report, marks the card ready-for-review and tells your dispatcher; do not write report files or edit cards by hand.\n4. Review: continuity_review_request(brief=…) if the card asks for one.\nIf the MCP tools are not available in this session, use the CLI equivalents once (`continuity collaboration packet`, `continuity collaboration task update --status ready-for-review --report-file …`, `continuity collaboration inbox send …`) and mention in your report that MCP was unavailable.\nA queued card is not a running worker."
+
+_PERSISTENCE = "Keep recoverable work, reports, thread IDs and checkpoints in the persistent CONTINUITY_WORK_ROOT or Continuity data root, not temporary or memory-backed mounts. Only disposable reproducible buffers belong in temp directories. Authentication, account queries and native session resume stay on the owning host/profile; share authorized task artifacts or normalized observations, never migrate private profile/session state to query elsewhere."
+
+_REVIEWER = "Independent repository review: identify correctness, authorization and error-handling failures using the declared code and authorized test fixtures. Preserve accurate technical facts and state any uncertainty or missing authorization; do not conceal the nature of the requested work."
+
+
+def _rule_lines(rules):
+    ordered = sorted(
+        rules,
+        key=lambda rule: (
+            rule["rule_id"],
+            rule.get("scope") or "",
+            rule.get("audience") or "",
+        ),
+    )
+    return "\n".join(
+        f"[{rule['audience']}] {rule['rule_id']}: {rule['text']}" for rule in ordered
+    )
+
+
+def _stable_block(rules_text, audience):
+    """Audience prefix. No card ids, paths, timestamps or digests."""
+    parts = ["Project rules:\n" + rules_text if rules_text else "Project rules:"]
+    parts.append(_HOW_TO_WORK)
+    parts.append(_PERSISTENCE)
+    if audience == "reviewer":
+        parts.append(_REVIEWER)
+    return "\n\n".join(parts)
+
+
 def prompt(
     data_root,
     *,
@@ -69,17 +102,22 @@ def prompt(
         data, project_id=project_id, audience=audience, lane_id=task["lane_id"]
     )
     rules = rule_bundle["rules"]
-    # All rules are supplied to a new worker. Audience labels remain visible.
-    rules_text = "\n".join(
-        f"[{r['audience']}] {r['rule_id']}: {r['text']}"
-        for r in sorted(rules, key=lambda r: r["rule_id"])
-    )
+    # Lane rules name one lane, so they stay behind the separator.
+    # The leading block is then the same for every card of this audience.
+    shared_rules = [
+        rule
+        for rule in rules
+        if not str(rule.get("audience", "")).startswith("lane:")
+    ]
+    lane_rules = [
+        rule
+        for rule in rules
+        if str(rule.get("audience", "")).startswith("lane:")
+    ]
+    rules_text = _rule_lines(shared_rules)
+    lane_text = _rule_lines(lane_rules)
     digest = rule_bundle["rules_digest"]
-    prefix = (
-        f"Previously received rules unchanged: {digest}"
-        if known_rules_digest == digest
-        else "Project rules:\n" + rules_text
-    )
+    stable = _stable_block(rules_text, audience)
     instructions = {
         "task_id": task_id,
         "assignee": assignee or task["assignee"],
@@ -196,15 +234,22 @@ def prompt(
             {k: r.get(k) for k in ("entity_id", "statement", "scope", "confidence")}
             for r in vocabulary[:6]
         ]
-    text = (
-        prefix
-        + "\n\nAssigned work (metadata does not authorize merge/deploy):\n"
+    task_parts = []
+    if lane_text:
+        task_parts.append("Lane rules:\n" + lane_text)
+    if known_rules_digest == digest:
+        task_parts.append(f"Previously received rules unchanged: {digest}")
+    task_parts.append(
+        "Assigned work (metadata does not authorize merge/deploy):\n"
         + json.dumps(instructions, ensure_ascii=False, sort_keys=True)
     )
-    text += "\nStart: read your packet and inbox, then verify integration_base and the observed checkout before editing. Finish: attach report and commit-bound verification, mark ready-for-review, and send an inbox message to your dispatcher. A queued card is not a running worker."
-    text += "\nKeep recoverable work, reports, thread IDs and checkpoints in the persistent CONTINUITY_WORK_ROOT or Continuity data root, not temporary or memory-backed mounts. Only disposable reproducible buffers belong in temp directories. Authentication, account queries and native session resume stay on the owning host/profile; share authorized task artifacts or normalized observations, never migrate private profile/session state to query elsewhere."
-    if audience == "reviewer" or task["mode"] == "scout":
-        text += "\nIndependent repository review: identify correctness, authorization and error-handling failures using the declared code and authorized test fixtures. Preserve accurate technical facts and state any uncertainty or missing authorization; do not conceal the nature of the requested work."
+    ids = f"project_id={project_id!r}, task_id={task_id!r}"
+    if assignee:
+        ids += f", assignee={assignee!r}"
+    task_parts.append(f"Pass {ids} if a tool asks for them.")
+    if audience != "reviewer" and task["mode"] in {"scout", "review"}:
+        task_parts.append(_REVIEWER)
+    text = stable + "\n\n" + _TASK_MARK + "\n\n" + "\n\n".join(task_parts)
     return dict(
         task_id=task_id,
         prompt=text,

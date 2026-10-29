@@ -35,7 +35,7 @@ class TaskReassignmentTests(unittest.TestCase):
         return execute(action, parameters, project_id="sample", root=str(self.root), data_root=str(self.data))
 
     def card(self, **extra):
-        return self.execute("task.add", task_id="task", lane_id="lane", mode="patch", priority="p1", title="Reassignment fixture", objective="Check caller and target", next_action="Run checks", exit_criterion=["PASS"], **extra)
+        return self.execute("task.add", task_id="task", lane_id="lane", mode="patch", priority="p1", title="Reassignment fixture", objective="Check caller and target", next_action="Run checks", exit_criterion=["PASS"], body="Fixture body", **extra)
 
     def tool(self, action, **parameters):
         return handle_tool("continuity_plan", {"action": action, "project_id": "sample", "root": str(self.root), "data_root": str(self.data), "parameters": parameters})
@@ -61,7 +61,7 @@ class TaskReassignmentTests(unittest.TestCase):
 
     def test_controller_mcp_can_create_and_reassign_explicit_target(self):
         with patch.dict(os.environ, {"CONTINUITY_ASSIGNEE": "controller", "CONTINUITY_ROLE": "controller"}):
-            self.tool("task.add", task_id="task", lane_id="lane", mode="patch", priority="p1", title="MCP fixture", objective="Delegate", next_action="Check", exit_criterion=["PASS"], assignee="sol")
+            self.tool("task.add", task_id="task", lane_id="lane", mode="patch", priority="p1", title="MCP fixture", objective="Delegate", next_action="Check", exit_criterion=["PASS"], body="Fixture body", assignee="sol")
             self.tool("task.update", task_id="task", assignee="sonnet")
             self.tool("task.update", task_id="task", body="Annotation after reconnect")
         card = self.execute("task.show", task_id="task")
@@ -70,7 +70,7 @@ class TaskReassignmentTests(unittest.TestCase):
 
     def test_controller_mcp_new_unassigned_card_is_not_implicitly_claimed(self):
         with patch.dict(os.environ, {"CONTINUITY_ASSIGNEE": "controller", "CONTINUITY_ROLE": "controller"}):
-            self.tool("task.add", task_id="task", lane_id="lane", mode="patch", priority="p1", title="Queued", objective="Plan", next_action="Assign later", exit_criterion=["PASS"])
+            self.tool("task.add", task_id="task", lane_id="lane", mode="patch", priority="p1", title="Queued", objective="Plan", next_action="Assign later", exit_criterion=["PASS"], body="Fixture body")
         card = self.execute("task.show", task_id="task")
         self.assertEqual((card["status"], card["assignee"]), ("queued", None))
 
@@ -229,7 +229,8 @@ class Alpha26AdoptionTests(unittest.TestCase):
             self.assertIsNone(context(payload, data_root=self.data))
         self.assertIsNone(load_queue(self.root, self.data))
         self.assertLessEqual(len(text.encode()), 1024)
-        command = next(line.split(": ", 1)[1] for line in text.splitlines() if line.startswith("Inspect current work: "))
+        self.assertIn("Inspect current work: continuity_", text)
+        command = next(line.split(": ", 1)[1] for line in text.splitlines() if line.startswith("CLI fallback: "))
         build_parser().parse_args(shlex.split(command)[1:])
         with patch.dict(os.environ, {"CONTINUITY_ASSIGNEE": "controller"}):
             context({**payload, "session_id": "controller-session"}, data_root=self.data)
@@ -243,7 +244,7 @@ class Alpha26AdoptionTests(unittest.TestCase):
         self.assertIsNone(omitted_checklist_hint(payload, data_root=self.data, max_bytes=5))
         text = omitted_checklist_hint(payload, data_root=self.data)
         self.assertIn("no separate Todo", text)
-        build_parser().parse_args(shlex.split(text.split("Inspect: ")[1])[1:])
+        build_parser().parse_args(shlex.split(text.split("CLI fallback: ")[1])[1:])
         self.assertIsNone(omitted_checklist_hint(payload, data_root=self.data))
 
     def tsv(self, text):

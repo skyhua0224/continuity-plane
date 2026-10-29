@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import fcntl
+import hashlib
 import json
 import os
 import re
@@ -24,8 +25,13 @@ LEGACY_DISPATCH_LEDGER_SCHEMA = "context.dispatch-ledger/v1alpha1"
 TASK_CARD_SCHEMA = "context.task-card/v1alpha1"
 _ID_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,127}$")
 _ASSIGNEE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/@-]{0,255}$")
+_RACY_NS = 2_000_000_000
+# Text of ledgers already validated in this process, keyed by path and file identity.
+_LEDGER_MEMO: dict[str, tuple[tuple, str]] = {}
+_CONTROL_RE = re.compile("[\x00-\x1f]")
+_CONTROL_MULTILINE_RE = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f]")
 _PRIORITY = {"p0", "p1", "p2"}
-_MODE = {"scout", "patch", "integration", "cleanup", "infra", "decision"}
+_MODE = {"scout", "review", "patch", "integration", "cleanup", "infra", "decision"}
 _TASK_STATUS = {
     "queued",
     "active",
@@ -132,16 +138,31 @@ def _locked(path: Path) -> Iterator[None]:
             fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
-def _load(path: Path) -> dict[str, Any] | None:
+def _read_text(path: Path) -> tuple[str | None, tuple | None]:
+    """Read one document; the identity is None while metadata could still be racy."""
     try:
-        content = path.read_text(encoding="utf-8")
+        with path.open("rb") as stream:
+            info = os.fstat(stream.fileno())
+            # Decoding bytes avoids the text layer's newline translation pass.
+            content = stream.read().decode("utf-8")
     except FileNotFoundError:
-        return None
+        return None, None
     except (OSError, json.JSONDecodeError) as exc:
         raise CollaborationRegistryError(
             f"collaboration document is unreadable: {exc}"
         ) from exc
-    if not content.strip():
+    return content, _stable_identity(info)
+
+
+def _stable_identity(info: os.stat_result) -> tuple | None:
+    # A file rewritten within the clock granularity could keep its metadata.
+    if time.time_ns() - info.st_mtime_ns < _RACY_NS:
+        return None
+    return (info.st_ino, info.st_size, info.st_mtime_ns)
+
+
+def _parse(content: str | None) -> dict[str, Any] | None:
+    if content is None or not content.strip():
         return None
     try:
         document = json.loads(content)
@@ -154,14 +175,16 @@ def _load(path: Path) -> dict[str, Any] | None:
     return document
 
 
+def _load(path: Path) -> dict[str, Any] | None:
+    return _parse(_read_text(path)[0])
+
+
 def _text(value: Any, field: str, limit: int = 4096, *, multiline=False) -> str:
     if (
         not isinstance(value, str)
         or not value.strip()
-        or len(value.encode("utf-8")) > limit
-        or any(
-            ord(char) < 32 and (not multiline or char not in "\n\r\t") for char in value
-        )
+        or (len(value) if value.isascii() else len(value.encode("utf-8"))) > limit
+        or (_CONTROL_MULTILINE_RE if multiline else _CONTROL_RE).search(value)
     ):
         raise CollaborationRegistryError(f"{field} is invalid")
     return value
@@ -290,10 +313,18 @@ def _validate_task(task: dict[str, Any]) -> dict[str, Any]:
     for field in ("task_id", "lane_id"):
         if _ID_RE.fullmatch(str(task[field])) is None:
             raise CollaborationRegistryError(f"{field} is invalid")
-    if task["mode"] not in _MODE or task["priority"] not in _PRIORITY:
-        raise CollaborationRegistryError("task mode or priority is invalid")
+    if task["mode"] not in _MODE:
+        raise CollaborationRegistryError(
+            f"task mode {task['mode']!r} is invalid; valid modes: {', '.join(sorted(_MODE))}"
+        )
+    if task["priority"] not in _PRIORITY:
+        raise CollaborationRegistryError(
+            f"task priority {task['priority']!r} is invalid; valid priorities: {', '.join(sorted(_PRIORITY))}"
+        )
     if task["status"] not in _TASK_STATUS:
-        raise CollaborationRegistryError("task status is invalid")
+        raise CollaborationRegistryError(
+            f"task status {task['status']!r} is invalid; valid statuses: {', '.join(sorted(_TASK_STATUS))}"
+        )
     _text(task["title"], "title", 512)
     _text(task["objective"], "objective")
     _text(task["next_action"], "next_action", 1024)
@@ -425,6 +456,23 @@ def list_changes(
     ):
         raise CollaborationRegistryError("since or max_results is invalid")
     path = _changes_path(root, project_id)
+    if path.exists():
+        from .journal_index import read_page
+
+        # The index answers without parsing history; None means scan the journal.
+        indexed = read_page(path, since, max_results)
+        if indexed is not None:
+            selected, total, high_water, corrupt = indexed
+            return {
+                "schema_version": "context.collaboration-changes/v1alpha1",
+                "since": since,
+                "next_cursor": selected[-1]["cursor"] if selected else since,
+                "high_water_cursor": high_water,
+                "changes": selected,
+                "total_changes": total,
+                "truncated": len(selected) < total,
+                "corrupt_lines": corrupt,
+            }
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
     except FileNotFoundError:
@@ -627,7 +675,18 @@ def _empty_ledger() -> dict[str, Any]:
 
 
 def _load_ledger(data_root: Path, project_id: str) -> dict[str, Any]:
-    document = _load(_ledger_path(data_root, project_id)) or _empty_ledger()
+    path = _ledger_path(data_root, project_id)
+    memo = _LEDGER_MEMO.get(str(path))
+    try:
+        trusted = memo is not None and memo[0] == _stable_identity(path.stat())
+    except OSError:
+        trusted = False
+    if trusted:
+        # Same file as one already validated: parse a private copy, skip re-validation.
+        content, identity = memo[1], memo[0]
+    else:
+        content, identity = _read_text(path)
+    document = _parse(content) or _empty_ledger()
     if not isinstance(document, dict):
         raise CollaborationRegistryError("dispatch ledger is invalid")
     if document.get("schema_version") == GUARDED_DISPATCH_LEDGER_SCHEMA:
@@ -662,6 +721,8 @@ def _load_ledger(data_root: Path, project_id: str) -> dict[str, Any]:
             item.setdefault("verification", None)
             item.setdefault("landed_commit", None)
             item.setdefault("released_in", None)
+    if trusted:
+        return document
     tasks = [_validate_task(item) for item in document.get("tasks", [])]
     ids = [item["task_id"] for item in tasks]
     if len(ids) != len(set(ids)):
@@ -703,6 +764,10 @@ def _load_ledger(data_root: Path, project_id: str) -> dict[str, Any]:
         effect_ids.append(effect["effect_id"])
     if len(effect_ids) != len(set(effect_ids)):
         raise CollaborationRegistryError("effect_id must be unique")
+    if identity is not None and content is not None:
+        if len(_LEDGER_MEMO) >= 2:
+            _LEDGER_MEMO.clear()
+        _LEDGER_MEMO[str(path)] = (identity, content)
     return document
 
 
@@ -724,6 +789,25 @@ def _note_lane(ledger, task):
         ]
     elif existing.get("planning_warnings"):
         existing["planning_warnings"] = []
+
+
+def _set_body(details, body, actor=None):
+    """Record a card body; every changed text is a new revision with its sha256."""
+    text = _text(body, "task body", 32768, multiline=True)
+    digest = hashlib.sha256(text.encode()).hexdigest()
+    previous = details.get("body")
+    if previous == text and details.get("body_sha256") == digest:
+        return False
+    revision = 1 if previous is None else int(details.get("body_revision") or 1) + 1
+    details.update(
+        body=text,
+        body_sha256=digest,
+        body_revision=revision,
+        body_updated_at=_now(),
+    )
+    if actor is not None:
+        details["body_updated_by"] = actor
+    return True
 
 
 def dependencies_ready(task, tasks):
@@ -761,6 +845,8 @@ def add_task(
     released_in: str | None = None,
     body: str | None = None,
     actor: str | None = None,
+    min_tier: str | None = None,
+    deny_models: list[str] | None = None,
 ) -> dict[str, Any]:
     """Add a bounded task card without granting execution authority."""
     if actor is not None and (
@@ -803,9 +889,9 @@ def add_task(
         if any(item["task_id"] == task_id for item in ledger["tasks"]):
             raise CollaborationRegistryError("task_id already exists")
         if task["status"] == "active" and not dependencies_ready(task, ledger["tasks"]):
-            raise CollaborationRegistryError(
-                "task dependencies are not complete; keep the card queued until dependency cards are completed or merged"
-            )
+            # Declare the dependency graph up front: the card waits, queued,
+            # and the claim/activate/dispatch gates keep it from starting.
+            task["status"] = "queued"
         _note_lane(ledger, task)
         ledger["tasks"].append(task)
         if actor is not None:
@@ -813,9 +899,18 @@ def add_task(
                 "created_by"
             ] = actor
         if body is not None:
-            ledger.setdefault("task_details", {}).setdefault(task_id, {})["body"] = (
-                _text(body, "task body", 32768, multiline=True)
+            _set_body(
+                ledger.setdefault("task_details", {}).setdefault(task_id, {}),
+                body,
+                actor,
             )
+        from .model_constraints import validate as validate_constraints
+
+        constraints = validate_constraints(min_tier, deny_models)
+        if constraints:
+            ledger.setdefault("task_details", {}).setdefault(task_id, {})[
+                "model_constraints"
+            ] = constraints
         ledger["updated_at"] = _now()
         _atomic_write(path, ledger)
         _record_change(
@@ -851,6 +946,13 @@ def update_task(
     report: dict | None = None,
     verification_data: dict | None = None,
     body: str | None = None,
+    title: str | None = None,
+    objective: str | None = None,
+    priority: str | None = None,
+    exit_criteria: list[str] | None = None,
+    min_tier: str | None = None,
+    deny_models: list[str] | None = None,
+    clear_model_constraints: bool = False,
     unassign: bool = False,
     force: bool = False,
     force_reason: str | None = None,
@@ -929,7 +1031,9 @@ def update_task(
                 "acceptance requires project review; submit ready-for-review instead"
             )
         if status not in _TASK_STATUS:
-            raise CollaborationRegistryError("task status is invalid")
+            raise CollaborationRegistryError(
+                f"task status {status!r} is invalid; valid statuses: {', '.join(sorted(_TASK_STATUS))}"
+            )
         candidate_dependencies = (
             task["dependencies"] if dependencies is None else dependencies
         )
@@ -942,7 +1046,7 @@ def update_task(
             and not force
         ):
             raise CollaborationRegistryError(
-                "task dependencies are not complete; resolve them or use an audited force override"
+                "task dependencies are not complete; set --status queued to wait for them, resolve them, or use an audited force override"
             )
         for field, value in (
             ("branch", branch),
@@ -977,8 +1081,27 @@ def update_task(
                 "recorded_at": _now(),
                 "commit": task.get("commit"),
             }
-        if body is not None:
-            details["body"] = _text(body, "task body", 32768, multiline=True)
+        body_changed = body is not None and _set_body(details, body, actor)
+        for field, value in (
+            ("title", title),
+            ("objective", objective),
+            ("priority", priority),
+            ("exit_criteria", exit_criteria),
+        ):
+            if value is not None:
+                task[field] = value
+        if clear_model_constraints:
+            details.pop("model_constraints", None)
+        if min_tier is not None or deny_models:
+            from .model_constraints import validate as validate_constraints
+
+            current = details.get("model_constraints") or {}
+            merged = validate_constraints(
+                min_tier or current.get("min_tier"),
+                deny_models if deny_models else current.get("deny_models"),
+            )
+            if merged:
+                details["model_constraints"] = merged
         if status == "merged":
             details["evidence_gaps"] = merge_gate(task, details)
         if force:
@@ -1048,6 +1171,14 @@ def update_task(
             assignee=task["assignee"],
             actor=actor,
             previous_assignee=previous_assignee,
+            **(
+                {
+                    "body_revision": details["body_revision"],
+                    "body_sha256": details["body_sha256"],
+                }
+                if body_changed
+                else {}
+            ),
         )
         return task
 

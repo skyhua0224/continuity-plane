@@ -31,6 +31,8 @@ class AdopterDocumentationTests(unittest.TestCase):
             for name in (
                 "README.md",
                 "README.en.md",
+                "commands.md",
+                "commands.en.md",
                 "deployment.md",
                 "deployment.en.md",
                 "workflows.md",
@@ -92,8 +94,10 @@ class AdopterDocumentationTests(unittest.TestCase):
             ("collaboration", "commitment-add"),
             ("observe", "report"),
         }
-        for name in ("README.md", "README.en.md"):
-            text = (self.root / name).read_text()
+        # The homepage is a product page; the complete surface lives in the
+        # command reference, which must stay complete and executable.
+        for name in ("commands.md", "commands.en.md"):
+            text = (self.docs / name).read_text()
             families = next(
                 a
                 for a in build_parser()._actions
@@ -105,7 +109,7 @@ class AdopterDocumentationTests(unittest.TestCase):
                     r"(?<![\w-])" + re.escape(family) + r"(?![\w-])",
                     (name, family),
                 )
-            commands = list(self.readme_commands(self.root / name))
+            commands = list(self.readme_commands(self.docs / name))
             for prefix in required:
                 self.assertTrue(
                     any(tuple(c[: len(prefix)]) == prefix for c in commands),
@@ -150,10 +154,10 @@ class AdopterDocumentationTests(unittest.TestCase):
         from continuity_plane.context_mcp_server import _tool
 
         planning = next(t for t in tool_definitions() if t["name"] == "continuity_plan")
-        for name in ("README.md", "README.en.md"):
+        for name in ("commands.md", "commands.en.md"):
             configs, actions, lookups = [], [], []
             for block in re.findall(
-                r"```json\n(.*?)```", (self.root / name).read_text(), re.S
+                r"```json\n(.*?)```", (self.docs / name).read_text(), re.S
             ):
                 value = json.loads(block)
                 if "mcpServers" in value:
@@ -176,7 +180,7 @@ class AdopterDocumentationTests(unittest.TestCase):
     def test_homepage_planning_examples_execute_without_state_or_native_clients(self):
         from continuity_plane.cli import main
 
-        for name in ("README.md", "README.en.md"):
+        for name in ("commands.md", "commands.en.md"):
             with self.subTest(readme=name), tempfile.TemporaryDirectory() as directory:
                 root = Path(directory) / "repository"
                 root.mkdir()
@@ -217,7 +221,7 @@ class AdopterDocumentationTests(unittest.TestCase):
                         return output.getvalue()
 
                 with patch.dict(os.environ, env, clear=True), contextlib.chdir(root):
-                    for argv in self.readme_commands(self.root / name):
+                    for argv in self.readme_commands(self.docs / name):
                         selected = argv[0] in {
                             "todo",
                             "memory",

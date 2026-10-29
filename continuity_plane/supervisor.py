@@ -28,9 +28,12 @@ from .collaboration_registry import (
 )
 from .execution_outbox import change as _record_change, enqueue
 from .execution_lifecycle import (
+    LOST_REASONS,
     bind_execution,
     finish_execution,
+    job_id_of,
     record_execution_process,
+    record_job_outcome,
 )
 
 
@@ -53,6 +56,27 @@ def _process_identity(pid):
         return boot + ":" + start
     except (OSError, IndexError):
         return None
+
+
+# run_attempt's heartbeat interval; a job is only judged lost once its newest
+# sign of life is older than LOST_HEARTBEAT_FACTOR intervals.
+HEARTBEAT_SECONDS = 10
+LOST_HEARTBEAT_FACTOR = 2
+
+
+def process_state(pid, identity=None, host_id=None):
+    """`alive`, `gone`, `remote` (another host: unknowable) or `unknown` (no pid)."""
+    if type(pid) is not int or pid <= 0:
+        return "unknown"
+    if host_id and host_id != socket.gethostname():
+        return "remote"
+    if not _alive(pid):
+        return "gone"
+    current = _process_identity(pid)
+    # A recycled pid has a different start time; an unrecorded identity cannot disprove life.
+    if identity and current and identity != current:
+        return "gone"
+    return "alive"
 
 
 def _observed_workspace(pid, fallback=None):
@@ -138,29 +162,46 @@ class _OutputTail:
         self.lock = threading.Lock()
         self.on_output = on_output
         self.policy_seen = False
-        self.policy_suffix = b""
+        self.pending = b""
+        self.diagnostic = ""
         self.drained = False
         self.thread = threading.Thread(target=self._read, daemon=True)
         self.thread.start()
 
+    def _scan(self, line):
+        """Judge provider-reported text only; tool output is not evidence."""
+        from .retry_policy import policy_refusal, provider_error_text
+
+        text = provider_error_text(line.decode("utf-8", errors="replace"))
+        if not text:
+            return
+        with self.lock:
+            self.policy_seen |= policy_refusal(text)
+            self.diagnostic = (self.diagnostic + text + "\n")[-8192:]
+
     def _read(self):
         try:
             while chunk := self.stream.read1(4096):
-                from .retry_policy import policy_refusal
-
                 with self.lock:
-                    scan = self.policy_suffix + chunk
-                    self.policy_seen |= policy_refusal(
-                        scan.decode("utf-8", errors="replace")
-                    )
-                    self.policy_suffix = scan[-1024:]
                     self.tail = (self.tail + chunk)[-4096:]
                     self.last_output_at = time.monotonic()
+                self.pending += chunk
+                lines = []
+                if b"\n" in chunk:
+                    *lines, self.pending = self.pending.split(b"\n")
+                if len(self.pending) > 1048576:
+                    lines.append(self.pending)
+                    self.pending = b""
+                for line in lines:
+                    self._scan(line)
                 if self.on_output:
                     try:
                         self.on_output(chunk)
                     except Exception:
                         pass
+            if self.pending:
+                self._scan(self.pending)
+                self.pending = b""
             self.drained = True
         finally:
             self.stream.close()
@@ -189,6 +230,7 @@ def run_attempt(
     resume_command: list[str] | None = None,
     thread_file: str | None = None,
     restart_on_retry: bool = False,
+    retry_classes=None,
     model: str | None = None,
     report_file: str | None = None,
     workdir: str | None = None,
@@ -262,6 +304,7 @@ def run_attempt(
         except ValueError as exc:
             if retry_number:
                 last_result["retry_stopped"] = str(exc)
+                _close_abandoned_retry(root, project_id, task_id, assignee, last_result, event_prefix)
                 break
             raise
         except OSError:
@@ -467,7 +510,7 @@ def run_attempt(
                 reason = "provider-reported-failure"
             policy_seen = reader.policy_seen or getattr(on_output, "policy_seen", False)
             diagnostic_text = (
-                reader.snapshot()[1]
+                reader.diagnostic
                 + "\n"
                 + (getattr(on_output, "terminal_failure", None) or "")
             )
@@ -497,6 +540,34 @@ def run_attempt(
                     attached_report = read_report(file)
                 except (OSError, ValueError, UnicodeError) as exc:
                     failure["report_error"] = str(exc)[:256]
+            # Decide before journaling whether this failure ends the job: only
+            # a retry that will really start is `attempt.retrying`, not terminal.
+            # retry_classes narrows which transient classes may be retried in place.
+            may_retry = (
+                retry_number < retry
+                and status == "failed"
+                and bool(failure.get("retryable"))
+                and (retry_classes is None or failure.get("failure_class") in retry_classes)
+            )
+            delay = None
+            retry_stop = None
+            current_command = None
+            if may_retry:
+                delay = failure.get("retry_after_seconds")
+                if delay is None:
+                    delay = min(30, retry_delay_seconds * (2**retry_number))
+                if retry_wait + delay > max_retry_wait_seconds:
+                    retry_stop = "retry wait budget exceeded"
+                else:
+                    try:
+                        current_command = (
+                            resume_argv(resume_command, thread_file)
+                            if resume_command
+                            else list(command)
+                        )
+                    except (OSError, ValueError, UnicodeError) as exc:
+                        retry_stop = f"resume unavailable: {exc}"
+            retrying = may_retry and retry_stop is None
             projection = _safe_finish(
                 root,
                 project_id=project_id,
@@ -508,6 +579,7 @@ def run_attempt(
                 status=status,
                 return_code=return_code,
                 reason=reason,
+                retrying=retrying,
                 output_tail=reader.snapshot()[1],
                 elapsed_seconds=round(time.monotonic() - started, 3),
                 model=model,
@@ -543,7 +615,7 @@ def run_attempt(
             "gateway",
             "upstream-reset",
         }:
-            if retry_number >= retry or not failure.get("retryable"):
+            if not may_retry:
                 last_result["retry_exhausted"] = retry_number >= retry
                 last_result["next_actions"] = [
                     {
@@ -577,22 +649,9 @@ def run_attempt(
                             "note": "Honor provider retry-after/cooldown; a new thread does not reset quota. Consider another model only through an explicitly authorized handoff.",
                         }
                     ]
-        if status != "failed" or retry_number >= retry or not failure.get("retryable"):
-            break
-        delay = failure.get("retry_after_seconds")
-        if delay is None:
-            delay = min(30, retry_delay_seconds * (2**retry_number))
-        if retry_wait + delay > max_retry_wait_seconds:
-            last_result["retry_stopped"] = "retry wait budget exceeded"
-            break
-        try:
-            current_command = (
-                resume_argv(resume_command, thread_file)
-                if resume_command
-                else list(command)
-            )
-        except (OSError, ValueError, UnicodeError) as exc:
-            last_result["retry_stopped"] = f"resume unavailable: {exc}"
+        if not retrying:
+            if retry_stop:
+                last_result["retry_stopped"] = retry_stop
             break
         _record_change(
             root,
@@ -608,9 +667,32 @@ def run_attempt(
             time.sleep(delay)
         except KeyboardInterrupt:
             last_result["retry_stopped"] = "retry cancelled"
+            _close_abandoned_retry(root, project_id, task_id, assignee, last_result, event_prefix)
             break
         retry_wait += delay
     return last_result
+
+
+def _close_abandoned_retry(root, project_id, task_id, assignee, last_result, event_prefix):
+    """A retry announced as `attempt.retrying` never started: end the job now."""
+    if event_prefix != "attempt":
+        return
+    try:
+        _record_change(
+            root, project_id, "attempt.finished", task_id,
+            event_id=f"attempt:{task_id}:{last_result['attempt_id']}:finished",
+            attempt_id=last_result["attempt_id"], job_id=job_id_of(last_result["attempt_id"]),
+            assignee=assignee, status=last_result["status"],
+            return_code=last_result.get("return_code"), reason=last_result.get("retry_stopped"),
+            finished_at=_now(), failure_class=last_result.get("failure_class"),
+        )
+        record_job_outcome(
+            root, project_id, task_id, attempt_id=last_result["attempt_id"], assignee=assignee,
+            status=last_result["status"], return_code=last_result.get("return_code"),
+            reason=last_result.get("retry_stopped"), failure_class=last_result.get("failure_class"),
+        )
+    except (OSError, ValueError):
+        pass
 
 
 def _safe_finish(data_root, **fields):

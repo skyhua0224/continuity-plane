@@ -259,7 +259,8 @@ class AdoptionWorkflowTests(unittest.TestCase):
         note = notice(
             {**payload, "hook_event_name": "PostToolUse"}, data_root=self.data
         )
-        self.assertIn("1 worker ended", note)
+        self.assertIn("[sample] worker task completed", note)
+        self.assertIn("continuity_worker_report(project_id='sample', task_id='task')", note)
         self.assertIsNone(notice(payload, data_root=self.data))
         add_commitment(
             self.data,

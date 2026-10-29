@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 from typing import Any, Iterable, Iterator
 
+from .execution_lifecycle import LOST_REASONS
 from .collaboration_registry import (
     CollaborationRegistryError,
     _changes_path,
@@ -23,8 +24,13 @@ _WORKER_EVENTS = {
     "attempt.started",
     "attempt.heartbeat",
     "attempt.finished",
+    "attempt.retrying",
     "attempt.timeout",
     "attempt.retry-scheduled",
+    "job.completed",
+    "job.failed",
+    "job.interrupted",
+    "job.lost",
     "run.started",
     "run.heartbeat",
     "run.finished",
@@ -212,7 +218,14 @@ def event_kind(row: dict[str, Any]) -> str:
         return "started"
     if event in {"attempt.heartbeat", "run.heartbeat"}:
         return "progress"
-    if event in {"attempt.finished", "run.finished"}:
+    if event == "attempt.retrying":
+        return "retrying"
+    if event == "job.lost" or (
+        event in {"attempt.finished", "job.interrupted"}
+        and row.get("reason") in LOST_REASONS
+    ):
+        return "lost"
+    if event in {"attempt.finished", "run.finished", "job.completed", "job.failed", "job.interrupted"}:
         failure = row.get("failure_class")
         if failure in {"rate-limit", "quota-exhausted", "capacity"}:
             return "rate-limited"
@@ -242,6 +255,7 @@ def compact_worker_event(project_id: str, row: dict[str, Any]) -> dict[str, Any]
         "event",
         "task_id",
         "attempt_id",
+        "job_id",
         "assignee",
         "status",
         "return_code",
@@ -284,8 +298,12 @@ def worker_events(
     follow: bool,
     poll_seconds: float,
     max_events: int | None,
+    deadline: float | None = None,
 ):
-    """Interleave project tails while preserving each project's stable cursor."""
+    """Interleave project tails while preserving each project's stable cursor.
+
+    `deadline` is a time.monotonic() value; a following tail stops at it.
+    """
 
     states = {
         project_id: new_tail_state(since_cursors.get(project_id, 0))
@@ -320,7 +338,14 @@ def worker_events(
         if not follow:
             return
         if not made_progress:
-            time.sleep(poll_seconds)
+            if deadline is not None:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    return
+                poll = min(poll_seconds, remaining)
+            else:
+                poll = poll_seconds
+            time.sleep(poll)
 
 
 def selected_project_ids(data_root, project_id: str | None, all_projects: bool):
@@ -385,6 +410,103 @@ def worker_events_command(args) -> int:
             )
         )
     return 0
+
+
+# Kinds that end a worker's turn; a controller waiting outside the model wakes on these.
+_WAIT_KINDS = {
+    "completed",
+    "failed",
+    "interrupted",
+    "timeout",
+    "rate-limited",
+    "blocked",
+    "finished",
+    "lost",
+}
+WAIT_TIMEOUT_EXIT = 3
+
+
+def superseded_by_job_event(row: dict[str, Any]) -> bool:
+    """`attempt.finished` that is followed by its own `job.*` outcome event.
+
+    Waiters and notices act on the job event so one outcome is reported once;
+    older rows without `job_id` still count as terminal themselves.
+    """
+    return row.get("event") == "attempt.finished" and bool(row.get("job_id"))
+
+
+def wait_next_hint(event: dict[str, Any]) -> str:
+    project, task = event.get("project_id"), event.get("task_id")
+    if event["kind"] in {"blocked", "rate-limited"}:
+        return f"continuity_worker_jobs(project_id={project!r})"
+    return f"continuity_worker_report(project_id={project!r}, task_id={task!r})"
+
+
+def worker_wait_command(args) -> int:
+    """Block outside the model until a terminal worker event; one JSON line per event."""
+
+    for name in ("poll_seconds", "timeout_seconds"):
+        value = getattr(args, name)
+        if not math.isfinite(value) or value < 0 or (name == "poll_seconds" and value == 0):
+            raise CollaborationRegistryError(f"{name.replace('_', '-')} is invalid")
+    projects = selected_project_ids(args.data_root, args.project_id, args.all_projects)
+    cursors = parse_cursor_map(args.since_cursor, projects)
+    if args.since_cursor in (None, ""):
+        # Never replay history: start at the current tail.
+        cursors = {
+            project: latest_change_cursor(args.data_root, project_id=project)
+            for project in projects
+        }
+    tasks = set(args.task_id or [])
+    started = time.monotonic()
+    deadline = started + args.timeout_seconds if args.timeout_seconds else None
+    count = 0
+    last_cursor = ",".join(f"{project}:{cursors[project]}" for project in projects)
+    try:
+        for event in worker_events(
+            args.data_root,
+            project_ids=projects,
+            since_cursors=cursors,
+            follow=True,
+            poll_seconds=args.poll_seconds,
+            max_events=None,
+            deadline=deadline,
+        ):
+            last_cursor = event.get("stream_cursor", last_cursor)
+            if event["kind"] not in _WAIT_KINDS or superseded_by_job_event(event):
+                continue
+            if tasks and event.get("task_id") not in tasks:
+                continue
+            line = {
+                key: event[key]
+                for key in (
+                    "project_id", "task_id", "kind", "reason", "failure_class",
+                    "status", "attempt_id", "stream_cursor",
+                )
+                if event.get(key) is not None
+            }
+            line["next"] = wait_next_hint(event)
+            print(json.dumps(line, ensure_ascii=False, sort_keys=True), flush=True)
+            count += 1
+            if count >= args.max_events:
+                return 0
+    except KeyboardInterrupt:
+        return 130
+    print(
+        json.dumps(
+            {
+                "status": "timeout",
+                "waited_seconds": round(time.monotonic() - started, 1),
+                "emitted": count,
+                "stream_cursor": last_cursor,
+                "projects": projects,
+            },
+            ensure_ascii=False,
+            sort_keys=True,
+        ),
+        flush=True,
+    )
+    return WAIT_TIMEOUT_EXIT
 
 
 def inbox_messages(

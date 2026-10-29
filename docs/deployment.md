@@ -2,7 +2,7 @@
 
 [English](deployment.en.md) · [文档索引](README.md) · [快速开始](../USAGE.md)
 
-适用版本：CLI `0.1.0a35`，插件 tag `v0.1.0-alpha.35`。CLI、MCP 与宿主 hook 是三个需要分别验证的层次。
+适用版本：CLI `0.1.0a36`，插件 tag `v0.1.0-alpha.36`。CLI、MCP 与宿主 hook 是三个需要分别验证的层次。
 
 ## 选择部署方式
 
@@ -22,7 +22,7 @@
 
 ```bash
 python3 -m venv .venv
-.venv/bin/python -m pip install 'continuity-plane==0.1.0a35'
+.venv/bin/python -m pip install 'continuity-plane==0.1.0a36'
 .venv/bin/continuity --version
 ```
 
@@ -31,7 +31,7 @@ Windows PowerShell 对应 `py -3 -m venv .venv`、`.venv\Scripts\python.exe` 和
 希望全局使用时可选 pipx：
 
 ```bash
-pipx install 'continuity-plane==0.1.0a35'
+pipx install 'continuity-plane==0.1.0a36'
 pipx upgrade continuity-plane --pip-args=--pre
 ```
 
@@ -40,7 +40,7 @@ pipx upgrade continuity-plane --pip-args=--pre
 已有 pipx/uv 环境无法重建时，更新原解释器，不使用破坏性重装：
 
 ```bash
-uv pip install --python /path/to/pipx/venvs/continuity-plane/bin/python --reinstall-package continuity-plane 'continuity-plane==0.1.0a35'
+uv pip install --python /path/to/pipx/venvs/continuity-plane/bin/python --reinstall-package continuity-plane 'continuity-plane==0.1.0a36'
 ```
 
 pipx 的显示元数据可能仍需其正常 upgrade 流程刷新。网络失败时可用已核对摘要的 wheel 离线安装；不要关闭 TLS 验证，也不要把临时离线参数永久留给后续升级。
@@ -93,7 +93,7 @@ host capacity 是本地运行门，不是账号总额度。Git wrapper 位于本
 先安装 CLI。添加 marketplace，再选择插件：
 
 ```bash
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.35
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.36
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -117,7 +117,7 @@ codex plugin add continuity-plane-state@continuity-plane
 ```bash
 # 仅切换 Continuity 市场的固定版本
 codex plugin marketplace remove continuity-plane
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.35
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.36
 codex plugin marketplace upgrade continuity-plane
 ```
 
@@ -202,6 +202,28 @@ continuity bridge install --profile /path/to/claude-profile --config-file /path/
 该命令保留原字节备份、只管理指定 bridge 的 hook，重复执行应无变更。检查 8 类 hook 各一份，并验证实际配置的 SSH MCP 握手。切换旧 bridge 配置路径时，通过 `supersedes_config_files` 明确列出要替换的路径。
 
 bridge 默认可转发有界的当前显式清单指令；上例关闭了这一项。转发内容不是整个历史 transcript。私有凭据、原生 session 库与 transcript 路径不应跨机器搬运。
+
+### 稳定的 MCP over SSH
+
+直接把宿主的 MCP 命令写成 `ssh STATEHOST continuity-mcp` 时，SSH 一断，宿主就看到工具列表变化或服务掉线；宿主会重建提示缓存，Agent 也常退回 CLI。改为在宿主本机启动代理，由代理保持工具列表稳定：
+
+```json
+{
+  "mcpServers": {
+    "continuity": {"command":"continuity-mcp","args":["--proxy","ssh://state-host"]},
+    "continuity-search": {"command":"continuity-search-mcp","args":["--proxy","ssh://state-host"]}
+  }
+}
+```
+
+`state-host` 是 `~/.ssh/config` 里的 alias（端口与跳板写在那里）。远端程序不在 PATH 时，用 `ssh://state-host/opt/continuity/bin/continuity-mcp`；需要给远端进程设环境变量时，路径写成百分号编码的 `/env%20CONTINUITY_DATA_ROOT=/srv/data%20/opt/continuity/bin/continuity-mcp`，最后一个词必须仍是 `continuity-mcp`（检索代理为 `continuity-search-mcp`）。
+
+- 代理首次连上远端时取回 `initialize` 与 `tools/list`，按「主机 + 远端 `serverInfo.version`」缓存到本机数据根的 `mcp-proxy-cache/`，整个会话内逐字节不变；远端暂时不可达时，新会话用磁盘缓存启动。
+- `tools/call` 经 `ssh -T`（`BatchMode`、`ServerAliveInterval=15`、`ServerAliveCountMax=3`、ControlMaster）转发。连接断开后代理立即重连，失败则按 0.5 秒起翻倍、上限 10 秒退避，期间宿主的请求最多等待 30 秒；超时返回 `transport_unavailable`（调用未发出，可稍后重试）。
+- 调用进行中连接断开：只读工具（`readOnlyHint`）或参数带 `operation_id` 的调用会重试一次；其他调用返回 `failed_gate: "transport_interrupted"`，说明它可能已执行，并指明用哪个只读工具核对，不会盲目重发。
+- 重连后远端版本不同：本会话继续使用缓存列表，只向 stderr 写一次警告；重启宿主会话才采用新列表。
+
+代理只转发到 Continuity 自己的 MCP 入口，不提供任意远端命令；状态仍只在远端，本机不读写远端 SQLite。
 
 ### 远端检索
 

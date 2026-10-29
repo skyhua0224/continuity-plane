@@ -2,7 +2,7 @@
 
 [中文](deployment.md) · [Documentation](README.en.md) · [Quick start](../USAGE.en.md)
 
-Applies to CLI `0.1.0a35` and plugin tag `v0.1.0-alpha.35`. Verify CLI installation, MCP connections and native hook delivery separately.
+Applies to CLI `0.1.0a36` and plugin tag `v0.1.0-alpha.36`. Verify CLI installation, MCP connections and native hook delivery separately.
 
 ## Choose a topology
 
@@ -22,7 +22,7 @@ Python 3.11+; Git is needed for tracked-file retrieval. Install native agent cli
 
 ```bash
 python3 -m venv .venv
-.venv/bin/python -m pip install 'continuity-plane==0.1.0a35'
+.venv/bin/python -m pip install 'continuity-plane==0.1.0a36'
 .venv/bin/continuity --version
 ```
 
@@ -31,7 +31,7 @@ Windows PowerShell uses `py -3 -m venv .venv`, `.venv\Scripts\python.exe` and `.
 Optional global installation:
 
 ```bash
-pipx install 'continuity-plane==0.1.0a35'
+pipx install 'continuity-plane==0.1.0a36'
 pipx upgrade continuity-plane --pip-args=--pre
 ```
 
@@ -40,7 +40,7 @@ Check both `continuity --version` and `pipx list`. GitHub's regular Release cate
 If an existing pipx/uv environment refuses recreation, update its interpreter in place:
 
 ```bash
-uv pip install --python /path/to/pipx/venvs/continuity-plane/bin/python --reinstall-package continuity-plane 'continuity-plane==0.1.0a35'
+uv pip install --python /path/to/pipx/venvs/continuity-plane/bin/python --reinstall-package continuity-plane 'continuity-plane==0.1.0a36'
 ```
 
 pipx display metadata may still need its normal upgrade refresh. During a network failure, a hash-verified wheel can be installed offline. Do not disable TLS verification or persist temporary offline flags into future upgrades.
@@ -93,7 +93,7 @@ Host capacity is a local run gate, not total account quota. The Git wrapper is m
 Install the CLI, add the marketplace, then select the plugin:
 
 ```bash
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.35
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.36
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -117,7 +117,7 @@ If add reports a different registered source, back up the owner-host Codex confi
 ```bash
 # Repin only the Continuity marketplace
 codex plugin marketplace remove continuity-plane
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.35
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.36
 codex plugin marketplace upgrade continuity-plane
 ```
 
@@ -200,6 +200,28 @@ continuity bridge install --profile /path/to/claude-profile --config-file /path/
 Installation retains byte backups and manages only this bridge's hooks. Reinstall should make no changes. Check one hook per eight event types and actual configured SSH MCP handshakes. Use `supersedes_config_files` to identify replaced config paths explicitly.
 
 The bridge can forward the bounded current explicit checklist by default; the example disables that. It does not forward historical transcript bodies. Credentials, native session stores and transcript paths must not be migrated.
+
+### Stable MCP over SSH
+
+If a host launches `ssh STATEHOST continuity-mcp` directly, every dropped SSH connection shows up as a changed tool list or a dead server; the host then rebuilds its prompt cache and agents often fall back to the CLI. Launch a local proxy instead and let it keep the tool list fixed:
+
+```json
+{
+  "mcpServers": {
+    "continuity": {"command":"continuity-mcp","args":["--proxy","ssh://state-host"]},
+    "continuity-search": {"command":"continuity-search-mcp","args":["--proxy","ssh://state-host"]}
+  }
+}
+```
+
+`state-host` is an alias from `~/.ssh/config` (ports and jump hosts belong there). If the remote program is not on PATH, use `ssh://state-host/opt/continuity/bin/continuity-mcp`. To set environment variables for the remote process, percent-encode the path as `/env%20CONTINUITY_DATA_ROOT=/srv/data%20/opt/continuity/bin/continuity-mcp`; the last word must still be `continuity-mcp` (`continuity-search-mcp` for the search proxy).
+
+- On first contact the proxy fetches `initialize` and `tools/list` from the remote and caches them under `mcp-proxy-cache/` in the local data root, keyed by host and remote `serverInfo.version`. The list stays byte-identical for the whole session, and a new session can start from the disk cache while the remote is unreachable.
+- `tools/call` is forwarded over `ssh -T` (`BatchMode`, `ServerAliveInterval=15`, `ServerAliveCountMax=3`, ControlMaster). After a drop the proxy reconnects at once, then backs off from 0.5 s doubling to 10 s; host requests wait up to 30 s, then return `transport_unavailable` (the call was not sent, so it is safe to retry later).
+- If the connection drops while a call is in flight, a read-only tool (`readOnlyHint`) or a call whose arguments carry `operation_id` is retried once. Any other call returns `failed_gate: "transport_interrupted"`: it may or may not have run, and the message names a read-only tool to check. It is never replayed blindly.
+- If the remote reports a different version after a reconnect, the session keeps the cached list and writes one warning to stderr; restart the host session to pick up the new list.
+
+The proxy only forwards to Continuity's own MCP entry points, not arbitrary remote commands. State stays on the remote host; the local machine never reads or writes the remote SQLite files.
 
 ### Remote retrieval
 

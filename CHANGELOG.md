@@ -4,6 +4,32 @@
 
 [English](CHANGELOG.en.md)
 
+## 0.1.0-alpha.36
+
+- MCP 新增 14 个一等工具：`continuity_start`、`continuity_task_add/update/show/list`、`continuity_handoff_write/show`、`continuity_worker_dispatch/jobs/report`、`continuity_events_wait`、`continuity_progress`、`continuity_report_final`、`continuity_review_request`。参数由 CLI 定义生成，与 CLI 共用执行路径和身份守卫；`continuity_plan` 保留全部操作。
+- 两个 MCP 服务器的 `initialize` 返回使用说明（instructions）；工具描述改为“什么时候用”。
+- 省略 `root`／`project_id` 时依次取 `CONTINUITY_PROJECT_ID`、当前目录所在项目、唯一已登记项目；仍有歧义时错误信息列出可选项目。
+- `continuity_task_add` 要求非空正文；`continuity_worker_dispatch` 默认只预览，`launch=true` 才后台启动。
+- `continuity_events_wait` 跨项目等待执行者事件，按成员在服务端保存读取位置，首次从当前末尾开始，不回放历史。
+- hooks 的结束通知逐条写出下一步 MCP 调用，并覆盖 `CONTINUITY_WATCH_PROJECTS` 和当前主控持有租约的其他项目。
+- PostToolUse 发现 shell 里的 `continuity` 命令已有 MCP 等价工具时提醒一次（每会话最多 3 次，`CONTINUITY_MCP_NUDGE=0` 关闭）。
+- 执行者提示词、会话开始提示和 skills 改为先写 MCP 工具名，CLI 作为后备；提示词里写明 project_id、task_id 和 assignee。
+- 新增 `continuity observe adoption`：按会话统计 MCP 与 CLI 的使用次数，列出仍走 shell 的操作；hooks、MCP 服务器和 CLI 入口只记录次数和操作名，`CONTINUITY_ADOPTION_TELEMETRY=0` 关闭。
+- 新增 `tools/run_agent_adoption_eval.py`：用真实 Claude Code／Codex 会话在隔离数据目录中比较不同版本的采用情况。
+- `continuity worker wait` 在执行者结束时退出，可作为宿主后台任务运行；`worker report` 默认只返回前 2 KB、标题和总长度。
+- 压缩后恢复改为一段简短文本；每个会话的 hook 注入有总预算（`CONTINUITY_HOOK_BUDGET_BYTES`，默认 6 KB）。
+- 读取变更改用已有的 changes 索引定位；CLI 按需导入模块、只构建用到的子命令；`release_version` 不再在导入时哈希全部源码。
+- 代码检索：定义优先、支持限定名、返回用法；索引 C/C++ `using` 别名与 `typedef`；新增 `benchmarks/code-locate` 标注集与 `tools/run_code_locate_benchmark.py`。
+- 本地卡片可修改正文、标题、目标、优先级和验收条件（记录版本号与 sha256）；`task add` 拒绝空正文；创建时可声明未完成的依赖。
+- 新增 `worker handoff --to-model`、`--min-tier`／`--deny-model`、`worker configure --tier`；短时 429 先在同一模型重试；新增 `review` 模式，非法取值的错误列出合法值。
+- 失败分类只读取终止错误事件；解析 "Your limit will reset at …"；`controller acquire --token` 使用传入的令牌；工作目录不存在时在启动前报错。
+- 新增 `attempt.retrying` 与 `job.completed/failed/interrupted/lost` 事件；报告标明 final／interim；进程消失的运行记为 `lost` 并释放容量；新增 `collaboration reconcile`；交接计划上限 4 KB。
+- 新增 `continuity-mcp --proxy ssh://HOST`（以及 `continuity-search-mcp`）：缓存工具列表、断线重连、只对只读或带 `operation_id` 的调用重试。
+- 执行者提示词先放固定规则与用法，再放任务内容。
+- 默认 MCP 工具列表不含高级 State 工具与按操作拆分的 Todo／协作别名（`CONTINUITY_MCP_TOOLSET=full` 显示全部）；`continuity_plan` 的 action 改为字符串。
+- 新增 `tools/measure_session_cache.py`：按会话统计提示缓存命中率与重建。
+- README 改为产品首页；完整命令、MCP 工具与 hooks 参考移到 `docs/commands.md`。
+
 ## 0.1.0-alpha.35
 
 - 新增 cursor-based `worker events --follow`、`inbox wait` 与 unread count；完成、失败、限流和阻塞不再依赖监控时间窗。

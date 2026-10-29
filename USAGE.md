@@ -19,7 +19,7 @@ Python 3.11+。推荐隔离安装；不要把系统 Python 的权限问题当作
 
 ```bash
 python3 -m venv .venv
-.venv/bin/python -m pip install 'continuity-plane==0.1.0a35'
+.venv/bin/python -m pip install 'continuity-plane==0.1.0a36'
 ```
 
 Windows 使用 `.venv\Scripts\python.exe` 和 `.venv\Scripts\continuity.exe`。以下用 `continuity` 表示环境内的命令；可激活环境或使用完整可执行路径。全局 pipx、升级、离线 wheel 与回滚见[部署指南](docs/deployment.md)。
@@ -116,6 +116,6 @@ State、协作注册表、索引缓存和宿主会话不是同一份数据。默
 
 ## Release 与 PyPI
 
-当前版本：`0.1.0a35`；Git tag：`v0.1.0-alpha.35`。[GitHub Releases](https://github.com/skyhua0224/continuity-plane/releases/latest) 统一使用普通 Release；alpha 版本号仍表示兼容性可能变化，PyPI 选择它仍需明确 pin 或 `--pre`。
+当前版本：`0.1.0a36`；Git tag：`v0.1.0-alpha.36`。[GitHub Releases](https://github.com/skyhua0224/continuity-plane/releases/latest) 统一使用普通 Release；alpha 版本号仍表示兼容性可能变化，PyPI 选择它仍需明确 pin 或 `--pre`。
 
 [变更记录](CHANGELOG.md) · [发布与升级约定](docs/releases.md)

@@ -30,7 +30,9 @@ def _attempts(data_root, project_id):
             return attempts.values()
         for row in iter_changes(data_root, project_id=project_id, since=cursor):
             cursor = max(cursor, row["cursor"])
-            if row.get("event") not in {"attempt.started", "attempt.finished", "run.started", "run.finished"}:
+            if row.get("event") not in {
+                "attempt.started", "attempt.finished", "attempt.retrying", "run.started", "run.finished",
+            }:
                 continue
             key = json.dumps([row.get("task_id"), row.get("attempt_id")])
             attempts.setdefault(key, {})[

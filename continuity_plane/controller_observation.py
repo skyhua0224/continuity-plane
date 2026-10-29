@@ -71,6 +71,9 @@ def report_facts(data_root, project_id, cards=None, jobs=None):
             candidates.append((Path(job["report_file"]), job_root, "project-job-index"))
         for file, allowed, attribution in candidates:
             try:
+                # Most cards have no report; one stat avoids resolving every path.
+                if not file.is_file():
+                    continue
                 resolved = file.resolve()
                 if not resolved.is_relative_to(allowed) or not resolved.is_file():
                     continue
@@ -120,6 +123,7 @@ def observe(data_root, project_id, *, recipient=None, since=0, max_items=12):
     for row in events:
         if row.get("event") in {
             "attempt.finished",
+            "attempt.retrying",
             "attempt.timeout",
             "dispatch.policy-stopped",
         }:
@@ -326,7 +330,7 @@ def observe(data_root, project_id, *, recipient=None, since=0, max_items=12):
         "attention_total": len(unique_attention),
         "drift": (stale + [r for r in reports if r["newer_than_card"]])[:limit],
         "inbox": unread_summary(data, project_id=project_id, recipient=recipient),
-        "controller": view(data, project_id, recipient),
+        "controller": view(data, project_id, recipient, ledger=ledger),
         "changes_since_handoff": changes[-limit:] if limit else [],
         "changes_since_handoff_total": len(changes),
         "changed_cards": changed_cards[:limit],

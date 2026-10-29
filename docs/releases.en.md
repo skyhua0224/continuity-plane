@@ -4,24 +4,29 @@
 
 ## Release category versus alpha version
 
-Published GitHub entries use regular **Release**. The current version is Alpha35, package `0.1.0a35`, tag `v0.1.0-alpha.35`; mark it Latest when published. This does not claim production stability or change PyPI prerelease ordering: use an exact version or `--pre`. [Alpha35: Observable dispatch and resumable waits](release-alpha35.md).
+Published GitHub entries use regular **Release**. The current version is Alpha35, package `0.1.0a36`, tag `v0.1.0-alpha.36`; mark it Latest when published. This does not claim production stability or change PyPI prerelease ordering: use an exact version or `--pre`. [Alpha35: Observable dispatch and resumable waits](release-alpha35.md).
 
 Metadata cleanup does not rewrite tags/commits/assets/packages or historical publication dates. Old compatibility/evidence scope remains historical.
 
 ## Titles and notes
 
-Use `Continuity Plane Alpha N · User-facing theme`. Recent themes: [Alpha35](release-alpha35.md) observable dispatch and resumable waits; [Alpha34](release-alpha34.md) HTTP interception vs. content refusal; [Alpha33](release-alpha33.md) dispatch hot path/indexed history; [Alpha32](release-alpha32.md) host recovery/dependencies/explainable dispatch; [Alpha31](release-alpha31.md) reliable inbox/structured MCP errors; [Alpha30](release-alpha30.md) reliable queue/actionable handoff; [Alpha29](release-alpha29.md) controller continuity/scoped memory; [Alpha28](release-alpha28.md) existing Gitea login aliases; [Alpha27](release-alpha27.md) private Issue/PR collaboration.
+Use `Continuity Plane Alpha N · User-facing theme`. Recent themes: [Alpha36](release-alpha36.md) agents use it on their own, fewer tokens; [Alpha35](release-alpha35.md) observable dispatch and resumable waits; [Alpha34](release-alpha34.md) HTTP interception vs. content refusal; [Alpha33](release-alpha33.md) dispatch hot path/indexed history; [Alpha32](release-alpha32.md) host recovery/dependencies/explainable dispatch; [Alpha31](release-alpha31.md) reliable inbox/structured MCP errors; [Alpha30](release-alpha30.md) reliable queue/actionable handoff; [Alpha29](release-alpha29.md) controller continuity/scoped memory; [Alpha28](release-alpha28.md) existing Gitea login aliases; [Alpha27](release-alpha27.md) private Issue/PR collaboration.
 
 Avoid private project/device names, internal task IDs, raw commit-title lists and unsupported superlatives.
 
-Each bilingual note contains the same facts:
+From Alpha36 on, release notes follow this shape. The reader is someone about to upgrade: first say what this version solves, then what they need to do.
 
-1. What the user can do now and who benefits.
-2. Observable changes and fixes, separate from plans.
-3. Compatibility, schema, reconnect, data and rollback warnings.
-4. Exact version installation/upgrade; package and plugins separately.
-5. Evidence and limits, separating new/controlled/native/historical tests and skipped cases.
-6. Deployment, usage, validation and changelog links.
+1. **Title and one paragraph**: the problem this version solves and who benefits most.
+2. **Must-know notes first, in bold**: reconnect MCP, configuration changes, incompatibilities.
+3. **Changes grouped by theme** with an emoji heading. One Chinese sentence then one English sentence per item, same facts:
+   - "Added X: when you …, you can now …."
+   - "X now does Y (it used to Z)."
+   - "Fixed … when …."
+4. **Measurements** from this version only: machine, data size, method (tool, runs), median and p95, the comparison if any, and how to reproduce.
+5. **Known limits**, one sentence each.
+6. **Upgrade** command, then links to the changelog and documentation.
+
+Write user-visible behaviour. Internal file names, class names and implementation paths belong in the changelog or commit history. Older experiments keep their version and date and live in [historical experiments](benchmarks.en.md).
 
 Link current docs to main; do not invent tag links to documents absent from that historical tag.
 

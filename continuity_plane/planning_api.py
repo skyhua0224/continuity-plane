@@ -171,6 +171,7 @@ CLI_HELP = {
         for n in (
             "dispatch",
             "resume",
+            "handoff",
             "report",
             "configure",
             "clear-policy-review",
@@ -386,7 +387,8 @@ def _brief(value):
             observed = value["observed"]
             changed = len(observed.get("changed_cards", []))
             total = observed.get("changed_cards_total", changed)
-            pending = value.get("declared", {}).get("pending_decisions") or []
+            declared = value.get("declared") or {}
+            pending = declared.get("pending_decisions") or []
             attention = observed.get("attention") or []
             inbox = observed.get("inbox", {})
             inbox_hint = (
@@ -401,8 +403,8 @@ def _brief(value):
                 f"unread={inbox.get('count', 0)} {inbox.get('unit', 'inbox messages')} scope={inbox.get('scope', 'unknown')} oldest={inbox.get('oldest_at')}",
                 *[f"PENDING DECISION | {str(item)[:320]}" for item in pending],
                 *[_row(r) for r in attention],
-                "plan: " + str(value.get("plan") or "")[:300],
-                "next: " + str(value.get("next_action") or "")[:240],
+                "plan: " + _clip_bytes(declared.get("plan") or value.get("plan"), 4096),
+                "next: " + str(declared.get("next_action") or value.get("next_action") or "")[:240],
                 inbox_hint,
                 *[
                     _row(r)
@@ -518,27 +520,32 @@ def _row(row):
     return line
 
 
+def _clip_bytes(value, limit):
+    return str(value or "").encode()[:limit].decode("utf-8", "ignore")
+
+
 def _critical_handoff(value, budget=None):
     declared = value.get("declared") or {}
     observed = value.get("observed") or {}
     pending = list(declared.get("pending_decisions") or [])
     attention = list(observed.get("attention") or [])
     candidates = []
-    for pending_limit, attention_limit, text_limit in (
-        (4, 8, 320),
-        (3, 5, 240),
-        (2, 3, 160),
-        (1, 2, 100),
-        (1, 2, 64),
-        (1, 2, 48),
-        (1, 2, 32),
-        (1, 1, 64),
-        (1, 1, 48),
+    # The plan keeps up to 4 KiB while the budget allows; it shrinks with the rest.
+    for pending_limit, attention_limit, text_limit, plan_limit in (
+        (4, 8, 320, 4096),
+        (3, 5, 240, 480),
+        (2, 3, 160, 320),
+        (1, 2, 100, 200),
+        (1, 2, 64, 128),
+        (1, 2, 48, 96),
+        (1, 2, 32, 64),
+        (1, 1, 64, 128),
+        (1, 1, 48, 96),
     ):
         candidate = {
             "revision": value.get("revision", 0),
             "declared": {
-                "plan": str(declared.get("plan") or "")[: text_limit * 2],
+                "plan": _clip_bytes(declared.get("plan"), plan_limit),
                 "next_action": str(declared.get("next_action") or "")[:text_limit],
                 "pending_decisions": [
                     str(item)[:text_limit] for item in pending[:pending_limit]
@@ -922,7 +929,7 @@ def tool_definitions():
         },
         {
             "name": "continuity_plan",
-            "description": "Manage tasks, Todo, collaboration and sources with CLI parity. Configured Gitea projects read/write shared Issues and real PR review requests using this member's local authentication; otherwise local metadata. No provider launch, merge or deployment. Discover parameters with continuity_help. Default brief output.",
+            "description": "Use for operations without their own tool (todo, rules, references, lessons, quota, queue, batches, decisions, memory). Parameters: continuity_help(topic=action).",
             "annotations": {
                 "readOnlyHint": False,
                 "destructiveHint": False,
@@ -934,7 +941,12 @@ def tool_definitions():
                 "required": ["action"],
                 "properties": {
                     **scope,
-                    "action": {"enum": list(OPERATIONS)},
+                    # A plain string keeps every request small; execute()
+                    # rejects unknown actions and continuity_help lists them.
+                    "action": {
+                        "type": "string",
+                        "description": "e.g. todo.list, rules.export, quota.report; full list: continuity_help()",
+                    },
                     "parameters": {"type": "object", "default": {}},
                 },
             },
@@ -1034,6 +1046,43 @@ def extend_tools(legacy):
     return legacy + tool_definitions()
 
 
+
+def apply_identity(
+    operation, parameters, explicit_executor, executor, data_root, project_id, root
+):
+    """Bind actor/assignee to the caller's stable identity (shared by all MCP tools)."""
+    # Caller identity and target assignment are different. Controllers may
+    # create/delegate cards without becoming their executor. Explicit
+    # executor_id retains the stricter worker identity contract.
+    controller_delegation = (
+        operation in {"task.add", "task.update"}
+        and os.environ.get("CONTINUITY_ROLE") == "controller"
+        and (
+            explicit_executor is None
+            or explicit_executor == os.environ.get("CONTINUITY_ASSIGNEE")
+        )
+    )
+    from .gitea_cli import is_shared_project
+
+    shared = is_shared_project(data_root, project_id, root)
+    if executor and not shared and operation in {"task.add", "task.update"}:
+        if parameters.get("actor") not in (None, executor):
+            raise ValueError("actor conflicts with stable executor_id")
+        parameters["actor"] = executor
+    if (
+        executor
+        and not shared
+        and not controller_delegation
+        and operation in {"task.add", "task.update", "task.claim", "todo.activate"}
+        and not (operation == "task.update" and parameters.get("unassign"))
+    ):
+        if parameters.get("assignee") not in {None, executor}:
+            raise ValueError(
+                "assignee conflicts with stable executor_id; use an explicit audited CLI reassignment"
+            )
+        parameters["assignee"] = executor
+
+
 def handle_tool(name, arguments):
     original = dict(arguments)
     arguments = dict(arguments)
@@ -1109,36 +1158,9 @@ def handle_tool(name, arguments):
                 raise ValueError(
                     "private MCP context belongs to the configured local member"
                 )
-        # Caller identity and target assignment are different. Controllers may
-        # create/delegate cards without becoming their executor. Explicit
-        # executor_id retains the stricter worker identity contract.
-        controller_delegation = (
-            operation in {"task.add", "task.update"}
-            and os.environ.get("CONTINUITY_ROLE") == "controller"
-            and (
-                explicit_executor is None
-                or explicit_executor == os.environ.get("CONTINUITY_ASSIGNEE")
-            )
+        apply_identity(
+            operation, parameters, explicit_executor, executor, data_root, project_id, root
         )
-        from .gitea_cli import is_shared_project
-
-        shared = is_shared_project(data_root, project_id, root)
-        if executor and not shared and operation in {"task.add", "task.update"}:
-            if parameters.get("actor") not in (None, executor):
-                raise ValueError("actor conflicts with stable executor_id")
-            parameters["actor"] = executor
-        if (
-            executor
-            and not shared
-            and not controller_delegation
-            and operation in {"task.add", "task.update", "task.claim", "todo.activate"}
-            and not (operation == "task.update" and parameters.get("unassign"))
-        ):
-            if parameters.get("assignee") not in {None, executor}:
-                raise ValueError(
-                    "assignee conflicts with stable executor_id; use an explicit audited CLI reassignment"
-                )
-            parameters["assignee"] = executor
         requested_format = parameters.pop("format", None)
         if requested_format is not None:
             if "format" in original and requested_format != format:

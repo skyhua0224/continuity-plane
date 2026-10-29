@@ -721,13 +721,6 @@ def maybe_route(args):
         getattr(args, "root", None),
     )
     if backend is None:
-        if name == "_collaboration_task_update" and any(
-            getattr(args, key, None)
-            for key in ("title", "objective", "priority", "exit_criterion")
-        ):
-            raise GiteaError(
-                "these task definition updates require the shared Issue backend; local progress update contract is unchanged"
-            )
         if name.startswith("_collaboration_task_") and any(
             getattr(args, key, None)
             for key in (

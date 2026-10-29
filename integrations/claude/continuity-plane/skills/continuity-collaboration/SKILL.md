@@ -1,19 +1,32 @@
 ---
 name: continuity-collaboration
-description: Keep explicit multi-step work and collaborator handoffs in Continuity Todo/cards; do not invoke for every small edit or status question.
+description: Use whenever work has several steps, involves another agent or person, must survive compaction or a new session, or when you take over, dispatch, wait for, review or report on a task. Keeps shared task cards, worker runs, messages and handoffs in Continuity through its MCP tools.
 ---
 
 # Continuity collaboration
 
-- When replacing a controller/model, run `controller.start` once for plan, report/tool profile, approved memory and next action; avoid inspect/resume repetition.
-- Track explicit multi-action work through cards and a card-backed Todo. Retain completed evidence and commitments; switch items with `todo.activate` and a reason.
-- Prefer `continuity_plan` and discover parameters with `continuity_help`; CLI fallback is `continuity help OPERATION`.
-- Profiles/memory guide habits but grant no permission. Import native notes only from exact owner/profile files with consent; they stay candidates on that member/host unless separately shared.
-- Consult [collaboration workflow](references/collaboration.md) for takeover, dispatch, acknowledgements and full rules. Session return points and controller handoffs differ; rejected dispatch is not a running worker.
-- Use MCP `worker.queue.enqueue` or CLI `worker.dispatch --enqueue` when work must wait for capacity/quota, and a single CLI `worker.queue run` process to launch it; do not create competing filler loops. Use `task.update --batch` for shell-sensitive multi-card changes.
-- After a host reboot, list stale reservations and reconcile them under the controller lease before treating a capacity error as authoritative. MCP itself is host-owned and may require a new host connection.
-- Record stable identity, checkout, scope, next action and checks. Keep artifacts persistent; native account/session work stays on the owning profile and host.
-- Use `reference.list/record` for reviewed primary sources, versions and adoption reasons.
-- Return commit-bound checks, report and unverified scope. Progress is nonterminal; stop for real blockers, decisions or scope boundaries.
-- Planning metadata requires no State claim. If MCP fails, try the equivalent CLI once and preserve a bounded handoff; ordinary authorized work can continue.
-- Reserve `continuity_resume` for explicit State writes. No card grants State edits, paid providers, merge, publish or deploy.
+Use the `continuity` MCP tools; run the `continuity` CLI only if they are unavailable.
+
+## Every session
+- Start or resume: `continuity_start` (your cards, unread messages, recent changes).
+- Taking over a project: `continuity_handoff_show`, then `continuity_task_list`.
+- Before you stop or the context fills: `continuity_handoff_write(plan, next_action, pending)`.
+- Finding code: `continuity_context_lookup` before broad grep.
+
+## As controller
+- One card per piece of work: `continuity_task_add(task_id, title, body, assignee)`. The body says what to do, the scope and how to check it.
+- Change cards with `continuity_task_update` (status, next_action, assignee, body).
+- Send to a worker: `continuity_worker_dispatch(task_id)` previews; add `launch=true` to start.
+- Wait: start `continuity worker wait --project-id P --task-id T` as a background shell task and end your turn; it wakes you when the worker ends. `continuity_events_wait()` is a single check across your projects, never a loop.
+- Read the result: `continuity_worker_report(task_id)` gives a summary and headings; page with `offset`. Then update the card or `continuity_review_request`.
+- Rare operations (rules, references, quota, queue, batches): `continuity_plan(action=…)`, parameters via `continuity_help(topic=…)`.
+
+## As worker
+- `continuity_progress(note)` at milestones.
+- `continuity_report_final(summary, checks, unverified, branch, commit)` when done: it saves the report, marks the card ready for review and tells the dispatcher.
+- Questions that block you: `continuity_inbox(action="send", recipient=<dispatcher>, body=…)`.
+
+## Limits
+- Cards record intent; they do not grant merge, push, deploy, paid-provider or account access.
+- A progress note is not the end of the task; stop only for a real blocker or a decision.
+- See [collaboration workflow](references/collaboration.md) for takeover, queues and host restarts.

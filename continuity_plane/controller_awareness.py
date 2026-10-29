@@ -3,7 +3,6 @@
 import hashlib
 import json
 import os
-import shlex
 from pathlib import Path
 from .collaboration_registry import (
     _atomic_write,
@@ -15,6 +14,28 @@ from .collaboration_registry import (
     list_tasks,
     _load_ledger,
 )
+
+
+# Terminal outcomes only. `attempt.retrying` is a retry inside a live job, and an
+# `attempt.finished` that carries a job_id is reported through its `job.*` event.
+_ENDED_EVENTS = {
+    "attempt.finished",
+    "run.finished",
+    "job.completed",
+    "job.failed",
+    "job.interrupted",
+    "job.lost",
+}
+
+
+def _ended(rows):
+    from .collaboration_stream import superseded_by_job_event
+
+    return [
+        r
+        for r in rows
+        if r["event"] in _ENDED_EVENTS and not superseded_by_job_event(r)
+    ]
 
 
 def _notice(payload, *, root=None, data_root=None, max_bytes=512):
@@ -63,7 +84,7 @@ def _notice(payload, *, root=None, data_root=None, max_bytes=512):
             ):
                 scanned += 1
                 if (
-                    r["event"] in {"attempt.finished", "run.finished"}
+                    r["event"] in _ENDED_EVENTS
                     or (r["event"] == "task.updated" and r.get("status") == "blocked")
                     or r["event"] == "rule.updated"
                     or r["event"] == "quota.changed"
@@ -82,9 +103,6 @@ def _notice(payload, *, root=None, data_root=None, max_bytes=512):
                 r["event"] == "rule.updated" for r in relevant
             ):
                 relevant.append({"event": "rule.updated"})
-            if not relevant:
-                _atomic_write(marker, {"cursor": cursor, "rules_digest": rules_digest})
-                return None
             if os.environ.get("CONTINUITY_ROLE") in {"worker", "reviewer"}:
                 own = os.environ.get("CONTINUITY_TASK_ID")
                 relevant = [
@@ -92,16 +110,16 @@ def _notice(payload, *, root=None, data_root=None, max_bytes=512):
                     for r in relevant
                     if r.get("task_id") == own or r["event"] == "rule.updated"
                 ]
-                if not relevant:
-                    _atomic_write(
-                        marker, {"cursor": cursor, "rules_digest": rules_digest}
-                    )
-                    return None
-            finished = [
-                r
-                for r in relevant
-                if r["event"] in {"attempt.finished", "run.finished"}
-            ]
+            extra, others = _other_projects(
+                data, registration["project_id"], previous.get("projects") or {}
+            )
+            if not relevant and not extra:
+                _atomic_write(
+                    marker,
+                    {"cursor": cursor, "rules_digest": rules_digest, "projects": others},
+                )
+                return None
+            finished = _ended(relevant)
             blocked = [
                 r
                 for r in relevant
@@ -119,59 +137,35 @@ def _notice(payload, *, root=None, data_root=None, max_bytes=512):
                     "dispatch.queue-retry-scheduled",
                 }
             ]
-            parts = []
-            if finished:
-                parts.append(
-                    f"{len(finished)} worker ended ("
-                    + "; ".join(
-                        "%s %s"
-                        % (
-                            r.get("task_id")
-                            or r.get("agent_type")
-                            or r.get("attempt_id"),
-                            r.get("reason") or r.get("status"),
-                        )
-                        for r in finished[:3]
-                    )
-                    + ")"
+            pid = registration["project_id"]
+            lines = _action_lines(pid, finished, blocked, rules, quota, queue)
+            lines += extra
+            if not lines:
+                # Only non-terminal rows (a retry, or an attempt.finished whose
+                # job.* event is not written yet): nothing to say.
+                _atomic_write(
+                    marker,
+                    {"cursor": cursor, "rules_digest": rules_digest, "projects": others},
                 )
-            if blocked:
-                parts.append(f"{len(blocked)} cards blocked")
-            if rules:
-                parts.append(f"{len(rules)} rule revisions; inspect rules affected")
-            if quota:
-                parts.append(
-                    "quota changed: "
-                    + "; ".join(
-                        f"{r.get('model')} {r.get('status')}" for r in quota[:3]
-                    )
-                    + "; inspect quota report/handoff"
+                return None
+            text = _fit("continuity: " + " | ".join(lines), max_bytes)
+            from .handoff_journal import reserve
+
+            if not reserve(root, session, text, data_root=data, kind="notice"):
+                _atomic_write(
+                    marker,
+                    {
+                        "cursor": cursor,
+                        "rules_digest": rules_digest,
+                        "projects": others,
+                        "budget": "exhausted",
+                    },
                 )
-            if queue:
-                parts.append(
-                    f"{len(queue)} queued dispatch gate(s); inspect worker queue status or changes"
-                )
-            command = (
-                "continuity collaboration changes --project-id "
-                + shlex.quote(registration["project_id"])
-                + " --since "
-                + str(previous["cursor"])
+                return None
+            _atomic_write(
+                marker,
+                {"cursor": cursor, "rules_digest": rules_digest, "projects": others},
             )
-            command += " --data-root " + shlex.quote(str(data))
-            if rules and not finished and not blocked and not quota:
-                command = (
-                    "continuity rules affected --project-id "
-                    + shlex.quote(registration["project_id"])
-                    + " --data-root "
-                    + shlex.quote(str(data))
-                )
-            suffix = " Inspect: " + command
-            if len(suffix.encode()) + 32 > max_bytes:
-                suffix = " Parameters: continuity help changes"
-            text = ("continuity: " + ", ".join(parts) + ".").encode()[
-                : max_bytes - len(suffix.encode())
-            ].decode("utf-8", "ignore") + suffix
-            _atomic_write(marker, {"cursor": cursor, "rules_digest": rules_digest})
             return text
     except (OSError, ValueError, TypeError, KeyError):
         return None
@@ -356,3 +350,109 @@ def scene(
         result[key].pop()
         result["details_omitted"] = True
     return result
+
+
+_ENDED_NEXT = "continuity_worker_report(project_id={p!r}, task_id={t!r})"
+
+
+def _outcome(row):
+    from .collaboration_stream import event_kind
+
+    kind = event_kind(row)
+    reason = row.get("failure_class") or row.get("reason")
+    return kind + (f" ({reason})" if reason and reason not in {kind, "completed"} else "")
+
+
+def _action_lines(pid, finished, blocked, rules, quota, queue, limit=4):
+    """One line per event, each naming the MCP call that handles it."""
+    lines = []
+    for row in finished[:limit]:
+        task = row.get("task_id") or row.get("agent_type") or row.get("attempt_id")
+        lines.append(
+            f"[{pid}] worker {task} {_outcome(row)} → "
+            + _ENDED_NEXT.format(p=pid, t=task)
+        )
+    if len(finished) > limit:
+        lines.append(
+            f"[{pid}] {len(finished) - limit} more ended → continuity_events_wait()"
+        )
+    for row in blocked[:2]:
+        lines.append(
+            f"[{pid}] card {row.get('task_id')} blocked → "
+            f"continuity_task_show(project_id={pid!r}, task_id={row.get('task_id')!r})"
+        )
+    if rules:
+        lines.append(
+            f"[{pid}] rules changed → continuity_plan(action='rules.affected', project_id={pid!r})"
+        )
+    if quota:
+        lines.append(
+            f"[{pid}] quota changed ("
+            + "; ".join(f"{r.get('model')} {r.get('status')}" for r in quota[:3])
+            + f") → continuity_plan(action='quota.report', project_id={pid!r})"
+        )
+    if queue:
+        lines.append(
+            f"[{pid}] {len(queue)} queued dispatch waiting → "
+            f"continuity_plan(action='worker.queue.status', project_id={pid!r})"
+        )
+    return lines
+
+
+def _watched_projects(data, current):
+    """Projects named in CONTINUITY_WATCH_PROJECTS or led by this controller."""
+    from .collaboration_registry import list_projects
+    from .controller_lease import active_owner
+
+    me = {
+        v
+        for v in (
+            os.environ.get("CONTINUITY_CONTROLLER"),
+            os.environ.get("CONTINUITY_ASSIGNEE"),
+        )
+        if v
+    }
+    named = {
+        p.strip()
+        for p in os.environ.get("CONTINUITY_WATCH_PROJECTS", "").split(",")
+        if p.strip()
+    }
+    if os.environ.get("CONTINUITY_ROLE") in {"worker", "reviewer"}:
+        return []
+    watched = []
+    for item in list_projects(data):
+        pid = item["project_id"]
+        if pid == current:
+            continue
+        if pid in named or (me and active_owner(data, pid) in me):
+            watched.append(pid)
+    return watched
+
+
+def _other_projects(data, current, cursors, scan_limit=2000):
+    lines = []
+    updated = dict(cursors)
+    for pid in _watched_projects(data, current):
+        if pid not in updated:
+            updated[pid] = latest_change_cursor(data, project_id=pid)
+            continue
+        finished, blocked = [], []
+        for scanned, row in enumerate(
+            iter_changes(data, project_id=pid, since=updated[pid])
+        ):
+            if row["event"] in _ENDED_EVENTS:
+                finished.append(row)
+            elif row["event"] == "task.updated" and row.get("status") == "blocked":
+                blocked.append(row)
+            updated[pid] = max(updated[pid], row["cursor"])
+            if scanned >= scan_limit:
+                break
+        lines += _action_lines(pid, _ended(finished), blocked, [], [], [], limit=3)
+    return lines, updated
+
+
+def _fit(text, max_bytes):
+    data = text.encode()
+    if len(data) <= max_bytes:
+        return text
+    return data[: max_bytes - 3].decode("utf-8", "ignore") + "…"

@@ -195,7 +195,7 @@ def affected(data_root, *, project_id):
             key = (r.get("task_id"), r.get("attempt_id"))
             if r["event"] == "attempt.started":
                 starts[key] = r
-            elif r["event"] == "attempt.finished":
+            elif r["event"] in {"attempt.finished", "attempt.retrying"}:
                 finished.add(key)
         cursor = page["next_cursor"]
         if not page["truncated"]:

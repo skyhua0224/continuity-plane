@@ -2,6 +2,32 @@
 
 Adoption: [deployment](docs/deployment.en.md), [recent release notes](docs/releases.en.md), [current coverage/known gaps](docs/validation.en.md). Historical entries retain their original scope. Regular GitHub Release classification does not remove alpha semantics.
 
+## 0.1.0-alpha.36
+
+- MCP gains 14 first-class tools: `continuity_start`, `continuity_task_add/update/show/list`, `continuity_handoff_write/show`, `continuity_worker_dispatch/jobs/report`, `continuity_events_wait`, `continuity_progress`, `continuity_report_final` and `continuity_review_request`. Parameters are generated from the CLI definitions and calls share the CLI execution path and identity guard; `continuity_plan` keeps every operation.
+- Both MCP servers return `instructions` from `initialize`; tool descriptions now say when to use each tool.
+- Without `root`/`project_id`, tools use `CONTINUITY_PROJECT_ID`, then the project containing the working directory, then the only registered project; an ambiguous call lists the candidates.
+- `continuity_task_add` requires a non-empty body; `continuity_worker_dispatch` previews by default and starts a background worker only with `launch=true`.
+- `continuity_events_wait` waits for worker events across projects, keeps each member's read position on the server, and starts at the current tail instead of replaying history.
+- Hook end notices name the next MCP call per event and cover `CONTINUITY_WATCH_PROJECTS` plus other projects whose controller lease this controller holds.
+- PostToolUse reminds once when a shell `continuity` command has an MCP equivalent (at most 3 per session; `CONTINUITY_MCP_NUDGE=0` turns it off).
+- Worker prompts, session-start hints and skills name MCP tools first with the CLI as fallback; prompts state project_id, task_id and assignee explicitly.
+- Add `continuity observe adoption`: per-session counts of MCP versus CLI use and the operations still going through the shell. Hooks, MCP servers and the CLI entry record counts and operation names only; `CONTINUITY_ADOPTION_TELEMETRY=0` turns it off.
+- Add `tools/run_agent_adoption_eval.py`, which compares versions with real Claude Code/Codex sessions in an isolated data root.
+- `continuity worker wait` exits when a worker ends and can run as a host background task; `worker report` returns the first 2 KB, headings and total size by default.
+- The post-compaction resume is a short text block; hook injections have a per-session budget (`CONTINUITY_HOOK_BUDGET_BYTES`, default 6 KB).
+- Change reads seek through the existing changes index; the CLI imports modules on demand and builds only the subcommands used; `release_version` no longer hashes every source file at import.
+- Code lookup: definitions first, qualified names, usages; C/C++ `using` aliases and `typedef` are indexed; new labelled set `benchmarks/code-locate` and `tools/run_code_locate_benchmark.py`.
+- Local cards can revise body, title, objective, priority and exit criteria (revision and sha256 recorded); `task add` rejects an empty body; unfinished dependencies can be declared at creation.
+- Added `worker handoff --to-model`, `--min-tier` / `--deny-model` and `worker configure --tier`; short 429s retry the same model first; new `review` mode; invalid choices list the valid values.
+- Failure classification reads terminal error events only; "Your limit will reset at …" is parsed; `controller acquire --token` honours the token; a missing worktree fails before launch.
+- New `attempt.retrying` and `job.completed/failed/interrupted/lost` events; reports state final or interim; runs whose process is gone become `lost` and release capacity; new `collaboration reconcile`; handoff plan limit 4 KB.
+- Added `continuity-mcp --proxy ssh://HOST` (and `continuity-search-mcp`): cached tool list, reconnect, retry only read-only calls or calls with `operation_id`.
+- Worker prompts put the fixed rules and usage first and the task last.
+- The default MCP tool list omits the advanced State tools and the per-operation Todo/collaboration aliases (`CONTINUITY_MCP_TOOLSET=full` lists everything); `continuity_plan` takes the action as a string.
+- Added `tools/measure_session_cache.py`, which reports prompt-cache hit rate and rebuilds per session.
+- The README becomes a product page; the complete command, MCP tool and hook reference moves to `docs/commands.en.md`.
+
 ## 0.1.0-alpha.35
 
 - Add cursor-based `worker events --follow`, `inbox wait` and unread count; completion, failure, rate limiting and blockage no longer depend on a monitoring time window.

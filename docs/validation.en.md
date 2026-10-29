@@ -2,11 +2,11 @@
 
 [中文](validation.md) · [Workflows](workflows.en.md) · [Historical experiments](benchmarks.en.md)
 
-Scope: Alpha35 (`0.1.0a35`). New synthetic CLI measurements, existing regressions, anonymous user feedback and uncovered behavior are distinct evidence classes.
+Scope: Alpha36 (`0.1.0a36`). New synthetic CLI measurements, existing regressions, anonymous user feedback and uncovered behavior are distinct evidence classes.
 
 ## Reproduce the current workflow check
 
-Alpha27 established an isolated HTTPS Gitea 1.24.7 / local tea 0.15.0 two-synthetic-account private repository check. Alpha35 adds no new external Gitea field run; collaboration changes use deterministic regressions. The adopter script below was rerun from a fresh persistent venv containing only the Alpha35 wheel and a new workspace. Its receipt contains allowlisted synthetic aggregates only; tag CI remains authoritative for the release build.
+Alpha27 established an isolated HTTPS Gitea 1.24.7 / local tea 0.15.0 two-synthetic-account private repository check. Alpha36 adds no new external Gitea field run; collaboration changes use deterministic regressions. The adopter script below was rerun from a fresh persistent venv containing only the Alpha36 wheel and a new workspace. Its receipt contains allowlisted synthetic aggregates only; tag CI remains authoritative for the release build.
 
 Use a **new, empty persistent directory**, never your real registry/profile:
 
@@ -62,6 +62,12 @@ Fourteen positive checks pass; automatic report delivery after early card update
 | Drift/commitments | Parser/rule regressions and anonymous feedback | Not proof of all external/document facts |
 
 The [Alpha25 public release CI](https://github.com/skyhua0224/continuity-plane/actions/runs/38845950775) passed 268 tests. New documentation checks run on current main separately; neither released wheels nor historical counts are rewritten.
+
+## Alpha36 checks
+
+- Real agent sessions: Claude Code (Sonnet 5.5) ran coordinator, takeover and code-lookup scenarios in an isolated data root, 3 runs per scenario and version, with prompts that never mention Continuity; `tools/run_agent_adoption_eval.py` counted MCP/CLI calls, tokens and cost. The Codex worker scenario was not completed because the Codex quota ran out during the eval.
+- Large-project reads, code lookup, resume after compaction, worker waiting and MCP proxy reconnects: methods and numbers are in the [release notes](release-alpha36.md#-实测--measurements).
+- Regressions: `tests/test_agent_tools.py`, `test_agent_steering.py`, `test_adoption_telemetry.py` and `tests/test_a36_*.py`; the full source suite has 2,764 tests, with only the M7-05 receipt and M8-10 latency gate failing, as on Alpha35.
 
 ## Alpha35 adoption regressions
 

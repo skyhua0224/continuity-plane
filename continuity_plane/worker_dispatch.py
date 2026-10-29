@@ -3,6 +3,7 @@
 import json
 import os
 import re
+import socket
 import subprocess
 import sys
 import tempfile
@@ -16,15 +17,45 @@ from .collaboration_registry import (
     _load_ledger,
     _locked,
     default_data_root,
+    iter_changes,
     project_data_dir,
     resolve_project,
 )
 
+# A provider rate limit without a long reset resumes the same session after a
+# short, bounded backoff before any other model is tried.
+RATE_LIMIT_RETRIES = 3
+RATE_LIMIT_BACKOFF_SECONDS = 10
+RATE_LIMIT_MAX_WAIT_SECONDS = 120
 DEFAULT_TIMEOUT_SECONDS = 24 * 60 * 60
 DEFAULT_IDLE_TIMEOUT_SECONDS = 90 * 60
 LEGACY_TIMEOUT_SECONDS = 3600
 LEGACY_IDLE_TIMEOUT_SECONDS = 600
+REPORT_SUMMARY_BYTES = 2048
+REPORT_SUMMARY_HEADINGS = 25
 
+
+
+def report_headings(text: str) -> str:
+    """Markdown headings with the character offset to page to (outside code fences)."""
+    rows, fenced, position = [], False, 0
+    for line in text.splitlines(keepends=True):
+        stripped = line.strip()
+        if stripped.startswith(("```", "~~~")):
+            fenced = not fenced
+        elif not fenced and re.match(r"#{1,6}\s+\S", line):
+            rows.append(f"{stripped[:90]} @{position}")
+        position += len(line)
+    if not rows:
+        return ""
+    shown = rows[:REPORT_SUMMARY_HEADINGS]
+    omitted = len(rows) - len(shown)
+    return (
+        "headings (read from @offset with --offset):\n"
+        + "\n".join(shown)
+        + (f"\n… {omitted} more\n" if omitted else "\n")
+        + "---\n"
+    )
 
 def _write(path, text):
     path = Path(path)
@@ -134,7 +165,14 @@ def configure(
     resume_argv=None,
     profile_provider=None,
     official_subscription=False,
+    tier=None,
 ):
+    from .model_constraints import TIERS
+
+    if tier is not None and tier not in TIERS:
+        raise ValueError(
+            f"tier {tier!r} is invalid; valid tiers: {', '.join(reversed(TIERS))}"
+        )
     if not re.fullmatch(r"[A-Za-z0-9_.-]{1,64}", model) or provider not in {
         "codex",
         "claude",
@@ -175,6 +213,8 @@ def configure(
         profile_provider=profile_provider,
         official_subscription=bool(official_subscription),
     )
+    if tier is not None:
+        value["tier"] = tier
     from .runtime_origin import current
     from .vocabulary_memory import _SECRET_RE
 
@@ -188,6 +228,8 @@ def configure(
     value["execution_origin"] = current(profile_provider)
     with _locked(path):
         profiles = json.loads(path.read_text()) if path.exists() else {}
+        if tier is None and (profiles.get(model) or {}).get("tier"):
+            value["tier"] = profiles[model]["tier"]  # reconfiguring keeps the label
         profiles[model] = value
         _atomic_write(path, profiles)
     return value
@@ -245,7 +287,7 @@ def _repair_legacy_classification(data_root, project_id, task_id, job):
         return None
     if result.get("failure_class") != "policy-review":
         return result
-    from .retry_policy import classify, policy_refusal
+    from .retry_policy import classify, policy_refusal, provider_error_text
 
     evidence = "\n".join(
         str(result.get(key) or "")
@@ -259,6 +301,7 @@ def _repair_legacy_classification(data_root, project_id, task_id, job):
             evidence += "\n" + stream.read().decode("utf-8", errors="replace")
     except OSError:
         pass
+    evidence = provider_error_text(evidence)
     classified = classify(evidence)
     if classified.get("failure_class") == "policy-review" or policy_refusal(evidence):
         return result
@@ -426,7 +469,7 @@ def _record_job_history(job, status, result=None):
     result = result or {}
     path = _job_history_path(job["data_root"], job["project_id"])
     now = datetime.now(UTC).isoformat()
-    terminal = {"completed", "failed", "interrupted", "blocked"}
+    terminal = {"completed", "failed", "interrupted", "blocked", "lost"}
     with _locked(path):
         try:
             rows = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
@@ -556,9 +599,21 @@ def dispatch(
     _replace_job_id=None,
     reassign=False,
     reassign_actor=None,
+    rate_limit_retries=None,
+    rate_limit_backoff_seconds=None,
 ):
     from .collaboration_workflow import prompt
 
+    for name, value, upper in (
+        ("rate_limit_retries", rate_limit_retries, 10),
+        ("rate_limit_backoff_seconds", rate_limit_backoff_seconds, 600),
+    ):
+        if value is not None and (
+            type(value) not in (int, float)
+            or not math.isfinite(value)
+            or not 0 <= value <= upper
+        ):
+            raise ValueError(f"{name} must be between 0 and {upper}")
     registration = resolve_project(root, data_root)
     project_id = project_id or (registration or {}).get("project_id")
     if not project_id:
@@ -637,16 +692,40 @@ def dispatch(
             for n in names
             if automatic_available(data, project_id, n, profile=profiles[n])
         ]
+        constraints_auto = ledger.get("task_details", {}).get(task_id, {}).get(
+            "model_constraints"
+        )
+        if constraints_auto:
+            from .model_constraints import allowed as model_allowed
+
+            names = [n for n in names if model_allowed(constraints_auto, profiles, n)]
         if not names:
             raise ValueError("no configured and available adapter matches this task")
         model = names[0]
         fallback_models = tuple(fallback_models) or tuple(names[1:])
+    from . import model_constraints
+
+    constraints = ledger.get("task_details", {}).get(task_id, {}).get("model_constraints")
+    explicit_fallbacks = bool(fallback_models)
     if not fallback_models and not handoff:
         from .worker_policy import fallback_candidates
 
         fallback_models = tuple(
             fallback_candidates(data, project_id, model)
         )
+    if constraints:
+        # Auto-selected and policy fallbacks silently skip disallowed models;
+        # one the caller named explicitly is an error that lists the choices.
+        if explicit_fallbacks:
+            for name in fallback_models:
+                model_constraints.require(constraints, profiles, name, task_id)
+        else:
+            fallback_models = tuple(
+                n for n in fallback_models
+                if model_constraints.allowed(constraints, profiles, n)
+            )
+        if model in profiles:
+            model_constraints.require(constraints, profiles, model, task_id)
     if (
         not isinstance(fallback_models, (list, tuple))
         or len(fallback_models) > 5
@@ -789,7 +868,9 @@ def dispatch(
             actor=reassign_actor or controller,
             controller_token=controller_token,
             force_reason=(
-                "explicit project fallback policy selected a new worker after transient retry exhaustion"
+                f"explicit model handoff from {handoff['from_model']} to {handoff['to_model']}: {handoff['reason']}"
+                if authorized_handoff and handoff.get("kind") == "model-handoff"
+                else "explicit project fallback policy selected a new worker after transient retry exhaustion"
                 if authorized_handoff
                 else "dispatch --reassign selected a new worker after controller review"
             ),
@@ -839,7 +920,9 @@ def dispatch(
     context_sha = hashlib.sha256(assembled["prompt"].encode()).hexdigest()
     if handoff and not resume:
         values["prompt"] += (
-            "\n\nContinuation from an interrupted executor; preserve existing work, inspect the current checkout and do not repeat completed steps:\n"
+            _handoff_prompt(handoff)
+            if handoff.get("kind") == "model-handoff"
+            else "\n\nContinuation from an interrupted executor; preserve existing work, inspect the current checkout and do not repeat completed steps:\n"
             + json.dumps(handoff, ensure_ascii=False)
         )
     if resume and (
@@ -864,6 +947,16 @@ def dispatch(
         prompt_sha256=actual_prompt_sha,
         task_context_sha256=context_sha,
         scope_sha256=assembled["scope_sha256"],
+        rate_limit_retries=int(
+            RATE_LIMIT_RETRIES if rate_limit_retries is None else rate_limit_retries
+        ),
+        rate_limit_backoff_seconds=(
+            RATE_LIMIT_BACKOFF_SECONDS
+            if rate_limit_backoff_seconds is None
+            else rate_limit_backoff_seconds
+        ),
+        body_sha256=hashlib.sha256(body.encode()).hexdigest(),
+        body_revision=ledger["task_details"][task_id].get("body_revision") or 1,
         expected_updated_at=task["updated_at"],
         command_receipt=[
             v.replace(values["prompt"], "<prompt:" + actual_prompt_sha + ">")
@@ -890,12 +983,19 @@ def dispatch(
     plan["storage"] = describe(jobdir)
     if dry_run:
         return {**plan, "executed": False}
+    if not Path(plan["worktree"]).is_dir():
+        raise ValueError(f"worktree directory does not exist: {plan['worktree']}")
     from .dispatch_health import require_available
 
     require_available(data, project_id, profile["execution_origin"], model)
     from .supervisor import daemon_once
 
     daemon_once(data, project_id=project_id)
+    try:
+        # Ghost jobs must not hold the card or the client's capacity.
+        reap_lost_jobs(data, project_id)
+    except (OSError, ValueError):
+        pass
     binding = (
         _load_ledger(data, project_id).get("execution_bindings", {}).get(task_id, {})
     )
@@ -1055,6 +1155,16 @@ def _run_job(file):
         "prompt": "Continue the assigned task; preserve completed progress.",
     }
     resume_command = _argv(job["profile"], values, True) if job["retry"] else None
+    retry = job["retry"]
+    rate_limit_only = False
+    if not retry and job.get("rate_limit_retries"):
+        try:
+            resume_command = _argv(job["profile"], values, True)
+        except ValueError:
+            resume_command = None  # no resumable session for this adapter
+        else:
+            retry = int(job["rate_limit_retries"])
+            rate_limit_only = True
     try:
         result = run_attempt(
             job["data_root"],
@@ -1067,7 +1177,18 @@ def _run_job(file):
             report_file=job["report_file"],
             thread_file=job["thread_file"],
             resume_command=resume_command,
-            retry=job["retry"],
+            retry=retry,
+            retry_classes={"rate-limit"} if rate_limit_only else None,
+            **(
+                {
+                    "retry_delay_seconds": job.get(
+                        "rate_limit_backoff_seconds", RATE_LIMIT_BACKOFF_SECONDS
+                    ),
+                    "max_retry_wait_seconds": RATE_LIMIT_MAX_WAIT_SECONDS,
+                }
+                if rate_limit_only
+                else {}
+            ),
             timeout_seconds=job.get("timeout_seconds", LEGACY_TIMEOUT_SECONDS),
             idle_timeout_seconds=job.get(
                 "idle_timeout_seconds", LEGACY_IDLE_TIMEOUT_SECONDS
@@ -1280,11 +1401,17 @@ def _persist_job_terminal(job, result):
 def _persist_job_running(job):
     job_path = Path(job["job_dir"]) / "job.json"
     current = json.loads(job_path.read_text(encoding="utf-8"))
+    from .supervisor import _process_identity
+
     running = {
         **current,
         "status": "running",
         "job_status": "running",
         "started_at": datetime.now(UTC).isoformat(),
+        # Liveness evidence: the process that owns this job's lifecycle.
+        "runner_pid": os.getpid(),
+        "runner_identity": _process_identity(os.getpid()),
+        "runner_host": socket.gethostname(),
     }
     _atomic_write(job_path, running)
     _record_job_history(job, "running", {"started_at": running["started_at"]})
@@ -1303,6 +1430,170 @@ def _persist_job_running(job):
     return running
 
 
+def _git_text(checkout, *args, limit=4000):
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(checkout), *args],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if completed.returncode != 0:
+        return None
+    return completed.stdout.strip()[:limit]
+
+
+def _handoff_prompt(handoff):
+    lines = [
+        "",
+        "",
+        f"Model handoff: this card was started by {handoff['from_model']} and is now yours ({handoff['to_model']}). "
+        "Preserve existing work, inspect the checkout below and do not repeat completed steps.",
+        f"Worktree: {handoff['worktree']}",
+        f"Branch: {handoff.get('branch') or 'unknown'}  HEAD: {handoff.get('head') or 'unknown'}",
+    ]
+    status = handoff.get("uncommitted_status")
+    lines.append(
+        "Uncommitted changes (git status --short):\n" + status
+        if status
+        else "Uncommitted changes: none reported"
+    )
+    if handoff.get("uncommitted_diffstat"):
+        lines.append("Diffstat (git diff --stat HEAD):\n" + handoff["uncommitted_diffstat"])
+    if handoff.get("last_report_excerpt"):
+        lines.append(
+            f"Last report from {handoff['from_model']} (excerpt):\n"
+            + handoff["last_report_excerpt"]
+        )
+    lines.append("Continuation: " + handoff["continuation"])
+    return "\n".join(lines)
+
+
+def model_handoff(
+    root,
+    *,
+    data_root=None,
+    project_id=None,
+    task_id,
+    to_model,
+    continuation="Continue the assigned task; preserve completed progress.",
+    reason="explicit-handoff",
+    dry_run=False,
+    background=False,
+    effort=None,
+    controller=None,
+    controller_token=None,
+    actor=None,
+    audience="worker",
+    timeout_seconds=None,
+    idle_timeout_seconds=None,
+):
+    """Start a new attempt on another model, carrying the checkout state with it."""
+
+    registration = resolve_project(root, data_root)
+    project_id = project_id or (registration or {}).get("project_id")
+    if not project_id:
+        raise ValueError("registered project root or project-id is required")
+    data = Path(data_root or default_data_root())
+    ledger = _load_ledger(data, project_id)
+    task = next((t for t in ledger["tasks"] if t["task_id"] == task_id), None)
+    if task is None:
+        raise ValueError("task_id does not exist")
+    index = project_data_dir(data, project_id) / "worker-jobs.json"
+    previous = (json.loads(index.read_text()) if index.exists() else {}).get(task_id)
+    if not previous:
+        raise ValueError(
+            "no recorded run exists for this task; start it with worker dispatch"
+        )
+    if previous.get("status") in {"dispatched", "running"}:
+        raise ValueError(
+            "the previous attempt is still running; wait for it to end or stop it before a handoff"
+        )
+    profiles_path = data / "executor-adapters.json"
+    profiles = json.loads(profiles_path.read_text()) if profiles_path.exists() else {}
+    if to_model not in profiles:
+        raise ValueError(
+            "model adapter is not configured; use continuity worker configure"
+        )
+    from_model = previous["model"]
+    if to_model == from_model:
+        raise ValueError(
+            f"handoff target is the recorded model {from_model}; use worker resume to continue the same session"
+        )
+    from .executor_routing import _model_alias
+
+    if not isinstance(continuation, str) or not continuation.strip():
+        raise ValueError("continuation must not be empty")
+    checkout = Path(previous.get("worktree") or task.get("worktree") or root)
+    report_text = ""
+    try:
+        report_text = Path(previous["report_file"]).read_text(errors="replace")
+    except (OSError, KeyError):
+        pass
+    report_text = report_text or (
+        ledger.get("task_details", {}).get(task_id, {}).get("report", {}).get("text", "")
+    )
+    handoff = {
+        "kind": "model-handoff",
+        "previous_job": previous.get("job_id"),
+        "from_model": from_model,
+        "to_model": to_model,
+        "reason": reason,
+        "worktree": str(checkout),
+        "branch": _git_text(checkout, "rev-parse", "--abbrev-ref", "HEAD"),
+        "head": _git_text(checkout, "rev-parse", "HEAD"),
+        "uncommitted_status": _git_text(checkout, "status", "--short"),
+        "uncommitted_diffstat": _git_text(checkout, "diff", "--stat", "HEAD"),
+        "last_report_excerpt": report_text.strip()[-2000:],
+        "continuation": continuation.strip(),
+    }
+    if dry_run:
+        return {"executed": False, "task_id": task_id, "handoff": handoff}
+    next_assignee = "worker-" + _model_alias(to_model)
+    result = dispatch(
+        root,
+        data_root=data,
+        project_id=project_id,
+        task_id=task_id,
+        model=to_model,
+        effort=effort,
+        assignee=next_assignee,
+        background=background,
+        controller=controller,
+        controller_token=controller_token,
+        audience=audience,
+        timeout_seconds=timeout_seconds,
+        idle_timeout_seconds=idle_timeout_seconds,
+        handoff=handoff,
+        reassign=True,
+        reassign_actor=actor or controller,
+    )
+    from .execution_outbox import change
+
+    change(
+        data,
+        project_id,
+        "dispatch.handoff",
+        task_id,
+        from_model=from_model,
+        to_model=to_model,
+        reason=reason,
+        previous_job=previous.get("job_id"),
+        job_id=result.get("job_id"),
+        from_assignee=previous.get("assignee"),
+        to_assignee=next_assignee,
+    )
+    return {
+        **result,
+        "handoff_from": from_model,
+        "handoff_to": to_model,
+        "previous_job": previous.get("job_id"),
+    }
+
+
 def _fallback(job, result, value):
     from .execution_outbox import change
     from .runtime_routing import statistics
@@ -1310,11 +1601,22 @@ def _fallback(job, result, value):
     from .subscription_quota import automatic_available
 
     availability = statistics(job["data_root"], job["project_id"])
+    from .collaboration_registry import _load_ledger
+    from .model_constraints import allowed as model_allowed, load_profiles
+
+    constraints = (
+        _load_ledger(Path(job["data_root"]), job["project_id"])
+        .get("task_details", {})
+        .get(job["task_id"], {})
+        .get("model_constraints")
+    )
+    profiles = load_profiles(job["data_root"])
     candidates = [
         m
         for m in job["fallback_models"]
         if not availability.get(_model_alias(m), {}).get("unavailable_until")
         and automatic_available(job["data_root"], job["project_id"], m)
+        and model_allowed(constraints, profiles, m)
     ]
     if not candidates:
         return value
@@ -1358,6 +1660,7 @@ def _fallback(job, result, value):
             from_model=job["model"],
             to_model=next_model,
             reason=result.get("failure_class"),
+            message=f"fallback from {job['model']} ({result.get('failure_class')}) -> {next_model}",
             previous_job=job["job_id"],
             from_assignee=job["assignee"],
             to_assignee=next_assignee,
@@ -1373,6 +1676,45 @@ def _fallback(job, result, value):
         "fallback_job_id": next_result["job_id"],
         "primary_result": value,
     }
+
+
+# Jobs whose report can still change, or that ended without finishing the work.
+INTERIM_JOB_STATUSES = frozenset({"dispatched", "running", "interrupted", "lost"})
+
+
+def report_job_state(data_root, project_id, task_id):
+    """`(job_id, job_status)` of the card's latest job; status is None without a job."""
+    data = Path(data_root or default_data_root())
+    try:
+        jobs = json.loads(
+            (project_data_dir(data, project_id) / "worker-jobs.json").read_text(
+                encoding="utf-8"
+            )
+        )
+    except (OSError, ValueError):
+        return None, None
+    job = jobs.get(task_id) if isinstance(jobs, dict) else None
+    if not isinstance(job, dict):
+        return None, None
+    job_status = job.get("job_status") or job.get("status")
+    if job_status == "running" and any(
+        row["job_id"] == job.get("job_id") for row in find_lost_jobs(data, project_id)
+    ):
+        job_status = "lost"
+    return job.get("job_id"), job_status
+
+
+def _interim_notice(job_id, job_status):
+    detail = {
+        "running": "is still running",
+        "dispatched": "has not started yet",
+        "interrupted": "was interrupted before it finished",
+        "lost": "was lost (its process is gone)",
+    }[job_status]
+    return (
+        f"INTERIM report: job {job_id} {detail}; this is the worker's latest "
+        "progress, not a final report.\n"
+    )
 
 
 def command(args):
@@ -1394,6 +1736,7 @@ def command(args):
             provider=args.provider,
             profile_provider=args.profile_provider,
             official_subscription=args.official_subscription,
+            tier=args.tier,
             provider_model=args.provider_model,
             executable=args.executable,
             argv=json.loads(args.argv_json) if args.argv_json else None,
@@ -1415,31 +1758,73 @@ def command(args):
             raise ValueError("no final report is attached yet")
         report = value["report"]
         text = report["text"]
+        project_for_job = args.project_id or (project or {})["project_id"]
+        job_id, job_status = report_job_state(args.data_root, project_for_job, args.task_id)
+        final = job_status not in INTERIM_JOB_STATUSES
+        interim = "" if final else _interim_notice(job_id, job_status)
         digest = hashlib.sha256(text.encode()).hexdigest()
         if report.get("sha256") and report["sha256"] != digest:
             raise ValueError("report integrity mismatch")
-        if not 1024 <= args.max_output_bytes <= 131072 or not 0 <= args.offset <= len(
-            text
-        ):
+        # No --offset and no --full: a bounded summary, so reading a report does
+        # not flood the caller's context; --offset/--full page through the rest.
+        summary_page = args.offset is None and not args.full
+        offset = args.offset or 0
+        if not 1024 <= args.max_output_bytes <= 131072 or not 0 <= offset <= len(text):
             raise ValueError("invalid report output budget/range")
         if args.full and len(text.encode()) + 1 > args.max_output_bytes:
             raise ValueError(
                 "full report exceeds budget; increase max-output-bytes or read explicit pages"
             )
         if args.full:
-            print(text)
+            print(interim + text)
+            return 0
+        state = f"final={str(final).lower()} job_status={job_status or 'none'}"
+        if summary_page:
+            segment = (
+                text.encode()[: min(REPORT_SUMMARY_BYTES, args.max_output_bytes - 256)]
+                .decode("utf-8", "ignore")
+            )
+            end = len(segment)
+            print(
+                f"report_sha256={digest} bytes={len(text.encode())} {state} "
+                f"next_offset_chars={end if end < len(text) else 'none'} summary=true\n"
+                + interim
+                + report_headings(text)
+                + segment
+            )
             return 0
         segment = (
-            text[args.offset :]
+            text[offset:]
             .encode()[: args.max_output_bytes - 256]
             .decode("utf-8", "ignore")
         )
-        end = args.offset + len(segment)
+        end = offset + len(segment)
         print(
-            f"report_sha256={digest} bytes={len(text.encode())} next_offset_chars={end if end < len(text) else 'none'}\n"
+            f"report_sha256={digest} bytes={len(text.encode())} {state} "
+            f"next_offset_chars={end if end < len(text) else 'none'}\n"
+            + interim
             + segment
         )
         return 0
+    elif args.worker_action == "handoff":
+        value = model_handoff(
+            args.root,
+            data_root=args.data_root,
+            project_id=args.project_id,
+            task_id=args.task_id,
+            to_model=args.to_model,
+            continuation=args.continuation,
+            reason=args.reason,
+            dry_run=args.dry_run,
+            background=args.background,
+            effort=args.effort,
+            controller=args.controller,
+            controller_token=args.controller_token,
+            actor=args.actor,
+            audience=args.audience,
+            timeout_seconds=args.timeout_seconds,
+            idle_timeout_seconds=args.idle_timeout_seconds,
+        )
     elif args.worker_action == "clear-policy-review":
         value = clear_policy_review(
             args.root,
@@ -1506,6 +1891,8 @@ def command(args):
             idle_timeout_seconds=args.idle_timeout_seconds,
             reassign=args.reassign,
             reassign_actor=args.actor,
+            rate_limit_retries=args.rate_limit_retries,
+            rate_limit_backoff_seconds=args.rate_limit_backoff_seconds,
         )
     print(render(value, format="json", max_output_bytes=65536))
     return 2 if value.get("status") in {"failed", "interrupted"} else 0
@@ -1536,6 +1923,16 @@ def _run_parser(parser, action):
         help="Seconds without output per attempt; new workers default 5400 (90 min), resume retains recorded budget",
     )
     parser.add_argument("--retry", type=int, default=0)
+    parser.add_argument(
+        "--rate-limit-retries",
+        type=int,
+        help=f"Resumes of the same session after a short provider rate limit before any fallback; default {RATE_LIMIT_RETRIES}, 0 disables",
+    )
+    parser.add_argument(
+        "--rate-limit-backoff-seconds",
+        type=float,
+        help=f"Base backoff between those resumes (doubles, capped at 30 s); default {RATE_LIMIT_BACKOFF_SECONDS}",
+    )
     parser.add_argument(
         "--reassign",
         action="store_true",
@@ -1585,23 +1982,8 @@ def _run_parser(parser, action):
     )
 
 
-def list_jobs(data_root, *, project_id=None, root=".", status=None, since=None, max_results=100):
-    if not 1 <= max_results <= 1000:
-        raise ValueError("max-results must be between 1 and 1000")
-    cutoff = None
-    if since is not None:
-        try:
-            cutoff = datetime.fromisoformat(since.replace("Z", "+00:00"))
-        except (AttributeError, ValueError):
-            raise ValueError("since must be a timezone-bearing ISO-8601 timestamp") from None
-        if cutoff.tzinfo is None:
-            raise ValueError("since requires a timezone")
-    if not project_id:
-        project = resolve_project(root, data_root)
-        if project is None:
-            raise ValueError("registered root or project-id is required")
-        project_id = project["project_id"]
-    data = Path(data_root or default_data_root())
+def _job_items(data, project_id):
+    """Bounded job history plus current-index jobs that predate it."""
     index = project_data_dir(data, project_id) / "worker-jobs.json"
     history_path = _job_history_path(data, project_id)
     try:
@@ -1621,13 +2003,208 @@ def list_jobs(data_root, *, project_id=None, root=".", status=None, since=None, 
     for task_id, item in rows.items():
         if isinstance(item, dict) and item.get("job_id") not in seen_jobs:
             items.append({**item, "task_id": task_id})
-    ended = {"completed", "failed", "interrupted", "blocked"}
+    return items
+
+
+def _iso_age(value, now):
+    try:
+        moment = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except (TypeError, ValueError):
+        return None
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=UTC)
+    return (now - moment).total_seconds()
+
+
+def find_lost_jobs(data_root, project_id, *, now=None):
+    """Running jobs whose process is gone and whose newest sign of life is stale.
+
+    Evidence is the runner and worker pid with the recorded start identity,
+    and the age of the newest start/heartbeat. A live or remote process, or a
+    fresh heartbeat, always keeps a job running.
+    """
+    from .execution_lifecycle import LOST_REASONS, job_id_of
+    from .supervisor import (
+        HEARTBEAT_SECONDS,
+        LOST_HEARTBEAT_FACTOR,
+        process_state,
+    )
+
+    data = Path(data_root or default_data_root())
+    now = now or datetime.now(UTC)
+    ledger = _load_ledger(data, project_id)
+    found = []
+    for item in _job_items(data, project_id):
+        if not isinstance(item, dict) or (
+            item.get("job_status") or item.get("status")
+        ) != "running":
+            continue
+        job_id, task_id = item.get("job_id"), item.get("task_id")
+        if not isinstance(job_id, str) or not isinstance(task_id, str):
+            continue
+        try:
+            job = json.loads(
+                (project_data_dir(data, project_id) / "worker-jobs" / job_id / "job.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+        except (OSError, ValueError):
+            job = {}
+        binding = ledger.get("execution_bindings", {}).get(task_id, {})
+        mine = bool(binding) and job_id_of(binding.get("attempt_id")) == job_id
+        states = [
+            process_state(
+                job.get("runner_pid"), job.get("runner_identity"), job.get("runner_host")
+            )
+        ]
+        if mine:
+            states.append(
+                process_state(
+                    binding.get("pid"), binding.get("process_identity"), binding.get("host_id")
+                )
+            )
+        if {"alive", "remote"} & set(states):
+            continue
+        stamps = [
+            job.get("started_at"),
+            item.get("started_at"),
+            item.get("dispatched_at"),
+            *(
+                [binding.get(k) for k in ("bound_at", "started_at", "finished_at")]
+                if mine
+                else []
+            ),
+        ]
+        if mine:
+            # Heartbeats live in the change journal, not in the ledger.
+            since = binding.get("event_start_cursor")
+            for row in iter_changes(data, project_id=project_id, since=since or 0):
+                if (
+                    row.get("task_id") == task_id
+                    and row.get("event") in {"attempt.started", "attempt.heartbeat"}
+                    and job_id_of(row.get("attempt_id")) == job_id
+                ):
+                    stamps.append(row.get("observed_at"))
+        ages = [a for a in (_iso_age(v, now) for v in stamps) if a is not None]
+        silent = min(ages) if ages else float("inf")
+        allowed = LOST_HEARTBEAT_FACTOR * HEARTBEAT_SECONDS
+        if (
+            mine
+            and binding.get("status") != "running"
+            and binding.get("reason") not in LOST_REASONS
+        ):
+            allowed += 300  # an in-job retry may be waiting out its backoff
+        if silent <= allowed:
+            continue
+        found.append(
+            {
+                "job_id": job_id,
+                "task_id": task_id,
+                "assignee": item.get("assignee") or binding.get("assignee"),
+                "silent_seconds": None if silent == float("inf") else round(silent),
+                "process": states,
+                "binding_running": mine and binding.get("status") == "running",
+                "attempt_id": binding.get("attempt_id") if mine else job_id,
+            }
+        )
+    return found
+
+
+def reap_lost_jobs(data_root, project_id, *, now=None, lost=None):
+    """Record `lost` jobs: job state, `job.lost`, the attempt binding and capacity."""
+    from .controller_lease import finish_reservation
+    from .execution_lifecycle import finish_execution, record_job_outcome
+
+    data = Path(data_root or default_data_root())
+    lost = find_lost_jobs(data, project_id, now=now) if lost is None else lost
+    for row in lost:
+        job_dir = project_data_dir(data, project_id) / "worker-jobs" / row["job_id"]
+        finished_at = (now or datetime.now(UTC)).isoformat()
+        if row["binding_running"]:
+            # Ends the attempt, projects the card and journals attempt.finished + job.lost.
+            finish_execution(
+                data,
+                project_id=project_id,
+                task_id=row["task_id"],
+                assignee=row["assignee"],
+                attempt_id=row["attempt_id"],
+                status="interrupted",
+                return_code=None,
+                reason="process-lost",
+                finished_at=finished_at,
+            )
+        else:
+            record_job_outcome(
+                data,
+                project_id,
+                row["task_id"],
+                attempt_id=row["attempt_id"],
+                assignee=row["assignee"],
+                status="interrupted",
+                reason="process-lost",
+                finished_at=finished_at,
+            )
+        result = {
+            "status": "lost",
+            "return_code": None,
+            "reason": "process-lost",
+            "finished_at": finished_at,
+        }
+        try:
+            job = json.loads((job_dir / "job.json").read_text(encoding="utf-8"))
+            _persist_job_terminal(job, result)
+        except (OSError, ValueError, KeyError):
+            # No job document to update: keep the bounded history truthful.
+            _record_job_history(
+                {
+                    "data_root": str(data),
+                    "project_id": project_id,
+                    "task_id": row["task_id"],
+                    "job_id": row["job_id"],
+                    "assignee": row["assignee"],
+                },
+                "lost",
+                result,
+            )
+        finish_reservation(data, project_id, row["task_id"], row["job_id"])
+    return lost
+
+
+def list_jobs(data_root, *, project_id=None, root=".", status=None, since=None, max_results=100, now=None):
+    if not 1 <= max_results <= 1000:
+        raise ValueError("max-results must be between 1 and 1000")
+    cutoff = None
+    if since is not None:
+        try:
+            cutoff = datetime.fromisoformat(since.replace("Z", "+00:00"))
+        except (AttributeError, ValueError):
+            raise ValueError("since must be a timezone-bearing ISO-8601 timestamp") from None
+        if cutoff.tzinfo is None:
+            raise ValueError("since requires a timezone")
+    if not project_id:
+        project = resolve_project(root, data_root)
+        if project is None:
+            raise ValueError("registered root or project-id is required")
+        project_id = project["project_id"]
+    data = Path(data_root or default_data_root())
+    # A "running" job whose process is gone is recorded as lost (releasing its
+    # capacity) before listing; if that cannot be written it is still shown as lost.
+    lost = find_lost_jobs(data, project_id, now=now)
+    try:
+        reap_lost_jobs(data, project_id, now=now, lost=lost)
+    except (OSError, ValueError):
+        pass
+    lost_ids = {row["job_id"] for row in lost}
+    items = _job_items(data, project_id)
+    ended = {"completed", "failed", "interrupted", "blocked", "lost"}
     selected = []
     for item in items:
         if not isinstance(item, dict):
             continue
         task_id = item.get("task_id")
         job_status = item.get("job_status") or item.get("status") or "unknown"
+        if item.get("job_id") in lost_ids:
+            job_status = "lost"
         if status == "ended" and job_status not in ended:
             continue
         if status not in {None, "ended"} and job_status != status:
@@ -1651,7 +2228,7 @@ def list_jobs(data_root, *, project_id=None, root=".", status=None, since=None, 
                 "model": item.get("model"),
                 "assignee": item.get("assignee"),
                 "exit_code": item.get("exit_code"),
-                "reason": item.get("reason"),
+                "reason": "process-lost" if job_status == "lost" else item.get("reason"),
                 "failure_class": item.get("failure_class"),
                 "dispatched_at": item.get("dispatched_at"),
                 "finished_at": item.get("finished_at"),
@@ -1681,6 +2258,37 @@ def register_cli(commands):
     sub = parser.add_subparsers(dest="worker_action", required=True)
     for action in ("dispatch", "resume", "prepare"):
         _run_parser(sub.add_parser(action), action)
+    handoff_parser = sub.add_parser(
+        "handoff",
+        help="Continue a card on another model with checkout state, last report and a note",
+    )
+    handoff_parser.set_defaults(handler=command, worker_action="handoff")
+    for field in ("project-id", "data-root", "controller", "actor", "effort"):
+        handoff_parser.add_argument("--" + field)
+    handoff_parser.add_argument("--root", default=".")
+    handoff_parser.add_argument("--task-id", required=True)
+    handoff_parser.add_argument(
+        "--to-model", required=True, help="Configured adapter that takes over"
+    )
+    handoff_parser.add_argument(
+        "--continuation",
+        default="Continue the assigned task; preserve completed progress.",
+        help="Instruction for the new model",
+    )
+    handoff_parser.add_argument(
+        "--reason", default="explicit-handoff", help="Recorded in the change log"
+    )
+    handoff_parser.add_argument("--timeout-seconds", type=float)
+    handoff_parser.add_argument("--idle-timeout-seconds", type=float)
+    handoff_parser.add_argument("--audience", default="worker")
+    handoff_parser.add_argument(
+        "--controller-token",
+        help="Current project controller fence token; also CONTINUITY_CONTROLLER_TOKEN",
+    )
+    handoff_parser.add_argument(
+        "--dry-run", action="store_true", help="Show the handoff context only"
+    )
+    handoff_parser.add_argument("--background", action="store_true")
     clearance = sub.add_parser(
         "clear-policy-review",
         help="Clear one reviewed false policy-review classification with an audited reason",
@@ -1717,6 +2325,11 @@ def register_cli(commands):
     )
     for field in ("provider-model", "executable", "argv-json", "resume-argv-json"):
         configure_parser.add_argument("--" + field)
+    configure_parser.add_argument(
+        "--tier",
+        choices=("strong", "standard", "light"),
+        help="Capability tier for per-card --min-tier checks; default by model family, else standard",
+    )
     report = sub.add_parser("report")
     report.set_defaults(handler=command)
     report.add_argument("--task-id", required=True)
@@ -1736,8 +2349,8 @@ def register_cli(commands):
         reader.add_argument(
             "--offset",
             type=int,
-            default=0,
-            help="Character offset from the previous report page",
+            default=None,
+            help="Character offset from the previous report page; without --offset or --full only a summary page is returned",
         )
         reader.add_argument(
             "--full",
@@ -1760,6 +2373,26 @@ def register_cli(commands):
     events.add_argument("--max-events", type=int)
     events.add_argument("--poll-seconds", type=float, default=0.5)
     events.add_argument("--max-output-bytes", type=int, default=4096)
+    wait = sub.add_parser(
+        "wait",
+        help="Block (outside any model) until a worker ends, fails, times out, is rate-limited or blocked; run as a background task",
+    )
+    wait.set_defaults(handler=wait_command)
+    wait.add_argument("--data-root")
+    wait.add_argument("--project-id")
+    wait.add_argument("--all-projects", action="store_true")
+    wait.add_argument(
+        "--task-id",
+        action="append",
+        help="Only this task; repeatable. Default: any task in the selected projects",
+    )
+    wait.add_argument(
+        "--since-cursor",
+        help="Resume from a stream_cursor printed earlier; default is the current tail",
+    )
+    wait.add_argument("--timeout-seconds", type=float, default=0, help="0 = no limit")
+    wait.add_argument("--max-events", type=int, default=1)
+    wait.add_argument("--poll-seconds", type=float, default=0.5)
     jobs = sub.add_parser(
         "jobs", help="List current worker jobs by running/ended state"
     )
@@ -1769,7 +2402,7 @@ def register_cli(commands):
     jobs.add_argument("--root", default=".")
     jobs.add_argument(
         "--status",
-        choices=("running", "dispatched", "ended", "completed", "failed", "interrupted", "blocked"),
+        choices=("running", "dispatched", "ended", "completed", "failed", "interrupted", "blocked", "lost"),
     )
     jobs.add_argument("--since", help="ISO-8601 lower bound on the recorded timestamp")
     jobs.add_argument("--max-results", type=int, default=100)
@@ -1824,6 +2457,14 @@ def events_command(args):
     if not 1024 <= args.max_output_bytes <= 131072:
         raise ValueError("max-output-bytes must be 1024–131072")
     return worker_events_command(args)
+
+
+def wait_command(args):
+    from .collaboration_stream import worker_wait_command
+
+    if args.max_events < 1:
+        raise ValueError("max-events must be positive")
+    return worker_wait_command(args)
 
 
 def fallback_command(args):

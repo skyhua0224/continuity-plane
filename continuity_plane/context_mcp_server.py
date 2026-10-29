@@ -8,12 +8,14 @@ import sys
 from pathlib import Path
 
 try:
+    from .adoption import CallTracker
     from .code_index import lookup_code_index
     from .release_version import VERSION, runtime_version_issue
 except ImportError:  # pragma: no cover - exercised by the direct plugin launcher
     package_root = Path(__file__).resolve().parents[1]
     sys.path.insert(0, str(package_root))
     __package__ = "continuity_plane"
+    from continuity_plane.adoption import CallTracker
     from continuity_plane.code_index import lookup_code_index
     from continuity_plane.release_version import VERSION, runtime_version_issue
 
@@ -26,7 +28,11 @@ _ANNOTATIONS = {
 }
 
 
+_CALLS = CallTracker('continuity-search')
+
+
 def _reply(request_id: object, result: dict) -> None:
+    _CALLS.finish(request_id, not result.get("isError"))
     print(
         json.dumps(
             {"jsonrpc": "2.0", "id": request_id, "result": result}, ensure_ascii=False
@@ -36,6 +42,7 @@ def _reply(request_id: object, result: dict) -> None:
 
 
 def _error(request_id: object, code: int, message: str) -> None:
+    _CALLS.finish(request_id, False)
     print(
         json.dumps(
             {
@@ -53,9 +60,10 @@ def _tool() -> dict:
     return {
         "name": "continuity_context_lookup",
         "description": (
-            "Return bounded hash-bound symbol and path references from an incremental Git-tracked "
-            "code index. Its transparent cache never changes project State or source. "
-            "An empty result is a normal miss; continue with bounded CLI or narrow search."
+            "Use when you need to know where a function, type, macro, file or header is "
+            "defined or used: returns a few file:line locations with short excerpts from an "
+            "index of the Git-tracked files (default about 1 KB). Faster and smaller than grep "
+            "over the repository. An empty result is a normal miss; then do one narrow search."
         ),
         "annotations": _ANNOTATIONS,
         "inputSchema": {
@@ -158,7 +166,9 @@ def _call_lookup(request_id: object, arguments: object) -> None:
         )
         if result.get("truncated"):
             text += "\n[more results; narrow query or increase result/budget limit]"
-        text = text.encode()[:max_output_bytes].decode("utf-8", "ignore")
+        # Brief replies stay small by default even when callers raise the
+        # receipt budget: locations, not excerpts, are the product here.
+        text = text.encode()[: min(max_output_bytes, 1024)].decode("utf-8", "ignore")
         try:
             from .usage_meter import record
 
@@ -202,6 +212,10 @@ def _call_lookup(request_id: object, arguments: object) -> None:
 
 
 def main() -> int:
+    if any(a == "--proxy" or a.startswith("--proxy=") for a in sys.argv[1:]):
+        from .mcp_proxy import proxy_main
+
+        return proxy_main("continuity-search-mcp", sys.argv[1:])
     for line in sys.stdin:
         try:
             request = json.loads(line)
@@ -210,6 +224,7 @@ def main() -> int:
         if not isinstance(request, dict):
             continue
         request_id = request.get("id")
+        _CALLS.observe_request(request)
         method = request.get("method")
         if request_id is not None:
             issue = runtime_version_issue()
@@ -229,6 +244,12 @@ def main() -> int:
                     "protocolVersion": protocol,
                     "capabilities": {"tools": {}},
                     "serverInfo": {"name": "continuity-search", "version": VERSION},
+                    "instructions": (
+                        "Use continuity_context_lookup to find where a symbol, file or "
+                        "header is defined or used before reading files or running broad "
+                        "grep. It returns a few bounded locations (about 1 KB). On an "
+                        "empty result, run one narrow search instead of repeating the query."
+                    ),
                 },
             )
         elif method == "notifications/initialized":

@@ -54,6 +54,7 @@ class PlanningAPITests(unittest.TestCase):
             exit_criteria=["focused tests pass"],
             allowed_files=["src/"],
             worktree=str(self.root),
+            body="Check parity between CLI and MCP",
         )
 
     def tool(self, name, **arguments):
@@ -368,6 +369,7 @@ class PlanningAPITests(unittest.TestCase):
                             "next_action": "Run",
                             "exit_criteria": ["pass"],
                             "allowed_files": ["src/"],
+                            "body": "Check wire metadata",
                         },
                     },
                 },
@@ -406,7 +408,11 @@ class PlanningAPITests(unittest.TestCase):
             text=True,
             capture_output=True,
             timeout=20,
-            env={**os.environ, "CONTINUITY_METER": "0"},
+            env={
+                **os.environ,
+                "CONTINUITY_METER": "0",
+                "CONTINUITY_MCP_TOOLSET": "full",
+            },
         )
         self.assertEqual(process.returncode, 0, process.stderr)
         replies = {r["id"]: r for r in map(json.loads, process.stdout.splitlines())}

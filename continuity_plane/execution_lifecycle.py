@@ -1,5 +1,6 @@
 """Project-local run bindings and replayable card projections, never State claims."""
 
+import re
 from pathlib import Path
 
 from .collaboration_registry import (
@@ -14,6 +15,44 @@ from .collaboration_registry import (
     default_data_root,
     latest_change_cursor,
 )
+
+
+# Finish reasons that mean the process vanished rather than ended; the job is lost.
+LOST_REASONS = frozenset({"process-lost", "process-not-alive", "process-identity-changed"})
+_RETRY_SUFFIX = re.compile(r"-retry-\d+$")
+
+
+def job_id_of(attempt_id):
+    """The job an attempt belongs to; in-job retries append `-retry-N`."""
+    return _RETRY_SUFFIX.sub("", attempt_id or "")
+
+
+def record_job_outcome(
+    root, project_id, task_id, *, attempt_id, assignee, status, return_code=None,
+    reason=None, finished_at=None, **details
+):
+    """Journal the one terminal job event: job.completed|failed|interrupted|lost."""
+    outcome = "lost" if reason in LOST_REASONS else status
+    job_id = job_id_of(attempt_id)
+    return _record_change(
+        root,
+        project_id,
+        f"job.{outcome}",
+        task_id,
+        event_id=f"job:{task_id}:{job_id}:{outcome}",
+        job_id=job_id,
+        attempt_id=attempt_id,
+        assignee=assignee,
+        status=status,
+        return_code=return_code,
+        reason=reason,
+        finished_at=finished_at or _now(),
+        **{
+            key: details[key]
+            for key in ("failure_class", "retryable", "available_at", "model", "elapsed_seconds")
+            if details.get(key) is not None
+        },
+    )
 
 
 class ExecutionBindingError(CollaborationRegistryError):
@@ -182,8 +221,14 @@ def finish_execution(
     event_prefix="attempt",
     replay=False,
     report=None,
+    retrying=False,
     **details,
 ):
+    """Project one attempt's end onto the card.
+
+    `retrying` marks a failure the same job is about to retry: it journals
+    `attempt.retrying` (not terminal) instead of `attempt.finished` + `job.*`.
+    """
     if status not in {"completed", "failed", "interrupted"}:
         raise CollaborationRegistryError("execution finish status is invalid")
     root = Path(data_root or default_data_root())
@@ -250,13 +295,15 @@ def finish_execution(
         }
         # Journal first. If the ledger write fails, daemon replay reapplies this
         # projection. Stable event IDs make that replay idempotent.
+        phase = "retrying" if retrying else "finished"
         finish_event = _record_change(
             root,
             project_id,
-            event_prefix + ".finished",
+            f"{event_prefix}.{phase}",
             task_id,
-            event_id=f"{event_prefix}:{task_id}:{attempt_id}:finished",
+            event_id=f"{event_prefix}:{task_id}:{attempt_id}:{phase}",
             attempt_id=attempt_id,
+            **({"job_id": job_id_of(attempt_id)} if event_prefix == "attempt" else {}),
             assignee=assignee,
             status=status,
             return_code=return_code,
@@ -275,6 +322,19 @@ def finish_execution(
         if finish_event:
             result["finished_at"] = finish_event.get("finished_at")
             result["cursor"] = finish_event.get("cursor")
+        if event_prefix == "attempt" and not retrying:
+            record_job_outcome(
+                root,
+                project_id,
+                task_id,
+                attempt_id=attempt_id,
+                assignee=assignee,
+                status=status,
+                return_code=return_code,
+                reason=reason,
+                finished_at=finish_event.get("finished_at") if finish_event else None,
+                **details,
+            )
         if current:
             binding.update(
                 status=status,

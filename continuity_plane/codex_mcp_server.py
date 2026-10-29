@@ -12,6 +12,7 @@ import sys
 import time
 from pathlib import Path
 
+from .adoption import CallTracker
 from .light_observability import (
     PolicyConfigError,
     SessionProbe,
@@ -37,6 +38,43 @@ from .intent_todo import (
 )
 from .release_version import VERSION, runtime_version_issue
 from .planning_api import ALIASES as _PLAN_ALIASES, extend_tools, handle_tool
+from .agent_tools import (
+    BY_NAME as AGENT_TOOLS,
+    INSTRUCTIONS as AGENT_INSTRUCTIONS,
+    definitions as agent_tool_definitions,
+    result as agent_result,
+)
+
+
+# Advanced State tools and the per-operation Todo/collaboration aliases stay
+# callable by name but are listed only on request: many hosts send every listed
+# schema with each model request. continuity_start, the first-class task tools
+# and continuity_plan(action="todo.*") cover the same operations.
+_STATE_TOOLS = {
+    "continuity_todo_compile",
+    "continuity_todo_list",
+    "continuity_todo_complete",
+    "continuity_todo_block",
+    "continuity_todo_link",
+    "continuity_todo_activate",
+    "continuity_collaboration",
+    "continuity_collaboration_packet",
+    "continuity_inspect",
+    "continuity_resume",
+    "continuity_autorun",
+    "continuity_checkpoint",
+    "continuity_work_complete",
+    "continuity_work_transition",
+    "continuity_work_activate",
+    "continuity_claim_recover",
+    "continuity_worker_handoff",
+}
+
+
+def _listed_tools(tools: list[dict]) -> list[dict]:
+    if os.environ.get("CONTINUITY_MCP_TOOLSET", "agent") == "full":
+        return tools
+    return [tool for tool in tools if tool["name"] not in _STATE_TOOLS]
 
 
 def _cli_command(*arguments: str) -> list[str]:
@@ -91,13 +129,18 @@ _STATE_SYNC_PENDING_ACTIONS = {
 }
 
 
+_CALLS = CallTracker('continuity')
+
+
 def _reply(request_id: object, result: dict) -> None:
+    _CALLS.finish(request_id, not result.get("isError"))
     print(
         json.dumps({"jsonrpc": "2.0", "id": request_id, "result": result}), flush=True
     )
 
 
 def _error(request_id: object, code: int, message: str) -> None:
+    _CALLS.finish(request_id, False)
     print(
         json.dumps(
             {
@@ -474,6 +517,10 @@ def _claim_recovery_binding_error(
 
 
 def main() -> int:
+    if any(a == "--proxy" or a.startswith("--proxy=") for a in sys.argv[1:]):
+        from .mcp_proxy import proxy_main
+
+        return proxy_main("continuity-mcp", sys.argv[1:])
     session_roots: dict[str, Path] = {}
     session_bindings: dict[str, dict] = {}
     active_root: Path | None = None
@@ -492,6 +539,7 @@ def main() -> int:
         if not isinstance(request, dict):
             _error(None, -32600, "request must be an object")
             continue
+        _CALLS.observe_request(request)
         method = request.get("method")
         request_id = request.get("id")
         if request_id is not None:
@@ -512,6 +560,7 @@ def main() -> int:
                     ),
                     "capabilities": {"tools": {}},
                     "serverInfo": {"name": "continuity", "version": VERSION},
+                    "instructions": AGENT_INSTRUCTIONS,
                 },
             )
         elif method == "notifications/initialized":
@@ -520,7 +569,8 @@ def main() -> int:
             _reply(
                 request_id,
                 {
-                    "tools": extend_tools(
+                    "tools": _listed_tools(agent_tool_definitions()
+                    + extend_tools(
                         [
                             {
                                 "name": "continuity_inspect",
@@ -537,7 +587,7 @@ def main() -> int:
                             },
                             {
                                 "name": "continuity_inbox",
-                                "description": "Send, list, acknowledge or archive durable project messages. send may omit message_id and returns the generated ID; explicit IDs remain idempotent. ack supports one ID or bounded recipient batches. Local sidecar only; no provider wake or effect authority.",
+                                "description": "Use to message another agent or the controller, or to read and acknowledge your messages (send / list / ack / archive). send generates message_id when omitted.",
                                 "annotations": _LOCAL_WRITE_ANNOTATIONS,
                                 "inputSchema": {
                                     "type": "object",
@@ -960,7 +1010,7 @@ def main() -> int:
                                 },
                             },
                         ]
-                    )
+                    ))
                 },
             )
         elif method == "tools/call":
@@ -969,6 +1019,16 @@ def main() -> int:
                 _error(request_id, -32602, "params must be an object")
                 continue
             tool_name = params.get("name")
+            if isinstance(tool_name, str) and tool_name in AGENT_TOOLS:
+                arguments = params.get("arguments", {})
+                if not isinstance(arguments, dict):
+                    _error(request_id, -32602, "arguments must be an object")
+                    continue
+                try:
+                    _reply(request_id, agent_result(tool_name, arguments))
+                except (OSError, ValueError, TypeError, KeyError) as exc:
+                    _tool_error(request_id, exc, error_type=type(exc).__name__)
+                continue
             if isinstance(tool_name, str) and tool_name in {
                 *_PLAN_ALIASES,
                 "continuity_plan",

@@ -21,7 +21,7 @@ from .plan_route import master_route
 MAX_HINT_BYTES = 1024
 
 
-def context(payload, *, root=None, host="host", data_root=None):
+def context(payload, *, root=None, host="host", data_root=None, max_bytes=None):
     if not isinstance(payload, dict) or payload.get("hook_event_name") not in {
         "SessionStart",
         "UserPromptSubmit",
@@ -163,9 +163,26 @@ def context(payload, *, root=None, host="host", data_root=None):
         command += " --root " + shlex.quote(str(queue_root)) + " --data-root " + shlex.quote(str(data))
         if card:
             command = "continuity collaboration task show --project-id " + shlex.quote(project["project_id"]) + " --task-id " + shlex.quote(card["task_id"]) + " --data-root " + shlex.quote(str(data))
+        pid = project["project_id"] if project else None
+        scope = f"project_id={pid!r}" if pid else ""
+        if card:
+            look = f"continuity_task_show({scope}, task_id={card['task_id']!r})"
+        elif pid:
+            look = f"continuity_task_list({scope})"
+        else:
+            look = "continuity_plan(action='todo.list')"
+        role = os.environ.get("CONTINUITY_ROLE") or ("worker" if card else "controller")
         lines = [
-            "Continuity planning metadata: no State claim required; ordinary work remains allowed.",
-            "Inspect current work: " + command,
+            "Continuity is connected"
+            + (f" for {pid}" if pid else "")
+            + ": use its MCP tools (CLI only as fallback); ordinary work remains allowed.",
+            "Inspect current work: " + look,
+            (
+                "As worker: continuity_progress at milestones; continuity_report_final(summary=…, checks=…) when done; continuity_review_request for a review."
+                if role in {"worker", "reviewer"}
+                else "As controller: continuity_task_add per piece of work; continuity_worker_dispatch then continuity_events_wait; continuity_handoff_write before you stop."
+            ),
+            "CLI fallback: " + command,
         ]
         if references:
             lines.insert(0, references)
@@ -189,7 +206,7 @@ def context(payload, *, root=None, host="host", data_root=None):
             lines.append(
                 f"Your card {card['task_id']} ({card['status']}): {action_text}"
             )
-        ending = "\nCapture explicit work once; link cards, verify, complete and continue within the agreed stage. Progress notes are nonterminal."
+        ending = "\nPut multi-step work on cards once, verify, report and continue; progress notes are nonterminal."
         # Include complete lines only: never turn a bounded hint into a broken
         # command. Unknown write arguments are deliberately not invented.
         kept = []
@@ -197,12 +214,22 @@ def context(payload, *, root=None, host="host", data_root=None):
             if len(("\n".join(kept + [line]) + ending).encode()) <= MAX_HINT_BYTES:
                 kept.append(line)
         text = "\n".join(kept) + ending
+        size = len(text.encode())
+        if max_bytes is not None and size > max_bytes:
+            # The event had no room; leave the digest unmarked so a later event
+            # with room can still deliver this hint.
+            return None
+        from .handoff_journal import reserve
+
         with _locked(marker):
             try:
                 previous = json.loads(marker.read_text())
             except (OSError, ValueError):
                 previous = {}
             if previous.get("digest") == digest:
+                return None
+            if not reserve(root, session, text, data_root=data, kind="planning-hint"):
+                _atomic_write(marker, {"digest": digest, "budget": "exhausted"})
                 return None
             _atomic_write(marker, {"digest": digest})
         return text
@@ -223,10 +250,14 @@ def omitted_checklist_hint(payload, *, data_root=None, max_bytes=MAX_HINT_BYTES)
         command = "continuity collaboration task list --root " + shlex.quote(root)
         if data_root:
             command += " --data-root " + shlex.quote(str(data_root))
-        text = "Large instruction was not auto-captured. Existing cards/handoff remain the plan; no separate Todo is required. Inspect: " + command
+        text = "Large instruction was not auto-captured. Existing cards/handoff remain the plan; no separate Todo is required. Look with continuity_task_list(); add missing pieces with continuity_task_add. CLI fallback: " + command
         if len(text.encode()) > MAX_HINT_BYTES:
-            text = "Large instruction was not auto-captured; keep using existing cards/handoff. Parameters: continuity help task.list"
+            text = "Large instruction was not auto-captured; keep using existing cards/handoff. Look with continuity_task_list(); parameters: continuity help task.list"
         if len(text.encode()) > max_bytes:
+            return None
+        from .handoff_journal import reserve
+
+        if not reserve(root, session, text, data_root=data_root, kind="omitted-hint"):
             return None
         _atomic_write(path, {"noticed": True})
     return text

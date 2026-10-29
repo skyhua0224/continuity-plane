@@ -4,6 +4,7 @@ This coordinates cooperating clients; it is not an OS sandbox or account auth.
 """
 
 import math
+import re
 import os
 import socket
 import subprocess
@@ -103,6 +104,9 @@ def active_owner(data_root, project_id, *, now=None):
     return owner
 
 
+_TOKEN_RE = re.compile(r"[A-Za-z0-9_.-]{16,128}")
+
+
 def acquire(
     data_root,
     project_id,
@@ -130,6 +134,10 @@ def acquire(
         raise ValueError(
             "client limits need positive integer codex/claude/custom values"
         )
+    if token is not None and not renew and _TOKEN_RE.fullmatch(str(token)) is None:
+        raise ValueError(
+            "controller token must be 16–128 characters of letters, digits, '_', '.' or '-'; omit --token to receive a generated one"
+        )
     path = _path(data_root, project_id)
     with _locked(path):
         doc = _load(path)
@@ -146,7 +154,9 @@ def acquire(
             )
         value = {
             "owner": owner,
-            "token": previous["token"] if renew else uuid.uuid4().hex,
+            "token": previous["token"]
+            if renew
+            else token or uuid.uuid4().hex,
             "fence": (previous or {}).get("fence", 0) + (0 if renew else 1),
             "expires_at": time.time() + ttl_seconds,
             "client_limits": client_limits
@@ -488,13 +498,14 @@ def reconcile_host(
     }
 
 
-def view(data_root, project_id, owner=None, token=None):
+def view(data_root, project_id, owner=None, token=None, ledger=None):
+    """Report the lease; callers that already hold the ledger pass it to skip a reload."""
     try:
         doc = _load(_path(data_root, project_id))
         lease = doc.get("controller_lease")
-        required = _load_ledger(Path(data_root or default_data_root()), project_id).get(
-            "controller_fencing_required", False
-        )
+        if ledger is None:
+            ledger = _load_ledger(Path(data_root or default_data_root()), project_id)
+        required = ledger.get("controller_fencing_required", False)
     except (OSError, ValueError, KeyError):
         return {
             "enabled": True,

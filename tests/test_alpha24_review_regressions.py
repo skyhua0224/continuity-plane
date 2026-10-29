@@ -252,6 +252,7 @@ class ReviewRegressionTests(unittest.TestCase):
         class IncompleteTail:
             policy_seen = False
             drained = False
+            diagnostic = "429 too many requests"
             thread = SimpleNamespace(join=lambda **kwargs: None)
 
             def __init__(self, stream, on_output):

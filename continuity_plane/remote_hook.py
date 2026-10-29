@@ -126,6 +126,9 @@ def forward(payload, config, *, runner=subprocess.run):
             None,
         )
         if mapping is None:
+            from .adoption import record_hook
+
+            record_hook(payload, "claude", config.get("local_data_root"))
             return handle_event(
                 payload,
                 host="claude-bridge",
@@ -149,6 +152,15 @@ def forward(payload, config, *, runner=subprocess.run):
         raise ValueError("explicit absolute local_root and remote_root are required")
     if Path(payload.get("cwd", "")).resolve() != local.resolve():
         return {"continue": True, "status": "root-not-mapped"}
+    from .adoption import drain_spool, spool_tool_call
+
+    adoption_spool = (
+        Path(config.get("local_data_root") or Path.home() / ".local/state/continuity")
+        / "bridge-adoption"
+        / (hashlib.sha256(str(local).encode()).hexdigest() + ".jsonl")
+    )
+    # Count before coalescing so rapid tool calls are not lost.
+    spool_tool_call(adoption_spool, payload, "claude")
     if payload.get("hook_event_name") == "PostToolUse":
         from .collaboration_registry import _atomic_write, _locked
 
@@ -185,6 +197,9 @@ def forward(payload, config, *, runner=subprocess.run):
     )
     outgoing = {k: payload[k] for k in allowed if k in payload}
     outgoing["cwd"] = remote
+    adoption_entries = drain_spool(adoption_spool)
+    if adoption_entries:
+        outgoing["adoption"] = adoption_entries
     if payload.get("hook_event_name") in {"SubagentStart", "SubagentStop", "SessionStart", "SessionEnd"}:
         from .runtime_origin import current
         from .native_subagents import boot_identity
@@ -359,6 +374,17 @@ def main(argv=None):
             return 0
         payload = json.loads(raw)
         result = forward(payload, config)
+        from .adoption import cli_nudge, merge_context
+
+        merge_context(
+            result,
+            "PostToolUse",
+            cli_nudge(
+                payload,
+                config.get("local_data_root")
+                or Path.home() / ".local/state/continuity",
+            ),
+        )
         if result.get("hookSpecificOutput"):
             result["injected_bytes"] = len(
                 result["hookSpecificOutput"]["additionalContext"].encode()
@@ -445,6 +471,10 @@ def receive_main():
             from .usage_meter import import_hook_snapshot
 
             import_hook_snapshot(payload["cwd"], payload["bridge_usage"])
+        if payload.get("adoption"):
+            from .adoption import record_forwarded
+
+            record_forwarded(payload["adoption"], payload.get("cwd"))
         result = handle_event(payload, host="claude-remote", meter_injection=False)
         if event == "PreCompact" and result.get("status") == "saved":
             from .collaboration_registry import default_data_root
@@ -462,9 +492,13 @@ def receive_main():
         ):
             from .planning_adoption import context
 
-            hint = context(payload, host="claude-remote")
+            base = result.get("hookSpecificOutput", {}).get("additionalContext", "")
+            hint = context(
+                payload,
+                host="claude-remote",
+                max_bytes=4096 - len(base.encode()) - 1,
+            )
             if hint:
-                base = result.get("hookSpecificOutput", {}).get("additionalContext", "")
                 combined = (base + "\n" + hint).strip()
                 if len(combined.encode()) <= 4096:
                     result["hookSpecificOutput"] = {
@@ -474,7 +508,7 @@ def receive_main():
         from .controller_awareness import notice
 
         base = result.get("hookSpecificOutput", {}).get("additionalContext", "")
-        note = notice(payload, max_bytes=min(512, 4096 - len(base.encode()) - 1))
+        note = notice(payload, max_bytes=min(1024, 4096 - len(base.encode()) - 1))
         if note:
             result["hookSpecificOutput"] = {
                 "hookEventName": event,

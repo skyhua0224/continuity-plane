@@ -11,6 +11,8 @@ from pathlib import Path
 import tempfile
 import threading
 import unittest
+
+from continuity_plane.planning_api import OPERATIONS
 from unittest.mock import patch
 
 from continuity_plane.cli import main
@@ -629,7 +631,7 @@ class GiteaIntegrationTests(unittest.TestCase):
         tool = next(t for t in tool_definitions() if t["name"] == "continuity_plan")
         self.assertTrue(tool["annotations"]["openWorldHint"])
         self.assertIn(
-            "task.handoff-accept", tool["inputSchema"]["properties"]["action"]["enum"]
+            "task.handoff-accept", OPERATIONS
         )
 
     def test_corrupt_config_has_no_silent_local_fallback(self):

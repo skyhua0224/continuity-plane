@@ -295,6 +295,20 @@ def enqueue(
         DEFAULT_IDLE_TIMEOUT_SECONDS,
         DEFAULT_TIMEOUT_SECONDS,
     )
+    from . import model_constraints
+    from .collaboration_registry import _load_ledger
+
+    constraints = (
+        _load_ledger(data, project_id)
+        .get("task_details", {})
+        .get(task_id, {})
+        .get("model_constraints")
+    )
+    if constraints and model and model != "auto":
+        profiles = model_constraints.load_profiles(data)
+        for name in (model, *fallback_models):
+            if name in profiles:
+                model_constraints.require(constraints, profiles, name, task_id)
 
     request = _validated_request(
         task_id=task_id,

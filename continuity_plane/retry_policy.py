@@ -1,8 +1,9 @@
 """Conservative transient classification and explicit, shell-free resume argv."""
 
+import json
 import math
 import re
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 
@@ -20,9 +21,92 @@ _TRANSPORT_OR_AUTH = re.compile(
     re.I,
 )
 _QUOTA_EXHAUSTED = re.compile(
-    r"quota.{0,25}(?:exhausted|exceeded)|usage.{0,12}limit|(?:token|message|request).{0,20}(?:quota|limit).{0,20}(?:exhausted|exceeded|reached)|you(?:'|’)ve hit your limit|额度.{0,10}(?:耗尽|用完)",
+    r"quota.{0,25}(?:exhausted|exceeded)|usage.{0,12}limit|(?:daily|weekly|monthly)[/ \w]{0,24}limit\s+(?:exhausted|exceeded|reached)|(?:token|message|request).{0,20}(?:quota|limit).{0,20}(?:exhausted|exceeded|reached)|you(?:'|’)ve hit your limit|额度.{0,10}(?:耗尽|用完)",
     re.I,
 )
+
+
+_RESET_AT = re.compile(
+    r"(?:reset|available|retry)[^\r\n]{0,30}?"
+    r"(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})(?:\.\d+)?"
+    r"[\s\[(]*(Z\b|(?:UTC|GMT)\s*[+-]\d{1,2}(?::?\d{2})?|(?:UTC|GMT)\b|[+-]\d{2}:?\d{2})?",
+    re.I,
+)
+
+
+def _reset_seconds(text, now):
+    """Seconds until a stated reset instant; a timezone-less one is host-local time."""
+    match = _RESET_AT.search(text)
+    if not match:
+        return None
+    date, clock, zone = match.groups()
+    try:
+        moment = datetime.fromisoformat(f"{date}T{clock}")
+        if zone is None:
+            moment = moment.astimezone()
+        else:
+            zone = re.sub(r"(?i)utc|gmt|\s", "", zone)
+            if zone in {"", "Z", "z"}:
+                offset = timezone.utc
+            else:
+                sign = -1 if zone[0] == "-" else 1
+                digits = zone[1:].replace(":", "")
+                hours, minutes = (
+                    (int(digits[:2]), int(digits[2:] or 0))
+                    if len(digits) > 2
+                    else (int(digits), 0)
+                )
+                offset = timezone(sign * timedelta(hours=hours, minutes=minutes))
+            moment = moment.replace(tzinfo=offset)
+    except (ValueError, OverflowError):
+        return None
+    # A reset that has already passed means the limit is available again.
+    return max(0.0, (moment - now).total_seconds())
+
+
+def _event_error_text(row):
+    """Error text of one structured provider event; empty for tool/message events."""
+    kind = row.get("type")
+    item = row.get("item") if isinstance(row.get("item"), dict) else {}
+    if kind in {"error", "turn.failed"} or (kind == "result" and row.get("is_error")):
+        parts = (row.get("error"), row.get("message"), row.get("result"))
+    elif kind == "item.completed" and item.get("type") == "error":
+        parts = (item.get("message"),)
+    elif row.get("error") and not str(kind).startswith("item."):
+        # e.g. Claude assistant/system events flagged with an API error code
+        parts = (row.get("error"),)
+    else:
+        return ""
+    return "\n".join(
+        v if isinstance(v, str) else json.dumps(v, ensure_ascii=False)
+        for v in parts
+        if v
+    )
+
+
+def provider_error_text(text):
+    """Keep what the provider reported, never what a tool printed.
+
+    Structured JSONL events are reduced to their terminal error payloads, so
+    source code or logs a worker just read (``command_execution`` output, file
+    contents, assistant messages) cannot be mistaken for the failure cause.
+    Non-JSON lines are kept: plain adapters print their diagnostics that way.
+    """
+    kept = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("{"):
+            try:
+                row = json.loads(stripped)
+            except ValueError:
+                row = None
+            if isinstance(row, dict):
+                error = _event_error_text(row)
+                if error:
+                    kept.append(error)
+                continue
+        kept.append(line)
+    return "\n".join(kept)
 
 
 def quota_exhausted(text):
@@ -122,21 +206,8 @@ def classify(text, *, now=None):
             except (TypeError, ValueError, OverflowError):
                 pass
     if delay is None:
-        reset = re.search(
-            r"(?:reset|available|retry)[^\r\n]{0,30}(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:\d{2}))",
-            text,
-            re.I,
-        )
-        if reset:
-            try:
-                delay = (
-                    datetime.fromisoformat(reset[1].replace("Z", "+00:00")) - now
-                ).total_seconds()
-            except ValueError:
-                pass
+        delay = _reset_seconds(text, now)
     if delay is not None and math.isfinite(delay) and delay >= 0:
-        from datetime import timedelta
-
         delay = min(delay, 30 * 86400)
         result.update(
             retry_after_seconds=delay,

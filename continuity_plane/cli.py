@@ -10,22 +10,14 @@ import io
 import json
 import os
 import re
-import shutil
-import sqlite3
 import subprocess
 import sys
-import tomllib
-import uuid
 from datetime import UTC, datetime, timedelta
-from importlib import resources
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-import yaml
 
 from .artifact_store import ArtifactRef, LocalArtifactStore
-from .bounded_code_search import bounded_git_search
-from .code_index import build_code_index, lookup_code_index, find_dependents
 from .checkpoint import (
     CheckpointError,
     CheckpointStaleError,
@@ -49,81 +41,13 @@ from .collaboration_registry import (
     update_task,
     update_effect,
 )
-from .collaboration_packet import (
-    compose_collaboration_packet,
-    compose_safe_collaboration_packet,
-)
-from .collaboration_inbox import (
-    acknowledge,
-    acknowledge_many,
-    list_messages,
-    send_message,
-)
-from .collaboration_context import (
-    add_rule,
-    list_rules,
-    add_commitment,
-    list_commitments,
-    close_commitment,
-)
-from .state_onboarding import record_changes
 from .state_store import StateStoreError
-from .local_state_bundle import (
-    LocalStateBundleError,
-    export_local_state,
-    import_local_state,
-    rollback_local_state,
-)
-from .light_observability import build_observation_report
-from .intent_todo import (
-    IntentTodoError,
-    block_item as block_todo_item,
-    complete_item as complete_todo_item,
-    compile_queue,
-    load_queue,
-    link_item,
-)
-from .plan_route import master_route
-from .recovery_envelope import (
-    RecoveryEnvelopeError,
-    compose_recovery_envelope,
-    load_interaction_cursor,
-    load_recovery_skill_lock,
-)
-from .route_apply import apply_route
-from .status_projection import render_status_projection
-from .sticky_router import canonical_route_decision_bytes, route_task_input
-from .skills_inventory import audit_skills
-from .sqlite_state_store import SQLiteStateStore
-from .vocabulary_memory import add_entity, list_entities, resolve as resolve_vocabulary
-from .workspace_inventory import inventory_worktrees
-from .workspace_binding import (
-    WorkspaceBindingError,
-    register_control_root,
-    resolve_control_root,
-)
-from .canonical_attach import (
-    CanonicalAttachError,
-    build_attach_proposal,
-    validate_attach_proposal,
-)
-from .state_mcp import (
-    CLAIM_TOOL,
-    COMMIT_TOOL,
-    LOCAL_WORK_COMPLETION_REQUEST_SCHEMA_VERSION,
-    LOCAL_WORK_COMPLETION_TOOL,
-    LOCAL_WORK_ACTIVATION_REQUEST_SCHEMA_VERSION,
-    LOCAL_WORK_ACTIVATION_TOOL,
-    LOCAL_WORK_TRANSITION_REQUEST_SCHEMA_VERSION,
-    LOCAL_WORK_TRANSITION_TOOL,
-    LOCAL_CLAIM_RECOVERY_REQUEST_SCHEMA_VERSION,
-    LOCAL_CLAIM_RECOVERY_TOOL,
-    READ_TOOL,
-    RequestContext,
-    StateMCPService,
-)
 
 from .release_version import VERSION
+
+if TYPE_CHECKING:
+    from .sqlite_state_store import SQLiteStateStore
+    from .state_mcp import RequestContext, StateMCPService
 
 _PROJECT_FIELDS = {
     "schema_version",
@@ -155,6 +79,8 @@ _DELIVERY_WORKSPACE_REGISTRY_SCHEMA_VERSION = (
 
 
 def _template(name: str) -> str:
+    from importlib import resources
+
     return (
         resources.files("continuity_plane.templates")
         .joinpath(name)
@@ -167,6 +93,8 @@ def _project_file(root: Path) -> Path:
 
 
 def _load_project(root: Path) -> dict[str, Any]:
+    import yaml
+
     path = _project_file(root)
     if not path.is_file():
         raise FileNotFoundError(f"project profile is missing: {path}")
@@ -195,6 +123,8 @@ def _state_file(root: Path, project: dict[str, Any]) -> Path:
 
 
 def _open_state_store(root: Path, project: dict[str, Any]) -> SQLiteStateStore:
+    from .sqlite_state_store import SQLiteStateStore
+
     path = _state_file(root, project)
     if not path.is_file():
         raise FileNotFoundError(f"state database is missing: {path}")
@@ -289,6 +219,10 @@ def _state_service(
     transition_checkpoint_publisher: Any | None = None,
     activation_source_validator: Any | None = None,
 ) -> StateMCPService:
+    import uuid
+
+    from .state_mcp import StateMCPService
+
     registry_digest = hashlib.sha256(b"context.public-runtime/v1").hexdigest()
     return StateMCPService(
         store,
@@ -303,6 +237,10 @@ def _state_service(
 
 
 def _initialize_new_project(args: argparse.Namespace) -> int:
+    from .canonical_attach import build_attach_proposal
+    from .sqlite_state_store import SQLiteStateStore
+    from .state_mcp import COMMIT_TOOL, RequestContext
+
     root = Path(args.root).resolve()
     if _ID_RE.fullmatch(args.project_id) is None:
         raise ValueError("project-id must be a lowercase bounded identifier")
@@ -410,6 +348,8 @@ def _initialize_new_project(args: argparse.Namespace) -> int:
 
 
 def _init(args: argparse.Namespace) -> int:
+    import shutil
+
     root = Path(args.root).resolve()
     target = root / ".continuity"
     try:
@@ -614,6 +554,8 @@ def _codex_continuity_hook_runtime(
 def _codex_plugin_status(
     codex_home: Path, *, project_root: Path | None = None
 ) -> dict[str, Any]:
+    import tomllib
+
     try:
         config = tomllib.loads((codex_home / "config.toml").read_text(encoding="utf-8"))
     except (OSError, UnicodeError, tomllib.TOMLDecodeError):
@@ -817,6 +759,8 @@ def _collaboration_health(project_id: str) -> dict[str, Any]:
 
 
 def _doctor(args: argparse.Namespace) -> int:
+    import sqlite3
+
     root = Path(args.root).resolve()
     project = _load_project(root)
     store = _open_state_store(root, project)
@@ -855,6 +799,10 @@ def _doctor(args: argparse.Namespace) -> int:
 
 
 def _state_show(args: argparse.Namespace) -> int:
+    import uuid
+
+    from .state_mcp import RequestContext
+
     root = Path(args.root).resolve()
     project = _load_project(root)
     store = _open_state_store(root, project)
@@ -947,6 +895,8 @@ def _retrieval_defaults(args):
 
 
 def _context_search(args: argparse.Namespace) -> int:
+    from .bounded_code_search import bounded_git_search
+
     _retrieval_defaults(args)
     receipt = bounded_git_search(
         Path(args.root),
@@ -963,6 +913,8 @@ def _context_search(args: argparse.Namespace) -> int:
 
 
 def _context_index(args: argparse.Namespace) -> int:
+    from .code_index import build_code_index
+
     receipt = build_code_index(
         Path(args.root),
         cache_path=args.cache_path,
@@ -973,6 +925,8 @@ def _context_index(args: argparse.Namespace) -> int:
 
 
 def _context_lookup(args: argparse.Namespace) -> int:
+    from .code_index import lookup_code_index
+
     _retrieval_defaults(args)
     receipt = lookup_code_index(
         Path(args.root),
@@ -990,6 +944,8 @@ def _context_lookup(args: argparse.Namespace) -> int:
 
 
 def _context_dependents(args: argparse.Namespace) -> int:
+    from .code_index import find_dependents
+
     _retrieval_defaults(args)
     value = find_dependents(
         Path(args.root), query=args.query, max_results=args.max_results
@@ -1049,6 +1005,8 @@ def _status_projection_is_current(
 
 
 def _ensure_status_projection(root: Path, packet: dict[str, Any]) -> dict[str, Any]:
+    from .status_projection import render_status_projection
+
     status_text = render_status_projection(packet, language="zh-CN")
     status_en_text = render_status_projection(packet, language="en")
     projection = _status_projection_document(root, packet, status_text, status_en_text)
@@ -1105,6 +1063,8 @@ def _load_current_attach_proposal(
     *,
     verify_sources: bool,
 ) -> dict[str, Any]:
+    from .canonical_attach import CanonicalAttachError, validate_attach_proposal
+
     path = root / ".continuity/attach-proposal.json"
     try:
         proposal = json.loads(path.read_text(encoding="utf-8"))
@@ -1171,6 +1131,10 @@ def _read_state_result(
     store: SQLiteStateStore,
     project_id: str,
 ) -> dict[str, Any]:
+    import uuid
+
+    from .state_mcp import READ_TOOL, RequestContext
+
     response = _state_service(store).call_tool(
         READ_TOOL,
         {
@@ -1200,6 +1164,8 @@ def _transition_pending_checkpoint_file(root: Path) -> Path:
 
 
 def _write_json_atomic(path: Path, document: dict[str, Any]) -> None:
+    import uuid
+
     temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
     payload = (
         json.dumps(
@@ -1221,6 +1187,8 @@ def _write_json_atomic(path: Path, document: dict[str, Any]) -> None:
 
 
 def _write_text_atomic(path: Path, text: str) -> None:
+    import uuid
+
     temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
     try:
         with temporary.open("x", encoding="utf-8") as handle:
@@ -1341,6 +1309,8 @@ def _load_delivery_workspace_registry(
 
 
 def _workspace_register(args: argparse.Namespace) -> int:
+    import yaml
+
     root = Path(args.root).resolve()
     project = _load_project(root)
     if _ID_RE.fullmatch(args.workspace_id) is None:
@@ -1424,6 +1394,8 @@ def _workspace_register(args: argparse.Namespace) -> int:
 
 
 def _attach_plan(args: argparse.Namespace) -> int:
+    from .canonical_attach import build_attach_proposal
+
     root = Path(args.root).resolve()
     project = _load_project(root)
     proposal = build_attach_proposal(
@@ -1462,6 +1434,8 @@ def _refreshed_attach_proposal(
     project_id: str,
     old: dict[str, Any],
 ) -> tuple[dict[str, Any], list[str]]:
+    from .canonical_attach import build_attach_proposal
+
     paths = {item["kind"]: item["path"] for item in old["sources"]}
     refreshed = build_attach_proposal(
         root=root,
@@ -1486,6 +1460,8 @@ def _refreshed_attach_proposal(
 
 def _attach_refresh(args: argparse.Namespace) -> int:
     """Rebind an existing proposal to current sources without State writes."""
+    from .canonical_attach import CanonicalAttachError, validate_attach_proposal
+
     root = Path(args.root).resolve()
     project = _load_project(root)
     proposal_path = root / args.proposal
@@ -1534,6 +1510,9 @@ def _attach_refresh(args: argparse.Namespace) -> int:
 
 
 def _attach_approve(args: argparse.Namespace) -> int:
+    from .canonical_attach import CanonicalAttachError, validate_attach_proposal
+    from .state_mcp import CLAIM_TOOL, COMMIT_TOOL, RequestContext
+
     root = Path(args.root).resolve()
     project = _load_project(root)
     proposal_path = root / args.proposal
@@ -1741,6 +1720,14 @@ def _attach_approve(args: argparse.Namespace) -> int:
 
 
 def _resume(args: argparse.Namespace) -> int:
+    from .canonical_attach import CanonicalAttachError, validate_attach_proposal
+    from .recovery_envelope import (
+        RecoveryEnvelopeError,
+        compose_recovery_envelope,
+        load_interaction_cursor,
+        load_recovery_skill_lock,
+    )
+
     if getattr(args, "task_id", None):
         from .worker_dispatch import dispatch
 
@@ -1994,6 +1981,8 @@ def _capture_json_handler(handler: Any, args: argparse.Namespace) -> dict[str, A
 
 
 def _autorun_ledger(root: Path) -> sqlite3.Connection:
+    import sqlite3
+
     path = root / ".continuity/autorun.sqlite3"
     connection = sqlite3.connect(path, timeout=2.0)
     connection.execute("PRAGMA busy_timeout = 2000")
@@ -2315,6 +2304,8 @@ def _checkpoint_create(args: argparse.Namespace) -> int:
 
 
 def _checkpoint_verify(args: argparse.Namespace) -> int:
+    from .canonical_attach import CanonicalAttachError, validate_attach_proposal
+
     root = Path(args.root).resolve()
     project = _load_project(root)
     proposal = _load_current_attach_proposal(
@@ -2614,6 +2605,12 @@ def _verified_delivery_workspace(
 
 
 def _work_complete(args: argparse.Namespace) -> int:
+    from .state_mcp import (
+        LOCAL_WORK_COMPLETION_REQUEST_SCHEMA_VERSION,
+        LOCAL_WORK_COMPLETION_TOOL,
+        RequestContext,
+    )
+
     root = Path(args.root).resolve()
     project = _load_project(root)
     for value in (args.work_id, args.claim_id, args.actor_ref):
@@ -2798,6 +2795,12 @@ def _work_complete(args: argparse.Namespace) -> int:
 
 
 def _work_transition(args: argparse.Namespace) -> int:
+    from .state_mcp import (
+        LOCAL_WORK_TRANSITION_REQUEST_SCHEMA_VERSION,
+        LOCAL_WORK_TRANSITION_TOOL,
+        RequestContext,
+    )
+
     root = Path(args.root).resolve()
     project = _load_project(root)
     store = _open_state_store(root, project)
@@ -3276,6 +3279,10 @@ def _work_transition(args: argparse.Namespace) -> int:
 
 
 def _work_suspend_dependency(args: argparse.Namespace) -> int:
+    from .route_apply import apply_route
+    from .state_mcp import COMMIT_TOOL, RequestContext
+    from .sticky_router import canonical_route_decision_bytes, route_task_input
+
     root = Path(args.root).resolve()
     project = _load_project(root)
     for value in (
@@ -3557,6 +3564,8 @@ def _work_suspend_dependency(args: argparse.Namespace) -> int:
 
 
 def _work_complete_dependency_return(args: argparse.Namespace) -> int:
+    from .state_mcp import COMMIT_TOOL, RequestContext
+
     root = Path(args.root).resolve()
     project = _load_project(root)
     for value in (
@@ -3824,6 +3833,8 @@ def _work_complete_dependency_return(args: argparse.Namespace) -> int:
 
 
 def _work_activate(args: argparse.Namespace) -> int:
+    from .state_mcp import CLAIM_TOOL, COMMIT_TOOL, RequestContext
+
     root = Path(args.root).resolve()
     project = _load_project(root)
     for value in (args.work_id, args.owner_ref, args.claim_id):
@@ -3973,6 +3984,14 @@ def _work_activate(args: argparse.Namespace) -> int:
 
 
 def _work_activate_atomic(args: argparse.Namespace) -> int:
+    from .canonical_attach import CanonicalAttachError, validate_attach_proposal
+    from .state_mcp import (
+        COMMIT_TOOL,
+        LOCAL_WORK_ACTIVATION_REQUEST_SCHEMA_VERSION,
+        LOCAL_WORK_ACTIVATION_TOOL,
+        RequestContext,
+    )
+
     root = Path(args.root).resolve()
     project = _load_project(root)
     for value in (args.work_id, args.owner_ref, args.claim_id):
@@ -4281,6 +4300,8 @@ def _work_activate_atomic(args: argparse.Namespace) -> int:
         proposal_sha256: str,
         evidence: dict[str, Any],
     ) -> bool:
+        from .canonical_attach import CanonicalAttachError, validate_attach_proposal
+
         try:
             current_proposal = json.loads(proposal_path.read_text(encoding="utf-8"))
             validate_attach_proposal(root, current_proposal, verify_sources=True)
@@ -4436,6 +4457,13 @@ def _work_activate_atomic(args: argparse.Namespace) -> int:
 
 
 def _work_recover(args: argparse.Namespace) -> int:
+    from .canonical_attach import CanonicalAttachError, validate_attach_proposal
+    from .state_mcp import (
+        LOCAL_CLAIM_RECOVERY_REQUEST_SCHEMA_VERSION,
+        LOCAL_CLAIM_RECOVERY_TOOL,
+        RequestContext,
+    )
+
     root = Path(args.root).resolve()
     project = _load_project(root)
     for value in (args.claim_id, args.actor_ref):
@@ -4675,6 +4703,8 @@ def _work_recover(args: argparse.Namespace) -> int:
 
 
 def _export_state(args: argparse.Namespace) -> int:
+    from .local_state_bundle import LocalStateBundleError, export_local_state
+
     try:
         receipt = export_local_state(
             Path(args.root),
@@ -4687,6 +4717,8 @@ def _export_state(args: argparse.Namespace) -> int:
 
 
 def _import_state(args: argparse.Namespace) -> int:
+    from .local_state_bundle import LocalStateBundleError, import_local_state
+
     try:
         receipt = import_local_state(
             Path(args.root),
@@ -4700,6 +4732,8 @@ def _import_state(args: argparse.Namespace) -> int:
 
 
 def _rollback_state(args: argparse.Namespace) -> int:
+    from .local_state_bundle import LocalStateBundleError, rollback_local_state
+
     try:
         receipt = rollback_local_state(Path(args.root))
     except LocalStateBundleError as exc:
@@ -4709,6 +4743,8 @@ def _rollback_state(args: argparse.Namespace) -> int:
 
 
 def _observe_report(args: argparse.Namespace) -> int:
+    from .light_observability import build_observation_report
+
     root = Path(args.root).resolve()
     data_root = Path(args.data_root).resolve() if args.data_root else None
     report = build_observation_report(
@@ -4743,6 +4779,11 @@ def _collaboration_resolve(args: argparse.Namespace) -> int:
 
 
 def _collaboration_packet(args: argparse.Namespace) -> int:
+    from .collaboration_packet import (
+        compose_collaboration_packet,
+        compose_safe_collaboration_packet,
+    )
+
     composer = (
         compose_collaboration_packet
         if args.strict
@@ -4762,6 +4803,11 @@ def _collaboration_packet(args: argparse.Namespace) -> int:
 def _collaboration_task_add(args: argparse.Namespace) -> int:
     from .delivery_records import task_body
 
+    body = task_body(args)
+    if body is None:
+        raise ValueError(
+            "task body is required at creation; pass --body or --body-file (dispatch refuses empty cards)"
+        )
     task = add_task(
         args.data_root,
         project_id=args.project_id,
@@ -4784,7 +4830,9 @@ def _collaboration_task_add(args: argparse.Namespace) -> int:
         verification=args.verification,
         landed_commit=args.landed_commit,
         released_in=args.released_in,
-        body=task_body(args),
+        body=body,
+        min_tier=getattr(args, "min_tier", None),
+        deny_models=getattr(args, "deny_model", None),
         report_policy=args.report_policy,
         actor=args.actor
         if args.actor is not None
@@ -4828,6 +4876,13 @@ def _collaboration_task_update(args: argparse.Namespace) -> int:
         if args.verification_json
         else None,
         body=task_body(args),
+        title=getattr(args, "title", None),
+        objective=getattr(args, "objective", None),
+        priority=getattr(args, "priority", None),
+        exit_criteria=getattr(args, "exit_criterion", None),
+        min_tier=getattr(args, "min_tier", None),
+        deny_models=getattr(args, "deny_model", None),
+        clear_model_constraints=getattr(args, "clear_model_constraints", False),
         force=args.force,
         force_reason=args.force_reason,
         actor=args.actor
@@ -5145,6 +5200,14 @@ def _collaboration_run(args: argparse.Namespace) -> int:
 
 
 def _collaboration_context_command(args: argparse.Namespace) -> int:
+    from .collaboration_context import (
+        add_commitment,
+        add_rule,
+        close_commitment,
+        list_commitments,
+        list_rules,
+    )
+
     if args.context_command == "rule-add":
         value = add_rule(
             args.data_root,
@@ -5319,6 +5382,32 @@ def _collaboration_drift(args: argparse.Namespace) -> int:
     return 0
 
 
+def _collaboration_reconcile(args: argparse.Namespace) -> int:
+    from .reconcile import brief, reconcile
+
+    try:
+        value = reconcile(
+            args.data_root,
+            project_id=args.project_id,
+            root=args.root,
+            integration_ref=args.integration_ref,
+            stale_days=args.stale_days,
+            apply=args.apply,
+            actor=args.actor or os.environ.get("CONTINUITY_ASSIGNEE"),
+            reason=args.reason,
+            task_ids=args.task_id,
+        )
+    except ValueError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 2
+    print(
+        brief(value)
+        if args.format == "brief"
+        else json.dumps(value, ensure_ascii=False, sort_keys=True)
+    )
+    return 0
+
+
 def _collaboration_doctor(args: argparse.Namespace) -> int:
     path = (
         project_data_dir(args.data_root or default_data_root(), args.project_id)
@@ -5389,6 +5478,8 @@ def _collaboration_effect_update(args: argparse.Namespace) -> int:
 
 
 def _memory_add(args: argparse.Namespace) -> int:
+    from .vocabulary_memory import add_entity
+
     entity = add_entity(
         args.data_root or default_data_root(),
         entity_id=args.entity_id,
@@ -5404,6 +5495,8 @@ def _memory_add(args: argparse.Namespace) -> int:
 
 
 def _memory_list(args: argparse.Namespace) -> int:
+    from .vocabulary_memory import list_entities
+
     data_root = args.data_root or default_data_root()
     entities = list_entities(data_root, project_id=args.project_id)
     print(json.dumps(entities, ensure_ascii=False, sort_keys=True))
@@ -5411,6 +5504,8 @@ def _memory_list(args: argparse.Namespace) -> int:
 
 
 def _memory_resolve(args: argparse.Namespace) -> int:
+    from .vocabulary_memory import resolve as resolve_vocabulary
+
     data_root = args.data_root or default_data_root()
     entities = resolve_vocabulary(
         data_root,
@@ -5422,6 +5517,8 @@ def _memory_resolve(args: argparse.Namespace) -> int:
 
 
 def _todo_compile(args: argparse.Namespace) -> int:
+    from .intent_todo import compile_queue
+
     queue = compile_queue(
         Path(args.root),
         args.prompt,
@@ -5442,6 +5539,8 @@ def _todo_compile(args: argparse.Namespace) -> int:
 
 
 def _todo_list(args: argparse.Namespace) -> int:
+    from .intent_todo import load_queue
+
     queue = load_queue(Path(args.root), data_root=args.data_root)
     from .planning_api import render
 
@@ -5455,6 +5554,8 @@ def _todo_list(args: argparse.Namespace) -> int:
 
 
 def _plan_inspect(args: argparse.Namespace) -> int:
+    from .plan_route import master_route
+
     print(
         json.dumps(
             master_route(args.root, master_path=args.master_path, section=args.section),
@@ -5466,6 +5567,8 @@ def _plan_inspect(args: argparse.Namespace) -> int:
 
 
 def _todo_complete(args: argparse.Namespace) -> int:
+    from .intent_todo import IntentTodoError, complete_item as complete_todo_item
+
     try:
         queue = complete_todo_item(
             Path(args.root), args.item_id, result=args.result, data_root=args.data_root
@@ -5477,6 +5580,8 @@ def _todo_complete(args: argparse.Namespace) -> int:
 
 
 def _todo_link(args: argparse.Namespace) -> int:
+    from .intent_todo import IntentTodoError, link_item
+
     try:
         queue = link_item(
             Path(args.root), args.item_id, args.task_id, data_root=args.data_root
@@ -5526,6 +5631,8 @@ def _todo_from_cards(args):
 
 
 def _todo_block(args: argparse.Namespace) -> int:
+    from .intent_todo import IntentTodoError, block_item as block_todo_item
+
     try:
         queue = block_todo_item(
             Path(args.root), args.item_id, args.reason, data_root=args.data_root
@@ -5575,12 +5682,16 @@ def _collaboration_task_show(args: argparse.Namespace) -> int:
 
 
 def _worktree_inventory(args: argparse.Namespace) -> int:
+    from .workspace_inventory import inventory_worktrees
+
     report = inventory_worktrees(args.root, stale_days=args.stale_days)
     print(json.dumps(report, ensure_ascii=False, sort_keys=True))
     return 0
 
 
 def _skills_audit(args: argparse.Namespace) -> int:
+    from .skills_inventory import audit_skills
+
     roots = args.skill_root or [
         Path.home() / ".codex" / "skills",
         Path.home() / ".agents" / "skills",
@@ -5591,6 +5702,12 @@ def _skills_audit(args: argparse.Namespace) -> int:
 
 
 def _state_add_record(args: argparse.Namespace) -> int:
+    import uuid
+
+    from .canonical_attach import validate_attach_proposal
+    from .state_mcp import COMMIT_TOOL, RequestContext
+    from .state_onboarding import record_changes
+
     root = Path(args.root).resolve()
     project = _load_project(root)
     store = _open_state_store(root, project)
@@ -5761,6 +5878,13 @@ def _state_add_record(args: argparse.Namespace) -> int:
 
 
 def _inbox(args: argparse.Namespace) -> int:
+    from .collaboration_inbox import (
+        acknowledge,
+        acknowledge_many,
+        list_messages,
+        send_message,
+    )
+
     common = {"project_id": args.project_id, "recipient": args.recipient}
     if args.inbox_command == "send":
         value = send_message(
@@ -5878,8 +6002,93 @@ def _record_parser(parent: Any, kind: str) -> None:
     add.set_defaults(handler=_state_add_record, record_kind=kind)
 
 
-def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="continuity")
+class _PrunedFallback(Exception):
+    """A pruned parse cannot answer; the full parser must produce the result."""
+
+
+class _Sink:
+    """Absorbs parser-building calls for commands the current argv cannot reach."""
+
+    def __getattr__(self, name):
+        return self
+
+    def __call__(self, *args, **kwargs):
+        return self
+
+    def __iter__(self):
+        return iter(())
+
+    def __getitem__(self, key):
+        return self
+
+    @property
+    def _actions(self):
+        return [_SinkSubparsers(option_strings=[], prog="", parser_class=_Sink)]
+
+
+class _SinkSubparsers(argparse._SubParsersAction):
+    def add_parser(self, name, **kwargs):
+        return _Sink()
+
+
+class _Choices(dict):
+    def __missing__(self, key):
+        return _Sink()
+
+
+class _PrunedCommands:
+    """Registers only subcommands named in argv; every other branch is a sink."""
+
+    def __init__(self, action, wanted):
+        self._action = action
+        self._wanted = wanted
+
+    def add_parser(self, name, **kwargs):
+        if {name, *kwargs.get("aliases", ())} & self._wanted:
+            return self._action.add_parser(name, **kwargs)
+        return _Sink()
+
+    @property
+    def choices(self):
+        return _Choices(self._action.choices)
+
+    def __getattr__(self, name):
+        return getattr(self._action, name)
+
+
+class _PrunedParser(argparse.ArgumentParser):
+    _wanted: frozenset = frozenset()
+
+    def add_subparsers(self, **kwargs):
+        return _PrunedCommands(super().add_subparsers(**kwargs), self._wanted)
+
+    def error(self, message):
+        raise _PrunedFallback(message)
+
+
+def _parse_args(words):
+    """Parse with only the subcommand branches that argv names, else the full parser.
+
+    Building every branch costs tens of milliseconds per invocation. Anything the
+    pruned parser cannot answer (help, version, errors, unexpected structure) is
+    reparsed by the full parser so its output is unchanged.
+    """
+    try:
+        if not any(w.startswith(("-h", "--h", "-v", "--v")) for w in words):
+            # `task <leaf>` aliases are copied from `collaboration task`, and the
+            # Gitea hooks amend these leaves, so they are always built.
+            wanted = {*words, "add", "update", "claim", "list", "memory"}
+            if "task" in wanted:
+                wanted.add("collaboration")
+            pruned = type("_Pruned", (_PrunedParser,), {"_wanted": frozenset(wanted)})
+            return build_parser(parser_class=pruned).parse_args(words)
+    except Exception:
+        pass
+    return build_parser().parse_args(words)
+
+
+def build_parser(parser_class=argparse.ArgumentParser) -> argparse.ArgumentParser:
+    parser = parser_class(prog="continuity")
     parser.add_argument("--version", action="version", version=VERSION)
     parser.add_argument(
         "--remote", help="SSH alias for an explicit remote collaboration CLI call"
@@ -6226,6 +6435,9 @@ def build_parser() -> argparse.ArgumentParser:
     from .provider_usage import register_cli as register_usage_cli
 
     register_usage_cli(observe_commands)
+    from .adoption import register_cli as register_adoption_cli
+
+    register_adoption_cli(observe_commands)
     observe_report = observe_commands.add_parser(
         "report", help="build a bounded offline tuning report"
     )
@@ -6317,7 +6529,15 @@ def build_parser() -> argparse.ArgumentParser:
     collaboration_task_add.add_argument("--lane-id", required=True)
     collaboration_task_add.add_argument(
         "--mode",
-        choices=("scout", "patch", "integration", "cleanup", "infra", "decision"),
+        choices=(
+            "scout",
+            "review",
+            "patch",
+            "integration",
+            "cleanup",
+            "infra",
+            "decision",
+        ),
         required=True,
     )
     collaboration_task_add.add_argument(
@@ -6448,6 +6668,21 @@ def build_parser() -> argparse.ArgumentParser:
     for task_parser in (collaboration_task_add, collaboration_task_update):
         task_parser.add_argument("--body-file")
         task_parser.add_argument("--expected-body-sha256")
+        task_parser.add_argument(
+            "--min-tier",
+            choices=("strong", "standard", "light"),
+            help="Refuse workers below this adapter tier (set with worker configure --tier)",
+        )
+        task_parser.add_argument(
+            "--deny-model",
+            action="append",
+            help="Refuse this adapter/model for the card; repeatable",
+        )
+    collaboration_task_update.add_argument(
+        "--clear-model-constraints",
+        action="store_true",
+        help="Remove the card's --min-tier/--deny-model constraints",
+    )
     collaboration_task_next = collaboration_task_commands.add_parser(
         "next", help="read one active or queued task card"
     )
@@ -6714,6 +6949,29 @@ def build_parser() -> argparse.ArgumentParser:
     collaboration_drift.add_argument("--project-id", required=True)
     collaboration_drift.add_argument("--stale-hours", type=float, default=6.0)
     collaboration_drift.set_defaults(handler=_collaboration_drift)
+    collaboration_reconcile = collaboration_commands.add_parser(
+        "reconcile",
+        help="suggest card transitions that git and jobs already prove (read-only unless --apply)",
+    )
+    collaboration_reconcile.add_argument("--data-root", default=None)
+    collaboration_reconcile.add_argument("--project-id", required=True)
+    collaboration_reconcile.add_argument(
+        "--root", default=None, help="checkout holding the integration ref; default: the project's integration root"
+    )
+    collaboration_reconcile.add_argument(
+        "--integration-ref", default=None, help="default: the project's integration ref (refs/heads/main)"
+    )
+    collaboration_reconcile.add_argument("--stale-days", type=float, default=3.0)
+    collaboration_reconcile.add_argument(
+        "--apply", action="store_true", help="record the cards git proves merged; the rest stay suggestions"
+    )
+    collaboration_reconcile.add_argument("--actor", help="who records the change; required with --apply")
+    collaboration_reconcile.add_argument("--reason", help="recorded with --apply; default: the evidence")
+    collaboration_reconcile.add_argument(
+        "--task-id", action="append", help="with --apply, only these cards; repeatable"
+    )
+    collaboration_reconcile.add_argument("--format", choices=("json", "brief"), default="json")
+    collaboration_reconcile.set_defaults(handler=_collaboration_reconcile)
     collaboration_doctor = collaboration_commands.add_parser(
         "doctor", help="show ledger writer and CLI versions"
     )
@@ -7016,7 +7274,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+    args = _parse_args(list(sys.argv[1:] if argv is None else argv))
     if args.remote:
         from .remote_cli import forward
 
@@ -7118,6 +7376,8 @@ def main(argv: list[str] | None = None) -> int:
             in {"context-set", "context-show"}
         )
     ):
+        from .workspace_binding import WorkspaceBindingError, resolve_control_root
+
         try:
             args.root = str(resolve_control_root(args.root))
         except WorkspaceBindingError as exc:
@@ -7127,14 +7387,27 @@ def main(argv: list[str] | None = None) -> int:
     shared_result = maybe_route(args)
     result = int(args.handler(args) if shared_result is None else shared_result)
     if result == 0 and getattr(args, "command", None) == "init":
+        from .workspace_binding import register_control_root
+
         register_control_root(args.root)
     return result
 
 
 def entrypoint(argv: list[str] | None = None) -> int:
     """Keep expected user errors concise while preserving main() as a test API."""
+    import time
+
+    from .adoption import record_cli
+
+    words = list(sys.argv[1:] if argv is None else argv)
+    started = time.monotonic()
+    code = 2
     try:
-        return main(argv)
+        code = main(argv)
+        return code
+    except SystemExit as exc:
+        code = exc.code if isinstance(exc.code, int) else 1
+        raise
     except (ValueError, OSError, StateStoreError, CheckpointError) as exc:
         print(
             json.dumps(
@@ -7148,6 +7421,8 @@ def entrypoint(argv: list[str] | None = None) -> int:
             file=sys.stderr,
         )
         return 2
+    finally:
+        record_cli(words, code, time.monotonic() - started)
 
 
 if __name__ == "__main__":

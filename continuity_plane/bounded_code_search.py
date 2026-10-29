@@ -158,22 +158,28 @@ def bounded_git_search(
     }
     # Use the rarest meaningful term as the candidate seed. This keeps a
     # natural-language question useful without scanning every source body.
-    term_counts: list[tuple[int, str]] = []
-    for term in terms:
-        probe = _git(root, "grep", "-l", "-I", "-i", "-F", "--", term)
-        term_counts.append(
-            (
-                len(probe.stdout.splitlines())
-                if probe.returncode in {0, 1}
-                else 1_000_000,
-                term,
+    if len(terms) > 1:
+        term_counts: list[tuple[int, str]] = []
+        for term in terms:
+            probe = _git(root, "grep", "-l", "-I", "-i", "-F", "--", term)
+            term_counts.append(
+                (
+                    len(probe.stdout.splitlines())
+                    if probe.returncode in {0, 1}
+                    else 1_000_000,
+                    term,
+                )
             )
-        )
-    seed = min(term_counts)[1]
+        seed = min(term_counts)[1]
+    else:
+        seed = terms[0]
     search = _git(root, "grep", "-n", "-I", "-i", "-F", "-z", "--", seed)
     if search.returncode not in {0, 1}:
         raise ValueError("repository search failed")
     candidates: list[dict[str, Any]] = []
+    file_payloads: dict[str, bytes] = {}
+    file_hashes: dict[str, str] = {}
+    file_texts: dict[str, str] = {}
     for raw in search.stdout.splitlines():
         parts = raw.split(b"\x00", 2)
         if len(parts) != 3:
@@ -198,9 +204,16 @@ def bounded_git_search(
         path = (root / relative).resolve()
         try:
             path.relative_to(root)
-            payload = path.read_bytes()
         except (OSError, ValueError):
             continue
+        if relative_text not in file_payloads:
+            try:
+                payload = path.read_bytes()
+            except OSError:
+                continue
+            file_payloads[relative_text] = payload
+            file_hashes[relative_text] = hashlib.sha256(payload).hexdigest()
+        payload = file_payloads[relative_text]
         lines = payload.splitlines()
         if line_number < 1 or line_number > len(lines):
             continue
@@ -209,9 +222,13 @@ def bounded_git_search(
         if excerpt is None:
             continue
         if len(terms) > 1:
-            try:
-                source_text = payload.decode("utf-8").casefold()
-            except UnicodeDecodeError:
+            if relative_text not in file_texts:
+                try:
+                    file_texts[relative_text] = payload.decode("utf-8").casefold()
+                except UnicodeDecodeError:
+                    file_texts[relative_text] = ""
+            source_text = file_texts[relative_text]
+            if not source_text:
                 continue
             hits = sum(term in source_text for term in terms)
             required_hits = len(terms) if len(terms) <= 3 else max(2, len(terms) // 3)
@@ -234,7 +251,7 @@ def bounded_git_search(
                 "line": line_number,
                 "excerpt": excerpt,
                 "line_sha256": hashlib.sha256(line).hexdigest(),
-                "file_sha256": hashlib.sha256(payload).hexdigest(),
+                "file_sha256": file_hashes[relative_text],
                 "_sort": (
                     1 if build_file else 0,
                     -coverage,

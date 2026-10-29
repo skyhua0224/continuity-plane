@@ -1,427 +1,208 @@
+<div align="center">
+
 # Continuity Plane
 
-Continuity is a shared task, collaboration and context-continuity tool for people and AI agents. Turn a work request into a persistent Todo or task cards, give workers the same rules, track their runs and reports, and retrieve the next action after compaction or a session change.
+**Let several AI coding agents work on one project in relay: nothing gets lost, progress stays visible, and a new session picks up where the last one stopped.**
 
-Use the CLI directly or let an agent call its MCP tools. Codex and Claude Code plugins connect tools and lifecycle hooks to the host; hooks save, recover and surface changes at relevant events. Bounded retrieval reduces repeated code reading. Output bytes, host tokens and cache counters help measure the result—there is no universal savings promise.
+[![PyPI](https://img.shields.io/pypi/v/continuity-plane?include_prereleases)](https://pypi.org/project/continuity-plane/) [![Release](https://img.shields.io/github/v/release/skyhua0224/continuity-plane?include_prereleases)](https://github.com/skyhua0224/continuity-plane/releases/latest) [![License](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE) [![Managed with Continuity Plane](docs/assets/managed-with-continuity-plane.svg)](https://github.com/skyhua0224/continuity-plane)
 
-[中文](README.md) · [Get Alpha35](https://github.com/skyhua0224/continuity-plane/releases/latest) · [Deployment](docs/deployment.en.md) · [People and agents: starting guide](docs/agent-start.en.md)
+[简体中文](README.md) | English
 
-[![PyPI](https://img.shields.io/pypi/v/continuity-plane?include_prereleases)](https://pypi.org/project/continuity-plane/)
-[![Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
-[![Managed with Continuity Plane](docs/assets/managed-with-continuity-plane.svg)](https://github.com/skyhua0224/continuity-plane)
+</div>
 
-## Problems It Solves
+---
 
-| Your goal | Capability and entry point |
-|---|---|
-| Save “fix A, test B” and advance through the work | [Todo](#todo): compile, inspect, switch, block, complete, or project existing cards |
-| Assign work, share progress and collect reports | [collaboration](#collaboration): cards, bodies, assignees, lanes, scope, inbox and changes |
-| Stop assembling prompts and polling worker processes manually | [Worker](#worker): dispatch/supervisor, heartbeats, timeouts, resume and attached reports |
-| Observe progress without a monitoring time window | [Worker](#worker): cursor event tail, inbox wait, job terminal state and idle diagnostics |
-| Let an AI manage plans and query the project | [MCP and plugins](#mcp): concrete tools, connection configuration and component choices |
-| Save before compaction, recover afterward, notice worker endings | [Hooks](#hooks): events, host differences and what is actually automatic |
-| Locate symbols, files and dependents | [Code retrieval](#context): incremental index, brief output, reverse dependencies and prompt routes |
-| Share constraints, vocabulary, primary sources and lessons | [Knowledge](#knowledge): distinct rules, memory, reference and lesson records |
-| Preserve controller plans, promises, batches and approvals | [Handoffs and evidence](#handoff): handoff, commitments, verification, batches and decisions |
-| Restore plan and reporting/tool habits when replacing Claude or Codex | [Controller continuity](docs/controller-memory.en.md): bounded start, scoped profiles, approved memory and candidate native-note import |
-| Check overhead and attribute usage to tasks | [Measurement and routing](#usage): bytes, tokens, caches, session bindings and actual run records |
-| Work across hosts or opt into stronger coordination | [Remote and advanced tools](#advanced): SSH bridges, controller leases, checkpoints and State |
+When you use agents such as Claude Code or Codex on anything larger than one change, the same problems keep coming back: the plan disappears when the context is compacted; the agents you sent off work in isolation and you cannot tell who has finished; reports are buried in logs; and every new session or model needs the whole story again.
 
-Local-first by default: no cloud account, external database or resident service is required. Configure native model clients and authentication yourself. Ordinary Todo, cards, messages and retrieval do not require a State claim.
+Continuity keeps that story in one shared project record. **Task cards** say what each piece of work is, who does it and how it is checked. **Run records** show when each agent started, whether it is stuck and what it reported. **Handoffs** keep the coordinator's plan and open decisions. Agents read and write these records through MCP tools, and the plugins save and restore them at session start and around compaction, without you having to remind anyone.
 
-<a id="start"></a>
-## Install and try one useful action
+It runs locally by default: no account, database or background service.
 
-Python 3.11+ is required; code indexing also needs Git. A pipx installation makes the CLI available to host integrations:
+## ✨ Highlights
+
+- **Task cards and to-dos** — split "fix A, test B, then document it" into cards for different agents or people; each card states the goal, the files it may touch and how it is checked, and to-do lists are generated from the cards
+- **Dispatch and supervise agents** — one tool call sends a card to Codex or Claude in the background; Continuity records start, heartbeats, exit reason and final report, and attaches the report to the card
+- **Told when work ends** — when a worker finishes, fails, is rate-limited or gets stuck, the coordinator sees it in the conversation together with the tool to call next, across every project it leads
+- **Survives compaction and new sessions** — plugins save and restore "what comes next" at session start and around compaction; a new coordinator gets the plan, open decisions and approvals from the handoff
+- **Agents use it without being told** — the MCP server explains itself, everyday operations are separate typed tools, dispatched workers are told which tools to call, and a shell detour gets one reminder
+- **Read less code** — a local code index returns a few locations for a symbol, path or reverse dependency, about 1 KB by default and far smaller than a repository-wide grep
+- **Shared rules and sources** — rules, terminology, reference documents and lessons are kept apart, and the matching rules travel with every dispatch
+- **Usage you can see** — `continuity observe adoption` counts how each agent session reached Continuity, through MCP or the CLI, and which operations still go through the shell
+
+<details>
+<summary><strong>Cards, to-dos and handoffs</strong></summary>
+
+- Card fields: title, body, objective, next action, exit criteria, assignee, lane, priority, allowed files, worktree, branch, commit, verification and final report
+- Statuses: queued, dispatched, active, blocked, ready-for-review, completed, merged, rejected and superseded
+- Dependencies: `--dependency` names prerequisite cards; `task list --dependencies-ready` lists only cards that can start
+- To-dos: `todo from-cards` projects cards into a list per assignee, or a multi-part instruction can be compiled into a personal to-do list
+- Handoffs: `handoff write` stores the plan, next action and open decisions; `handoff show` puts open decisions, blocked cards and failed runs first
+- Shared backend: optionally use private Gitea Issues/PRs as the task source, with each member on their own CLI and MCP
+
+</details>
+
+<details>
+<summary><strong>Dispatch, queues and quotas</strong></summary>
+
+- Workers: Codex, Claude Code or any custom command; Continuity never stores or copies logins
+- Preview before dispatch: the assembled prompt, rules, code pointers and checks, then start
+- Supervision: heartbeats, idle time, timeouts, exit code, actual working directory and Git HEAD; leftovers from a crash or reboot can be listed and cleared
+- Queue: work waits when capacity or quota is short, and one runner starts it in order; transient 429 and quota errors back off and retry
+- Fallback: a project fallback only starts after the same model's transient retries are used up; authentication failures and content-policy refusals never switch channels automatically
+- Resume: `worker resume` continues the native session, returning to the original thread once quota resets
+
+</details>
+
+<details>
+<summary><strong>Hooks and MCP</strong></summary>
+
+- Hooks: SessionStart, PreCompact, PostCompact, UserPromptSubmit, PostToolUse, Stop and SessionEnd; SubagentStart/SubagentStop on Claude Code and PreToolUse on Codex
+- MCP: the `continuity` server provides cards, dispatch, waiting, reports and handoffs; `continuity-search` provides code lookup
+- Remote: the coordinating machine and the state host can differ, with hooks and commands forwarded over SSH
+- Metering: returned bytes, hook injections, host tokens and cache counts are kept apart; adoption counts store numbers, never conversation text
+
+</details>
+
+## 🧭 How it works
+
+```mermaid
+flowchart LR
+    U[You] -->|a request| C[Coordinator agent]
+    C -->|continuity_task_add| K[(Task cards)]
+    C -->|continuity_worker_dispatch| W1[Worker A]
+    C -->|continuity_worker_dispatch| W2[Worker B]
+    W1 -->|continuity_report_final| K
+    W2 -->|continuity_report_final| K
+    K -->|end notice + next tool| C
+    C -->|continuity_handoff_write| H[(Handoff)]
+    H -->|restored after compaction / new session| C
+```
+
+A typical run:
+
+1. You give the coordinator a request. It splits it into cards with `continuity_task_add`, each saying what to do and how to check it.
+2. `continuity_worker_dispatch` previews the dispatch; `launch=true` starts the worker in the background.
+3. The coordinator waits with `continuity_events_wait`; when a worker in any of its projects ends, it gets the notice and the next step.
+4. The worker finishes with `continuity_report_final`: report, commits and checks go onto the card, the card becomes ready for review, and the coordinator is told.
+5. The coordinator reads the report and arranges review or merge. Before the context fills up it calls `continuity_handoff_write`, and the next session continues from there.
+
+## 🚀 Quick start
+
+Requires Python 3.11+ and Git.
 
 ```bash
-pipx install 'continuity-plane==0.1.0a35'
+pipx install 'continuity-plane==0.1.0a36'
 continuity --version
-# Register inside your repository; replace demo with its stable project ID
+cd your-repo
 continuity collaboration register --project-id demo --control-root . --repository-root .
-continuity whoami --root . --assignee controller --controller controller
 ```
 
-See [deployment](docs/deployment.en.md) for existing installations, venvs, Windows and pipx/uv upgrades. The host process must find the CLI on PATH; with a venv, use absolute executable paths in MCP configuration.
-
-Registration is enough for the Todo and collaboration examples below. Use `continuity init --root . --project-id demo` when you also want project-local .continuity files, governance templates and authoritative State; do not initialize over an existing directory. whoami declares this invocation's identity, not a controller lease. Give concurrent executors stable, distinct identities rather than transient MCP connection IDs.
-
-<a id="todo"></a>
-## Todo
-
-**Personal checklist:** compile explicit work into a durable queue, inspect its items and record results as work finishes.
+Then install the plugin for your agent (next section) and simply describe the work, for example "split these three things between two helpers; someone takes over tomorrow". To try a card by hand:
 
 ```bash
-# A single agent's execution checklist
-continuity todo compile --project-id demo --session-id controller --prompt 'Fix parser boundaries; add regression tests; summarize verification'
-continuity todo list --project-id demo --format brief
-continuity todo complete --project-id demo --item-id ITEM_ID --result 'Completed this item and retained verification'
+continuity collaboration task add --project-id demo --task-id first-card --lane-id main --mode patch --priority p1 --title 'Try a card' --objective 'Learn the flow' --next-action 'Read the card' --exit-criterion 'Visible in the list' --body 'Anything you want done'
+continuity collaboration task list --project-id demo --format brief
 ```
 
-Copy ITEM_ID from list. Use `activate --item-id … --reason …` to switch explicitly, `block --item-id … --reason …` for a blocker, and link to associate an item with a card. Complete any open item by ID; work need not finish in its original order.
+Existing installs, venvs, Windows paths, upgrades and rollback: [deployment guide](docs/deployment.en.md).
 
-**Already using cards?** Make Todo a live view of those cards instead of maintaining two plans:
+## 🤖 Connect your agent
 
-```bash
-continuity todo from-cards --project-id demo --assignee worker-a
-continuity todo list --project-id demo --format brief
-```
-
-The view follows card status and defaults to open states. Repeat --status or use --all to change the selection. In brief output, `execution_state` separates queued, assigned, running, blocked and review: an assigned worker that was never dispatched is assigned, and only a live execution binding is running. Blocked rows include a bounded reason. Legacy queue contents remain as history. Card-view activation uses --assignee or CONTINUITY_ASSIGNEE; session-id is only a recovery label. Discover parameters with `continuity help todo.compile` and `continuity help todo.from-cards`.
-
-<a id="collaboration"></a>
-## collaboration
-
-Alpha35 retains the [private Gitea Issue / PR backend](docs/gitea-collaboration.en.md): members use their own local CLI / MCP and tea login for shared tasks, claims, accepted handoffs and real PR review requests, without a Continuity server. Issues own task state; local snapshots are caches. Conflicts are explicit; claims are not strong cross-machine locks. The [storage/configuration contract](docs/collaboration-storage.en.md) separates committed declarations from member-local data. Local-card examples below are a separate mode.
-
-### Create, assign and update task cards
-
-A card stores instructions, objective, next action, acceptance criteria, assignee, lane and priority. Optional fields cover worktree, allowed files, branch, commits, verification and reports. Create one in the registered demo project:
-
-```bash
-# The controller assigns a focused card to an independent executor instance
-continuity collaboration task add --project-id demo --task-id parser-fix --lane-id parser --mode patch --priority p1 \
-  --title 'Fix parser boundaries' --objective 'Limit changes to the parser and regression tests' \
-  --next-action 'Locate symbols and reproduce boundary input' --exit-criterion 'Reproducible regression and explicit unverified scope' \
-  --assignee worker-a --allowed-file src/parser.py --allowed-file tests/ \
-  --body 'Check existing parser constraints, add a regression, fix it, and preserve commands, results and out-of-scope findings.'
-continuity collaboration task list --project-id demo --assignee worker-a --status queued --format brief
-continuity collaboration packet --project-id demo --assignee worker-a
-```
-
-Packet gives the assigned main card and bounded collaboration entry points; task show expands instructions. Prompt assembly combines the rules and card. For manual execution, claim and update it:
-
-```bash
-continuity collaboration task claim --project-id demo --task-id parser-fix --assignee worker-a
-continuity collaboration task update --project-id demo --task-id parser-fix --body 'Add the confirmed scope and test entry point'
-continuity collaboration task show --project-id demo --task-id parser-fix --include-report --format brief
-```
-
-Body-only updates preserve status. Moving to queued preserves the assignee; only explicit `--unassign` clears it. An active controller-lease holder may reassign with a recorded `--reason` without impersonating the old owner. States include queued, dispatched, active, blocked, ready-for-review, completed, merged, rejected and superseded; local completion is separate from acceptance. Filter lists by status, assignee, lane, query, update time and result count. --all includes closed cards; --full expands fields. task show defaults to 64 KiB and larger lists continue from next_cursor. Priorities are p0/p1/p2, and lanes separate parallel work. Allowed-file declarations are not an OS sandbox.
-
-For SSH, zsh or any shell where quoting a long body is error-prone, put the updates in JSON:
-
-```bash
-continuity collaboration task update --project-id demo --batch updates.json
-cat updates.json | continuity collaboration task update --project-id demo --batch -
-```
-
-Updates run sequentially, at most 50 per file, and stop at the first failure with completion/failure indexes. The batch is not an all-or-none transaction. Shared Gitea mode still requires `operation_id` and `expected_remote_revision` per item.
-
-`--dependency ID` (repeatable) expresses prerequisite cards in both local and Gitea modes; completed, merged and superseded are terminal. `task list --dependencies-ready` returns only cards satisfying that rule. Claim, activation and dispatch reject unmet dependencies. A legacy “Depends on:” sentence is surfaced as a migration hint and never silently inferred as a dependency. Local and Gitea list calls now share one envelope: `items`, `total_items`, `next_cursor`, `has_more`.
-
-### Inbox, incremental changes and waiting
-
-Inbox messages have durable IDs and explicit acknowledgement. They do not guarantee a wake-up in every host. `send` may omit `--message-id`; Continuity generates and returns the final ID. An explicit ID remains an idempotency key. `ack` supports one ID, a time cutoff, or `--all` with a bound, followed by archive of acknowledged messages.
-
-```bash
-continuity collaboration inbox send --project-id demo --sender worker-a --recipient controller --message-id parser-note-1 --task-id parser-fix --body 'Please confirm the compatibility requirement'
-continuity collaboration inbox list --project-id demo --recipient controller
-continuity collaboration inbox ack --project-id demo --recipient controller --message-id parser-note-1
-continuity collaboration inbox ack --project-id demo --recipient controller --before 2026-10-20T00:00:00Z --limit 1000
-continuity collaboration inbox ack --project-id demo --recipient controller --all --limit 1000
-continuity collaboration inbox archive --project-id demo --recipient controller --limit 1000
-continuity collaboration inbox unread --project-id demo --recipient controller --count
-continuity collaboration inbox wait --project-id demo --recipient controller --follow
-```
-
-Use changes for “what happened while I was away?” and wait to block on worker events instead of rereading the ledger or polling processes:
-
-```bash
-# Zero is the first cursor; subsequently use the returned next_cursor
-continuity collaboration changes --project-id demo --since 0 --max-output-bytes 2048
-continuity collaboration wait --project-id demo --since 0 --event attempt.finished --event attempt.timeout --event dispatch.policy-stopped --timeout-seconds 30
-```
-
-If truncated, keep reading from next_cursor. Jumping to high-water skips undelivered events. Multiple event filters match any listed event; a wait timeout is not worker failure. `collaboration drift` checks stale/contradictory records; collaboration doctor reports ledger writer versions. inbox wait observes new messages by default (use --include-unread to start from existing unread); --follow has no deadline, and reconnecting scripts use stream_cursor.
-
-<a id="worker"></a>
-## Worker: dispatch, supervision, resume and reports
-
-Configure an already authorized native client or custom adapter on the execution host. Replace YOUR_MODEL_ID, worktree and verification requirements with real values; adapter configuration does not authenticate a provider.
-
-```bash
-continuity worker configure --model primary --provider codex --provider-model YOUR_MODEL_ID
-continuity collaboration prompt --project-id demo --task-id parser-fix --assignee worker-a
-# Preview does not launch a model; start only after checking the plan
-continuity dispatch --project-id demo --task-id parser-fix --model primary --effort high --dry-run
-continuity dispatch --project-id demo --task-id parser-fix --model primary --effort high --background --timeout-seconds 86400 --idle-timeout-seconds 5400
-continuity report parser-fix --project-id demo
-continuity worker events --project-id demo --since-cursor 0 --follow
-continuity worker events --all-projects --since-cursor 'demo:120,other:80' --follow
-continuity worker jobs --project-id demo --status ended
-```
-
-Claude and custom adapters are also supported. Dispatch assembles complete rules, the card body, attachment references and bounded code routes. It retains run IDs, logs, native session references and reports. The card must exist. Prepare isolated worktrees before parallel edits. After background dispatch, wait for that task's end event before reading its report.
-
-Use Continuity's persistent queue when a request should wait instead of starting immediately; external filler scripts are unnecessary:
-
-```bash
-continuity dispatch --project-id demo --task-id parser-fix --model primary --enqueue --request-id parser-fix-a --priority 10
-continuity worker queue run --project-id demo --watch --controller controller
-continuity worker queue status --project-id demo
-continuity worker queue pause --reason 'maintenance'
-continuity worker queue resume
-```
-
-One runner can hold the non-blocking single-instance lock for a project/data root. It reuses normal dispatch validation for cards, controller lease, client-family capacity and observed quota/cooldown. MCP safely exposes `worker.queue.enqueue/status/pause/resume/cancel/requeue`; `worker.queue.run`, which starts provider processes, remains CLI-only. Capacity or quota gates leave requests queued; transient 429/quota/gateway outcomes return with backoff. Enqueue, waiting, blocked, retry and launch transitions enter the change feed for `changes`/`wait` and hooks. `pause` is a host switch and does not kill workers already running. See `continuity help worker.queue.run`.
-
-worker events emits newline-delimited started, progress, completed, failed, rate-limited and blocked facts from cursors rather than a monitoring time window. A single-project cursor is an integer; --all-projects uses project:cursor pairs and every row carries stream_cursor.
-
-Supervisor records attempt starts, heartbeats, no-output duration, completion reasons, exit codes and timeouts. After spawn it samples PID identity, actual cwd and Git HEAD. Current successful attempts become ready-for-review; failures/interruption become blocked. It preserves manually changed status while attaching the final report. A stale attempt cannot overwrite a newer run. job.json and worker-jobs.json persist running/terminal status and exit_code, so completion is no longer inferred only from result.json.
-
-Dispatch and resume use a derived safety index: one sequential backfill after upgrade, then only appended change-log bytes. A damaged index or replaced journal rebuilds from authoritative JSONL. There is no need to delete history, and a missing index never bypasses a refusal gate.
-
-After a host crash or reboot, run `continuity controller reservations --project-id demo --state stale` to inspect leftover job IDs. With the controller lease, `controller reconcile-host --apply --reason …` clears only reservations proven stale by host/boot or host-identity changes. Stale reservations no longer count against capacity. The default scope is current project + host + profile + client family. `controller host-capacity --host-client-limit total=8` adds an operator-declared host-wide local gate; it is not proof of a native account limit.
-
-```bash
-continuity worker resume --project-id demo --task-id parser-fix --continuation 'Continue saved progress; check existing verification first' --background
-```
-
-Use **worker resume** for executors; top-level resume belongs to advanced State recovery. Native continuation needs adapter support and session references on the owning host/profile. Never move account/thread directories to another host to resume there. Effort passes through subject to adapter support. New attempts default to 24-hour total and 90-minute idle budgets, both overridable. A usage limit is quota exhaustion, not a content-policy refusal. When the provider supplies a future reset, an official-subscription profile records it and pauses that origin/model; after reset Continuity prefers the recorded thread. Legacy jobs with recoverable evidence receive a recorded correction rather than a manual JSON edit.
-
-HTTP 401/403, Cloudflare/proxy interception pages and gateway diagnostics are not upgraded to content refusal merely because they contain generic "policy" text; only explicit model-safety markers yield `policy-review`. For a legacy false label, a controller may review the exact job and run `continuity worker clear-policy-review --task-id … --job-id job-… --actor … --reason …`, recording one auditable correction and permitting an explicit same-thread resume.
-
-Existing launch scripts can use `collaboration run --task-id … --assignee … -- <command>` or supervisor run for command bookkeeping. `supervisor daemon` performs one owner-host liveness pass, not resident-service installation; it skips full-history replay when no attempt is running. Retries and a project fallback policy handle selected transient failures; authentication errors and policy refusals do not trigger automatic channel switching. `worker completion-hook` can launch a local argv asynchronously and record a receipt without blocking worker completion; it is not a remote wake-up.
-
-For an explicitly protected canonical repository, set `--worker-write-policy canonical-read-only` and one or more `--canonical-repository-root` values in collaboration context-set. A Continuity Git wrapper on worker PATH blocks ordinary push/update-ref/receive-pack writes into that repository. This prevents mistakes, not hostile bypass through absolute git paths, another program or a more privileged account.
-
-<a id="mcp"></a>
-## MCP and plugins: direct agent access
-
-The CLI implements the operations. **MCP exposes callable tools; plugins install MCP configuration, skills and/or hooks into a host.** Choose the components you need and do not manually register servers already supplied by a plugin.
-
-MCP is a host-managed local stdio child. After a host reboot or kill, the Continuity state store cannot restart it by itself; use the CLI/SSH route until Codex or Claude opens a new MCP connection. `collaboration doctor` reports this lifecycle boundary.
-
-| Integration | What it provides | Choose it when |
+| Host | Install | What you get |
 |---|---|---|
-| Codex plugin continuity-plane | Session/compaction lifecycle hooks; no MCP registration | You want automatic recovery and notices |
-| Codex plugin continuity-plane-search | continuity-search-mcp and its lookup tool | You only need bounded code retrieval |
-| Codex plugin continuity-plane-state | continuity-mcp: Todo/collaboration plus advanced State tools | The agent should manage cards, rules and handoffs; ordinary planning needs no State claim |
-| Claude Code plugin continuity-plane | Collaboration skill, lifecycle hooks and both continuity/continuity-search MCP servers | One plugin for planning, retrieval and lifecycle integration |
-| Other stdio MCP clients | Connect the two servers below directly | You do not use a supported plugin marketplace |
-
-### Install a plugin
-
-Install the CLI first. On Codex CLI versions supporting these commands, choose the needed components:
-
-```bash
-# Core hooks, independent search, and planning/State are separate components
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.35
-codex plugin add continuity-plane@continuity-plane
-codex plugin add continuity-plane-search@continuity-plane
-codex plugin add continuity-plane-state@continuity-plane
-```
-
-The host plugin browser can select the same packages. Review /hooks and trust the current definitions; installation does not automatically grant hook trust. See the [official mechanism](https://developers.openai.com/plugins/build/plugins) and [deployment/repinning instructions](docs/deployment.en.md).
-
-Install Claude Code in the actual active profile:
+| Claude Code | `continuity-plane` plugin | Collaboration skill, all hooks, and the `continuity` and `continuity-search` MCP servers |
+| Codex | Codex plugin `continuity-plane-state` | Card, dispatch, waiting and report MCP tools plus the collaboration skill |
+| Codex | Codex plugin `continuity-plane-search` | Code lookup MCP tool |
+| Codex | Codex plugin `continuity-plane` | Session and compaction hooks |
+| Other stdio MCP clients | Add `continuity-mcp` and `continuity-search-mcp` | The same MCP tools |
 
 ```bash
 claude plugin marketplace add skyhua0224/continuity-plane
 claude plugin install continuity-plane@continuity-plane --scope user
-claude plugin list
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.36
+codex plugin add continuity-plane-state@continuity-plane
+codex plugin add continuity-plane-search@continuity-plane
+codex plugin add continuity-plane@continuity-plane
 ```
 
-Configure and verify multiple profiles separately. Remote-state deployments use the [SSH bridge](docs/deployment.en.md#separate-controller-and-state-hosts), without duplicate local plugin hooks. A CLI upgrade does not refresh plugin caches or already running MCP processes. Check the package, plugin and fresh MCP serverInfo.version; reconnect or start a new session as needed.
+After an upgrade, reconnect MCP or start a new session so the host loads the new tools. In Codex, trust the new hook definitions under `/hooks`.
 
-### Which MCP tools are available?
+The MCP tools you will see most:
 
-| Tool | Purpose and examples |
+| When | Tool |
 |---|---|
-| continuity_help | Discover actual parameters by topic: todo.compile, task.add, rules.export |
-| continuity_plan | Select actions for Todo, cards, inbox, rules, references, handoffs, lessons, sessions, changes/wait, batches/decisions, usage and worker.prepare previews |
-| continuity_collaboration / continuity_collaboration_packet | Bounded collaboration reads and the assigned task entry, without a State write binding |
-| continuity_todo_compile, continuity_todo_list, continuity_todo_complete, continuity_todo_block, continuity_todo_link, continuity_todo_activate | Direct Todo tools; continuity_plan is the common alternative |
-| continuity_inbox | Send, list, single/bulk acknowledge and archive persistent messages; generated send IDs and structured failed_gate errors |
-| continuity_context_lookup | The separate search server's bounded symbol/path lookup, brief by default |
-| continuity_resume, continuity_inspect | Bind an advanced State recovery entry or inspect it read-only |
-| continuity_checkpoint, continuity_autorun | Create/verify checkpoints or continue the current Work from a verified entry |
-| continuity_work_activate, continuity_work_complete, continuity_work_transition, continuity_claim_recover | State Work lifecycle and leases, retaining revision/authorization/validator gates |
+| Session start, after compaction, on a new assignment | `continuity_start` |
+| Split, change or look at work | `continuity_task_add` · `continuity_task_update` · `continuity_task_list` · `continuity_task_show` |
+| Send to a worker and wait | `continuity_worker_dispatch` → `continuity_events_wait` → `continuity_worker_report` |
+| Worker reporting | `continuity_progress` · `continuity_report_final` · `continuity_review_request` |
+| Handoff | `continuity_handoff_write` · `continuity_handoff_show` |
+| Find code | `continuity_context_lookup` |
+| Everything else (rules, sources, quota, queue, batches) | `continuity_plan(action=…)`, parameters from `continuity_help` |
 
-For example, pass these arguments to continuity_plan; it shares the CLI todo from-cards contract:
+Every command, parameter and hook: [command and tool reference](docs/commands.en.md).
 
-```json
-{"action":"todo.from-cards","project_id":"demo","format":"brief","parameters":{"assignee":"worker-a"}}
-```
+## 📊 Measurements
 
-For continuity_context_lookup, root is absolute on the host containing the code:
+Alpha36 against Alpha35. Methods, samples and commands are in the [Alpha36 notes](docs/release-alpha36.md).
 
-```json
-{"root":"/workspace/project","query":"parse_message","format":"brief","max_results":5,"max_output_bytes":1024}
-```
+**Real agent sessions** (Claude Code, Sonnet 5.5, 3 runs per scenario and version, prompts never mention Continuity)
 
-Not every CLI command is an MCP execution tool. **Dispatch/worker resume, adapter configuration, supervisor and controller run currently use the CLI.** An agent may invoke them through its authorized shell; planning MCP itself does not start providers, merge Git or deploy.
+| Scenario | Continuity operations via MCP | Median cost | Median tokens |
+|---|---|---:|---:|
+| Coordinator splits 3 tasks, assigns them, writes a handoff | 5–82 % → **100 %** | $0.185 → **$0.128** | 342,725 → **177,317** |
+| Take over after compaction | 0 % → **100 %** | $0.063 → **$0.055** | 68,048 → 64,061 |
 
-Without plugins, add this connection configuration to your MCP client. It is host configuration, not a one-shot shell command:
+**Reads on a large project** (1,101 cards, 237k events; `hyperfine` 3×20 runs, median)
 
-```json
-{
-  "mcpServers": {
-    "continuity": {"command":"continuity-mcp","args":[]},
-    "continuity-search": {"command":"continuity-search-mcp","args":[]}
-  }
-}
-```
+| Operation | Alpha35 | Alpha36 |
+|---|---:|---:|
+| Last 50 changes | 812 ms | **61 ms** |
+| Coordinator handoff | 466 ms | **174 ms** |
+| Cards awaiting review | 333 ms | **168 ms** |
 
-<a id="hooks"></a>
-## Hooks: what happens automatically?
+**Code lookup** (807-file, ~115k-line C/C++ repository; 48 labelled queries + 8 held-out symbols)
 
-| Event | Codex | Claude Code | Continuity behavior |
-|---|---|---|---|
-| SessionStart | Supported | Supported | Bounded recovery entry and meaningful changes, not mandatory full-history rereading |
-| PreCompact | Supported | Supported | Save next action, constraints, verification and controller scene; checkpoint State when configured |
-| PostCompact | Verify/recover through the host-supported path | Verify; inject at SessionStart(compact) | Deduplicate delivery for a recovery generation |
-| UserPromptSubmit | Supported | Supported | Bounded planning/intake/change guidance, without a second forced Todo for card workflows |
-| PreToolUse | Supported | Not supplied by this plugin | Lightweight Codex boundary advice, not mandatory interception of all shell/Git effects |
-| PostToolUse | Supported | Supported | Bounded observation and changed worker-end/blocker/rule notices |
-| Stop | Supported | Supported | Completion/continuation checks, not inferred verification or review acceptance |
-| SubagentStart / SubagentStop | Not supplied by this plugin | Supported | Observe native children, without invented PIDs, exit codes, success or complete reports |
+| Metric | Alpha35 | Alpha36 |
+|---|---:|---:|
+| First result is the definition (labelled / held-out) | 13.8 % / 1 of 8 | **100 % / 7 of 8** |
+| Warm lookup, in-process median | 589 ms | **84 ms** |
 
-The Alpha35 plugin and source handoff retain SessionEnd and add resumable worker events, inbox wait/unread, job terminal state and actual-checkout observations. The [handoff implementation](docs/field-workflows.md#development-source-controller-recovery-and-change-consumers) also includes read-time observations, consumer acknowledgements, dispatch snapshot checks and task aliases. Older installs require an upgrade and host reconnect.
+**Resuming after compaction** (simulated session: 30 prompts, 200 tool calls)
 
-Skills are instructions the model can load; MCP tools are callable operations; hooks run at lifecycle events. Notices are changed-only and do not guarantee waking an offline conversation. Managed attempt records require a worker running under supervision.
+| Metric | Alpha35 | Alpha36 |
+|---|---:|---:|
+| Context injected after compaction | 3,974 B | **1,150 B** |
+| Hook injection over the session | 7,792 B | **2,950 B** |
+| Resume accuracy (active card, next step, constraints, open decisions, verification) | — | **5/5** |
 
-Automatic continuity recovers recorded state; it does not guarantee capturing every idea never written to a card or handoff.
+Machine: Intel i7-13700KF (24 threads), 31 GB, Linux, Python 3.13/3.14. Earlier experiments: [historical experiments](docs/benchmarks.en.md).
 
-The host must load and permit hooks. CONTINUITY_DISABLED=1 disables them temporarily. Check versions/entrypoints with doctor and inspect actual save/restore events. Installed configuration, controlled callback tests and naturally observed compaction/child lifecycles are distinct evidence.
+## 📚 Documentation
 
-<a id="context"></a>
-## Code retrieval and context savings
-
-```bash
-# Substitute symbols and paths from the current repository
-continuity context index --root .
-continuity context lookup --root . --query parse_message --format brief --max-output-bytes 1024
-continuity context search --root . --query 'parse_message' --path-prefix src --format brief --max-output-bytes 2048
-continuity context dependents --root . --query include/parser.h --format brief
-```
-
-The incremental index covers Git-tracked files and returns positions/bounded excerpts. Indexed C/C++ includes and CMake links support reverse-dependency queries and directory aggregation; prompts can carry code routes too. This is not a complete compiler-semantic call graph. After a miss, narrow the source search rather than repeating the same empty lookup.
-
-Brief omits the full hashed JSON receipt; use supported --format json for machine processing. Result counts and byte budgets follow each command's help, not one universal flag set: legacy packet does not accept every budget option. Consume paged changes from next_cursor, not clipped content as if it never happened.
-
-<a id="knowledge"></a>
-## Rules, memory, references and lessons
-
-| Record | What it stores | When to use it |
-|---|---|---|
-| rules | Global/project constraints, audiences, versions and hashed long attachments | Workers/reviewers must receive the same applicable policy |
-| memory | Scoped vocabulary, aliases and definitions | Shared terminology or abbreviations; not the whole conversation |
-| reference | Standards, official OS/library docs and repositories, versions/sections and adoption rationale | Implement from primary evidence and retain what was actually checked |
-| lesson | Project lessons and sourced corrections | Avoid repeating a mistake after a model/session change |
-
-```bash
-# Policies and source indexes remain separate records
-continuity collaboration rule-add --project-id demo --rule-id focused-change --audience worker --text 'Stay within task scope; report actual checks and unverified items'
-continuity rules export --project-id demo --audience worker --format text
-continuity memory add --project-id demo --scope project --entity-id debug-build --alias 'debug configuration' --statement 'This project Debug build configuration' --source 'Project build instructions'
-continuity reference add --project-id demo --reference-id python-json --title 'Official Python JSON documentation' --source https://docs.python.org/3/library/json.html --kind official-library
-continuity lesson list --project-id demo
-```
-
-Select worker/reviewer/controller or lane-specific policies. Rules history/affected shows revisions and workers with old snapshots; rules attachment reads long text by hash. Complete export never silently drops constraints; increase an insufficient budget explicitly. Collaboration prompt assembles rules, card instructions and attachment references.
-
-Rules import adopts an explicit rules manifest; rules check-mirror detects drift in generated policy files. Snapshot-export/snapshot-import exchanges selected rule snapshots, not entire native profiles.
-
-Use reference import-tsv/export-tsv to exchange an existing source-index.tsv, without overwriting conflicts or existing output files. Record actual reading/adoption separately through reference record. Registering a URL proves neither reading, freshness nor correctness. Records default to the external data root, not native account/session files admitted to Git.
-
-<a id="handoff"></a>
-## Controller handoffs and unresolved work
-
-Keep the controller plan shared rather than only in private chat. Handoff records the current batch, ordering, in-flight workers, pending decisions and next action. Commitments record promises that remain unfinished:
-
-```bash
-continuity handoff write --project-id demo --plan 'Fix the parser regression, then request independent verification' --next-action 'Check worker reports against actual verification' --pending 'Owner decision needed on compatibility'
-continuity handoff show --project-id demo
-continuity collaboration commitment-add --project-id demo --commitment-id compatibility-decision --text 'Waiting for the owner to confirm compatibility'
-continuity collaboration commitment-list --project-id demo
-```
-
-`collaboration context-set --integration-base main` selects the project's default implementation base, distinct from a checkout HEAD. A locked `integration_base` in repository `.continuity/controller-profile.json` is also a project default. Worker prompt assembly includes the base and any available authoritative HEAD while stating that it grants no merge, push, deployment or ownership authority. Session bind declares controller/worker sessions and associates tasks/batches. Shared-scene refresh at controller compaction and batch recording respects role/lease boundaries; failed refresh remains a warning, not a successful new snapshot.
-
-When `handoff show` is truncated, pending decisions, blocked cards, failed/interrupted attempts and report-without-card-update rows survive before ordinary changes. Fast handoff writes record a change cursor, so later reads inspect only newer events; rewrite an older handoff once to establish that boundary. The brief `unread` value means unacknowledged inbox messages and includes bulk acknowledgement plus archive commands. Acknowledging removes a message from unread; archive then moves it to recoverable storage.
-
-<a id="verification"></a>
-## Verification, integration batches and decisions
-
-Reports attach to cards rather than remaining buried in logs. Manual workers can submit one too:
-
-```bash
-# Use a real final report file from the task
-continuity collaboration task update --project-id demo --task-id parser-fix --status ready-for-review --report-file /persistent/path/report.md
-continuity collaboration task show --project-id demo --task-id parser-fix --include-report --format brief
-continuity help batch-add
-continuity help decision-add
-```
-
-Branch, commit, landed_commit and released_in store the corresponding Git facts. --verification-json separates checks from unverified items and binds evidence to a real commit. Batch-add records cards, baseline, result commit, verification, metrics and exception decisions. Decision-add retains real approval sources/corrections; status-render generates a projection.
-
-Task update can set metadata and merged in one call when required evidence is present; `task merged … --batch …` uses an existing batch. Neither performs Git merging, fast-forwarding or push. Evidence gaps remain visible, overrides require reasons, and metadata cannot manufacture user approval.
-
-Non-code decisions may omit a commit. If a commit is supplied, it is still strictly validated as a Git object identifier.
-
-<a id="usage"></a>
-## Measurement, model routing and availability
-
-```bash
-continuity observe report --project-id demo
-continuity collaboration scenarios
-continuity collaboration recommend --project-id demo --scenario quick-triage --busy-model grok
-continuity quota report --project-id demo
-continuity dispatch-health show --project-id demo --format brief
-```
-
-Observe distinguishes actual output/hook bytes, estimated replacement output, index caches and provider token/prompt-cache counters; net byte estimates may be negative. Explicit usage import reads Claude/Codex counters in place on the owning host/profile, not transcript bodies saved into the registry. Session binding attributes increments after its baseline to tasks/batches. Missing provenance, price or comparison data remains unknown; cache hits are not causal token savings.
-
-Longitudinal benefits such as effective context-window utilization and work completed between compactions still require real-session comparisons; these counters alone do not establish them.
-
-Run these only on that session's owning host/profile; substitute its actual session ID and local file:
-
-```bash
-# Collect in place; do not copy foreign accounts or raw sessions here
-continuity session bind --project-id demo --provider claude --session-id OWN_SESSION_ID --task-id parser-fix --role worker
-continuity observe ingest-usage --root . --provider claude --session-id OWN_SESSION_ID --transcript /path/on/owner/session.jsonl
-```
-
-Recommend considers scenario fit, actual run counts/duration and recorded cooldowns. Daily and expensive expert pools are distinct; restrict eligible-model or declare busy/unavailable models. It does not dispatch, guarantee exact equal shares or know unrecorded account capacity. Quota records known availability/limits and explicitly approved handoffs, without a promise of automatic native Claude quota queries.
-
-`quota record` names the missing `--official-subscription` flag instead of implying that token counts are subscription limits. When a worker observes a clear usage limit and reset time, an official-subscription origin/model is recorded automatically. Without a usable reset, dispatch pauses with an unknown reset rather than inventing one.
-
-`dispatch-health show` now explains the failure class, provider reason, task/attempt, observation time and reset. Capacity scope is included in controller status and reservation inventory.
-
-<a id="advanced"></a>
-## Remote, coordination and advanced commands
-
-```bash
-continuity --remote state-host --remote-root /srv/project collaboration task list --project-id demo --format brief
-```
-
-Explicitly configure SSH aliases, project roots and owning-host adapters. Bridge install forwards controller hooks; retrieval can run on the state host or use exact-root bridge_config mappings. Keep profiles separate; do not move native accounts, sessions or quota data. There is no arbitrary remote file/process administration API. Store recoverable work persistently; temporary storage is for reconstructible buffers.
-
-| Command family | Purpose and boundary |
+| To | Read |
 |---|---|
-| controller acquire/renew/status/run | Explicit controller fencing, capacity and cooperating serialized integration; cannot stop Git outside the tool. Upgrade all dispatchers before first guarded-v4 activation |
-| collaboration effect request/list/update | External-operation requests, approvals and receipts; not automatic push/deploy execution |
-| collaboration outbox-replay/repair-events | Recover execution facts retained during metadata I/O failures and inspect legacy cursor problems; apply repairs explicitly with backup |
-| init/verify/attach, state/status/workspace | Project profiles, existing governance adoption and State/projections; optional advanced layer |
-| resume/inspect/autorun/checkpoint/work | Revision/claim/authorization/validator-gated Work recovery and commits; not prerequisites for ordinary Todo/MCP |
-| decision/constraint, export/import/rollback | Authoritative planning metadata and verified State backup/rollback; bundles do not cover the entire external collaboration root |
-| plan inspect, worktree-inventory, skills-audit, storage inspect | Bounded plan routing and worktree/skill/persistence audits, without automatic user-file cleanup |
+| Install, upgrade, plugins, several machines | [Deployment](docs/deployment.en.md) |
+| Work alone, coordinate workers, work as a team | [Usage](USAGE.en.md) · [Workflows by role](docs/workflows.en.md) |
+| Opening and closing conventions for agents | [Agent start](docs/agent-start.en.md) |
+| Every command, parameter and hook | [Command and tool reference](docs/commands.en.md) |
+| Restore plans and habits when the coordinator changes | [Controller continuity](docs/controller-memory.en.md) |
+| Typical scenarios | [Use cases](docs/use-cases.en.md) |
+| Progress on project views and graphical products | [Project views](docs/project-views.en.md) · [Visual products](docs/visual-products.en.md) |
+| What is verified and what is not | [Validation matrix](docs/validation.en.md) |
+| Version history | [Changelog](CHANGELOG.en.md) · [Releases](https://github.com/skyhua0224/continuity-plane/releases) |
 
-## Validation and documentation
+## ⚠️ Known limits
 
-Current release: Alpha35, package 0.1.0a35 and plugin 0.1.0-alpha.35. [Validation](docs/validation.en.md) separates synthetic workflows, controlled hooks, user feedback and unproven behavior. [Historical measurements](docs/benchmarks.en.md) are not universal results for the latest version or every project. Metadata failures grant no authority and do not require resetting State for ordinary coding work.
+- Cards record intent and facts; they never grant merge, push, deploy, paid-model or account access.
+- `allowed-file` and the repository write guard prevent mistakes; they are not a security sandbox.
+- Only workers dispatched through Continuity have full run records; a host's own sub-agents record start and stop only.
+- Notices arrive on the next tool call or prompt; they cannot wake a closed session.
+- Native Windows hooks, real multi-account quota and long two-machine waits still lack field verification; see the [validation matrix](docs/validation.en.md).
 
-| Continue with | Guide |
-|---|---|
-| Installation, upgrades, plugins, profiles, SSH, rollback | [Deployment](docs/deployment.en.md) |
-| Solo/controller/team paths | [Usage](USAGE.en.md) · [Role workflows](docs/workflows.en.md) |
-| A pasteable agent start/finish convention | [Starting guide](docs/agent-start.en.md) |
-| Parameters, supervision and batch details | [Command reference](docs/field-workflows.md) · continuity help |
-| Compaction, accounting, State and architecture | [Lifecycle](docs/lifecycle-parity.md) · [State](docs/state-workflows.en.md) · [Index](docs/README.en.md) |
-| Implemented, preview and planned optional projections/interfaces | [Project views](docs/project-views.en.md) · [Visual products](docs/visual-products.en.md) |
-| Six workflow problems and capability boundaries | [Use cases](docs/use-cases.en.md) |
-| Versions and compatibility | [Changelog](CHANGELOG.en.md) · [Release](https://github.com/skyhua0224/continuity-plane/releases/latest) |
+## 🐛 Feedback
 
-[Report an issue](https://github.com/skyhua0224/continuity-plane/issues) with versions, sanitized commands and a minimal reproduction, not raw sessions, credentials, device identifiers or private project data. [Apache-2.0](LICENSE); attribution requirements are in [NOTICE](NOTICE).
+When you open an [issue](https://github.com/skyhua0224/continuity-plane/issues), include `continuity --version`, the host (Claude Code/Codex and version), redacted commands and output, and steps to reproduce. Do not upload raw sessions, secrets or private project material.
+
+## 📄 License
+
+[Apache-2.0](LICENSE); attribution requirements in [NOTICE](NOTICE).
