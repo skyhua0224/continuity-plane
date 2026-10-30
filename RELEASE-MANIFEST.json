@@ -7,7 +7,7 @@
     },
     {
       "path": ".claude-plugin/marketplace.json",
-      "sha256": "65a296616920eab205c8defef2fe3d05436978e873bfb4f656810646b8f9376b"
+      "sha256": "05c7bb4161d75e4c21ceba6aa8146fb496b5fa31b16ca9560a179c071ff04ff2"
     },
     {
       "path": ".gitattributes",
@@ -911,7 +911,7 @@
     },
     {
       "path": "integrations/claude/continuity-plane/.claude-plugin/plugin.json",
-      "sha256": "a3f19eb221567f37ab079d37263b20b2d6aec081ac39da410f22bcb2015650cb"
+      "sha256": "7ec97cda63b07d4231d36138b83925cec4dc9c7d8b47c79b8a6368898662177b"
     },
     {
       "path": "integrations/claude/continuity-plane/.mcp.json",
