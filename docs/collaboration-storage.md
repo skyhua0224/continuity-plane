@@ -1,6 +1,6 @@
 # Gitea 协作模式：仓库声明与本机数据
 
-版本：1；适用 Alpha36。此合同规定共享内容、成员本地配置与权威边界。操作命令见 [Gitea 协作](gitea-collaboration.md)。[English](collaboration-storage.en.md)
+版本：1；适用 Alpha37。此合同规定共享内容、成员本地配置与权威边界。操作命令见 [Gitea 协作](gitea-collaboration.md)。[English](collaboration-storage.en.md)
 
 ## 写入位置与权限
 

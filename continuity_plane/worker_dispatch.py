@@ -574,6 +574,104 @@ def require_policy_clear(data_root, project_id, task_id, scope):
             )
 
 
+def _age_seconds(value, now=None):
+    try:
+        then = datetime.fromisoformat(str(value).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return max(0, round(((now or datetime.now(UTC)) - then).total_seconds()))
+
+
+def _left_work(previous):
+    """A run that never produced a session or a report has nothing to lose."""
+    if not previous:
+        return False
+    for name in ("thread_file", "report_file"):
+        try:
+            if previous.get(name) and Path(previous[name]).stat().st_size > 0:
+                return True
+        except OSError:
+            continue
+    return False
+
+
+def _fresh_start_refusal(task, previous):
+    if previous:
+        what = (
+            f"already has job {previous.get('job_id')} on {previous.get('model')} "
+            f"(status {previous.get('job_status') or previous.get('status')})"
+        )
+    else:
+        what = f"already has commit {task.get('commit')}"
+    return (
+        f"task {task['task_id']} {what}; a fresh start would drop that work. "
+        "Continue it on another model with `worker handoff --to-model MODEL` (carries branch, HEAD, "
+        "worktree, latest next_action, uncommitted changes and the last report), on the same model "
+        "with `worker resume`, or pass --fresh to start over deliberately; no worker started."
+    )
+
+
+def _failed_updates_path(data_root, project_id):
+    return project_data_dir(data_root, project_id) / "card-update-failures.json"
+
+
+def _update_fields(args):
+    """Names of the card fields a task-update call tried to change."""
+    ignored = {
+        "data_root", "project_id", "task_id", "actor", "root", "handler", "command",
+        "controller_token", "force", "force_reason", "format", "remote",
+    }
+    return sorted(
+        key
+        for key, value in vars(args).items()
+        if key not in ignored
+        and not key.startswith(("collaboration_", "task_", "remote_", "global_"))
+        and value not in (None, False, [], "")
+    )
+
+
+def failed_update_marker(data_root, project_id, task_id):
+    """The unresolved failed update of a card, or None."""
+    path = _failed_updates_path(Path(data_root or default_data_root()), project_id)
+    try:
+        value = json.loads(path.read_text(encoding="utf-8")).get(task_id)
+    except (OSError, ValueError, AttributeError):
+        return None
+    return value if isinstance(value, dict) else None
+
+
+def record_failed_update(data_root, project_id, task_id, fields, error):
+    """Remember that the card was not changed as asked; the next success clears it."""
+    path = _failed_updates_path(Path(data_root or default_data_root()), project_id)
+    try:
+        with _locked(path):
+            try:
+                rows = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+            except (OSError, ValueError):
+                rows = {}
+            rows[task_id] = {
+                "fields": list(fields),
+                "at": datetime.now(UTC).isoformat(),
+                "error": str(error)[:300],
+            }
+            _atomic_write(path, rows)
+    except OSError:
+        pass
+
+
+def clear_failed_update(data_root, project_id, task_id):
+    path = _failed_updates_path(Path(data_root or default_data_root()), project_id)
+    if not path.exists():
+        return
+    try:
+        with _locked(path):
+            rows = json.loads(path.read_text(encoding="utf-8"))
+            if rows.pop(task_id, None) is not None:
+                _atomic_write(path, rows)
+    except (OSError, ValueError):
+        pass
+
+
 def dispatch(
     root,
     *,
@@ -601,6 +699,9 @@ def dispatch(
     reassign_actor=None,
     rate_limit_retries=None,
     rate_limit_backoff_seconds=None,
+    fresh=False,
+    ignore_failed_update=False,
+    cross_family_on_policy_review=False,
 ):
     from .collaboration_workflow import prompt
 
@@ -656,6 +757,19 @@ def dispatch(
         _repair_legacy_classification(data, project_id, task_id, previous)
     if resume and not previous:
         raise ValueError("no recorded run exists for this task")
+    failed_update = failed_update_marker(data, project_id, task_id)
+    if failed_update and not dry_run and not ignore_failed_update:
+        raise ValueError(
+            "the last update of this card failed, so the card may still hold old "
+            f"instructions (failed fields: {', '.join(failed_update['fields']) or 'unknown'} "
+            f"at {failed_update['at']}: {failed_update['error']}). Fix and repeat the update, "
+            "check the effective next_action with collaboration task show, or pass "
+            "--ignore-failed-update to dispatch anyway; no worker started."
+        )
+    if cross_family_on_policy_review and task.get("mode") != "review":
+        raise ValueError(
+            "cross-family reassignment after a policy-review applies to review-mode cards only"
+        )
     if resume:
         if model and model != previous["model"]:
             raise ValueError(
@@ -815,6 +929,14 @@ def dispatch(
         task_id,
         scope_hash(task, body),
     )
+    # Runs after the policy gate, whose message is the more specific one.
+    if (
+        not resume
+        and not handoff
+        and not fresh
+        and (task.get("commit") or _left_work(previous))
+    ):
+        raise ValueError(_fresh_start_refusal(task, previous))
     recorded = ledger.get("execution_bindings", {}).get(task_id, {})
     recorded_model = (
         recorded.get("model") if recorded.get("assignee") == actor else None
@@ -958,6 +1080,11 @@ def dispatch(
         body_sha256=hashlib.sha256(body.encode()).hexdigest(),
         body_revision=ledger["task_details"][task_id].get("body_revision") or 1,
         expected_updated_at=task["updated_at"],
+        effective_next_action=task.get("next_action"),
+        next_action_updated_at=task["updated_at"],
+        next_action_age_seconds=_age_seconds(task["updated_at"]),
+        task_mode=task.get("mode"),
+        cross_family_on_policy_review=bool(cross_family_on_policy_review),
         command_receipt=[
             v.replace(values["prompt"], "<prompt:" + actual_prompt_sha + ">")
             for v in argv
@@ -981,8 +1108,18 @@ def dispatch(
     from .persistent_storage import describe
 
     plan["storage"] = describe(jobdir)
+    if failed_update:
+        plan["failed_update"] = failed_update
     if dry_run:
-        return {**plan, "executed": False}
+        # A preview starts nothing and leaves the card as it is.
+        return {
+            **plan,
+            "executed": False,
+            "preview": True,
+            "status": "preview",
+            "job_status": "preview",
+            "card_status": task["status"],
+        }
     if not Path(plan["worktree"]).is_dir():
         raise ValueError(f"worktree directory does not exist: {plan['worktree']}")
     from .dispatch_health import require_available
@@ -1281,6 +1418,14 @@ def _run_job(file):
             job_id=job["job_id"],
             attempt_id=job["job_id"],
             scope_sha256=job["scope_sha256"],
+            **(
+                {
+                    "provider_message": result["provider_message"],
+                    "message": "policy-review: " + result["provider_message"][:300],
+                }
+                if result.get("provider_message")
+                else {}
+            ),
         )
     try:
         _atomic_write(Path(job["job_dir"]) / "result.json", value)
@@ -1292,6 +1437,15 @@ def _run_job(file):
         _persist_job_terminal(job, result)
     except (OSError, ValueError, KeyError) as exc:
         value["metadata_warning_job_state"] = str(exc)[:300]
+    if (
+        result.get("failure_class") == "policy-review"
+        and job.get("cross_family_on_policy_review")
+        and job.get("task_mode") == "review"
+    ):
+        try:
+            value = _cross_family(job, result, value)
+        except Exception as exc:
+            value["cross_family"] = {"status": "deferred", "reason": str(exc)[:1024]}
     if (
         result.get("retryable")
         and result.get("failure_class") != "policy-review"
@@ -1463,13 +1617,67 @@ def _handoff_prompt(handoff):
     )
     if handoff.get("uncommitted_diffstat"):
         lines.append("Diffstat (git diff --stat HEAD):\n" + handoff["uncommitted_diffstat"])
+    if handoff.get("next_action"):
+        lines.append("Latest next_action on the card:\n" + handoff["next_action"])
     if handoff.get("last_report_excerpt"):
         lines.append(
             f"Last report from {handoff['from_model']} (excerpt):\n"
             + handoff["last_report_excerpt"]
         )
+    if handoff.get("provider_message"):
+        lines.append(
+            f"Why {handoff['from_model']} stopped (provider message):\n"
+            + handoff["provider_message"]
+        )
     lines.append("Continuation: " + handoff["continuation"])
     return "\n".join(lines)
+
+
+def build_handoff(
+    root,
+    ledger,
+    task,
+    previous,
+    to_model,
+    *,
+    continuation="Continue the assigned task; preserve completed progress.",
+    reason="explicit-handoff",
+    provider_message=None,
+):
+    """The continuation context for a card that moves to another model.
+
+    The manual `worker handoff` and the automatic fallback both build it here,
+    so no path hands the next model less than the checkout state, the latest
+    next_action and the last report.
+    """
+    checkout = Path(previous.get("worktree") or task.get("worktree") or root)
+    report_text = ""
+    try:
+        report_text = Path(previous["report_file"]).read_text(errors="replace")
+    except (OSError, KeyError):
+        pass
+    report_text = report_text or (
+        ledger.get("task_details", {})
+        .get(task["task_id"], {})
+        .get("report", {})
+        .get("text", "")
+    )
+    return {
+        "kind": "model-handoff",
+        "previous_job": previous.get("job_id"),
+        "from_model": previous["model"],
+        "to_model": to_model,
+        "reason": reason,
+        "worktree": str(checkout),
+        "branch": _git_text(checkout, "rev-parse", "--abbrev-ref", "HEAD"),
+        "head": _git_text(checkout, "rev-parse", "HEAD"),
+        "uncommitted_status": _git_text(checkout, "status", "--short"),
+        "uncommitted_diffstat": _git_text(checkout, "diff", "--stat", "HEAD"),
+        "next_action": task.get("next_action"),
+        "last_report_excerpt": report_text.strip()[-2000:],
+        **({"provider_message": provider_message} if provider_message else {}),
+        "continuation": continuation.strip(),
+    }
 
 
 def model_handoff(
@@ -1527,29 +1735,9 @@ def model_handoff(
 
     if not isinstance(continuation, str) or not continuation.strip():
         raise ValueError("continuation must not be empty")
-    checkout = Path(previous.get("worktree") or task.get("worktree") or root)
-    report_text = ""
-    try:
-        report_text = Path(previous["report_file"]).read_text(errors="replace")
-    except (OSError, KeyError):
-        pass
-    report_text = report_text or (
-        ledger.get("task_details", {}).get(task_id, {}).get("report", {}).get("text", "")
+    handoff = build_handoff(
+        root, ledger, task, previous, to_model, continuation=continuation, reason=reason
     )
-    handoff = {
-        "kind": "model-handoff",
-        "previous_job": previous.get("job_id"),
-        "from_model": from_model,
-        "to_model": to_model,
-        "reason": reason,
-        "worktree": str(checkout),
-        "branch": _git_text(checkout, "rev-parse", "--abbrev-ref", "HEAD"),
-        "head": _git_text(checkout, "rev-parse", "HEAD"),
-        "uncommitted_status": _git_text(checkout, "status", "--short"),
-        "uncommitted_diffstat": _git_text(checkout, "diff", "--stat", "HEAD"),
-        "last_report_excerpt": report_text.strip()[-2000:],
-        "continuation": continuation.strip(),
-    }
     if dry_run:
         return {"executed": False, "task_id": task_id, "handoff": handoff}
     next_assignee = "worker-" + _model_alias(to_model)
@@ -1592,6 +1780,21 @@ def model_handoff(
         "handoff_to": to_model,
         "previous_job": previous.get("job_id"),
     }
+
+
+def _job_handoff(job, result, to_model):
+    """Continuation context for an automatic move of a finished job to another model."""
+    ledger = _load_ledger(Path(job["data_root"]), job["project_id"])
+    task = next(t for t in ledger["tasks"] if t["task_id"] == job["task_id"])
+    return build_handoff(
+        job["control_root"],
+        ledger,
+        task,
+        job,
+        to_model,
+        reason=result.get("failure_class") or "fallback",
+        provider_message=result.get("provider_message"),
+    )
 
 
 def _fallback(job, result, value):
@@ -1642,12 +1845,7 @@ def _fallback(job, result, value):
         audience=job["rules_audience"],
         fallback_models=remaining,
         _replace_job_id=job["job_id"],
-        handoff={
-            "previous_job": job["job_id"],
-            "reason": result.get("failure_class"),
-            "report_file": job["report_file"],
-            "checkout": job["worktree"],
-        },
+        handoff=_job_handoff(job, result, next_model),
         reassign=True,
         reassign_actor=job.get("controller"),
     )
@@ -1668,6 +1866,117 @@ def _fallback(job, result, value):
     except (OSError, ValueError, KeyError):
         next_result["metadata_warning"] = (
             "Fallback result retained; fallback notification could not be recorded"
+        )
+    return {
+        **next_result,
+        "previous_jobs": [job["job_id"], *next_result.get("previous_jobs", [])],
+        "primary_job_id": job["job_id"],
+        "fallback_job_id": next_result["job_id"],
+        "primary_result": value,
+    }
+
+
+def _cross_family(job, result, value):
+    """Move a policy-reviewed review card to a model of another family (opt-in)."""
+    from .execution_outbox import change
+    from .executor_routing import _model_alias
+    from .model_constraints import allowed as model_allowed, load_profiles
+    from .runtime_origin import require_local
+    from .subscription_quota import automatic_available
+
+    data = Path(job["data_root"])
+    profiles = load_profiles(job["data_root"])
+    constraints = (
+        _load_ledger(data, job["project_id"])
+        .get("task_details", {})
+        .get(job["task_id"], {})
+        .get("model_constraints")
+    )
+
+    def family(name):
+        return _model_alias(profiles.get(name, {}).get("provider_model") or name)
+
+    def local(name):
+        try:
+            origin = profiles[name].get("execution_origin")
+            require_local(origin, profiles[name].get("profile_provider", profiles[name]["provider"]))
+        except (KeyError, TypeError, ValueError):
+            return False
+        return True
+
+    current = family(job["model"])
+    ordered = [*job.get("fallback_models", []), *sorted(profiles)]
+    candidates = [
+        m
+        for m in dict.fromkeys(ordered)
+        if m in profiles
+        and family(m) != current
+        and local(m)
+        and automatic_available(job["data_root"], job["project_id"], m)
+        and model_allowed(constraints, profiles, m)
+    ]
+    if not candidates:
+        return {
+            **value,
+            "cross_family": {
+                "status": "no-candidate",
+                "reason": f"no configured, available adapter outside the {current} family",
+            },
+        }
+    next_model = candidates[0]
+    next_assignee = "worker-" + _model_alias(next_model)
+    message = result.get("provider_message") or ""
+    clear_policy_review(
+        job["control_root"],
+        data_root=job["data_root"],
+        project_id=job["project_id"],
+        task_id=job["task_id"],
+        job_id=job["job_id"],
+        reason=(
+            f"automatic cross-family reassignment of a review card from {job['model']} to "
+            f"{next_model}; provider message: {message[:1500] or 'none'}"
+        ),
+        actor=job.get("controller") or "operator",
+        controller=job.get("controller"),
+        controller_token=job.get("controller_token"),
+    )
+    next_result = dispatch(
+        job["control_root"],
+        data_root=job["data_root"],
+        project_id=job["project_id"],
+        task_id=job["task_id"],
+        model=next_model,
+        effort=job["effort"],
+        timeout_seconds=job.get("timeout_seconds", LEGACY_TIMEOUT_SECONDS),
+        idle_timeout_seconds=job.get("idle_timeout_seconds", LEGACY_IDLE_TIMEOUT_SECONDS),
+        assignee=next_assignee,
+        retry=job["retry"],
+        controller=job.get("controller"),
+        controller_token=job.get("controller_token"),
+        audience=job["rules_audience"],
+        _replace_job_id=job["job_id"],
+        handoff=_job_handoff(job, result, next_model),
+        reassign=True,
+        reassign_actor=job.get("controller"),
+    )
+    try:
+        change(
+            data,
+            job["project_id"],
+            "dispatch.cross-family",
+            job["task_id"],
+            from_model=job["model"],
+            to_model=next_model,
+            reason="policy-review",
+            message=f"policy-review on {job['model']} -> reassigned to {next_model}: {message[:300]}",
+            provider_message=message,
+            previous_job=job["job_id"],
+            from_assignee=job["assignee"],
+            to_assignee=next_assignee,
+        )
+    except (OSError, ValueError, KeyError):
+        next_result["metadata_warning"] = (
+            "Cross-family result retained; the reassignment notice could not be recorded"
         )
     return {
         **next_result,
@@ -1717,6 +2026,24 @@ def _interim_notice(job_id, job_status):
     )
 
 
+def _stop_detail(args, project):
+    """What the provider said when the card's latest job was stopped, for a missing report."""
+    try:
+        data = Path(args.data_root or default_data_root())
+        project_id = args.project_id or (project or {})["project_id"]
+        job = json.loads(
+            (project_data_dir(data, project_id) / "worker-jobs.json").read_text()
+        )[args.task_id]
+        result = json.loads((Path(job["job_dir"]) / "result.json").read_text())
+    except (OSError, ValueError, KeyError, TypeError):
+        return ""
+    message = result.get("provider_message")
+    if not message:
+        return ""
+    label = result.get("failure_class") or result.get("status") or "stopped"
+    return f"; job {job.get('job_id')} ended {label}. Provider message: {message}"
+
+
 def command(args):
     from .planning_api import render
 
@@ -1755,7 +2082,9 @@ def command(args):
             True,
         )
         if not value.get("report"):
-            raise ValueError("no final report is attached yet")
+            raise ValueError(
+                "no final report is attached yet" + _stop_detail(args, project)
+            )
         report = value["report"]
         text = report["text"]
         project_for_job = args.project_id or (project or {})["project_id"]
@@ -1893,6 +2222,9 @@ def command(args):
             reassign_actor=args.actor,
             rate_limit_retries=args.rate_limit_retries,
             rate_limit_backoff_seconds=args.rate_limit_backoff_seconds,
+            fresh=args.fresh,
+            ignore_failed_update=args.ignore_failed_update,
+            cross_family_on_policy_review=args.cross_family_on_policy_review,
         )
     print(render(value, format="json", max_output_bytes=65536))
     return 2 if value.get("status") in {"failed", "interrupted"} else 0
@@ -1950,6 +2282,21 @@ def _run_parser(parser, action):
     )
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--background", action="store_true")
+    parser.add_argument(
+        "--fresh",
+        action="store_true",
+        help="Start over on a card that already has a commit or a previous job; otherwise use worker handoff or resume",
+    )
+    parser.add_argument(
+        "--ignore-failed-update",
+        action="store_true",
+        help="Dispatch although the card's last update failed and it may hold old instructions",
+    )
+    parser.add_argument(
+        "--cross-family-on-policy-review",
+        action="store_true",
+        help="Review cards only: after a provider policy-review, reassign to a model of another family with the handoff context",
+    )
     if action != "enqueue":
         parser.add_argument(
             "--enqueue",

@@ -19,7 +19,7 @@ continuity collaboration packet --project-id demo --assignee agent-1
 continuity handoff show --project-id demo
 ```
 
-Alpha36 CLI is 0.1.0a36; plugins are 0.1.0-alpha.36. First [initialize an unregistered project](../USAGE.en.md#initialize), without overwriting an existing .continuity directory. whoami neither logs into providers nor acquires a lease.
+Alpha37 CLI is 0.1.0a37; plugins are 0.1.0-alpha.37. First [initialize an unregistered project](../USAGE.en.md#initialize), without overwriting an existing .continuity directory. whoami neither logs into providers nor acquires a lease.
 
 ## Paste into the brief
 

@@ -53,8 +53,16 @@ _REPORT_POLICY = {
 }
 
 
+NEXT_ACTION_LIMIT = 4096  # handoff notes live in next_action
+
+
 class CollaborationRegistryError(ValueError):
     """A collaboration document or operation is invalid."""
+
+    def __init__(self, message: str, **details: Any):
+        super().__init__(message)
+        # Machine-readable hints the CLI adds to its JSON error (e.g. missing_argument).
+        self.details = details
 
 
 def default_data_root() -> Path:
@@ -180,13 +188,20 @@ def _load(path: Path) -> dict[str, Any] | None:
 
 
 def _text(value: Any, field: str, limit: int = 4096, *, multiline=False) -> str:
-    if (
-        not isinstance(value, str)
-        or not value.strip()
-        or (len(value) if value.isascii() else len(value.encode("utf-8"))) > limit
-        or (_CONTROL_MULTILINE_RE if multiline else _CONTROL_RE).search(value)
-    ):
-        raise CollaborationRegistryError(f"{field} is invalid")
+    if not isinstance(value, str):
+        raise CollaborationRegistryError(f"{field} must be a string")
+    if not value.strip():
+        raise CollaborationRegistryError(f"{field} must not be empty")
+    size = len(value) if value.isascii() else len(value.encode("utf-8"))
+    if size > limit:
+        raise CollaborationRegistryError(
+            f"{field} is too long: {size} bytes, limit {limit}"
+        )
+    if (_CONTROL_MULTILINE_RE if multiline else _CONTROL_RE).search(value):
+        raise CollaborationRegistryError(
+            f"{field} contains a control character"
+            + ("" if multiline else " (newlines are not allowed)")
+        )
     return value
 
 
@@ -327,7 +342,7 @@ def _validate_task(task: dict[str, Any]) -> dict[str, Any]:
         )
     _text(task["title"], "title", 512)
     _text(task["objective"], "objective")
-    _text(task["next_action"], "next_action", 1024)
+    _text(task["next_action"], "next_action", NEXT_ACTION_LIMIT)
     if (
         task["assignee"] is not None
         and _ASSIGNEE_RE.fullmatch(task["assignee"]) is None
@@ -958,8 +973,12 @@ def update_task(
     force_reason: str | None = None,
     actor: str | None = None,
     controller_token: str | None = None,
+    dry_run: bool = False,
 ) -> dict[str, Any]:
-    """Update a card; local completion is ready-for-review, not acceptance."""
+    """Update a card; local completion is ready-for-review, not acceptance.
+
+    dry_run validates and returns the resulting card without writing it.
+    """
     if actor is not None and (
         not isinstance(actor, str) or _ASSIGNEE_RE.fullmatch(actor) is None
     ):
@@ -1021,7 +1040,15 @@ def update_task(
                     "reassign an unclaimed card, "
                     "declaring the caller with --actor; "
                     "a running attempt requires explicit --force --force-reason. "
-                    f"If you are the recorded owner, use --actor {previous_assignee} --assignee {assignee}."
+                    f"If you are the recorded owner, use --actor {previous_assignee} --assignee {assignee}.",
+                    **(
+                        {
+                            "missing_argument": "--actor",
+                            "current_assignee": previous_assignee,
+                        }
+                        if actor is None
+                        else {}
+                    ),
                 )
         status_supplied = status is not None
         if not status_supplied:
@@ -1139,7 +1166,7 @@ def update_task(
             details["claimed_by"] = actor
         task["status"] = status
         if next_action is not None:
-            task["next_action"] = _text(next_action, "next_action", 1024)
+            task["next_action"] = _text(next_action, "next_action", NEXT_ACTION_LIMIT)
         if worktree is not None:
             task["worktree"] = str(Path(worktree).resolve())
         if allowed_files is not None:
@@ -1159,6 +1186,8 @@ def update_task(
             details.pop("claimed_by", None)
         task["updated_at"] = _now()
         _validate_task(task)
+        if dry_run:
+            return task
         _note_lane(ledger, task)
         ledger["updated_at"] = _now()
         _atomic_write(path, ledger)

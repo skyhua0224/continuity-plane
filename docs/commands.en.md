@@ -10,7 +10,7 @@ This page lists Continuity commands, MCP tools and hooks by feature, for looking
 Python 3.11+ is required; code indexing also needs Git. A pipx installation makes the CLI available to host integrations:
 
 ```bash
-pipx install 'continuity-plane==0.1.0a36'
+pipx install 'continuity-plane==0.1.0a37'
 continuity --version
 # Register inside your repository; replace demo with its stable project ID
 continuity collaboration register --project-id demo --control-root . --repository-root .
@@ -18,6 +18,8 @@ continuity whoami --root . --assignee controller --controller controller
 ```
 
 See [deployment](deployment.en.md) for existing installations, venvs, Windows and pipx/uv upgrades. The host process must find the CLI on PATH; with a venv, use absolute executable paths in MCP configuration.
+
+`continuity self-update [--dry-run] [--force]` upgrades this install with its own tool (pipx, uv or a virtual environment). It exits 0 when updated or already current, 1 on a failed lookup or upgrade, 2 when it refuses an editable, source, system-interpreter or private install, and 3 when it defers because worker jobs run on this host (`--force` overrides). `continuity doctor` reports `versions` (CLI, MCP launcher, plugins, skew). See [Update notices](deployment.en.md#update-notices-and-continuity-self-update).
 
 Registration is enough for the Todo and collaboration examples below. Use `continuity init --root . --project-id demo` when you also want project-local .continuity files, governance templates and authoritative State; do not initialize over an existing directory. whoami declares this invocation's identity, not a controller lease. Give concurrent executors stable, distinct identities rather than transient MCP connection IDs.
 
@@ -85,7 +87,7 @@ Updates run sequentially, at most 50 per file, and stop at the first failure wit
 
 `--dependency ID` (repeatable) expresses prerequisite cards in both local and Gitea modes; completed, merged and superseded are terminal. `task list --dependencies-ready` returns only cards satisfying that rule. Claim, activation and dispatch reject unmet dependencies. A legacy “Depends on:” sentence is surfaced as a migration hint and never silently inferred as a dependency. Local and Gitea list calls now share one envelope: `items`, `total_items`, `next_cursor`, `has_more`.
 
-`task add` requires a non-empty `--body`/`--body-file`; without one the card could never be dispatched. On the local backend `task update --body` (and `--title`, `--objective`, `--priority`, `--exit-criterion`) revises a card at any time: each changed body gets a revision number and a sha256, both recorded in the change log, and a dispatch stores the body sha256 and revision in its job. A dependency may be declared before it is complete: `task add --assignee X --dependency Y` creates the card as `queued` and claim, activation and dispatch refuse it until Y is completed, merged or superseded. `--mode review` is a valid mode; a rejected mode, priority or status lists the valid values.
+`task add` requires a non-empty `--body`/`--body-file`; without one the card could never be dispatched. On the local backend `task update --body` (and `--title`, `--objective`, `--priority`, `--exit-criterion`) revises a card at any time: each changed body gets a revision number and a sha256, both recorded in the change log, and a dispatch stores the body sha256 and revision in its job. A dependency may be declared before it is complete: `task add --assignee X --dependency Y` creates the card as `queued` and claim, activation and dispatch refuse it until Y is completed, merged or superseded. `--mode review` is a valid mode; a rejected mode, priority or status lists the valid values. A rejected length names the field, its size in bytes and the limit (`next_action` takes up to 4096 bytes). `task update --dry-run` validates an update and prints the resulting card (`dry_run: true`) without writing it; it is not available for shared Gitea tasks. Reassigning without `--actor` fails with JSON that has `missing_argument: "--actor"`; the card is left unchanged. MCP `continuity_task_add` accepts `exit_criterion` as one string or a list, and `body_file` (a path on the state host) instead of `body`.
 
 Per-card model limits: `task add/update --min-tier strong|standard|light --deny-model NAME` (repeatable; `task update --clear-model-constraints` removes them). Dispatch, the queue, handoff and fallback refuse a model below the tier or in the deny list and name the allowed models. Operators label an adapter with `worker configure --model NAME ... --tier strong`; unlabeled adapters use a built-in family default (opus, sol, grok strong; sonnet, astra, glm standard; luna, haiku light; anything else standard). Fallback candidates that a card forbids are skipped.
 
@@ -146,7 +148,7 @@ continuity worker queue pause --reason 'maintenance'
 continuity worker queue resume
 ```
 
-One runner can hold the non-blocking single-instance lock for a project/data root. It reuses normal dispatch validation for cards, controller lease, client-family capacity and observed quota/cooldown. MCP safely exposes `worker.queue.enqueue/status/pause/resume/cancel/requeue`; `worker.queue.run`, which starts provider processes, remains CLI-only. Capacity or quota gates leave requests queued; transient 429/quota/gateway outcomes return with backoff. Enqueue, waiting, blocked, retry and launch transitions enter the change feed for `changes`/`wait` and hooks. `pause` is a host switch and does not kill workers already running. See `continuity help worker.queue.run`.
+One runner can hold the non-blocking single-instance lock for a project/data root. It reuses normal dispatch validation for cards, controller lease, client-family capacity and observed quota/cooldown. MCP safely exposes `worker.queue.enqueue/status/pause/resume/cancel/requeue`; `worker.queue.run`, which starts provider processes, remains CLI-only. Capacity or quota gates leave requests queued; transient 429/quota/gateway outcomes return with backoff. Enqueue, waiting, blocked, retry and launch transitions enter the change feed for `changes`/`wait` and hooks. `pause` is a host switch and does not kill workers already running. `worker queue enqueue` and `status` report `runner.consuming`; when no runner holds the lock they say so and give the start command (`continuity worker queue run --project-id P --watch`). See `continuity help worker.queue.run`.
 
 worker events emits newline-delimited started, progress, completed, failed, rate-limited and blocked facts from cursors rather than a monitoring time window. A single-project cursor is an integer; --all-projects uses project:cursor pairs and every row carries stream_cursor.
 
@@ -212,7 +214,7 @@ Install the CLI first. On Codex CLI versions supporting these commands, choose t
 
 ```bash
 # Core hooks, independent search, and planning/State are separate components
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.36
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.37
 codex plugin add continuity-plane@continuity-plane
 codex plugin add continuity-plane-search@continuity-plane
 codex plugin add continuity-plane-state@continuity-plane
@@ -304,6 +306,8 @@ When state lives on another host, use `continuity-mcp --proxy ssh://HOST` (`cont
 | SubagentStart / SubagentStop | Not supplied by this plugin | Supported | Observe native children, without invented PIDs, exit codes, success or complete reports |
 
 The Alpha35 plugin and source handoff retain SessionEnd and add resumable worker events, inbox wait/unread, job terminal state and actual-checkout observations. The [handoff implementation](field-workflows.md#development-source-controller-recovery-and-change-consumers) also includes read-time observations, consumer acknowledgements, dispatch snapshot checks and task aliases. Older installs require an upgrade and host reconnect.
+
+Worker-end notices cover the project of the session's working directory. Another project's events reach a session only when it opts in: list the project in `CONTINUITY_WATCH_PROJECTS` (comma-separated project ids) or declare the session its controller with `continuity session bind --project-id P --provider claude --session-id OWN_SESSION_ID --task-id T --role controller`. Holding a controller lease under a shared name such as `claude-opus` does not opt a session in. Each job outcome is announced once: `attempt.finished` plus `job.*`, repeated rows, and `job.lost` followed by `job.completed` become one line with the final outcome.
 
 Skills are instructions the model can load; MCP tools are callable operations; hooks run at lifecycle events. Notices are changed-only and do not guarantee waking an offline conversation. Managed attempt records require a worker running under supervision.
 

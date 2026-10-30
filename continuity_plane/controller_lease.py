@@ -7,6 +7,7 @@ import math
 import re
 import os
 import socket
+import stat
 import subprocess
 import time
 import uuid
@@ -24,6 +25,49 @@ from .collaboration_registry import (
     project_data_dir,
     GUARDED_DISPATCH_LEDGER_SCHEMA,
 )
+
+
+TOKEN_FILE_ENV = "CONTINUITY_CONTROLLER_TOKEN_FILE"
+PROJECT_TOKEN_FILE = "controller-token"
+
+
+def _read_token_file(path):
+    """Read a fence token from a file only its owner can read; never echo it."""
+    path = Path(path)
+    try:
+        info = path.stat()
+    except FileNotFoundError:
+        return None
+    except OSError as exc:
+        raise ValueError(f"controller token file {path} is unreadable: {exc.strerror}") from exc
+    if not stat.S_ISREG(info.st_mode):
+        raise ValueError(f"controller token file {path} is not a regular file")
+    if info.st_mode & 0o077 or (hasattr(os, "getuid") and info.st_uid != os.getuid()):
+        raise ValueError(
+            f"controller token file {path} has unsafe permissions or owner; "
+            "it must be owned by the lease holder with mode 0600 (chmod 600)"
+        )
+    try:
+        return path.read_text(encoding="utf-8").strip() or None
+    except (OSError, UnicodeError) as exc:
+        raise ValueError(f"controller token file {path} is unreadable") from exc
+
+
+def resolve_token(data_root, project_id, token=None):
+    """Explicit token, CONTINUITY_CONTROLLER_TOKEN, then a server-side token file.
+
+    The file is CONTINUITY_CONTROLLER_TOKEN_FILE or the project's own
+    `controller-token` in the state directory, so a host that cannot pass a
+    token (a native MCP host) still acts for the lease holder on the state
+    host. A token is never accepted as a tool argument or printed.
+    """
+    token = token or os.environ.get("CONTINUITY_CONTROLLER_TOKEN")
+    if token:
+        return token
+    explicit = os.environ.get(TOKEN_FILE_ENV)
+    if explicit:
+        return _read_token_file(explicit)
+    return _read_token_file(project_data_dir(Path(data_root or default_data_root()), project_id) / PROJECT_TOKEN_FILE)
 
 
 def _require(doc, owner=None, token=None, *, required=False):
@@ -81,9 +125,10 @@ def require(data_root, project_id, owner=None, token=None):
     required = _load_ledger(Path(data_root or default_data_root()), project_id).get(
         "controller_fencing_required", False
     )
-    return _require(
-        _load(_path(data_root, project_id)), owner, token, required=required
-    )
+    doc = _load(_path(data_root, project_id))
+    if doc.get("controller_lease"):
+        token = resolve_token(data_root, project_id, token)
+    return _require(doc, owner, token, required=required)
 
 
 def active_owner(data_root, project_id, *, now=None):
@@ -290,6 +335,8 @@ def _reserve(data_root, project_id, *, task_id, job_id, owner, token, profile, r
     path = _path(data_root, project_id)
     with _locked(path):
         doc = _load(path)
+        if doc.get("controller_lease"):
+            token = resolve_token(data_root, project_id, token)
         lease = _require(doc, owner, token, required=required)
         reservations = doc.setdefault("dispatch_reservations", {})
         previous = reservations.get(task_id)
@@ -437,7 +484,7 @@ def reconcile_host(
     with _locked(path):
         doc = _load(path)
         if apply:
-            _require(doc, owner, token, required=True)
+            _require(doc, owner, resolve_token(data_root, project_id, token), required=True)
         ledger = _load_ledger(Path(data_root or default_data_root()), project_id)
         rows = []
         for task_id, reservation in sorted(

@@ -127,7 +127,7 @@ flowchart LR
 需要 Python 3.11+ 和 Git。
 
 ```bash
-pipx install 'continuity-plane==0.1.0a36'
+pipx install 'continuity-plane==0.1.0a37'
 continuity --version
 cd your-repo
 continuity collaboration register --project-id demo --control-root . --repository-root .
@@ -155,7 +155,7 @@ continuity collaboration task list --project-id demo --format brief
 ```bash
 claude plugin marketplace add skyhua0224/continuity-plane
 claude plugin install continuity-plane@continuity-plane --scope user
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.36
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.37
 codex plugin add continuity-plane-state@continuity-plane
 codex plugin add continuity-plane-search@continuity-plane
 codex plugin add continuity-plane@continuity-plane

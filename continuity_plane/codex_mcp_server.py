@@ -545,8 +545,14 @@ def main() -> int:
         if request_id is not None:
             issue = _runtime_version_issue()
             if issue:
-                _error(request_id, -32000, issue)
-                continue
+                # The agent cannot restart this process itself; answer once and
+                # exit so the host reconnects to the installed version.
+                _error(
+                    request_id,
+                    -32000,
+                    issue + " This MCP process exits now so the host reconnects to the installed version.",
+                )
+                return 0
         if method == "initialize":
             initialize_params = request.get("params")
             if not isinstance(initialize_params, dict):

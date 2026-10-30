@@ -2,11 +2,11 @@
 
 [English](validation.en.md) · [工作流](workflows.md) · [历史实验](benchmarks.md)
 
-范围：Alpha36（`0.1.0a36`）。证据分为本轮合成 CLI、已有自动回归、匿名使用反馈和未覆盖项，不能互相替代。
+范围：Alpha37（`0.1.0a37`）。证据分为本轮合成 CLI、已有自动回归、匿名使用反馈和未覆盖项，不能互相替代。
 
 ## 本轮可复现实测
 
-Alpha27 已用本机 tea 0.15.0／HTTPS Gitea 1.24.7 双合成账号私有仓库验收；Alpha36 未另建真实 Gitea 现场，协作相关变化由合成回归覆盖。下方采用者脚本在仅安装 Alpha36 wheel 的新持久 venv 与全新工作目录重跑；receipt 只含允许公开的合成聚合数据，完整发行构建仍以 tag CI 为准。
+Alpha27 已用本机 tea 0.15.0／HTTPS Gitea 1.24.7 双合成账号私有仓库验收；Alpha36 未另建真实 Gitea 现场，协作相关变化由合成回归覆盖。下方采用者脚本在仅安装 Alpha37 wheel 的新持久 venv 与全新工作目录重跑；receipt 只含允许公开的合成聚合数据，完整发行构建仍以 tag CI 为准。
 
 运行公开脚本；使用一个**新建、空的持久目录**，不指向自己的注册表或 provider profile：
 
@@ -62,6 +62,10 @@ python examples/verify_adopter_workflows.py --workspace /path/to/new-persistent-
 | 漂移与未了结承诺 | 当前解析与规则回归；匿名反馈 | 不是对所有文档与外部世界的真实性证明 |
 
 Alpha25 的[公开发行 CI](https://github.com/skyhua0224/continuity-plane/actions/runs/38845950775)通过 268 项测试。文档新增脚本和链接／命令检查另随当前主分支 CI 运行；不改写已发布 wheel 或历史 test count。
+
+## Alpha37 验证
+
+- 回归：`tests/test_a37_*.py`；完整源码套件 2,897 项，仅 M7-05 收据与 M8-10 延迟门失败，与 Alpha35 相同。`self-update` 只做过预演。更新检测已对真实 PyPI 验证：后台查询、终端提示、管道不输出、标准输出不变、关闭开关。
 
 ## Alpha36 验证
 

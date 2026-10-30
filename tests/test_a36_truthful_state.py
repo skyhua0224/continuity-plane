@@ -546,5 +546,29 @@ class HandoffPlanLimitTests(unittest.TestCase):
         self.assertGreater(len(plan_line), 2500)
 
 
+
+
+class ReconcileEntrypointTests(unittest.TestCase):
+    def test_reconcile_works_with_only_a_project_id(self):
+        import contextlib
+        import io
+        import os
+        import tempfile
+        from pathlib import Path
+        from unittest.mock import patch
+
+        from continuity_plane.cli import entrypoint
+        from continuity_plane.collaboration_registry import register_project
+
+        with tempfile.TemporaryDirectory() as folder:
+            data = Path(folder) / "data"
+            root = Path(folder) / "repo"
+            root.mkdir()
+            register_project(data, project_id="sample", control_root=root)
+            output = io.StringIO()
+            with patch.dict(os.environ, {"CONTINUITY_DATA_ROOT": str(data)}), contextlib.redirect_stdout(output):
+                code = entrypoint(["collaboration", "reconcile", "--project-id", "sample", "--format", "brief"])
+        self.assertEqual(code, 0, output.getvalue())
+
 if __name__ == "__main__":
     unittest.main()

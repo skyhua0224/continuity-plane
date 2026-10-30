@@ -10,7 +10,7 @@
 需要 Python 3.11+；代码索引还需要 Git。推荐用 pipx 安装，让宿主插件也能找到 CLI：
 
 ```bash
-pipx install 'continuity-plane==0.1.0a36'
+pipx install 'continuity-plane==0.1.0a37'
 continuity --version
 # 在目标仓库登记项目；demo 换成稳定的项目 ID
 continuity collaboration register --project-id demo --control-root . --repository-root .
@@ -18,6 +18,8 @@ continuity whoami --root . --assignee controller --controller controller
 ```
 
 已有安装、venv、Windows 路径及 pipx/uv 升级见[部署说明](deployment.md)。宿主进程的 PATH 必须能找到 CLI；使用 venv 时可在 MCP 配置中填写可执行文件的绝对路径。
+
+`continuity self-update [--dry-run] [--force]` 用本安装自己的工具（pipx、uv 或虚拟环境）升级。已更新或已是最新时退出 0；查询或升级失败为 1；遇到 editable、源码、系统解释器或私有安装时拒绝并退出 2；本机有 worker 作业运行而推迟时为 3（`--force` 可覆盖）。`continuity doctor` 的 `versions` 字段给出 CLI、MCP 启动器、插件版本与不一致之处。详见[更新提示](deployment.md#更新提示与-continuity-self-update)。
 
 登记项目即可用下方 Todo 和协作功能。需要项目内 `.continuity/`、治理模板与权威 State 时，再使用 `continuity init --root . --project-id demo`；已有目录不重复 init。`whoami` 说明本次身份，不自动获得主控租约。执行方使用独立、稳定的名字，不把临时 MCP connection ID 当 assignee。
 
@@ -85,7 +87,7 @@ cat updates.json | continuity collaboration task update --project-id demo --batc
 
 `--dependency ID`（可重复）在本地和 Gitea 卡上表达前置任务；completed、merged 与 superseded 都视为终态。`task list --dependencies-ready` 只返回满足这一条件的卡。未满足依赖会阻止 claim、转 active 和 dispatch。旧卡正文里的 “Depends on:” 不会被静默猜测成依赖；list 会给出迁移提示。两种后端的 `task list` 都返回同一 envelope：`items`、`total_items`、`next_cursor`、`has_more`，不再混用 list 和 object。
 
-`task add` 必须带非空 `--body`／`--body-file`；没有正文的卡无法派发。本地后端的 `task update --body`（以及 `--title`、`--objective`、`--priority`、`--exit-criterion`）可随时修订：正文每次变化都有修订号和 sha256，并写入 change log；dispatch 会把正文 sha256 与修订号记进 job。依赖可在完成前声明：`task add --assignee X --dependency Y` 创建出的卡是 `queued`，在 Y 完成、合入或被取代前，claim、转 active、dispatch 都会拒绝。`--mode review` 是合法模式；模式、优先级或状态不合法时，错误会列出合法值。
+`task add` 必须带非空 `--body`／`--body-file`；没有正文的卡无法派发。本地后端的 `task update --body`（以及 `--title`、`--objective`、`--priority`、`--exit-criterion`）可随时修订：正文每次变化都有修订号和 sha256，并写入 change log；dispatch 会把正文 sha256 与修订号记进 job。依赖可在完成前声明：`task add --assignee X --dependency Y` 创建出的卡是 `queued`，在 Y 完成、合入或被取代前，claim、转 active、dispatch 都会拒绝。`--mode review` 是合法模式；模式、优先级或状态不合法时，错误会列出合法值。长度超限的错误会写明字段、实际字节数和上限（`next_action` 最多 4096 字节）。`task update --dry-run` 只校验并打印更新后的卡片（`dry_run: true`），不写入；共享 Gitea 任务不支持。改派时缺少 `--actor` 会返回带 `missing_argument: "--actor"` 的 JSON，卡片保持不变。MCP `continuity_task_add` 的 `exit_criterion` 可传单个字符串或列表，并可用 `body_file`（状态主机上的路径）代替 `body`。
 
 按卡限制模型：`task add／update --min-tier strong|standard|light --deny-model 名称`（可重复；`task update --clear-model-constraints` 清除）。dispatch、队列、handoff 与 fallback 会拒绝低于该档或在拒绝列表中的模型，并列出允许的模型。operator 用 `worker configure --model 名称 ... --tier strong` 给适配器定档；未定档的按内置的模型族默认值（opus、sol、grok 为 strong；sonnet、astra、glm 为 standard；luna、haiku 为 light；其余 standard）。卡片禁止的 fallback 候选会被跳过。
 
@@ -148,7 +150,7 @@ continuity worker queue pause --reason 'maintenance'
 continuity worker queue resume
 ```
 
-同项目同一数据根只有一个 queue runner 能持有非阻塞单实例锁。runner 复用正常 dispatch 的卡片、控制器租约、client-family 容量和已观察 quota／cooldown 检查；容量或额度门未满足时请求留在队列，临时 429／quota／gateway 结果带退避重新入队。MCP 可安全调用 `worker.queue.enqueue/status/pause/resume/cancel/requeue`；真正启动 provider 进程的 `worker.queue.run` 保持 CLI-only。入队、等待、阻塞、退避和启动都写 change feed，可被 `changes`／`wait` 和 hook 消费。`pause` 是主机级开关，不会杀正在运行的 worker。参数见 `continuity help worker.queue.run`。
+同项目同一数据根只有一个 queue runner 能持有非阻塞单实例锁。runner 复用正常 dispatch 的卡片、控制器租约、client-family 容量和已观察 quota／cooldown 检查；容量或额度门未满足时请求留在队列，临时 429／quota／gateway 结果带退避重新入队。MCP 可安全调用 `worker.queue.enqueue/status/pause/resume/cancel/requeue`；真正启动 provider 进程的 `worker.queue.run` 保持 CLI-only。入队、等待、阻塞、退避和启动都写 change feed，可被 `changes`／`wait` 和 hook 消费。`pause` 是主机级开关，不会杀正在运行的 worker。`worker queue enqueue` 与 `status` 会返回 `runner.consuming`；没有 runner 持有锁时会明确说明并给出启动命令（`continuity worker queue run --project-id P --watch`）。参数见 `continuity help worker.queue.run`。
 
 `worker events` 以新行分隔 JSON 流输出 started、progress、completed、failed、rate-limited、blocked，不靠 30 分钟监控窗口猜状态。单项目 cursor 是整数；`--all-projects` 使用 `project:cursor` 对，每个事件同时返回 `stream_cursor`。断线后从最后 cursor 重连即可。
 
@@ -201,7 +203,7 @@ MCP 是宿主管理的本地 stdio 子进程；主机重启或宿主 kill 后，
 
 ```bash
 # 三项分别负责 hooks、检索、规划与 State；按需选择
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.36
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.37
 codex plugin add continuity-plane@continuity-plane
 codex plugin add continuity-plane-search@continuity-plane
 codex plugin add continuity-plane-state@continuity-plane
@@ -306,6 +308,8 @@ MCP 没有把所有 CLI 命令变成远程执行器：**dispatch／worker resume
 | SubagentStart／SubagentStop | 本插件不提供 | 支持 | 记录原生子代理的观察事件；不凭此推断 PID、退出码、成功或完整报告 |
 
 Alpha35 的插件与源码交接继续包含 SessionEnd，并增加可续读 worker events、inbox wait／unread、job 终态和实际 checkout 观测。[交接实现](field-workflows.md#development-source-controller-recovery-and-change-consumers)包含交接读时观察、consumer／ack、派工快照校验与 task 命令别名。安装旧版本不会自动获得这些行为，需要升级并重连宿主。
+
+结束提醒只覆盖会话工作目录所在的项目。其他项目的事件只有在会话主动加入后才会送达：把项目 id 写入 `CONTINUITY_WATCH_PROJECTS`（逗号分隔），或用 `continuity session bind --project-id P --provider claude --session-id OWN_SESSION_ID --task-id T --role controller` 声明本会话是该项目的主控。多个主控共用 `claude-opus` 这类名字时，持有 controller lease 不会让会话自动加入。每个 job 结果只提醒一次：`attempt.finished` 与 `job.*`、重复的行、`job.lost` 之后又 `job.completed`，都合并为带最终结果的一行。
 
 Skill 给 Agent 可按需加载的协作方法；MCP 是可调用工具；hook 是在上述时间点运行的程序。它们作用不同。提醒只在有变化时给出，不能保证唤醒任何离线会话。只有在 supervisor 下运行的 worker 才有对应的受管运行记录。
 

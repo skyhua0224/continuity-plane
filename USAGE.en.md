@@ -19,7 +19,7 @@ Python 3.11+. Prefer an isolated environment:
 
 ```bash
 python3 -m venv .venv
-.venv/bin/python -m pip install 'continuity-plane==0.1.0a36'
+.venv/bin/python -m pip install 'continuity-plane==0.1.0a37'
 ```
 
 On Windows use `.venv\Scripts\python.exe` and `.venv\Scripts\continuity.exe`. Later examples assume `continuity` is on PATH. Global pipx installation, upgrades, offline wheels and rollback are in [deployment](docs/deployment.en.md).
@@ -116,6 +116,6 @@ Back up project `.continuity/`, the collaboration data root and custom artifacts
 
 ## Releases and PyPI
 
-Current package: `0.1.0a36`; Git tag: `v0.1.0-alpha.36`. [GitHub Releases](https://github.com/skyhua0224/continuity-plane/releases/latest) use the regular Release category. The alpha version still signals evolving compatibility; PyPI installation requires an exact pin or `--pre`.
+Current package: `0.1.0a37`; Git tag: `v0.1.0-alpha.37`. [GitHub Releases](https://github.com/skyhua0224/continuity-plane/releases/latest) use the regular Release category. The alpha version still signals evolving compatibility; PyPI installation requires an exact pin or `--pre`.
 
 [Changelog](CHANGELOG.en.md) · [Release policy](docs/releases.en.md)

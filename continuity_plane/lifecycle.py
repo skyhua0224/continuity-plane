@@ -778,6 +778,10 @@ def host_main() -> int:
                 "hookEventName": event,
                 "additionalContext": (base + "\n" + note).strip(),
             }
+        if event == "SessionStart":
+            from .update_check import merge_session_notice
+
+            merge_session_notice(output, payload, MAX_CONTEXT_BYTES)
         if "hookSpecificOutput" in output:
             context = output["hookSpecificOutput"]["additionalContext"]
             output["injected_bytes"] = len(context.encode())

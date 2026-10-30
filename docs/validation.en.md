@@ -2,11 +2,11 @@
 
 [中文](validation.md) · [Workflows](workflows.en.md) · [Historical experiments](benchmarks.en.md)
 
-Scope: Alpha36 (`0.1.0a36`). New synthetic CLI measurements, existing regressions, anonymous user feedback and uncovered behavior are distinct evidence classes.
+Scope: Alpha37 (`0.1.0a37`). New synthetic CLI measurements, existing regressions, anonymous user feedback and uncovered behavior are distinct evidence classes.
 
 ## Reproduce the current workflow check
 
-Alpha27 established an isolated HTTPS Gitea 1.24.7 / local tea 0.15.0 two-synthetic-account private repository check. Alpha36 adds no new external Gitea field run; collaboration changes use deterministic regressions. The adopter script below was rerun from a fresh persistent venv containing only the Alpha36 wheel and a new workspace. Its receipt contains allowlisted synthetic aggregates only; tag CI remains authoritative for the release build.
+Alpha27 established an isolated HTTPS Gitea 1.24.7 / local tea 0.15.0 two-synthetic-account private repository check. Alpha36 adds no new external Gitea field run; collaboration changes use deterministic regressions. The adopter script below was rerun from a fresh persistent venv containing only the Alpha37 wheel and a new workspace. Its receipt contains allowlisted synthetic aggregates only; tag CI remains authoritative for the release build.
 
 Use a **new, empty persistent directory**, never your real registry/profile:
 
@@ -62,6 +62,10 @@ Fourteen positive checks pass; automatic report delivery after early card update
 | Drift/commitments | Parser/rule regressions and anonymous feedback | Not proof of all external/document facts |
 
 The [Alpha25 public release CI](https://github.com/skyhua0224/continuity-plane/actions/runs/38845950775) passed 268 tests. New documentation checks run on current main separately; neither released wheels nor historical counts are rewritten.
+
+## Alpha37 checks
+
+- Regressions: `tests/test_a37_*.py`; the full source suite has 2,897 tests, with only the M7-05 receipt and M8-10 latency gate failing, as on Alpha35. `self-update` has only been dry-run. Update detection was verified against the real PyPI: background query, terminal notice, silent pipes, unchanged stdout and the off switch.
 
 ## Alpha36 checks
 

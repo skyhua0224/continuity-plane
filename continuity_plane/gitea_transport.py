@@ -156,7 +156,7 @@ class GiteaClient:
         self.config = validate_config(config)
         self.tea = shutil.which("tea")
         if not self.tea:
-            raise GiteaError(
+            raise GiteaUnavailable(
                 "local Gitea CLI tea missing; install tea with authenticated api support"
             )
         self.login = config["credential_ref"].split(":", 1)[1]
@@ -176,12 +176,12 @@ class GiteaClient:
         except (ValueError, TypeError, AttributeError):
             matches = []
         if code or len(matches) != 1:
-            raise GiteaError(
+            raise GiteaUnavailable(
                 "named local tea login does not match configured instance; authenticate locally, never paste a token"
             )
         code, help_text, _ = run_tea([self.tea, "api", "--help"])
         if code or b"--include" not in help_text or b"--data" not in help_text:
-            raise GiteaError(
+            raise GiteaUnavailable(
                 "local tea needs api --include and --data support (tea 0.15 or compatible)"
             )
 

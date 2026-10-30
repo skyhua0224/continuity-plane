@@ -62,9 +62,9 @@ TOOLS: list[AgentTool] = [
     ),
     AgentTool(
         "continuity_task_add",
-        "Use when work has more than one step, needs another agent, or must survive this session: creates a task card. Put what to do, scope and how to check it in `body`; assign with `assignee`.",
+        "Use for multi-step work, another agent, or work that must outlive this session: creates a task card. `body` (or state-host `body_file`) = what to do, scope, how to check it.",
         "task.add",
-        params=("task_id", "title", "body", "assignee", "priority", "lane_id", "mode", "objective", "next_action", "exit_criterion", "dependency", "allowed_file", "worktree", "branch"),
+        params=("task_id", "title", "body", "body_file", "assignee", "priority", "lane_id", "mode", "objective", "next_action", "exit_criterion", "dependency", "allowed_file", "worktree", "branch"),
         defaults={
             "lane_id": "main",
             "mode": "patch",
@@ -74,7 +74,7 @@ TOOLS: list[AgentTool] = [
                 "Report what changed, how it was checked, and what was not checked"
             ],
         },
-        required=("task_id", "title", "body"),
+        required=("task_id", "title"),
         hidden=("operation_id", "expected_remote_revision", "pr"),
     ),
     AgentTool(
@@ -151,7 +151,7 @@ TOOLS: list[AgentTool] = [
     ),
     AgentTool(
         "continuity_events_wait",
-        "Use once to check whether a worker started, finished, failed, was rate-limited or blocked, across all your projects; remembers where you stopped reading and returns immediately when events are waiting. It waits at most 50 seconds, so do not call it in a loop; for a longer wait run `continuity worker wait --project-id P --task-id T` as a background shell task.",
+        "Use once to check whether a worker started, finished, failed, was rate-limited or blocked, across all your projects; remembers where you stopped reading. Waits at most 50 seconds, so do not call it in a loop; for a longer wait run `continuity worker wait --project-id P --task-id T` as a background shell task.",
         read_only=True,
         roles=("controller",),
     ),
@@ -246,7 +246,7 @@ _COMPOSITE_SCHEMAS = {
     },
     "continuity_report_final": {
         "task_id": {"type": "string", "description": "Defaults to CONTINUITY_TASK_ID."},
-        "summary": {"type": "string", "maxLength": 60000, "description": "The report: what changed, why, anything surprising."},
+        "summary": {"type": "string", "maxLength": 60000, "description": "What changed, why, surprises."},
         "checks": {
             "type": "array",
             "items": {
@@ -260,11 +260,12 @@ _COMPOSITE_SCHEMAS = {
                 },
                 "required": ["name", "command", "status", "result"],
             },
-            "description": "Checks you ran and their honest result.",
+            "description": "Checks run and results.",
         },
-        "unverified": {"type": "array", "items": {"type": "string"}, "description": "What you did not check."},
+        "unverified": {"type": "array", "items": {"type": "string"}, "description": "Not checked."},
         "branch": {"type": "string"},
         "commit": {"type": "string", "description": "Final commit SHA for the card."},
+        "base": {"type": "string", "description": "Starting commit."},
         "status": {"enum": ["ready-for-review", "blocked", "completed"], "default": "ready-for-review"},
         "notify": {"type": "string", "description": "Who to message; defaults to CONTINUITY_CONTROLLER. Empty string to skip."},
         "assignee": {"type": "string", "description": "Your stable name when CONTINUITY_ASSIGNEE is not set."},
@@ -309,6 +310,9 @@ def definitions() -> list[dict]:
                 }
             if tool.required is not None:
                 required = list(tool.required)
+            if tool.operation == "task.add":
+                # One criterion may be a plain string.
+                properties["exit_criterion"]["type"] = ["array", "string"]
         else:
             properties.update(_COMPOSITE_SCHEMAS.get(tool.name, {}))
             required = _COMPOSITE_REQUIRED.get(tool.name, [])
@@ -370,6 +374,26 @@ def resolve_scope(arguments: dict) -> tuple[str | None, str | None]:
 
 def _assignee(arguments: dict, key: str = "assignee") -> str | None:
     return arguments.get(key) or os.environ.get("CONTINUITY_ASSIGNEE")
+
+
+def _task_add_inputs(parameters: dict) -> dict:
+    """Accept the CLI forms: list options as one string, and body_file."""
+    parameters = dict(parameters)
+    for key in ("exit_criterion", "dependency", "allowed_file"):
+        if isinstance(parameters.get(key), str):
+            parameters[key] = [parameters[key]]
+    body_file = parameters.pop("body_file", None)
+    if body_file:
+        if str(parameters.get("body") or "").strip():
+            raise ValueError("pass body or body_file, not both")
+        from .delivery_records import read_report
+
+        parameters["body"] = read_report(body_file)["text"]
+    if not str(parameters.get("body") or "").strip():
+        raise ValueError(
+            "body is required (or body_file): say what to do, the scope, and how to check it"
+        )
+    return parameters
 
 
 def _task_id(arguments: dict) -> str:
@@ -513,13 +537,18 @@ def handle(name: str, arguments: dict) -> dict:
     arguments.pop("project_id", None)
     if tool.operation:
         parameters = {**tool.defaults, **arguments}
-        if tool.operation == "task.add" and not str(parameters.get("body") or "").strip():
-            raise ValueError("body is required: say what to do, the scope, and how to check it")
+        if tool.operation == "task.add":
+            parameters = _task_add_inputs(parameters)
         if tool.operation == "task.add":
             parameters.setdefault("objective", parameters.get("title"))
             if os.environ.get("CONTINUITY_ASSIGNEE"):
                 parameters.setdefault("actor", os.environ["CONTINUITY_ASSIGNEE"])
         if tool.operation in {"worker.dispatch", "worker.handoff"}:
+            if "controller_token" in arguments:
+                raise ValueError(
+                    "a controller token is never accepted as a tool argument; set "
+                    "CONTINUITY_CONTROLLER_TOKEN_FILE (or the project's controller-token file) on the host that runs this server"
+                )
             if tool.operation == "worker.dispatch":
                 _check_dispatch_model(parameters, project_id)
             launch = parameters.pop("launch", False)
@@ -569,6 +598,10 @@ def _start(arguments: dict, project_id, root):
         result["task"] = _plan("task.show", {"task_id": task_id}, project_id, root)
     role = os.environ.get("CONTINUITY_ROLE") or ("worker" if task_id else "controller")
     result["role"] = role
+    from .update_check import start_field
+
+    if (update := start_field()) is not None:
+        result["update_available"] = update
     result["next"] = (
         ["work on the card; continuity_progress at milestones; continuity_report_final when done"]
         if role == "worker"
@@ -614,6 +647,20 @@ def _report_final(arguments: dict, project_id, root):
         lines.append("")
     if unverified:
         lines += ["## Not verified", ""] + [f"- {item}" for item in unverified] + [""]
+    from .collaboration_registry import default_data_root
+    from .report_facts import inspect
+
+    workdir = os.getcwd()
+    facts, problems, section = inspect(
+        workdir,
+        data_root=default_data_root(),
+        project_id=project_id,
+        branch=arguments.get("branch"),
+        commit=arguments.get("commit"),
+        base=arguments.get("base"),
+        text=summary,
+    )
+    lines += section
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     safe = re.sub(r"[^A-Za-z0-9._-]", "_", task_id)
     path = _report_dir() / (project_id or "project") / f"{safe}-{stamp}.md"
@@ -625,13 +672,14 @@ def _report_final(arguments: dict, project_id, root):
         "report_file": str(path),
     }
     for key in ("branch", "commit"):
-        if arguments.get(key):
-            update[key] = arguments[key]
+        value = arguments.get(key) or (facts or {}).get(key if key == "branch" else "head")
+        if value:
+            update[key] = value
     actor = os.environ.get("CONTINUITY_ASSIGNEE") or arguments.get("assignee")
-    if checks and arguments.get("commit") and actor:
+    if checks and update.get("commit") and actor:
         update["verification_json"] = json.dumps(
             {
-                "commit": arguments["commit"],
+                "commit": update["commit"],
                 "actor": actor,
                 "checks": [
                     {
@@ -648,6 +696,10 @@ def _report_final(arguments: dict, project_id, root):
             ensure_ascii=False,
         )
     result = {"report_file": str(path), "card": _plan("task.update", update, project_id, root)}
+    if facts:
+        result["git"] = {k: facts[k] for k in ("branch", "head", "merge_base", "dirty")}
+    if problems:
+        result["mismatch"] = problems
     notify = arguments.get("notify")
     if notify is None:
         notify = os.environ.get("CONTINUITY_CONTROLLER")
@@ -778,6 +830,9 @@ def _events_wait(arguments: dict, project_id, root):
             )
             if event["kind"] == "progress" and not include_progress:
                 continue
+            # One outcome, one event: job.* supersedes its attempt.finished row.
+            if event.get("event") == "attempt.finished" and event.get("job_id"):
+                continue
             event.pop("stream_cursor", None)
             event.pop("schema_version", None)
             events.append(event)
@@ -792,7 +847,7 @@ def _events_wait(arguments: dict, project_id, root):
     path.write_text(json.dumps({**saved, **cursors}))
     hints = []
     for event in events:
-        if event["kind"] in {"completed", "failed", "interrupted", "timeout", "finished"}:
+        if event["kind"] in {"completed", "failed", "interrupted", "timeout", "finished", "lost"}:
             hints.append(
                 f"continuity_worker_report(project_id={event['project_id']!r}, task_id={event.get('task_id')!r})"
             )

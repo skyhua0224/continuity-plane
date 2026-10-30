@@ -1,6 +1,6 @@
 # Gitea mode: repository declarations and member-local data
 
-Version 1, Alpha36. [中文](collaboration-storage.md) · [Commands](gitea-collaboration.en.md)
+Version 1, Alpha37. [中文](collaboration-storage.md) · [Commands](gitea-collaboration.en.md)
 
 | Data | Location | Sharing / authority |
 |---|---|---|

@@ -19,7 +19,7 @@ continuity collaboration packet --project-id demo --assignee agent-1
 continuity handoff show --project-id demo
 ```
 
-Alpha36 的 CLI 是 `0.1.0a36`，插件是 `0.1.0-alpha.36`。未注册的项目先走[初始化](../USAGE.md#初始化项目)，不覆盖已有 `.continuity/`。whoami 不登录 provider，也不授予主控租约。
+Alpha37 的 CLI 是 `0.1.0a37`，插件是 `0.1.0-alpha.37`。未注册的项目先走[初始化](../USAGE.md#初始化项目)，不覆盖已有 `.continuity/`。whoami 不登录 provider，也不授予主控租约。
 
 ## 可直接贴进简报
 

@@ -14,7 +14,13 @@ from .collaboration_registry import (
     resolve_project,
 )
 from .gitea_tasks import CLOSED, GiteaTasks
-from .gitea_transport import GiteaClient, GiteaError, project_config, validate_config
+from .gitea_transport import (
+    GiteaClient,
+    GiteaError,
+    GiteaUnavailable,
+    project_config,
+    validate_config,
+)
 
 
 def _registration(data_root=None, project_id=None, root=None):
@@ -32,7 +38,7 @@ def is_shared_project(data_root=None, project_id=None, root=None):
     return bool(project_config(project["control_root"] if project else root or "."))
 
 
-def backend_for(data_root=None, project_id=None, root=None):
+def _declared(data_root=None, project_id=None, root=None):
     project = (
         next(
             (p for p in list_projects(data_root) if p["project_id"] == project_id), None
@@ -45,14 +51,39 @@ def backend_for(data_root=None, project_id=None, root=None):
             raise GiteaError(
                 "register this local checkout before using the declared shared backend"
             )
-        return None
-    config = project_config(project["control_root"])
+        return None, None
+    return project, project_config(project["control_root"])
+
+
+def backend_for(data_root=None, project_id=None, root=None):
+    project, config = _declared(data_root, project_id, root)
     if not config:
         return None
     directory = project_data_dir(
         data_root or default_data_root(), project["project_id"]
     )
     return GiteaTasks(config, directory)
+
+
+def _unreachable(args, exc):
+    """Name the shared backend and the offline path when it cannot be used."""
+    try:
+        _, config = _declared(
+            getattr(args, "data_root", None),
+            getattr(args, "project_id", None),
+            getattr(args, "root", None),
+        )
+    except GiteaError:
+        config = None
+    where = (
+        f"{config['repository']} at {config['instance']}" if config else "the declared repository"
+    )
+    return GiteaError(
+        f"shared backend gitea-issues ({where}) is not usable from this machine: {exc}. "
+        "Nothing was written. To work offline, ask for a local review card with MCP "
+        "continuity_review_request; other shared-task writes wait until the backend "
+        "answers (check: continuity collaboration backend doctor)"
+    )
 
 
 def add_parsers(collaboration_commands, task_commands):
@@ -471,10 +502,15 @@ def batch_update(args):
 
 
 def shared_task_command(args):
-    backend = backend_for(args.data_root, args.project_id, getattr(args, "root", None))
-    if backend is None:
-        raise GiteaError("this operation requires gitea-issues backend")
-    return route_task(args, backend)
+    try:
+        backend = backend_for(
+            args.data_root, args.project_id, getattr(args, "root", None)
+        )
+        if backend is None:
+            raise GiteaError("this operation requires gitea-issues backend")
+        return route_task(args, backend)
+    except GiteaUnavailable as exc:
+        raise _unreachable(args, exc) from exc
 
 
 def route_task(args, backend):
@@ -617,6 +653,10 @@ def route_task(args, backend):
         raise GiteaError(
             "--force cannot bypass remote coordination; sync and use explicit resolve"
         )
+    if getattr(args, "dry_run", False):
+        raise GiteaError(
+            "--dry-run is not available for shared tasks; nothing was written"
+        )
     if action in {"add", "update"}:
         if getattr(args, "assignee", None):
             raise GiteaError(
@@ -715,11 +755,14 @@ def maybe_route(args):
         or delivery_shortcut
     ):
         return None
-    backend = backend_for(
-        getattr(args, "data_root", None),
-        getattr(args, "project_id", None),
-        getattr(args, "root", None),
-    )
+    try:
+        backend = backend_for(
+            getattr(args, "data_root", None),
+            getattr(args, "project_id", None),
+            getattr(args, "root", None),
+        )
+    except GiteaUnavailable as exc:
+        raise _unreachable(args, exc) from exc
     if backend is None:
         if name.startswith("_collaboration_task_") and any(
             getattr(args, key, None)
@@ -741,7 +784,10 @@ def maybe_route(args):
             "shared delivery: use task update --status merged --expected-remote-revision REV --operation-id ID; merged PR is verified remotely"
         )
     if name.startswith("_collaboration_task_"):
-        return route_task(args, backend)
+        try:
+            return route_task(args, backend)
+        except GiteaUnavailable as exc:
+            raise _unreachable(args, exc) from exc
     if name == "_collaboration_doctor":
         _print(args, backend.client.doctor())
         return 0

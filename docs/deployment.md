@@ -2,7 +2,7 @@
 
 [English](deployment.en.md) · [文档索引](README.md) · [快速开始](../USAGE.md)
 
-适用版本：CLI `0.1.0a36`，插件 tag `v0.1.0-alpha.36`。CLI、MCP 与宿主 hook 是三个需要分别验证的层次。
+适用版本：CLI `0.1.0a37`，插件 tag `v0.1.0-alpha.37`。CLI、MCP 与宿主 hook 是三个需要分别验证的层次。
 
 ## 选择部署方式
 
@@ -22,7 +22,7 @@
 
 ```bash
 python3 -m venv .venv
-.venv/bin/python -m pip install 'continuity-plane==0.1.0a36'
+.venv/bin/python -m pip install 'continuity-plane==0.1.0a37'
 .venv/bin/continuity --version
 ```
 
@@ -31,7 +31,7 @@ Windows PowerShell 对应 `py -3 -m venv .venv`、`.venv\Scripts\python.exe` 和
 希望全局使用时可选 pipx：
 
 ```bash
-pipx install 'continuity-plane==0.1.0a36'
+pipx install 'continuity-plane==0.1.0a37'
 pipx upgrade continuity-plane --pip-args=--pre
 ```
 
@@ -40,10 +40,25 @@ pipx upgrade continuity-plane --pip-args=--pre
 已有 pipx/uv 环境无法重建时，更新原解释器，不使用破坏性重装：
 
 ```bash
-uv pip install --python /path/to/pipx/venvs/continuity-plane/bin/python --reinstall-package continuity-plane 'continuity-plane==0.1.0a36'
+uv pip install --python /path/to/pipx/venvs/continuity-plane/bin/python --reinstall-package continuity-plane 'continuity-plane==0.1.0a37'
 ```
 
 pipx 的显示元数据可能仍需其正常 upgrade 流程刷新。网络失败时可用已核对摘要的 wheel 离线安装；不要关闭 TLS 验证，也不要把临时离线参数永久留给后续升级。
+
+### 更新提示与 `continuity self-update`
+
+Continuity 在独立的后台进程中查询包索引是否有新版本，每 24 小时最多一次，结果写入数据根目录。命令只读取这份缓存，不会等待网络。请求只包含包名，不带项目、用户或使用数据。私有构建、源码安装和 editable 安装不会检查。设置 `CONTINUITY_UPDATE_CHECK=0` 可关闭检查发出的全部网络请求。
+
+有新版本时，交互终端每天最多在 stderr 出现一行提示（stdout 与 JSON 输出不变）；`continuity_start` 返回 `update_available` 字段；SessionStart 每个版本、每个会话一行；`continuity doctor` 同时列出 CLI、MCP 启动器与插件版本及其不一致之处。
+
+升级始终是显式命令：
+
+```bash
+continuity self-update --dry-run   # 打印本安装对应的命令
+continuity self-update
+```
+
+它识别 pipx、uv 与普通虚拟环境安装并执行对应升级；editable、源码和系统解释器安装会被拒绝并说明做法。本机有 worker 作业运行时以状态码 3 退出且不改动任何内容，因为运行中的 supervisor 惰性导入模块，可能加载到两个版本的混合；`--force` 可覆盖。升级后 MCP 服务随之退出，宿主在下一次调用时重连；插件需在宿主的插件管理器中更新并重连。Agent 仅在用户允许时运行 `self-update`。`CONTINUITY_AUTO_UPDATE=1` 可选择在本机没有 worker 运行时于 SessionStart 后台升级，默认关闭。
 
 ## 数据分别放在哪里
 
@@ -93,7 +108,7 @@ host capacity 是本地运行门，不是账号总额度。Git wrapper 位于本
 先安装 CLI。添加 marketplace，再选择插件：
 
 ```bash
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.36
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.37
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -117,7 +132,7 @@ codex plugin add continuity-plane-state@continuity-plane
 ```bash
 # 仅切换 Continuity 市场的固定版本
 codex plugin marketplace remove continuity-plane
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.36
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.37
 codex plugin marketplace upgrade continuity-plane
 ```
 

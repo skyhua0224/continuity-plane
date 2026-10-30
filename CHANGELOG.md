@@ -4,6 +4,24 @@
 
 [English](CHANGELOG.en.md)
 
+## 0.1.0-alpha.37
+
+- 自动回退与手动交接共用同一份上下文（工作目录、分支、HEAD、最新 next_action、未提交改动、上一份报告）；卡片已有提交、会话或报告时，dispatch 拒绝从头开始，除非传 `--fresh`。
+- 卡片更新失败后，dispatch 拒绝启动，除非传 `--ignore-failed-update`；每次派发结果显示实际使用的 next_action 及其时长。
+- MCP 派发预览不再改动卡片，并返回 `preview=true`。内容策略拒绝时显示供应商原始信息；评审卡可选择自动换到其他模型家族。
+- MCP 启动 worker 可从服务端令牌文件读取主控令牌（`CONTINUITY_CONTROLLER_TOKEN_FILE`）。
+- 修复 `worker queue run` 自引入以来无法启动任何 worker 的问题（每个请求都以 `TypeError` 失败）；同一模型的排队重试继续原会话。
+- 错误信息写明字段、实际大小与上限；`next_action` 上限提高到 4096 字节；`task update` 新增 `--dry-run`，缺少 `--actor` 时返回结构化错误。
+- MCP `continuity_task_add` 接受字符串或列表形式的 `exit_criterion`，并支持 `body_file`。Gitea 不可用时，评审请求的错误写明后端和替代办法；队列命令会说明有没有 runner 在消费。
+- 新增更新检测（每 24 小时最多一次，后台进行，`CONTINUITY_UPDATE_CHECK=0` 关闭）和显式的 `continuity self-update`；`doctor` 显示 CLI、MCP 与插件的版本差异。
+- MCP 服务器发现升级后回复一次并退出，宿主自动重连到新版本。
+- 修复 `collaboration reconcile` 未传 `--root` 时崩溃的问题。
+- `continuity_events_wait` 每个 job 结果只返回一次；bridge 配置支持按项目设置 `watch_projects`。
+
+- hooks 的结束提醒不再按共用的主控名字匹配：其他项目的事件只有通过 `CONTINUITY_WATCH_PROJECTS` 或本会话的 `session bind --role controller` 才会送达（移除按 controller lease 匹配的规则）。
+- 每个 job 结果只提醒一次：`attempt.finished` 与 `job.*`、重复行、`job.lost` 之后的 `job.completed` 合并为最终结果，跨 hook 调用也一样。
+- `continuity_report_final` 和 supervisor 附加的报告会从 worktree 写出分支、HEAD 与同集成 ref 的 merge-base，缺失的分支／提交由它补全，并标出 worker 所报内容（`branch`、`commit`、新增的 `base`，或正文中的“base …”）与 worktree 不符之处。
+
 ## 0.1.0-alpha.36
 
 - MCP 新增 14 个一等工具：`continuity_start`、`continuity_task_add/update/show/list`、`continuity_handoff_write/show`、`continuity_worker_dispatch/jobs/report`、`continuity_events_wait`、`continuity_progress`、`continuity_report_final`、`continuity_review_request`。参数由 CLI 定义生成，与 CLI 共用执行路径和身份守卫；`continuity_plan` 保留全部操作。

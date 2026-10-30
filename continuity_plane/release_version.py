@@ -4,7 +4,7 @@ from importlib.metadata import PackageNotFoundError, version as package_version
 import hashlib
 from pathlib import Path
 
-VERSION = "0.1.0a36"
+VERSION = "0.1.0a37"
 DISTRIBUTION = "continuity-plane"
 
 

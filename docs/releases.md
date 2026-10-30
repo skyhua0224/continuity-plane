@@ -4,7 +4,7 @@
 
 ## Release 分类与 alpha 版本号
 
-GitHub 上已发布的版本统一使用普通 **Release**，当前版本 Alpha36。包版本为 `0.1.0a36`，tag 为 `v0.1.0-alpha.36`；新版本发布时标为 Latest。这不把代码宣称为生产稳定版，也不改变 PyPI 的预发行排序规则。
+GitHub 上已发布的版本统一使用普通 **Release**，当前版本 Alpha37。包版本为 `0.1.0a37`，tag 为 `v0.1.0-alpha.37`；新版本发布时标为 Latest。这不把代码宣称为生产稳定版，也不改变 PyPI 的预发行排序规则。
 
 升级使用明确版本约束，或在 pipx/pip 中显式允许 `--pre`。旧 tag、commit、发行资产与包内容不因分类／标题整理而重写。历史 Release 只修正分类和面向用户的说明，原发布年代与兼容范围保留。
 
@@ -14,6 +14,7 @@ GitHub 上已发布的版本统一使用普通 **Release**，当前版本 Alpha3
 
 | 版本 | 主题 | 说明 |
 |---|---|---|
+| Alpha37 | 换模型不丢进度、队列真正运行 | [本版本](release-alpha37.md) |
 | Alpha36 | Agent 主动使用、更省 token | [本版本](release-alpha36.md) |
 | Alpha35 | 可观察派发与可恢复等待 | [本版本](release-alpha35.md) |
 | Alpha34 | HTTP 拦截与模型内容拒绝分流 | [本版本](release-alpha34.md) |

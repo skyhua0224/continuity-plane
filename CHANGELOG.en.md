@@ -2,6 +2,24 @@
 
 Adoption: [deployment](docs/deployment.en.md), [recent release notes](docs/releases.en.md), [current coverage/known gaps](docs/validation.en.md). Historical entries retain their original scope. Regular GitHub Release classification does not remove alpha semantics.
 
+## 0.1.0-alpha.37
+
+- Automatic fallback and manual handoff share one context (worktree, branch, HEAD, latest next_action, uncommitted changes, last report); dispatch refuses a fresh start on a card with a commit, session or report unless `--fresh` is given.
+- After a failed card update, dispatch refuses to start unless `--ignore-failed-update` is given; every dispatch result shows the effective next_action and its age.
+- The MCP dispatch preview no longer changes the card and returns `preview=true`. Content-policy refusals show the provider's message; review cards can opt in to moving to another model family.
+- MCP worker launch can read the controller token from a server-side file (`CONTINUITY_CONTROLLER_TOKEN_FILE`).
+- Fixed `worker queue run`, which could never start a worker since it was added (every request failed with `TypeError`); a queued retry on the same model continues its session.
+- Errors state the field, actual size and limit; the `next_action` limit is 4096 bytes; `task update` gains `--dry-run`, and a missing `--actor` returns a structured error.
+- MCP `continuity_task_add` accepts `exit_criterion` as a string or list and supports `body_file`. Review requests with Gitea down name the backend and the alternative; queue commands say whether a runner is consuming.
+- Added update detection (at most every 24 hours, in the background, off with `CONTINUITY_UPDATE_CHECK=0`) and an explicit `continuity self-update`; `doctor` shows CLI, MCP and plugin version differences.
+- MCP servers that detect an upgrade reply once and exit, so hosts reconnect to the new version.
+- Fixed `collaboration reconcile` crashing without `--root`.
+- `continuity_events_wait` returns each job outcome once; bridge configuration supports per-project `watch_projects`.
+
+- Hook notices no longer follow a shared controller name: another project's events reach a session only through `CONTINUITY_WATCH_PROJECTS` or `session bind --role controller` for that session (the controller-lease rule is removed).
+- Each job outcome is announced once: `attempt.finished` plus `job.*`, repeated rows and `job.lost` followed by `job.completed` collapse into the final outcome, across hook calls as well.
+- `continuity_report_final` and the supervisor's attached report state branch, HEAD and the merge-base with the integration ref from the worktree, fill a missing branch/commit from it, and flag any value the worker reported (`branch`, `commit`, new `base`, or a "base …" claim in prose) that the worktree contradicts.
+
 ## 0.1.0-alpha.36
 
 - MCP gains 14 first-class tools: `continuity_start`, `continuity_task_add/update/show/list`, `continuity_handoff_write/show`, `continuity_worker_dispatch/jobs/report`, `continuity_events_wait`, `continuity_progress`, `continuity_report_final` and `continuity_review_request`. Parameters are generated from the CLI definitions and calls share the CLI execution path and identity guard; `continuity_plan` keeps every operation.

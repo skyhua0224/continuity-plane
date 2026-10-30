@@ -1,6 +1,6 @@
 # 私有 Gitea Issue／PR 协作
 
-版本：1；适用 Alpha36（`0.1.0a36`）。首版依据 Gitea v1.24.7 官方 API，其他版本须运行连接检查及验收。[仓库 `.continuity` 与全局配置规范](collaboration-storage.md)定义布局、数据根、Git 准入和凭据边界。
+版本：1；适用 Alpha37（`0.1.0a37`）。首版依据 Gitea v1.24.7 官方 API，其他版本须运行连接检查及验收。[仓库 `.continuity` 与全局配置规范](collaboration-storage.md)定义布局、数据根、Git 准入和凭据边界。
 
 每位成员运行自己的 CLI／MCP，以自己的 Gitea 账号协作。不部署 Continuity 服务器、不共享数据库、不设置永久主控。人类可以直接通过 Gitea 网页参与。
 

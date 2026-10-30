@@ -1,6 +1,6 @@
 {
   "schema_version": "continuity.adopter-workflow-check/v1",
-  "version": "0.1.0a36",
+  "version": "0.1.0a37",
   "dataset": "synthetic-only",
   "native_provider_requests": 0,
   "cases": {

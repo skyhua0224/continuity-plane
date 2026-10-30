@@ -785,6 +785,9 @@ def _doctor(args: argparse.Namespace) -> int:
     response["state_health"] = state_health
     response["packet_health"] = packet_health
     response["collaboration_health"] = collaboration_health
+    from .update_check import version_report
+
+    response["versions"] = version_report()
     integration_status = response.get("codex_plugin", {}).get("status")
     if (
         state_health["status"] == "conflict"
@@ -798,6 +801,12 @@ def _doctor(args: argparse.Namespace) -> int:
         response["status"] = "recoverable"
     print(json.dumps(response, sort_keys=True))
     return 0
+
+
+def _self_update(args: argparse.Namespace) -> int:
+    from .update_check import self_update
+
+    return self_update(force=args.force, dry_run=args.dry_run)
 
 
 def _state_show(args: argparse.Namespace) -> int:
@@ -4845,6 +4854,34 @@ def _collaboration_task_add(args: argparse.Namespace) -> int:
 
 
 def _collaboration_task_update(args: argparse.Namespace) -> int:
+    """Run the update; remember a failure so a dispatch cannot start on old instructions."""
+    from .worker_dispatch import (
+        _update_fields,
+        clear_failed_update,
+        record_failed_update,
+    )
+
+    task_id = getattr(args, "task_id", None)
+    try:
+        code = _collaboration_task_update_now(args)
+    except Exception as exc:
+        if task_id and not getattr(args, "batch", None):
+            record_failed_update(
+                args.data_root, args.project_id, task_id, _update_fields(args), exc
+            )
+        raise
+    if task_id and not getattr(args, "batch", None):
+        if code in (0, None):
+            clear_failed_update(args.data_root, args.project_id, task_id)
+        else:
+            record_failed_update(
+                args.data_root, args.project_id, task_id, _update_fields(args),
+                f"update exited with code {code}",
+            )
+    return code
+
+
+def _collaboration_task_update_now(args: argparse.Namespace) -> int:
     if getattr(args, "batch", None):
         from .gitea_cli import batch_update
 
@@ -4890,7 +4927,17 @@ def _collaboration_task_update(args: argparse.Namespace) -> int:
         actor=args.actor
         if args.actor is not None
         else os.environ.get("CONTINUITY_ASSIGNEE") or None,
+        dry_run=getattr(args, "dry_run", False),
     )
+    if getattr(args, "dry_run", False):
+        print(
+            json.dumps(
+                {**task, "dry_run": True, "written": False},
+                ensure_ascii=False,
+                sort_keys=True,
+            )
+        )
+        return 0
     from .delivery_records import detail_view
 
     detail = detail_view(args.data_root, args.project_id, args.task_id)
@@ -6139,6 +6186,12 @@ def build_parser(parser_class=argparse.ArgumentParser) -> argparse.ArgumentParse
     doctor.add_argument("--root", default=".")
     doctor.add_argument("--codex-home", default=None)
     doctor.set_defaults(handler=_doctor)
+    self_update = commands.add_parser(
+        "self-update", help="upgrade this install to the latest release (explicit only)"
+    )
+    self_update.add_argument("--force", action="store_true", help="upgrade even while workers run on this host")
+    self_update.add_argument("--dry-run", action="store_true", help="print the upgrade command without running it")
+    self_update.set_defaults(handler=_self_update)
     state = commands.add_parser("state", help="read local authoritative state")
     state_commands = state.add_subparsers(dest="state_command", required=True)
     show = state_commands.add_parser("show", help="show the current typed snapshot")
@@ -6624,6 +6677,11 @@ def build_parser(parser_class=argparse.ArgumentParser) -> argparse.ArgumentParse
     collaboration_task_update.add_argument(
         "--actor",
         help="Stable caller identity for reassignment, distinct from --assignee; defaults to CONTINUITY_ASSIGNEE",
+    )
+    collaboration_task_update.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Validate and show the resulting card without writing it",
     )
     collaboration_task_update.add_argument("--branch", default=None)
     collaboration_task_update.add_argument("--commit", default=None)
@@ -7372,6 +7430,8 @@ def main(argv: list[str] | None = None) -> int:
             "profile",
         }
         and not (args.command == "resume" and getattr(args, "task_id", None))
+        # An optional --root left unset means "use the registered project".
+        and getattr(args, "root", ".") is not None
         and not (
             args.command == "collaboration"
             and getattr(args, "collaboration_command", None)
@@ -7406,6 +7466,10 @@ def entrypoint(argv: list[str] | None = None) -> int:
     code = 2
     try:
         code = main(argv)
+        if code == 0:
+            from .update_check import cli_notice
+
+            cli_notice(words, sys.stderr)
         return code
     except SystemExit as exc:
         code = exc.code if isinstance(exc.code, int) else 1
@@ -7417,6 +7481,7 @@ def entrypoint(argv: list[str] | None = None) -> int:
                     "status": "error",
                     "failed_gate": "invalid_input_or_local_io",
                     "message": str(exc),
+                    **getattr(exc, "details", {}),
                 },
                 ensure_ascii=False,
             ),

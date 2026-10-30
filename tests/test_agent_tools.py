@@ -122,10 +122,11 @@ class AgentToolTests(unittest.TestCase):
             self.assertNotIn("parameters", tool["inputSchema"]["properties"])
         add = next(t for t in tools if t["name"] == "continuity_task_add")
         self.assertEqual(
-            add["inputSchema"]["required"], ["task_id", "title", "body"]
+            add["inputSchema"]["required"], ["task_id", "title"]
         )
-        self.assertEqual(
-            add["inputSchema"]["properties"]["exit_criterion"]["type"], "array"
+        # A single criterion may also be sent as a plain string (alpha37).
+        self.assertIn(
+            "array", add["inputSchema"]["properties"]["exit_criterion"]["type"]
         )
 
     def test_default_tool_list_costs_no_more_than_alpha35(self):

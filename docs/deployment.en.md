@@ -2,7 +2,7 @@
 
 [中文](deployment.md) · [Documentation](README.en.md) · [Quick start](../USAGE.en.md)
 
-Applies to CLI `0.1.0a36` and plugin tag `v0.1.0-alpha.36`. Verify CLI installation, MCP connections and native hook delivery separately.
+Applies to CLI `0.1.0a37` and plugin tag `v0.1.0-alpha.37`. Verify CLI installation, MCP connections and native hook delivery separately.
 
 ## Choose a topology
 
@@ -22,7 +22,7 @@ Python 3.11+; Git is needed for tracked-file retrieval. Install native agent cli
 
 ```bash
 python3 -m venv .venv
-.venv/bin/python -m pip install 'continuity-plane==0.1.0a36'
+.venv/bin/python -m pip install 'continuity-plane==0.1.0a37'
 .venv/bin/continuity --version
 ```
 
@@ -31,7 +31,7 @@ Windows PowerShell uses `py -3 -m venv .venv`, `.venv\Scripts\python.exe` and `.
 Optional global installation:
 
 ```bash
-pipx install 'continuity-plane==0.1.0a36'
+pipx install 'continuity-plane==0.1.0a37'
 pipx upgrade continuity-plane --pip-args=--pre
 ```
 
@@ -40,10 +40,25 @@ Check both `continuity --version` and `pipx list`. GitHub's regular Release cate
 If an existing pipx/uv environment refuses recreation, update its interpreter in place:
 
 ```bash
-uv pip install --python /path/to/pipx/venvs/continuity-plane/bin/python --reinstall-package continuity-plane 'continuity-plane==0.1.0a36'
+uv pip install --python /path/to/pipx/venvs/continuity-plane/bin/python --reinstall-package continuity-plane 'continuity-plane==0.1.0a37'
 ```
 
 pipx display metadata may still need its normal upgrade refresh. During a network failure, a hash-verified wheel can be installed offline. Do not disable TLS verification or persist temporary offline flags into future upgrades.
+
+### Update notices and `continuity self-update`
+
+Continuity checks the package index for a newer release in a detached background process, at most once per 24 hours, and stores the answer under the data root. Commands only read that cache, so none of them waits on the network. The request names the package and carries no project, user or usage data. Private builds and source or editable installs never check. Set `CONTINUITY_UPDATE_CHECK=0` to turn off every network request made by the check.
+
+A pending version appears as one stderr line per day on an interactive terminal (stdout and JSON output are unchanged), as an `update_available` field in `continuity_start`, as one SessionStart line per version and session, and in `continuity doctor`, which also lists the CLI, MCP launcher and plugin versions and any skew between them.
+
+Upgrading is always an explicit command:
+
+```bash
+continuity self-update --dry-run   # print the command for this install
+continuity self-update
+```
+
+It detects pipx, uv and plain virtual-environment installs and runs the matching upgrade; it refuses editable, source and system-interpreter installs and says what to do instead. While worker jobs are running on this host it exits with status 3 and changes nothing, because a running supervisor imports modules lazily and could load a mix of two versions; `--force` overrides this. Afterwards MCP servers exit and are reconnected by the host on the next call; update plugins from the host's plugin manager and reconnect. Agents run `self-update` only when the user allows it. `CONTINUITY_AUTO_UPDATE=1` opts in to a background upgrade at SessionStart when no workers are running on this host; it is off by default.
 
 ## Separate data stores
 
@@ -93,7 +108,7 @@ Host capacity is a local run gate, not total account quota. The Git wrapper is m
 Install the CLI, add the marketplace, then select the plugin:
 
 ```bash
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.36
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.37
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -117,7 +132,7 @@ If add reports a different registered source, back up the owner-host Codex confi
 ```bash
 # Repin only the Continuity marketplace
 codex plugin marketplace remove continuity-plane
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.36
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.37
 codex plugin marketplace upgrade continuity-plane
 ```
 

@@ -485,9 +485,11 @@ class FieldWorkflowTests(unittest.TestCase):
             report_file=str(file),
         )
         self.assertEqual(result["status"], "completed")
-        self.assertEqual(
-            detail_view(self.data, "sample", "task", True)["report"]["text"],
-            "Changed parser; unit PASS",
+        # The worker's report comes first; the supervisor appends facts from git.
+        self.assertTrue(
+            detail_view(self.data, "sample", "task", True)["report"]["text"].startswith(
+                "Changed parser; unit PASS"
+            )
         )
         result = self.run_attempt([sys.executable, "-c", "pass"], report_file=str(file))
         self.assertIn("predates", result["report_error"])

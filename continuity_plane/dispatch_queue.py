@@ -262,7 +262,7 @@ def _validated_request(
     }
 
 
-def enqueue(
+def _enqueue(
     root,
     *,
     data_root=None,
@@ -406,6 +406,39 @@ def enqueue(
     return item
 
 
+def runner_state(data, project_id):
+    """Say whether a queue runner holds the project lock, and how to start one."""
+    runner = _read(
+        project_data_dir(data, project_id) / "dispatch-queue-runner.lock", {}
+    )
+    consuming = False
+    if runner.get("state") == "running":
+        try:
+            os.kill(int(runner["pid"]), 0)
+            runner["pid_alive"] = True
+        except (OSError, ValueError, TypeError):
+            runner["pid_alive"] = False
+        # A lock written by another host cannot be probed from here.
+        consuming = runner["pid_alive"] or runner.get("host_id") != socket.gethostname()
+    runner["consuming"] = consuming
+    if not consuming:
+        runner["start_command"] = (
+            f"continuity worker queue run --project-id {project_id} --watch"
+        )
+        runner["message"] = (
+            "no queue runner is consuming this queue; queued requests start only "
+            f"when one runs: {runner['start_command']}"
+        )
+    return runner
+
+
+def enqueue(root, **kwargs):
+    item = _enqueue(root, **kwargs)
+    data = _data_root(kwargs.get("data_root"))
+    _, project_id = _registration(root, data, kwargs.get("project_id"))
+    return {**item, "runner": runner_state(data, project_id)}
+
+
 @contextmanager
 def _runner_lock(path):
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -534,10 +567,24 @@ def _reconcile(data, project_id, document):
         _save(data, project_id, document)
 
 
-def _dispatch(**kwargs):
+def _can_continue(data, project_id, item):
+    """A retry on the same model continues its session instead of starting over."""
+    try:
+        job = json.loads(
+            (project_data_dir(data, project_id) / "worker-jobs.json").read_text()
+        ).get(item["task_id"]) or {}
+        return (
+            job.get("model") == item.get("model")
+            and Path(job["thread_file"]).stat().st_size > 0
+        )
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+
+
+def _dispatch(*args, **kwargs):
     from .worker_dispatch import dispatch
 
-    return dispatch(**kwargs)
+    return dispatch(*args, **kwargs)
 
 
 def _run_pass(
@@ -607,7 +654,7 @@ def _run_pass(
                 controller_token=controller_token,
                 audience=item["audience"],
                 fallback_models=tuple(item.get("fallback_models") or ()),
-                resume=bool(item.get("resume")),
+                resume=bool(item.get("resume")) or _can_continue(data, project_id, item),
                 resume_job=item.get("resume_job"),
                 timeout_seconds=item["timeout_seconds"],
                 idle_timeout_seconds=item["idle_timeout_seconds"],
@@ -810,15 +857,7 @@ def status(root, *, data_root=None, project_id=None):
     counts = {}
     for item in document["items"]:
         counts[item["status"]] = counts.get(item["status"], 0) + 1
-    runner = _read(
-        project_data_dir(data, project_id) / "dispatch-queue-runner.lock", {}
-    )
-    if runner.get("state") == "running":
-        try:
-            os.kill(int(runner["pid"]), 0)
-            runner["pid_alive"] = True
-        except (OSError, ValueError, TypeError):
-            runner["pid_alive"] = False
+    runner = runner_state(data, project_id)
     return {
         "status": "ok",
         "project_id": project_id,
@@ -941,13 +980,15 @@ def command(args):
         )
     else:
         value = status(args.root, data_root=args.data_root, project_id=args.project_id)
-    print(
-        render(
-            value,
-            format=args.format,
-            max_output_bytes=args.max_output_bytes,
-        )
+    text = render(
+        value,
+        format=args.format,
+        max_output_bytes=args.max_output_bytes,
     )
+    runner = value.get("runner") or {}
+    if args.format == "brief" and runner.get("message") and (value.get("counts") or {}).get("queued"):
+        text += "\n" + runner["message"]
+    print(text)
     return 1 if value.get("status") == "already-running" and action == "run" else 0
 
 

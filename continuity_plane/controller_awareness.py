@@ -28,14 +28,56 @@ _ENDED_EVENTS = {
 }
 
 
-def _ended(rows):
-    from .collaboration_stream import superseded_by_job_event
+_SEEN_LIMIT = 256
 
-    return [
-        r
-        for r in rows
-        if r["event"] in _ENDED_EVENTS and not superseded_by_job_event(r)
+
+def _ended(rows, seen=None, pid=None):
+    """Terminal rows reduced to one final outcome per job.
+
+    `attempt.finished` and its `job.*` event, a repeated `job.*` row and a
+    `job.lost` followed by `job.completed` describe one outcome. `seen` maps
+    identifiers already announced to the kind announced; it is updated in place
+    so a later duplicate stays quiet and a later completion still gets through.
+    """
+    from .collaboration_stream import event_kind, superseded_by_job_event
+
+    rows = [
+        r for r in rows if r["event"] in _ENDED_EVENTS and not superseded_by_job_event(r)
     ]
+    seen = {} if seen is None else seen
+    job_of = {
+        r["attempt_id"]: r["job_id"]
+        for r in rows
+        if r.get("job_id") and r.get("attempt_id")
+    }
+    final, order = {}, []
+    for index, r in enumerate(rows):
+        job = r.get("job_id") or job_of.get(r.get("attempt_id")) or r.get("attempt_id")
+        key = (r.get("task_id"), job) if job else ("", index)
+        if key not in final:
+            order.append(key)
+            final[key] = r
+        elif event_kind(final[key]) == "lost" or event_kind(r) != "lost":
+            final[key] = r
+    result = []
+    for key in order:
+        r = final[key]
+        kind = event_kind(r)
+        names = [
+            f"{pid}:{r.get('task_id')}:{v}"
+            for v in (r.get("job_id"), r.get("attempt_id"))
+            if v
+        ]
+        prior = next((seen[n] for n in names if n in seen), None)
+        if prior is not None and (prior == kind or (kind == "lost" and prior != "lost")):
+            continue
+        for n in names:
+            seen.pop(n, None)
+            seen[n] = kind
+        result.append(r)
+    while len(seen) > _SEEN_LIMIT:
+        seen.pop(next(iter(seen)))
+    return result
 
 
 def _notice(payload, *, root=None, data_root=None, max_bytes=512):
@@ -110,16 +152,19 @@ def _notice(payload, *, root=None, data_root=None, max_bytes=512):
                     for r in relevant
                     if r.get("task_id") == own or r["event"] == "rule.updated"
                 ]
+            seen = dict(previous.get("seen") or {})
             extra, others = _other_projects(
-                data, registration["project_id"], previous.get("projects") or {}
+                data,
+                registration["project_id"],
+                previous.get("projects") or {},
+                session=session,
+                seen=seen,
             )
+            state = {"rules_digest": rules_digest, "projects": others}
             if not relevant and not extra:
-                _atomic_write(
-                    marker,
-                    {"cursor": cursor, "rules_digest": rules_digest, "projects": others},
-                )
+                _atomic_write(marker, {"cursor": cursor, "seen": seen, **state})
                 return None
-            finished = _ended(relevant)
+            finished = _ended(relevant, seen, registration["project_id"])
             blocked = [
                 r
                 for r in relevant
@@ -143,10 +188,7 @@ def _notice(payload, *, root=None, data_root=None, max_bytes=512):
             if not lines:
                 # Only non-terminal rows (a retry, or an attempt.finished whose
                 # job.* event is not written yet): nothing to say.
-                _atomic_write(
-                    marker,
-                    {"cursor": cursor, "rules_digest": rules_digest, "projects": others},
-                )
+                _atomic_write(marker, {"cursor": cursor, "seen": seen, **state})
                 return None
             text = _fit("continuity: " + " | ".join(lines), max_bytes)
             from .handoff_journal import reserve
@@ -154,18 +196,10 @@ def _notice(payload, *, root=None, data_root=None, max_bytes=512):
             if not reserve(root, session, text, data_root=data, kind="notice"):
                 _atomic_write(
                     marker,
-                    {
-                        "cursor": cursor,
-                        "rules_digest": rules_digest,
-                        "projects": others,
-                        "budget": "exhausted",
-                    },
+                    {"cursor": cursor, "seen": seen, **state, "budget": "exhausted"},
                 )
                 return None
-            _atomic_write(
-                marker,
-                {"cursor": cursor, "rules_digest": rules_digest, "projects": others},
-            )
+            _atomic_write(marker, {"cursor": cursor, "seen": seen, **state})
             return text
     except (OSError, ValueError, TypeError, KeyError):
         return None
@@ -399,19 +433,34 @@ def _action_lines(pid, finished, blocked, rules, quota, queue, limit=4):
     return lines
 
 
-def _watched_projects(data, current):
-    """Projects named in CONTINUITY_WATCH_PROJECTS or led by this controller."""
-    from .collaboration_registry import list_projects
-    from .controller_lease import active_owner
+def _bound_controller(data, pid, session):
+    """True when this session declared itself controller of `pid` (`session bind`)."""
+    from .project_context import binding
 
-    me = {
-        v
-        for v in (
-            os.environ.get("CONTINUITY_CONTROLLER"),
-            os.environ.get("CONTINUITY_ASSIGNEE"),
-        )
-        if v
-    }
+    for provider in ("claude", "codex"):
+        try:
+            current = binding(data, pid, provider, session)
+        except (OSError, ValueError, KeyError):
+            continue
+        if (
+            current
+            and current.get("active")
+            and current.get("role", "controller") == "controller"
+        ):
+            return True
+    return False
+
+
+def _watched_projects(data, current, session=None):
+    """Other projects this session opted into.
+
+    Controllers often share one name (`claude-opus`), so holding a project's
+    lease under that name says nothing about which session leads it. Only
+    CONTINUITY_WATCH_PROJECTS or an explicit `session bind --role controller`
+    for this session selects another project.
+    """
+    from .collaboration_registry import list_projects
+
     named = {
         p.strip()
         for p in os.environ.get("CONTINUITY_WATCH_PROJECTS", "").split(",")
@@ -424,15 +473,15 @@ def _watched_projects(data, current):
         pid = item["project_id"]
         if pid == current:
             continue
-        if pid in named or (me and active_owner(data, pid) in me):
+        if pid in named or (session and _bound_controller(data, pid, session)):
             watched.append(pid)
     return watched
 
 
-def _other_projects(data, current, cursors, scan_limit=2000):
+def _other_projects(data, current, cursors, scan_limit=2000, session=None, seen=None):
     lines = []
     updated = dict(cursors)
-    for pid in _watched_projects(data, current):
+    for pid in _watched_projects(data, current, session):
         if pid not in updated:
             updated[pid] = latest_change_cursor(data, project_id=pid)
             continue
@@ -447,7 +496,9 @@ def _other_projects(data, current, cursors, scan_limit=2000):
             updated[pid] = max(updated[pid], row["cursor"])
             if scanned >= scan_limit:
                 break
-        lines += _action_lines(pid, _ended(finished), blocked, [], [], [], limit=3)
+        lines += _action_lines(
+            pid, _ended(finished, seen, pid), blocked, [], [], [], limit=3
+        )
     return lines, updated
 
 

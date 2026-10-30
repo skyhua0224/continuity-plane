@@ -236,6 +236,15 @@ def forward(payload, config, *, runner=subprocess.run):
         if not re.fullmatch(r"[0-9a-f]{32}", fence):
             raise ValueError("controller fence must be the project lease token, never a provider credential")
         outgoing["controller_fence"] = fence
+    # Notices are computed on the state host, so the local watch list must travel
+    # with the event; a mapping's own list keeps it per project.
+    watch = os.environ.get("CONTINUITY_WATCH_PROJECTS") or config.get("watch_projects")
+    if isinstance(watch, str):
+        watch = watch.split(",")
+    if isinstance(watch, list):
+        names = [str(name).strip() for name in watch if str(name).strip()]
+        if names:
+            outgoing["watch_projects"] = names[:32]
     from .provider_usage import capture_hook
 
     usage = capture_hook(payload, "claude", data_root=config.get("local_data_root"))
@@ -456,6 +465,15 @@ def receive_main():
             ):
                 raise ValueError("invalid controller identity")
             os.environ["CONTINUITY_CONTROLLER"] = controller
+        if payload.get("watch_projects"):
+            from .collaboration_registry import _ID_RE
+
+            watch = payload["watch_projects"]
+            if not isinstance(watch, list) or not all(
+                isinstance(name, str) and _ID_RE.fullmatch(name) for name in watch
+            ):
+                raise ValueError("invalid watch project list")
+            os.environ["CONTINUITY_WATCH_PROJECTS"] = ",".join(watch)
         if payload.get("controller_fence"):
             fence = payload["controller_fence"]
             if not isinstance(fence, str) or not re.fullmatch(r"[0-9a-f]{32}", fence):

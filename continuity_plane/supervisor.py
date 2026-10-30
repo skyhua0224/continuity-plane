@@ -521,6 +521,10 @@ def run_attempt(
             failure = classify(diagnostic_text) if status != "completed" else {}
             if failure.get("failure_class") == "policy-review":
                 reason = "provider-policy-review"
+                # Show the provider's own words, not only our classification.
+                message = diagnostic_text.replace("\ncyber_policy", "").strip()
+                if message:
+                    failure["provider_message"] = message[-1000:]
             elif not reader.drained:
                 failure.update(
                     failure_class="output-incomplete",
@@ -536,7 +540,14 @@ def run_attempt(
                     file = Path(report_file)
                     if file.stat().st_mtime < started_wall:
                         raise ValueError("report predates this attempt")
-                    attached_report = read_report(file)
+                    from .report_facts import annotate_report
+
+                    attached_report = annotate_report(
+                        read_report(file),
+                        workspace_observation.get("observed_cwd") or workdir,
+                        data_root=root,
+                        project_id=project_id,
+                    )
                 except (OSError, ValueError, UnicodeError) as exc:
                     failure["report_error"] = str(exc)[:256]
             # Decide before journaling whether this failure ends the job: only

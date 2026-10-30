@@ -63,6 +63,9 @@ class LifecycleParityTests(unittest.TestCase):
         )
 
         request = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "tools/list"})
+        # A second request must not be answered: the stale process exits after
+        # the first reply so the host reconnects to the upgraded server.
+        request += "\n" + json.dumps({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
         for server in (codex_mcp_server, context_mcp_server):
             output = StringIO()
             with (
@@ -74,8 +77,11 @@ class LifecycleParityTests(unittest.TestCase):
                 redirect_stdout(output),
             ):
                 self.assertEqual(server.main(), 0)
-            reply = json.loads(output.getvalue())
+            replies = output.getvalue().splitlines()
+            self.assertEqual(len(replies), 1)
+            reply = json.loads(replies[0])
             self.assertIn("restart this MCP process", reply["error"]["message"])
+            self.assertIn("exits now", reply["error"]["message"])
             self.assertIn(
                 "ordinary project work remains allowed", reply["error"]["message"]
             )
