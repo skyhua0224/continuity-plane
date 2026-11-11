@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import fcntl
+import errno
 import hashlib
 import json
 import os
@@ -123,7 +123,7 @@ def _atomic_write(path: Path, document: dict[str, Any]) -> None:
             handle.write("\n")
             handle.flush()
             os.fsync(handle.fileno())
-        os.replace(temporary, path)
+        _replace(temporary, path)
         from .persistent_storage import sync_directory
 
         sync_directory(path.parent)
@@ -134,16 +134,63 @@ def _atomic_write(path: Path, document: dict[str, Any]) -> None:
             pass
 
 
+if os.name == "nt":
+    import msvcrt
+
+    # msvcrt reports a held byte-range lock as EACCES or EDEADLOCK.
+    _LOCK_BUSY = {errno.EACCES, errno.EDEADLOCK}
+
+    def _lock_file(handle) -> None:
+        # Lock byte 0. Windows allows locking past end of file, and the lock
+        # file is never written, so readers and writers agree on the range.
+        while True:
+            handle.seek(0)
+            try:
+                msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
+                return
+            except OSError as exc:
+                if exc.errno not in _LOCK_BUSY:
+                    raise
+            time.sleep(0.01)
+
+    def _unlock_file(handle) -> None:
+        handle.seek(0)
+        msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+
+else:
+    import fcntl
+
+    def _lock_file(handle) -> None:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+
+    def _unlock_file(handle) -> None:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
+def _replace(source: str, target: Path) -> None:
+    # On Windows a lock-free reader holding the target open makes the rename
+    # fail with a sharing violation. Readers close quickly, so retry briefly.
+    attempts = 200 if os.name == "nt" else 1
+    for attempt in range(attempts):
+        try:
+            os.replace(source, target)
+            return
+        except PermissionError:
+            if attempt + 1 == attempts:
+                raise
+            time.sleep(0.01)
+
+
 @contextmanager
 def _locked(path: Path) -> Iterator[None]:
     path.parent.mkdir(parents=True, exist_ok=True)
     # Lock a stable inode: the document itself is replaced by atomic writes.
     with path.with_name(path.name + ".lock").open("a+", encoding="utf-8") as handle:
-        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        _lock_file(handle)
         try:
             yield
         finally:
-            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+            _unlock_file(handle)
 
 
 def _read_text(path: Path) -> tuple[str | None, tuple | None]:

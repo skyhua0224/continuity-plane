@@ -30,7 +30,7 @@ INSTRUCTIONS = """Continuity keeps shared task cards, worker runs, messages and 
 Start of a session or a new assignment: continuity_start (your card, unread messages, what changed).
 Planning work with more than one step, agent or session: continuity_task_add for each piece (body = what to do and how to check it), continuity_task_update as things change, continuity_task_list / continuity_task_show to look.
 Sending work to another agent: continuity_worker_dispatch (preview first, then launch=true), then wait outside the model: run `continuity worker wait --project-id P --task-id T` as a background shell task and read continuity_worker_report when it exits. continuity_events_wait checks once and returns; never call it in a loop, every call re-reads your whole context. continuity_worker_report returns a short summary with headings; page with offset.
-Working on a card: continuity_progress at milestones, continuity_report_final when done (it attaches the report, marks the card ready for review and tells the dispatcher), continuity_review_request to ask for a review, continuity_inbox to ask a question.
+Working on a card: continuity_progress at milestones, continuity_report_final when done (it attaches the report, marks the card ready for review and tells the dispatcher), continuity_review_request to ask for a review, continuity_inbox to ask a question. continuity_ask_owner for owner decisions.
 Before context runs out or you hand over: continuity_handoff_write; a new controller reads continuity_handoff_show.
 Finding code: grep a known name; continuity_context_lookup when grep would return many matches or for usages in a large repository.
 project_id and your identity default from the environment; pass project_id when you work on several projects. Every tool returns `next` with the call that usually follows."""
@@ -166,6 +166,15 @@ TOOLS: list[AgentTool] = [
         roles=("worker",),
     ),
     AgentTool(
+        "continuity_ask_owner",
+        "Use when only the owner can decide: files a question with optional answer options. The answer arrives as an inbox message; keep working on anything that does not depend on it.",
+    ),
+    AgentTool(
+        "continuity_owner_questions",
+        "Use to see questions waiting for the owner, or past answers.",
+        read_only=True,
+    ),
+    AgentTool(
         "continuity_review_request",
         "Use to ask for a review of a finished card: creates a review card that points at it, optionally assigned to a reviewer.",
     ),
@@ -270,6 +279,18 @@ _COMPOSITE_SCHEMAS = {
         "notify": {"type": "string", "description": "Who to message; defaults to CONTINUITY_CONTROLLER. Empty string to skip."},
         "assignee": {"type": "string", "description": "Your stable name when CONTINUITY_ASSIGNEE is not set."},
     },
+    "continuity_ask_owner": {
+        "question": {"type": "string", "maxLength": 1000, "description": "What the owner must decide, with enough context to answer from a phone."},
+        "options": {"type": "array", "items": {"type": "string", "maxLength": 60}, "maxItems": 6, "description": "Suggested answers; the owner can also write their own."},
+        "urgency": {"enum": ["normal", "urgent"], "default": "normal"},
+        "expires_hours": {"type": "number", "default": 24, "description": "You are told if nobody answers by then."},
+        "resume_on_answer": {"type": "boolean", "default": False, "description": "True when work stops until the answer arrives, so the answer should wake you."},
+        "task_id": {"type": "string", "description": "Related card; defaults to CONTINUITY_TASK_ID."},
+        "assignee": {"type": "string", "description": "Your stable name when CONTINUITY_ASSIGNEE is not set."},
+    },
+    "continuity_owner_questions": {
+        "status": {"enum": ["open", "answered", "expired", "all"], "default": "open"},
+    },
     "continuity_review_request": {
         "task_id": {"type": "string", "description": "Card to review; defaults to CONTINUITY_TASK_ID."},
         "assignee": {"type": "string", "description": "Your stable name when CONTINUITY_ASSIGNEE is not set."},
@@ -283,6 +304,7 @@ _COMPOSITE_REQUIRED = {
     "continuity_report_final": ["summary"],
     "continuity_progress": ["note"],
     "continuity_review_request": ["brief"],
+    "continuity_ask_owner": ["question"],
 }
 
 
@@ -717,6 +739,37 @@ def _report_final(arguments: dict, project_id, root):
             root,
         )
     return result
+
+
+def _ask_owner(arguments: dict, project_id, root):
+    from .owner_questions import DEFAULT_EXPIRY_HOURS, ask
+
+    asker = _assignee(arguments) or os.environ.get("CONTINUITY_CONTROLLER")
+    if not asker:
+        raise ValueError("assignee is required when CONTINUITY_ASSIGNEE is not set")
+    item = ask(
+        None,
+        project_id=project_id,
+        asker=asker,
+        question=str(arguments.get("question") or ""),
+        options=arguments.get("options"),
+        urgency=arguments.get("urgency") or "normal",
+        expires_hours=float(arguments.get("expires_hours") or DEFAULT_EXPIRY_HOURS),
+        resume_on_answer=bool(arguments.get("resume_on_answer")),
+        task_id=arguments.get("task_id") or os.environ.get("CONTINUITY_TASK_ID"),
+    )
+    return {key: item[key] for key in ("question_id", "status", "expires_at")}
+
+
+def _owner_questions(arguments: dict, project_id, root):
+    from .owner_questions import list_questions
+
+    status = arguments.get("status") or "open"
+    return {
+        "questions": list_questions(
+            None, project_id=project_id, status=None if status == "all" else status
+        )
+    }
 
 
 def _review_request(arguments: dict, project_id, root):

@@ -12,9 +12,10 @@ components. These components remain subject to their own licenses.
 | PyYAML | YAML parsing | MIT | <https://github.com/yaml/pyyaml> |
 | jsonschema | JSON Schema validation | MIT | <https://github.com/python-jsonschema/jsonschema> |
 | psycopg | Optional PostgreSQL adapter | LGPL-3.0-only | <https://github.com/psycopg/psycopg> |
+| Apprise | Optional webhook notifications (Feishu, DingTalk, WeCom and more) | BSD-2-Clause | <https://github.com/caronc/apprise> |
 
 The project does not vendor these Python packages. Package installers resolve
-them as declared dependencies. The PostgreSQL dependency remains optional.
+them as declared dependencies. The PostgreSQL and webhook dependencies remain optional.
 
 ## SPDX License Identifier Snapshot
 

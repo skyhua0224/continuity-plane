@@ -4,6 +4,15 @@
 
 [English](CHANGELOG.en.md)
 
+## 0.1.0-alpha.38
+
+- 新增可选的所有者通知通道 `continuity notify`：Telegram 上的状态、列表与待处理视图，按钮，待办卡，带实测数据和截图的阶段总结，定时报告，对任意消息的追问，Agent 自定义按钮，可部分批准的审批，以及失败、中断、限额提醒和每小时完成汇总。默认关闭。
+- 新增 `continuity_ask_owner`（默认工具列表之外，可按名称调用）与 `notify ask/questions/answer`：问题持久保存，第一个回答生效，到期通知提问方；标记回答后继续的问题会叫醒会话。
+- 新增 `notify bind`（一次性链接绑定，终端确认）、`notify unbind`、`notify service install/uninstall/status`（systemd 用户服务、launchd、Windows 当前用户登录启动项）；`serve` 同一主机只运行一个，后台日志写入 `owner-channel/serve.log`。
+- 新增 webhook 通知：可选依赖 `continuity-plane[webhooks]` 通过 Apprise 发送到飞书、钉钉、企业微信、Lark、Slack、Discord、Teams、ntfy、Bark、邮件和通用 JSON；地址只保存在私有文件中；可以不配置 Telegram。
+- hooks 记录 `StopFailure` 和额度等待通知（`session.stop-failed`、`session.quota-wait`），通知通道据此提醒。
+- 修复原生 Windows 自 Alpha22 起无法导入 CLI（`No module named 'fcntl'`）以及读取变更时 SQLite 整数溢出的问题；公开 CI 新增 Windows 任务。
+
 ## 0.1.0-alpha.37
 
 - 自动回退与手动交接共用同一份上下文（工作目录、分支、HEAD、最新 next_action、未提交改动、上一份报告）；卡片已有提交、会话或报告时，dispatch 拒绝从头开始，除非传 `--fresh`。

@@ -217,6 +217,38 @@ def _render_resume(recovered: dict, *, force_inbox: bool = False, lead: str = ""
     return RESUME_INSTRUCTION + ("\n" + lead if lead else "") + ("\n" + body if body else "")
 
 
+def _observe_session_stop(
+    payload: dict, event: str, session: str, root: Path, data: Path, host: str
+) -> dict:
+    """Record why a session stopped; the host ignores anything returned here."""
+    result = {"continue": True, "injected_bytes": 0, "status": "session-stop-observed"}
+    error = payload.get("error") if event == "StopFailure" else payload.get("notification_type")
+    if event == "Notification" and error not in {
+        "quota_auto_resume_disabled",
+        "quota_auto_resume_stale",
+    }:
+        return result
+    registration = resolve_project(root, data)
+    if not registration:
+        return result
+    from .collaboration_registry import _record_change
+
+    try:
+        _record_change(
+            data,
+            registration["project_id"],
+            "session.stop-failed" if event == "StopFailure" else "session.quota-wait",
+            None,
+            session_id=session,
+            error=str(error or "unknown")[:60],
+            detail=str(payload.get("error_details") or payload.get("message") or "")[:200],
+            host=host,
+        )
+    except OSError:
+        pass  # Observation failure must not block the host session.
+    return result
+
+
 def handle_event(
     payload: dict,
     *,
@@ -235,6 +267,8 @@ def handle_event(
     if not session:
         return {"status": "unbound", "continue": True, "injected_bytes": 0}
     data = Path(data_root) if data_root else default_data_root()
+    if event in {"StopFailure", "Notification"}:
+        return _observe_session_stop(payload, event, session, root, data, host)
     if event == "PostToolUse" and host not in {"claude-bridge", "claude-remote"}:
         # Bridged hooks are counted by the bridge spool and recorded remotely.
         from .adoption import record_hook

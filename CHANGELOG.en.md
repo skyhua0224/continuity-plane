@@ -2,6 +2,15 @@
 
 Adoption: [deployment](docs/deployment.en.md), [recent release notes](docs/releases.en.md), [current coverage/known gaps](docs/validation.en.md). Historical entries retain their original scope. Regular GitHub Release classification does not remove alpha semantics.
 
+## 0.1.0-alpha.38
+
+- Added the optional owner channel `continuity notify`: Telegram status, list and waiting views, buttons, action cards, stage summaries with measurements and screenshots, scheduled reports, follow-ups on any message, agent-defined buttons, approvals that can be granted in part, and alerts for failures, interruptions and rate limits with an hourly completion digest. Off by default.
+- Added `continuity_ask_owner` (outside the default tool list, callable by name) and `notify ask/questions/answer`: questions persist, the first answer wins, the asker hears when one expires, and resume-on-answer questions wake the session.
+- Added `notify bind` (one-time link, confirmed in the terminal), `notify unbind` and `notify service install/uninstall/status` (systemd user unit, launchd, Windows per-user login entry); one `serve` runs per host and logs to `owner-channel/serve.log` in the background.
+- Added webhook notifications: the optional `continuity-plane[webhooks]` extra sends through Apprise to Feishu, DingTalk, WeCom, Lark, Slack, Discord, Teams, ntfy, Bark, e-mail and generic JSON; addresses stay in private files, and Telegram is not required.
+- Hooks record `StopFailure` and quota-wait notifications (`session.stop-failed`, `session.quota-wait`) for the owner channel's alerts.
+- Fixed native Windows failing to import the CLI since Alpha22 (`No module named 'fcntl'`) and an SQLite integer overflow when reading changes; the public CI gains a Windows job.
+
 ## 0.1.0-alpha.37
 
 - Automatic fallback and manual handoff share one context (worktree, branch, HEAD, latest next_action, uncommitted changes, last report); dispatch refuses a fresh start on a card with a commit, session or report unless `--fresh` is given.

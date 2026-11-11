@@ -11,9 +11,10 @@ Continuity Plane 使用或与以下第三方组件互操作。各组件仍遵循
 | PyYAML | YAML 解析 | MIT | <https://github.com/yaml/pyyaml> |
 | jsonschema | JSON Schema 验证 | MIT | <https://github.com/python-jsonschema/jsonschema> |
 | psycopg | 可选 PostgreSQL adapter | LGPL-3.0-only | <https://github.com/psycopg/psycopg> |
+| Apprise | 可选 webhook 通知（飞书、钉钉、企业微信等） | BSD-2-Clause | <https://github.com/caronc/apprise> |
 
 项目不把这些 Python 包源码 vendor 到仓库。安装器根据声明的依赖解析它们，
-PostgreSQL 依赖保持可选。
+PostgreSQL 与 webhook 依赖保持可选。
 
 ## SPDX License Identifier Snapshot
 

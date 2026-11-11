@@ -5188,6 +5188,172 @@ def _collaboration_wait(args: argparse.Namespace) -> int:
     return 2 if value["timed_out"] else 0
 
 
+def _notify(args: argparse.Namespace) -> int:
+    from . import owner_channel
+
+    if args.notify_command == "configure":
+        value = owner_channel.configure(
+            args.data_root,
+            owner_id=args.owner_id,
+            token_file=args.token_file,
+            projects=args.project,
+            recipient=args.recipient,
+            routes=dict(route.split("=", 1) for route in args.route or []),
+            evidence_roots=args.evidence_root,
+            default_timers=args.timer,
+            wake_commands=dict(item.split("=", 1) for item in args.wake or []),
+        )
+    elif args.notify_command == "status":
+        from . import owner_service
+
+        value = {**owner_channel.channel_status(args.data_root), "service": owner_service.installed()}
+    elif args.notify_command == "bind":
+        if not owner_channel.config_path(args.data_root).exists():
+            if not args.project or not args.recipient:
+                raise ValueError("first bind needs --project and --recipient")
+            owner_channel.configure(
+                args.data_root,
+                owner_id=None,
+                token_file=None,
+                projects=args.project,
+                recipient=args.recipient,
+            )
+        from . import owner_service
+
+        if not args.yes and not sys.stdin.isatty():
+            raise ValueError("confirm in an interactive terminal or pass --yes")
+        client = owner_channel.TelegramClient(owner_channel.read_token(args.token_file))
+
+        def confirm(account):
+            shown = f"@{account['username']} " if account.get("username") else ""
+            print(f"收到 {shown}{account['name']}（ID {account['id']}）的绑定请求。", file=sys.stderr)
+            if args.yes:
+                return True
+            return input("绑定这个账号？[y/N] ").strip().lower() in {"y", "yes"}
+
+        try:
+            lock = owner_service.single_instance(args.data_root)
+            lock.__enter__()
+        except owner_service.ServiceError:
+            raise ValueError("stop the running owner channel before binding; both would read the same updates") from None
+        try:
+            value = owner_channel.bind(
+                args.data_root,
+                client,
+                token_file=args.token_file,
+                confirm=confirm,
+                show=lambda line: print(line, file=sys.stderr, flush=True),
+            )
+        finally:
+            lock.__exit__(None, None, None)
+    elif args.notify_command == "unbind":
+        value = owner_channel.unbind(args.data_root)
+    elif args.notify_command == "sink":
+        if args.sink_command == "add":
+            value = owner_channel.add_sink(args.data_root, name=args.name, url_file=args.url_file)
+            if owner_channel.channel_status(args.data_root)["serving"]:
+                value["note"] = "restart the running channel to use the new sink"
+        elif args.sink_command == "remove":
+            value = owner_channel.remove_sink(args.data_root, name=args.name)
+        else:
+            value = owner_channel.test_sink(args.data_root, name=args.name)
+    elif args.notify_command == "service":
+        from . import owner_service
+
+        if args.service_command == "install":
+            value = owner_service.install(args.data_root, start=not args.no_start)
+        elif args.service_command == "uninstall":
+            value = owner_service.uninstall()
+        else:
+            value = {
+                "service": owner_service.installed(),
+                "serving": owner_channel.channel_status(args.data_root)["serving"],
+                "log": str(owner_service.log_path(args.data_root)),
+            }
+    elif args.notify_command == "send":
+        channel = owner_channel.build_channel(args.data_root)
+        result = channel.notify(args.text, project=args.project, options=args.option)
+        value = {"sent": True, "message_id": result.get("message_id")}
+    elif args.notify_command == "ask":
+        from . import owner_questions
+
+        value = owner_questions.ask(
+            args.data_root,
+            project_id=args.project,
+            asker=args.asker,
+            question=args.question,
+            options=args.option,
+            urgency=args.urgency,
+            expires_hours=args.expires_hours,
+            resume_on_answer=args.resume,
+            task_id=args.task_id,
+        )
+    elif args.notify_command == "questions":
+        from . import owner_questions
+
+        value = owner_questions.list_questions(
+            args.data_root,
+            project_id=args.project,
+            status=None if args.status == "all" else args.status,
+        )
+    elif args.notify_command == "answer":
+        from . import owner_questions
+
+        value = owner_questions.answer(
+            args.data_root,
+            project_id=args.project,
+            question_id=args.question_id,
+            text=args.text,
+            via="cli",
+        )
+    elif args.notify_command == "action":
+        channel = owner_channel.build_channel(args.data_root)
+        channel.resolve_username()
+        task = channel.request_action(
+            args.title,
+            detail=args.detail,
+            steps=args.step,
+            project=args.project,
+            priority=args.priority,
+        )
+        value = {"task_id": task["task_id"], "assignee": task["assignee"]}
+    elif args.notify_command == "stage":
+        channel = owner_channel.build_channel(args.data_root)
+        channel.resolve_username()
+        result = channel.send_stage_report(
+            args.title,
+            summary=args.summary,
+            recommendations=args.next,
+            project=args.project,
+            metrics=[owner_channel._parse_metric(item) for item in args.metric or []],
+        )
+        channel.send_evidence(args.project or channel.projects[0], args.image, args.title)
+        value = {"sent": True, "message_id": result.get("message_id")}
+    else:
+        from . import owner_service
+
+        if args.log_file or sys.stderr is None:
+            log = owner_service.LogFile(Path(args.log_file or owner_service.log_path(args.data_root)))
+        else:
+            def log(line):
+                print(line, file=sys.stderr, flush=True)
+        try:
+            with owner_service.single_instance(args.data_root):
+                channel = owner_channel.build_channel(args.data_root, log=log)
+                log("owner channel started")
+                owner_channel.serve(
+                    channel,
+                    default_timers=owner_channel.load_config(args.data_root).get("default_timers"),
+                    log=log,
+                )
+        except (owner_channel.OwnerChannelError, owner_service.ServiceError) as error:
+            log(f"owner channel did not start: {error}")
+            raise
+        return 0
+    print(json.dumps(value, ensure_ascii=False, indent=2))
+    return 0
+
+
 def _whoami(args: argparse.Namespace) -> int:
     project = resolve_project(args.root, args.data_root)
     host_session_key = "".join(("CL", "AUDE", "_SESSION_ID"))
@@ -7231,6 +7397,112 @@ def build_parser(parser_class=argparse.ArgumentParser) -> argparse.ArgumentParse
     skills_audit.add_argument("--skill-root", action="append")
     skills_audit.add_argument("--description-budget", type=int, default=8000)
     skills_audit.set_defaults(handler=_skills_audit)
+    notify = commands.add_parser(
+        "notify", help="owner notification channel; no shell or controller authority"
+    )
+    notify_commands = notify.add_subparsers(dest="notify_command", required=True)
+    notify_configure = notify_commands.add_parser(
+        "configure", help="set the owner, token file and project scope"
+    )
+    notify_configure.add_argument("--owner-id", type=int, help="Telegram user ID; `notify bind` finds it")
+    notify_configure.add_argument("--token-file", help="private file holding the Telegram bot token")
+    notify_configure.add_argument("--project", action="append", required=True)
+    notify_configure.add_argument("--recipient", required=True)
+    notify_configure.add_argument(
+        "--route", action="append", help="project=recipient for replies from that project"
+    )
+    notify_configure.add_argument(
+        "--evidence-root", action="append", help="directory screenshots may be sent from"
+    )
+    notify_configure.add_argument(
+        "--wake",
+        action="append",
+        help="project=command that starts the agent session; the message arrives on stdin",
+    )
+    notify_configure.add_argument(
+        "--timer", action="append", help="report schedule added on first start, such as 09:00"
+    )
+    notify_send = notify_commands.add_parser(
+        "send", help="send one summary, with optional answer buttons"
+    )
+    notify_send.add_argument("--text", required=True)
+    notify_send.add_argument("--project")
+    notify_send.add_argument("--option", action="append")
+    notify_action = notify_commands.add_parser(
+        "action", help="file a card assigned to the owner and deliver it"
+    )
+    notify_action.add_argument("--title", required=True)
+    notify_action.add_argument("--detail", required=True)
+    notify_action.add_argument("--step", action="append")
+    notify_action.add_argument("--project")
+    notify_action.add_argument("--priority", choices=["p0", "p1", "p2"], default="p1")
+    notify_stage = notify_commands.add_parser(
+        "stage", help="send an agent-written stage summary with live cards"
+    )
+    notify_stage.add_argument("--title", required=True)
+    notify_stage.add_argument("--summary", required=True)
+    notify_stage.add_argument("--next", action="append")
+    notify_stage.add_argument(
+        "--metric", action="append", help="measured result as label=before->after"
+    )
+    notify_stage.add_argument("--image", action="append", help="screenshot path")
+    notify_stage.add_argument("--project")
+    notify_ask = notify_commands.add_parser("ask", help="file a question for the owner")
+    notify_ask.add_argument("--project", required=True)
+    notify_ask.add_argument("--asker", required=True)
+    notify_ask.add_argument("--question", required=True)
+    notify_ask.add_argument("--option", action="append")
+    notify_ask.add_argument("--urgency", choices=["normal", "urgent"], default="normal")
+    notify_ask.add_argument("--expires-hours", type=float, default=24)
+    notify_ask.add_argument("--resume", action="store_true", help="wake the asker on answer")
+    notify_ask.add_argument("--task-id")
+    notify_questions = notify_commands.add_parser("questions", help="list owner questions")
+    notify_questions.add_argument("--project", required=True)
+    notify_questions.add_argument(
+        "--status", choices=["open", "answered", "expired", "all"], default="open"
+    )
+    notify_answer = notify_commands.add_parser("answer", help="answer an owner question")
+    notify_answer.add_argument("--project", required=True)
+    notify_answer.add_argument("--question-id", required=True)
+    notify_answer.add_argument("--text", required=True)
+    notify_commands.add_parser("status", help="show channel scope, sinks and health")
+    notify_bind = notify_commands.add_parser(
+        "bind", help="bind the Telegram account that sends a one-time code to the bot"
+    )
+    notify_bind.add_argument("--token-file", required=True)
+    notify_bind.add_argument("--project", action="append", help="needed on first bind")
+    notify_bind.add_argument("--recipient", help="inbox name that receives replies; first bind")
+    notify_bind.add_argument("--yes", action="store_true", help="skip the terminal confirmation")
+    notify_commands.add_parser("unbind", help="stop using Telegram; sinks stay")
+    notify_sink = notify_commands.add_parser(
+        "sink", help="webhook copies: Feishu, DingTalk, WeCom, Slack, Discord and more"
+    )
+    sink_commands = notify_sink.add_subparsers(dest="sink_command", required=True)
+    sink_add = sink_commands.add_parser("add", help="add a sink; the URL stays in a private file")
+    sink_add.add_argument("--name", required=True)
+    sink_add.add_argument("--url-file", required=True)
+    sink_remove = sink_commands.add_parser("remove")
+    sink_remove.add_argument("--name", required=True)
+    sink_test = sink_commands.add_parser("test", help="send one test message")
+    sink_test.add_argument("--name")
+    for leaf in sink_commands.choices.values():
+        leaf.add_argument("--data-root", default=None)
+    notify_service = notify_commands.add_parser(
+        "service", help="start the channel at login: systemd, launchd or the Windows Run key"
+    )
+    service_commands = notify_service.add_subparsers(dest="service_command", required=True)
+    service_install = service_commands.add_parser("install")
+    service_install.add_argument("--no-start", action="store_true")
+    service_commands.add_parser("uninstall")
+    service_commands.add_parser("status")
+    for leaf in service_commands.choices.values():
+        leaf.add_argument("--data-root", default=None)
+    notify_serve = notify_commands.add_parser("serve", help="run the single channel poller")
+    notify_serve.add_argument("--log-file", help="append log lines here instead of stderr")
+    for name, leaf in notify_commands.choices.items():
+        if name not in {"sink", "service"}:
+            leaf.add_argument("--data-root", default=None)
+    notify.set_defaults(handler=_notify)
     whoami = commands.add_parser(
         "whoami", help="show project, executor and controller identity"
     )

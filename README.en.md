@@ -59,6 +59,7 @@ Improvements between versions are in each version's [release notes](docs/release
 - **Task cards and to-dos** — split "fix A, test B, then document it" into cards for different agents or people; each card states the goal, the files it may touch and how it is checked, and to-do lists are generated from the cards
 - **Dispatch and supervise agents** — one tool call sends a card to Codex or Claude in the background; Continuity records start, heartbeats, exit reason and final report, and attaches the report to the card
 - **Told when work ends** — when a worker finishes, fails, is rate-limited or gets stuck, the coordinator sees it in the conversation together with the tool to call next, across every project it leads
+- **Progress on your phone (optional)** — check status and tasks, answer agents' questions, approve requests and receive stage summaries and failure alerts through Telegram, with copies to Feishu, DingTalk, WeCom and other webhooks; see the [owner channel](docs/commands.en.md#owner-notification-channel)
 - **Survives compaction and new sessions** — plugins save and restore "what comes next" at session start and around compaction; a new coordinator gets the plan, open decisions and approvals from the handoff
 - **Agents use it without being told** — the MCP server explains itself, everyday operations are separate typed tools, dispatched workers are told which tools to call, and a shell detour gets one reminder
 - **Read less when grep is noisy** — a local code index returns a few locations for a symbol, path or reverse dependency, definitions first, about 1 KB by default; for one known name a plain grep is cheaper
@@ -127,7 +128,7 @@ A typical run:
 Requires Python 3.11+ and Git.
 
 ```bash
-pipx install 'continuity-plane==0.1.0a37'
+pipx install 'continuity-plane==0.1.0a38'
 continuity --version
 cd your-repo
 continuity collaboration register --project-id demo --control-root . --repository-root .
@@ -155,7 +156,7 @@ Existing installs, venvs, Windows paths, upgrades and rollback: [deployment guid
 ```bash
 claude plugin marketplace add skyhua0224/continuity-plane
 claude plugin install continuity-plane@continuity-plane --scope user
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.37
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.38
 codex plugin add continuity-plane-state@continuity-plane
 codex plugin add continuity-plane-search@continuity-plane
 codex plugin add continuity-plane@continuity-plane
@@ -197,7 +198,7 @@ Every command, parameter and hook: [command and tool reference](docs/commands.en
 - `allowed-file` and the repository write guard prevent mistakes; they are not a security sandbox.
 - Only workers dispatched through Continuity have full run records; a host's own sub-agents record start and stop only.
 - Notices arrive on the next tool call or prompt; they cannot wake a closed session.
-- Native Windows hooks, real multi-account quota and long two-machine waits still lack field verification; see the [validation matrix](docs/validation.en.md).
+- The native Windows CLI and hook entry point are verified on Windows 11; Claude Code sessions on Windows, real multi-account quota and long two-machine waits still lack field verification; see the [validation matrix](docs/validation.en.md).
 
 ## 🐛 Feedback
 

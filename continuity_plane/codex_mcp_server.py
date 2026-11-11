@@ -68,6 +68,8 @@ _STATE_TOOLS = {
     "continuity_work_activate",
     "continuity_claim_recover",
     "continuity_worker_handoff",
+    "continuity_ask_owner",
+    "continuity_owner_questions",
 }
 
 

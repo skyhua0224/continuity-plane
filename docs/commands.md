@@ -10,7 +10,7 @@
 需要 Python 3.11+；代码索引还需要 Git。推荐用 pipx 安装，让宿主插件也能找到 CLI：
 
 ```bash
-pipx install 'continuity-plane==0.1.0a37'
+pipx install 'continuity-plane==0.1.0a38'
 continuity --version
 # 在目标仓库登记项目；demo 换成稳定的项目 ID
 continuity collaboration register --project-id demo --control-root . --repository-root .
@@ -203,7 +203,7 @@ MCP 是宿主管理的本地 stdio 子进程；主机重启或宿主 kill 后，
 
 ```bash
 # 三项分别负责 hooks、检索、规划与 State；按需选择
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.37
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.38
 codex plugin add continuity-plane@continuity-plane
 codex plugin add continuity-plane-search@continuity-plane
 codex plugin add continuity-plane-state@continuity-plane
@@ -422,6 +422,57 @@ recommend 用场景、任务适配、实际运行次数／时长与已记录 coo
 `dispatch-health show` 现在解释暂停的 failure class、provider reason、task／attempt、观察时间和 reset；容量作用域也随 `controller status`／`reservations` 输出。
 
 <a id="advanced"></a>
+## 所有者通知通道
+
+`notify` 把任务概况、需要所有者处理的事和审批发到 Telegram，所有者的回复和按钮选择再写回协作 inbox。也可以同时或只发到飞书、钉钉、企业微信等 webhook。这是可选功能，默认不启用。
+
+```bash
+# 令牌放在只有当前用户能读的文件里；bind 打印一次性链接，在手机上打开并发送即可绑定
+continuity notify bind --token-file ~/.config/continuity/telegram-bot-token --project demo --recipient controller
+continuity notify service install   # 登录后自动运行；也可以前台运行 continuity notify serve
+continuity notify status
+continuity notify send --text "构建完成" --option "继续" --option "暂停"
+continuity notify action --title "确认部署窗口" --detail "请确认今晚是否可以部署" --step "回复时间"
+continuity notify stage --title "第一阶段" --summary "已完成接口和测试" --next "开始集成"
+```
+
+`bind` 只接受在私聊里发送一次性代码的账号，并在终端确认后保存；已知 Telegram 用户 ID 时也可以用 `notify configure --owner-id`。`unbind` 停用 Telegram，其他设置保留。
+
+### Webhook 通知
+
+安装可选依赖 `pip install 'continuity-plane[webhooks]'` 后，主动发出的通知、提问、阶段报告和提醒会以纯文本同时发到 webhook，使用 [Apprise](https://github.com/caronc/apprise)。飞书、钉钉、企业微信、Lark、Slack、Discord 可以直接使用后台复制的 webhook 地址，其他服务使用 Apprise URL，例如 Teams `workflows://`、ntfy `ntfys://`、Bark `barks://`、邮件 `mailtos://` 和通用 `jsons://`。
+
+```bash
+# 地址里含有凭据，只保存在只有当前用户能读的文件里，配置只记录文件路径
+continuity notify sink add --name feishu --url-file ~/.config/continuity/feishu.url
+continuity notify sink test --name feishu
+continuity notify sink remove --name feishu
+# 不用 Telegram 时：只配置项目，再添加 webhook
+continuity notify configure --project demo --recipient controller
+```
+
+Webhook 是单向的：按钮显示为可选项列表，回答在 Telegram 或 `notify answer` 完成。对 Telegram 命令的回复和消息编辑不转发。飞书机器人不要开启签名校验，可改用关键词或 IP 白名单；钉钉的签名密钥写成地址参数 `&secret=SEC...`。
+
+### 运行与平台
+
+`serve` 是单个长轮询进程，不开放入站端口，同一台机器只运行一个，重复启动会直接退出。`service install` 在 Linux 写 systemd 用户服务，在 macOS 写 launchd agent，在 Windows 写当前用户的登录启动项，不需要管理员权限；后台运行时日志写在数据目录的 `owner-channel/serve.log`。Windows 原生可以直接安装运行，令牌和地址文件放在用户目录下，由用户目录的权限保护。
+
+通道只接受配置的所有者在私聊里发来的消息，其他来源一律忽略。在 Telegram 里可用 `/status`、`/list`、`/waiting`、`/report`、`/timers`，定时报告用 `/every 09:00`、`/every 2h` 或 `/in 30m` 添加。
+
+Agent 不需要 `notify` 命令也能发送：`collaboration inbox send --recipient owner` 的正文可以是纯文本，也可以是带 `"owner_card":1` 的 JSON 卡片，支持自定义按钮、`action`、`stage` 和 `approval`。所有者回复某条消息时，内容会带上原文回到发送方。
+
+Agent 需要所有者决定时用 `continuity_ask_owner`（默认工具列表之外，可按名称调用）或下面的命令。问题持久保存，手机和命令行看到同一份，第一个回答生效，答案以 inbox 消息回到提问方，到期未答时提问方会收到通知。
+
+```bash
+continuity notify ask --project demo --asker controller --question "今晚可以部署吗？" --option "可以" --option "不行"
+continuity notify questions --project demo
+continuity notify answer --project demo --question-id q-0123456789 --text "可以"
+```
+
+任务失败、中断或阻塞时通道立即提醒，任务完成按项目每小时汇总，23 点到 8 点只推失败。卡片和阶段报告可以附实测数据和截图；截图只能来自 `notify configure --evidence-root` 指定的目录。`--wake project=命令` 配置叫醒命令，消息从 stdin 传入，不经过 shell。标记 `resume_on_answer` 的问题和审批在回答后自动叫醒，其他回复只排队，所有者可以点按钮叫醒。
+
+审批只记录决定，由申请方执行：低风险点一次，中风险需要二次确认，高风险目前不能在通道内批准。带 `items` 的审批可以只批准其中几项。决定写入变更记录。通道不执行 shell，也不持有主控权限。消息只应包含摘要，不要发送代码、日志、路径或密钥。Telegram 的 bot 对话不是端到端加密。
+
 ## 远端、互斥与其他高级命令
 
 ```bash

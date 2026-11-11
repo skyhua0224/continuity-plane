@@ -2,11 +2,11 @@
 
 [English](validation.en.md) · [工作流](workflows.md) · [历史实验](benchmarks.md)
 
-范围：Alpha37（`0.1.0a37`）。证据分为本轮合成 CLI、已有自动回归、匿名使用反馈和未覆盖项，不能互相替代。
+范围：Alpha38（`0.1.0a38`）。证据分为本轮合成 CLI、已有自动回归、匿名使用反馈和未覆盖项，不能互相替代。
 
 ## 本轮可复现实测
 
-Alpha27 已用本机 tea 0.15.0／HTTPS Gitea 1.24.7 双合成账号私有仓库验收；Alpha36 未另建真实 Gitea 现场，协作相关变化由合成回归覆盖。下方采用者脚本在仅安装 Alpha37 wheel 的新持久 venv 与全新工作目录重跑；receipt 只含允许公开的合成聚合数据，完整发行构建仍以 tag CI 为准。
+Alpha27 已用本机 tea 0.15.0／HTTPS Gitea 1.24.7 双合成账号私有仓库验收；Alpha36 未另建真实 Gitea 现场，协作相关变化由合成回归覆盖。下方采用者脚本在仅安装 Alpha38 wheel 的新持久 venv 与全新工作目录重跑；receipt 只含允许公开的合成聚合数据，完整发行构建仍以 tag CI 为准。
 
 运行公开脚本；使用一个**新建、空的持久目录**，不指向自己的注册表或 provider profile：
 
@@ -62,6 +62,13 @@ python examples/verify_adopter_workflows.py --workspace /path/to/new-persistent-
 | 漂移与未了结承诺 | 当前解析与规则回归；匿名反馈 | 不是对所有文档与外部世界的真实性证明 |
 
 Alpha25 的[公开发行 CI](https://github.com/skyhua0224/continuity-plane/actions/runs/38845950775)通过 268 项测试。文档新增脚本和链接／命令检查另随当前主分支 CI 运行；不改写已发布 wheel 或历史 test count。
+
+## Alpha38 验证
+
+- 回归：`tests/test_a38_*.py`、`tests/test_windows_portability.py`；完整源码套件 2,970 项，失败的文件与 Alpha37 的 main 相同（M2 状态存储、M6、M7-05、M8-02、M9-07 基准与公开构建相关文件），延迟门在机器空闲时单独重跑通过。
+- 原生 Windows 11（Python 3.12，无 WSL）：152 项相关测试通过（3 项按平台跳过）；8 个进程并发写 80 张卡片无丢失；登录启动项、后台运行、单实例锁、日志文件和 webhook 投递实测通过；从 Windows 直接发出 Telegram 消息；hook 入口处理 SessionStart、UserPromptSubmit、PostToolUse、StopFailure、Stop、SessionEnd 均正常，`StopFailure` 记为 `session.stop-failed`。Windows 上的 Claude Code 会话未实机验证。
+- Telegram 实测：状态与列表视图、按钮、待办卡、阶段总结、提问与回答、审批和叫醒。只批准部分项目、自由文本回答只有自动测试。
+- Webhook：Apprise 2.2.0 通过 CLI 发到本地 JSON 接收端；飞书、钉钉地址转换由测试覆盖，没有在真实群里验证。macOS launchd 未实机验证。
 
 ## Alpha37 验证
 

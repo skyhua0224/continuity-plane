@@ -10,7 +10,7 @@ This page lists Continuity commands, MCP tools and hooks by feature, for looking
 Python 3.11+ is required; code indexing also needs Git. A pipx installation makes the CLI available to host integrations:
 
 ```bash
-pipx install 'continuity-plane==0.1.0a37'
+pipx install 'continuity-plane==0.1.0a38'
 continuity --version
 # Register inside your repository; replace demo with its stable project ID
 continuity collaboration register --project-id demo --control-root . --repository-root .
@@ -214,7 +214,7 @@ Install the CLI first. On Codex CLI versions supporting these commands, choose t
 
 ```bash
 # Core hooks, independent search, and planning/State are separate components
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.37
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.38
 codex plugin add continuity-plane@continuity-plane
 codex plugin add continuity-plane-search@continuity-plane
 codex plugin add continuity-plane-state@continuity-plane
@@ -422,6 +422,57 @@ Recommend considers scenario fit, actual run counts/duration and recorded cooldo
 `dispatch-health show` now explains the failure class, provider reason, task/attempt, observation time and reset. Capacity scope is included in controller status and reservation inventory.
 
 <a id="advanced"></a>
+## Owner Notification Channel
+
+`notify` sends task summaries, owner actions and approvals to Telegram, and writes the owner's replies and button choices back to the collaboration inbox. It can also send, alongside Telegram or instead of it, to Feishu, DingTalk, WeCom and other webhooks. It is optional and off by default.
+
+```bash
+# Keep the token in a file only the current user can read; bind prints a one-time link to open and send from the phone
+continuity notify bind --token-file ~/.config/continuity/telegram-bot-token --project demo --recipient controller
+continuity notify service install   # runs after login; or run continuity notify serve in the foreground
+continuity notify status
+continuity notify send --text "Build finished" --option "Continue" --option "Pause"
+continuity notify action --title "Confirm the deploy window" --detail "Can we deploy tonight?" --step "Reply with a time"
+continuity notify stage --title "Stage one" --summary "The API and tests are done" --next "Start integration"
+```
+
+`bind` accepts only the account that sends the one-time code in a private chat, and saves it after the terminal confirms; with a known Telegram user ID, `notify configure --owner-id` also works. `unbind` stops using Telegram and keeps the other settings.
+
+### Webhook Notifications
+
+With the optional extra `pip install 'continuity-plane[webhooks]'`, proactive notifications, questions, stage reports and alerts are also sent as plain text to webhooks through [Apprise](https://github.com/caronc/apprise). Feishu, DingTalk, WeCom, Lark, Slack and Discord accept the webhook address copied from their admin pages; other services use an Apprise URL such as Teams `workflows://`, ntfy `ntfys://`, Bark `barks://`, e-mail `mailtos://` or generic `jsons://`.
+
+```bash
+# The address carries credentials; keep it in a file only the current user can read. The config stores only the path
+continuity notify sink add --name feishu --url-file ~/.config/continuity/feishu.url
+continuity notify sink test --name feishu
+continuity notify sink remove --name feishu
+# Without Telegram: configure the project only, then add a webhook
+continuity notify configure --project demo --recipient controller
+```
+
+Webhooks are one-way: buttons appear as a list of choices, and answers are given in Telegram or with `notify answer`. Replies to Telegram commands and message edits are not forwarded. Do not enable signature verification on a Feishu bot; use a keyword or an IP allowlist instead. For DingTalk, append the signing secret to the address as `&secret=SEC...`.
+
+### Running and Platforms
+
+`serve` is a single long-poll process with no inbound port; one runs per host, and a second start exits at once. `service install` writes a systemd user unit on Linux, a launchd agent on macOS and a per-user login entry on Windows, which needs no administrator rights; in the background the log is `owner-channel/serve.log` under the data directory. Native Windows installs and runs directly; keep the token and address files under the user profile, whose permissions protect them.
+
+The channel accepts messages only from the configured owner in a private chat and ignores everything else. In Telegram, use `/status`, `/list`, `/waiting`, `/report` and `/timers`, and add scheduled reports with `/every 09:00`, `/every 2h` or `/in 30m`.
+
+Agents can send without the `notify` command: the body of `collaboration inbox send --recipient owner` can be plain text or a JSON card with `"owner_card":1`, which supports custom buttons, `action`, `stage` and `approval`. When the owner replies to a message, the reply returns to its sender with the original text.
+
+When an agent needs the owner to decide, it uses `continuity_ask_owner` (outside the default tool list, callable by name) or the commands below. Questions are durable and shared by the phone and the CLI. The first answer wins and returns to the asker as an inbox message. The asker is told if a question expires unanswered.
+
+```bash
+continuity notify ask --project demo --asker controller --question "Can we deploy tonight?" --option "Yes" --option "No"
+continuity notify questions --project demo
+continuity notify answer --project demo --question-id q-0123456789 --text "Yes"
+```
+
+The channel alerts at once when a task fails, is interrupted or blocks, and folds finished tasks into an hourly digest per project. From 23:00 to 08:00 it pushes failures only. Cards and stage reports can carry measured results and screenshots; screenshots must come from a directory set with `notify configure --evidence-root`. `--wake project=command` sets a wake command, which receives the message on stdin and runs without a shell. Questions and approvals marked `resume_on_answer` wake the agent when answered. Other replies only queue, and the owner can press a button to wake it.
+
+An approval records a decision and the requester acts on it: low risk takes one press, medium risk needs a second confirmation, and high risk cannot be approved in the channel yet. An approval with `items` can be approved in part. Decisions are written to the change log. The channel runs no shell and holds no controller authority. Send summaries only, with no code, logs, paths or secrets. Telegram bot chats are not end-to-end encrypted.
+
 ## Remote, coordination and advanced commands
 
 ```bash

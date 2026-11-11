@@ -2,11 +2,11 @@
 
 [中文](validation.md) · [Workflows](workflows.en.md) · [Historical experiments](benchmarks.en.md)
 
-Scope: Alpha37 (`0.1.0a37`). New synthetic CLI measurements, existing regressions, anonymous user feedback and uncovered behavior are distinct evidence classes.
+Scope: Alpha38 (`0.1.0a38`). New synthetic CLI measurements, existing regressions, anonymous user feedback and uncovered behavior are distinct evidence classes.
 
 ## Reproduce the current workflow check
 
-Alpha27 established an isolated HTTPS Gitea 1.24.7 / local tea 0.15.0 two-synthetic-account private repository check. Alpha36 adds no new external Gitea field run; collaboration changes use deterministic regressions. The adopter script below was rerun from a fresh persistent venv containing only the Alpha37 wheel and a new workspace. Its receipt contains allowlisted synthetic aggregates only; tag CI remains authoritative for the release build.
+Alpha27 established an isolated HTTPS Gitea 1.24.7 / local tea 0.15.0 two-synthetic-account private repository check. Alpha36 adds no new external Gitea field run; collaboration changes use deterministic regressions. The adopter script below was rerun from a fresh persistent venv containing only the Alpha38 wheel and a new workspace. Its receipt contains allowlisted synthetic aggregates only; tag CI remains authoritative for the release build.
 
 Use a **new, empty persistent directory**, never your real registry/profile:
 
@@ -62,6 +62,13 @@ Fourteen positive checks pass; automatic report delivery after early card update
 | Drift/commitments | Parser/rule regressions and anonymous feedback | Not proof of all external/document facts |
 
 The [Alpha25 public release CI](https://github.com/skyhua0224/continuity-plane/actions/runs/38845950775) passed 268 tests. New documentation checks run on current main separately; neither released wheels nor historical counts are rewritten.
+
+## Alpha38 checks
+
+- Regressions: `tests/test_a38_*.py` and `tests/test_windows_portability.py`; the full source suite has 2,970 tests, and the failing files match Alpha37's main (M2 state stores, M6, M7-05, M8-02, M9-07 benchmarks and the public build files); latency gates pass when rerun on an idle machine.
+- Native Windows 11 (Python 3.12, no WSL): 152 related tests pass (3 skipped by platform); 8 concurrent processes wrote 80 cards with none lost; the login entry, background run, single-instance lock, log file and webhook delivery were exercised; a Telegram message was sent directly from Windows; the hook entry point handled SessionStart, UserPromptSubmit, PostToolUse, StopFailure, Stop and SessionEnd, recording `StopFailure` as `session.stop-failed`. Claude Code sessions on Windows are not verified on a real machine.
+- Live Telegram: status and list views, buttons, action cards, stage summaries, questions and answers, approvals and wake. Partial approval and free-text answers are covered by automated tests only.
+- Webhooks: Apprise 2.2.0 delivered through the CLI to a local JSON receiver; Feishu and DingTalk address conversion is covered by tests, not verified in real groups. macOS launchd is not verified on a real Mac.
 
 ## Alpha37 checks
 

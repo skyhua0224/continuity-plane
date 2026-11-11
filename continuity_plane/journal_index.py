@@ -87,6 +87,21 @@ def _classify(segment):
     return "ok", row["cursor"], event_id if isinstance(event_id, str) else None
 
 
+def _column_value(value):
+    # Windows file IDs are unsigned 64-bit (128-bit on ReFS) and overflow a
+    # SQLite INTEGER. Numeric text would be coerced to a lossy REAL by the
+    # INTEGER column, so wide values are stored as non-numeric hex text.
+    return value if value < 2**63 else f"x{value:x}"
+
+
+def _identity(info):
+    return (_column_value(info.st_dev), _column_value(info.st_ino))
+
+
+def _same_file(previous, info):
+    return tuple(previous[:2]) == _identity(info)
+
+
 def refresh(connection, journal):
     """Index only complete appended lines; a replaced/truncated file rebuilds.
 
@@ -100,7 +115,7 @@ def refresh(connection, journal):
         if (
             previous
             and previous[3] is not None
-            and previous[:2] == (info.st_dev, info.st_ino)
+            and _same_file(previous, info)
             and previous[2] == info.st_size
             and _tail_matches(stream, previous[2], previous[5])
         ):
@@ -115,7 +130,7 @@ def refresh(connection, journal):
             if previous and previous[3] is not None:
                 offset, corrupt, irregular = previous[2], previous[3], previous[4]
                 rebuild = (
-                    previous[:2] != (info.st_dev, info.st_ino)
+                    not _same_file(previous, info)
                     or info.st_size < offset
                     or not _tail_matches(stream, offset, previous[5])
                 )
@@ -150,7 +165,7 @@ def refresh(connection, journal):
                 connection.execute(
                     "INSERT OR REPLACE INTO checkpoint (id, device, inode, offset, corrupt, "
                     "irregular, tail) VALUES (1, ?, ?, ?, ?, ?, ?)",
-                    (info.st_dev, info.st_ino, start, corrupt, irregular, stream.read(keep)),
+                    (*_identity(info), start, corrupt, irregular, stream.read(keep)),
                 )
         if changed:
             connection.commit()
@@ -199,7 +214,7 @@ def read_page(journal, since, limit):
                         return None
                     rows.append(row)
         return rows, total, high or 0, state[3]
-    except (sqlite3.Error, OSError, ValueError, KeyError, TypeError):
+    except (sqlite3.Error, OverflowError, OSError, ValueError, KeyError, TypeError):
         return None
     finally:
         connection.close()
@@ -221,7 +236,7 @@ def offset_after(journal, since):
         if row and row[0] is not None:
             return row[0]
         return connection.execute("SELECT offset FROM checkpoint WHERE id=1").fetchone()[0]
-    except sqlite3.Error:
+    except (sqlite3.Error, OverflowError):
         return 0
     finally:
         connection.close()
@@ -233,7 +248,7 @@ def find_event(journal, event_id):
         return None
     try:
         return _find_indexed_event(journal, event_id)
-    except sqlite3.Error:
+    except (sqlite3.Error, OverflowError):
         with journal.open("rb") as stream:
             for line in stream:
                 try:

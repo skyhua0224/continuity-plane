@@ -22,6 +22,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import patch
 
+from continuity_plane.journal_index import _identity
 from continuity_plane import collaboration_registry as registry
 from continuity_plane import journal_index
 from continuity_plane.cli import _parse_args, build_parser, main
@@ -206,7 +207,7 @@ class IndexedChangePageTests(HotPathFixture):
         )
         connection.execute("INSERT INTO entries VALUES (0, 999999, NULL)")  # stale row
         connection.execute(
-            "INSERT INTO checkpoint VALUES (1, ?, ?, ?)", (info.st_dev, info.st_ino, info.st_size)
+            "INSERT INTO checkpoint VALUES (1, ?, ?, ?)", (*_identity(info), info.st_size)
         )
         connection.commit()
         connection.close()

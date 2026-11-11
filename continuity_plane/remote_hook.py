@@ -586,6 +586,8 @@ def install_profile(profile, config_file, executable):
         "UserPromptSubmit": "",
         "PostToolUse": "",
         "Stop": "",
+        "StopFailure": "",
+        "Notification": "quota_auto_resume_disabled|quota_auto_resume_stale",
         "SubagentStart": "",
         "SubagentStop": "",
         "SessionEnd": "",
