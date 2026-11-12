@@ -1,6 +1,6 @@
 # Controller continuity and scoped memory
 
-Version 1, Alpha38. [中文](controller-memory.md). Restores working style and approved knowledge without copying native accounts, tokens, full sessions or discovered directory trees.
+Version 1, Alpha39. [中文](controller-memory.md). Restores working style and approved knowledge without copying native accounts, tokens, full sessions or discovered directory trees.
 
 ## Start
 

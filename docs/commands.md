@@ -10,7 +10,7 @@
 需要 Python 3.11+；代码索引还需要 Git。推荐用 pipx 安装，让宿主插件也能找到 CLI：
 
 ```bash
-pipx install 'continuity-plane==0.1.0a38'
+pipx install 'continuity-plane==0.1.0a39'
 continuity --version
 # 在目标仓库登记项目；demo 换成稳定的项目 ID
 continuity collaboration register --project-id demo --control-root . --repository-root .
@@ -203,7 +203,7 @@ MCP 是宿主管理的本地 stdio 子进程；主机重启或宿主 kill 后，
 
 ```bash
 # 三项分别负责 hooks、检索、规划与 State；按需选择
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.38
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.39
 codex plugin add continuity-plane@continuity-plane
 codex plugin add continuity-plane-search@continuity-plane
 codex plugin add continuity-plane-state@continuity-plane
@@ -457,7 +457,17 @@ Webhook 是单向的：按钮显示为可选项列表，回答在 Telegram 或 `
 
 `serve` 是单个长轮询进程，不开放入站端口，同一台机器只运行一个，重复启动会直接退出。`service install` 在 Linux 写 systemd 用户服务，在 macOS 写 launchd agent，在 Windows 写当前用户的登录启动项，不需要管理员权限；后台运行时日志写在数据目录的 `owner-channel/serve.log`。Windows 原生可以直接安装运行，令牌和地址文件放在用户目录下，由用户目录的权限保护。
 
-通道只接受配置的所有者在私聊里发来的消息，其他来源一律忽略。在 Telegram 里可用 `/status`、`/list`、`/waiting`、`/report`、`/timers`，定时报告用 `/every 09:00`、`/every 2h` 或 `/in 30m` 添加。
+通道只接受配置的所有者在私聊里发来的消息，其他来源一律忽略。在 Telegram 里可用 `/status`、`/panel`、`/list`、`/waiting`、`/report`、`/timers`，定时报告用 `/every 09:00`、`/every 2h` 或 `/in 30m` 添加。
+
+### 显示
+
+- 按钮按用途着色：批准为绿色，拒绝和故障为红色，主要操作为蓝色。处理过的按钮变灰并保留当时的选择，例如“✅ 部分批准 / ☑ 提交 / ☐ 推送”。
+- 时间按所有者手机的时区和语言显示，相对时间会自动更新。长内容默认折叠。
+- 阶段报告、完成汇总、进度报告和故障提醒是富文本消息（标题、表格、可展开段落）。API 或客户端不支持时退回普通格式；webhook 始终收到纯文本。
+- `/status` 可以置顶，之后每 5 分钟检查一次，内容变化时原地更新。`/panel` 发送一个置顶的小组件面板：点项目切换，点任务打开卡片，点刷新立即取最新数据。小组件只在私聊中显示，不能转发或复制。
+- 回复转发后，所有者的消息上出现 👀；接收方读取后变为 👌。
+- 中风险审批的二次确认是一条只有所有者看得到的临时消息。它只用于确认，消失或取消都不改变任何决定。
+- 在 @BotFather 为机器人打开话题模式后，通道为每个项目创建一个话题：该项目的卡片、提问、审批和报告发到对应话题，在话题里直接发消息就转给该项目。未开启时所有消息仍在同一个对话里。
 
 Agent 不需要 `notify` 命令也能发送：`collaboration inbox send --recipient owner` 的正文可以是纯文本，也可以是带 `"owner_card":1` 的 JSON 卡片，支持自定义按钮、`action`、`stage` 和 `approval`。所有者回复某条消息时，内容会带上原文回到发送方。
 
@@ -472,6 +482,34 @@ continuity notify answer --project demo --question-id q-0123456789 --text "可�
 任务失败、中断或阻塞时通道立即提醒，任务完成按项目每小时汇总，23 点到 8 点只推失败。卡片和阶段报告可以附实测数据和截图；截图只能来自 `notify configure --evidence-root` 指定的目录。`--wake project=命令` 配置叫醒命令，消息从 stdin 传入，不经过 shell。标记 `resume_on_answer` 的问题和审批在回答后自动叫醒，其他回复只排队，所有者可以点按钮叫醒。
 
 审批只记录决定，由申请方执行：低风险点一次，中风险需要二次确认，高风险目前不能在通道内批准。带 `items` 的审批可以只批准其中几项。决定写入变更记录。通道不执行 shell，也不持有主控权限。消息只应包含摘要，不要发送代码、日志、路径或密钥。Telegram 的 bot 对话不是端到端加密。
+
+## 工作目录与存储清理
+
+`storage` 登记 worker 和子任务创建的工作目录、临时目录、证据目录和派发任务目录，在卡片结束后安全清理。默认只预览，加 `--apply` 才会删除。
+
+```yaml
+# storage-tiers.yaml：项目自己声明机器和存储层；Continuity 不内置任何路径
+schema_version: context.storage-tiers/v1alpha1
+machines:
+  build-1:
+    local_tiers: [hot]
+tiers:
+  hot:
+    kind: filesystem
+    declared_roots: [/srv/work]
+```
+
+```bash
+continuity storage register --project-id demo --config storage-tiers.yaml --task-id task-a \
+  --machine build-1 --tier hot --path /srv/work/task-a --kind workspace --class scratch
+continuity storage report --project-id demo --config storage-tiers.yaml --orphans   # 用量、剩余空间、未登记目录与建议归属
+continuity storage gc --project-id demo --config storage-tiers.yaml                 # 预览
+continuity storage gc --project-id demo --config storage-tiers.yaml --apply
+```
+
+清理只处理已登记、位于声明根目录内、所属卡片已完成、合并、被替代或闲置的临时目录。Git 工作树用 `git worktree remove` 删除，分支保留；有未提交改动或未跟踪文件、正在 rebase/merge、被锁定，或独立克隆里有源仓库没有的提交时，一律跳过并在结果里说明原因。仓库里的子目录不删。派发任务目录只把已结束任务的 `output.jsonl` 截成末尾一段。`report` 显示每个存储层的已用、剩余和配额，超过 `capacity.high_watermark_fraction`（默认 0.85）时把最大的可清理目录排在前面；未登记目录只报告，并按卡片的 worktree 和分支给出建议归属。
+
+本版只管理本机。证据归档、跨机器搬运、派发时自动登记和按计划自动清理还没有实现，配置里的 `automation` 目前不会触发任何动作。
 
 ## 远端、互斥与其他高级命令
 
@@ -489,4 +527,4 @@ SSH alias、项目 root 和执行器均需在所属机器显式配置。控制�
 | init/verify/attach，state/status/workspace | 项目 Profile、既有治理文件接入、State 与投影视图；高级 State 是可选层 |
 | resume/inspect/autorun/checkpoint/work | 有 revision、claim、授权与验证门的 Work 接续和状态提交；不作为普通 Todo/MCP 的先决条件 |
 | decision/constraint，export/import/rollback | 权威规划元数据与经过验证的 State 备份／回滚；State bundle 不覆盖整个外部协作数据根 |
-| plan inspect，worktree-inventory，skills-audit，storage inspect | 有界计划路由、worktree／skill 审计和存储持久性检查；不自动清理用户文件 |
+| plan inspect，worktree-inventory，skills-audit，storage inspect | 有界计划路由、worktree／skill 审计和存储持久性检查；清理见[工作目录与存储清理](#工作目录与存储清理) |

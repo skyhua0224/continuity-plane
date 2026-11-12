@@ -27,4 +27,4 @@ jobs:
           python-version: "3.12"
       - run: python -m pip install --editable '.[webhooks]'
       - run: continuity --version
-      - run: python -m unittest tests.test_windows_portability tests.test_a38_owner_sinks tests.test_a38_owner_channel tests.test_a36_collab_hotpath
+      - run: python -m unittest tests.test_windows_portability tests.test_a38_owner_sinks tests.test_a38_owner_channel tests.test_a36_collab_hotpath tests.test_a39_owner_presentation tests.test_storage_lifecycle

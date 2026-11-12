@@ -59,7 +59,8 @@ Continuity 是一个在你电脑上运行的小工具，给 AI 一份**不会随
 - **任务卡与待办** — 把“先修 A、再测 B、最后写说明”拆成任务卡，分给不同的 AI 或人；每张卡写明目标、允许改的文件和验收条件，待办清单直接由卡片生成
 - **派发与监督 AI 执行者** — 一个工具调用把卡片交给 Codex 或 Claude 后台执行；Continuity 记录启动、心跳、退出原因和最终报告，报告自动挂回卡片
 - **结束即通知** — 执行者完成、失败、被限流或卡住时，主控马上在对话里看到，并且附带下一步该调用的工具；覆盖主控负责的所有项目
-- **在手机上管进度（可选）** — 通过 Telegram 查看状态和任务、回答 Agent 的提问、批准申请、接收阶段总结和失败提醒；也可以同时发到飞书、钉钉、企业微信等 webhook，见[所有者通知通道](docs/commands.md#所有者通知通道)
+- **在手机上管进度（可选）** — 通过 Telegram 查看状态和任务、回答 Agent 的提问、批准申请、接收阶段总结和失败提醒；置顶的进度面板一屏看完各项目；也可以同时发到飞书、钉钉、企业微信等 webhook，见[所有者通知通道](docs/commands.md#所有者通知通道)
+- **工作目录按卡清理** — 登记 worker 创建的工作目录，报告各存储层剩余空间，卡片结束后只清理干净的临时目录，见[工作目录与存储清理](docs/commands.md#工作目录与存储清理)
 - **压缩和换会话不丢进度** — 插件在会话开始、压缩前后自动保存和恢复“接下来做什么”；换主控时，交接记录保留计划、待决事项和批准来源
 - **Agent 默认就会用** — MCP 服务器自带使用说明，常用操作是独立的类型化工具；派发给执行者的提示词直接写明该调用哪个工具；在 shell 里绕路时会被提醒一次
 - **grep 结果太多时少读代码** — 本地代码索引按符号、路径或反向依赖返回定义在前的几条位置，默认约 1 KB；简单按名字找定义时直接 grep 更省
@@ -128,7 +129,7 @@ flowchart LR
 需要 Python 3.11+ 和 Git。
 
 ```bash
-pipx install 'continuity-plane==0.1.0a38'
+pipx install 'continuity-plane==0.1.0a39'
 continuity --version
 cd your-repo
 continuity collaboration register --project-id demo --control-root . --repository-root .
@@ -156,7 +157,7 @@ continuity collaboration task list --project-id demo --format brief
 ```bash
 claude plugin marketplace add skyhua0224/continuity-plane
 claude plugin install continuity-plane@continuity-plane --scope user
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.38
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.39
 codex plugin add continuity-plane-state@continuity-plane
 codex plugin add continuity-plane-search@continuity-plane
 codex plugin add continuity-plane@continuity-plane

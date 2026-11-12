@@ -147,3 +147,6 @@ def register_cli(commands):
     inspect.add_argument("--path", required=True)
     inspect.add_argument("--root", default=".")
     inspect.set_defaults(handler=command)
+    from .storage_lifecycle import register_subcommands
+
+    register_subcommands(group)

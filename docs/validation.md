@@ -2,7 +2,7 @@
 
 [English](validation.en.md) · [工作流](workflows.md) · [历史实验](benchmarks.md)
 
-范围：Alpha38（`0.1.0a38`）。证据分为本轮合成 CLI、已有自动回归、匿名使用反馈和未覆盖项，不能互相替代。
+范围：Alpha39（`0.1.0a39`）。证据分为本轮合成 CLI、已有自动回归、匿名使用反馈和未覆盖项，不能互相替代。
 
 ## 本轮可复现实测
 
@@ -62,6 +62,13 @@ python examples/verify_adopter_workflows.py --workspace /path/to/new-persistent-
 | 漂移与未了结承诺 | 当前解析与规则回归；匿名反馈 | 不是对所有文档与外部世界的真实性证明 |
 
 Alpha25 的[公开发行 CI](https://github.com/skyhua0224/continuity-plane/actions/runs/38845950775)通过 268 项测试。文档新增脚本和链接／命令检查另随当前主分支 CI 运行；不改写已发布 wheel 或历史 test count。
+
+## Alpha39 验证
+
+- 回归：`tests/test_a39_owner_presentation.py`、`tests/test_storage_lifecycle.py`；通知通道相关 128 项、存储清理 25 项。完整源码套件 3,054 项，发版前唯一的失败是本版需要刷新的采用者回执与文档生命周期回执，刷新后重跑通过。
+- 原生 Windows 11（Python 3.12）：通知通道与存储清理相关 157 项通过（3 项按平台跳过）。这一轮在 Windows 上发现并修复了文件 URI 盘符解析、缺少 `os.statvfs`，以及用户目录本身是 Git 仓库时临时目录无法清理的问题。
+- 线上 Bot API：按钮颜色、失效按钮、`tg-time`、可折叠引用、表情回执、置顶、富文本消息（含表格、可展开段落、列表）、小组件和小组件数据更新都先单独调用确认。所有者在 Telegram 上实际使用了回执 👀→👌、`/panel` 小组件和富文本报告。中风险审批的临时确认、话题模式只有自动测试；话题模式需要在 @BotFather 开启。
+- 存储清理：在临时目录里按文档示例完整走通登记、报告（含未登记目录）、预览和 `--apply`；对真实项目只运行过只读的 `report` 与预览 `gc`。采用者工作流回执用 Alpha39 公开 wheel 在新虚拟环境中重新生成，14 个工作流结果与 Alpha38 相同。
 
 ## Alpha38 验证
 

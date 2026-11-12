@@ -10,7 +10,7 @@ This page lists Continuity commands, MCP tools and hooks by feature, for looking
 Python 3.11+ is required; code indexing also needs Git. A pipx installation makes the CLI available to host integrations:
 
 ```bash
-pipx install 'continuity-plane==0.1.0a38'
+pipx install 'continuity-plane==0.1.0a39'
 continuity --version
 # Register inside your repository; replace demo with its stable project ID
 continuity collaboration register --project-id demo --control-root . --repository-root .
@@ -214,7 +214,7 @@ Install the CLI first. On Codex CLI versions supporting these commands, choose t
 
 ```bash
 # Core hooks, independent search, and planning/State are separate components
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.38
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.39
 codex plugin add continuity-plane@continuity-plane
 codex plugin add continuity-plane-search@continuity-plane
 codex plugin add continuity-plane-state@continuity-plane
@@ -457,7 +457,17 @@ Webhooks are one-way: buttons appear as a list of choices, and answers are given
 
 `serve` is a single long-poll process with no inbound port; one runs per host, and a second start exits at once. `service install` writes a systemd user unit on Linux, a launchd agent on macOS and a per-user login entry on Windows, which needs no administrator rights; in the background the log is `owner-channel/serve.log` under the data directory. Native Windows installs and runs directly; keep the token and address files under the user profile, whose permissions protect them.
 
-The channel accepts messages only from the configured owner in a private chat and ignores everything else. In Telegram, use `/status`, `/list`, `/waiting`, `/report` and `/timers`, and add scheduled reports with `/every 09:00`, `/every 2h` or `/in 30m`.
+The channel accepts messages only from the configured owner in a private chat and ignores everything else. In Telegram, use `/status`, `/panel`, `/list`, `/waiting`, `/report` and `/timers`, and add scheduled reports with `/every 09:00`, `/every 2h` or `/in 30m`.
+
+### Display
+
+- Buttons are coloured by purpose: approve green, reject and failures red, the main action blue. Handled buttons turn grey and keep the choice, for example "✅ Partly approved / ☑ commit / ☐ push".
+- Times follow the owner's phone time zone and language, and relative times keep themselves current. Long text is collapsed.
+- Stage reports, completion digests, progress reports and alerts are rich messages (headings, tables, expandable sections). When the API or the app refuses them they fall back to the classic format; webhooks always get plain text.
+- `/status` can be pinned and is then checked every 5 minutes and edited in place when it changes. `/panel` sends a pinned widget: tap a project to switch, a task to open its card, refresh for fresh data. Widgets show only in the private chat and cannot be forwarded or copied.
+- After a reply is forwarded, 👀 appears on the owner's message; it turns into 👌 once the recipient reads it.
+- The second confirmation of a medium-risk approval is an ephemeral message only the owner sees. It only confirms: if it disappears or is cancelled, nothing is decided.
+- With topic mode turned on for the bot in @BotFather, the channel creates one topic per project: that project's cards, questions, approvals and reports go there, and a message written in a topic goes to its project. Without topic mode everything stays in one chat.
 
 Agents can send without the `notify` command: the body of `collaboration inbox send --recipient owner` can be plain text or a JSON card with `"owner_card":1`, which supports custom buttons, `action`, `stage` and `approval`. When the owner replies to a message, the reply returns to its sender with the original text.
 
@@ -472,6 +482,34 @@ continuity notify answer --project demo --question-id q-0123456789 --text "Yes"
 The channel alerts at once when a task fails, is interrupted or blocks, and folds finished tasks into an hourly digest per project. From 23:00 to 08:00 it pushes failures only. Cards and stage reports can carry measured results and screenshots; screenshots must come from a directory set with `notify configure --evidence-root`. `--wake project=command` sets a wake command, which receives the message on stdin and runs without a shell. Questions and approvals marked `resume_on_answer` wake the agent when answered. Other replies only queue, and the owner can press a button to wake it.
 
 An approval records a decision and the requester acts on it: low risk takes one press, medium risk needs a second confirmation, and high risk cannot be approved in the channel yet. An approval with `items` can be approved in part. Decisions are written to the change log. The channel runs no shell and holds no controller authority. Send summaries only, with no code, logs, paths or secrets. Telegram bot chats are not end-to-end encrypted.
+
+## Workspaces and Storage Cleanup
+
+`storage` registers the workspaces, scratch, evidence and worker-job directories that workers and delegates create, and cleans them up safely when their card ends. It previews by default; only `--apply` deletes.
+
+```yaml
+# storage-tiers.yaml: the project declares its machines and tiers; Continuity ships no paths
+schema_version: context.storage-tiers/v1alpha1
+machines:
+  build-1:
+    local_tiers: [hot]
+tiers:
+  hot:
+    kind: filesystem
+    declared_roots: [/srv/work]
+```
+
+```bash
+continuity storage register --project-id demo --config storage-tiers.yaml --task-id task-a \
+  --machine build-1 --tier hot --path /srv/work/task-a --kind workspace --class scratch
+continuity storage report --project-id demo --config storage-tiers.yaml --orphans   # usage, free space, unregistered dirs and suggested owners
+continuity storage gc --project-id demo --config storage-tiers.yaml                 # preview
+continuity storage gc --project-id demo --config storage-tiers.yaml --apply
+```
+
+Cleanup touches only registered scratch locations under a declared root whose card is completed, merged, superseded or idle. Git worktrees are removed with `git worktree remove` and keep their branch. Uncommitted or untracked files, an in-progress rebase or merge, a locked worktree, or a standalone clone holding commits its origin lacks all block removal, and the result says why. Subdirectories inside a repository are never deleted. Worker-job directories only have the `output.jsonl` of finished jobs cut to its tail. `report` shows used, free and quota bytes per tier and, above `capacity.high_watermark_fraction` (default 0.85), lists the largest removable locations first; unregistered directories are only reported, with a suggested card from card worktrees and branches.
+
+This release manages the local machine only. Evidence archiving, cross-machine moves, registration at dispatch and scheduled cleanup are not implemented yet; the `automation` section does not trigger anything.
 
 ## Remote, coordination and advanced commands
 
@@ -489,4 +527,4 @@ Explicitly configure SSH aliases, project roots and owning-host adapters. Bridge
 | init/verify/attach, state/status/workspace | Project profiles, existing governance adoption and State/projections; optional advanced layer |
 | resume/inspect/autorun/checkpoint/work | Revision/claim/authorization/validator-gated Work recovery and commits; not prerequisites for ordinary Todo/MCP |
 | decision/constraint, export/import/rollback | Authoritative planning metadata and verified State backup/rollback; bundles do not cover the entire external collaboration root |
-| plan inspect, worktree-inventory, skills-audit, storage inspect | Bounded plan routing and worktree/skill/persistence audits, without automatic user-file cleanup |
+| plan inspect, worktree-inventory, skills-audit, storage inspect | Bounded plan routing and worktree/skill/persistence audits; cleanup is under [Workspaces and Storage Cleanup](#workspaces-and-storage-cleanup) |

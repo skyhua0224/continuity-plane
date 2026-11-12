@@ -1,6 +1,6 @@
 # Private Gitea Issue / PR collaboration
 
-Version 1, Alpha38 (`0.1.0a38`). The initial contract targets Gitea v1.24.7; check other deployments before adoption. See the [repository/global configuration contract](collaboration-storage.en.md) and [Chinese walkthrough](gitea-collaboration.md).
+Version 1, Alpha39 (`0.1.0a39`). The initial contract targets Gitea v1.24.7; check other deployments before adoption. See the [repository/global configuration contract](collaboration-storage.en.md) and [Chinese walkthrough](gitea-collaboration.md).
 
 Members run separate local CLI / MCP installations using their own Gitea accounts. Issues and event comments own tasks; PR / Git owns reviews and delivery. Local snapshots are caches. No Continuity server, shared database or permanent controller is required. Humans can participate from the Gitea UI.
 

@@ -2,7 +2,7 @@
 
 [中文](deployment.md) · [Documentation](README.en.md) · [Quick start](../USAGE.en.md)
 
-Applies to CLI `0.1.0a38` and plugin tag `v0.1.0-alpha.38`. Verify CLI installation, MCP connections and native hook delivery separately.
+Applies to CLI `0.1.0a39` and plugin tag `v0.1.0-alpha.39`. Verify CLI installation, MCP connections and native hook delivery separately.
 
 ## Choose a topology
 
@@ -22,7 +22,7 @@ Python 3.11+; Git is needed for tracked-file retrieval. Install native agent cli
 
 ```bash
 python3 -m venv .venv
-.venv/bin/python -m pip install 'continuity-plane==0.1.0a38'
+.venv/bin/python -m pip install 'continuity-plane==0.1.0a39'
 .venv/bin/continuity --version
 ```
 
@@ -31,7 +31,7 @@ Windows PowerShell uses `py -3 -m venv .venv`, `.venv\Scripts\python.exe` and `.
 Optional global installation:
 
 ```bash
-pipx install 'continuity-plane==0.1.0a38'
+pipx install 'continuity-plane==0.1.0a39'
 pipx upgrade continuity-plane --pip-args=--pre
 ```
 
@@ -40,7 +40,7 @@ Check both `continuity --version` and `pipx list`. GitHub's regular Release cate
 If an existing pipx/uv environment refuses recreation, update its interpreter in place:
 
 ```bash
-uv pip install --python /path/to/pipx/venvs/continuity-plane/bin/python --reinstall-package continuity-plane 'continuity-plane==0.1.0a38'
+uv pip install --python /path/to/pipx/venvs/continuity-plane/bin/python --reinstall-package continuity-plane 'continuity-plane==0.1.0a39'
 ```
 
 pipx display metadata may still need its normal upgrade refresh. During a network failure, a hash-verified wheel can be installed offline. Do not disable TLS verification or persist temporary offline flags into future upgrades.
@@ -108,7 +108,7 @@ Host capacity is a local run gate, not total account quota. The Git wrapper is m
 Install the CLI, add the marketplace, then select the plugin:
 
 ```bash
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.38
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.39
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -132,7 +132,7 @@ If add reports a different registered source, back up the owner-host Codex confi
 ```bash
 # Repin only the Continuity marketplace
 codex plugin marketplace remove continuity-plane
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.38
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.39
 codex plugin marketplace upgrade continuity-plane
 ```
 

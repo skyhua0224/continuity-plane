@@ -5,13 +5,13 @@
   },
   "metadata": {
     "description": "Bounded compaction handoff, retrieval and collaboration",
-    "version": "0.1.0-alpha.38"
+    "version": "0.1.0-alpha.39"
   },
   "plugins": [
     {
       "name": "continuity-plane",
       "source": "./integrations/claude/continuity-plane",
-      "version": "0.1.0-alpha.38",
+      "version": "0.1.0-alpha.39",
       "description": "Shared lifecycle hooks and Continuity MCP services for Claude Code"
     }
   ]

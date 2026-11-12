@@ -2,7 +2,7 @@
 
 [中文](validation.md) · [Workflows](workflows.en.md) · [Historical experiments](benchmarks.en.md)
 
-Scope: Alpha38 (`0.1.0a38`). New synthetic CLI measurements, existing regressions, anonymous user feedback and uncovered behavior are distinct evidence classes.
+Scope: Alpha39 (`0.1.0a39`). New synthetic CLI measurements, existing regressions, anonymous user feedback and uncovered behavior are distinct evidence classes.
 
 ## Reproduce the current workflow check
 
@@ -62,6 +62,13 @@ Fourteen positive checks pass; automatic report delivery after early card update
 | Drift/commitments | Parser/rule regressions and anonymous feedback | Not proof of all external/document facts |
 
 The [Alpha25 public release CI](https://github.com/skyhua0224/continuity-plane/actions/runs/38845950775) passed 268 tests. New documentation checks run on current main separately; neither released wheels nor historical counts are rewritten.
+
+## Alpha39 checks
+
+- Regressions: `tests/test_a39_owner_presentation.py` and `tests/test_storage_lifecycle.py`; 128 owner-channel and 25 storage tests. The full source suite has 3,054 tests; before release the only failures were the adopter and document lifecycle receipts this release refreshes, and they pass after the refresh.
+- Native Windows 11 (Python 3.12): 157 owner-channel and storage tests pass (3 skipped by platform). This round found and fixed, on Windows, drive letters in file URIs, the missing `os.statvfs`, and scratch that could never be cleaned when the user profile is itself a Git repository.
+- Production Bot API: button styles, disabled buttons, `tg-time`, expandable quotes, reactions, pinning, rich messages (tables, expandable sections, lists), widgets and widget data edits were each called on their own first. The owner used the 👀→👌 receipt, the `/panel` widget and the rich reports in Telegram. The ephemeral approval confirmation and topic mode are covered by automated tests only; topic mode must be turned on in @BotFather.
+- Storage cleanup: the documented example ran end to end in a temporary directory (register, report with unregistered directories, preview and `--apply`); on real projects only the read-only `report` and the `gc` preview ran. The adopter workflow receipt was regenerated from the Alpha39 public wheel in a fresh virtual environment; all 14 workflows match Alpha38.
 
 ## Alpha38 checks
 

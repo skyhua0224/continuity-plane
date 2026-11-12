@@ -171,6 +171,15 @@ class NullClient:
     def set_commands(self, commands):
         return None
 
+    def set_reaction(self, chat_id, message_id, emoji):
+        return None
+
+    def pin(self, chat_id, message_id):
+        return None
+
+    def unpin(self, chat_id, message_id):
+        return None
+
 
 class MirroredClient:
     """Sends through the primary client and copies proactive messages to sinks.
@@ -208,6 +217,12 @@ class MirroredClient:
     def send_photo(self, chat_id, path, caption=""):
         sent = self.primary.send_photo(chat_id, path, caption)
         self._mirror(caption or "截图", image=path)
+        return sent
+
+    def send_rich(self, chat_id, html_text, keyboard=None, *, fallback=""):
+        """Webhooks get the classic rendering of a rich message as plain text."""
+        sent = self.primary.send_rich(chat_id, html_text, keyboard, fallback=fallback)
+        self._mirror(fallback or html_text, keyboard, rich=True)
         return sent
 
     def __getattr__(self, name: str) -> Any:

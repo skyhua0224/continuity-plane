@@ -1,0 +1,22 @@
+schema_version: context.storage-tiers/v1alpha1
+project_id: ${PROJECT_ID}
+archive_tier: null
+machines: {}
+tiers: {}
+mover:
+  default: null
+  allowed: []
+  require_verified_copy: true
+retention:
+  idle_days: 14
+  package_keep_last: 3
+capacity:
+  high_watermark_fraction: 0.85
+  evidence_min_free_bytes: null
+  package_min_free_bytes: null
+  scratch_min_free_bytes: null
+  job_output_trim_days: 14
+automation:
+  auto_apply: []
+  grace_period: 24h
+  daily_report: false

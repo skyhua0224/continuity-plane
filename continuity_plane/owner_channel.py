@@ -13,6 +13,7 @@ import json
 import os
 import secrets
 from collections import Counter
+from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 import re
@@ -20,7 +21,7 @@ import shlex
 import subprocess
 import time
 import uuid
-from typing import Any, Callable, Protocol
+from typing import Any, Callable, Iterator, Protocol
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -40,6 +41,7 @@ from .collaboration_registry import (
 )
 from . import owner_questions
 from . import owner_sinks
+from . import owner_widgets
 from .project_context import _load as _load_project_context, _path as _project_context_path
 from .vocabulary_memory import _SECRET_RE
 
@@ -103,7 +105,18 @@ _PATH_RE = re.compile(r"(?<![\w.])(?:~|/)[\w.@-]+(?:/[\w.@-]+)+/?")
 MAX_TEXT_CHARS = 3900
 MAX_CALLBACK_BYTES = 64
 PAGE_SIZE = 8
+# Reactions a bot may set (Bot API ReactionTypeEmoji): forwarded, then read by the agent.
+REACTION_FORWARDED = "👀"
+REACTION_READ = "👌"
+RECEIPT_MEMORY = 200
+RECEIPT_TTL = timedelta(days=7)
+PANEL_REFRESH = timedelta(minutes=5)
+FOLD_AFTER_LINES = 4
+FOLD_AFTER_CHARS = 600
+_TIME_TAG_RE = re.compile(r"<tg-time [^>]*>.*?</tg-time>")
+_TAG_TOKEN_RE = re.compile(r"<(/?)([a-z-]+)[^>]*>")
 COMMANDS = (
+    ("panel", "小组件面板：项目进度一屏看完"),
     ("status", "项目总览"),
     ("list", "当前任务，点标题看近况"),
     ("waiting", "等你处理的事"),
@@ -159,8 +172,12 @@ class ChannelClient(Protocol):
 class TelegramClient:
     """Minimal Bot API client; errors never contain the token-bearing URL."""
 
+    # Sends that land in a private-chat topic when one is current (Bot API 9.3).
+    THREADED = frozenset({"sendMessage", "sendRichMessage", "sendWidget"})
+
     def __init__(self, token: str, *, base_url: str = "https://api.telegram.org"):
         self._url = f"{base_url.rstrip('/')}/bot{token}/"
+        self.thread_id: int | None = None
 
     def _exchange(
         self, method: str, body: bytes, headers: dict[str, str], timeout: float
@@ -186,6 +203,13 @@ class TelegramClient:
         return document.get("result")
 
     def _call(self, method: str, request_timeout: float = 20, **fields: Any) -> Any:
+        if (
+            self.thread_id
+            and method in self.THREADED
+            and "message_thread_id" not in fields
+            and "ephemeral_message_parameters" not in fields
+        ):
+            fields["message_thread_id"] = self.thread_id
         body = urllib.parse.urlencode(
             {
                 key: value if isinstance(value, (str, int)) else json.dumps(value)
@@ -198,7 +222,10 @@ class TelegramClient:
     def send_photo(self, chat_id, path, caption=""):
         boundary = uuid.uuid4().hex
         parts = []
-        for name, value in (("chat_id", str(chat_id)), ("caption", caption)):
+        fields = [("chat_id", str(chat_id)), ("caption", caption)]
+        if self.thread_id:
+            fields.append(("message_thread_id", str(self.thread_id)))
+        for name, value in fields:
             parts.append(
                 f'--{boundary}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n'
                 f"{value}\r\n".encode()
@@ -222,7 +249,7 @@ class TelegramClient:
                 request_timeout=timeout + 10,
                 offset=offset,
                 timeout=timeout,
-                allowed_updates=["message", "callback_query"],
+                allowed_updates=["message", "callback_query", "widget_query"],
             )
             or []
         )
@@ -268,6 +295,77 @@ class TelegramClient:
             "setMyCommands",
             commands=[{"command": name, "description": text} for name, text in commands],
         )
+
+    # Optional presentation calls (Bot API 9.4-10.4). OwnerChannel calls them
+    # through _optional(), so clients without them keep working.
+    def send_ephemeral(self, chat_id, callback_id, text, keyboard=None, *, replace=True):
+        """Shown only to the user who pressed the button; may vanish, never authoritative."""
+        return self._call(
+            "sendMessage",
+            chat_id=chat_id,
+            text=text,
+            reply_markup={"inline_keyboard": keyboard} if keyboard else None,
+            ephemeral_message_parameters={
+                "callback_query_id": callback_id,
+                "replace_callback_query_message": replace,
+            },
+            **self._format(True),
+        )
+
+    def send_rich(self, chat_id, html_text, keyboard=None, *, fallback=""):
+        """Rich message (Bot API 10.1): headings, tables, collapsible details."""
+        return self._call(
+            "sendRichMessage",
+            chat_id=chat_id,
+            rich_message={"html": html_text},
+            reply_markup={"inline_keyboard": keyboard} if keyboard else None,
+        )
+
+    def send_widget(self, chat_id, html_text, chat_data, caption, *, height=None):
+        """An HTML widget (Bot API 10.4); private chats only, never forwardable."""
+        return self._call(
+            "sendWidget",
+            chat_id=chat_id,
+            html=html_text,
+            chat_data=chat_data,
+            caption=caption,
+            height=height,
+            allow_queries=True,
+        )
+
+    def edit_widget_data(self, chat_id, message_id, chat_data):
+        return self._call(
+            "editMessageWidgetData", chat_id=chat_id, message_id=message_id, chat_data=chat_data
+        )
+
+    def answer_widget_query(self, query_id, data=None):
+        return self._call("answerWidgetQuery", widget_query_id=query_id, data=data)
+
+    def create_topic(self, chat_id, name):
+        """A topic in the private chat with the bot (Bot API 9.4)."""
+        return self._call("createForumTopic", chat_id=chat_id, name=name[:128])
+
+    def delete_ephemeral(self, chat_id, receiver_id, ephemeral_id):
+        self._call(
+            "deleteEphemeralMessage",
+            chat_id=chat_id,
+            receiver_user_id=receiver_id,
+            ephemeral_message_id=ephemeral_id,
+        )
+
+    def set_reaction(self, chat_id, message_id, emoji):
+        return self._call(
+            "setMessageReaction",
+            chat_id=chat_id,
+            message_id=message_id,
+            reaction=[{"type": "emoji", "emoji": emoji}],
+        )
+
+    def pin(self, chat_id, message_id):
+        return self._call("pinChatMessage", chat_id=chat_id, message_id=message_id, disable_notification=True)
+
+    def unpin(self, chat_id, message_id):
+        return self._call("unpinChatMessage", chat_id=chat_id, message_id=message_id)
 
 
 def _root(data_root: Path | str | None) -> Path:
@@ -467,10 +565,60 @@ def _clip(text: str) -> str:
     return text if len(text) <= MAX_TEXT_CHARS else text[: MAX_TEXT_CHARS - 1] + "…"
 
 
-def _button(label: str, data: str) -> dict[str, str]:
+def _clip_html(text: str) -> str:
+    """Clip Telegram HTML without cutting a tag or entity, then close open tags."""
+    if len(text) <= MAX_TEXT_CHARS:
+        return text
+    cut = text[: MAX_TEXT_CHARS - 60]
+    cut = re.sub(r"<[^>]*$", "", cut)
+    cut = re.sub(r"&#?\w*$", "", cut)
+    stack: list[str] = []
+    for match in _TAG_TOKEN_RE.finditer(cut):
+        name = match.group(2)
+        if not match.group(1):
+            stack.append(name)
+        elif name in stack:
+            del stack[len(stack) - 1 - stack[::-1].index(name)]
+    return cut + "…" + "".join(f"</{name}>" for name in reversed(stack))
+
+
+def _button(label: str, data: str, style: str | None = None) -> dict[str, str]:
+    """style: "success" (green), "danger" (red) or "primary" (blue), Bot API 9.4."""
     if len(data.encode("utf-8")) > MAX_CALLBACK_BYTES:
         raise OwnerChannelError("button value is too long")
-    return {"text": label, "callback_data": data}
+    button = {"text": label, "callback_data": data}
+    if style:
+        button["style"] = style
+    return button
+
+
+def _disabled(label: str) -> dict[str, Any]:
+    """A greyed-out button that keeps a decision visible (Bot API 10.3)."""
+    return {"text": label[:60], "disabled": {}}
+
+
+def _when(moment: datetime, fmt: str = "dt") -> str:
+    """A date the owner's app renders in their own time zone and language (Bot API 9.5).
+
+    The inner text is the server-local fallback, which webhook copies keep.
+    """
+    if fmt == "r":
+        fallback = _ago(moment.isoformat())
+    else:
+        local = moment.astimezone()
+        fallback = local.strftime("%H:%M" if fmt == "t" else "%m-%d %H:%M")
+    return f'<tg-time unix="{int(moment.timestamp())}" format="{fmt}">{fallback}</tg-time>'
+
+
+def _fold(lines: list[str], keep: int = 3) -> list[str]:
+    """Keep the first lines visible and collapse the rest into an expandable quote."""
+    lines = [line for line in lines if line]
+    if len(lines) <= FOLD_AFTER_LINES and sum(map(len, lines)) <= FOLD_AFTER_CHARS:
+        return lines
+    head, tail = lines[:keep], lines[keep:]
+    if not tail:
+        return head
+    return [*head, "<blockquote expandable>" + "\n".join(tail) + "</blockquote>"]
 
 
 def _safe(text: Any, limit: int = 400) -> str:
@@ -484,9 +632,28 @@ def _safe(text: Any, limit: int = 400) -> str:
     return html.escape(value, quote=False)
 
 
+def _plain(text: Any, limit: int) -> str:
+    """Widget text: the same redaction as cards, no HTML (the widget sets textContent)."""
+    value = " ".join(str(text or "").split())
+    if _SECRET_RE.search(value):
+        return "（已隐藏）"
+    value = _PATH_RE.sub("‹路径›", value)
+    return value if len(value) <= limit else value[: limit - 1] + "…"
+
+
 def _safe_lines(text: Any, limit: int = 1400) -> str:
-    lines = [_safe(line, limit) for line in str(text or "").splitlines()]
-    return "\n".join(line for line in lines if line)[:limit]
+    """Escaped lines within limit; never cuts an HTML entity in half."""
+    kept: list[str] = []
+    used = 0
+    for line in str(text or "").splitlines():
+        line = _safe(line, limit)
+        if not line:
+            continue
+        if used + len(line) > limit:
+            break
+        kept.append(line)
+        used += len(line) + 1
+    return "\n".join(kept)
 
 
 def _declared_decisions(data_root: Path | str, project: str) -> list[str]:
@@ -566,6 +733,15 @@ def _is_quiet(now: datetime) -> bool:
     return hour >= QUIET_HOURS[0] or hour < QUIET_HOURS[1]
 
 
+def _ago_html(stamp: str | None) -> str:
+    """Relative time that the owner's app keeps current."""
+    try:
+        moment = datetime.fromisoformat(stamp or "")
+    except ValueError:
+        return "时间未知"
+    return _when(moment, "r")
+
+
 def _ago(stamp: str | None, now: datetime | None = None) -> str:
     try:
         moment = datetime.fromisoformat(stamp or "")
@@ -626,6 +802,69 @@ class OwnerChannel:
         self.alerted: dict[str, str] = {}
         self.finished: dict[str, list[str]] = {}
         self.digest_at: dict[str, str] = {}
+        # Owner message id -> inbox message waiting to be read; reacts 👌 once acknowledged.
+        self.receipts: dict[str, dict[str, Any]] = {}
+        # The pinned status panel: {"message_id", "digest", "checked_at"}.
+        self.panel: dict[str, Any] = {}
+        # The widget panel: {"message_id", "digest", "checked_at"}.
+        self.widget: dict[str, Any] = {}
+        # Project -> private-chat topic thread, when the bot has topic mode (BotFather).
+        self.topics: dict[str, int] = {}
+        self.topic_mode = False
+        # Rich messages until the API refuses them once; then classic HTML.
+        self.rich_ok = self.interactive and callable(getattr(client, "send_rich", None))
+
+    def _thread_target(self) -> Any:
+        return getattr(self.client, "primary", self.client)
+
+    @contextmanager
+    def _thread(self, thread_id: int | None) -> Iterator[None]:
+        """Send into one topic for the duration; a no-op for clients without topics."""
+        target = self._thread_target()
+        if not hasattr(target, "thread_id"):
+            yield
+            return
+        previous = target.thread_id
+        target.thread_id = thread_id
+        try:
+            yield
+        finally:
+            target.thread_id = previous
+
+    def _topic(self, project: str | None):
+        return self._thread(self.topics.get(project or "") if self.topic_mode else None)
+
+    def _topic_project(self, message: dict[str, Any] | None) -> str | None:
+        thread = (message or {}).get("message_thread_id")
+        if not self.topic_mode or not thread:
+            return None
+        return next((name for name, value in self.topics.items() if value == thread), None)
+
+    def setup_topics(self, me: dict[str, Any]) -> bool:
+        """One topic per project when the owner turned topic mode on in @BotFather."""
+        self.topic_mode = False
+        if not me.get("has_topics_enabled") or not hasattr(self.client, "create_topic"):
+            return False
+        for project in self.projects:
+            if project in self.topics:
+                continue
+            try:
+                topic = self.client.create_topic(self.owner_id, project)
+            except TelegramError:
+                return False
+            self.topics[project] = int(topic["message_thread_id"])
+        self.topic_mode = True
+        return True
+
+    def _optional(self, name: str, *args: Any, **kwargs: Any) -> Any:
+        """Call a presentation method if the client has it; failures only cost decoration."""
+        method = getattr(self.client, name, None)
+        if method is None:
+            return None
+        try:
+            return method(*args, **kwargs)
+        except TelegramError:
+            return None
 
     def resolve_username(self) -> None:
         """Links are optional: a failed lookup leaves plain titles."""
@@ -703,11 +942,12 @@ class OwnerChannel:
             ):
                 try:
                     card = _parse_card(item["body"])
-                    if card:
-                        self._deliver_card(project, item, card)
-                    else:
-                        sent = self.notify(f"{item['sender']}：\n{item['body']}", project=project)
-                        self._remember(sent, project, item.get("task_id"), item["sender"])
+                    with self._topic(project):
+                        if card:
+                            self._deliver_card(project, item, card)
+                        else:
+                            sent = self.notify(f"{item['sender']}：\n{item['body']}", project=project)
+                            self._remember(sent, project, item.get("task_id"), item["sender"])
                 except TelegramError:
                     raise
                 except (CollaborationRegistryError, OwnerChannelError, KeyError, TypeError, ValueError):
@@ -750,7 +990,8 @@ class OwnerChannel:
         for project in self.projects:
             for item in self._open_questions(project):
                 if item["delivered_at"] is None:
-                    self._send_question(project, item)
+                    with self._topic(project):
+                        self._send_question(project, item)
                     delivered += 1
         return delivered
 
@@ -759,7 +1000,7 @@ class OwnerChannel:
         expires = datetime.fromisoformat(item["expires_at"]).astimezone()
         lines = [f"<b>{icon} 需要你回答</b> · {_safe(project)}", ""]
         lines += [f"<b>{_safe_lines(item['question'])}</b>", ""]
-        lines.append(f"<i>来自 {_safe(item['asker'], 60)} · 有效至 {expires:%m-%d %H:%M}</i>")
+        lines.append(f"<i>来自 {_safe(item['asker'], 60)} · 有效至 {_when(expires)}</i>")
         if self.interactive:
             lines.append("<i>点选项，或回复这条消息写你的答案</i>")
         else:
@@ -772,7 +1013,7 @@ class OwnerChannel:
             for index, option in enumerate(item["options"])
         ]
         sent = self.client.send_message(
-            self.owner_id, _clip("\n".join(lines)), keyboard or None, rich=True
+            self.owner_id, _clip_html("\n".join(lines)), keyboard or None, rich=True
         )
         self._remember(
             sent,
@@ -884,12 +1125,12 @@ class OwnerChannel:
         else:
             keyboard, stored = self._custom_keyboard(card.get("buttons"))
             lines = [f"<b>💬 {_safe(sender, 60)}</b> · {_safe(project)}", ""]
-            lines += [f"<b>{_safe(title, 120)}</b>", _safe_lines(text)]
+            lines += [f"<b>{_safe(title, 120)}</b>", *_fold(_safe_lines(text, 2400).splitlines())]
             if card.get("metrics"):
                 lines += ["", "<b>📈 实测数据</b>", *map(_metric_line, card["metrics"][:10])]
             lines += ["", "<i>回复这条消息可以追问</i>"]
             sent = self.client.send_message(
-                self.owner_id, _clip("\n".join(lines)), keyboard or None, rich=True
+                self.owner_id, _clip_html("\n".join(lines)), keyboard or None, rich=True
             )
             self._remember(
                 sent,
@@ -915,10 +1156,19 @@ class OwnerChannel:
         label = "✅ 批准所选" if approval["items"] else "✅ 批准"
         rows.append(
             [
-                _button(label, "p|yes"),
-                _button("❌ 全部拒绝" if approval["items"] else "❌ 拒绝", "p|no"),
+                _button(label, "p|yes", "success"),
+                _button("❌ 全部拒绝" if approval["items"] else "❌ 拒绝", "p|no", "danger"),
             ]
         )
+        return rows
+
+    def _decided_buttons(self, approval: dict[str, Any], label: str) -> list[list[dict[str, Any]]]:
+        chosen = set(approval["selected"]) if approval["state"] in ("approved", "partial") else set()
+        rows = [[_disabled(label)]]
+        rows += [
+            [_disabled(f"{'☑' if index in chosen else '☐'} {item}")]
+            for index, item in enumerate(approval["items"])
+        ]
         return rows
 
     def _send_approval(
@@ -942,7 +1192,7 @@ class OwnerChannel:
         ).hexdigest()[:16]
         hours = float(card.get("expires_hours") or DEFAULT_APPROVAL_HOURS)
         expires = datetime.now(UTC) + timedelta(hours=hours)
-        local = expires.astimezone().strftime("%m-%d %H:%M")
+        local = _when(expires)
         lines = [f"<b>🔏 审批申请</b> · {_safe(project)}", ""]
         lines += [f"<b>{_safe(title, 120)}</b>", _safe_lines(text)]
         if subject:
@@ -979,7 +1229,7 @@ class OwnerChannel:
         }
         sent = self.client.send_message(
             self.owner_id,
-            _clip("\n".join(lines)),
+            _clip_html("\n".join(lines)),
             None if risk == "high" or not self.interactive else self._approval_buttons(approval),
             rich=True,
         )
@@ -1051,9 +1301,10 @@ class OwnerChannel:
             lines.append(f"  还有 {len(rows) - limit} 项，发 /list 查看")
         return lines
 
-    def render_status(self) -> tuple[str, list[list[dict[str, str]]]]:
-        now = datetime.now().astimezone().strftime("%H:%M")
-        lines = [f"<b>📊 Continuity 总览</b> · {now}", ""]
+    def render_status(self, pinned: bool = False) -> tuple[str, list[list[dict[str, str]]]]:
+        now = _when(datetime.now(UTC), "t")
+        heading = "📌 Continuity 总览（自动刷新）" if pinned else "📊 Continuity 总览"
+        lines = [f"<b>{heading}</b> · {now}", ""]
         for project in self.projects:
             tasks = self._open_tasks(project)
             counts = Counter(task["status"] for task in tasks)
@@ -1070,10 +1321,135 @@ class OwnerChannel:
             for project in self.projects
         )
         lines.append(f"🧑‍💻 等你处理：<b>{waiting}</b> 件" if waiting else "🧑‍💻 没有等你处理的事")
-        return "\n".join(lines), [
+        keyboard = [
             [_button("🧑‍💻 等你处理", "v|waiting"), _button("📋 任务", "v|list|recent|0")],
             [_button("🔄 刷新", "v|status")],
         ]
+        if self.interactive:
+            keyboard[1].append(
+                _button("取消置顶", "v|unpin") if pinned else _button("📌 置顶并自动刷新", "v|pin")
+            )
+            if callable(getattr(self.client, "send_widget", None)):
+                keyboard.append([_button("🧩 小组件面板", "v|widget", "primary")])
+        return "\n".join(lines), keyboard
+
+    # --- widget panel (Bot API 10.4) -------------------------------------------------
+    def panel_state(self) -> str:
+        """Compact JSON for the widget: counts and the tasks worth a glance."""
+        rank = {code: index for index, code in enumerate(owner_widgets.TASK_ORDER)}
+        projects = []
+        waiting = len(self._owner_rows())
+        for project in self.projects:
+            tasks = self._open_tasks(project)
+            counts = Counter(task["status"] for task in tasks)
+            rows = []
+            for task in tasks:
+                if task["assignee"] in OWNER_ASSIGNEES:
+                    code = "o"
+                elif task["status"] in ("blocked", "conflict"):
+                    code = "b"
+                elif task["status"] in ("active", "dispatched"):
+                    code = "a"
+                elif task["status"] == "ready-for-review" and not _is_stale_review(task):
+                    code = "r"
+                elif task["status"] == "queued":
+                    code = "q"
+                else:
+                    continue
+                rows.append((rank[code], task["updated_at"], code, task))
+            rows.sort(key=lambda row: (row[0], -datetime.fromisoformat(row[1]).timestamp()))
+            stale = sum(_is_stale_review(task) for task in tasks)
+            waiting += len(self._owner_decisions(project)) + len(self._open_questions(project))
+            projects.append(
+                [
+                    project,
+                    counts["active"] + counts["dispatched"],
+                    counts["queued"],
+                    counts["blocked"] + counts["conflict"],
+                    counts["ready-for-review"] - stale,
+                    [
+                        [code, _plain(task["title"], owner_widgets.TITLE_CHARS), _card_key(project, task["task_id"])]
+                        for _, _, code, task in rows[: owner_widgets.TASKS_PER_PROJECT]
+                    ],
+                ]
+            )
+        state = {"t": int(time.time()), "u": self.bot_username or "", "w": waiting, "p": projects}
+        return owner_widgets.fit(state)
+
+    def _status_caption(self) -> str:
+        """What chat lists, notifications and widget-less apps show."""
+        parts = []
+        for project in self.projects:
+            counts = Counter(task["status"] for task in self._open_tasks(project))
+            parts.append(
+                f"{project}：进行中 {counts['active'] + counts['dispatched']}，"
+                f"排队 {counts['queued']}，阻塞 {counts['blocked']}"
+            )
+        return ("📊 Continuity 面板\n" + "\n".join(parts))[:1000]
+
+    def send_widget_panel(self) -> bool:
+        method = getattr(self.client, "send_widget", None)
+        if method is None:
+            return False
+        data = self.panel_state()
+        try:
+            sent = method(self.owner_id, owner_widgets.PANEL_HTML, data, self._status_caption())
+        except TelegramError as error:
+            if "Bad Request" not in str(error):
+                raise
+            return False
+        if self.widget.get("message_id"):
+            self._optional("unpin", self.owner_id, self.widget["message_id"])
+        self.widget.clear()
+        self.widget.update(
+            {
+                "message_id": sent["message_id"],
+                "digest": owner_widgets.digest_view(data),
+                "checked_at": datetime.now(UTC).isoformat(),
+            }
+        )
+        self._optional("pin", self.owner_id, sent["message_id"])
+        return True
+
+    def refresh_widget(self, now: datetime | None = None) -> bool:
+        message_id = self.widget.get("message_id")
+        now = now or datetime.now(UTC)
+        if not message_id:
+            return False
+        checked = self.widget.get("checked_at")
+        if checked and now - datetime.fromisoformat(checked) < PANEL_REFRESH:
+            return False
+        self.widget["checked_at"] = now.isoformat()
+        data = self.panel_state()
+        digest = owner_widgets.digest_view(data)
+        if digest == self.widget.get("digest"):
+            return False
+        try:
+            self.client.edit_widget_data(self.owner_id, message_id, data)
+        except TelegramError as error:
+            if "not found" in str(error) or "can't be edited" in str(error):
+                self.widget.clear()
+                return False
+            if "not modified" not in str(error):
+                raise
+        self.widget["digest"] = digest
+        return True
+
+    def _handle_widget_query(self, query: dict[str, Any]) -> None:
+        """Only the owner's own widget gets data; the answer is fresh panel state."""
+        # Production widgets live only in private chats; chat may be omitted.
+        chat = query.get("chat") or {"id": self.owner_id, "type": "private"}
+        if not self._is_owner(query.get("from") or {}, chat):
+            self._optional("answer_widget_query", query.get("id"), None)
+            return
+        if query.get("data") != "refresh":
+            self.client.answer_widget_query(query["id"], None)
+            return
+        data = self.panel_state()
+        self.client.answer_widget_query(query["id"], data)
+        if query.get("message_id") == self.widget.get("message_id"):
+            self._optional("edit_widget_data", self.owner_id, query["message_id"], data)
+            self.widget["digest"] = owner_widgets.digest_view(data)
 
     def render_list(
         self, status: str = "recent", page: int = 0, project: str | None = None
@@ -1103,7 +1479,7 @@ class OwnerChannel:
             where = f"{_safe(project)} · " if len(self.projects) > 1 else ""
             who = _safe(task["assignee"] or "未分配", 40)
             lines.append(f"• {self._link(project, task)}")
-            lines.append(f"   <i>{where}{who} · {_ago(task['updated_at'])}</i>")
+            lines.append(f"   <i>{where}{who} · {_ago_html(task['updated_at'])}</i>")
         if not rows:
             lines += ["", "这里没有卡片。"]
         lines += ["", "<i>点标题查看近况</i>"] if rows and self.bot_username else []
@@ -1148,7 +1524,7 @@ class OwnerChannel:
             )
         for project, task in rows[:PAGE_SIZE]:
             lines.append(f"• {self._link(project, task)}")
-            lines.append(f"   <i>{_safe(project)} · {_ago(task['created_at'])}</i>")
+            lines.append(f"   <i>{_safe(project)} · {_ago_html(task['created_at'])}</i>")
         if decisions:
             lines += ["", "<b>主控交接里待你决定</b>"]
             for project, entry in decisions:
@@ -1156,28 +1532,43 @@ class OwnerChannel:
                 lines.append(f"   <i>{_safe(project)} · 可能已过时，回复主控确认</i>")
         return "\n".join(lines), back
 
-    def render_report(
-        self, project: str | None = None, since: str | None = None
-    ) -> tuple[str, list[list[dict[str, str]]]]:
+    def _report_data(self, project: str | None, since: str | None) -> dict[str, Any]:
         now = datetime.now(UTC)
         start = since or (now - timedelta(hours=24)).isoformat()
         hours = max(1, round((now - datetime.fromisoformat(start)).total_seconds() / 3600))
-        local = now.astimezone().strftime("%H:%M")
-        lines = [f"<b>🕘 进度报告</b> · {local}（过去 {hours} 小时）"]
+        sections = []
         for name in [project] if project else self.projects:
             tasks = list_tasks(self.data_root, project_id=name)
             changed = Counter(t["status"] for t in tasks if t["updated_at"] >= start)
             open_rows = [row for row in self._rows() if row[0] == name]
-            active = [r for r in open_rows if r[1]["status"] in ("active", "dispatched")]
-            blocked = [
-                r
-                for r in open_rows
-                if r[1]["status"] in ("blocked", "conflict") and r[1]["updated_at"] >= start
-            ]
-            finished = changed["completed"] + changed["merged"]
-            lines += ["", f"<b>{_safe(name)}</b>"]
+            sections.append(
+                {
+                    "name": name,
+                    "finished": changed["completed"] + changed["merged"],
+                    "review": changed["ready-for-review"],
+                    "active": [r for r in open_rows if r[1]["status"] in ("active", "dispatched")],
+                    "blocked": [
+                        r
+                        for r in open_rows
+                        if r[1]["status"] in ("blocked", "conflict") and r[1]["updated_at"] >= start
+                    ],
+                    "waiting": sum(row[0] == name for row in self._owner_rows())
+                    + len(self._owner_decisions(name)),
+                    "questions": self._open_questions(name),
+                }
+            )
+        return {"now": now, "hours": hours, "sections": sections}
+
+    def render_report(
+        self, project: str | None = None, since: str | None = None
+    ) -> tuple[str, list[list[dict[str, str]]]]:
+        data = self._report_data(project, since)
+        lines = [f"<b>🕘 进度报告</b> · {_when(data['now'], 't')}（过去 {data['hours']} 小时）"]
+        for section in data["sections"]:
+            active, blocked, questions = section["active"], section["blocked"], section["questions"]
+            lines += ["", f"<b>{_safe(section['name'])}</b>"]
             lines.append(
-                f"✅ 完成 {finished}　👀 提交待审 {changed['ready-for-review']}　"
+                f"✅ 完成 {section['finished']}　👀 提交待审 {section['review']}　"
                 f"⛔ 新阻塞 {len(blocked)}"
             )
             if active:
@@ -1187,15 +1578,60 @@ class OwnerChannel:
                 for row_project, task in blocked[:3]:
                     reason = _safe(task.get("blocked_reason") or "未写原因", 60)
                     lines.append(f"• {self._link(row_project, task)}\n   <i>{reason}</i>")
-            waiting = sum(row[0] == name for row in self._owner_rows())
-            decisions = len(self._owner_decisions(name))
-            questions = self._open_questions(name)
-            if waiting + decisions + len(questions):
-                lines.append(f"🧑‍💻 等你处理 {waiting + decisions + len(questions)} 件")
+            waiting = section["waiting"] + len(questions)
+            if waiting:
+                lines.append(f"🧑‍💻 等你处理 {waiting} 件")
             for item in questions[:3]:
                 lines.append(f"❓ {_safe(item['question'], 80)}")
         keyboard = [[_button("🧑‍💻 等你处理", "v|waiting"), _button("📋 任务", "v|list|recent|0")]]
-        return _clip("\n".join(lines)), keyboard
+        return _clip_html("\n".join(lines)), keyboard
+
+    def render_report_rich(self, project: str | None = None, since: str | None = None) -> str:
+        """The progress report as a rich message: a count table, then collapsible detail."""
+        data = self._report_data(project, since)
+        parts = [f"<h2>🕘 进度报告</h2><p>过去 {data['hours']} 小时 · {_when(data['now'], 't')}</p>"]
+        rows = ["<tr><th>项目</th><th>完成</th><th>待审</th><th>进行中</th><th>新阻塞</th><th>等你</th></tr>"]
+        for section in data["sections"]:
+            waiting = section["waiting"] + len(section["questions"])
+            rows.append(
+                f"<tr><td>{_safe(section['name'], 40)}</td>"
+                + "".join(
+                    f'<td align="center">{value}</td>'
+                    for value in (
+                        section["finished"],
+                        section["review"],
+                        len(section["active"]),
+                        len(section["blocked"]),
+                        waiting,
+                    )
+                )
+                + "</tr>"
+            )
+        parts.append("<table compact bordered striped>" + "".join(rows) + "</table>")
+        for section in data["sections"]:
+            blocks = []
+            if section["blocked"]:
+                items = "".join(
+                    f"<li><p>{self._link(row_project, task)}</p>"
+                    f"<p><i>{_safe(task.get('blocked_reason') or '未写原因', 120)}</i></p></li>"
+                    for row_project, task in section["blocked"][:5]
+                )
+                blocks.append(f"<h4>⛔ 新阻塞</h4><ul>{items}</ul>")
+            if section["questions"]:
+                items = "".join(f"<li>{_safe(item['question'], 160)}</li>" for item in section["questions"][:5])
+                blocks.append(f"<h4>❓ 等你回答</h4><ul>{items}</ul>")
+            if section["active"]:
+                items = "".join(f"<li>{self._link(row[0], row[1])}</li>" for row in section["active"][:8])
+                more = f"<li>还有 {len(section['active']) - 8} 项</li>" if len(section["active"]) > 8 else ""
+                blocks.append(f"<h4>🟢 进行中（{len(section['active'])}）</h4><ul>{items}{more}</ul>")
+            if blocks:
+                # What needs the owner stays open; the rest is one tap away.
+                is_open = " open" if section["blocked"] or section["questions"] else ""
+                parts.append(
+                    f"<details{is_open}><summary>{_safe(section['name'])}</summary>{''.join(blocks)}</details>"
+                )
+        parts.append(self._rich_footer())
+        return "".join(parts)
 
     def _read_new_changes(self, project: str) -> tuple[list[dict[str, Any]], int]:
         cursor = self.cursors.get(project)
@@ -1249,12 +1685,20 @@ class OwnerChannel:
         if not seen:
             return 0
         lines = [f"<b>🛑 会话中断</b> · {_safe(project)}（{len(seen)} 个）", ""]
+        items = []
         for change in list(seen.values())[:6]:
             error = str(change.get("error") or "unknown")
-            lines.append(f"• {SESSION_ERRORS.get(error, _safe(error, 40))}")
+            label = SESSION_ERRORS.get(error, _safe(error, 40))
+            lines.append(f"• {label}")
+            detail = f"<p><i>{_safe(change['detail'], 160)}</i></p>" if change.get("detail") else ""
             if change.get("detail"):
                 lines.append(f"   <i>{_safe(change['detail'], 100)}</i>")
-        sent = self.client.send_message(self.owner_id, _clip("\n".join(lines)), None, rich=True)
+            items.append(f"<li><p><b>{label}</b></p>{detail}</li>")
+        rich_html = (
+            f"<p>🛑 会话中断 · {_safe(project)}</p><h3>{len(seen)} 个会话停下了</h3>"
+            f"<ul>{''.join(items)}</ul>{self._rich_footer()}"
+        )
+        sent = self._deliver(_clip_html("\n".join(lines)), None, rich_html)
         self._remember(sent, project)
         for key in seen:
             self.alerted[key] = now.isoformat()
@@ -1263,21 +1707,30 @@ class OwnerChannel:
     def _send_alerts(self, project: str, rows: dict[str, str], now: datetime) -> None:
         tasks = {t["task_id"]: t for t in list_tasks(self.data_root, project_id=project)}
         lines = [f"<b>🚨 任务出问题</b> · {_safe(project)}（{len(rows)} 项）", ""]
+        items = []
         for task_id, reason in list(rows.items())[:8]:
             task = tasks.get(task_id)
             name = self._link(project, task) if task else _safe(task_id, 70)
             who = _safe((task or {}).get("assignee") or "未分配", 40)
             detail = _safe((task or {}).get("blocked_reason"), 80)
             lines.append(f"• {name}\n   <i>{reason} · {who}</i>")
+            extra = ""
             if detail and detail != reason:
                 lines.append(f"   <i>{detail}</i>")
+                extra = f"<p>{detail}</p>"
+            items.append(f"<li><p><b>{name}</b></p><p><i>{reason} · {who}</i></p>{extra}</li>")
+        more = ""
         if len(rows) > 8:
             lines.append(f"还有 {len(rows) - 8} 项")
-        sent = self.client.send_message(
-            self.owner_id,
-            _clip("\n".join(lines)),
-            [[_button("📋 任务", "v|list|blocked|0"), _button("📊 总览", "v|status")]],
-            rich=True,
+            more = f"<p>还有 {len(rows) - 8} 项</p>"
+        rich_html = (
+            f"<p>🚨 任务出问题 · {_safe(project)}</p><h3>{len(rows)} 项需要看一眼</h3>"
+            f"<ul>{''.join(items)}</ul>{more}{self._rich_footer()}"
+        )
+        sent = self._deliver(
+            _clip_html("\n".join(lines)),
+            [[_button("📋 任务", "v|list|blocked|0", "danger"), _button("📊 总览", "v|status")]],
+            rich_html,
         )
         self._remember(sent, project)
         for task_id in rows:
@@ -1299,50 +1752,76 @@ class OwnerChannel:
                 lines.append(f"   <i>{outcome}</i>")
         if len(rows) > PAGE_SIZE:
             lines.append(f"还有 {len(rows) - PAGE_SIZE} 项，发 /list {project} 查看")
-        sent = self.client.send_message(
-            self.owner_id,
-            _clip("\n".join(lines)),
+        items = []
+        for task in rows[:PAGE_SIZE]:
+            outcome = _safe(task.get("result") or task.get("verification"), 300)
+            icon = "👀" if task["status"] == "ready-for-review" else "✅"
+            who = _safe(task.get("assignee") or "未分配", 40)
+            body = f"<p><i>{outcome}</i></p>" if outcome else ""
+            items.append(
+                f"<li><p><b>{icon} {self._link(project, task)}</b></p>{body}"
+                f"<p>{who} · {_ago_html(task.get('updated_at'))}</p></li>"
+            )
+        more = (
+            f"<p>还有 {len(rows) - PAGE_SIZE} 项，发 /list {_safe(project)} 查看</p>"
+            if len(rows) > PAGE_SIZE
+            else ""
+        )
+        rich_html = (
+            f"<p>✅ 任务完成总结 · {_safe(project)}</p>"
+            f"<h3>{len(rows)} 项有了结果</h3>"
+            "<table compact bordered><tr><th>完成</th><th>待审</th></tr>"
+            f'<tr><td align="center">{counts["completed"] + counts["merged"]}</td>'
+            f'<td align="center">{counts["ready-for-review"]}</td></tr></table>'
+            f"<ul>{''.join(items)}</ul>{more}{self._rich_footer()}"
+        )
+        sent = self._deliver(
+            _clip_html("\n".join(lines)),
             [[_button("📋 任务", "v|list|recent|0"), _button("📊 总览", "v|status")]],
-            rich=True,
+            rich_html,
         )
         self._remember(sent, project)
+
+    def _rich_footer(self) -> str:
+        return f"<footer>Continuity · {_when(datetime.now(UTC), 'dt')}</footer>"
 
     def watch_events(self, now: datetime | None = None) -> int:
         """Push failures at once; fold finished cards into an hourly digest."""
         now = now or datetime.now(UTC)
         pushed = 0
         for project in self.projects:
-            changes, cursor = self._read_new_changes(project)
-            rows = self._alert_rows(project, changes, now)
-            pushed += self._send_session_alerts(project, changes, now)
-            if rows:
-                self._send_alerts(project, rows, now)
-                pushed += 1
-            waiting = self.finished.setdefault(project, [])
-            for change in changes:
-                if change["event"] == "owner.question.answered" and change.get("resume_requested"):
-                    self.wake(
-                        project,
-                        f"Owner 回答了你的问题 {change.get('question_id')}，答案在你的 inbox 里，请继续。",
-                    )
+            with self._topic(project):
+                changes, cursor = self._read_new_changes(project)
+                rows = self._alert_rows(project, changes, now)
+                pushed += self._send_session_alerts(project, changes, now)
+                if rows:
+                    self._send_alerts(project, rows, now)
+                    pushed += 1
+                waiting = self.finished.setdefault(project, [])
+                for change in changes:
+                    if change["event"] == "owner.question.answered" and change.get("resume_requested"):
+                        self.wake(
+                            project,
+                            f"Owner 回答了你的问题 {change.get('question_id')}，答案在你的 inbox 里，请继续。",
+                        )
+                    if (
+                        change["event"] == "task.updated"
+                        and change.get("status") in FINISHED_STATUSES
+                        and change.get("assignee") not in OWNER_ASSIGNEES
+                        and change.get("task_id") not in waiting
+                    ):
+                        waiting.append(change["task_id"])
+                self.cursors[project] = cursor
+                last = self.digest_at.setdefault(project, now.isoformat())
                 if (
-                    change["event"] == "task.updated"
-                    and change.get("status") in FINISHED_STATUSES
-                    and change.get("assignee") not in OWNER_ASSIGNEES
-                    and change.get("task_id") not in waiting
+                    waiting
+                    and not _is_quiet(now)
+                    and now - datetime.fromisoformat(last) >= DIGEST_EVERY
                 ):
-                    waiting.append(change["task_id"])
-            self.cursors[project] = cursor
-            last = self.digest_at.setdefault(project, now.isoformat())
-            if (
-                waiting
-                and not _is_quiet(now)
-                and now - datetime.fromisoformat(last) >= DIGEST_EVERY
-            ):
-                self._send_digest(project, waiting)
-                self.finished[project] = []
-                self.digest_at[project] = now.isoformat()
-                pushed += 1
+                    self._send_digest(project, waiting)
+                    self.finished[project] = []
+                    self.digest_at[project] = now.isoformat()
+                    pushed += 1
         return pushed
 
     def render_timers(self) -> tuple[str, list[list[dict[str, str]]]]:
@@ -1388,7 +1867,9 @@ class OwnerChannel:
         due = [timer for timer in self.timers if timer["next_at"] <= now.isoformat()]
         for timer in due:
             text, keyboard = self.render_report(timer.get("project"), timer.get("last_run"))
-            self.client.send_message(self.owner_id, text, keyboard, rich=True)
+            rich_html = self.render_report_rich(timer.get("project"), timer.get("last_run")) if self.rich_ok else None
+            with self._topic(timer.get("project")):
+                self._deliver(text, keyboard, rich_html)
             timer["last_run"] = now.isoformat()
             if timer["kind"] == "once":
                 self.timers.remove(timer)
@@ -1422,7 +1903,7 @@ class OwnerChannel:
             else:
                 continue
             if text != previous:
-                lines.append(f"• {_ago(change.get('observed_at'))}：{_safe(text, 60)}")
+                lines.append(f"• {_ago_html(change.get('observed_at'))}：{_safe(text, 60)}")
             previous = text
         if not lines:
             return [] if not page["changes"] else self._card_times(project, task_id)
@@ -1434,11 +1915,11 @@ class OwnerChannel:
         if found is None:
             return []
         task = found[1]
-        return [f"• {_ago(task['created_at'])}：创建", f"• {_ago(task['updated_at'])}：最近更新"]
+        return [f"• {_ago_html(task['created_at'])}：创建", f"• {_ago_html(task['updated_at'])}：最近更新"]
 
     def _action_buttons(self, key: str) -> list[list[dict[str, str]]]:
         return [
-            [_button("✅ 已完成", f"o|done|{key}"), _button("⏰ 稍后提醒", f"o|later|{key}")],
+            [_button("✅ 已完成", f"o|done|{key}", "success"), _button("⏰ 稍后提醒", f"o|later|{key}")],
             [_button("💬 有问题", f"o|ask|{key}")],
         ]
 
@@ -1461,14 +1942,14 @@ class OwnerChannel:
         if events:
             lines += ["<b>近况</b>", *events, ""]
         who = _safe(task["assignee"] or "未分配", 40)
-        lines.append(f"<i>{who} · 更新于 {_ago(task['updated_at'])}</i>")
+        lines.append(f"<i>{who} · 更新于 {_ago_html(task['updated_at'])}</i>")
         keyboard = []
         if task["assignee"] in OWNER_ASSIGNEES and task["status"] in ("active", "queued"):
             keyboard = self._action_buttons(key)
         keyboard.append([_button("🔄 刷新", f"v|card|{key}"), _button("‹ 任务", "v|list|recent|0")])
         return "\n".join(lines), keyboard
 
-    def _view(self, data: str) -> tuple[str, list[list[dict[str, str]]]]:
+    def _view(self, data: str, message_id: int | None = None) -> tuple[str, list[list[dict[str, str]]]]:
         parts = data.split("|")
         if parts[1:2] == ["waiting"]:
             return self.render_waiting()
@@ -1479,7 +1960,49 @@ class OwnerChannel:
             return self.render_timers()
         if parts[1:2] == ["card"] and len(parts) == 3:
             return self.render_card(parts[2])
-        return self.render_status()
+        return self.render_status(pinned=message_id is not None and message_id == self.panel.get("message_id"))
+
+    def _pin_panel(self, message_id: int) -> bool:
+        previous = self.panel.get("message_id")
+        if not self._optional("pin", self.owner_id, message_id):
+            return False
+        if previous and previous != message_id:
+            self._optional("unpin", self.owner_id, previous)
+        self.panel.clear()
+        self.panel.update({"message_id": message_id, "digest": "", "checked_at": ""})
+        return True
+
+    def _unpin_panel(self) -> None:
+        if self.panel.get("message_id"):
+            self._optional("unpin", self.owner_id, self.panel["message_id"])
+        self.panel.clear()
+
+    def refresh_panel(self, now: datetime | None = None) -> bool:
+        """Edit the pinned overview in place when its content changed."""
+        message_id = self.panel.get("message_id")
+        now = now or datetime.now(UTC)
+        if not message_id:
+            return False
+        checked = self.panel.get("checked_at")
+        if checked and now - datetime.fromisoformat(checked) < PANEL_REFRESH:
+            return False
+        self.panel["checked_at"] = now.isoformat()
+        text, keyboard = self.render_status(pinned=True)
+        digest = hashlib.sha256(_TIME_TAG_RE.sub("", text).encode()).hexdigest()[:16]
+        if digest == self.panel.get("digest"):
+            return False
+        try:
+            self.client.edit_message(self.owner_id, message_id, text, keyboard, rich=True)
+        except TelegramError as error:
+            if "not modified" in str(error):
+                self.panel["digest"] = digest
+                return False
+            if "not found" in str(error) or "can't be edited" in str(error):
+                self.panel.clear()
+                return False
+            raise
+        self.panel["digest"] = digest
+        return True
 
     def request_action(
         self,
@@ -1528,7 +2051,7 @@ class OwnerChannel:
             ]
         key = _card_key(project, task["task_id"])
         return self.client.send_message(
-            self.owner_id, _clip("\n".join(lines)), self._action_buttons(key), rich=True
+            self.owner_id, _clip_html("\n".join(lines)), self._action_buttons(key), rich=True
         )
 
     def send_stage_report(
@@ -1547,7 +2070,7 @@ class OwnerChannel:
         if _SECRET_RE.search(f"{title} {summary} {' '.join(recommendations or [])}"):
             raise OwnerChannelError("credential assignments must not leave this host")
         lines = [f"<b>🏁 阶段完成</b> · {_safe(project)}", ""]
-        lines += [f"<b>{_safe(title, 120)}</b>", _safe_lines(summary)]
+        lines += [f"<b>{_safe(title, 120)}</b>", *_fold(_safe_lines(summary, 2400).splitlines())]
         if metrics:
             lines += ["", "<b>📈 实测数据</b>", *map(_metric_line, metrics[:10])]
         keyboard = []
@@ -1557,7 +2080,7 @@ class OwnerChannel:
                 lines.append(f"{index + 1}. {_safe(item, 200)}")
             keyboard.append(
                 [
-                    _button(f"做 {index + 1}", f"a|{project}|{index}")
+                    _button(f"做 {index + 1}", f"a|{project}|{index}", "primary")
                     for index in range(min(len(recommendations), 4))
                 ]
             )
@@ -1568,13 +2091,74 @@ class OwnerChannel:
             ("⛔ 阻塞", [r for r in rows if r[1]["status"] in ("blocked", "conflict") and r[1]["assignee"] not in OWNER_ASSIGNEES]),
             ("⏳ 排队", [r for r in rows if r[1]["status"] == "queued" and r[1]["assignee"] not in OWNER_ASSIGNEES]),
         )
+        picture: list[str] = []
         for label, group in groups:
             if group:
-                lines += ["", f"<b>{label}（{len(group)}）</b>", *self._section(group)]
+                picture += [f"<b>{label}（{len(group)}）</b>", *self._section(group)]
+        if picture:
+            # The task picture is context, not the news: collapsed by default.
+            lines += ["", "<b>📋 项目任务</b>", "<blockquote expandable>" + "\n".join(picture) + "</blockquote>"]
         keyboard.append([_button("📋 全部任务", "v|list|recent|0"), _button("📊 总览", "v|status")])
-        return self.client.send_message(
-            self.owner_id, _clip("\n".join(lines)), keyboard, rich=True
-        )
+        classic = _clip_html("\n".join(lines))
+        document = self._stage_rich(project, title, summary, metrics, recommendations, groups) if self.rich_ok else None
+        return self._deliver(classic, keyboard, document)
+
+    def _deliver(
+        self, classic: str, keyboard: list[list[dict[str, Any]]] | None, rich_html: str | None
+    ) -> dict[str, Any]:
+        """Rich message when the API accepts it; classic HTML otherwise (and for webhooks)."""
+        if rich_html is not None and self.rich_ok:
+            try:
+                return self.client.send_rich(self.owner_id, rich_html, keyboard, fallback=classic)
+            except TelegramError as error:
+                if "Bad Request" not in str(error):
+                    raise
+                self.rich_ok = False
+        return self.client.send_message(self.owner_id, classic, keyboard, rich=True)
+
+    def _stage_rich(
+        self,
+        project: str,
+        title: str,
+        summary: str,
+        metrics: list[dict[str, Any]] | None,
+        recommendations: list[str] | None,
+        groups: tuple[tuple[str, list[tuple[str, dict[str, Any]]]], ...],
+    ) -> str:
+        """The stage card as a rich message: heading, table, collapsible detail."""
+        parts = [f"<p>🏁 阶段完成 · {_safe(project)}</p>", f"<h2>{_safe(title, 120)}</h2>"]
+        lines = _safe_lines(summary, 6000).splitlines()
+        parts += [f"<p>{line}</p>" for line in lines[:3]]
+        if len(lines) > 3:
+            body = "".join(f"<p>{line}</p>" for line in lines[3:])
+            parts.append(f"<details><summary>展开详细结论（{len(lines) - 3} 段）</summary>{body}</details>")
+        if metrics:
+            rows = ["<tr><th>指标</th><th>之前</th><th>之后</th><th>变化</th></tr>"]
+            for metric in metrics[:20]:
+                line = _metric_line(metric)
+                change = line.rsplit("（", 1)[1].rstrip("）") if line.endswith("）") else ""
+                rows.append(
+                    f"<tr><td>{_safe(metric['label'], 60)}</td>"
+                    f'<td align="right">{_safe(metric.get("before"), 40) or "—"}</td>'
+                    f'<td align="right">{_safe(metric.get("after"), 40)}</td>'
+                    f'<td align="right">{change or "—"}</td></tr>'
+                )
+            parts.append("<h4>📈 实测数据</h4><table bordered striped>" + "".join(rows) + "</table>")
+        if recommendations:
+            items = "".join(f"<li>{_safe(item, 300)}</li>" for item in recommendations)
+            parts.append(f"<h4>🧭 下一阶段建议</h4><ol>{items}</ol>")
+        picture = []
+        total = 0
+        for label, group in groups:
+            if group:
+                total += len(group)
+                links = "".join(f"<li>{self._link(row[0], row[1])}</li>" for row in group[:8])
+                more = f"<li>还有 {len(group) - 8} 项</li>" if len(group) > 8 else ""
+                picture.append(f"<h4>{label}（{len(group)}）</h4><ul>{links}{more}</ul>")
+        if picture:
+            parts.append(f"<details><summary>📋 项目任务（{total}）</summary>{''.join(picture)}</details>")
+        parts.append(f"<footer>Continuity · {_when(datetime.now(UTC), 'dt')}</footer>")
+        return "".join(parts)
 
     def _is_owner(self, sender: dict[str, Any], chat: dict[str, Any]) -> bool:
         return (
@@ -1646,7 +2230,12 @@ class OwnerChannel:
             if found:
                 self._remember(sent, found[0], found[1]["task_id"])
             return
-        if command == "status":
+        if command == "panel":
+            if self.send_widget_panel():
+                return
+            view = self.render_status()
+            view = ("<i>这个客户端暂时用不了小组件，先看文字总览。</i>\n\n" + view[0], view[1])
+        elif command == "status":
             view = self.render_status()
         elif command == "list":
             status = STATUS_WORDS.get(argument or "", argument)
@@ -1658,6 +2247,9 @@ class OwnerChannel:
             view = self.render_waiting()
         elif command == "report":
             view = self.render_report(project)
+            if self.rich_ok:
+                self._deliver(view[0], view[1], self.render_report_rich(project))
+                return
         elif command == "timers":
             view = self.render_timers()
         else:
@@ -1673,7 +2265,10 @@ class OwnerChannel:
 
     def _handle_text(self, update_id: int, message: dict[str, Any], text: str) -> None:
         reply = message.get("reply_to_message")
-        if reply is None and len(self.projects) > 1:
+        if reply and reply.get("forum_topic_created"):
+            reply = None  # a message in a topic quotes the topic header, not a card
+        topic_project = self._topic_project(message)
+        if reply is None and len(self.projects) > 1 and topic_project is None:
             self.client.send_message(
                 self.owner_id,
                 f"发给哪个项目？\n\n{text}"[:MAX_TEXT_CHARS],
@@ -1683,11 +2278,12 @@ class OwnerChannel:
         context = self._context(reply)
         if context.get("question_id"):
             result = self._answer(context, text)
-            self.client.send_message(
-                self.owner_id, "已回答。" if result["accepted"] else "这个问题已经结束了。"
-            )
+            if not (result["accepted"] and self._react(message, REACTION_READ)):
+                self.client.send_message(
+                    self.owner_id, "已回答。" if result["accepted"] else "这个问题已经结束了。"
+                )
             return
-        project = context.get("project") or self._project_of(reply)
+        project = context.get("project") or topic_project or self._project_of(reply)
         body = text
         if reply:
             quoted = " ".join((reply.get("text") or "").split())[:300]
@@ -1703,17 +2299,87 @@ class OwnerChannel:
         except CollaborationRegistryError as error:
             self.client.send_message(self.owner_id, f"没有写入：{error}")
             return
-        keyboard = [[_button("🔔 叫醒它", "k|go")]] if project in self.wake_commands else None
+        reacted = self._react(message, REACTION_FORWARDED)
+        if reacted:
+            self._track_receipt(message, project, target, f"tg-{update_id}")
+        if project not in self.wake_commands:
+            if not reacted:
+                self.client.send_message(self.owner_id, f"已转给 {target}。")
+            return
+        keyboard = [[_button("🔔 叫醒它", "k|go", "primary")]]
         sent = self.client.send_message(self.owner_id, f"已转给 {target}。", keyboard)
         self._remember(sent, project, wake_text=text[:1500])
 
+    def _react(self, message: dict[str, Any], emoji: str) -> bool:
+        if "message_id" not in message:
+            return False
+        method = getattr(self.client, "set_reaction", None)
+        if method is None:
+            return False
+        try:
+            method(self.owner_id, message["message_id"], emoji)
+        except TelegramError:
+            return False
+        return True
+
+    def _track_receipt(self, message: dict[str, Any], project: str, recipient: str, inbox_id: str) -> None:
+        self.receipts[str(message["message_id"])] = {
+            "project": project,
+            "recipient": recipient,
+            "inbox_id": inbox_id,
+            "at": datetime.now(UTC).isoformat(),
+        }
+        while len(self.receipts) > RECEIPT_MEMORY:
+            self.receipts.pop(next(iter(self.receipts)))
+
+    def check_receipts(self, now: datetime | None = None) -> int:
+        """React 👌 on the owner's message once the agent acknowledged it."""
+        if not self.receipts:
+            return 0
+        now = now or datetime.now(UTC)
+        unread: dict[tuple[str, str], set[str]] = {}
+        done = 0
+        for message_id, receipt in list(self.receipts.items()):
+            if now - datetime.fromisoformat(receipt["at"]) > RECEIPT_TTL:
+                self.receipts.pop(message_id)
+                continue
+            key = (receipt["project"], receipt["recipient"])
+            if key not in unread:
+                try:
+                    unread[key] = {
+                        item["message_id"]
+                        for item in list_messages(
+                            self.data_root, project_id=key[0], recipient=key[1], limit=1000
+                        )
+                    }
+                except CollaborationRegistryError:
+                    unread[key] = {receipt["inbox_id"]}
+            if receipt["inbox_id"] not in unread[key]:
+                self.receipts.pop(message_id)
+                self._react({"message_id": int(message_id)}, REACTION_READ)
+                done += 1
+        return done
+
     def handle_update(self, update: dict[str, Any]) -> None:
+        source = update.get("message") or (update.get("callback_query") or {}).get("message") or {}
+        with self._thread(source.get("message_thread_id") if self.topic_mode else None):
+            self._handle_update(update)
+
+    def _handle_update(self, update: dict[str, Any]) -> None:
         callback = update.get("callback_query")
         if callback:
             message = callback.get("message") or {}
-            if not self._is_owner(callback.get("from") or {}, message.get("chat") or {}):
+            chat = message.get("chat") or {}
+            if not chat and message.get("ephemeral_message_id"):
+                # Ephemeral messages are shown only to the presser; the sender check still applies.
+                chat = {"id": self.owner_id, "type": "private"}
+            if not self._is_owner(callback.get("from") or {}, chat):
                 return
             self._handle_callback(update["update_id"], callback, message)
+            return
+        query = update.get("widget_query")
+        if query:
+            self._handle_widget_query(query)
             return
         message = update.get("message")
         if not message or not self._is_owner(message.get("from") or {}, message.get("chat") or {}):
@@ -1728,8 +2394,26 @@ class OwnerChannel:
         self, update_id: int, callback: dict[str, Any], message: dict[str, Any]
     ) -> None:
         data = callback.get("data") or ""
+        if data == "v|widget":
+            sent = self.send_widget_panel()
+            self.client.answer_callback(callback["id"], "已发送并置顶" if sent else "小组件发不出去")
+            return
+        if data in ("v|pin", "v|unpin"):
+            if data == "v|pin" and not self._pin_panel(message["message_id"]):
+                self.client.answer_callback(callback["id"], "置顶失败")
+                return
+            if data == "v|unpin":
+                self._unpin_panel()
+            text, keyboard = self.render_status(pinned=data == "v|pin")
+            try:
+                self.client.edit_message(self.owner_id, message["message_id"], text, keyboard, rich=True)
+            except TelegramError as error:
+                if "not modified" not in str(error):
+                    raise
+            self.client.answer_callback(callback["id"], "已置顶，每 5 分钟刷新" if data == "v|pin" else "已取消置顶")
+            return
         if data.startswith("v|"):
-            text, keyboard = self._view(data)
+            text, keyboard = self._view(data, message.get("message_id"))
             try:
                 self.client.edit_message(
                     self.owner_id, message["message_id"], text, keyboard, rich=True
@@ -1883,13 +2567,19 @@ class OwnerChannel:
         message: dict[str, Any],
         data: str,
     ) -> None:
+        parts = data.split("|")
+        action = parts[1]
+        ephemeral_id = None
+        if action in ("confirm", "cancel") and len(parts) == 3:
+            # Pressed on the ephemeral confirmation: act on the original card.
+            ephemeral_id = message.get("ephemeral_message_id")
+            message = {"message_id": int(parts[2])}
+            self._drop_ephemeral(ephemeral_id)
         context = self._context(message)
         approval = context.get("approval")
         if not approval or approval["state"] != "pending":
             self.client.answer_callback(callback["id"], "已处理过")
             return
-        parts = data.split("|")
-        action = parts[1]
         if action == "t" and approval["risk"] != "high":
             index = int(parts[2])
             selected = set(approval["selected"]) ^ {index}
@@ -1905,26 +2595,62 @@ class OwnerChannel:
             self._decide(update_id, context, message, "rejected", "❌ 已拒绝")
             self.client.answer_callback(callback["id"], "已拒绝")
         elif action == "cancel":
-            self.client.edit_buttons(
-                self.owner_id, message["message_id"], self._approval_buttons(approval)
-            )
-            self.client.answer_callback(callback["id"])
+            if ephemeral_id is None:
+                self.client.edit_buttons(
+                    self.owner_id, message["message_id"], self._approval_buttons(approval)
+                )
+            self.client.answer_callback(callback["id"], "已取消")
         elif approval["risk"] == "high":
             self.client.answer_callback(callback["id"], "高风险审批请回电脑处理")
         elif approval["items"] and not approval["selected"]:
             self.client.answer_callback(callback["id"], "至少选一项，或者点全部拒绝")
         elif action == "yes" and approval["risk"] == "medium":
-            self.client.edit_buttons(
-                self.owner_id,
-                message["message_id"],
-                [[_button("⚠️ 确认批准", "p|confirm"), _button("取消", "p|cancel")]],
-            )
+            if not self._confirm_ephemeral(callback, message, context, approval):
+                self.client.edit_buttons(
+                    self.owner_id,
+                    message["message_id"],
+                    [[_button("⚠️ 确认批准", "p|confirm", "success"), _button("取消", "p|cancel")]],
+                )
             self.client.answer_callback(callback["id"], "再点一次确认")
         else:
             partial = len(approval["selected"]) < len(approval["items"])
             decision, label = ("partial", "✅ 部分批准") if partial else ("approved", "✅ 已批准")
             self._decide(update_id, context, message, decision, label)
             self.client.answer_callback(callback["id"], label[2:])
+
+    def _confirm_ephemeral(
+        self,
+        callback: dict[str, Any],
+        message: dict[str, Any],
+        context: dict[str, Any],
+        approval: dict[str, Any],
+    ) -> bool:
+        """Ask again in a message only the owner sees, in place of the card (Bot API 10.4).
+
+        It decides nothing: if it never arrives or disappears, the card is unchanged
+        and pressing approve again asks again.
+        """
+        if not hasattr(self.client, "send_ephemeral"):
+            return False
+        message_id = message["message_id"]
+        names = [approval["items"][i] for i in approval["selected"]] if approval["items"] else []
+        lines = ["<b>⚠️ 确认批准这个中风险申请？</b>", "", f"<b>{_safe(context.get('title'), 120)}</b>"]
+        if names:
+            lines += ["", "将批准：", *[f"• {_safe(name, 120)}" for name in names]]
+        lines += ["", "<i>只有你能看到这条确认；它消失也不会改变任何决定。</i>"]
+        keyboard = [[
+            _button("⚠️ 确认批准", f"p|confirm|{message_id}", "success"),
+            _button("取消", f"p|cancel|{message_id}"),
+        ]]
+        try:
+            self.client.send_ephemeral(self.owner_id, callback["id"], "\n".join(lines), keyboard)
+        except TelegramError:
+            return False
+        return True
+
+    def _drop_ephemeral(self, ephemeral_id: int | None) -> None:
+        if ephemeral_id:
+            self._optional("delete_ephemeral", self.owner_id, self.owner_id, ephemeral_id)
 
     def _decide(
         self,
@@ -1964,12 +2690,13 @@ class OwnerChannel:
             approved_items=chosen,
             actor=CHANNEL_SENDER,
         )
-        self._mark_handled(message, label)
+        self.client.edit_buttons(
+            self.owner_id, message["message_id"], self._decided_buttons(approval, label)
+        )
 
     def _mark_handled(self, message: dict[str, Any], label: str) -> None:
-        self.client.edit_buttons(
-            self.owner_id, message["message_id"], [[_button(label, "x")]]
-        )
+        """Replace the buttons with a greyed-out record of what was chosen."""
+        self.client.edit_buttons(self.owner_id, message["message_id"], [[_disabled(label)]])
 
     def _handle_action(
         self,
@@ -2012,7 +2739,8 @@ class OwnerChannel:
             self.reminders.pop(key)
             found = self._find(key)
             if found and found[1]["status"] in OPEN_STATUSES:
-                self._send_action(*found)
+                with self._topic(found[0]):
+                    self._send_action(*found)
         return len(due)
 
 
@@ -2063,6 +2791,10 @@ def serve(
     channel.alerted = state.setdefault("alerted", {})
     channel.finished = state.setdefault("finished", {})
     channel.digest_at = state.setdefault("digest_at", {})
+    channel.receipts = state.setdefault("receipts", {})
+    channel.panel = state.setdefault("panel", {})
+    channel.widget = state.setdefault("widget", {})
+    channel.topics = state.setdefault("topics", {})
     if not state.get("timers_seeded"):
         for word in default_timers or []:
             channel.add_timer(word)
@@ -2078,12 +2810,18 @@ def serve(
                 if me.get("id") is not None and state.get("bot_id") != me["id"]:
                     state["offset"] = None if state.get("bot_id") else state.get("offset")
                     state["bot_id"] = me["id"]
+                    channel.topics.clear()  # topics belong to the previous bot's chat
+                if channel.setup_topics(me):
+                    log(f"topic mode: {len(channel.topics)} project topics")
                 ready = True
             channel.deliver_pending()
             channel.deliver_questions()
             channel.resend_due()
             channel.run_timers()
             channel.watch_events()
+            channel.check_receipts()
+            channel.refresh_panel()
+            channel.refresh_widget()
             _atomic_write(state_path(channel.data_root), state)
             updates = channel.client.get_updates(state.get("offset"), poll_seconds)
             for update in updates:

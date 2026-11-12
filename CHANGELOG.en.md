@@ -2,6 +2,14 @@
 
 Adoption: [deployment](docs/deployment.en.md), [recent release notes](docs/releases.en.md), [current coverage/known gaps](docs/validation.en.md). Historical entries retain their original scope. Regular GitHub Release classification does not remove alpha semantics.
 
+## 0.1.0-alpha.39
+
+- The owner channel uses the Telegram Bot API 9.4–10.4 display: buttons coloured by purpose, handled buttons greyed out with the choice kept, times in the owner's phone time zone, long text collapsed. Stage reports, completion digests, progress reports and alerts are rich messages (headings, tables, expandable sections) and fall back to the old format when refused; webhooks still get plain text.
+- Added the `/panel` widget (pinned, per-project tabs, tap a task to open its card, refresh for fresh data) and a pinnable `/status` that refreshes in place every 5 minutes.
+- Medium-risk approvals confirm in an ephemeral message only the owner sees; it decides nothing if it disappears or is cancelled. Forwarded replies get 👀 and then 👌 when read instead of a separate confirmation message.
+- With topic mode on for the bot, each project gets its own topic; cards and reports are split by project, and a message in a topic goes to that project.
+- Added `continuity storage register/report/gc`: register workspaces, scratch and worker-job directories per card; the report shows usage and free space per tier and lists unregistered directories with a suggested card; `gc` previews by default and `--apply` cleans only clean scratch of finished cards (Git worktrees through `git worktree remove`, keeping the branch) and trims the output log of finished jobs. This release manages the local machine only.
+
 ## 0.1.0-alpha.38
 
 - Added the optional owner channel `continuity notify`: Telegram status, list and waiting views, buttons, action cards, stage summaries with measurements and screenshots, scheduled reports, follow-ups on any message, agent-defined buttons, approvals that can be granted in part, and alerts for failures, interruptions and rate limits with an hourly completion digest. Off by default.
