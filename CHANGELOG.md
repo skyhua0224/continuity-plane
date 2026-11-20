@@ -4,6 +4,13 @@
 
 [English](CHANGELOG.en.md)
 
+## 0.1.0-alpha.40
+
+- 新增原生执行器 Antigravity CLI（`agy`），与 Codex、Claude 并列：`worker configure --provider antigravity` 注册时核对模型并记下它支持的 effort，派发时超出范围的 effort 降到最高一档；worker 在卡片工作树里运行，续跑沿用同一个 agy 会话；`continuity agy inspect` 读取版本、模型、设置、hooks、skills 和额度。
+- agy 额度按用量自动判断：读取 `/usage`，按模型所在组取最紧的窗口并连读三次；自动选模型时缺失或过期的记录当场刷新，每次 agy 任务结束后也刷新；同一轮的多个执行器共用一次读取；`quota tick` 按执行器自己的客户端刷新。
+- 新增 agy 插件 `continuity-plane`（协作 skill、两个 MCP 服务、生命周期 hooks）和 `continuity agy install`／`status`：默认装到工作区，可选全局或 SSH 桥接。agy 没有压缩、子代理和会话结束 hook：每轮结束保存交接，会话开始或续接后的第一次调用时恢复；工具调用后的提醒在下一次模型调用前注入。
+- 通知通道：命令行发出的 `notify send`／`stage`／`action` 进入项目话题；Telegram 拒绝请求时日志写明接口和原因。
+
 ## 0.1.0-alpha.39
 
 - 所有者通知通道改用 Telegram Bot API 9.4–10.4 的新显示：按钮按用途着色，处理过的按钮变灰并保留选择，时间按所有者手机的时区显示，长内容折叠；阶段报告、完成汇总、进度报告和故障提醒改为富文本消息（标题、表格、可展开段落），不支持时退回原格式，webhook 仍为纯文本。

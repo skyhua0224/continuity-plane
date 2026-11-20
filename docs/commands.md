@@ -10,7 +10,7 @@
 需要 Python 3.11+；代码索引还需要 Git。推荐用 pipx 安装，让宿主插件也能找到 CLI：
 
 ```bash
-pipx install 'continuity-plane==0.1.0a39'
+pipx install 'continuity-plane==0.1.0a40'
 continuity --version
 # 在目标仓库登记项目；demo 换成稳定的项目 ID
 continuity collaboration register --project-id demo --control-root . --repository-root .
@@ -182,6 +182,25 @@ HTTP 401／403、Cloudflare／代理拦截页和 gateway 错误不会被通用�
 
 需要让 worker 对 shared canonical repository 只读时，可在项目 context 中显式设置 `--worker-write-policy canonical-read-only` 和重复的 `--canonical-repository-root`。Continuity 在 worker PATH 放置 Git wrapper，拦截 push／update-ref／receive-pack。它是防误操作，不是安全沙箱：绝对路径调用、其他程序或宿主权限仍可能绕过。
 
+### Antigravity CLI（agy）
+
+`agy` 与 codex、claude 并列，是原生执行器：用执行主机上 `agy` 自己的登录、模型和额度，不经其他网关。worker 在卡片的 worktree 里运行，续跑沿用同一个 agy 会话。
+
+```bash
+continuity worker configure --model ag-flash --provider antigravity --provider-model gemini-3.8-flash --official-subscription
+continuity dispatch --project-id demo --task-id parser-fix --model ag-flash --effort low --background
+continuity quota refresh --project-id demo --provider antigravity --model ag-flash
+continuity agy inspect --json
+continuity agy install --dry-run
+continuity agy install
+continuity agy status
+```
+
+- 配置时会核对 `--provider-model` 在 `agy models` 里；可以写基础 ID（`gemini-3.8-flash`），也可以写带 effort 后缀的 ID（`gemini-4-neon-high`），后者只能用该 effort。effort 取 low、medium、high、xhigh，`max` 按 xhigh 发送。
+- `quota refresh` 读 `agy -p /usage`，按模型所在的组（以及单独计额的模型）取剩余最少的窗口，连读三次取最紧的一次，因为 `/usage` 偶尔返回较旧的数据。加了 `--official-subscription` 的 adapter 在派发前会检查这条记录。
+- `agy inspect` 读取版本、模型列表、当前模型与 effort、设置、hooks、skills、自定义 agent、G1 余额和额度；这些斜杠命令在本地执行，不调用模型。
+- `agy install` 默认安装到当前工作区。用 `--workspace DIR` 指定 worker 的检出目录，也可在所属主机上显式选择 `--scope global`。`agy mcp-install` 仍可用于只注册主 MCP 服务的配置。
+
 <a id="mcp"></a>
 ## MCP 与插件：让 Agent 直接使用
 
@@ -195,6 +214,7 @@ MCP 是宿主管理的本地 stdio 子进程；主机重启或宿主 kill 后，
 | Codex plugin `continuity-plane-search` | `continuity-search-mcp`，一个代码检索工具 | 只想让 AI 做有界 lookup |
 | Codex plugin `continuity-plane-state` | `continuity-mcp`：Todo／协作工具与高级 State 工具 | 让 AI 直接管理卡片、规则、交接等；普通规划不需 State claim |
 | Claude Code plugin `continuity-plane` | 协作 skill、生命周期 hooks，以及 continuity／continuity-search 两个 MCP | 同一插件接入规划、检索和自动接续 |
+| Antigravity CLI plugin `continuity-plane` | 共享协作 skill、生命周期 hooks 和两个 MCP 服务 | 在一个工作区接入规划、检索和恢复 |
 | 其他支持 stdio MCP 的客户端 | 手工接入下方两个 server | 不依赖某个插件市场或模型 |
 
 ### 安装插件
@@ -203,7 +223,7 @@ MCP 是宿主管理的本地 stdio 子进程；主机重启或宿主 kill 后，
 
 ```bash
 # 三项分别负责 hooks、检索、规划与 State；按需选择
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.39
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.40
 codex plugin add continuity-plane@continuity-plane
 codex plugin add continuity-plane-search@continuity-plane
 codex plugin add continuity-plane-state@continuity-plane
@@ -296,16 +316,21 @@ MCP 没有把所有 CLI 命令变成远程执行器：**dispatch／worker resume
 <a id="hooks"></a>
 ## Hooks：哪些是自动发生的
 
-| 事件 | Codex | Claude Code | Continuity 做什么 |
-|---|---|---|---|
-| SessionStart | 支持 | 支持 | 读取有界恢复入口，提示有意义的变化；不要求先重读完整历史 |
-| PreCompact | 支持 | 支持 | 保存下一步、约束、验证入口及主控工作现场；有 State 时按合同 checkpoint |
-| PostCompact | 按宿主支持的恢复路径校验／恢复 | 校验；由 SessionStart(compact) 注入 | 同一代接续去重，避免每次都重复塞入上下文 |
-| UserPromptSubmit | 支持 | 支持 | 有界规划提示、明确清单处理和变化提醒；卡片工作流不强建第二份 Todo |
-| PreToolUse | 支持 | 本插件不提供 | Codex 的轻量边界提示，不是任意 shell／Git 的强制防护 |
-| PostToolUse | 支持 | 支持 | 有界观测与已变化的结束／阻塞／规则提醒 |
-| Stop | 支持 | 支持 | 收尾与接续检查；不把一次停止推断成验证或评审通过 |
-| SubagentStart／SubagentStop | 本插件不提供 | 支持 | 记录原生子代理的观察事件；不凭此推断 PID、退出码、成功或完整报告 |
+| 事件 | Codex | Claude Code | Antigravity CLI | Continuity 做什么 |
+|---|---|---|---|---|
+| SessionStart | 支持 | 支持 | 通过 `injectSteps` 注入恢复入口和更新提示 | 读取有界恢复入口，提示有意义的变化；不要求先重读完整历史 |
+| PreCompact | 支持 | 支持 | `Stop` 保存有界的轮末存档 | 保存下一步、约束、验证入口及主控工作现场；有 State 时按合同 checkpoint |
+| PostCompact | 按宿主支持的恢复路径校验／恢复 | 校验；由 SessionStart(compact) 注入 | 启动或下一轮第一次调用时校验 | 同一代接续去重，避免每次都重复塞入上下文 |
+| UserPromptSubmit | 支持 | 支持 | `PreInvocation` 识别新一轮输入 | 有界规划提示、明确清单处理和变化提醒；卡片工作流不强建第二份 Todo |
+| PreToolUse | 支持 | 本插件不提供 | 直接返回 `allow`，无需执行 Continuity 策略检查 | Codex 的轻量边界提示，不是任意 shell／Git 的强制防护 |
+| PostToolUse | 支持 | 支持 | 记录工具活动，提醒在下一次 `PreInvocation` 注入 | 有界观测与已变化的结束／阻塞／规则提醒 |
+| Stop | 支持 | 支持 | 保存交接并返回 `allow` | 收尾与接续检查；不把一次停止推断成验证或评审通过 |
+| SubagentStart／SubagentStop | 本插件不提供 | 支持 | 宿主无对应 hook | 记录原生子代理的观察事件；不凭此推断 PID、退出码、成功或完整报告 |
+| PostInvocation | — | — | Continuity 未注册 | 提醒在调用前注入 |
+| StopFailure | — | 支持 | 观测 `terminationReason=ERROR` 的 `Stop` | 记录错误停止事件 |
+| SessionEnd／Notification | — | 支持 | 宿主无对应 hook | 在支持的宿主中观测会话结束或配置的额度提示 |
+
+Antigravity CLI 1.5.13 自行压缩对话，其 hook 合同没有压缩事件。Continuity 在 `Stop` 保存同一格式的有界交接，在会话启动或下一轮第一次调用时校验并注入。1.5.13 用 `--conversation` 续接时会直接进入 `PreInvocation`。宿主提供初始步数时，可用它区分连续两轮内容相同的输入。参阅 [Antigravity hooks 合同](https://antigravity.google/docs/hooks/?tab=cli)。
 
 Alpha35 的插件与源码交接继续包含 SessionEnd，并增加可续读 worker events、inbox wait／unread、job 终态和实际 checkout 观测。[交接实现](field-workflows.md#development-source-controller-recovery-and-change-consumers)包含交接读时观察、consumer／ack、派工快照校验与 task 命令别名。安装旧版本不会自动获得这些行为，需要升级并重连宿主。
 

@@ -2,7 +2,7 @@
 
 [English](validation.en.md) · [工作流](workflows.md) · [历史实验](benchmarks.md)
 
-范围：Alpha39（`0.1.0a39`）。证据分为本轮合成 CLI、已有自动回归、匿名使用反馈和未覆盖项，不能互相替代。
+范围：Alpha40（`0.1.0a40`）。证据分为本轮合成 CLI、已有自动回归、匿名使用反馈和未覆盖项，不能互相替代。
 
 ## 本轮可复现实测
 
@@ -62,6 +62,13 @@ python examples/verify_adopter_workflows.py --workspace /path/to/new-persistent-
 | 漂移与未了结承诺 | 当前解析与规则回归；匿名反馈 | 不是对所有文档与外部世界的真实性证明 |
 
 Alpha25 的[公开发行 CI](https://github.com/skyhua0224/continuity-plane/actions/runs/38845950775)通过 268 项测试。文档新增脚本和链接／命令检查另随当前主分支 CI 运行；不改写已发布 wheel 或历史 test count。
+
+## Alpha40 验证
+
+- 回归：`tests/test_agy_executor.py`、`tests/test_agy_integration.py` 共 25 项，通知通道 131 项；完整源码套件 3,083 项。
+- agy 1.5.13（Linux）真机：用 Continuity 派发并续接一张卡，worker 在卡片工作树里写文件、通过 MCP 交回报告；工作区级和全局安装插件后，会话开始的恢复提示、新一轮的规划提示、工具调用后排队的提醒、每轮结束保存交接和 `--conversation` 续接后的恢复都在真实会话里出现；`agy plugin validate --strict` 通过。
+- 额度：四个执行器的 `quota refresh` 与 `/usage` 一致；`/usage` 连读 6 次中有 1 次返回较旧的数据，所以连读三次取最紧的一次。真实的额度耗尽和限流报错原文没有收集到。
+- 未验证：macOS 和 Windows 上的 agy、跨主机 hook 转发（只有自动测试）。Codex 和 Claude 的 hooks 改为共用同一段处理代码，原有回归全部通过，Claude 会话经 SSH 桥接实测正常。
 
 ## Alpha39 验证
 

@@ -68,7 +68,13 @@ def _event_error_text(row):
     """Error text of one structured provider event; empty for tool/message events."""
     kind = row.get("type")
     item = row.get("item") if isinstance(row.get("item"), dict) else {}
-    if kind in {"error", "turn.failed"} or (kind == "result" and row.get("is_error")):
+    if row.get("event") == "result":
+        # agy-headless, Structured output: only an ERROR result is diagnostic.
+        result = row.get("result")
+        if not isinstance(result, dict) or result.get("status") != "ERROR":
+            return ""
+        parts = (result.get("error"),)
+    elif kind in {"error", "turn.failed"} or (kind == "result" and row.get("is_error")):
         parts = (row.get("error"), row.get("message"), row.get("result"))
     elif kind == "item.completed" and item.get("type") == "error":
         parts = (item.get("message"),)

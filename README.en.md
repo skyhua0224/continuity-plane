@@ -57,7 +57,7 @@ Improvements between versions are in each version's [release notes](docs/release
 ## ✨ Highlights
 
 - **Task cards and to-dos** — split "fix A, test B, then document it" into cards for different agents or people; each card states the goal, the files it may touch and how it is checked, and to-do lists are generated from the cards
-- **Dispatch and supervise agents** — one tool call sends a card to Codex or Claude in the background; Continuity records start, heartbeats, exit reason and final report, and attaches the report to the card
+- **Dispatch and supervise agents** — one tool call sends a card to Codex, Claude or the Antigravity CLI in the background; Continuity records start, heartbeats, exit reason and final report, and attaches the report to the card
 - **Told when work ends** — when a worker finishes, fails, is rate-limited or gets stuck, the coordinator sees it in the conversation together with the tool to call next, across every project it leads
 - **Progress on your phone (optional)** — check status and tasks, answer agents' questions, approve requests and receive stage summaries and failure alerts through Telegram, with a pinned panel showing every project at a glance and copies to Feishu, DingTalk, WeCom and other webhooks; see the [owner channel](docs/commands.en.md#owner-notification-channel)
 - **Workspaces cleaned up per card** — register the directories workers create, see free space per tier, and clean only clean scratch once its card ends; see [workspaces and storage cleanup](docs/commands.en.md#workspaces-and-storage-cleanup)
@@ -129,7 +129,7 @@ A typical run:
 Requires Python 3.11+ and Git.
 
 ```bash
-pipx install 'continuity-plane==0.1.0a39'
+pipx install 'continuity-plane==0.1.0a40'
 continuity --version
 cd your-repo
 continuity collaboration register --project-id demo --control-root . --repository-root .
@@ -152,15 +152,17 @@ Existing installs, venvs, Windows paths, upgrades and rollback: [deployment guid
 | Codex | Codex plugin `continuity-plane-state` | Card, dispatch, waiting and report MCP tools plus the collaboration skill |
 | Codex | Codex plugin `continuity-plane-search` | Code lookup MCP tool |
 | Codex | Codex plugin `continuity-plane` | Session and compaction hooks |
+| Antigravity CLI | `continuity-plane` plugin installed by `continuity agy install` | Collaboration skill, lifecycle hooks and both MCP servers |
 | Other stdio MCP clients | Add `continuity-mcp` and `continuity-search-mcp` | The same MCP tools |
 
 ```bash
 claude plugin marketplace add skyhua0224/continuity-plane
 claude plugin install continuity-plane@continuity-plane --scope user
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.39
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.40
 codex plugin add continuity-plane-state@continuity-plane
 codex plugin add continuity-plane-search@continuity-plane
 codex plugin add continuity-plane@continuity-plane
+continuity agy install --scope global
 ```
 
 After an upgrade, reconnect MCP or start a new session so the host loads the new tools. In Codex, trust the new hook definitions under `/hooks`.

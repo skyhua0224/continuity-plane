@@ -183,6 +183,8 @@ CLI_HELP = {
     },
     "worker.queue.run": ("worker", "queue", "run"),
     "supervisor.run": ("supervisor", "run"),
+    "agy.install": ("agy", "install"),
+    "agy.status": ("agy", "status"),
     "bridge.install": ("bridge", "install"),
     "task.merged": ("task", "merged"),
     "task.batch-update": ("task", "batch-update"),

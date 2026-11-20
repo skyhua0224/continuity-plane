@@ -10,7 +10,7 @@ This page lists Continuity commands, MCP tools and hooks by feature, for looking
 Python 3.11+ is required; code indexing also needs Git. A pipx installation makes the CLI available to host integrations:
 
 ```bash
-pipx install 'continuity-plane==0.1.0a39'
+pipx install 'continuity-plane==0.1.0a40'
 continuity --version
 # Register inside your repository; replace demo with its stable project ID
 continuity collaboration register --project-id demo --control-root . --repository-root .
@@ -193,6 +193,25 @@ Existing launch scripts can use `collaboration run --task-id … --assignee … 
 
 For an explicitly protected canonical repository, set `--worker-write-policy canonical-read-only` and one or more `--canonical-repository-root` values in collaboration context-set. A Continuity Git wrapper on worker PATH blocks ordinary push/update-ref/receive-pack writes into that repository. This prevents mistakes, not hostile bypass through absolute git paths, another program or a more privileged account.
 
+### Antigravity CLI (agy)
+
+`agy` is a native executor next to codex and claude: it uses the execution host's own `agy` sign-in, models and quota, with no other gateway. The worker runs in the card's worktree, and resume continues the same agy conversation.
+
+```bash
+continuity worker configure --model ag-flash --provider antigravity --provider-model gemini-3.8-flash --official-subscription
+continuity dispatch --project-id demo --task-id parser-fix --model ag-flash --effort low --background
+continuity quota refresh --project-id demo --provider antigravity --model ag-flash
+continuity agy inspect --json
+continuity agy install --dry-run
+continuity agy install
+continuity agy status
+```
+
+- Configuration checks `--provider-model` against `agy models`. Use a base ID (`gemini-3.8-flash`) or an ID with an effort suffix (`gemini-4-neon-high`), which then allows only that effort. Effort is low, medium, high or xhigh; `max` is sent as xhigh.
+- `quota refresh` reads `agy -p /usage` and takes the window with the least remaining share for the model's group (and for a separately metered model). It reads three times and keeps the tightest, because `/usage` occasionally answers with older data. Adapters configured with `--official-subscription` check this record before dispatch.
+- `agy inspect` reads the version, model list, current model and effort, settings, hooks, skills, custom agents, G1 credits and quota. These slash commands run locally without a model call.
+- `agy install` installs the plugin in the current workspace by default. Use `--workspace DIR` to select the worker checkout or `--scope global` for an explicit shared install on the owning host. The legacy `agy mcp-install` registers just the main MCP server and remains available for MCP-only setups.
+
 <a id="mcp"></a>
 ## MCP and plugins: direct agent access
 
@@ -206,6 +225,7 @@ MCP is a host-managed local stdio child. After a host reboot or kill, the Contin
 | Codex plugin continuity-plane-search | continuity-search-mcp and its lookup tool | You only need bounded code retrieval |
 | Codex plugin continuity-plane-state | continuity-mcp: Todo/collaboration plus advanced State tools | The agent should manage cards, rules and handoffs; ordinary planning needs no State claim |
 | Claude Code plugin continuity-plane | Collaboration skill, lifecycle hooks and both continuity/continuity-search MCP servers | One plugin for planning, retrieval and lifecycle integration |
+| Antigravity CLI plugin `continuity-plane` | Shared collaboration skill, lifecycle hooks and both MCP servers | One workspace plugin for planning, retrieval and recovery |
 | Other stdio MCP clients | Connect the two servers below directly | You do not use a supported plugin marketplace |
 
 ### Install a plugin
@@ -214,7 +234,7 @@ Install the CLI first. On Codex CLI versions supporting these commands, choose t
 
 ```bash
 # Core hooks, independent search, and planning/State are separate components
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.39
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.40
 codex plugin add continuity-plane@continuity-plane
 codex plugin add continuity-plane-search@continuity-plane
 codex plugin add continuity-plane-state@continuity-plane
@@ -294,16 +314,21 @@ When state lives on another host, use `continuity-mcp --proxy ssh://HOST` (`cont
 <a id="hooks"></a>
 ## Hooks: what happens automatically?
 
-| Event | Codex | Claude Code | Continuity behavior |
-|---|---|---|---|
-| SessionStart | Supported | Supported | Bounded recovery entry and meaningful changes, not mandatory full-history rereading |
-| PreCompact | Supported | Supported | Save next action, constraints, verification and controller scene; checkpoint State when configured |
-| PostCompact | Verify/recover through the host-supported path | Verify; inject at SessionStart(compact) | Deduplicate delivery for a recovery generation |
-| UserPromptSubmit | Supported | Supported | Bounded planning/intake/change guidance, without a second forced Todo for card workflows |
-| PreToolUse | Supported | Not supplied by this plugin | Lightweight Codex boundary advice, not mandatory interception of all shell/Git effects |
-| PostToolUse | Supported | Supported | Bounded observation and changed worker-end/blocker/rule notices |
-| Stop | Supported | Supported | Completion/continuation checks, not inferred verification or review acceptance |
-| SubagentStart / SubagentStop | Not supplied by this plugin | Supported | Observe native children, without invented PIDs, exit codes, success or complete reports |
+| Event | Codex | Claude Code | Antigravity CLI | Continuity behavior |
+|---|---|---|---|---|
+| SessionStart | Supported | Supported | Injects recovery and update notices with `injectSteps` | Bounded recovery entry and meaningful changes, not mandatory full-history rereading |
+| PreCompact | Supported | Supported | `Stop` saves a bounded turn checkpoint | Save next action, constraints, verification and controller scene; checkpoint State when configured |
+| PostCompact | Verify/recover through the host-supported path | Verify; inject at SessionStart(compact) | Verifies at startup or the first invocation of a later turn | Deduplicate delivery for a recovery generation |
+| UserPromptSubmit | Supported | Supported | `PreInvocation` checks for a new user turn | Bounded planning/intake/change guidance, without a second forced Todo for card workflows |
+| PreToolUse | Supported | Not supplied by this plugin | Returns `allow` without running a Continuity policy check | Lightweight Codex boundary advice, not mandatory interception of all shell/Git effects |
+| PostToolUse | Supported | Supported | Records tool activity and queues messages for the next `PreInvocation` | Bounded observation and changed worker-end/blocker/rule notices |
+| Stop | Supported | Supported | Saves the handoff and returns `allow` | Completion/continuation checks, not inferred verification or review acceptance |
+| SubagentStart / SubagentStop | Not supplied by this plugin | Supported | No corresponding hook | Observe native children, without invented PIDs, exit codes, success or complete reports |
+| PostInvocation | — | — | No Continuity handler | Hook messages are delivered before an invocation |
+| StopFailure | — | Supported | Observes `Stop` with `terminationReason=ERROR` | Record an error observation |
+| SessionEnd / Notification | — | Supported | No corresponding hook | Observe host session end or configured quota notices where available |
+
+Antigravity CLI 1.5.13 performs its own conversation compaction. Its hook contract has no compaction events. Continuity therefore saves the same bounded handoff at `Stop`, and verifies the saved generation before injecting it at startup or the first invocation of a later turn. In 1.5.13, `--conversation` goes straight to `PreInvocation`. Consecutive identical prompts can be distinguished by the first invocation’s initial step count when the host supplies it. See the [Antigravity hooks contract](https://antigravity.google/docs/hooks/?tab=cli).
 
 The Alpha35 plugin and source handoff retain SessionEnd and add resumable worker events, inbox wait/unread, job terminal state and actual-checkout observations. The [handoff implementation](field-workflows.md#development-source-controller-recovery-and-change-consumers) also includes read-time observations, consumer acknowledgements, dispatch snapshot checks and task aliases. Older installs require an upgrade and host reconnect.
 

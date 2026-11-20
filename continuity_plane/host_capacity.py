@@ -7,6 +7,7 @@ import re
 from pathlib import Path
 
 from .collaboration_registry import _atomic_write, _locked, _now, default_data_root
+from .runtime_origin import PROVIDERS
 
 
 SCHEMA = "context.host-capacity/v1alpha1"
@@ -39,11 +40,9 @@ def load(data_root=None):
 def set_limits(data_root, limits):
     if not isinstance(limits, dict):
         raise ValueError("host capacity limits must be a mapping")
-    if any(
-        key not in {"total", "codex", "claude", "custom"} or type(limit) is not int or limit < 1
-        for key, limit in limits.items()
-    ):
-        raise ValueError("host capacity supports positive total/codex/claude/custom limits")
+    allowed = ("total", *PROVIDERS)
+    if any(key not in allowed or type(limit) is not int or limit < 1 for key, limit in limits.items()):
+        raise ValueError(f"host capacity supports positive {'/'.join(allowed)} limits")
     target = path(data_root)
     with _locked(target):
         current = load(data_root)

@@ -22,6 +22,7 @@ from .collaboration_registry import (
     resolve_project,
     list_projects,
 )
+from .runtime_origin import NATIVE_PROVIDERS
 
 
 def _path(data_root, project_id):
@@ -61,8 +62,8 @@ def _text(value, name, limit=8192):
 
 
 def _session(provider, session_id):
-    if provider not in {"claude", "codex"}:
-        raise ValueError("session provider must be explicit: claude or codex")
+    if provider not in NATIVE_PROVIDERS:
+        raise ValueError(f"session provider must be explicit: {', '.join(NATIVE_PROVIDERS)}")
     return (
         provider
         + ":"
@@ -767,7 +768,7 @@ def _arguments(parser, action):
     parser.add_argument("--format", choices=("brief", "json"), default="json")
     parser.add_argument("--max-output-bytes", type=int, default=8192)
     if action.startswith("session-"):
-        parser.add_argument("--provider", choices=("claude", "codex"), required=True)
+        parser.add_argument("--provider", choices=NATIVE_PROVIDERS, required=True)
         parser.add_argument(
             "--session-id",
             required=True,

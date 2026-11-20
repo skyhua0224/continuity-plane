@@ -25,6 +25,7 @@ from .collaboration_registry import (
     project_data_dir,
     GUARDED_DISPATCH_LEDGER_SCHEMA,
 )
+from .runtime_origin import PROVIDERS
 
 
 TOKEN_FILE_ENV = "CONTINUITY_CONTROLLER_TOKEN_FILE"
@@ -172,12 +173,12 @@ def acquire(
     if client_limits is not None and (
         not isinstance(client_limits, dict)
         or any(
-            k not in {"codex", "claude", "custom"} or type(v) is not int or v < 1
+            k not in PROVIDERS or type(v) is not int or v < 1
             for k, v in client_limits.items()
         )
     ):
         raise ValueError(
-            "client limits need positive integer codex/claude/custom values"
+            f"client limits need positive integer {'/'.join(PROVIDERS)} values"
         )
     if token is not None and not renew and _TOKEN_RE.fullmatch(str(token)) is None:
         raise ValueError(

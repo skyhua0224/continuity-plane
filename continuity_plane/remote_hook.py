@@ -35,23 +35,27 @@ def _delivery_snapshot(payload, config):
         return None
 
 
-def _record_front_output(payload, result, config):
+def _record_front_output(payload, result, config, *, provider="claude", meter=True):
     from .collaboration_registry import _atomic_write, _locked, default_data_root
 
     data = Path(config.get("local_data_root") or default_data_root())
     root = str(Path(payload["cwd"]).resolve())
     session = payload["session_id"]
     event = payload.get("hook_event_name")
+    turn_boundary = provider == "antigravity"
     phase = (
         "saved"
-        if event == "PreCompact" and result.get("status") == "saved"
+        if event == "PreCompact" and (
+            result.get("status") == "saved"
+            or turn_boundary and result.get("status") == "saved-with-warning"
+        )
         else "restored"
         if (
             event == "PostCompact"
             or event == "SessionStart"
-            and payload.get("source") == "compact"
+            and payload.get("source") in {"compact", "turn-boundary"}
         )
-        and result.get("hookSpecificOutput")
+        and (result.get("status") == "restored" if turn_boundary else result.get("hookSpecificOutput"))
         else None
     )
     if phase:
@@ -72,7 +76,8 @@ def _record_front_output(payload, result, config):
             pass
     text = result.get("hookSpecificOutput", {}).get("additionalContext")
     if (
-        not isinstance(text, str)
+        not meter
+        or not isinstance(text, str)
         or not text
         or os.environ.get("CONTINUITY_METER", "1") == "0"
     ):
@@ -104,12 +109,29 @@ def _record_front_output(payload, result, config):
         injected_bytes=len(text.encode()),
         session_id=session,
         data_root=data,
-        host="claude-bridge",
+        host=provider + "-bridge",
     )
 
 
-def forward(payload, config, *, runner=subprocess.run):
-    from .lifecycle import handle_event
+def forward(payload, config, *, runner=subprocess.run, provider="claude"):
+    from .lifecycle import add_host_context, handle_event
+
+    bridge_host = provider + "-bridge"
+    antigravity = provider == "antigravity"
+
+    def local_context(result):
+        if antigravity:
+            add_host_context(
+                result, payload, host=bridge_host, data_root=config.get("local_data_root"),
+                nudge=False, updates=False,
+            )
+        return result
+
+    def local_event():
+        return handle_event(
+            payload, host=bridge_host, data_root=config.get("local_data_root"),
+            meter_injection=False, record_protocol=False,
+        )
 
     if not isinstance(payload, dict) or not isinstance(config, dict):
         raise ValueError("hook payload/config must be objects")
@@ -128,14 +150,8 @@ def forward(payload, config, *, runner=subprocess.run):
         if mapping is None:
             from .adoption import record_hook
 
-            record_hook(payload, "claude", config.get("local_data_root"))
-            return handle_event(
-                payload,
-                host="claude-bridge",
-                data_root=config.get("local_data_root"),
-                meter_injection=False,
-                record_protocol=False,
-            )
+            record_hook(payload, provider, config.get("local_data_root"))
+            return local_context(local_event())
         config = {**config, **mapping}
     host = config.get("host", "")
     if not isinstance(host, str) or not re.fullmatch(
@@ -160,7 +176,7 @@ def forward(payload, config, *, runner=subprocess.run):
         / (hashlib.sha256(str(local).encode()).hexdigest() + ".jsonl")
     )
     # Count before coalescing so rapid tool calls are not lost.
-    spool_tool_call(adoption_spool, payload, "claude")
+    spool_tool_call(adoption_spool, payload, provider)
     if payload.get("hook_event_name") == "PostToolUse":
         from .collaboration_registry import _atomic_write, _locked
 
@@ -197,10 +213,14 @@ def forward(payload, config, *, runner=subprocess.run):
     )
     outgoing = {k: payload[k] for k in allowed if k in payload}
     outgoing["cwd"] = remote
+    if antigravity:
+        outgoing["hook_provider"] = provider
+        if payload.get("termination_reason") == "ERROR":
+            outgoing["termination_reason"] = "ERROR"
     adoption_entries = drain_spool(adoption_spool)
     if adoption_entries:
         outgoing["adoption"] = adoption_entries
-    if payload.get("hook_event_name") in {"SubagentStart", "SubagentStop", "SessionStart", "SessionEnd"}:
+    if not antigravity and payload.get("hook_event_name") in {"SubagentStart", "SubagentStop", "SessionStart", "SessionEnd"}:
         from .runtime_origin import current
         from .native_subagents import boot_identity
 
@@ -247,21 +267,16 @@ def forward(payload, config, *, runner=subprocess.run):
             outgoing["watch_projects"] = names[:32]
     from .provider_usage import capture_hook
 
-    usage = capture_hook(payload, "claude", data_root=config.get("local_data_root"))
-    if usage:
-        outgoing["usage"] = usage
+    if not antigravity:
+        usage = capture_hook(payload, provider, data_root=config.get("local_data_root"))
+        if usage:
+            outgoing["usage"] = usage
     bridge_usage = _delivery_snapshot(payload, config)
     if bridge_usage:
         outgoing["bridge_usage"] = bridge_usage
     if len(json.dumps(outgoing).encode()) > 16384:
         raise ValueError("forwarded hook metadata exceeds 16 KiB")
-    local_result = handle_event(
-        payload,
-        host="claude-bridge",
-        data_root=config.get("local_data_root"),
-        meter_injection=False,
-        record_protocol=False,
-    )
+    local_result = local_event()
     try:
         endpoint = config.get("remote_endpoint", "continuity-remote-receive")
         if (
@@ -312,12 +327,15 @@ def forward(payload, config, *, runner=subprocess.run):
             or output.get("decision") == "block"
         ):
             raise ValueError("remote hook attempted a blocking response")
-        context = output.get("hookSpecificOutput", {}).get("additionalContext", "")
+        specific = output.get("hookSpecificOutput", {})
+        if not isinstance(specific, dict):
+            raise ValueError("remote hook context is not an object")
+        context = specific.get("additionalContext", "")
         if not isinstance(context, str) or len(context.encode()) > 4096:
             raise ValueError("remote context exceeds budget")
         if (
             payload.get("hook_event_name") == "PreCompact"
-            and output.get("status") != "saved"
+            and output.get("status") not in {"saved", "saved-with-warning"}
         ):
             raise ValueError("remote checkpoint was not acknowledged")
         if payload.get("hook_event_name") == "PreCompact" and output.get(
@@ -356,28 +374,45 @@ def forward(payload, config, *, runner=subprocess.run):
             and not context
             and local_result.get("hookSpecificOutput")
         ):
-            return local_result
+            return local_context(local_result)
         return output
     except (OSError, subprocess.TimeoutExpired, ValueError):
         return {
-            **local_result,
+            **local_context(local_result),
             "continue": True,
             "bridge_status": "unavailable-local-fallback",
         }
 
 
+def read_config(path):
+    with Path(path).expanduser().open("rb") as stream:
+        raw = stream.read(16385)
+    if len(raw) > 16384:
+        raise ValueError("hook bridge config exceeds 16 KiB")
+    config = json.loads(raw)
+    if not isinstance(config, dict):
+        raise ValueError("hook bridge config must be an object")
+    return config
+
+
 def main(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Forward lifecycle metadata over SSH; no transcript transfer or work gate"
+    )
+    from .release_version import VERSION
+
+    parser.add_argument("--version", action="version", version=VERSION)
+    parser.add_argument("--config", required=True)
+    parser.add_argument("--agy", action="store_true", help="Read and return native Antigravity hook JSON")
+    args = parser.parse_args(argv)
+    if args.agy:
+        from .agy_hook import run
+
+        return run(config_path=args.config)
     if os.environ.get("CONTINUITY_DISABLED") == "1":
         return 0
-    parser = argparse.ArgumentParser(
-        description="Forward Claude lifecycle metadata over SSH; no transcript transfer or work gate"
-    )
-    parser.add_argument("--config", required=True)
-    args = parser.parse_args(argv)
     try:
-        path = Path(args.config).expanduser()
-        with path.open("rb") as stream:
-            config = json.loads(stream.read(16385))
+        config = read_config(args.config)
         raw = sys.stdin.buffer.read(524289)
         if len(raw) > 524288:
             return 0
@@ -425,7 +460,7 @@ def main(argv=None):
 
 def receive_main():
     """Return an explicit checkpoint receipt to the SSH bridge on every event."""
-    from .lifecycle import handle_event
+    from .lifecycle import add_host_context, handle_event, turn_state_checkpoint
 
     if os.environ.get("CONTINUITY_DISABLED") == "1":
         print(json.dumps({"continue": True, "status": "disabled"}))
@@ -493,8 +528,15 @@ def receive_main():
             from .adoption import record_forwarded
 
             record_forwarded(payload["adoption"], payload.get("cwd"))
-        result = handle_event(payload, host="claude-remote", meter_injection=False)
-        if event == "PreCompact" and result.get("status") == "saved":
+        remote_host = (
+            "antigravity-remote"
+            if payload.get("hook_provider") == "antigravity"
+            else "claude-remote"
+        )
+        result = handle_event(payload, host=remote_host, meter_injection=False)
+        if remote_host == "antigravity-remote":
+            turn_state_checkpoint(payload, result, host=remote_host)
+        if event == "PreCompact" and result.get("status") in {"saved", "saved-with-warning"}:
             from .collaboration_registry import default_data_root
 
             key = hashlib.sha256(
@@ -504,34 +546,7 @@ def receive_main():
             ).hexdigest()
             saved = default_data_root() / "handoffs" / (key + ".json")
             result["portable_handoff"] = json.loads(saved.read_text())
-        if (
-            event in {"UserPromptSubmit", "SessionStart"}
-            and payload.get("source") != "compact"
-        ):
-            from .planning_adoption import context
-
-            base = result.get("hookSpecificOutput", {}).get("additionalContext", "")
-            hint = context(
-                payload,
-                host="claude-remote",
-                max_bytes=4096 - len(base.encode()) - 1,
-            )
-            if hint:
-                combined = (base + "\n" + hint).strip()
-                if len(combined.encode()) <= 4096:
-                    result["hookSpecificOutput"] = {
-                        "hookEventName": event,
-                        "additionalContext": combined,
-                    }
-        from .controller_awareness import notice
-
-        base = result.get("hookSpecificOutput", {}).get("additionalContext", "")
-        note = notice(payload, max_bytes=min(1024, 4096 - len(base.encode()) - 1))
-        if note:
-            result["hookSpecificOutput"] = {
-                "hookEventName": event,
-                "additionalContext": (base + "\n" + note).strip(),
-            }
+        add_host_context(result, payload, host=remote_host, nudge=False, updates=False)
         if payload.get("prompt_omitted"):
             from .planning_adoption import omitted_checklist_hint
 

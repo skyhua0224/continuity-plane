@@ -782,6 +782,10 @@ def _doctor(args: argparse.Namespace) -> int:
         response["codex_plugin"] = _codex_plugin_status(
             Path(args.codex_home).expanduser().resolve(), project_root=root
         )
+    if args.agy:
+        from .agy_integration import status as agy_status
+
+        response["agy_plugin"] = agy_status(root, args.agy_executable)
     response["state_health"] = state_health
     response["packet_health"] = packet_health
     response["collaboration_health"] = collaboration_health
@@ -794,6 +798,7 @@ def _doctor(args: argparse.Namespace) -> int:
         or state_health["status"] == "lease-warning"
         or packet_health["status"] in ("invalid", "oversized")
         or integration_status not in (None, "active")
+        or response.get("agy_plugin", {}).get("status") not in (None, "active")
         or collaboration_health["status"] == "degraded"
     ):
         response["status"] = "degraded"
@@ -6329,6 +6334,9 @@ def build_parser(parser_class=argparse.ArgumentParser) -> argparse.ArgumentParse
     from .subscription_quota import register_cli as register_quota_cli
 
     register_quota_cli(commands)
+    from .agy_probe import register_cli as register_agy_cli
+
+    register_agy_cli(commands)
     from .persistent_storage import register_cli as register_storage_cli
 
     register_storage_cli(commands)
@@ -6351,6 +6359,8 @@ def build_parser(parser_class=argparse.ArgumentParser) -> argparse.ArgumentParse
     doctor = commands.add_parser("doctor", help="check local runtime prerequisites")
     doctor.add_argument("--root", default=".")
     doctor.add_argument("--codex-home", default=None)
+    doctor.add_argument("--agy", action="store_true", help="Check Antigravity plugin, hooks and MCP")
+    doctor.add_argument("--agy-executable", default="agy")
     doctor.set_defaults(handler=_doctor)
     self_update = commands.add_parser(
         "self-update", help="upgrade this install to the latest release (explicit only)"
@@ -7731,14 +7741,15 @@ def entrypoint(argv: list[str] | None = None) -> int:
     """Keep expected user errors concise while preserving main() as a test API."""
     import time
 
-    from .adoption import record_cli
+    from .adoption import operation, record_cli
 
     words = list(sys.argv[1:] if argv is None else argv)
+    agy_install_preview = "--dry-run" in words and operation(words) in {"agy.install", "agy.mcp-install"}
     started = time.monotonic()
     code = 2
     try:
         code = main(argv)
-        if code == 0:
+        if code == 0 and not agy_install_preview:
             from .update_check import cli_notice
 
             cli_notice(words, sys.stderr)
@@ -7761,7 +7772,8 @@ def entrypoint(argv: list[str] | None = None) -> int:
         )
         return 2
     finally:
-        record_cli(words, code, time.monotonic() - started)
+        if not agy_install_preview:
+            record_cli(words, code, time.monotonic() - started)
 
 
 if __name__ == "__main__":

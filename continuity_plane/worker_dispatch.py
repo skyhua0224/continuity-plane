@@ -21,6 +21,7 @@ from .collaboration_registry import (
     project_data_dir,
     resolve_project,
 )
+from .runtime_origin import PROVIDERS
 
 # A provider rate limit without a long reset resumes the same session after a
 # short, bounded backoff before any other model is tried.
@@ -104,54 +105,67 @@ class Capture:
                 continue
             if not isinstance(row, dict):
                 continue
-            if row.get("type") == "turn.failed" or (
-                row.get("type") == "result" and row.get("is_error")
-            ):
-                error = str(
-                    row.get("error") or row.get("result") or "provider-reported-failure"
-                )
+            kind = row.get("type")
+            agy_event = row.get("event")
+            agy_result = row.get("result") if agy_event == "result" else None
+            if agy_event == "result" and not isinstance(agy_result, dict):
+                continue
+            if agy_event == "result":
+                status = agy_result.get("status")
+                failed = status == "ERROR"
+                completed = status == "SUCCESS"
+                error = agy_result.get("error")
+            else:
+                failed = kind == "turn.failed" or (kind == "result" and row.get("is_error"))
+                completed = kind == "turn.completed" or kind == "result"
+                error = row.get("error") or row.get("result")
+            if failed:
+                error = str(error or "provider-reported-failure")
                 from .retry_policy import policy_refusal
 
                 self.policy_seen |= policy_refusal(error)
                 self.terminal_failure = error[:8192]
-            elif row.get("type") == "turn.completed" or (
-                row.get("type") == "result" and not row.get("is_error")
-            ):
+            elif completed:
                 self.terminal_failure = None
-            thread = (
-                row.get("thread_id")
-                if row.get("type") == "thread.started"
-                else row.get("session_id")
-            )
+            if agy_event == "init":
+                thread = row.get("conversation_id")
+            elif kind == "thread.started":
+                thread = row.get("thread_id")
+            else:
+                thread = row.get("session_id")
             if isinstance(thread, str) and re.fullmatch(
                 r"[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}", thread
             ):
                 _write(self.directory / "thread", thread)
             report = None
             if (
-                row.get("type") == "item.completed"
+                kind == "item.completed"
                 and isinstance(row.get("item"), dict)
                 and row["item"].get("type") == "agent_message"
             ):
                 report = row["item"].get("text")
-            if row.get("type") == "result" and isinstance(row.get("result"), str):
-                report = row["result"]
+            if kind == "result":
+                report = row.get("result")
+            elif agy_event == "result":
+                report = agy_result.get("response")
             if isinstance(report, str) and 0 < len(report.encode()) <= 65536:
                 _write(self.directory / "report.md", report)
         if len(self.pending) > 2097152:
             self.pending = b""
 
+    def finish_attempt(self):
+        if self.pending:
+            self(b"\n")
+
     def close(self):
         try:
-            if self.pending:
-                self(b"\n")
+            self.finish_attempt()
         except Exception:
             pass
-        finally:
-            try:
-                self.log.close()
-            except OSError:
-                pass
+        try:
+            self.log.close()
+        except OSError:
+            pass
 
 
 def configure(
@@ -173,11 +187,7 @@ def configure(
         raise ValueError(
             f"tier {tier!r} is invalid; valid tiers: {', '.join(reversed(TIERS))}"
         )
-    if not re.fullmatch(r"[A-Za-z0-9_.-]{1,64}", model) or provider not in {
-        "codex",
-        "claude",
-        "custom",
-    }:
+    if not re.fullmatch(r"[A-Za-z0-9_.-]{1,64}", model) or provider not in PROVIDERS:
         raise ValueError("invalid model/provider adapter")
     if provider == "custom" and (
         not isinstance(argv, list)
@@ -185,11 +195,7 @@ def configure(
         or not all(isinstance(v, str) and v for v in argv)
     ):
         raise ValueError("custom adapter needs a nonempty argv array")
-    if profile_provider is not None and profile_provider not in {
-        "codex",
-        "claude",
-        "custom",
-    }:
+    if profile_provider is not None and profile_provider not in PROVIDERS:
         raise ValueError("profile-provider must identify a local client namespace")
     if provider != "custom" and profile_provider not in (None, provider):
         raise ValueError("native adapter profile must match its client provider")
@@ -207,7 +213,7 @@ def configure(
         model=model,
         provider=provider,
         provider_model=provider_model or model,
-        executable=executable or ("codex" if provider == "codex" else "claude"),
+        executable=executable or {"antigravity": "agy", "codex": "codex"}.get(provider, "claude"),
         argv=argv,
         resume_argv=resume_argv,
         profile_provider=profile_provider,
@@ -226,6 +232,12 @@ def configure(
             "adapter argv must not store credentials; use the provider's own host-local login/environment"
         )
     value["execution_origin"] = current(profile_provider)
+    if provider == "antigravity":
+        from .agy_probe import model_efforts, model_entry, models
+
+        entries = models(value["executable"])
+        model_entry(value["provider_model"], entries)
+        value["efforts"] = model_efforts(value["provider_model"], entries)
     with _locked(path):
         profiles = json.loads(path.read_text()) if path.exists() else {}
         if tier is None and (profiles.get(model) or {}).get("tier"):
@@ -263,6 +275,27 @@ def _argv(profile, values, resume=False):
             ]
         )
         return common + ([values["thread_id"]] if resume else []) + [values["prompt"]]
+    if profile["provider"] == "antigravity":
+        from .agy_probe import clamp_effort, model_effort
+
+        # agy-headless, CLI flags; agy-effort, Reasoning effort.
+        effort = "xhigh" if values["effort"] == "max" else values["effort"]
+        effort = clamp_effort(effort, profile.get("efforts"))
+        fixed_effort = model_effort(model)
+        if fixed_effort is not None and fixed_effort != effort:
+            raise ValueError(f"agy model {model!r} requires effort {fixed_effort!r}")
+        return [
+            exe,
+            "-p",
+            values["prompt"],
+            "--output-format",
+            "stream-json",
+            "--model",
+            model,
+            "--effort",
+            effort,
+            "--dangerously-skip-permissions",
+        ] + (["--conversation", values["thread_id"]] if resume else [])
     return [
         exe,
         "-p",
@@ -875,6 +908,10 @@ def dispatch(
         )
     from .executor_routing import _model_alias
 
+    if effort is None and not resume and profile["provider"] == "antigravity":
+        from .agy_probe import model_effort
+
+        effort = model_effort(profile["provider_model"])
     if effort is None:
         effort = (
             previous.get("effort", "high")
@@ -1405,6 +1442,25 @@ def _run_job(file):
                 else "provider error did not contain a usable reset time; dispatch remains paused by observed health"
             ),
         }
+    profile = job.get("profile", {})
+    recorded = value.get("quota_record")
+    if (
+        profile.get("provider") == "antigravity"
+        and profile.get("official_subscription")
+        and not (isinstance(recorded, dict) and recorded.get("used_percent") == 100)
+    ):
+        # After every agy run, read the windows it just used (no model call), so
+        # the next automatic choice and a reset-less quota error see real values.
+        try:
+            from .agy_probe import forget
+            from .subscription_quota import refresh as refresh_quota
+
+            forget()
+            value["quota_record"] = refresh_quota(
+                job["data_root"], job["project_id"], job["model"], provider="antigravity"
+            )
+        except (OSError, ValueError) as exc:
+            value["quota_record"] = {"status": "refresh-failed", "reason": str(exc)[:300]}
     if result.get("failure_class") in {"policy-review", "output-incomplete"}:
         from .execution_outbox import change as record_stop
 
@@ -2242,7 +2298,7 @@ def _run_parser(parser, action):
     parser.add_argument("--task-id", required=True)
     parser.add_argument(
         "--effort",
-        help="Provider effort forwarded unchanged (e.g. medium, high, xhigh, max); default high, GLM max; resume retains recorded effort",
+        help="Provider reasoning effort; default high, GLM max, or the effort in an agy model ID; resume retains recorded effort",
     )
     parser.add_argument(
         "--timeout-seconds",
@@ -2663,11 +2719,11 @@ def register_cli(commands):
         help="Declare this adapter uses the native client's official subscription; do not apply that account's quota to unrelated API/gateway routes",
     )
     configure_parser.add_argument(
-        "--provider", choices=("codex", "claude", "custom"), required=True
+        "--provider", choices=PROVIDERS, required=True
     )
     configure_parser.add_argument(
         "--profile-provider",
-        choices=("codex", "claude", "custom"),
+        choices=PROVIDERS,
         help="Owning native client namespace for a custom wrapper; no profile copying",
     )
     for field in ("provider-model", "executable", "argv-json", "resume-argv-json"):

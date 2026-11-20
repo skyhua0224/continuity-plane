@@ -6,6 +6,7 @@ import json
 import re
 import unittest
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 from continuity_plane import owner_channel as oc
 from continuity_plane import owner_questions as oq
@@ -523,6 +524,39 @@ class PresentationTest(base.OwnerChannelTest):
         self.client.create_topic = refuse
         self.assertFalse(self.channel.setup_topics({"has_topics_enabled": True}))
         self.assertFalse(self.channel.topic_mode)
+
+    def test_one_shot_sends_land_in_the_project_topic(self):
+        self.two_projects()
+        self.channel.setup_topics({"has_topics_enabled": True})
+        other = self.channel.topics["other"]
+        self.channel.notify("夜间构建完成", project="other")
+        self.assertEqual(self.client.threads[-1], other)
+        self.channel.send_stage_report("阶段一", summary="完成", project="other")
+        self.assertEqual(self.client.threads[-1], other)
+        self.channel.request_action("换证书", detail="证书下周过期", project="other")
+        self.assertEqual(self.client.threads[-1], other)
+        self.assertIsNone(self.client.thread_id)
+
+    def test_build_channel_reuses_the_topics_serve_recorded(self):
+        token = Path(self.root) / "token"
+        token.write_text("123:abc", encoding="utf-8")
+        token.chmod(0o600)
+        oc.configure(self.root, owner_id=7, token_file=str(token), projects=["demo"], recipient="controller")
+        state = {"schema_version": oc.STATE_SCHEMA_VERSION, "topics": {"demo": 41}, "topic_mode": True}
+        oc._atomic_write(oc.state_path(self.root), state)
+        channel = oc.build_channel(self.root)
+        self.assertEqual((channel.topic_mode, channel.topics), (True, {"demo": 41}))
+        state["topic_mode"] = False
+        oc._atomic_write(oc.state_path(self.root), state)
+        self.assertFalse(oc.build_channel(self.root).topic_mode)
+
+    def test_serve_records_whether_topic_mode_is_on(self):
+        self.client.get_me = lambda: {"id": 1, "username": "bot", "has_topics_enabled": True}
+        ticks = iter([False, True])
+        oc.serve(self.channel, should_stop=lambda: next(ticks), sleep=lambda seconds: None)
+        state = oc._read_state(self.root)
+        self.assertTrue(state["topic_mode"])
+        self.assertEqual(set(state["topics"]), set(self.channel.projects))
 
     def test_serve_persists_receipts_and_panel(self):
         ticks = iter([False, True])

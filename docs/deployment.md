@@ -2,7 +2,7 @@
 
 [English](deployment.en.md) · [文档索引](README.md) · [快速开始](../USAGE.md)
 
-适用版本：CLI `0.1.0a39`，插件 tag `v0.1.0-alpha.39`。CLI、MCP 与宿主 hook 是三个需要分别验证的层次。
+适用版本：CLI `0.1.0a40`，插件 tag `v0.1.0-alpha.40`。CLI、MCP 与宿主 hook 是三个需要分别验证的层次。
 
 ## 选择部署方式
 
@@ -22,7 +22,7 @@
 
 ```bash
 python3 -m venv .venv
-.venv/bin/python -m pip install 'continuity-plane==0.1.0a39'
+.venv/bin/python -m pip install 'continuity-plane==0.1.0a40'
 .venv/bin/continuity --version
 ```
 
@@ -31,7 +31,7 @@ Windows PowerShell 对应 `py -3 -m venv .venv`、`.venv\Scripts\python.exe` 和
 希望全局使用时可选 pipx：
 
 ```bash
-pipx install 'continuity-plane==0.1.0a39'
+pipx install 'continuity-plane==0.1.0a40'
 pipx upgrade continuity-plane --pip-args=--pre
 ```
 
@@ -40,7 +40,7 @@ pipx upgrade continuity-plane --pip-args=--pre
 已有 pipx/uv 环境无法重建时，更新原解释器，不使用破坏性重装：
 
 ```bash
-uv pip install --python /path/to/pipx/venvs/continuity-plane/bin/python --reinstall-package continuity-plane 'continuity-plane==0.1.0a39'
+uv pip install --python /path/to/pipx/venvs/continuity-plane/bin/python --reinstall-package continuity-plane 'continuity-plane==0.1.0a40'
 ```
 
 pipx 的显示元数据可能仍需其正常 upgrade 流程刷新。网络失败时可用已核对摘要的 wheel 离线安装；不要关闭 TLS 验证，也不要把临时离线参数永久留给后续升级。
@@ -108,7 +108,7 @@ host capacity 是本地运行门，不是账号总额度。Git wrapper 位于本
 先安装 CLI。添加 marketplace，再选择插件：
 
 ```bash
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.39
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.40
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -132,7 +132,7 @@ codex plugin add continuity-plane-state@continuity-plane
 ```bash
 # 仅切换 Continuity 市场的固定版本
 codex plugin marketplace remove continuity-plane
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.39
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.40
 codex plugin marketplace upgrade continuity-plane
 ```
 
@@ -177,6 +177,21 @@ CLAUDE_CONFIG_DIR=/path/to/profile-a claude plugin update continuity-plane@conti
 再用同一 CLAUDE_CONFIG_DIR 调用 claude plugin list，重连／新会话后确认加载。若采用下方 SSH bridge 模式，不要同时启用重复的本地插件 hook：每个 profile 保留自己的 bridge 配置、明确项目映射，分别执行 bridge install。该模式以 hook 的 runtime 路径和新 MCP serverInfo.version 验收，不要求 plugin list 出现重复插件。共享公开程序包不等于共享原生账号或会话状态。
 
 不要同时启用同一套插件 hook 与手写重复 hook。自动 hook 需由宿主实际触发，CLI 可执行不构成采用证据。官方参考：[Claude Code plugins](https://code.claude.com/docs/en/plugins)。
+
+## Antigravity CLI 插件
+
+在所属主机上安装 Continuity，并让 `agy` 能从 PATH 找到各入口。运行受管 worker 前，把插件安装到任务的检出目录。
+
+```bash
+continuity agy install --workspace .
+continuity agy status --workspace .
+```
+
+插件保存在 `.agents/plugins/continuity-plane`。`--dry-run` 只显示目标和文件清单。重复安装更新同一批文件。`--scope global` 显式安装到所属 profile 的 `~/.gemini/config/plugins`。每个会话只加载一份插件，启动新会话前移除重复的手工 MCP 注册。
+
+`agy status` 用宿主的 `/hooks` 检查 hook 发现情况，并分别核对两个本地 stdio MCP 入口的握手版本。已初始化的 Continuity 项目也可运行 `continuity doctor --agy --root .`。工具是否可用及是否获准调用，请在实际的 Antigravity 会话中核实。[官方插件文档](https://antigravity.google/docs/plugins/?tab=cli)。
+
+需要把生命周期事件转发到状态主机时，在安装命令上加 `--bridge-config bridge.json`。使用下文中的 SSH 别名和精确根目录映射，状态主机须安装匹配版本的 `continuity-remote-receive`。此选项配置 hooks，插件的 MCP 入口仍启动本地服务。工具要访问远端状态时，另行配置 MCP 连接。
 
 ## 控制端与状态端分离
 

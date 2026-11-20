@@ -201,6 +201,12 @@ class _OutputTail:
             if self.pending:
                 self._scan(self.pending)
                 self.pending = b""
+            finish_attempt = getattr(self.on_output, "finish_attempt", None)
+            if finish_attempt is not None:
+                try:
+                    finish_attempt()
+                except Exception:
+                    pass
             self.drained = True
         finally:
             self.stream.close()

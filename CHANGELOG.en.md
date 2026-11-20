@@ -2,6 +2,13 @@
 
 Adoption: [deployment](docs/deployment.en.md), [recent release notes](docs/releases.en.md), [current coverage/known gaps](docs/validation.en.md). Historical entries retain their original scope. Regular GitHub Release classification does not remove alpha semantics.
 
+## 0.1.0-alpha.40
+
+- Added the Antigravity CLI (`agy`) as a native executor next to Codex and Claude: `worker configure --provider antigravity` checks the model and records the efforts it offers, and dispatch lowers an effort above that range to the highest one; the worker runs in the card's worktree and resume continues the same agy conversation; `continuity agy inspect` reads the version, models, settings, hooks, skills and quota.
+- agy quota is judged from use: `/usage` is read three times and the tightest window of the model's group kept; automatic model choice refreshes a missing or stale record on the spot and every finished agy run refreshes it; executors checked in one pass share one read; `quota tick` refreshes each executor through its own client.
+- Added the agy plugin `continuity-plane` (collaboration skill, two MCP servers, lifecycle hooks) with `continuity agy install`/`status`: workspace by default, global or SSH bridge on request. agy has no compaction, subagent or session-end hook: every turn end saves the handoff and session start or the first call after resume restores it; post-tool reminders are injected before the next model call.
+- Owner channel: `notify send`/`stage`/`action` from the command line land in the project topic; when Telegram refuses a request, the log names the method and reason.
+
 ## 0.1.0-alpha.39
 
 - The owner channel uses the Telegram Bot API 9.4–10.4 display: buttons coloured by purpose, handled buttons greyed out with the choice kept, times in the owner's phone time zone, long text collapsed. Stage reports, completion digests, progress reports and alerts are rich messages (headings, tables, expandable sections) and fall back to the old format when refused; webhooks still get plain text.

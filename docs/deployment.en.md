@@ -2,7 +2,7 @@
 
 [中文](deployment.md) · [Documentation](README.en.md) · [Quick start](../USAGE.en.md)
 
-Applies to CLI `0.1.0a39` and plugin tag `v0.1.0-alpha.39`. Verify CLI installation, MCP connections and native hook delivery separately.
+Applies to CLI `0.1.0a40` and plugin tag `v0.1.0-alpha.40`. Verify CLI installation, MCP connections and native hook delivery separately.
 
 ## Choose a topology
 
@@ -22,7 +22,7 @@ Python 3.11+; Git is needed for tracked-file retrieval. Install native agent cli
 
 ```bash
 python3 -m venv .venv
-.venv/bin/python -m pip install 'continuity-plane==0.1.0a39'
+.venv/bin/python -m pip install 'continuity-plane==0.1.0a40'
 .venv/bin/continuity --version
 ```
 
@@ -31,7 +31,7 @@ Windows PowerShell uses `py -3 -m venv .venv`, `.venv\Scripts\python.exe` and `.
 Optional global installation:
 
 ```bash
-pipx install 'continuity-plane==0.1.0a39'
+pipx install 'continuity-plane==0.1.0a40'
 pipx upgrade continuity-plane --pip-args=--pre
 ```
 
@@ -40,7 +40,7 @@ Check both `continuity --version` and `pipx list`. GitHub's regular Release cate
 If an existing pipx/uv environment refuses recreation, update its interpreter in place:
 
 ```bash
-uv pip install --python /path/to/pipx/venvs/continuity-plane/bin/python --reinstall-package continuity-plane 'continuity-plane==0.1.0a39'
+uv pip install --python /path/to/pipx/venvs/continuity-plane/bin/python --reinstall-package continuity-plane 'continuity-plane==0.1.0a40'
 ```
 
 pipx display metadata may still need its normal upgrade refresh. During a network failure, a hash-verified wheel can be installed offline. Do not disable TLS verification or persist temporary offline flags into future upgrades.
@@ -108,7 +108,7 @@ Host capacity is a local run gate, not total account quota. The Git wrapper is m
 Install the CLI, add the marketplace, then select the plugin:
 
 ```bash
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.39
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.40
 codex plugin add continuity-plane@continuity-plane
 ```
 
@@ -132,7 +132,7 @@ If add reports a different registered source, back up the owner-host Codex confi
 ```bash
 # Repin only the Continuity marketplace
 codex plugin marketplace remove continuity-plane
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.39
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.40
 codex plugin marketplace upgrade continuity-plane
 ```
 
@@ -175,6 +175,21 @@ CLAUDE_CONFIG_DIR=/path/to/profile-a claude plugin update continuity-plane@conti
 Run claude plugin list with the same CLAUDE_CONFIG_DIR, then reconnect/start a new session. For the SSH bridge below, do not also enable duplicate local plugin hooks. Keep an explicit bridge config/project mapping per profile and run bridge install for each. Verify that mode through its hook runtime path and fresh MCP serverInfo.version, rather than requiring a duplicate plugin-list entry. A shared public package is not shared native account/session state.
 
 Do not register duplicate plugin/manual hooks. An executable CLI alone is not proof of adoption. [Official Claude plugin documentation](https://code.claude.com/docs/en/plugins).
+
+## Antigravity CLI plugin
+
+Install Continuity on the owning host and put its launchers on the PATH used by `agy`. For a managed worker, install into the task's checkout.
+
+```bash
+continuity agy install --workspace .
+continuity agy status --workspace .
+```
+
+The plugin lives under `.agents/plugins/continuity-plane`. `--dry-run` prints the target and file list before writing. Repeating the install updates the same files. Use `--scope global` for an explicit install under the owning profile's `~/.gemini/config/plugins`. Install one copy per session's scope and remove any duplicate manual MCP registration before opening a new session.
+
+`agy status` checks native `/hooks` discovery and both local stdio MCP version handshakes. Use `continuity doctor --agy --root .` for an initialized Continuity project. Check tool availability and permission in the actual Antigravity session separately. [Official plugin documentation](https://antigravity.google/docs/plugins/?tab=cli).
+
+To forward lifecycle events to a state host, add `--bridge-config bridge.json` to the same install command. Use the SSH alias and exact-root mappings described below. The state host needs the matching `continuity-remote-receive`. This switch configures hooks. The plugin's MCP entries still launch local servers. Configure the MCP transport separately if the tools need to reach the remote state host.
 
 ## Separate controller and state hosts
 

@@ -3,7 +3,7 @@
 from datetime import UTC, datetime
 
 from .collaboration_registry import _atomic_write, _load, _locked, project_data_dir
-from .runtime_origin import current, key, require_local
+from .runtime_origin import PROVIDERS, current, key, require_local
 
 
 def _path(data_root, project_id, origin, model):
@@ -211,7 +211,7 @@ def register_cli(commands):
         leaf.add_argument("--max-output-bytes", type=int, default=4096)
         if action == "clear":
             leaf.add_argument(
-                "--provider", choices=("codex", "claude", "custom")
+                "--provider", choices=PROVIDERS
             )
             leaf.add_argument("--model", required=True)
             leaf.add_argument("--reason", required=True)

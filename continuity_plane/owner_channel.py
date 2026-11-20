@@ -197,7 +197,7 @@ class TelegramClient:
         if not document.get("ok"):
             parameters = document.get("parameters") or {}
             raise TelegramError(
-                str(document.get("description") or f"{method} failed"),
+                f"{method}: {document.get('description') or 'failed'}",
                 parameters.get("retry_after"),
             )
         return document.get("result")
@@ -889,9 +889,10 @@ class OwnerChannel:
             [_button(option, f"a|{project}|{index}")]
             for index, option in enumerate(options or [])
         ]
-        return self.client.send_message(
-            self.owner_id, _clip(f"[{project}] {text}"), keyboard or None
-        )
+        with self._topic(project):
+            return self.client.send_message(
+                self.owner_id, _clip(f"[{project}] {text}"), keyboard or None
+            )
 
     def _remember(
         self,
@@ -1049,6 +1050,10 @@ class OwnerChannel:
         return resolved if 0 < size <= MAX_IMAGE_BYTES else None
 
     def send_evidence(self, project: str, images: list[str] | None, title: str, progress: dict[str, int] | None = None) -> int:
+        with self._topic(project):
+            return self._send_evidence(project, images, title, progress)
+
+    def _send_evidence(self, project: str, images: list[str] | None, title: str, progress: dict[str, int] | None) -> int:
         requested = (images or [])[:MAX_IMAGES]
         sent = 0
         done = (progress or {}).get("images", 0)
@@ -2034,7 +2039,8 @@ class OwnerChannel:
             exit_criteria=["The owner confirms this is done"],
             assignee=OWNER_RECIPIENT,
         )
-        sent = self._send_action(project, task, steps)
+        with self._topic(project):
+            sent = self._send_action(project, task, steps)
         self._remember(sent, project, task_id)
         return task
 
@@ -2101,7 +2107,8 @@ class OwnerChannel:
         keyboard.append([_button("📋 全部任务", "v|list|recent|0"), _button("📊 总览", "v|status")])
         classic = _clip_html("\n".join(lines))
         document = self._stage_rich(project, title, summary, metrics, recommendations, groups) if self.rich_ok else None
-        return self._deliver(classic, keyboard, document)
+        with self._topic(project):
+            return self._deliver(classic, keyboard, document)
 
     def _deliver(
         self, classic: str, keyboard: list[list[dict[str, Any]]] | None, rich_html: str | None
@@ -2811,7 +2818,9 @@ def serve(
                     state["offset"] = None if state.get("bot_id") else state.get("offset")
                     state["bot_id"] = me["id"]
                     channel.topics.clear()  # topics belong to the previous bot's chat
-                if channel.setup_topics(me):
+                # Persisted so one-shot CLI sends (notify send/stage/action) use the topics too.
+                state["topic_mode"] = channel.setup_topics(me)
+                if state["topic_mode"]:
                     log(f"topic mode: {len(channel.topics)} project topics")
                 ready = True
             channel.deliver_pending()
@@ -2829,7 +2838,9 @@ def serve(
                     with owner_sinks.quiet(channel.client):
                         channel.handle_update(update)
                 except (OwnerChannelError, CollaborationRegistryError, KeyError, ValueError) as error:
-                    log(f"update {update.get('update_id')} failed: {type(error).__name__}")
+                    # Telegram descriptions name the method and reason, never the token.
+                    reason = f": {error}" if isinstance(error, TelegramError) else ""
+                    log(f"update {update.get('update_id')} failed: {type(error).__name__}{reason}")
                 state["offset"] = update["update_id"] + 1
                 _atomic_write(state_path(channel.data_root), state)
             state["last_poll_at"] = datetime.now(UTC).isoformat()
@@ -2861,7 +2872,13 @@ def build_channel(
         except owner_sinks.SinkError as error:
             raise OwnerChannelError(str(error)) from None
         client = owner_sinks.MirroredClient(client, sinks, interactive=telegram)
-    return OwnerChannel(client, config, data_root)
+    channel = OwnerChannel(client, config, data_root)
+    # Topics are created by `serve`; a one-shot send reuses what it recorded.
+    state = _read_state(data_root)
+    if telegram and state.get("topic_mode") and state.get("topics"):
+        channel.topics = {str(k): int(v) for k, v in state["topics"].items()}
+        channel.topic_mode = True
+    return channel
 
 
 __all__ = [

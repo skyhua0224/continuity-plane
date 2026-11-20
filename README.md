@@ -57,7 +57,7 @@ Continuity 是一个在你电脑上运行的小工具，给 AI 一份**不会随
 ## ✨ 核心特性
 
 - **任务卡与待办** — 把“先修 A、再测 B、最后写说明”拆成任务卡，分给不同的 AI 或人；每张卡写明目标、允许改的文件和验收条件，待办清单直接由卡片生成
-- **派发与监督 AI 执行者** — 一个工具调用把卡片交给 Codex 或 Claude 后台执行；Continuity 记录启动、心跳、退出原因和最终报告，报告自动挂回卡片
+- **派发与监督 AI 执行者** — 一个工具调用把卡片交给 Codex、Claude 或 Antigravity CLI 后台执行；Continuity 记录启动、心跳、退出原因和最终报告，报告自动挂回卡片
 - **结束即通知** — 执行者完成、失败、被限流或卡住时，主控马上在对话里看到，并且附带下一步该调用的工具；覆盖主控负责的所有项目
 - **在手机上管进度（可选）** — 通过 Telegram 查看状态和任务、回答 Agent 的提问、批准申请、接收阶段总结和失败提醒；置顶的进度面板一屏看完各项目；也可以同时发到飞书、钉钉、企业微信等 webhook，见[所有者通知通道](docs/commands.md#所有者通知通道)
 - **工作目录按卡清理** — 登记 worker 创建的工作目录，报告各存储层剩余空间，卡片结束后只清理干净的临时目录，见[工作目录与存储清理](docs/commands.md#工作目录与存储清理)
@@ -129,7 +129,7 @@ flowchart LR
 需要 Python 3.11+ 和 Git。
 
 ```bash
-pipx install 'continuity-plane==0.1.0a39'
+pipx install 'continuity-plane==0.1.0a40'
 continuity --version
 cd your-repo
 continuity collaboration register --project-id demo --control-root . --repository-root .
@@ -152,15 +152,17 @@ continuity collaboration task list --project-id demo --format brief
 | Codex | Codex plugin `continuity-plane-state` | 任务、派发、等待、报告等 MCP 工具和协作 skill |
 | Codex | Codex plugin `continuity-plane-search` | 代码检索 MCP 工具 |
 | Codex | Codex plugin `continuity-plane` | 会话与压缩 hooks |
+| Antigravity CLI | `continuity agy install` 安装的 `continuity-plane` 插件 | 协作 skill、生命周期 hooks、两个 MCP 服务器 |
 | 其他 stdio MCP 客户端 | 手动添加 `continuity-mcp`、`continuity-search-mcp` | 同样的 MCP 工具 |
 
 ```bash
 claude plugin marketplace add skyhua0224/continuity-plane
 claude plugin install continuity-plane@continuity-plane --scope user
-codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.39
+codex plugin marketplace add skyhua0224/continuity-plane --ref v0.1.0-alpha.40
 codex plugin add continuity-plane-state@continuity-plane
 codex plugin add continuity-plane-search@continuity-plane
 codex plugin add continuity-plane@continuity-plane
+continuity agy install --scope global
 ```
 
 升级后需要重连 MCP 或新开会话，宿主才会加载新工具。Codex 安装插件后要在 `/hooks` 里信任新的 hook 定义。

@@ -2,7 +2,7 @@
 
 [中文](validation.md) · [Workflows](workflows.en.md) · [Historical experiments](benchmarks.en.md)
 
-Scope: Alpha39 (`0.1.0a39`). New synthetic CLI measurements, existing regressions, anonymous user feedback and uncovered behavior are distinct evidence classes.
+Scope: Alpha40 (`0.1.0a40`). New synthetic CLI measurements, existing regressions, anonymous user feedback and uncovered behavior are distinct evidence classes.
 
 ## Reproduce the current workflow check
 
@@ -62,6 +62,13 @@ Fourteen positive checks pass; automatic report delivery after early card update
 | Drift/commitments | Parser/rule regressions and anonymous feedback | Not proof of all external/document facts |
 
 The [Alpha25 public release CI](https://github.com/skyhua0224/continuity-plane/actions/runs/38845950775) passed 268 tests. New documentation checks run on current main separately; neither released wheels nor historical counts are rewritten.
+
+## Alpha40 checks
+
+- Regressions: `tests/test_agy_executor.py` and `tests/test_agy_integration.py`, 25 tests, plus 131 owner-channel tests; the full source suite has 3,083 tests.
+- agy 1.5.13 on Linux: Continuity dispatched and resumed a card; the worker wrote a file in the card's worktree and reported through MCP. With the plugin installed per workspace and globally, the session-start recovery hint, the planning hint on new input, the queued post-tool reminder, the handoff saved at each turn end and the restore after `--conversation` resume all appeared in real sessions; `agy plugin validate --strict` passes.
+- Quota: `quota refresh` for four executors matches `/usage`; one read in six of `/usage` returned older data, so it is read three times and the tightest kept. No real quota-exhausted or rate-limit error text was collected.
+- Not verified: agy on macOS and Windows, and hook forwarding to another host (automated tests only). Codex and Claude hooks now share one code path; all existing regressions pass and a Claude session over the SSH bridge was checked live.
 
 ## Alpha39 checks
 

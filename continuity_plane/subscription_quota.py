@@ -14,6 +14,7 @@ from .collaboration_registry import (
     _record_change,
     resolve_project,
 )
+from .runtime_origin import NATIVE_PROVIDERS, PROVIDERS
 
 
 def _path(data_root, project_id):
@@ -67,7 +68,8 @@ def record(
     origin = origin or current(provider)
     require_local(origin, provider)
 
-    model = _model_alias(model)
+    if provider != "antigravity":
+        model = _model_alias(model)
     item = {
         "model": model,
         "used_percent": used_percent,
@@ -107,6 +109,18 @@ def record(
     return item
 
 
+def _status(item, now):
+    observed = datetime.fromisoformat(item["observed_at"])
+    reset = datetime.fromisoformat(item["resets_at"])
+    if reset <= now:
+        return "needs-refresh"
+    if item["used_percent"] >= 100:
+        return "exhausted"
+    if now - observed > timedelta(minutes=15):
+        return "needs-refresh"
+    return "near-limit" if item["used_percent"] >= 90 else "available"
+
+
 def report(data_root, project_id, *, now=None):
     now = now or datetime.now(UTC)
     doc = _load(_path(data_root, project_id))
@@ -114,26 +128,12 @@ def report(data_root, project_id, *, now=None):
     foreign = 0
     from .runtime_origin import current, validate
 
-    for identity, item in doc["models"].items():
+    for item in doc["models"].values():
         origin = item.get("collection_origin")
         if origin is None or validate(origin) != current(origin["provider"]):
             foreign += 1
             continue
-        model = item["model"]
-        observed = datetime.fromisoformat(item["observed_at"])
-        reset = datetime.fromisoformat(item["resets_at"])
-        status = (
-            "needs-refresh"
-            if reset <= now
-            else "exhausted"
-            if item["used_percent"] >= 100
-            else "needs-refresh"
-            if now - observed > timedelta(minutes=15)
-            else "near-limit"
-            if item["used_percent"] >= 90
-            else "available"
-        )
-        models[model] = {**item, "status": status}
+        models[item["model"]] = {**item, "status": _status(item, now)}
     return {
         "models": models,
         "handoffs": list(doc["handoffs"].values()),
@@ -151,13 +151,27 @@ def automatic_available(data_root, project_id, model, *, profile=None, now=None)
     if not profile.get("official_subscription"):
         return True
     from .executor_routing import _model_alias
+    from .runtime_origin import current, key
 
-    quota = report(data_root, project_id, now=now)["models"].get(
-        _model_alias(model), {}
-    )
-    return (
-        quota.get("collection_origin") == profile.get("execution_origin")
-        and quota.get("status") == "available"
+    origin = profile.get("execution_origin")
+    if not origin or origin != current(origin["provider"]):
+        return False
+    quota_model = model if origin["provider"] == "antigravity" else _model_alias(model)
+    identity = key(origin) + ":" + quota_model
+    item = _load(_path(data_root, project_id))["models"].get(identity)
+    if origin["provider"] == "antigravity" and (
+        not item or _status(item, now or datetime.now(UTC)) == "needs-refresh"
+    ):
+        # agy reads its own windows locally without a model call, so a missing or
+        # stale snapshot is refreshed here instead of excluding the adapter.
+        try:
+            item = refresh(data_root, project_id, model, provider="antigravity")
+        except (OSError, ValueError):
+            return False
+    return bool(
+        item
+        and item.get("collection_origin") == origin
+        and _status(item, now or datetime.now(UTC)) == "available"
     )
 
 
@@ -288,6 +302,13 @@ def return_ready(root, data_root, project_id, handoff_id, *, execute=False):
         return {**value, "executed": True}
 
 
+def _adapter_provider(data_root, model):
+    """The native client that owns a configured adapter; Codex for unconfigured names."""
+    path = Path(data_root or default_data_root()) / "executor-adapters.json"
+    adapter = (json.loads(path.read_text()) if path.exists() else {}).get(model) or {}
+    return adapter.get("profile_provider") or adapter.get("provider") or "codex"
+
+
 def command(args):
     from .planning_api import render
 
@@ -306,7 +327,14 @@ def command(args):
         )
     elif args.quota_action == "tick":
         for model in args.refresh_model:
-            refresh(args.data_root, project_id, model, executable=args.executable)
+            provider = _adapter_provider(args.data_root, model)
+            refresh(
+                args.data_root,
+                project_id,
+                model,
+                executable=args.executable if provider == "codex" else None,
+                provider=provider,
+            )
         result = {
             "items": [
                 advance(
@@ -368,7 +396,7 @@ def register_cli(commands):
         if action == "record":
             leaf.add_argument(
                 "--provider",
-                choices=("codex", "claude", "custom"),
+                choices=PROVIDERS,
                 required=True,
                 help="Querying profile namespace, not a model-name guess",
             )
@@ -390,23 +418,22 @@ def register_cli(commands):
         if action == "refresh":
             leaf.add_argument(
                 "--provider",
-                choices=("codex", "claude"),
+                choices=NATIVE_PROVIDERS,
                 required=True,
                 help="Explicit native client; unsupported pollers never fall back to another account",
             )
             leaf.add_argument(
                 "--executable",
-                default="codex",
-                help="Existing Codex CLI; no login/config changes or model call",
+                help="Override the existing native CLI executable for this read-only quota query",
             )
         if action == "tick":
             leaf.add_argument(
                 "--refresh-model",
                 action="append",
                 default=[],
-                help="Explicit native Codex subscription models to refresh before evaluating handoffs",
+                help="Native subscription models (Codex or Antigravity adapters) to refresh before evaluating handoffs",
             )
-            leaf.add_argument("--executable", default="codex")
+            leaf.add_argument("--executable", help="Codex CLI override; Antigravity adapters use their own executable")
             leaf.add_argument(
                 "--execute-approved",
                 action="store_true",
@@ -489,12 +516,12 @@ def refresh(
     project_id,
     model,
     *,
-    executable="codex",
+    executable=None,
     limits=None,
     limit_id="codex",
     provider="codex",
 ):
-    if provider != "codex":
+    if provider not in ("codex", "antigravity"):
         raise ValueError(
             "native Claude quota polling is not configured; query usage on the owning machine/profile and record only the observed counters with --provider claude; never substitute a Codex account or transplant private state"
         )
@@ -514,10 +541,30 @@ def refresh(
                 "adapter has no host/profile binding; reconfigure on its owning host"
             )
         require_local(adapter["execution_origin"], provider)
+    if provider == "antigravity":
+        from .agy_probe import EXECUTABLE, cached_models, model_entry, tightest_window
+
+        # agy-usage, Model quotas (/usage): model labels identify quota groups.
+        if not adapter or adapter["provider"] != provider:
+            raise ValueError("agy quota refresh requires a configured native antigravity adapter")
+        executable = executable or adapter.get("executable") or EXECUTABLE
+        label = model_entry(adapter["provider_model"], cached_models(executable))["label"]
+        remaining, reset = tightest_window(label, executable)
+        return record(
+            data_root,
+            project_id,
+            model,
+            used_percent=(1 - remaining) * 100,
+            resets_at=reset.isoformat(),
+            source="agy-native:/usage",
+            official_subscription=True,
+            provider=provider,
+            origin=adapter["execution_origin"],
+        )
     if limits is None:
         from .codex_account_probe import read_limits
 
-        limits = read_limits(executable)
+        limits = read_limits(executable or "codex")
     bucket = (limits.get("rateLimitsByLimitId") or {}).get(limit_id)
     if bucket is None:
         single = limits.get("rateLimits", {})

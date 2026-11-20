@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "continuity-plane"
-version = "0.1.0a39"
+version = "0.1.0a40"
 description = "Durable task state, bounded context, evidence, and collaboration control for long-running AI-assisted work"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -35,6 +35,7 @@ dev = [
 
 [project.scripts]
 continuity = "continuity_plane.cli:entrypoint"
+continuity-agy-hook = "continuity_plane.agy_hook:run"
 continuity-host-hook = "continuity_plane.lifecycle:host_main"
 continuity-remote-hook = "continuity_plane.remote_hook:main"
 continuity-remote-receive = "continuity_plane.remote_hook:receive_main"
@@ -57,6 +58,20 @@ continuity_plane = [
   "schemas/**/*.json",
   "templates/*.md",
   "templates/*.yaml",
+]
+
+[tool.setuptools.data-files]
+"share/continuity/agy-plugin" = [
+  "integrations/antigravity/continuity-plane/plugin.json",
+  "integrations/antigravity/continuity-plane/hooks.json",
+  "integrations/antigravity/continuity-plane/mcp_config.json",
+]
+"share/continuity/agy-plugin/skills/continuity-collaboration" = [
+  "integrations/claude/continuity-plane/skills/continuity-collaboration/SKILL.md",
+]
+"share/continuity/agy-plugin/skills/continuity-collaboration/references" = [
+  "integrations/claude/continuity-plane/skills/continuity-collaboration/references/collaboration.md",
+  "integrations/claude/continuity-plane/skills/continuity-collaboration/references/sources.md",
 ]
 
 [tool.ruff.lint]

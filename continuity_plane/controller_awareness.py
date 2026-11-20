@@ -14,6 +14,7 @@ from .collaboration_registry import (
     list_tasks,
     _load_ledger,
 )
+from .runtime_origin import NATIVE_PROVIDERS
 
 
 # Terminal outcomes only. `attempt.retrying` is a retry inside a live job, and an
@@ -437,7 +438,7 @@ def _bound_controller(data, pid, session):
     """True when this session declared itself controller of `pid` (`session bind`)."""
     from .project_context import binding
 
-    for provider in ("claude", "codex"):
+    for provider in NATIVE_PROVIDERS:
         try:
             current = binding(data, pid, provider, session)
         except (OSError, ValueError, KeyError):

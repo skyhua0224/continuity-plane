@@ -269,7 +269,19 @@ def handle_event(
     data = Path(data_root) if data_root else default_data_root()
     if event in {"StopFailure", "Notification"}:
         return _observe_session_stop(payload, event, session, root, data, host)
-    if event == "PostToolUse" and host not in {"claude-bridge", "claude-remote"}:
+    antigravity = host in {"antigravity", "antigravity-bridge", "antigravity-remote"}
+    if (
+        antigravity and event == "PreCompact" and payload.get("termination_reason") == "ERROR"
+    ):
+        _observe_session_stop(
+            {"error": "ERROR"}, "StopFailure", session, root, data, host
+        )
+    if event == "PostToolUse" and host not in {
+        "claude-bridge",
+        "claude-remote",
+        "antigravity-bridge",
+        "antigravity-remote",
+    }:
         # Bridged hooks are counted by the bridge spool and recorded remotely.
         from .adoption import record_hook
 
@@ -321,14 +333,16 @@ def handle_event(
         }
     from .provider_usage import capture_hook
 
-    capture_hook(
-        payload, "claude" if host.startswith("claude") else "codex", data_root=data
-    )
+    # Antigravity does not expose a supported usage transcript to this adapter.
+    provider = "claude" if host.startswith("claude") else "codex"
+    if antigravity:
+        provider = "antigravity"
+    if not antigravity:
+        capture_hook(payload, provider, data_root=data)
     key = hashlib.sha256((str(root) + ":" + session).encode()).hexdigest()
     path = data / "handoffs" / (key + ".json")
     if event == "PreCompact":
         registration = resolve_project(root, data)
-        provider = "claude" if host.startswith("claude") else "codex"
         from .project_context import binding, integration
 
         try:
@@ -523,10 +537,11 @@ def handle_event(
                 pass
         from .provider_usage import capture_compaction
 
-        try:
-            capture_compaction(root, session, saved["generation"], data_root=data)
-        except (OSError, ValueError, TypeError, KeyError):
-            pass
+        if not antigravity:
+            try:
+                capture_compaction(root, session, saved["generation"], data_root=data)
+            except (OSError, ValueError, TypeError, KeyError):
+                pass
         return {
             "status": "saved-with-warning"
             if saved.get("controller_handoff_refresh")
@@ -754,6 +769,81 @@ def main() -> int:
     return 0
 
 
+def add_host_context(output, payload, *, host, data_root=None, nudge=True, updates=True):
+    """Attach shared planning, adoption and controller messages within the hook budget."""
+    from .adoption import cli_nudge, merge_context
+    from .controller_awareness import notice
+
+    event = payload.get("hook_event_name")
+    plan = event == "UserPromptSubmit" or (
+        event == "SessionStart" and not host.startswith("antigravity")
+    )
+    if plan and payload.get("source") != "compact":
+        from .planning_adoption import context as planning_context
+
+        base = output.get("hookSpecificOutput", {}).get("additionalContext", "")
+        hint = planning_context(
+            payload,
+            host=host,
+            data_root=data_root,
+            max_bytes=MAX_CONTEXT_BYTES - len(base.encode()) - 1,
+        )
+        merge_context(output, event, hint, MAX_CONTEXT_BYTES)
+    if nudge:
+        merge_context(
+            output, "PostToolUse", cli_nudge(payload, data_root), MAX_CONTEXT_BYTES
+        )
+    base = output.get("hookSpecificOutput", {}).get("additionalContext", "")
+    note = notice(
+        payload,
+        root=payload.get("cwd"),
+        data_root=data_root,
+        max_bytes=min(1024, MAX_CONTEXT_BYTES - len(base.encode()) - 1),
+    )
+    merge_context(output, event, note, MAX_CONTEXT_BYTES)
+    if event == "SessionStart" and updates:
+        from .update_check import merge_session_notice
+
+        merge_session_notice(output, payload, MAX_CONTEXT_BYTES, data_root)
+    return output
+
+
+def state_checkpoint(payload, command, *, host, data_root=None):
+    """Run the opt-in typed State checkpoint command using the installed core."""
+    root = payload.get("cwd") or os.getcwd()
+    try:
+        completed = subprocess.run(
+            [sys.executable, "-m", __package__ + ".cli", "checkpoint", command, "--root", root],
+            capture_output=True,
+            timeout=5,
+            check=False,
+        )
+        ok = completed.returncode == 0
+    except (OSError, subprocess.TimeoutExpired):
+        ok = False
+    record(
+        root,
+        command="checkpoint:" + command + (":ok" if ok else ":failed"),
+        response_bytes=0,
+        estimated_grep_bytes=0,
+        injected_bytes=0,
+        session_id=payload.get("session_id"),
+        host=host,
+        data_root=data_root,
+    )
+
+
+def turn_state_checkpoint(payload, output, *, host, data_root=None):
+    if os.environ.get("CONTINUITY_STATE_CHECKPOINTS") != "1":
+        return
+    event = payload.get("hook_event_name")
+    status = output.get("status")
+    if event == "PreCompact" and status in {"saved", "saved-with-warning"}:
+        state_checkpoint(payload, "create", host=host, data_root=data_root)
+    if event == "SessionStart" and status == "restored":
+        state_checkpoint(payload, "verify", host=host, data_root=data_root)
+
+
 def host_main() -> int:
     if os.environ.get("CONTINUITY_DISABLED") == "1":
         return 0
@@ -777,45 +867,7 @@ def host_main() -> int:
             output = {"continue": True}
         else:
             output = handle_event(payload, host="claude", meter_injection=False)
-        if (
-            event in {"UserPromptSubmit", "SessionStart"}
-            and payload.get("source") != "compact"
-        ):
-            from .planning_adoption import context as planning_context
-
-            base = output.get("hookSpecificOutput", {}).get("additionalContext", "")
-            hint = planning_context(
-                payload,
-                host="claude",
-                max_bytes=MAX_CONTEXT_BYTES - len(base.encode()) - 1,
-            )
-            if hint:
-                combined = (base + "\n" + hint).strip()
-                if len(combined.encode()) <= MAX_CONTEXT_BYTES:
-                    output["hookSpecificOutput"] = {
-                        "hookEventName": event,
-                        "additionalContext": combined,
-                    }
-        from .adoption import cli_nudge, merge_context
-
-        merge_context(output, "PostToolUse", cli_nudge(payload), MAX_CONTEXT_BYTES)
-        from .controller_awareness import notice
-
-        base = output.get("hookSpecificOutput", {}).get("additionalContext", "")
-        note = notice(
-            payload,
-            root=payload.get("cwd"),
-            max_bytes=min(1024, MAX_CONTEXT_BYTES - len(base.encode()) - 1),
-        )
-        if note:
-            output["hookSpecificOutput"] = {
-                "hookEventName": event,
-                "additionalContext": (base + "\n" + note).strip(),
-            }
-        if event == "SessionStart":
-            from .update_check import merge_session_notice
-
-            merge_session_notice(output, payload, MAX_CONTEXT_BYTES)
+        add_host_context(output, payload, host="claude")
         if "hookSpecificOutput" in output:
             context = output["hookSpecificOutput"]["additionalContext"]
             output["injected_bytes"] = len(context.encode())
@@ -856,33 +908,7 @@ def host_main() -> int:
                     host="claude",
                 )
                 return 0
-            # Name is resolved from the current installed package, not the host shell's Python.
-            command = "create" if create else "verify"
-            module = __package__ + ".cli"
-            completed = subprocess.run(
-                [
-                    sys.executable,
-                    "-m",
-                    module,
-                    "checkpoint",
-                    command,
-                    "--root",
-                    payload.get("cwd") or os.getcwd(),
-                ],
-                capture_output=True,
-                timeout=5,
-                check=False,
-            )
-            record(
-                payload.get("cwd") or os.getcwd(),
-                command="checkpoint:"
-                + command
-                + (":ok" if completed.returncode == 0 else ":failed"),
-                response_bytes=0,
-                estimated_grep_bytes=0,
-                session_id=payload.get("session_id"),
-                host="claude",
-            )
+            state_checkpoint(payload, "create" if create else "verify", host="claude")
     except (OSError, ValueError, TypeError, KeyError, subprocess.TimeoutExpired):
         pass
     return 0

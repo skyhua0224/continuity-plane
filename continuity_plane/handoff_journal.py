@@ -33,7 +33,7 @@ def record(root, session, generation, phase, *, data_root=None, kind="native-eve
                 "session": session_key,
                 "generation": generation,
                 "kind": kind
-                if kind in {"native-event", "controlled-test"}
+                if kind in {"native-event", "controlled-test", "turn-boundary"}
                 else "native-event",
             }
         )
@@ -63,7 +63,10 @@ def report(root, data_root=None):
             "paired_sessions": len({r["session"] for r in paired}),
         }
 
+    turns = counts("turn-boundary")
+    turns["paired_handoffs"] = turns.pop("paired_compactions")
     return {
+        "turn_boundaries": turns,
         "native_events": counts("native-event"),
         "controlled_tests": counts("controlled-test"),
         "window": "latest 200 generation receipts",
